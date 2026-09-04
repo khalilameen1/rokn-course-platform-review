@@ -127,6 +127,19 @@ class AdminDashboardViewTest extends TestCase
         );
     }
 
+    public function test_admin_runtime_assets_are_cache_busted_by_the_deployed_file(): void
+    {
+        $layout = $this->viewSource('layouts/app.blade.php');
+
+        foreach (['js/app.js', 'admin/assets/js/main.js', 'admin/assets/js/request.js'] as $path) {
+            self::assertStringContainsString(
+                "filemtime(public_path('{$path}'))",
+                $layout,
+                $path
+            );
+        }
+    }
+
     #[DataProvider('orderScreens')]
     public function test_order_screens_keep_their_contracts_in_small_partials(
         string $screen,

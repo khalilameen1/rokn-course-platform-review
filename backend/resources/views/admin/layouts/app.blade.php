@@ -47,9 +47,9 @@
     </div>
 @endauth
 <!-- Scripts -->
-<script src="{{ asset('js/app.js') }}"></script>
+<script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
 <script src="{{ asset('admin/assets/js/vendor/select2/select2.min.js') }}"></script>
-<script src="{{ asset('admin/assets/js/main.js') }}"></script>
+<script src="{{ asset('admin/assets/js/main.js') }}?v={{ filemtime(public_path('admin/assets/js/main.js')) }}"></script>
 <script src="{{ asset('admin/assets/js/request.js') }}?v={{ filemtime(public_path('admin/assets/js/request.js')) }}"></script>
 
 @yield('scripts')
