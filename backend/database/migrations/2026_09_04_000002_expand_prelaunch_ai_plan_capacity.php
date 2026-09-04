@@ -138,6 +138,11 @@ return new class extends Migration {
                     $values = $code === 'guided' ? $guided : ($code === 'mentor' ? $mentor : null);
                     if ($values === null) continue;
 
+                    $values = $this->snapshotValuesForVersion(
+                        $values,
+                        (int) ($snapshot['version'] ?? 1)
+                    );
+
                     DB::table('course_enrollments')->where('id', $row->id)->update([
                         'access_plan_snapshot' => json_encode(
                             array_merge($snapshot, $values),
@@ -147,5 +152,41 @@ return new class extends Migration {
                     ]);
                 }
             }, 'id');
+    }
+
+    /**
+     * Snapshot v2+ stores money as fixed-scale strings. The live MySQL schema
+     * enforces that JSON contract, while the plan table itself uses decimals.
+     * Keep the two representations explicit instead of letting json_encode()
+     * turn migration floats into invalid snapshot numbers.
+     *
+     * @param array<string,int|float> $values
+     * @return array<string,int|float|string>
+     */
+    private function snapshotValuesForVersion(array $values, int $version): array
+    {
+        if ($version < 2) {
+            return $values;
+        }
+
+        $moneyKeys = [
+            'ai_budget_usd',
+            'request_reserve_usd',
+            'project_feedback_budget_usd',
+            'project_feedback_reserve_usd',
+        ];
+
+        if ($version >= 3) {
+            $moneyKeys[] = 'project_followup_budget_usd';
+            $moneyKeys[] = 'project_followup_reserve_usd';
+        }
+
+        foreach ($moneyKeys as $key) {
+            if (array_key_exists($key, $values)) {
+                $values[$key] = number_format((float) $values[$key], 6, '.', '');
+            }
+        }
+
+        return $values;
     }
 };
