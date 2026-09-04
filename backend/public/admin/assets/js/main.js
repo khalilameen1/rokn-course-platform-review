@@ -230,7 +230,7 @@ jQuery(document).ready(function($) {
 				button.style.pointerEvents = 'none';
 			});
 		});
-	}, true);
+	});
 
 	// Safari/Chrome may restore a submitted page from the back-forward cache.
 	// A visual lock from the previous navigation must never strand its forms.

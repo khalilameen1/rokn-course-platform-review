@@ -112,6 +112,21 @@ class AdminDashboardViewTest extends TestCase
         self::assertFileDoesNotExist(dirname(__DIR__, 2).'/resources/views/admin/course-sections/edit.blade.php');
     }
 
+    public function test_native_form_lock_runs_after_form_owned_submit_handlers(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2).'/public/admin/assets/js/main.js');
+
+        self::assertIsString($source);
+        self::assertMatchesRegularExpression(
+            "/document\\.addEventListener\\('submit',[\\s\\S]*?\\n\\s*}\\);\\n\\n\\s*\\/\\/ Safari/",
+            $source
+        );
+        self::assertDoesNotMatchRegularExpression(
+            "/document\\.addEventListener\\('submit',[\\s\\S]*?\\n\\s*}, true\\);\\n\\n\\s*\\/\\/ Safari/",
+            $source
+        );
+    }
+
     #[DataProvider('orderScreens')]
     public function test_order_screens_keep_their_contracts_in_small_partials(
         string $screen,
