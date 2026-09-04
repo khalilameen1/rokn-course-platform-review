@@ -2,24 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\PublicDiskUrl;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserRequest;
-use App\Models\Order;
-use App\Models\Bill;
 use App\Models\DesignSetting;
 use App\Models\User;
 use App\Models\UserNote;
-use App\Services\StudentNotificationService;
 use App\Services\DeviceLoginService;
-use App\Services\StoredFileDeletionService;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminStudentReadService;
 use App\Services\StudentAccountStateService;
-use App\Services\PaymentChannelReportService;
-use App\Services\WalletQueryService;
 use App\Support\AdminEditorVersion;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -35,39 +28,17 @@ class UsersController extends Controller
     /**
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function index(Request $request, StudentAccountStateService $accounts)
+    public function index(Request $request, AdminStudentReadService $students)
     {
-        $users = User::query()->students()
-            ->with(['latestNote']);
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'active' => ['nullable', 'in:0,1'],
+        ]);
 
-        // Filter by active status
-        $activeFilter = $request->query('active');
-        if (in_array($activeFilter, ['0', '1'], true)) {
-            $users->where('active', $activeFilter === '1');
-        }
-
-        // Search functionality
-        if ($request->has('search') && !empty($request->search)) {
-            $search = $request->search;
-            $users->where(function($query) use ($search) {
-                $query->where('name', 'LIKE', "%{$search}%")
-                      ->orWhere('name_ar', 'LIKE', "%{$search}%")
-                      ->orWhere('name_en', 'LIKE', "%{$search}%")
-                      ->orWhere('email', 'LIKE', "%{$search}%")
-                      ->orWhere('phone', 'LIKE', "%{$search}%");
-            });
-        }
-
-        // Add pagination
-        $users = $users->orderByDesc('id')->paginate(10)->appends($request->query());
-        $accountStateVersions = $users->getCollection()->mapWithKeys(
-            fn (User $user): array => [$user->id => $accounts->editorVersion($user)]
-        );
-
-        // Get design settings
-        $designSettings = $this->getDesignSettings();
-
-        return view('admin.users.index', compact('users', 'designSettings', 'accountStateVersions'));
+        return view('admin.users.index', array_merge(
+            $students->listing($filters, $request->query()),
+            ['designSettings' => $this->getDesignSettings()]
+        ));
     }
 
 
@@ -157,109 +128,14 @@ class UsersController extends Controller
     public function show(
         User $user,
         Request $request,
-        DeviceLoginService $deviceLogin,
-        StudentAccountStateService $accounts,
-        PaymentChannelReportService $paymentChannels,
-        WalletQueryService $wallet
+        AdminStudentReadService $students
     )
     {
         $this->assertStudent($user);
 
-        $user->loadCount('deviceTokens')->load([
-            'socialAccounts' => fn ($accounts) => $accounts->orderBy('provider'),
-        ]);
-
-        // Get user orders with related data
-        $orderScope = Order::where('user_id', $user->id);
-        $orders = (clone $orderScope)
-            ->with(['course', 'coupon', 'courseCode', 'approvedBy', 'paymentMethod'])
-            ->latest()
-            ->latest('id')
-            ->paginate(10, ['*'], 'orders_page');
-
-        // Get user bills with related data
-        $billScope = Bill::where('user_id', $user->id);
-        $bills = (clone $billScope)
-            ->with(['order.course', 'order.paymentMethod'])
-            ->latest()
-            ->latest('id')
-            ->paginate(10, ['*'], 'bills_page');
-
-        $paymentReport = $paymentChannels->summary(null, null, clone $orderScope);
-        // Keep the dashboard on the same wallet contract as the mobile app.
-        // Rebuilding the split from orders would miss rewards, compensation
-        // and unspent package credits.
-        $walletSummary = $wallet->summary($user);
-        $orderStats = [
-            'approved' => (clone $orderScope)->where('status', Order::STATUS_APPROVED)->count(),
-            'pending' => (clone $orderScope)->where('status', Order::STATUS_PENDING)->count(),
-            'approved_coins' => (int) (clone $orderScope)
-                ->where('status', Order::STATUS_APPROVED)
-                ->sum('total_coins'),
-            'confirmed_egp' => (float) $paymentReport['egp']['confirmed_gross_amount'],
-        ];
-        $coinMethods = [Bill::PAYMENT_METHOD_WALLET, Order::PAYMENT_METHOD_WALLET_COINS];
-        $billStats = [
-            'paid' => (clone $billScope)->where('payment_status', Bill::PAYMENT_STATUS_PAID)->count(),
-            'pending' => (clone $billScope)->where('payment_status', Bill::PAYMENT_STATUS_PENDING)->count(),
-            'paid_coins' => (float) (clone $billScope)
-                ->where('payment_status', Bill::PAYMENT_STATUS_PAID)
-                ->whereIn('payment_method', $coinMethods)
-                ->sum('total_amount'),
-            'pending_coins' => (float) (clone $billScope)
-                ->where('payment_status', Bill::PAYMENT_STATUS_PENDING)
-                ->whereIn('payment_method', $coinMethods)
-                ->sum('total_amount'),
-            'paid_egp' => (float) (clone $billScope)
-                ->where('payment_status', Bill::PAYMENT_STATUS_PAID)
-                ->whereNotIn('payment_method', $coinMethods)
-                ->sum('total_amount'),
-            'pending_egp' => (float) (clone $billScope)
-                ->where('payment_status', Bill::PAYMENT_STATUS_PENDING)
-                ->whereNotIn('payment_method', $coinMethods)
-                ->sum('total_amount'),
-        ];
-
-        // Get user notes with pagination
-        $notes = $user->notes()->with('createdBy')->latest()->latest('id')->paginate(5, ['*'], 'notes_page');
-
-        // Get user exam results with related data
-        $examResults = \App\Models\ExamAttempt::where('user_id', $user->id)
-            ->where('status', \App\Models\ExamAttempt::STATUS_COMPLETED)
-            ->with(['quiz.course', 'quiz.lesson'])
-            ->latest('completed_at')
-            ->latest('id')
-            ->paginate(10, ['*'], 'exam_results_page');
-
-        // Calculate exam statistics
-        $totalExams = \App\Models\ExamAttempt::where('user_id', $user->id)
-            ->where('status', \App\Models\ExamAttempt::STATUS_COMPLETED)->count();
-        $passedExams = \App\Models\ExamAttempt::where('user_id', $user->id)
-            ->where('status', \App\Models\ExamAttempt::STATUS_COMPLETED)
-            ->where('is_passed', true)->count();
-        $averageScore = \App\Models\ExamAttempt::where('user_id', $user->id)
-            ->where('status', \App\Models\ExamAttempt::STATUS_COMPLETED)
-            ->avg('score_percentage') ?: 0;
-
-        $examStats = [
-            'total' => $totalExams,
-            'passed' => $passedExams,
-            'failed' => $totalExams - $passedExams,
-            'average_score' => round($averageScore, 2),
-            'pass_rate' => $totalExams > 0 ? round(($passedExams / $totalExams) * 100, 2) : 0
-        ];
-
-        $deviceLoginPolicy = $deviceLogin->configuredPolicy();
-
-        // Get design settings
-        $designSettings = $this->getDesignSettings();
-
-        $accountStateVersion = $accounts->editorVersion($user);
-        $deviceStateVersion = $this->deviceEditorVersion($user);
-        return view('admin.users.show', compact(
-            'user', 'orders', 'bills', 'notes', 'examResults', 'examStats',
-            'deviceLoginPolicy', 'designSettings', 'accountStateVersion',
-            'deviceStateVersion', 'orderStats', 'billStats', 'walletSummary'
+        return view('admin.users.show', array_merge(
+            $students->workspace($user, $request->query()),
+            ['designSettings' => $this->getDesignSettings()]
         ));
     }
 
@@ -350,125 +226,6 @@ class UsersController extends Controller
         return AdminEditorVersion::for($user, [
             'locked_device_id', 'profile_revision', 'deleted_at',
         ]);
-    }
-
-    public function sendNotification(Request $request, User $user)
-    {
-        $this->assertStudent($user);
-        if (!(bool) $user->active || $user->trashed()) {
-            throw ValidationException::withMessages([
-                'message' => ['هذا الحساب غير نشط\nفعّله قبل إرسال إشعار'],
-            ]);
-        }
-        $request->validate([
-            'title'   => 'required|string|max:80',
-            'message' => 'required|string|max:240',
-            'image' => 'nullable|image|mimes:jpeg,png,webp|max:4096',
-            'authoring_request_id' => 'required|uuid',
-        ]);
-
-        $title = trim((string) $request->input('title'));
-        $message = trim((string) $request->input('message'));
-        $deliveryKey = 'admin-message:' . auth()->id() . ':' . $user->id . ':'
-            . strtolower((string) $request->input('authoring_request_id'));
-        if (strlen($deliveryKey) > 64) $deliveryKey = hash('sha256', $deliveryKey);
-        $existing = \App\Models\StudentNotification::query()
-            ->where('user_id', $user->id)
-            ->where('delivery_key', $deliveryKey)
-            ->first();
-        if ($existing) {
-            $existingHasImage = trim((string) $existing->image_url) !== '';
-            $replayHasImage = $request->hasFile('image');
-            if (!hash_equals((string) $existing->title_ar, $title)
-                || !hash_equals((string) $existing->message_ar, $message)
-                || $existingHasImage !== $replayHasImage
-                || ($replayHasImage && !$this->notificationImageMatches(
-                    (string) $existing->image_url,
-                    $request->file('image'),
-                    'notification-user|' . $deliveryKey
-                ))) {
-                throw ValidationException::withMessages([
-                    'authoring_request_id' => ['تغيّرت بيانات الإشعار\nأعد فتح النموذج ثم أرسل'],
-                ]);
-            }
-            return $this->directNotificationResponse($user);
-        }
-        $imageUrl = null;
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imagePath = app(StoredFileDeletionService::class)->storeTrackedUpload(
-                $image,
-                'student-notifications',
-                'public',
-                60,
-                'notification-user|' . $deliveryKey . '|' . hash_file('sha256', $image->getRealPath())
-            );
-            if (!is_string($imagePath) || trim($imagePath) === '') {
-                throw ValidationException::withMessages(['image' => ['تعذّر حفظ الصورة']]);
-            }
-            $imageUrl = PublicDiskUrl::from($imagePath);
-        }
-
-        $committed = false;
-        try {
-            $notification = StudentNotificationService::notifyUser(
-                $user,
-                'admin_message',
-                $title,
-                $title,
-                $message,
-                $message,
-                null,
-                null,
-                null,
-                $deliveryKey,
-                [],
-                $imageUrl
-            );
-            if (!$notification) {
-                throw ValidationException::withMessages([
-                    'message' => ['لم يُحفظ الإشعار\nحدّث الصفحة ثم حاول مرة أخرى'],
-                ]);
-            }
-            if ($imageUrl !== null && !hash_equals((string) $notification->image_url, $imageUrl)) {
-                throw ValidationException::withMessages([
-                    'authoring_request_id' => ['حُفظت محاولة مختلفة لهذا الإشعار\nأعد فتح النموذج'],
-                ]);
-            }
-            $committed = true;
-        } finally {
-            if (!$committed && is_string($imagePath) && $imagePath !== '') {
-                app(StoredFileDeletionService::class)->deleteOrQueue('public', $imagePath);
-            }
-        }
-
-        return $this->directNotificationResponse($user);
-    }
-
-    private function notificationImageMatches(string $url, UploadedFile $image, string $identityPrefix): bool
-    {
-        $path = (string) (parse_url($url, PHP_URL_PATH) ?: '');
-        $storedIdentity = pathinfo($path, PATHINFO_FILENAME);
-        $contentHash = hash_file('sha256', $image->getRealPath());
-
-        return $storedIdentity !== '' && hash_equals(
-            $storedIdentity,
-            hash('sha256', $identityPrefix . '|' . $contentHash)
-        );
-    }
-
-    private function directNotificationResponse(User $user)
-    {
-        $canReceivePush = (bool) $user->notifications_status
-            && $user->deviceTokens()->exists();
-
-        return redirect()->back()->with(
-            $canReceivePush ? 'success' : 'warning',
-            $canReceivePush
-                ? 'تم حفظ الإشعار وإضافته إلى قائمة إرسال الهاتف'
-                : 'تم حفظ الإشعار داخل حساب الطالب، لكن إشعار الهاتف لن يصل حتى يفعّل الطالب الإشعارات ويسجل جهازه'
-        );
     }
 
     /**

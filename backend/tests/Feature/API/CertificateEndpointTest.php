@@ -31,6 +31,10 @@ class CertificateEndpointTest extends ApiTestCase
             'public_id' => $publicId,
             'user_id' => $this->user->id,
             'course_id' => $this->courseId,
+            'holder_name' => 'طالب الاختبار',
+            'course_name' => 'دورة تجريبية',
+            'certificate_text_template_key' => 'completion',
+            'certificate_text' => 'تقديرًا لإتمام متطلبات كورس',
             'image_path' => 'certificates/test-certificate.png',
             'status' => 'active',
             'generated_at' => now(),
@@ -49,6 +53,10 @@ class CertificateEndpointTest extends ApiTestCase
             'public_id' => (string) Str::uuid(),
             'user_id' => $otherUser->id,
             'course_id' => $this->courseId,
+            'holder_name' => 'طالب آخر',
+            'course_name' => 'دورة تجريبية',
+            'certificate_text_template_key' => 'completion',
+            'certificate_text' => 'تقديرًا لإتمام متطلبات كورس',
             'image_path' => 'certificates/private.png',
             'status' => 'active',
             'generated_at' => now(),
@@ -64,13 +72,19 @@ class CertificateEndpointTest extends ApiTestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.public_id', $publicId)
             ->assertJsonPath('data.0.status', 'active')
-            ->assertJsonPath('data.0.course.id', $this->courseId)
-            ->assertJsonPath('data.0.course.name', 'دورة تجريبية')
+            ->assertJsonPath('data.0.course_id', $this->courseId)
+            ->assertJsonMissingPath('data.0.id')
+            ->assertJsonMissingPath('data.0.certificate_id')
+            ->assertJsonMissingPath('data.0.course')
+            ->assertJsonMissingPath('data.0.download_url')
+            ->assertJsonMissingPath('data.0.portfolio_url')
+            ->assertJsonMissingPath('data.0.share_url')
             ->assertJsonStructure([
                 'data' => [[
-                    'id', 'certificate_id', 'public_id', 'certificate_url',
-                    'portfolio_url', 'status', 'verification_level',
-                    'generated_at', 'course' => ['id', 'name', 'image'],
+                    'public_id', 'course_id', 'certificate_url',
+                    'certificate_pdf_url', 'verification_url',
+                    'status', 'verification_level',
+                    'generated_at',
                 ]],
             ]);
     }
@@ -83,6 +97,10 @@ class CertificateEndpointTest extends ApiTestCase
             'public_id' => $publicId,
             'user_id' => $this->user->id,
             'course_id' => $this->courseId,
+            'holder_name' => 'طالب الاختبار',
+            'course_name' => 'دورة تجريبية',
+            'certificate_text_template_key' => 'completion',
+            'certificate_text' => 'تقديرًا لإتمام متطلبات كورس',
             'image_path' => 'certificates/test-certificate.png',
             'status' => 'active',
             'generated_at' => now(),
@@ -94,7 +112,43 @@ class CertificateEndpointTest extends ApiTestCase
             ->getJson("/api/v1/certificates/{$this->courseId}")
             ->assertOk()
             ->assertJsonPath('data.public_id', $publicId)
-            ->assertJsonPath('data.course.id', $this->courseId);
+            ->assertJsonPath('data.course_id', $this->courseId);
+    }
+
+    public function test_revoked_certificate_remains_in_owner_list_to_prevent_reissue(): void
+    {
+        $this->grantCourseAccess();
+        $publicId = (string) Str::uuid();
+        DB::table('certificates')->insert([
+            'public_id' => $publicId,
+            'user_id' => $this->user->id,
+            'course_id' => $this->courseId,
+            'holder_name' => 'طالب الاختبار',
+            'course_name' => 'دورة تجريبية',
+            'certificate_text_template_key' => 'completion',
+            'certificate_text' => 'تقديرًا لإتمام متطلبات كورس',
+            'image_path' => 'certificates/test-certificate.png',
+            // Either marker is terminal. This deliberately models a process
+            // interrupted between recording the timestamp and status update.
+            'status' => 'active',
+            'revoked_at' => now(),
+            'generated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/certificates')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.public_id', $publicId)
+            ->assertJsonPath('data.0.status', 'revoked')
+            ->assertJsonPath('data.0.certificate_url', '');
+
+        $this->actingAs($this->user, 'api')
+            ->getJson("/api/v1/certificates/{$this->courseId}")
+            ->assertGone()
+            ->assertJsonPath('code', 'certificate_revoked');
     }
 
     public function test_certificate_endpoints_require_authentication(): void

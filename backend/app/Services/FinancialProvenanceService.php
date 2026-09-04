@@ -53,6 +53,8 @@ final readonly class FinancialProvenanceService
             || $credit->bucket !== WalletTransaction::BUCKET_PAID
             || $credit->source_type !== Order::class
             || (int) $credit->source_id !== (int) $packageOrder->id
+            || (int) $packageOrder->package_coins <= 0
+            || (int) $credit->amount !== (int) $packageOrder->package_coins
             || (int) $credit->amount !== (int) $credit->paid_amount
             || (int) $credit->paid_amount <= 0
             || (int) $credit->reward_amount !== 0
@@ -74,7 +76,7 @@ final readonly class FinancialProvenanceService
                     (int) $existing->user_id !== (int) $packageOrder->user_id
                     || (int) $existing->credit_transaction_id !== (int) $credit->id
                     || (int) $existing->source_order_id !== (int) $packageOrder->id
-                    || (int) $existing->original_amount !== (int) $credit->paid_amount
+                    || (int) $existing->original_amount !== (int) $packageOrder->package_coins
                 ) {
                     throw new FinancialProvenanceException(
                         'A paid package credit was replayed with different financial facts.'
@@ -97,6 +99,104 @@ final readonly class FinancialProvenanceService
                 'metadata' => [
                     'package_id' => (int) $packageOrder->package_id,
                     'transaction_id' => $packageOrder->transaction_id,
+                ],
+            ]);
+        }, 3);
+    }
+
+    /**
+     * A service compensation restores the learner's original paid/reward
+     * split, but its paid part is not a second cash receipt. Give that value a
+     * separate active lot so the paid-wallet projection remains attributable
+     * without letting a future course report count the original package cash
+     * twice.
+     */
+    public function recordPaidCompensationCredit(
+        WalletTransaction $originalDebit,
+        WalletTransaction $compensation
+    ): ?WalletCreditLot {
+        $paidAmount = max(0, (int) $compensation->paid_amount);
+        if ($paidAmount === 0) {
+            return null;
+        }
+        if (!$this->schemaAvailable()) {
+            throw new FinancialProvenanceException('Financial provenance is not ready.');
+        }
+        if (
+            $originalDebit->direction !== WalletTransaction::DIRECTION_DEBIT
+            || !in_array($originalDebit->category, [
+                'course_purchase',
+                'course_chat_upgrade',
+                'course_full_track_upgrade',
+            ], true)
+            || $originalDebit->source_type !== Course::class
+            || $compensation->direction !== WalletTransaction::DIRECTION_CREDIT
+            || $compensation->category !== 'course_service_compensation'
+            || $compensation->source_type !== Order::class
+            || !$compensation->source_id
+            || (int) $compensation->user_id !== (int) $originalDebit->user_id
+            || $paidAmount > (int) $originalDebit->paid_amount
+            || (string) data_get($compensation->metadata, 'refunded_transaction_id')
+                !== (string) $originalDebit->public_id
+            || $paidAmount + (int) $compensation->reward_amount
+                !== (int) $compensation->amount
+        ) {
+            throw new FinancialProvenanceException('Invalid paid compensation provenance.');
+        }
+
+        return DB::transaction(function () use (
+            $originalDebit,
+            $compensation,
+            $paidAmount
+        ): WalletCreditLot {
+            User::withTrashed()
+                ->whereKey($compensation->user_id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            $courseOrder = Order::query()
+                ->whereKey($compensation->source_id)
+                ->where('user_id', $compensation->user_id)
+                ->where('course_id', $originalDebit->source_id)
+                ->where('wallet_transaction_id', $originalDebit->id)
+                ->where('payment_method', Order::PAYMENT_METHOD_WALLET_COINS)
+                ->lockForUpdate()
+                ->first();
+            if (!$courseOrder) {
+                throw new FinancialProvenanceException(
+                    'Paid compensation is not bound to its course order.'
+                );
+            }
+            $existing = WalletCreditLot::query()
+                ->where('credit_transaction_id', $compensation->id)
+                ->lockForUpdate()
+                ->first();
+            if ($existing) {
+                if (
+                    (int) $existing->user_id !== (int) $compensation->user_id
+                    || $existing->source_order_id !== null
+                    || (int) $existing->original_amount !== $paidAmount
+                ) {
+                    throw new FinancialProvenanceException(
+                        'A paid compensation was replayed with different financial facts.'
+                    );
+                }
+
+                return $existing;
+            }
+
+            return WalletCreditLot::query()->create([
+                'public_id' => (string) Str::uuid(),
+                'user_id' => $compensation->user_id,
+                'source_order_id' => null,
+                'credit_transaction_id' => $compensation->id,
+                'original_amount' => $paidAmount,
+                'remaining_amount' => $paidAmount,
+                'recovered_amount' => 0,
+                'status' => WalletCreditLot::STATUS_ACTIVE,
+                'credited_at' => $compensation->occurred_at ?: now(),
+                'metadata' => [
+                    'provenance_type' => 'course_service_compensation',
+                    'refunded_transaction_id' => (string) $originalDebit->public_id,
                 ],
             ]);
         }, 3);
@@ -125,6 +225,7 @@ final readonly class FinancialProvenanceService
             ], true)
             || $debit->source_type !== Course::class
             || (int) $debit->source_id !== (int) $courseOrder->course_id
+            || (int) $courseOrder->wallet_transaction_id !== (int) $debit->id
             || (int) $courseOrder->total_coins !== (int) $debit->amount
             || (int) $courseOrder->paid_coins !== $paidAmount
             || (int) $courseOrder->reward_coins !== (int) $debit->reward_amount
@@ -232,6 +333,28 @@ final readonly class FinancialProvenanceService
                 'Paid package order has no provenance lot; run the finance backfill.'
             );
         }
+        $credit = WalletTransaction::query()
+            ->whereKey($lot->credit_transaction_id)
+            ->lockForUpdate()
+            ->first();
+        if (
+            !$credit
+            || (int) $lot->user_id !== (int) $packageOrder->user_id
+            || (int) $lot->source_order_id !== (int) $packageOrder->id
+            || (int) $lot->original_amount !== (int) $packageOrder->package_coins
+            || (int) $credit->user_id !== (int) $packageOrder->user_id
+            || $credit->direction !== WalletTransaction::DIRECTION_CREDIT
+            || $credit->category !== 'package_purchase'
+            || $credit->bucket !== WalletTransaction::BUCKET_PAID
+            || $credit->source_type !== Order::class
+            || (int) $credit->source_id !== (int) $packageOrder->id
+            || (int) $credit->paid_amount !== (int) $lot->original_amount
+            || (int) $credit->amount !== (int) $credit->paid_amount
+        ) {
+            throw new FinancialProvenanceException(
+                'Paid package reversal has inconsistent source provenance.'
+            );
+        }
 
         if ($lot->status !== WalletCreditLot::STATUS_ACTIVE) {
             return [
@@ -245,9 +368,10 @@ final readonly class FinancialProvenanceService
         }
 
         $availableFromLot = max(0, (int) $lot->remaining_amount);
+        $walletBalances = $this->wallet->balances($user);
         $recoverable = min(
             $availableFromLot,
-            max(0, (int) $user->wallet_purchased_coins)
+            $walletBalances['paid']
         );
         if ($recoverable > 0) {
             $this->wallet->debit(

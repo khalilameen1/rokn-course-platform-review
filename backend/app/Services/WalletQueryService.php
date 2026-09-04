@@ -13,6 +13,8 @@ use Throwable;
 
 final readonly class WalletQueryService
 {
+    public function __construct(private WalletService $wallet) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -29,22 +31,22 @@ final readonly class WalletQueryService
         // Every wallet writer serializes on the user row. Read the aggregate
         // behind the same lock so the balance and ledger tail always describe
         // one committed wallet state rather than two adjacent transactions.
-        [$freshUser, $recent] = DB::transaction(function () use ($user): array {
+        [$balances, $recent] = DB::transaction(function () use ($user): array {
             $freshUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $balances = $this->wallet->balances($freshUser);
             $recent = WalletTransaction::query()
                 ->where('user_id', $user->id)
-                ->latest('occurred_at')
                 ->latest('id')
                 ->limit(10)
                 ->get()
                 ->map(fn (WalletTransaction $transaction): array => $this->payload($transaction));
 
-            return [$freshUser, $recent];
+            return [$balances, $recent];
         }, 3);
 
-        $totalBalance = max(0, (int) $freshUser->wallet_coins);
-        $purchasedBalance = min($totalBalance, max(0, (int) $freshUser->wallet_purchased_coins));
-        $rewardBalance = $totalBalance - $purchasedBalance;
+        $totalBalance = $balances['total'];
+        $purchasedBalance = $balances['paid'];
+        $rewardBalance = $balances['reward'];
         $rewardContributionCap = max(0, (int) ($setting->max_reward_contribution_per_course ?? 1200));
         $courseSpendableBalance = $purchasedBalance + min($rewardBalance, $rewardContributionCap);
 
@@ -77,7 +79,6 @@ final readonly class WalletQueryService
     {
         $transactions = WalletTransaction::query()
             ->where('user_id', $user->id)
-            ->latest('occurred_at')
             ->latest('id')
             ->paginate($perPage);
 
@@ -98,10 +99,14 @@ final readonly class WalletQueryService
      */
     private function payload(WalletTransaction $transaction): array
     {
+        $labels = $this->transactionLabels($transaction);
+
         return [
             'id' => $transaction->public_id,
             'direction' => $transaction->direction,
             'category' => $transaction->category,
+            'label_ar' => $labels['ar'],
+            'label_en' => $labels['en'],
             'bucket' => $transaction->bucket,
             'amount' => $transaction->amount,
             'paid_coins' => $transaction->paid_amount,
@@ -116,5 +121,27 @@ final readonly class WalletQueryService
             'metadata' => $transaction->metadata,
             'occurred_at' => $transaction->occurred_at?->toIso8601String(),
         ];
+    }
+
+    /** @return array{ar:string,en:string} */
+    private function transactionLabels(WalletTransaction $transaction): array
+    {
+        return match ((string) $transaction->category) {
+            'package_purchase' => ['ar' => 'شحن رصيد', 'en' => 'Balance top-up'],
+            'welcome_bonus' => ['ar' => 'هدية ترحيبية', 'en' => 'Welcome gift'],
+            'task_reward' => ['ar' => 'مكافأة مهمة', 'en' => 'Task reward'],
+            'daily_learning_reward' => ['ar' => 'مكافأة يومية', 'en' => 'Daily reward'],
+            'streak_reward' => ['ar' => 'مكافأة الاستمرارية', 'en' => 'Streak reward'],
+            'study_reward' => ['ar' => 'مكافأة التعلّم', 'en' => 'Learning reward'],
+            'first_project_reward' => ['ar' => 'مكافأة أول مشروع', 'en' => 'First project reward'],
+            'course_completion_reward' => ['ar' => 'مكافأة إتمام كورس', 'en' => 'Course completion reward'],
+            'course_purchase' => ['ar' => 'فتح كورس', 'en' => 'Course access'],
+            'course_full_track_upgrade' => ['ar' => 'ترقية دعم الكورس', 'en' => 'Course support upgrade'],
+            'package_reversal' => ['ar' => 'مراجعة عملية شحن', 'en' => 'Top-up review'],
+            'package_reversal_resolution' => ['ar' => 'تسوية عملية شحن', 'en' => 'Top-up resolution'],
+            default => $transaction->direction === WalletTransaction::DIRECTION_CREDIT
+                ? ['ar' => 'إضافة إلى الرصيد', 'en' => 'Balance credit']
+                : ['ar' => 'استخدام من الرصيد', 'en' => 'Balance debit'],
+        };
     }
 }

@@ -31,7 +31,9 @@ final class PublicAppSettingsService
     /** @return array<string, mixed> */
     public function snapshot(?string $locale = null): array
     {
-        $locale = RoknLocale::normalize($locale) ?? RoknLocale::fromRequest(request());
+        $locale = RoknLocale::normalize($locale)
+            ?? RoknLocale::normalize((string) config('app.locale'))
+            ?? RoknLocale::ARABIC;
 
         $load = function () use ($locale): array {
             $general = Setting::query()->first() ?? new Setting();
@@ -80,14 +82,6 @@ final class PublicAppSettingsService
                 'android_app_url' => $releaseUrls['play'],
                 'ios_app_url' => $releaseUrls['appstore'],
                 'direct_android_app_url' => $releaseUrls['direct'],
-                'about_us_url' => $this->pageUrl($general->about_us_url, route('about')),
-                'privacy_policy_url' => $this->pageUrl($general->privacy_policy_url, route('privacy')),
-                // Additive legacy fields for APKs already in circulation.
-                'policy_content' => trim((string) (
-                    $locale === 'en'
-                        ? ($design->policy_content_en ?: $design->policy_content_ar)
-                        : ($design->policy_content_ar ?: $design->policy_content_en)
-                )) ?: null,
                 'coin_rules' => $general->how_to_use_coins,
             ];
 
@@ -104,12 +98,43 @@ final class PublicAppSettingsService
 
         try {
             $generation = (int) Cache::get(self::CACHE_GENERATION_KEY, 1);
-            return Cache::remember(
-                self::CACHE_KEY_PREFIX.$generation.':'.$locale,
-                now()->addMinutes(5),
-                $load
-            );
+            $key = self::CACHE_KEY_PREFIX.$generation.':'.$locale;
+            $cached = Cache::get($key);
+            if (is_array($cached)) {
+                return $cached;
+            }
         } catch (Throwable) {
+            return $load();
+        }
+
+        $loadStarted = false;
+        try {
+            return Cache::lock("lock:{$key}", 10)->block(2, function () use (
+                $key,
+                $load,
+                &$loadStarted
+            ): array {
+                $cached = Cache::get($key);
+                if (is_array($cached)) {
+                    return $cached;
+                }
+
+                $loadStarted = true;
+                $settings = $load();
+                try {
+                    Cache::put($key, $settings, now()->addMinutes(5));
+                } catch (Throwable) {
+                    // The settings snapshot is complete; keep serving it if
+                    // only the cache write failed.
+                }
+
+                return $settings;
+            });
+        } catch (Throwable $exception) {
+            if ($loadStarted) {
+                throw $exception;
+            }
+
             return $load();
         }
     }
@@ -207,11 +232,6 @@ final class PublicAppSettingsService
         return is_string($vimeoId) && preg_match('/^[0-9]{5,15}$/', $vimeoId) === 1
             ? 'https://player.vimeo.com/video/'.$vimeoId
             : null;
-    }
-
-    private function pageUrl(mixed $value, string $fallback): string
-    {
-        return $this->allowedHttpsUrl($value) ?? $fallback;
     }
 
     /** @param list<string> $allowedRoots */

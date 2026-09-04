@@ -9,7 +9,7 @@
     },
     {
       "path": "public/admin/assets/css/admin-learning-views.css",
-      "sha256": "d7ea84420c5e12bb0672f6604926013bc22efb9c83246d38b5e3dc566da14d7f",
+      "sha256": "c242fd6c6d6ed9a4d3953d018fe27f8b0f910126d5e20464a66499bda62121e0",
       "classification": "first_party"
     },
     {
@@ -26,16 +26,6 @@
     {
       "path": "public/admin/assets/css/app-versions.css",
       "sha256": "36c467f4dd038fc00da935204c636e0a08a457db9de6ee87be4f683cab93cfd9",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/bills-index.css",
-      "sha256": "aaf52042c6a569987c4421185c034e8b30e3be6e029026f1c32baa2748d69f0b",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/bills-show.css",
-      "sha256": "8e27b6bd76c625759e1cf61a81a35d8d513c7abe668802cd093211e25eee8b2d",
       "classification": "first_party"
     },
     {
@@ -65,58 +55,18 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/course-create.css",
-      "sha256": "27f3cbe9077c34916a8e6b5521fec6c88026c17f2d5b32321b41766a7f4e17e9",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/course-editor.css",
       "sha256": "e7d181171b72fed3f7301d75927eb8dddb8d6fafd52b10aa0ca8415692b258a4",
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/course-modules.css",
-      "sha256": "4fff8f62c884067d9df4c7f542f3f070c18bd5e9f3c6f21d6b62ac38d3591187",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-pdfs-create.css",
-      "sha256": "ed8fb10a8a44383b2274b9e10a715d73ff2c15dee724011240d306d62749674e",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-pdfs-edit.css",
-      "sha256": "abc10717011930cef6e569c63981bcc85697ecbe45373037e6fdc098d4e04a56",
+      "path": "public/admin/assets/css/course-pdfs-form.css",
+      "sha256": "7aa69f407a8d78147e2ae0d310484974c23c27c46fcd20ac1c1f38d3ea14daea",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/course-pdfs-index.css",
       "sha256": "18dd385203344f1b729014364acae40ecca0e7f8f9b815ac51b65b54bb0e9628",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-sections-create.css",
-      "sha256": "893fbad4a906263b09f064e3df292daa9db04d6fe464d650bf6fd5b80486df2c",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-sections-edit.css",
-      "sha256": "4b086b934d8d7c339da958b1586ef72d2bb8e1d2d17f986aab2ca376d2d818fc",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-sections-editor.css",
-      "sha256": "49ea23002ae1d490ff2d031f83bc790b480aff7c3c3b83741a01191e80330242",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-sections-index.css",
-      "sha256": "15b6b4d5101d1b5b17f36843643fa53af9ae67ef35f322090eb7b09071c912b5",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/course-sections-show.css",
-      "sha256": "05b117b4cfbe9054fc4b219a4c17cccf67fdc92d50fe5afb3fdf542f9fad78c1",
       "classification": "first_party"
     },
     {
@@ -126,17 +76,17 @@
     },
     {
       "path": "public/admin/assets/css/course-studio.css",
-      "sha256": "ce00ceeba583b50a90bca0e9c313e16d3b0c49e9824347bd5e0a46b8179c6e62",
+      "sha256": "23c8cec6ac345fde7bf5018d8564770b33de9ca7928da1c7d1df5f115f752791",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/css/course-workspace.css",
+      "sha256": "ca3f04989db791c79da5aaa36d3ab706f02ad643c794166663b60429970c70d7",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/courses-index.css",
       "sha256": "349b255332c80fb9c47641147eabdeabca5df55f438ab3c9458bfd2b7569f115",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/courses-show.css",
-      "sha256": "32c0663e7c45cced438a5a9a312390c3ffb33f71d4b8f021de51eac59d6a9b3c",
       "classification": "first_party"
     },
     {
@@ -146,22 +96,7 @@
     },
     {
       "path": "public/admin/assets/css/design-settings.css",
-      "sha256": "d715348abd498aa71bbe97ade92b264c0bfc6e8e6b776acddb24456017fd59f9",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/exam-results-index.css",
-      "sha256": "631f2ee9e291c4f3b19e72ca4f8a43b45f6cf850002382ba174f4a437d588e01",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/exam-results-student-results.css",
-      "sha256": "875672a33701308fa7418c9d1d53390e59517f226eae97c361520ff558468112",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/exam-results-theme.css",
-      "sha256": "cf42fd8e0fe8c447b63b9d772063fbc8ba6fd9e1e4d92224915903b341021267",
+      "sha256": "0cca3fbed7f9109647eae4711e63a28da5dfdf0663cd31f7352c17f8daaa5449",
       "classification": "first_party"
     },
     {
@@ -202,7 +137,7 @@
     },
     {
       "path": "public/admin/assets/css/home-dashboard.css",
-      "sha256": "597960f086d636f10859182154d467cda8f8d85f0b794bf24ca943e03b8fc4a2",
+      "sha256": "2029975148f3fb965ac017e6a1257347139e8b075c0f001a64fed0f4960c446d",
       "classification": "first_party"
     },
     {
@@ -217,7 +152,7 @@
     },
     {
       "path": "public/admin/assets/css/moderator-workspace.css",
-      "sha256": "5a93ec042e7920d0f654c7f983b829774ebe06830692516b9c22a43bfae5a26d",
+      "sha256": "9e619a001f93bb8c2a51fe41a2127d4bbb345bf88fcae3628bfa8e4931e5c290",
       "classification": "first_party"
     },
     {
@@ -242,16 +177,6 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/payment-methods-form.css",
-      "sha256": "0b2e1a8c35b93b75662ba22828438cd460e14363fba992e52e7bcc0e1138091c",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/admin/assets/css/payment-methods-index.css",
-      "sha256": "ba7c33bd1a10956a7063ca54386dbc9c32fe07a5967621d86bc2b1063f99c9b3",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/settings-admin-data.css",
       "sha256": "3d333c439bf557c8d2eeb674e965764ccb1ac16e6098d27c5247e8f811580b3f",
       "classification": "first_party"
@@ -262,18 +187,13 @@
       "classification": "first_party"
     },
     {
-      "path": "public/admin/assets/css/settings-student-platform.css",
-      "sha256": "a18b222d200d9616f70126ba506abeb0afef0805688f6fdda7ca98cdb1cbf79a",
-      "classification": "first_party"
-    },
-    {
       "path": "public/admin/assets/css/student-progress-index.css",
-      "sha256": "d379b1f1d97ab22fb3b28027321d5693b32a596fda3f1f05a7f52e7d5fef363a",
+      "sha256": "e472d2f5fde8c4cd96c5d44326c033ab28e0b1597883ecb6a8e61e06e306b35d",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/student-progress-show.css",
-      "sha256": "99f0d589d3d7cac28919fd986f20c1ce6f7d1b9cd7f8ec79b8ee30062c45bc5c",
+      "sha256": "244addc2a85fb48ada8b37183f9f882edc6e4401a0027fc6647bc6f31f2682b8",
       "classification": "first_party"
     },
     {
@@ -281,11 +201,6 @@
       "sha256": "08a0af9f03516172bb3d8d31eebb64510f1e7ba84881c9d99f9809a28b94374f",
       "classification": "third_party",
       "family": "themify"
-    },
-    {
-      "path": "public/admin/assets/css/urgent-tasks-courses-without-quiz.css",
-      "sha256": "6762ba20683d3a89ab3fe643a34e3ce5900e75023b4175278406894efa7bc355",
-      "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/urgent-tasks-inactive-students.css",
@@ -324,7 +239,7 @@
     },
     {
       "path": "public/admin/assets/css/users-show.css",
-      "sha256": "61076b7fb2ec29eb8d83d51251e4bb0c158a91c75c7c3b124cbb6254eb4c9899",
+      "sha256": "98e11b374f568949de0355a592ad89be8942fcd74c57be72acae3c323a6f1541",
       "classification": "first_party"
     },
     {
@@ -392,6 +307,46 @@
       "classification": "first_party"
     },
     {
+      "path": "public/admin/assets/js/course-studio-attachments.js",
+      "sha256": "9a29c7767d6f5138f8da035656a33f170e52f7b5a0090b8f839da7a6bb61ff82",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-core.js",
+      "sha256": "2f08c783068ea2306a93a67d804e96fafc5f6f50ca70977c0e75acb6b356fe2e",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-details.js",
+      "sha256": "248c9798350bcb10202bbf4ace3ddc3bef1b4856fe9a71dd9c518fdf69eac405",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-editor-coordinator.js",
+      "sha256": "23b048fb02b51fead20d5d6f034ff9dcaec74606b3886ce86fa7e4b1b75e6400",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-module-editor.js",
+      "sha256": "c2902ec0a6664866f38d83ef50b3aada99820e28a30126998ec6e9a78b1e3cad",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-outline.js",
+      "sha256": "83552fdae45f22487acc5d622a2ecc6ba9c6416bd4f08ae080b73a189609d4dc",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-section-editor.js",
+      "sha256": "ce5d4b771cf7e8bcb9725fd5058801ef4fbd0526ccbc85e5d8fb773d1356179f",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio.js",
+      "sha256": "17040083dc7f9ac1ce15a4a975f60bc71916d902ba6a52f5f7f55b0b403d4d83",
+      "classification": "first_party"
+    },
+    {
       "path": "public/admin/assets/js/main.js",
       "sha256": "aebf85b4dd79fcb412ac2935907d2421c41186be6914b8a2ac875c6fcb615d14",
       "classification": "third_party",
@@ -400,6 +355,11 @@
     {
       "path": "public/admin/assets/js/request.js",
       "sha256": "9003e267eca6c1d25802338d3a61e1580cf74bcc3c8c15657f768b5ba0383270",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/users-index.js",
+      "sha256": "e14f39c75cdad36baebed0956ab3a63ce49bf2ecaf33c508d877f5b1357a20a9",
       "classification": "first_party"
     },
     {

@@ -379,6 +379,22 @@
     color: white;
 }
 
+.progress-bar-modern {
+    width: 100%;
+    height: 10px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e8ebf2;
+}
+
+.progress-bar-fill {
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--rokn-admin-primary, #2563eb);
+    transition: width .3s ease;
+}
+
 .stat-badge-primary {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     color: white;
@@ -569,3 +585,20 @@ body {
     }
 }
 
+.student-operations {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 22px;
+    border-block: 1px solid #e1e4ec;
+}
+
+.student-operations a { display: grid; gap: 3px; padding: 14px 18px; color: #292d43; border-left: 1px solid #e1e4ec; }
+.student-operations a:last-child { border-left: 0; }
+.student-operations strong { font-size: .88rem; }
+.student-operations span { color: #74798e; font-size: .72rem; }
+.student-operations .needs-attention strong { color: #a05f00; }
+
+@media (max-width: 767px) {
+    .student-operations { grid-template-columns: 1fr; }
+    .student-operations a { border-bottom: 1px solid #e1e4ec; border-left: 0; }
+}

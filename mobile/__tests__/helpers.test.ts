@@ -5,42 +5,28 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   clear: jest.fn(),
 }));
 
-import {
-  SecondsToMinutes,
-  extractApiToken,
-  extractUserProfile,
-  normalizeText,
-} from '../src/constants/helpers';
+import {extractApiToken, extractUserProfile} from '../src/constants/helpers';
+import {normalizeText} from '../src/utils/searchText';
 
-describe('session envelope compatibility', () => {
-  test.each([
-    [{api_token: ' direct-token '}, 'direct-token'],
-    [{data: {api_token: 'nested-token'}}, 'nested-token'],
-    [{data: {data: {api_token: 'deep-token'}}}, 'deep-token'],
-    [{user: {api_token: 'user-token'}}, 'user-token'],
-  ])('extracts an API token without changing its envelope', (input, token) => {
-    expect(extractApiToken(input)).toBe(token);
+describe('canonical secure session', () => {
+  it('reads the top-level API token', () => {
+    expect(extractApiToken({api_token: ' direct-token '})).toBe(
+      'direct-token',
+    );
   });
 
-  it('does not treat an empty token as an authenticated session', () => {
-    expect(extractApiToken({data: {api_token: '  '}})).toBeNull();
+  it.each([
+    {data: {api_token: 'nested-token'}},
+    {data: {data: {api_token: 'deep-token'}}},
+    {user: {api_token: 'user-token'}},
+    {api_token: '  '},
+  ])('rejects non-canonical or empty token shapes', input => {
+    expect(extractApiToken(input)).toBeNull();
   });
 
-  it('extracts the profile from the social-auth response shape', () => {
+  it('reads the top-level user profile', () => {
     const user = {id: 17, name: 'Rokn learner'};
-    expect(extractUserProfile({data: {user}})).toEqual(user);
-  });
-});
-
-describe('duration formatting', () => {
-  test.each([
-    [0, '0:00'],
-    [9, '0:09'],
-    [60, '1:00'],
-    [125, '2:05'],
-    [-4, '0:00'],
-  ])('formats %p seconds as %s', (seconds, expected) => {
-    expect(SecondsToMinutes(seconds)).toBe(expected);
+    expect(extractUserProfile({user})).toEqual(user);
   });
 });
 

@@ -78,6 +78,13 @@ final class InternalSignalService
                 if (array_key_exists('reward_contract', $existingPayload)) {
                     $payload['reward_contract'] = $existingPayload['reward_contract'];
                 }
+                if (
+                    $type === 'project.passed.first_reward'
+                    && array_key_exists('course_id', $existingPayload)
+                    && !array_key_exists('course_id', $payload)
+                ) {
+                    $payload['course_id'] = $existingPayload['course_id'];
+                }
             } elseif (!array_key_exists('reward_contract', $payload)) {
                 $event = $type === 'course.completed'
                     ? 'course_completed'

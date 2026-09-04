@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Collection;
@@ -12,12 +13,17 @@ final class AdminHeaderNotificationService
 {
     private const VISIBLE_LIMIT = 8;
 
+    public function __construct(
+        private readonly AdminPermissionMatrix $permissions
+    ) {
+    }
+
     /**
      * @return array{unread_count:int,items:Collection<int,array{id:string,label:string,url:string}>}
      */
     public function for(?User $administrator): array
     {
-        if (!$administrator || strtolower(trim((string) $administrator->role)) !== 'admin') {
+        if (!$administrator || !$this->permissions->isAdministrator($administrator->role)) {
             return ['unread_count' => 0, 'items' => collect()];
         }
 

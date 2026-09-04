@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('page.title', 'ملاحظات التطبيق')
+@section('page.title', 'رسائل الدعم')
 
 @section('content')
 @php
@@ -10,10 +10,12 @@
 
 <div class="admin-page">
     @include('admin.partials.page-header', [
-        'pageTitle' => 'الدعم والبلاغات',
-        'pageDescription' => 'متابعة الحالات والرد عليها حتى الإغلاق',
+        'pageTitle' => 'رسائل الدعم',
+        'pageDescription' => 'رسائل التطبيق والموقع وطلبات حذف الحساب',
         'pageIcon' => 'fa-commenting-o',
     ])
+
+    @include('admin.partials.support-inbox-tabs', ['supportSource' => 'app'])
 
     @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
 

@@ -17,7 +17,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
@@ -33,18 +32,7 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
     /** @param array<int> $userIds */
     public function __construct(
         private array $userIds,
-        private string $deliveryKey,
-        private string $notificationType,
-        private ?string $notifiableType,
-        private ?int $notifiableId,
-        private string $titleAr,
-        private string $titleEn,
-        private string $messageAr,
-        private string $messageEn,
-        private ?string $link = null,
-        private ?string $imageUrl = null,
-        private ?string $actionLabelAr = null,
-        private ?string $actionLabelEn = null
+        private string $deliveryKey
     ) {
         $this->userIds = array_values(array_unique(array_map('intval', $this->userIds)));
         $this->onQueue((string) config('queue.channels.notifications', 'notifications'));
@@ -57,208 +45,213 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
 
     public function handle(): void
     {
-        $campaign = Schema::hasTable('notification_campaigns')
-            ? NotificationCampaign::query()->where('delivery_key', $this->deliveryKey)->first()
-            : null;
-        if ($campaign && $campaign->status !== NotificationCampaign::STATUS_DELIVERING) {
-            // A delayed chunk must not revive a campaign that operations or
-            // recovery has already made terminal.
+        $campaign = NotificationCampaign::query()
+            ->where('delivery_key', $this->deliveryKey)
+            ->firstOrFail();
+        if ($campaign->status !== NotificationCampaign::STATUS_DELIVERING) {
             return;
         }
-        $hasRecipientLedger = $campaign && Schema::hasTable('notification_campaign_recipients');
-        $hasFinancialHolds = Schema::hasTable('financial_entitlement_holds');
-        $shouldRetry = false;
+        $notificationIds = DB::transaction(function () use ($campaign): array {
+            $recipients = NotificationCampaignRecipient::query()
+                ->where('notification_campaign_id', $campaign->id)
+                ->whereIn('user_id', $this->userIds)
+                ->orderBy('user_id')
+                ->lockForUpdate()
+                ->get();
+            $pending = $recipients->reject(fn (NotificationCampaignRecipient $recipient): bool =>
+                in_array($recipient->status, [
+                    NotificationCampaignRecipient::STATUS_INBOX,
+                    NotificationCampaignRecipient::STATUS_SKIPPED,
+                ], true)
+            );
+            $resolvedUserIds = $recipients
+                ->where('status', NotificationCampaignRecipient::STATUS_INBOX)
+                ->pluck('user_id')
+                ->map(fn ($id): int => (int) $id);
+            if ($pending->isEmpty()) {
+                return StudentNotification::query()
+                    ->where('delivery_key', $this->deliveryKey)
+                    ->whereIn('user_id', $resolvedUserIds)
+                    ->pluck('id')
+                    ->map(fn ($id): int => (int) $id)
+                    ->all();
+            }
 
-        foreach ($this->userIds as $userId) {
-            try {
-                $identity = [
+            $courseEligible = true;
+            if ($campaign->course_id) {
+                $course = Course::query()
+                    ->whereKey($campaign->course_id)
+                    ->sharedLock()
+                    ->first();
+                $courseEligible = $course
+                    && $course->isPublishedForLearning()
+                    && ($campaign->canDeliverHiddenCourse() || (bool) $course->is_catalog_visible);
+            }
+
+            $pendingUserIds = $pending->pluck('user_id')->map(fn ($id): int => (int) $id);
+            $users = User::query()
+                ->whereIn('id', $pendingUserIds)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('id');
+            $userQuery = User::query()
+                ->whereIn('id', $pendingUserIds)
+                ->students()
+                ->where('active', true);
+            if (NotificationDeliveryPolicy::isMarketing((string) $campaign->notification_type)) {
+                $userQuery->where('marketing_notifications_enabled', true);
+            }
+            $cooldownHours = NotificationDeliveryPolicy::cooldownHours(
+                (string) $campaign->notification_type
+            );
+            if ($cooldownHours > 0) {
+                $family = NotificationDeliveryPolicy::cooldownFamily(
+                    (string) $campaign->notification_type
+                );
+                $userQuery->whereDoesntHave(
+                    'studentNotifications',
+                    function ($notifications) use ($cooldownHours, $family): void {
+                        $notifications
+                            ->whereIn('notification_type', $family)
+                            ->where('created_at', '>=', now()->subHours($cooldownHours));
+                    }
+                );
+            }
+            if ($campaign->course_id && $campaign->audience === SendStudentNotification::AUDIENCE_ENROLLED) {
+                $userQuery->whereHas('enrollments', function ($enrollments) use ($campaign): void {
+                    $enrollments
+                        ->where('course_id', (int) $campaign->course_id)
+                        ->where('is_active', true)
+                        ->where(function ($expiry): void {
+                            $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                        });
+                });
+            } elseif ($campaign->course_id && $campaign->audience === SendStudentNotification::AUDIENCE_NOT_ENROLLED) {
+                $userQuery->whereDoesntHave('enrollments', function ($enrollments) use ($campaign): void {
+                    $enrollments
+                        ->where('course_id', (int) $campaign->course_id)
+                        ->where('is_active', true)
+                        ->where(function ($expiry): void {
+                            $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
+                        });
+                });
+            }
+            if ($campaign->course_id) {
+                $userQuery->whereNotExists(function ($holds) use ($campaign): void {
+                    $holds->selectRaw('1')
+                        ->from('financial_entitlement_holds')
+                        ->whereColumn('financial_entitlement_holds.user_id', 'users.id')
+                        ->where('course_id', (int) $campaign->course_id)
+                        ->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
+                        ->whereIn('entitlement_scope', ['course', 'plan', 'chat']);
+                });
+            }
+            $audienceEligibleUserIds = $userQuery
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->flip();
+            $eligibleUserIds = $pendingUserIds->filter(function (int $userId) use (
+                $campaign,
+                $courseEligible,
+                $audienceEligibleUserIds,
+                $users
+            ): bool {
+                $user = $users->get($userId);
+
+                return $courseEligible
+                    && $user
+                    && $audienceEligibleUserIds->has($userId)
+                    && NotificationDeliveryPolicy::allowsInbox(
+                        $user,
+                        (string) $campaign->notification_type
+                    );
+            })->values();
+            $missingUserIds = $pendingUserIds->reject(fn (int $userId): bool => $users->has($userId));
+            $ineligibleUserIds = $pendingUserIds->diff($eligibleUserIds)->diff($missingUserIds);
+            $now = now();
+
+            NotificationCampaignRecipient::query()
+                ->where('notification_campaign_id', $campaign->id)
+                ->whereIn('user_id', $missingUserIds)
+                ->update([
+                    'status' => NotificationCampaignRecipient::STATUS_SKIPPED,
+                    'attempts' => DB::raw('attempts + 1'),
+                    'claimed_at' => $now,
+                    'resolved_at' => $now,
+                    'resolution_code' => 'account_missing',
+                    'updated_at' => $now,
+                ]);
+            NotificationCampaignRecipient::query()
+                ->where('notification_campaign_id', $campaign->id)
+                ->whereIn('user_id', $ineligibleUserIds)
+                ->update([
+                    'status' => NotificationCampaignRecipient::STATUS_SKIPPED,
+                    'attempts' => DB::raw('attempts + 1'),
+                    'claimed_at' => $now,
+                    'resolved_at' => $now,
+                    'resolution_code' => 'preference_or_course_changed',
+                    'updated_at' => $now,
+                ]);
+
+            if ($eligibleUserIds->isNotEmpty()) {
+                $rows = $eligibleUserIds->map(fn (int $userId): array => [
                     'user_id' => $userId,
                     'delivery_key' => $this->deliveryKey,
-                ];
-                $notification = DB::transaction(function () use (
-                    $campaign,
-                    $userId,
-                    $identity,
-                    $hasRecipientLedger,
-                    $hasFinancialHolds
-                ): ?StudentNotification {
-                    $recipient = $hasRecipientLedger
-                        ? NotificationCampaignRecipient::query()
-                            ->where('notification_campaign_id', $campaign->id)
-                            ->where('user_id', $userId)
-                            ->lockForUpdate()
-                            ->first()
-                        : null;
-                    if ($recipient) {
-                        if (in_array($recipient->status, [
-                            NotificationCampaignRecipient::STATUS_INBOX,
-                            NotificationCampaignRecipient::STATUS_SKIPPED,
-                        ], true)) {
-                            return StudentNotification::query()->where($identity)->first();
-                        }
-                        if (
-                            $recipient->status === NotificationCampaignRecipient::STATUS_DELIVERING
-                            && $recipient->claimed_at
-                            && $recipient->claimed_at->isAfter(now()->subMinutes(15))
-                        ) {
-                            return null;
-                        }
-                        $recipient->forceFill([
-                            'status' => NotificationCampaignRecipient::STATUS_DELIVERING,
-                            'attempts' => (int) $recipient->attempts + 1,
-                            'claimed_at' => now(),
-                            'resolution_code' => null,
-                        ])->save();
-                    }
+                    'notification_type' => $campaign->notification_type,
+                    'notifiable_type' => $campaign->notifiable_type,
+                    'notifiable_id' => $campaign->notifiable_id,
+                    'title_ar' => $campaign->title_ar,
+                    'title_en' => $campaign->title_en,
+                    'message_ar' => $campaign->message_ar,
+                    'message_en' => $campaign->message_en,
+                    'link' => $campaign->link,
+                    'image_url' => $campaign->image_url,
+                    'action_label_ar' => $campaign->action_label_ar,
+                    'action_label_en' => $campaign->action_label_en,
+                    'is_read' => false,
+                    'read_at' => null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ])->all();
+                StudentNotification::query()->insertOrIgnore($rows);
 
-                    // Audience selection happened in the coordinator, potentially
-                    // minutes ago. Lock and re-check at the durable side effect so
-                    // disabling/deleting an account wins before any inbox is made.
-                    $courseEligible = true;
-                    if ($campaign?->course_id) {
-                        $course = Course::query()
-                            ->whereKey($campaign->course_id)
-                            // Concurrent chunks only read publication state.
-                            // A shared lock keeps withdrawal atomic without
-                            // serializing every recipient on one hot course row.
-                            ->sharedLock()
-                            ->first();
-                        $courseEligible = $course
-                            && $course->isPublishedForLearning()
-                            && ($campaign->audience === 'enrolled' || (bool) $course->is_catalog_visible);
-                    }
-                    $user = User::query()
-                        ->whereKey($userId)
-                        ->lockForUpdate()
-                        ->first();
-                    $eligible = $courseEligible
-                        && $user
-                        && NotificationDeliveryPolicy::allowsInbox($user, $this->notificationType);
-                    if ($eligible && $campaign?->course_id && $campaign->audience !== 'all') {
-                        $ownsCourse = $user->enrollments()
-                            ->where('course_id', $campaign->course_id)
-                            ->where('is_active', true)
-                            ->where(function ($expiry): void {
-                                $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
-                            })
-                            ->exists();
-                        $eligible = $campaign->audience === 'enrolled' ? $ownsCourse : !$ownsCourse;
-                    }
-                    if (
-                        $eligible
-                        && $campaign?->course_id
-                        && $hasFinancialHolds
-                    ) {
-                        $eligible = !FinancialEntitlementHold::query()
-                            ->where('user_id', $userId)
-                            ->where('course_id', $campaign->course_id)
-                            ->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
-                            ->whereIn('entitlement_scope', ['course', 'plan', 'chat'])
-                            ->exists();
-                    }
-                    if (!$eligible) {
-                        if ($recipient) {
-                            $recipient->forceFill([
-                                'status' => NotificationCampaignRecipient::STATUS_SKIPPED,
-                                'resolution_code' => $user ? 'preference_or_audience_changed' : 'account_missing',
-                                'resolved_at' => now(),
-                            ])->save();
-                        }
-                        return null;
-                    }
-
-                    $notification = StudentNotification::query()->firstOrCreate($identity, [
-                        'notification_type' => $this->notificationType,
-                        'notifiable_type' => $this->notifiableType,
-                        'notifiable_id' => $this->notifiableId,
-                        'title_ar' => $this->titleAr,
-                        'title_en' => $this->titleEn,
-                        'message_ar' => $this->messageAr,
-                        'message_en' => $this->messageEn,
-                        'link' => $this->link,
-                        'image_url' => $this->imageUrl,
-                        'action_label_ar' => $this->actionLabelAr,
-                        'action_label_en' => $this->actionLabelEn,
-                        'is_read' => false,
-                        'read_at' => null,
+                NotificationCampaignRecipient::query()
+                    ->where('notification_campaign_id', $campaign->id)
+                    ->whereIn('user_id', $eligibleUserIds)
+                    ->update([
+                        'status' => NotificationCampaignRecipient::STATUS_INBOX,
+                        'attempts' => DB::raw('attempts + 1'),
+                        'claimed_at' => $now,
+                        'resolved_at' => $now,
+                        'resolution_code' => null,
+                        'updated_at' => $now,
                     ]);
-                    if ($recipient) {
-                        $recipient->forceFill([
-                            'status' => NotificationCampaignRecipient::STATUS_INBOX,
-                            'resolution_code' => null,
-                            'resolved_at' => now(),
-                        ])->save();
-                    }
+            }
 
-                    return $notification;
-                }, 3);
-                if (!$notification) {
-                    continue;
-                }
+            $notificationUserIds = $resolvedUserIds->merge($eligibleUserIds)->unique();
+            $notificationIds = StudentNotification::query()
+                ->where('delivery_key', $this->deliveryKey)
+                ->whereIn('user_id', $notificationUserIds)
+                ->pluck('id')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+            if (count($notificationIds) !== $notificationUserIds->count()) {
+                throw new \RuntimeException('Notification inbox snapshot was not persisted for every recipient.');
+            }
 
-                // Dispatching this on every chunk retry is intentional. The push
-                // job atomically claims the notification row, so a retry repairs a
-                // crash between inbox creation and queue dispatch without sending
-                // the same push twice.
-                try {
-                    DurableJobDispatch::afterCommit(
-                        new SendUserPushNotification((int) $notification->id)
-                    );
-                } catch (\Throwable $exception) {
-                    // The inbox is the durable delivery. The scheduler will pick
-                    // up this unattempted push after the queue connection recovers.
-                    report($exception);
-                }
+            return $notificationIds;
+        }, 3);
+
+        foreach ($notificationIds as $notificationId) {
+            try {
+                DurableJobDispatch::afterCommit(new SendUserPushNotification($notificationId));
             } catch (\Throwable $exception) {
                 report($exception);
-                if ($hasRecipientLedger) {
-                    // The delivery transaction rolled its attempt increment
-                    // back together with the failed side effect. Record the
-                    // failed attempt separately so one poison row eventually
-                    // becomes a visible skip instead of stalling forever.
-                    $retryable = DB::transaction(function () use ($campaign, $userId): bool {
-                        $locked = NotificationCampaignRecipient::query()
-                            ->where('notification_campaign_id', $campaign->id)
-                            ->where('user_id', $userId)
-                            ->lockForUpdate()
-                            ->first();
-                        if (!$locked || in_array($locked->status, [
-                            NotificationCampaignRecipient::STATUS_INBOX,
-                            NotificationCampaignRecipient::STATUS_SKIPPED,
-                        ], true)) {
-                            return false;
-                        }
-                        $attempts = min(255, (int) $locked->attempts + 1);
-                        $exhausted = $attempts >= $this->tries;
-                        $locked->forceFill([
-                            'attempts' => $attempts,
-                            'status' => $exhausted
-                                ? NotificationCampaignRecipient::STATUS_SKIPPED
-                                : NotificationCampaignRecipient::STATUS_PENDING,
-                            'claimed_at' => null,
-                            'resolved_at' => $exhausted ? now() : null,
-                            'resolution_code' => $exhausted
-                                ? 'recipient_retry_exhausted'
-                                : 'recipient_retry',
-                        ])->save();
-
-                        return !$exhausted;
-                    }, 3);
-                    $shouldRetry = $shouldRetry || $retryable;
-                }
             }
         }
 
-        if ($campaign) {
-            $this->refreshCampaignProgress($campaign);
-        }
-
-        // Retry the same chunk after every other recipient has had its turn.
-        // Successful rows are idempotent, while a single poison recipient can
-        // never stop the rest of the campaign and is skipped after exhaustion.
-        if ($shouldRetry) {
-            throw new \RuntimeException('One or more campaign recipients need retry.');
-        }
+        $this->refreshCampaignProgress($campaign);
     }
 
     private function refreshCampaignProgress(NotificationCampaign $campaign): void
@@ -298,14 +291,8 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
 
     public function failed(\Throwable $exception): void
     {
-        if (!Schema::hasTable('notification_campaigns')) {
-            return;
-        }
-
         $campaign = NotificationCampaign::query()->where('delivery_key', $this->deliveryKey)->first();
-        if (!$campaign || !Schema::hasTable('notification_campaign_recipients')) {
-            return;
-        }
+        if (!$campaign) return;
 
         NotificationCampaignRecipient::query()
             ->where('notification_campaign_id', $campaign->id)

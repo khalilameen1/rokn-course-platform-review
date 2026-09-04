@@ -6,10 +6,20 @@
 @php
     $section = optional($submission->project)->section;
     $course = optional($section)->course;
-    // The append-only decision ledger is the audit source of truth. The JSON
-    // copy is deliberately capped and can be scrubbed during account deletion.
-    $history = $submission->reviewDecisions;
-    $latestDecision = $history->last();
+    $effortLabels = ['valid' => 'صالح للمراجعة', 'invalid' => 'غير كافٍ', 'unknown' => 'لم يُفحص بعد'];
+    $feedbackLevelLabels = ['pass_only' => 'عبور فقط', 'report' => 'تقرير', 'enhanced' => 'تقرير ومتابعة'];
+    $reportStatusLabels = [
+        'not_included' => 'غير متاح في هذه الفئة', 'not_requested' => 'يصدر بعد قبول المشروع',
+        'queued' => 'قيد الإعداد', 'ready' => 'جاهز', 'failed' => 'تعذّر إصداره',
+    ];
+    $messageStatusLabels = [
+        'queued' => 'في الانتظار', 'sent' => 'أُرسل', 'streaming' => 'يُكتب الآن',
+        'completed' => 'مكتمل', 'failed' => 'تعذّر', 'cancelled' => 'أُلغي',
+    ];
+    $reviewSourceLabels = [
+        'admin_manual' => 'مراجعة بشرية', 'ai' => 'تقييم ركن',
+        'effort_guard' => 'فحص كفاية التسليم', 'graceful_fallback' => 'عبور تلقائي عند تعذّر التقرير',
+    ];
 @endphp
 
 <div class="admin-page animated fadeIn">
@@ -42,7 +52,7 @@
                         </div>
                         <div class="col-md-6 mb-3"><div class="admin-detail-label">الكورس</div><div class="admin-detail-value">{{ optional($course)->title ?: 'غير متاح' }}</div></div>
                         <div class="col-md-6 mb-3"><div class="admin-detail-label">رقم المحاولة</div><div class="admin-detail-value admin-code">{{ $submission->public_id }}</div></div>
-                        <div class="col-md-3 mb-3"><div class="admin-detail-label">حالة الجهد</div><div class="admin-detail-value">{{ $submission->effort_status }}</div></div>
+                        <div class="col-md-3 mb-3"><div class="admin-detail-label">حالة التسليم</div><div class="admin-detail-value">{{ $effortLabels[$submission->effort_status] ?? 'غير معروفة' }}</div></div>
                         <div class="col-md-3 mb-3"><div class="admin-detail-label">وقت الإرسال</div><div class="admin-detail-value">{{ $submission->submitted_at ? \App\Support\BusinessClock::format($submission->submitted_at) : '—' }}</div></div>
                     </div>
 
@@ -59,24 +69,29 @@
                         @endforeach
                     @elseif($submission->submission_file)
                         <a href="{{ route('admin.project-submissions.download', $submission) }}" class="btn btn-outline-primary"><i class="fa fa-download"></i> {{ $submission->original_file_name ?: 'تنزيل الملف' }}</a>
+                    @elseif(in_array($submission->review_status, [\App\Models\ProjectSubmission::STATUS_PASSED, \App\Models\ProjectSubmission::STATUS_NEEDS_RESUBMISSION], true))
+                        <p class="text-muted">حُذفت ملفات التسليم بعد اكتمال المراجعة.</p>
                     @else
                         <p class="text-muted">لا يوجد ملف مرفق.</p>
                     @endif
                 </div>
             </div>
 
-            @if($submission->feedbackThread)
+            @if((bool) ($submissionState['report_enabled'] ?? false))
                 <div class="card admin-card mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <strong>تقرير ركن ومحادثة المشروع</strong>
-                        <span class="badge badge-light">{{ $submission->feedbackThread->feedback_level }}</span>
+                        <span class="badge badge-light">{{ $feedbackLevelLabels[$submissionState['feedback_level'] ?? ''] ?? 'تقرير المشروع' }}</span>
                     </div>
                     <div class="card-body">
+                        <div class="alert alert-light mb-3">
+                            {{ $reportStatusLabels[$submissionState['report_status'] ?? ''] ?? 'حالة التقرير غير معروفة' }}
+                        </div>
                         @forelse($threadMessages as $message)
                             <div class="border rounded p-3 mb-3 {{ $message->role === 'user' ? 'border-primary' : '' }}">
                                 <div class="d-flex flex-wrap justify-content-between admin-gap mb-2">
                                     <strong>{{ $message->role === 'user' ? 'الطالب' : 'ركن' }}</strong>
-                                    <small class="text-muted">{{ $message->status }} · {{ $message->created_at ? \App\Support\BusinessClock::format($message->created_at, 'Y-m-d H:i:s') : '—' }}</small>
+                                    <small class="text-muted">{{ $messageStatusLabels[$message->status] ?? 'حالة غير معروفة' }} · {{ $message->created_at ? \App\Support\BusinessClock::format($message->created_at, 'Y-m-d H:i:s') : '—' }}</small>
                                 </div>
                                 @if($message->body)<div class="admin-copy mb-2">{{ $message->body }}</div>@endif
                                 @foreach($message->getRelation('inputAttachments') as $attachment)
@@ -97,7 +112,7 @@
                 </div>
             @endif
 
-            @if($submission->review_status === 'pending' || ($submission->review_status === 'passed' && $submission->review_source === 'graceful_fallback'))
+            @if($isLatestAttempt && ($submission->review_status === 'pending' || ($submission->review_status === 'passed' && $submission->review_source === 'graceful_fallback')))
                 <div class="card admin-card mb-4">
                     <div class="card-header"><strong>قرار المراجعة</strong></div>
                     <div class="card-body">
@@ -118,6 +133,8 @@
                         @endif
                     </div>
                 </div>
+            @elseif(!$isLatestAttempt)
+                <div class="alert alert-light mb-4">هذه محاولة سابقة<br>راجع المحاولة الأحدث لاتخاذ القرار</div>
             @endif
         </div>
 
@@ -125,25 +142,11 @@
             <div class="card admin-card mb-4">
                 <div class="card-header"><strong>سجل القرار</strong></div>
                 <div class="card-body">
-                    <div class="admin-detail-label">مصدر القرار</div><div class="admin-detail-value mb-3">{{ $submission->review_source ?: 'لم يصدر قرار بعد' }}</div>
+                    <div class="admin-detail-label">مصدر القرار</div><div class="admin-detail-value mb-3">{{ $submission->review_source ? ($reviewSourceLabels[$submission->review_source] ?? 'قرار مسجل') : 'لم يصدر قرار بعد' }}</div>
                     <div class="admin-detail-label">المراجع</div><div class="admin-detail-value mb-3">{{ optional($submission->reviewer)->name ?: 'مراجعة آلية / غير محدد' }}</div>
                     <div class="admin-detail-label">وقت القرار</div><div class="admin-detail-value mb-3">{{ $submission->reviewed_at ? \App\Support\BusinessClock::format($submission->reviewed_at, 'Y-m-d H:i:s') : '—' }}</div>
                     <div class="admin-detail-label">النتيجة</div><div class="admin-detail-value mb-3">{{ $submission->score !== null ? $submission->score . '/100' : '—' }}</div>
-                    <div class="admin-detail-label">الملاحظة المسجلة</div><div class="mb-3">{{ $latestDecision?->feedback ?: ($submission->feedback ?: '—') }}</div>
-                    @if($history->isNotEmpty())
-                        <hr>
-                        @foreach($history->sortByDesc('sequence') as $item)
-                            <div class="admin-audit-item">
-                                @include('admin.partials.status-badge', ['badgeStatus' => $item->status ?: 'unknown'])
-                                @if($item->feedback)<div class="mt-2">{{ $item->feedback }}</div>@endif
-                                <small class="text-muted">
-                                    {{ $item->source ?: 'unknown' }}
-                                    @if($item->reviewer) · {{ $item->reviewer->name }} @endif
-                                    · {{ $item->decided_at ? \App\Support\BusinessClock::format($item->decided_at, 'Y-m-d H:i:s') : '—' }}
-                                </small>
-                            </div>
-                        @endforeach
-                    @endif
+                    <div class="admin-detail-label">الملاحظة المسجلة</div><div class="mb-3">{{ $submission->feedback ?: '—' }}</div>
                 </div>
             </div>
         </div>

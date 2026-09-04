@@ -1,4 +1,5 @@
 import {
+  trustedCertificateFileUrl,
   trustedCertificateVerificationUrl,
   trustedPortfolioShareUrl,
 } from '../src/services/publicLinks';
@@ -32,6 +33,49 @@ describe('public share link trust boundary', () => {
       trustedCertificateVerificationUrl(
         `https://example.com/c/${credential}`,
         credential,
+      ),
+    ).toBeNull();
+    expect(
+      trustedCertificateVerificationUrl(
+        `https://rokn.app/c/${credential}?download=1`,
+        credential,
+      ),
+    ).toBeNull();
+    expect(
+      trustedCertificateVerificationUrl(
+        'https://rokn.app/c/not-a-credential',
+        'not-a-credential',
+      ),
+    ).toBeNull();
+  });
+
+  it('accepts only the matching credential artifact and PDF routes', () => {
+    expect(
+      trustedCertificateFileUrl(
+        `${deployment}/c/${credential}/artifact`,
+        credential,
+        'artifact',
+      ),
+    ).toBeTruthy();
+    expect(
+      trustedCertificateFileUrl(
+        `https://rokn.app/c/${credential}/download`,
+        credential,
+        'download',
+      ),
+    ).toBeTruthy();
+    expect(
+      trustedCertificateFileUrl(
+        `https://example.com/c/${credential}/download`,
+        credential,
+        'download',
+      ),
+    ).toBeNull();
+    expect(
+      trustedCertificateFileUrl(
+        `${deployment}/c/${credential}/artifact`,
+        credential,
+        'download',
       ),
     ).toBeNull();
   });

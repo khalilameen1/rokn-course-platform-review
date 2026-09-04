@@ -32,12 +32,124 @@ describe('VideoComponent facade', () => {
 });
 
 describe('video component policy', () => {
+  it('acknowledges a seek from progress when older Android omits onSeek', () => {
+    const pendingSeek = {current: 40 as number | null};
+    const onProgressChange = jest.fn();
+    const setCurrentTime = jest.fn();
+    const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () => true,
+      bufferCount: {current: 0},
+      bufferDurationMs: {current: 0},
+      bufferingStartedAt: {current: null},
+      data: {id: 'android-7-reel'},
+      diagnosticRequest: {current: 0},
+      duration: 90,
+      durationRef: {current: 90},
+      emitPlaybackEvent: jest.fn(),
+      hasRestored: {current: true},
+      hasStarted: {current: true},
+      isFallbackSource: false,
+      isPlaying: {current: true},
+      lastPosition: {current: 0},
+      loadStartedAt: {current: null},
+      longBufferTimer: {current: null},
+      onPlaybackHealthy: jest.fn(),
+      onProgressChange,
+      ownsPlayback: () => true,
+      pendingSeek,
+      publishRuntimeMetrics: jest.fn(),
+      recoverOrFail: jest.fn(),
+      reelInitialPosition: {current: 0},
+      retryPosition: {current: null},
+      setBufferedTime: jest.fn(),
+      setCurrentTime,
+      setDuration: jest.fn(),
+      setError: jest.fn(),
+      setIsBuffering: jest.fn(),
+      setIsLoaded: jest.fn(),
+      setRecoveryMessage: jest.fn(),
+      sourceType: 'm3u8',
+      sourceUri: 'https://cdn.example.com/android-7.m3u8',
+      videoRef: {current: null},
+    });
+
+    handlers.onProgress?.({
+      currentTime: 40.5,
+      playableDuration: 60,
+      seekableDuration: 90,
+    } as never);
+    handlers.onProgress?.({
+      currentTime: 44,
+      playableDuration: 64,
+      seekableDuration: 90,
+    } as never);
+
+    expect(pendingSeek.current).toBeNull();
+    expect(setCurrentTime).toHaveBeenLastCalledWith(44);
+    expect(onProgressChange).toHaveBeenLastCalledWith(44, 90);
+  });
+
+  it('does not arm buffer recovery behind chat or another overlay', () => {
+    jest.useFakeTimers();
+    const recoverOrFail = jest.fn();
+    const bufferCount = {current: 0};
+    const bufferingStartedAt = {current: null as number | null};
+    const longBufferTimer = {
+      current: null as ReturnType<typeof setTimeout> | null,
+    };
+    const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () => false,
+      bufferCount,
+      bufferDurationMs: {current: 0},
+      bufferingStartedAt,
+      data: {id: 'covered-reel'},
+      diagnosticRequest: {current: 0},
+      duration: 90,
+      durationRef: {current: 90},
+      emitPlaybackEvent: jest.fn(),
+      hasRestored: {current: true},
+      hasStarted: {current: true},
+      isFallbackSource: false,
+      isPlaying: {current: false},
+      lastPosition: {current: 18},
+      loadStartedAt: {current: null},
+      longBufferTimer,
+      onPlaybackHealthy: jest.fn(),
+      ownsPlayback: () => true,
+      pendingSeek: {current: null},
+      publishRuntimeMetrics: jest.fn(),
+      recoverOrFail,
+      reelInitialPosition: {current: 0},
+      retryPosition: {current: null},
+      setBufferedTime: jest.fn(),
+      setCurrentTime: jest.fn(),
+      setDuration: jest.fn(),
+      setError: jest.fn(),
+      setIsBuffering: jest.fn(),
+      setIsLoaded: jest.fn(),
+      setRecoveryMessage: jest.fn(),
+      sourceType: 'm3u8',
+      sourceUri: 'https://cdn.example.com/covered.m3u8',
+      videoRef: {current: null},
+    });
+
+    handlers.onBuffer?.({isBuffering: true} as never);
+    jest.advanceTimersByTime(20_000);
+
+    expect(longBufferTimer.current).toBeNull();
+    expect(bufferCount.current).toBe(0);
+    expect(bufferingStartedAt.current).toBeNull();
+    expect(recoverOrFail).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
   it('drops every native event owned by a replaced player instance', () => {
     const setCurrentTime = jest.fn();
     const onProgressChange = jest.fn();
     const onComplete = jest.fn();
     const recoverOrFail = jest.fn();
     const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () => false,
       bufferCount: {current: 0},
       bufferDurationMs: {current: 0},
       bufferingStartedAt: {current: null},
@@ -50,17 +162,16 @@ describe('video component policy', () => {
       hasStarted: {current: false},
       isFallbackSource: false,
       isPlaying: {current: false},
-      isVisible: true,
       lastPosition: {current: 0},
       loadStartedAt: {current: null},
       longBufferTimer: {current: null},
       onComplete,
+      onPlaybackHealthy: jest.fn(),
       onProgressChange,
       ownsPlayback: () => false,
       pendingSeek: {current: null},
       publishRuntimeMetrics: jest.fn(),
       recoverOrFail,
-      recoveryAttempts: {current: 0},
       reelInitialPosition: {current: 0},
       retryPosition: {current: null},
       setBufferedTime: jest.fn(),
@@ -87,6 +198,58 @@ describe('video component policy', () => {
     expect(setCurrentTime).not.toHaveBeenCalled();
     expect(onProgressChange).not.toHaveBeenCalled();
     expect(recoverOrFail).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('drops learning progress and completion from a hidden preloaded player', () => {
+    const setCurrentTime = jest.fn();
+    const onProgressChange = jest.fn();
+    const onComplete = jest.fn();
+    const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () => false,
+      bufferCount: {current: 0},
+      bufferDurationMs: {current: 0},
+      bufferingStartedAt: {current: null},
+      data: {id: 'preloaded-reel'},
+      diagnosticRequest: {current: 0},
+      duration: 60,
+      durationRef: {current: 60},
+      emitPlaybackEvent: jest.fn(),
+      hasRestored: {current: true},
+      hasStarted: {current: false},
+      isFallbackSource: false,
+      isPlaying: {current: false},
+      lastPosition: {current: 0},
+      loadStartedAt: {current: null},
+      longBufferTimer: {current: null},
+      onComplete,
+      onPlaybackHealthy: jest.fn(),
+      onProgressChange,
+      ownsPlayback: () => true,
+      pendingSeek: {current: null},
+      publishRuntimeMetrics: jest.fn(),
+      recoverOrFail: jest.fn(),
+      reelInitialPosition: {current: 0},
+      retryPosition: {current: null},
+      setBufferedTime: jest.fn(),
+      setCurrentTime,
+      setDuration: jest.fn(),
+      setError: jest.fn(),
+      setIsBuffering: jest.fn(),
+      setIsLoaded: jest.fn(),
+      setRecoveryMessage: jest.fn(),
+      sourceType: 'm3u8',
+      sourceUri: 'https://cdn.example.com/preloaded.m3u8',
+      videoRef: {current: null},
+    });
+
+    handlers.onProgress?.({currentTime: 60, seekableDuration: 60} as never);
+    handlers.onSeek?.({currentTime: 60, seekTime: 60} as never);
+    handlers.onPlaybackStateChanged?.({isPlaying: true} as never);
+    handlers.onEnd?.();
+
+    expect(setCurrentTime).not.toHaveBeenCalled();
+    expect(onProgressChange).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -127,6 +290,26 @@ describe('video component policy', () => {
       type: 'mp4',
     });
     expect(fallback.unsupportedSource).toBe(false);
+
+    const invalidVariant = selectVideoSource({
+      effectiveQuality: '720p',
+      qualitySources: {'720p': 'https://youtube.com/watch?v=wrong'},
+      fallbackVideoUrl: 'https://cdn.example.com/fallback.mp4',
+      usingFallback: false,
+      videoUrl: 'https://cdn.example.com/master.m3u8',
+    });
+    expect(invalidVariant.isFallbackSource).toBe(true);
+    expect(invalidVariant.source.uri).toBe(
+      'https://cdn.example.com/fallback.mp4',
+    );
+
+    const duplicateFallback = selectVideoSource({
+      effectiveQuality: 'auto',
+      fallbackVideoUrl: 'https://cdn.example.com/master.m3u8',
+      usingFallback: false,
+      videoUrl: 'https://cdn.example.com/master.m3u8',
+    });
+    expect(duplicateFallback.hasSupportedFallback).toBe(false);
   });
 
   it('keeps the bounded recovery order', () => {
@@ -180,6 +363,13 @@ describe('video component policy', () => {
         isVisible: false,
       }),
     ).toEqual({kind: 'defer'});
+    expect(
+      selectPlaybackRecoveryStep({
+        ...base,
+        availableQualities: [...base.availableQualities],
+        sourceRefreshRequired: true,
+      }),
+    ).toEqual({kind: 'retry'});
   });
 
   it('preserves timeline bounds and learner-facing failure copy', () => {

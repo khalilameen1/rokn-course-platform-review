@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {isLocalDemoId} from '../../../config/runtime';
 import {
   accountScopedStorageKey,
   assertAccountSessionBoundary,
@@ -21,8 +20,6 @@ type PersistedPlayerState = {
   completedSections: string[];
   savedLessons: string[];
   savedFolderLessons: Record<string, string[]>;
-  passedProjects: string[];
-  provisionalProjects: string[];
   activityDays: string[];
 };
 
@@ -32,13 +29,33 @@ const EMPTY_STATE: PersistedPlayerState = {
   completedSections: [],
   savedLessons: [],
   savedFolderLessons: {},
-  passedProjects: [],
-  provisionalProjects: [],
   activityDays: [],
 };
 
 const isAccountBoundaryError = (error: unknown) =>
   error instanceof Error && error.message === 'ACCOUNT_CHANGED_DURING_REQUEST';
+
+const remoteIds = (value: unknown): string[] =>
+  Array.from(
+    new Set(
+      asArray<unknown>(value)
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => item.trim())
+        .filter(item => /^\d{1,18}$/.test(item) && Number(item) > 0),
+    ),
+  );
+
+const savedFolderMemberships = (value: unknown): Record<string, string[]> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(
+        ([folderId]) => /^\d{1,18}$/.test(folderId) && Number(folderId) > 0,
+      )
+      .map(([folderId, lessons]) => [folderId, remoteIds(lessons)])
+      .filter(([, lessons]) => lessons.length > 0),
+  );
+};
 
 const compactResumeState = (
   rawPositions: unknown,
@@ -118,24 +135,19 @@ export const readPlayerState = async (
       parsed?.positions,
       parsed?.lastWatchedAt,
     );
+    const folderMemberships = savedFolderMemberships(
+      parsed?.savedFolderLessons,
+    );
     const state = compactPlayerState({
       ...compactResume,
       completedSections: asArray(parsed?.completedSections),
-      savedLessons: asArray(parsed?.savedLessons),
-      savedFolderLessons:
-        parsed?.savedFolderLessons &&
-        typeof parsed.savedFolderLessons === 'object'
-          ? Object.fromEntries(
-              Object.entries(parsed.savedFolderLessons).map(
-                ([folderId, lessons]) => [
-                  folderId,
-                  asArray(lessons as string[]),
-                ],
-              ),
-            )
-          : {},
-      passedProjects: asArray(parsed?.passedProjects),
-      provisionalProjects: asArray(parsed?.provisionalProjects),
+      savedLessons: Array.from(
+        new Set([
+          ...remoteIds(parsed?.savedLessons),
+          ...Object.values(folderMemberships).flat(),
+        ]),
+      ),
+      savedFolderLessons: folderMemberships,
       activityDays: asArray(parsed?.activityDays),
     });
     if (
@@ -199,21 +211,10 @@ export const migrateGuestLearningState = async (
     // Keep a damaged guest cache for a later app migration.
     return false;
   }
-  const sourceFolders = source.savedFolderLessons || {};
-  const targetFolders = target.savedFolderLessons || {};
-  const folderIds = new Set([
-    ...Object.keys(sourceFolders),
-    ...Object.keys(targetFolders),
-  ]);
-  const savedFolderLessons = Object.fromEntries(
-    Array.from(folderIds).map(folderId => [
-      folderId,
-      mergeStringArrays(
-        asArray(sourceFolders[folderId]),
-        asArray(targetFolders[folderId]),
-      ),
-    ]),
-  );
+  // Bookmarks are account-only server records. Public-preview state may carry
+  // playback progress into the new account, but it must never manufacture a
+  // saved membership or icon that the server did not create.
+  const savedFolderLessons = savedFolderMemberships(target.savedFolderLessons);
   const next = compactPlayerState({
     positions: {...(source.positions || {}), ...(target.positions || {})},
     lastWatchedAt: {
@@ -224,17 +225,13 @@ export const migrateGuestLearningState = async (
       asArray(source.completedSections),
       asArray(target.completedSections),
     ),
-    savedLessons: mergeStringArrays(
-      asArray(source.savedLessons),
-      asArray(target.savedLessons),
+    savedLessons: Array.from(
+      new Set([
+        ...remoteIds(target.savedLessons),
+        ...Object.values(savedFolderLessons).flat(),
+      ]),
     ),
     savedFolderLessons,
-    passedProjects: asArray<string>(target.passedProjects).filter(
-      id => !id.startsWith('demo'),
-    ),
-    provisionalProjects: asArray<string>(target.provisionalProjects).filter(
-      id => !id.startsWith('demo'),
-    ),
     activityDays: mergeStringArrays(
       asArray(source.activityDays),
       asArray(target.activityDays),
@@ -347,12 +344,18 @@ export const isWatchHistoryEnabled = async (): Promise<boolean> => {
  * completion, unlocked modules, projects, certificates and saved lists stay
  * untouched because they are part of the learning record, not watch history.
  */
-export const clearLocalWatchHistory = async () =>
-  updatePlayerState(state => ({
-    ...state,
-    positions: {},
-    lastWatchedAt: {},
-  }));
+export const clearLocalWatchHistory = async (
+  accountBoundary?: AccountSessionBoundary,
+) =>
+  updatePlayerState(
+    state => ({
+      ...state,
+      positions: {},
+      lastWatchedAt: {},
+    }),
+    undefined,
+    accountBoundary,
+  );
 
 export const resetPlayerStateRuntime = () => {
   playerStateQueues.clear();
@@ -362,52 +365,19 @@ export const applyLocalLearningState = async (
   course: CourseLearningData,
 ): Promise<CourseLearningData> => {
   const state = await readPlayerState();
-  const canAuthoriseLocally = isLocalDemoId(course.id);
-  let previousProjectPassed = true;
   return {
     ...course,
-    modules: course.modules.map((module, index) => {
+    modules: course.modules.map(module => {
       // Local state remembers presentation and retryable writes. It is never
       // an entitlement for production content: only the API may expose a
       // module and its signed media source.
-      const locallyUnlocked = index === 0 || previousProjectPassed;
-      const moduleUnlocked = canAuthoriseLocally
-        ? locallyUnlocked
-        : !module.isLocked;
-      const projects = module.projects?.length
-        ? module.projects
-        : module.project
-        ? [module.project]
-        : [];
-      const mappedProjects = projects.map(project => {
-        const passed =
-          project.status === 'passed' ||
-          (canAuthoriseLocally && state.passedProjects.includes(project.id));
-        const provisional = state.provisionalProjects.includes(project.id);
-        return {
-          ...project,
-          status: passed
-            ? ('passed' as const)
-            : provisional
-            ? ('reviewing' as const)
-            : project.status,
-        };
-      });
-      const projectPassed = mappedProjects.every(
-        project => project.status === 'passed',
-      );
-      let allPreviousReelsCompleted = true;
-      const reels = module.reels.map((reel, reelIndex) => {
+      const moduleUnlocked = !module.isLocked;
+      const reels = module.reels.map(reel => {
         const isCompleted =
           reel.isCompleted || state.completedSections.includes(reel.sectionId);
-        const locallyReached = reelIndex === 0 || allPreviousReelsCompleted;
-        const isLocked = canAuthoriseLocally
-          ? !moduleUnlocked || !reel.videoUrl.trim() || !locallyReached
-          : !moduleUnlocked || reel.isLocked;
-        allPreviousReelsCompleted = allPreviousReelsCompleted && isCompleted;
         return {
           ...reel,
-          isLocked,
+          isLocked: !moduleUnlocked || reel.isLocked,
           isCompleted,
         };
       });
@@ -415,12 +385,7 @@ export const applyLocalLearningState = async (
         ...module,
         isLocked: !moduleUnlocked,
         reels,
-        projects: mappedProjects,
-        project: mappedProjects[0],
       };
-      // Reviewing is a visible saved state, not an entitlement. Only an
-      // authoritative pass may expose the following module and its media.
-      previousProjectPassed = locallyUnlocked && projectPassed;
       return nextModule;
     }),
   };

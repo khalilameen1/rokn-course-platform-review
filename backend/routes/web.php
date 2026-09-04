@@ -62,6 +62,10 @@ Route::get('/c/{publicId}/artifact', [\App\Http\Controllers\PublicCertificateCon
     ->whereUuid('publicId')
     ->middleware('throttle:60,1')
     ->name('certificate.artifact');
+Route::get('/c/{publicId}/download', [\App\Http\Controllers\PublicCertificateController::class, 'download'])
+    ->whereUuid('publicId')
+    ->middleware('throttle:30,1')
+    ->name('certificate.download');
 Route::get('/@{slug}/media/{mediaId}', [\App\Http\Controllers\PublicPortfolioMediaController::class, 'portfolio'])
     ->where('slug', '[a-z0-9-]+')
     ->whereUuid('mediaId')
@@ -71,18 +75,6 @@ Route::get('/@{slug}', [\App\Http\Controllers\PublicPortfolioController::class, 
     ->where('slug', '[a-z0-9-]+')
     ->middleware('throttle:60,1')
     ->name('portfolio.public');
-Route::get('/p/{slug}', [\App\Http\Controllers\PublicPortfolioController::class, 'show'])
-    ->where('slug', '[a-z0-9-]+')
-    ->middleware('throttle:60,1')
-    ->name('portfolio.public.legacy');
-
-// Retire the legacy numeric profile deep link without resolving a User row.
-// Public portfolios have a privacy-aware slug route above; keeping an ID-based
-// lookup here would let anonymous visitors enumerate account names and IDs.
-Route::get('profile/{id}', static function () {
-    abort(410);
-})->whereNumber('id')->name('profile.deeplink.legacy');
-
 Route::group([
     'prefix' => 'dashboard/mfa',
     'namespace' => 'Admin',
@@ -137,7 +129,6 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::get('urgent-tasks', 'UrgentTasksController@index')->middleware('admin.only')->name('urgent-tasks.index');
     Route::get('urgent-tasks/pending-orders', 'UrgentTasksController@pendingOrders')->middleware('admin.only')->name('urgent-tasks.pending-orders');
     Route::get('urgent-tasks/inactive-students', 'UrgentTasksController@inactiveStudents')->middleware('admin.only')->name('urgent-tasks.inactive-students');
-    Route::get('urgent-tasks/courses-without-quiz', 'UrgentTasksController@coursesWithoutQuiz')->middleware('admin.only')->name('urgent-tasks.courses-without-quiz');
     Route::post('urgent-tasks/orders/{order}/approve', 'UrgentTasksController@approveOrder')->middleware('admin.only')->name('urgent-tasks.approve-order');
     Route::post('urgent-tasks/orders/{order}/reject', 'UrgentTasksController@rejectOrder')->middleware('admin.only')->name('urgent-tasks.reject-order');
     Route::post('urgent-tasks/students/{user}/activate', 'UrgentTasksController@activateStudent')->middleware('admin.only')->name('urgent-tasks.activate-student');
@@ -149,51 +140,40 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('courses/{courseId}/restore', 'CourseController@restore')
         ->whereNumber('courseId')->middleware('admin.only')->name('courses.restore');
     Route::resource('courses', 'CourseController')->only(['create', 'store']);
+    Route::post('courses/{course}/authoring-draft', 'CourseController@startDraft')
+        ->name('courses.draft.start');
     Route::resource('courses', 'CourseController')
         ->only(['edit', 'update'])->middleware('course.draft');
     Route::resource('courses', 'CourseController')
         ->only(['destroy'])
         ->middleware('admin.only');
     Route::resource('courses', 'CourseController')->only(['index', 'show']);
+    // Preview is a read. A published course without an active working copy
+    // must not acquire a cloned draft merely because a moderator opened it.
     Route::get('courses/{course}/student-preview', 'CourseController@studentPreview')
-        ->middleware('course.draft')->name('courses.student-preview');
+        ->name('courses.student-preview');
     Route::post('courses/{course}/media-health/probe', 'MediaHealthController@probeCourse')
         ->middleware('course.draft')->name('courses.media-health.probe');
 
     // Course Sections routes
     Route::post('courses/{course}/sections/reorder', 'CourseSectionController@reorder')->middleware('course.draft')->name('courses.sections.reorder');
     Route::post('courses/{course}/sections/video-uploads', 'CourseSectionVideoUploadController@store')
-        ->middleware(['course.draft', 'throttle:10,1'])->name('courses.sections.video-uploads.store');
+        // One authenticated moderator can prepare a short course in a single
+        // sitting. This still caps remote allocations while allowing the
+        // common 15-reel authoring batch to proceed without an artificial stop.
+        ->middleware(['course.draft', 'throttle:30,1'])->name('courses.sections.video-uploads.store');
     Route::post('courses/{course}/sections/video-uploads/renew', 'CourseSectionVideoUploadController@renew')
         ->middleware(['course.draft', 'throttle:60,1'])->name('courses.sections.video-uploads.renew');
-    Route::resource('courses.sections', 'CourseSectionController')->middleware('course.draft');
+    Route::resource('courses.sections', 'CourseSectionController')->except(['index', 'show'])->middleware('course.draft');
 
     // Course Modules routes
     Route::post('courses/{course}/modules/reorder', 'CourseModuleController@reorder')->middleware('course.draft')->name('courses.modules.reorder');
     Route::resource('courses.modules', 'CourseModuleController')->except(['index', 'show'])->middleware('course.draft');
-    Route::post('attachments', 'AttachmentController@store')->name('attachments.store');
-    Route::delete('attachments/{attachment}', 'AttachmentController@destroy')->name('attachments.destroy');
-
     // Course PDFs routes
     Route::post('courses/{course}/pdfs/reorder', 'CoursePdfController@reorder')->middleware('course.draft')->name('courses.pdfs.reorder');
     Route::post('courses/{course}/pdfs/{pdf}/toggle-status', 'CoursePdfController@toggleStatus')->middleware('course.draft')->name('courses.pdfs.toggle-status');
-    Route::get('courses/{course}/pdfs/{pdf}/preview', 'CoursePdfController@preview')->middleware('course.draft')->name('courses.pdfs.preview');
+    Route::get('courses/{course}/pdfs/{pdf}/preview', 'CoursePdfController@preview')->name('courses.pdfs.preview');
     Route::resource('courses.pdfs', 'CoursePdfController')->except(['show'])->middleware('course.draft');
-
-    Route::post('quizzes/{quiz}/copy', 'QuizController@copy')->name('quizzes.copy');
-
-    Route::resource('quizzes', 'QuizController')->except(['show']);
-
-
-    // Legacy standalone lessons are read-only redirects. All lesson mutations
-    // must go through the course-section workflow, which owns ordering,
-    // modules, Bunny publication and rollback semantics.
-    Route::get('lessons', 'LessonController@index')->name('lessons.index');
-    Route::get('lessons/create', 'LessonController@create')->name('lessons.create');
-    Route::get('lessons/{lesson}/edit', 'LessonController@edit')->name('lessons.edit');
-    Route::get('lessons/{lesson}', 'LessonController@show')->name('lessons.show');
-
-    Route::resource('questions', 'QuestionController');
 
     // App Versions routes
     Route::resource('app-versions', 'AppVersionController')->except(['show'])->middleware('admin.only');
@@ -222,12 +202,12 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::resource('categories', 'CategoryController')
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware('admin.only');
-    Route::resource('categories', 'CategoryController')->only(['index']);
+    Route::resource('categories', 'CategoryController')->only(['index'])->middleware('admin.only');
     Route::resource('grades', 'GradeController')
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware('admin.only');
-    Route::resource('grades', 'GradeController')->only(['index']);
-    Route::get('grades/{grade}/courses', 'GradeController@courses')->name('grades.courses');
+    Route::resource('grades', 'GradeController')->only(['index'])->middleware('admin.only');
+    Route::get('grades/{grade}/courses', 'GradeController@courses')->middleware('admin.only')->name('grades.courses');
     Route::resource('coupons', 'CouponController')->except(['show'])->middleware('admin.only');
 
     // Course Codes Management
@@ -238,8 +218,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::resource('course-codes', 'CourseCodeController')->middleware('admin.only');
 
 
-    Route::name('admin_data')->get('admin_data', 'SettingsController@adminData')->middleware('admin.only');
-    Route::name('update_admin_data')->post('update_admin_data', 'SettingsController@updateAdminData')->middleware('admin.only');
+    Route::name('admin_data')->get('admin_data', 'SettingsController@adminData');
+    Route::name('update_admin_data')->post('update_admin_data', 'SettingsController@updateAdminData');
     
     // Teacher routes
     Route::resource('teachers', 'TeacherController')->except(['destroy']);
@@ -259,8 +239,17 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     // evidence even though the dashboard does not render a delete button.
     Route::resource('users', 'UsersController')->except(['destroy'])->middleware('admin.only');
     Route::resource('packages', 'PackageController')->middleware('admin.only');
-    Route::resource('classifications', 'ClassificationController')->except(['show']);
-    Route::resource('paths', 'PathController')->except(['show']);
+    // Moderators may select platform taxonomy while authoring courses, but
+    // changing homepage rows or the learner path catalogue is global product
+    // configuration and therefore administrator-only.
+    Route::resource('classifications', 'ClassificationController')
+        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->middleware('admin.only');
+    Route::resource('classifications', 'ClassificationController')->only(['index'])->middleware('admin.only');
+    Route::resource('paths', 'PathController')
+        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->middleware('admin.only');
+    Route::resource('paths', 'PathController')->only(['index'])->middleware('admin.only');
     // Moderators may use the shared level catalogue while authoring courses,
     // but changing the platform-wide learner progression ladder is an
     // administrator decision. Keep the reference list readable without
@@ -268,7 +257,7 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::resource('levels', 'LevelController')
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware('admin.only');
-    Route::resource('levels', 'LevelController')->only(['index']);
+    Route::resource('levels', 'LevelController')->only(['index'])->middleware('admin.only');
     Route::resource('coin-earning-methods', 'CoinEarningMethodController')
         ->except(['show'])
         ->middleware('admin.only');
@@ -277,7 +266,6 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::put('reward-rules/{rewardRule}', 'CoinEarningMethodController@updateRewardRule')->middleware('admin.only')->name('reward-rules.update');
     Route::delete('reward-rules/{rewardRule}', 'CoinEarningMethodController@destroyRewardRule')->middleware('admin.only')->name('reward-rules.destroy');
     Route::name('users.deactive')->patch('users/{user}/status', 'UsersController@deactive')->middleware('admin.only');
-    Route::name('users.send_notification')->post('users/{user}/send_notification', 'UsersController@sendNotification')->middleware(['admin.only', 'throttle:admin-bulk']);
     Route::name('users.reset-device')->post('users/{user}/reset-device', 'UsersController@resetDevice')->middleware('admin.only');
 
     /* ====== Student Progress =======*/
@@ -296,12 +284,9 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
 
     /* ====== Orders =======*/
     Route::resource('orders', 'OrdersController', ['only' => ['index', 'show']])->middleware('admin.only');
-    Route::patch('orders/{order}/status', 'OrdersController@updateStatus')->middleware('admin.only')->name('orders.update-status');
     Route::post('orders/{order}/financial-resolution', 'OrdersController@resolveFinancialReview')->middleware('admin.only')->name('orders.resolve-financial-review');
     Route::post('orders/{order}/course-compensation', 'OrdersController@compensateCourse')->middleware('admin.only')->name('orders.compensate-course');
     Route::post('orders/{order}/settlement', 'OrdersController@recordSettlement')->middleware('admin.only')->name('orders.record-settlement');
-    Route::post('orders/bulk-status', 'OrdersController@bulkUpdateStatus')->middleware(['admin.only', 'throttle:admin-bulk'])->name('orders.bulk-update-status');
-
     /* ====== Payment Reconciliation Review =======*/
     Route::get('payment-reconciliation/findings', 'PaymentReconciliationFindingController@index')
         ->middleware('admin.only')->name('payment-reconciliation-findings.index');
@@ -315,13 +300,6 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->whereNumber('paymentReconciliationFinding')->middleware('admin.only')
         ->name('payment-reconciliation-findings.reopen');
 
-    /* ====== Bills =======*/
-    Route::resource('bills', 'BillsController', ['only' => ['index', 'show']])->middleware('admin.only');
-    Route::patch('bills/{bill}/payment-status', 'BillsController@updatePaymentStatus')->middleware('admin.only')->name('bills.update-payment-status');
-    Route::post('bills/bulk-payment-status', 'BillsController@bulkUpdatePaymentStatus')->middleware(['admin.only', 'throttle:admin-bulk'])->name('bills.bulk-update-payment-status');
-
-    /* ====== Payment Methods =======*/
-    Route::resource('payment-methods', 'PaymentMethodController')->except(['show'])->middleware('admin.only');
     Route::get('operating-costs-report', 'OperatingCostPoolController@report')
         ->middleware('admin.only')->name('operating-costs.report');
     Route::get('operating-costs-report.csv', 'OperatingCostPoolController@exportReport')
@@ -341,8 +319,6 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->middleware('admin.only')->name('settings.bunny-cleanup.approve');
     Route::post('/settings/bunny-cleanup/approve-batch', 'SettingsController@approveBunnyCleanupBatch')
         ->middleware(['admin.only', 'throttle:admin-bulk'])->name('settings.bunny-cleanup.approve-batch');
-    Route::get('/student-platform', 'SettingsController@studentPlatform')->middleware('admin.only')->name('student-platform');
-
     /* ====== About =======*/
     Route::name('privacy')->get('privacy', 'AboutsController@privacy')->middleware('admin.only');
     Route::name('policy')->get('policy', 'AboutsController@policy')->middleware('admin.only');
@@ -357,16 +333,6 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->whereNumber('notificationCampaign')
         ->middleware(['admin.only', 'throttle:admin-bulk'])
         ->name('notifications.retry');
-
-
-
-    /* ====== Exam Results Management =======*/
-    Route::get('exam-results', 'ExamResultController@index')->middleware('admin.only')->name('exam-results.index');
-    Route::get('exam-results/export/csv', 'ExamResultController@export')
-        ->middleware('admin.only')->name('exam-results.export');
-    Route::get('exam-results/stats/data', 'ExamResultController@getStats')->middleware('admin.only')->name('exam-results.stats');
-    Route::get('exam-results/{examAttempt}', 'ExamResultController@show')->middleware('admin.only')->name('exam-results.show');
-    Route::get('students/{student}/exam-results', 'ExamResultController@getStudentResults')->middleware('admin.only')->name('students.exam-results');
 
 });
 // Learners authenticate through the mobile social-auth contract. The web

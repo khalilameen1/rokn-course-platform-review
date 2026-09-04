@@ -37,9 +37,12 @@ class TrustHosts extends Middleware
             (array) config('trusted_hosts.hosts', [])
         )));
 
-        if ($configured === []) {
-            $fallback = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
-            $configured = $fallback !== '' ? [$fallback] : [];
+        $appHost = strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        if ($appHost !== '') {
+            // APP_URL is also an authoritative first-party origin. Keeping it
+            // in the exact allow-list avoids rejecting health/API traffic when
+            // operations switch the canonical URL during a domain cut-over.
+            $configured[] = $appHost;
         }
 
         return array_map(

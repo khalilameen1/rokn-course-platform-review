@@ -32,7 +32,6 @@ final class ProductAnalyticsController extends Controller
             'analytics' => $analytics->overview($courseId, $days),
             'paymentChannelReport' => $payments->summary($from, $to),
             'courses' => Course::query()
-                ->whereNull('parent_id')
                 ->orderBy('name_ar')
                 ->get(['id', 'name_ar', 'name_en']),
             'filters' => ['course_id' => $courseId, 'days' => $days],

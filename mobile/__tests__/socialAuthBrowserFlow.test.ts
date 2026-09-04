@@ -56,6 +56,10 @@ jest.mock('../src/services/secureSession', () => ({
 }));
 
 import {signInWithSocialProvider} from '../src/services/socialAuth';
+import {
+  deletePendingSocialAuthAttempt,
+  savePendingSocialAuthAttempt,
+} from '../src/services/secureSession';
 
 describe('browser social auth launch', () => {
   it('opens a deterministic encoded PKCE request on Android', async () => {
@@ -87,5 +91,35 @@ describe('browser social auth launch', () => {
       ),
     );
     expect(mockOpenAuthSession).not.toHaveBeenCalled();
+    expect(savePendingSocialAuthAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authorizationApiUrl: 'https://rokn.app/api/v1',
+      }),
+    );
+  });
+
+  it('retires the exact PKCE attempt when the browser cannot open', async () => {
+    mockOpenUrl.mockRejectedValueOnce(new Error('browser unavailable'));
+
+    await expect(
+      signInWithSocialProvider('google', {
+        providers: ['google'],
+        authorizationUrls: {
+          google: 'https://rokn.app/api/v1/social-auth/google/start',
+        },
+        authorizationApiUrl: 'https://rokn.app/api/v1',
+        welcomeBonus: 20,
+        recommendedProvider: 'google',
+        recommendationText: null,
+      }),
+    ).rejects.toThrow('LOGIN_BROWSER_UNAVAILABLE');
+
+    expect(deletePendingSocialAuthAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'google',
+        flow: 'browser',
+        challenge: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/),
+      }),
+    );
   });
 });

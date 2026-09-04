@@ -340,7 +340,6 @@ final class VerifyRestoreDrill extends Command
         $sampled = 0;
         $missing = 0;
         $families = [
-            ['attachments', 'file_path', 'storage_disk', null, 'public'],
             ['course_pdfs', 'file_path', 'storage_disk', null, 'local'],
             ['feedback_attachments', 'path', 'disk', null, 'feedback'],
             ['certificates', 'image_path', null, 'status', (string) config('certificate.disk', 'public')],

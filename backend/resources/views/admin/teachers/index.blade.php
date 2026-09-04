@@ -17,7 +17,7 @@
                     <div class="mb-3">
                         <form action="{{ route('admin.teachers.index') }}" method="GET" class="form-inline">
                             <div class="form-group mb-2">
-                                <input type="text" name="search" class="form-control" placeholder="بحث باسم المعلم أو الإيميل..." value="{{ request('search') }}">
+                                <input type="text" name="search" class="form-control" placeholder="{{ $canManageCredentials ? 'بحث بالاسم أو البريد أو الهاتف' : 'بحث باسم المحاضر' }}" value="{{ request('search') }}">
                             </div>
                             <button type="submit" class="btn btn-secondary mb-2 mr-2">بحث</button>
                         </form>
@@ -29,8 +29,10 @@
                                 <th>#</th>
                                 <th>الصورة</th>
                                 <th>الاسم</th>
-                                <th>البريد الإلكتروني</th>
-                                <th>رقم الهاتف</th>
+                                @if($canManageCredentials)
+                                    <th>البريد الإلكتروني</th>
+                                    <th>رقم الهاتف</th>
+                                @endif
                                 <th>عدد الكورسات</th>
                                 <th>الحالة</th>
                                 <th>العمليات</th>
@@ -51,8 +53,10 @@
                                     <div>{{ $teacher->name_ar ?? $teacher->name_en }}</div>
                                     <small class="text-muted">{{ $teacher->job_title }}</small>
                                 </td>
-                                <td>{{ $teacher->email }}</td>
-                                <td>{{ $teacher->phone }}</td>
+                                @if($canManageCredentials)
+                                    <td>{{ $teacher->email }}</td>
+                                    <td>{{ $teacher->phone }}</td>
+                                @endif
                                 <td>
                                     <span class="badge badge-info">{{ $teacher->teaching_courses_count }}</span>
                                 </td>
@@ -79,7 +83,7 @@
                                                 <i class="fa fa-power-off"></i>
                                             </button>
                                         </form>
-                                        @if(strtolower(trim((string) auth()->user()?->role)) === 'admin')
+                                        @if($canDeleteTeacher)
                                             <form action="{{ route('admin.teachers.destroy', $teacher->id) }}" method="POST" class="d-inline">
                                                 @csrf
                                                 @method('DELETE')
@@ -93,7 +97,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="8" class="text-center">لا يوجد معلمين</td>
+                                <td colspan="{{ $canManageCredentials ? 8 : 6 }}" class="text-center">لا يوجد معلمين</td>
                             </tr>
                             @endforelse
                         </tbody>

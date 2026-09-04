@@ -7,6 +7,7 @@ use App\Models\CoinEarningMethod;
 use App\Models\Setting;
 use App\Models\RewardRule;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminEconomyReadService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
@@ -17,17 +18,14 @@ use App\Support\AdminSingletonLock;
 
 class CoinEarningMethodController extends Controller
 {
-    public function index(SocialAuthProviderRegistry $socialProviders)
+    public function index(AdminEconomyReadService $economy)
     {
-        $methods  = CoinEarningMethod::withCount('userEarnings')
-            ->latest()
-            ->latest('id')
-            ->paginate(10)
-            ->withQueryString();
-        $setting = Setting::first();
-        $rewardRules = RewardRule::query()->orderBy('sort_order')->orderBy('id')->get();
-        $rewardEvents = RewardRule::EVENTS;
-        $socialProviderLabels = $socialProviders->labels();
+        $data = $economy->rewards();
+        $methods = $data['methods'];
+        $setting = $data['setting'];
+        $rewardRules = $data['rewardRules'];
+        $rewardEvents = $data['rewardEvents'];
+        $socialProviderLabels = $data['socialProviderLabels'];
         $settingsEditorVersion = $this->settingsEditorVersion($setting);
         $rewardRuleEditorVersions = $rewardRules->mapWithKeys(
             fn (RewardRule $rule): array => [$rule->id => $this->rewardRuleEditorVersion($rule)]
@@ -89,32 +87,7 @@ class CoinEarningMethodController extends Controller
 
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
-        $request->validate([
-            'title_ar' => 'required|string|max:255',
-            'title_en' => 'required|string|max:255',
-            'coins_amount' => 'required|integer|min:0',
-            'action_key' => 'nullable|string|max:255',
-            'campaign_key' => 'nullable|string|max:80|regex:/^[A-Za-z0-9._:-]+$/|unique:coin_earning_methods,campaign_key',
-            'action_url' => 'nullable|url|max:2000',
-            'requires_external_visit' => 'nullable|boolean',
-            'verification_delay_seconds' => 'nullable|integer|min:0|max:300',
-            'starts_at' => 'nullable|date',
-            'ends_at' => 'nullable|date|after:starts_at',
-            'total_claim_limit' => 'nullable|integer|min:1|max:10000000',
-            'is_active' => 'boolean',
-            'authoring_request_id' => 'required|uuid',
-        ]);
-
-        $payload = $request->only([
-            'title_ar', 'title_en', 'coins_amount', 'action_key', 'action_url',
-            'campaign_key', 'requires_external_visit', 'verification_delay_seconds',
-            'starts_at', 'ends_at', 'total_claim_limit', 'is_active',
-        ]);
-        $payload['is_repeatable'] = false;
-        foreach (['starts_at', 'ends_at'] as $field) {
-            $payload[$field] = BusinessClock::localInputToUtc($payload[$field] ?? null);
-        }
-        $this->ensureUsableDestination($payload);
+        $payload = $this->methodPayload($request);
         DB::transaction(function () use ($request, $payload, $createIntents): void {
             $method = CoinEarningMethod::create($payload);
             $createIntents->completeRedirect(
@@ -138,31 +111,7 @@ class CoinEarningMethodController extends Controller
 
     public function update(Request $request, CoinEarningMethod $coinEarningMethod)
     {
-        $request->validate([
-            'title_ar' => 'required|string|max:255',
-            'title_en' => 'required|string|max:255',
-            'coins_amount' => 'required|integer|min:0',
-            'action_key' => 'nullable|string|max:255',
-            'campaign_key' => 'nullable|string|max:80|regex:/^[A-Za-z0-9._:-]+$/|unique:coin_earning_methods,campaign_key,' . $coinEarningMethod->id,
-            'action_url' => 'nullable|url|max:2000',
-            'requires_external_visit' => 'nullable|boolean',
-            'verification_delay_seconds' => 'nullable|integer|min:0|max:300',
-            'starts_at' => 'nullable|date',
-            'ends_at' => 'nullable|date|after:starts_at',
-            'total_claim_limit' => 'nullable|integer|min:1|max:10000000',
-            'is_active' => 'boolean',
-            'editor_version' => 'required|string|size:64',
-        ]);
-
-        $payload = $request->only([
-            'title_ar', 'title_en', 'coins_amount', 'action_key', 'action_url',
-            'campaign_key', 'requires_external_visit', 'verification_delay_seconds',
-            'starts_at', 'ends_at', 'total_claim_limit', 'is_active',
-        ]);
-        $payload['is_repeatable'] = false;
-        foreach (['starts_at', 'ends_at'] as $field) {
-            $payload[$field] = BusinessClock::localInputToUtc($payload[$field] ?? null);
-        }
+        $payload = $this->methodPayload($request, $coinEarningMethod);
         $editorVersion = (string) $request->input('editor_version');
         try {
             DB::transaction(function () use ($coinEarningMethod, $payload, $editorVersion): void {
@@ -175,12 +124,11 @@ class CoinEarningMethodController extends Controller
                         'editor_version' => 'تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
                     ]);
                 }
-                $this->ensureUsableDestination($payload, $locked);
                 $locked->update($payload);
             }, 3);
         } catch (\DomainException $exception) {
             throw ValidationException::withMessages([
-                'campaign_key' => [$exception->getMessage()],
+                'coin_earning_method' => [$exception->getMessage()],
             ]);
         }
 
@@ -276,13 +224,72 @@ class CoinEarningMethodController extends Controller
     {
         $method = $existing ? clone $existing : new CoinEarningMethod();
         $method->forceFill($payload);
+        // A broken or retired destination must never prevent an administrator
+        // from stopping the task. Destination readiness matters only while the
+        // task is exposed to learners.
+        if (!$method->is_active) {
+            return;
+        }
         if (!$method->hasUsableDestination()) {
             throw ValidationException::withMessages([
                 'action_url' => [
-                    'أضف رابط HTTPS موثوقًا، أو أضف رابط حساب السوشيال المطابق من إعدادات التصميم.',
+                    'أضف رابط HTTPS موثوقًا أو أضف رابط الحساب المطابق من إعدادات التطبيق',
                 ],
             ]);
         }
+    }
+
+    /** @return array<string, mixed> */
+    private function methodPayload(Request $request, ?CoinEarningMethod $existing = null): array
+    {
+        $campaignKey = Rule::unique('coin_earning_methods', 'campaign_key');
+        if ($existing) {
+            $campaignKey->ignore($existing->id);
+        }
+        $validated = $request->validate([
+            'title_ar' => ['required', 'string', 'max:255'],
+            'title_en' => ['required', 'string', 'max:255'],
+            'coins_amount' => ['required', 'integer', 'min:1'],
+            'action_key' => ['required', 'string', 'max:255', 'not_in:register'],
+            'campaign_key' => [
+                'nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:-]+$/', $campaignKey,
+            ],
+            'action_url' => ['nullable', 'url', 'max:2000'],
+            'requires_external_visit' => ['nullable', 'boolean'],
+            'verification_delay_seconds' => ['nullable', 'integer', 'min:0', 'max:300'],
+            'starts_at' => ['nullable', 'date'],
+            'ends_at' => ['nullable', 'date', 'after:starts_at'],
+            'total_claim_limit' => ['nullable', 'integer', 'min:1', 'max:10000000'],
+            'sort_order' => ['nullable', 'integer', 'min:0', 'max:10000'],
+            'is_active' => ['nullable', 'boolean'],
+            'authoring_request_id' => [$existing ? 'nullable' : 'required', 'uuid'],
+            'editor_version' => [$existing ? 'required' : 'nullable', 'string', 'size:64'],
+        ]);
+
+        unset($validated['authoring_request_id'], $validated['editor_version']);
+        foreach (['title_ar', 'title_en'] as $field) {
+            $validated[$field] = trim((string) $validated[$field]);
+        }
+        foreach (['action_key', 'campaign_key', 'action_url'] as $field) {
+            $value = trim((string) ($validated[$field] ?? ''));
+            $validated[$field] = $value !== '' ? $value : null;
+        }
+        foreach (['starts_at', 'ends_at'] as $field) {
+            $validated[$field] = BusinessClock::localInputToUtc($validated[$field] ?? null);
+        }
+        $validated['coins_amount'] = (int) $validated['coins_amount'];
+        $validated['requires_external_visit'] = $request->boolean('requires_external_visit');
+        $validated['verification_delay_seconds'] = (int) ($validated['verification_delay_seconds'] ?? 0);
+        $validated['total_claim_limit'] = filled($validated['total_claim_limit'] ?? null)
+            ? (int) $validated['total_claim_limit']
+            : null;
+        $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
+        $validated['is_active'] = $request->boolean('is_active');
+        $validated['is_repeatable'] = false;
+
+        $this->ensureUsableDestination($validated, $existing);
+
+        return $validated;
     }
 
     private function rewardRulePayload(Request $request, ?RewardRule $existing = null): array
@@ -349,6 +356,7 @@ class CoinEarningMethodController extends Controller
             $method->starts_at?->toIso8601String(),
             $method->ends_at?->toIso8601String(),
             $method->total_claim_limit === null ? null : (int) $method->total_claim_limit,
+            (int) $method->sort_order,
             (bool) $method->is_active,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }

@@ -19,6 +19,7 @@
     </div>
 </div>
 
+@if($canManageCredentials)
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
@@ -39,6 +40,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="row">
     <div class="col-md-6">
@@ -50,6 +52,7 @@
             @enderror
         </div>
     </div>
+    @if($canManageCredentials)
     <div class="col-md-6">
         <div class="form-group">
             <label for="password">
@@ -66,8 +69,10 @@
             @enderror
         </div>
     </div>
+    @endif
 </div>
 
+@if($canManageCredentials)
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
@@ -76,6 +81,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="row">
     <div class="col-md-6">

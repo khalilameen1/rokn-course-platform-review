@@ -1,21 +1,23 @@
 export type RoknDestination =
   | {name: 'Home'}
-  | {name: 'Profile'}
+  | {
+      name: 'Profile';
+      params?: {tab: 'portfolio' | 'certificates' | 'saved'};
+    }
   | {name: 'Wallet'}
   | {name: 'Feedback'; params: {caseId: string}}
   | {name: 'CourseDetails'; params: {courseId: string}}
   | {
       name: 'Reels';
-      params: {courseId: string; reelId?: string; lessonId?: string};
+      params: {
+        courseId: string;
+        reelId?: string;
+        lessonId?: string;
+        projectId?: string;
+      };
     };
 
-const TRUSTED_APP_LINK_HOSTS = new Set([
-  'rokn.app',
-  'www.rokn.app',
-  // Temporary parser compatibility for links already delivered by production.
-  // This host is deliberately not declared as an OS app-link association.
-  'rokn-course-platform-review-production-b7gpy1.laravel.cloud',
-]);
+const TRUSTED_APP_LINK_HOSTS = new Set(['rokn.app', 'www.rokn.app']);
 
 const safeDecode = (value: string): string | null => {
   try {
@@ -76,7 +78,9 @@ const queryRouteId = (raw: string, names: string[]): string | undefined => {
   const accepted = new Set(names.map(name => name.toLowerCase()));
   for (const pair of query.split('&')) {
     const [rawKey, ...rawValue] = pair.split('=');
-    const key = safeDecode(rawKey || '')?.trim().toLowerCase();
+    const key = safeDecode(rawKey || '')
+      ?.trim()
+      .toLowerCase();
     if (!key || !accepted.has(key)) continue;
     const value = safeDecode(rawValue.join('=') || '');
     const id = value === null ? null : safeRoknRouteId(value);
@@ -103,9 +107,7 @@ export const parseRoknDestination = (
     return null;
   }
 
-  const course = path.match(
-    /^courses?\/([^/]+)(?:\/watch(?:\/([^/]+))?)?\/?$/i,
-  );
+  const course = path.match(/^course\/([^/]+)(?:\/watch(?:\/([^/]+))?)?\/?$/i);
   if (course?.[1]) {
     const courseId = safeRoknRouteId(course[1]);
     const reelId = course[2] ? safeRoknRouteId(course[2]) : undefined;
@@ -127,21 +129,7 @@ export const parseRoknDestination = (
       : {name: 'CourseDetails', params: {courseId}};
   }
 
-  // Adjacent releases and old notification templates used these two detail
-  // paths. Keep them as parser aliases only; new links stay canonical.
-  const legacyCourseDetails = path.match(
-    /^(?:course-details\/([^/]+)|courses?\/([^/]+)\/details|api\/courses\/([^/]+)\/details)\/?$/i,
-  );
-  if (legacyCourseDetails) {
-    const courseId = safeRoknRouteId(
-      legacyCourseDetails[1] ||
-        legacyCourseDetails[2] ||
-        legacyCourseDetails[3],
-    );
-    return courseId ? {name: 'CourseDetails', params: {courseId}} : null;
-  }
-
-  const lesson = path.match(/^courses?\/([^/]+)\/lesson\/([^/]+)\/?$/i);
+  const lesson = path.match(/^course\/([^/]+)\/lesson\/([^/]+)\/?$/i);
   if (lesson) {
     const courseId = safeRoknRouteId(lesson[1]);
     const lessonId = safeRoknRouteId(lesson[2]);
@@ -150,8 +138,27 @@ export const parseRoknDestination = (
       : null;
   }
 
+  const project = path.match(/^course\/([^/]+)\/project\/([^/]+)\/?$/i);
+  if (project) {
+    const courseId = safeRoknRouteId(project[1]);
+    const projectId = safeRoknRouteId(project[2]);
+    return courseId && projectId
+      ? {name: 'Reels', params: {courseId, projectId}}
+      : null;
+  }
+
   if (/^home\/?$/i.test(path)) return {name: 'Home'};
-  if (/^profile\/?$/i.test(path)) return {name: 'Profile'};
+  const profile = path.match(
+    /^profile(?:\/(portfolio|certificates|saved))?\/?$/i,
+  );
+  if (profile) {
+    const tab = profile[1]?.toLowerCase() as
+      | 'portfolio'
+      | 'certificates'
+      | 'saved'
+      | undefined;
+    return tab ? {name: 'Profile', params: {tab}} : {name: 'Profile'};
+  }
   if (/^wallet\/?$/i.test(path)) return {name: 'Wallet'};
   const support = path.match(/^support\/([^/]+)\/?$/i);
   if (support) {
@@ -163,6 +170,9 @@ export const parseRoknDestination = (
 
 export const roknDestinationKey = (destination: RoknDestination): string => {
   if (!('params' in destination)) return destination.name;
+  if (destination.name === 'Profile') {
+    return `${destination.name}:${destination.params?.tab || ''}`;
+  }
   if (destination.name === 'CourseDetails') {
     return `${destination.name}:${destination.params.courseId}`;
   }
@@ -174,14 +184,13 @@ export const roknDestinationKey = (destination: RoknDestination): string => {
     destination.params.courseId,
     destination.params.reelId || '',
     destination.params.lessonId || '',
+    destination.params.projectId || '',
   ].join(':');
 };
 
 export const isExternalWebLink = (rawLink?: string | null) =>
   /^https:\/\//i.test(String(rawLink || '').trim()) &&
-  !/^https:\/\/(?:(?:www\.)?rokn\.app|rokn-course-platform-review-production-b7gpy1\.laravel\.cloud)(?:\/|$)/i.test(
-    String(rawLink || '').trim(),
-  );
+  !/^https:\/\/(?:www\.)?rokn\.app(?:\/|$)/i.test(String(rawLink || '').trim());
 
 /**
  * React Navigation cannot recover a cold-start URL which resolves after its

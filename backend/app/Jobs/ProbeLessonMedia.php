@@ -7,7 +7,6 @@ namespace App\Jobs;
 use App\Models\Lesson;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
-use App\Support\DurableJobDispatch;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -25,18 +24,15 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUnique
     public int $uniqueFor = 3600;
     public bool $failOnTimeout = true;
 
-    // Nullable for rolling deploys: serialized jobs created by the previous
-    // release do not contain this property.
-    public ?string $expectedVideoGuid = null;
+    public string $expectedVideoGuid;
 
-    public function __construct(public int $lessonId, ?string $expectedVideoGuid = null)
+    public function __construct(public int $lessonId, string $expectedVideoGuid)
     {
         // Capture the provider generation at dispatch time. A lesson id alone
         // would coalesce a replacement probe with an older job that is still
         // running, potentially leaving the new video unprobed for an hour.
         $this->expectedVideoGuid = strtolower(trim(
             $expectedVideoGuid
-                ?? (string) Lesson::query()->whereKey($lessonId)->value('bunny_video_id')
         ));
         $this->onQueue((string) config('queue.channels.media', 'media'));
     }
@@ -44,7 +40,7 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUnique
     public function uniqueId(): string
     {
         return 'lesson-media-probe:' . $this->lessonId . ':'
-            . (($this->expectedVideoGuid ?? '') !== '' ? $this->expectedVideoGuid : 'legacy');
+            . $this->expectedVideoGuid;
     }
 
     public function handle(
@@ -53,15 +49,6 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUnique
     ): void {
         $lesson = Lesson::query()->with('course')->find($this->lessonId);
         if (!$lesson || !$lesson->usesBunnyVideo() || !$lesson->course) {
-            return;
-        }
-        if (($this->expectedVideoGuid ?? '') === '') {
-            // A pre-deploy payload has no generation. Hand it off instead of
-            // letting stale work observe whichever remote object is current.
-            DurableJobDispatch::now(new self(
-                (int) $lesson->id,
-                (string) $lesson->bunny_video_id
-            ));
             return;
         }
         if (!hash_equals(

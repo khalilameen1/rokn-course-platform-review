@@ -144,18 +144,10 @@ class CategoryController extends Controller
      */
     public function destroy(Category $category)
     {
-        $blocked = DB::transaction(function () use ($category): bool {
+        DB::transaction(function () use ($category): void {
             $locked = Category::query()->whereKey($category->id)->lockForUpdate()->firstOrFail();
-            if ($locked->itemLists()->exists()) return true;
             $locked->delete();
-            return false;
         }, 3);
-        if ($blocked) {
-            return redirect()->route('admin.categories.index')->with(
-                'error',
-                'انقل المحتوى القديم إلى قسم آخر قبل حذف هذا القسم'
-            );
-        }
 
         return redirect()->route('admin.categories.index')->with('success', 'تم الحذف بنجاح ');
     }

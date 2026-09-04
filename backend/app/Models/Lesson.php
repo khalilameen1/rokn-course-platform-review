@@ -28,7 +28,6 @@ class Lesson extends Model
         'file_link1',
         'priority',
         'file_link2',
-        'quiz_id',
         'created_at',
         'updated_at'
     ];
@@ -77,17 +76,11 @@ class Lesson extends Model
         return $query
             ->whereHas('course', function ($courses): void {
                 $courses->where('is_coming_soon', false)
-                    ->whereNull('parent_id')
-                    ->whereHas('sections')
-                    ->whereDoesntHave('courseSection');
+                    ->whereHas('sections');
             })
             ->whereHas('courseSection', function ($sections): void {
                 $sections->whereColumn('course_sections.course_id', 'lessons.list_id');
             });
-    }
-
-    public function itemList(){
-         return $this->belongsTo('App\Models\ItemList','list_id','id');
     }
 
     public function courseSection()
@@ -106,13 +99,30 @@ class Lesson extends Model
         return $this->hasOne(LessonMediaState::class);
     }
 
+    /** A lesson is playable only when its loaded authoritative generation is ready. */
+    public function hasReadyMediaState(): bool
+    {
+        if (!$this->usesBunnyVideo() || !$this->relationLoaded('mediaState')) {
+            return false;
+        }
+
+        $state = $this->mediaState;
+        $lessonGuid = strtolower(trim((string) $this->bunny_video_id));
+        $stateGuid = strtolower(trim((string) ($state?->provider_media_id ?? '')));
+
+        return $state !== null
+            && $lessonGuid !== ''
+            && $stateGuid !== ''
+            && hash_equals($lessonGuid, $stateGuid)
+            && $state->status === 'ready'
+            && $state->last_reconciled_at !== null
+            && $state->integrity_status !== 'quarantined';
+    }
+
     public function playbackSessions()
     {
         return $this->hasMany(PlaybackSession::class);
     }
 
-    public function quiz(){
-         return $this->belongsTo('App\Models\ItemList','quiz_id', 'id');
-    }
 }
 

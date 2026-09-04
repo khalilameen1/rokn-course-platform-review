@@ -16,6 +16,11 @@ final class RoknPublicUrl
         return self::certificate($publicId) . '/artifact';
     }
 
+    public static function certificatePdf(string $publicId): string
+    {
+        return self::certificate($publicId) . '/download';
+    }
+
     public static function portfolio(string $slug): string
     {
         return self::base() . '/@' . rawurlencode($slug);

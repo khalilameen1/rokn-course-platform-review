@@ -27,7 +27,6 @@ const kindAliases: Record<string, NotificationKind> = {
   course_enrolled: 'continue_course',
   institutional_grant: 'continue_course',
   new_course_lesson: 'continue_course',
-  new_quiz: 'continue_course',
   course_update: 'continue_course',
   course_promotion: 'course_recommendation',
   course_recommendation: 'course_recommendation',

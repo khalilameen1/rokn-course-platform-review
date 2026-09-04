@@ -6,8 +6,10 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
+use App\Models\User;
 use App\Models\WatchingLog;
 use App\Services\CourseChatAccessService;
+use App\Services\CourseCompletionService;
 use App\Services\CourseStagedAuthoringService;
 use App\Services\BunnyService;
 use App\Services\LearningEvidenceService;
@@ -45,9 +47,7 @@ final class WatchHistoryController extends Controller
             ->where('user_id', $user->id)
             ->whereHas('course', function ($courses): void {
                 $courses->where('is_coming_soon', false)
-                    ->whereNull('parent_id')
-                    ->whereHas('sections')
-                    ->whereDoesntHave('courseSection');
+                    ->whereHas('sections');
             })
             ->whereHas('lesson.courseSection', function ($sections): void {
                 $sections->whereColumn('course_sections.course_id', 'watching_logs.course_id');
@@ -72,12 +72,13 @@ final class WatchHistoryController extends Controller
             'data' => [
                 'tracking_enabled' => (bool) $user->watch_history_enabled,
                 'items' => collect($history->items())->map(function (WatchingLog $log) {
-                    $duration = max(
+                    $providerDuration = max(
                         0,
-                        (int) ($log->duration_seconds ?? 0),
-                        (int) ($log->lesson?->mediaState?->duration_seconds ?? 0),
-                        max(0, (int) ($log->lesson?->duration_minutes ?? 0)) * 60
+                        (int) ($log->lesson?->mediaState?->duration_seconds ?? 0)
                     );
+                    $duration = $providerDuration > 0
+                        ? $providerDuration
+                        : max(0, (int) ($log->duration_seconds ?? 0));
                     $progress = $duration && $duration > 0
                         ? min(100, round(($log->position_seconds / $duration) * 100, 2))
                         : null;
@@ -117,18 +118,34 @@ final class WatchHistoryController extends Controller
     /** Canonicalize resume pointers lazily, outside the course publish lock. */
     private function materializeWatchHistory(int $userId): void
     {
-        $logs = WatchingLog::query()->where('user_id', $userId)
+        $lessonIds = WatchingLog::query()
+            ->where('user_id', $userId)
+            ->select('lesson_id')
+            ->distinct()
+            ->pluck('lesson_id');
+        if ($lessonIds->isEmpty()) return;
+        $current = $this->stagedAuthoring->currentLearnerEntityMap(
+            Lesson::class,
+            $lessonIds
+        );
+        $staleLessonIds = collect($current)
+            ->filter(fn ($target, $source): bool => (int) $target !== (int) $source)
+            ->keys();
+        if ($staleLessonIds->isEmpty()) return;
+        $logs = WatchingLog::query()
+            ->where('user_id', $userId)
+            ->whereIn('lesson_id', $staleLessonIds)
+            ->orderByDesc('id')
+            ->limit(50)
             ->get(['id', 'lesson_id', 'course_id', 'course_section_id', 'position_seconds',
                 'duration_seconds', 'playback_session_id', 'playback_session_started_at',
                 'last_playback_sequence', 'watched_at', 'completed_at', 'created_at', 'updated_at']);
-        if ($logs->isEmpty()) return;
-        $current = $this->stagedAuthoring->currentLearnerEntityMap(
-            Lesson::class,
-            $logs->pluck('lesson_id')
-        );
         $currentSections = \App\Models\CourseSection::query()
             ->where('sectionable_type', Lesson::class)
-            ->whereIn('sectionable_id', collect($current)->values())
+            ->whereIn(
+                'sectionable_id',
+                $staleLessonIds->map(fn ($id): int => (int) $current[(int) $id])
+            )
             ->get(['id', 'course_id', 'sectionable_id'])
             ->keyBy('sectionable_id');
         foreach ($logs as $source) {
@@ -182,18 +199,24 @@ final class WatchHistoryController extends Controller
                     'course_section_id' => (int) $targetSection->id,
                     'course_name' => (string) ($target->course_name ?: $locked->course_name),
                 ]);
-                $target->completed_at ??= $locked->completed_at;
+                if (
+                    $locked->completed_at
+                    && (!$target->completed_at || $locked->completed_at->lt($target->completed_at))
+                ) {
+                    $target->completed_at = $locked->completed_at;
+                }
                 $target->save();
                 $locked->delete();
             }, 3);
         }
     }
 
-    /** Record the latest position without changing academic completion state. */
+    /** Record a verified playback sample and advance durable learning state. */
     public function store(
         Request $request,
         LearningRewardService $rewards,
-        PlaybackSessionService $sessions
+        PlaybackSessionService $sessions,
+        CourseCompletionService $completion
     ): JsonResponse
     {
         $validated = $request->validate([
@@ -201,8 +224,8 @@ final class WatchHistoryController extends Controller
             'position_seconds' => 'nullable|integer|min:0|max:86400',
             'duration_seconds' => 'nullable|integer|min:1|max:86400',
             'is_completed' => 'nullable|boolean',
-            'playback_session_id' => 'nullable|uuid',
-            'sequence' => 'nullable|required_with:playback_session_id|integer|min:1|max:2147483647',
+            'playback_session_id' => 'required|uuid',
+            'sequence' => 'required|integer|min:1|max:2147483647',
             'event_type' => 'nullable|string|in:play,start,heartbeat,pause,background,stop,complete,error',
             'end_reason' => 'nullable|string|in:user_exit,navigation,lesson_changed,'
                 . 'app_closed,playback_error,source_expired,replaced,unknown',
@@ -221,7 +244,7 @@ final class WatchHistoryController extends Controller
         $user = auth('api')->user();
 
         $lesson = Lesson::with([
-            'course:id,name_ar,name_en,is_coming_soon,parent_id',
+            'course:id,name_ar,name_en,is_coming_soon',
             'courseSection',
             'mediaState:id,lesson_id,duration_seconds',
         ])->findOrFail($validated['lesson_id']);
@@ -274,13 +297,17 @@ final class WatchHistoryController extends Controller
             ], 404);
         }
 
-        $isPublicPreview = (bool) $lesson->is_opened && !$course->isNestedCourse();
+        $isPublicPreview = (bool) $lesson->is_opened;
+        $hasLearningAccess = $this->courseAccess->hasLearningAccess(
+            (int) $user->id,
+            $courseId
+        );
         // Publish grace preserves an already-open media generation, not a
         // revoked purchase. Re-check the canonical entitlement on every
         // heartbeat so an archived session cannot outlive access removal.
         if (
             !$isPublicPreview
-            && !$this->courseAccess->hasLearningAccess((int) $user->id, $courseId)
+            && !$hasLearningAccess
         ) {
             return response()->json([
                 'status' => 403,
@@ -291,56 +318,116 @@ final class WatchHistoryController extends Controller
         }
 
         $providerDuration = max(0, (int) ($lesson->mediaState?->duration_seconds ?? 0));
-        // Resume and session metrics use the reconciled media duration when it
-        // exists. A malformed player payload must not shrink the timeline,
-        // report a false 100%, or terminate evidence against a fake length.
-        $duration = $providerDuration > 0
-            ? $providerDuration
-            : ($validated['duration_seconds'] ?? null);
-        $position = $validated['position_seconds'] ?? 0;
-        if ($duration !== null) {
-            $position = min($position, $duration);
+        // The reconciled media row is the sole duration authority. Accepting
+        // the player's duration when that row is incomplete creates a second
+        // completion clock and lets two devices disagree about the same reel.
+        if ($providerDuration <= 0) {
+            return response()->json([
+                'status' => 409,
+                'success' => false,
+                'code' => 'video_metadata_unavailable',
+                'message' => "بيانات الفيديو قيد التجهيز\nحاول بعد قليل",
+                'data' => null,
+            ], 409);
         }
+        $duration = $providerDuration;
+        $position = min((int) ($validated['position_seconds'] ?? 0), $duration);
 
-        $sessionResult = $sessions->accept($user, (int) $lesson->id, $validated + [
-            'position_seconds' => $position,
-            'duration_seconds' => $duration,
-        ]);
+        // Advancing the session sequence and crediting the same sample are one
+        // durable transition. If evidence persistence fails, rolling both
+        // back lets the player retry this sequence instead of losing watched
+        // time to a session row that already consumed it.
+        $playbackState = DB::transaction(function () use (
+            $sessions,
+            $user,
+            $lesson,
+            $validated,
+            $position,
+            $duration,
+            $hasLearningAccess,
+            $rewards
+        ): array {
+            // Account deletion and wallet rewards own this same aggregate
+            // lock. Taking it first prevents a heartbeat from recreating
+            // progress or rewards while that account is being removed.
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $sessionResult = $sessions->accept($user, (int) $lesson->id, $validated + [
+                'position_seconds' => $position,
+                'duration_seconds' => $duration,
+            ]);
+            $evidence = null;
+            $reward = null;
+            if ($sessionResult['accepted'] && $hasLearningAccess) {
+                $evidence = ($sessionResult['trusted_evidence'] ?? false)
+                    ? $this->learningEvidence->recordHeartbeat(
+                        $user,
+                        $lesson,
+                        $position,
+                        $duration,
+                        $sessionResult['previous_sample'] ?? null
+                    )
+                    : [
+                        'evidence_id' => null,
+                        'verified_seconds' => 0,
+                        'required_seconds' => null,
+                        'credited_seconds' => 0,
+                        'eligible_for_completion' => false,
+                    ];
+                $reward = $rewards->recordStudy(
+                    $user,
+                    (int) $evidence['credited_seconds']
+                );
+            }
+
+            return compact('sessionResult', 'evidence', 'reward');
+        }, 3);
+        $sessionResult = $playbackState['sessionResult'];
+        $duplicate = false;
         if (!$sessionResult['accepted']) {
             $invalid = $sessionResult['reason'] === 'invalid_session';
+            if ($invalid) {
+                return response()->json([
+                    'status' => 422,
+                    'success' => false,
+                    'message' => 'تعذّر حفظ تقدم هذا المقطع',
+                    'data' => [
+                        'recorded' => false,
+                        'duplicate' => false,
+                        'reason' => $sessionResult['reason'],
+                        'credited_seconds' => 0,
+                    ],
+                ], 422);
+            }
+            $duplicate = true;
+        }
+
+        // Preview playback has its own operational session, but it is not an
+        // enrollment fact. It must not create watch history, academic
+        // evidence, study rewards, or a "continue course" card.
+        if (!$hasLearningAccess) {
             return response()->json([
-                'status' => $invalid ? 422 : 200,
-                'success' => !$invalid,
-                'message' => $invalid
-                    ? 'تعذّر حفظ تقدم هذا المقطع'
-                    : 'تم حفظ هذا الجزء من قبل',
+                'status' => 200,
+                'success' => true,
+                'message' => 'تم حفظ حالة التشغيل',
                 'data' => [
                     'recorded' => false,
-                    'duplicate' => !$invalid,
-                    'reason' => $sessionResult['reason'],
+                    'duplicate' => $duplicate,
+                    'reason' => $duplicate ? $sessionResult['reason'] : null,
+                    'preview' => true,
+                    'tracking_enabled' => false,
                     'credited_seconds' => 0,
+                    'learning_evidence' => null,
+                    'reward' => null,
                 ],
-            ], $invalid ? 422 : 200);
+            ]);
         }
 
         // Academic evidence is deliberately separate from optional watch
         // history. Disabling the user's resume list never disables progression,
         // and the server credits only time-compatible heartbeats.
-        $evidence = ($sessionResult['trusted_evidence'] ?? false)
-            ? $this->learningEvidence->recordHeartbeat(
-                $user,
-                $lesson,
-                $position,
-                $duration,
-                $sessionResult['previous_sample'] ?? null
-            )
-            : [
-                'evidence_id' => null,
-                'verified_seconds' => 0,
-                'required_seconds' => null,
-                'credited_seconds' => 0,
-                'eligible_for_completion' => false,
-            ];
+        $evidence = $playbackState['evidence']
+            ?? $this->learningEvidence->evidenceFor($user, $lesson);
+        $reward = $playbackState['reward'];
         $currentLesson = $archiveContinuation['current_lesson'] ?? null;
         $currentEvidence = $currentLesson
             ? $this->learningEvidence->carryCompletedRevisionForward(
@@ -350,16 +437,35 @@ final class WatchHistoryController extends Controller
                 $evidence
             )
             : null;
+        $completionResult = null;
+        $completionEvidence = $currentEvidence ?? $evidence;
+        $completionSectionId = (int) (
+            $archiveContinuation['current_section']?->id
+            ?? $section->id
+        );
+        if ((bool) ($completionEvidence['eligible_for_completion'] ?? false)) {
+            try {
+                $completionResult = $completion->complete(
+                    $user,
+                    $courseId,
+                    $completionSectionId
+                );
+            } catch (\Throwable $exception) {
+                // Evidence is already durable and the explicit idempotent
+                // completion endpoint remains a recovery path.
+                report($exception);
+            }
+        }
 
         if (!$user->watch_history_enabled) {
-            $reward = $rewards->recordStudy($user, (int) $evidence['credited_seconds']);
-
             return response()->json([
                 'status' => 200,
                 'success' => true,
-            'message' => 'تم حفظ تقدمك',
+                'message' => 'تم حفظ تقدمك',
                 'data' => [
                     'recorded' => false,
+                    'duplicate' => $duplicate,
+                    'reason' => $duplicate ? $sessionResult['reason'] : null,
                     'tracking_enabled' => false,
                     'learning_evidence' => $evidence,
                     'current_learning_evidence' => $currentEvidence,
@@ -367,15 +473,24 @@ final class WatchHistoryController extends Controller
                     'course_id' => $courseId,
                     'current_lesson_id' => $currentLesson?->id,
                     'current_section_id' => $archiveContinuation['current_section']?->id ?? null,
+                    'section_completion' => $completionResult,
                     'reward' => $reward,
                 ],
             ]);
         }
 
         $acceptedSession = $sessionResult['session'] ?? null;
+        if ($duplicate && $acceptedSession) {
+            $position = (int) $acceptedSession->last_position_seconds;
+            $duration = max(1, (int) ($acceptedSession->duration_seconds ?? $duration));
+        }
         $incomingSessionId = $acceptedSession?->id;
         $incomingSessionStartedAt = $acceptedSession?->started_at;
-        $incomingSequence = isset($validated['sequence']) ? (int) $validated['sequence'] : null;
+        $incomingObservedAt = $acceptedSession?->last_heartbeat_at
+            ?? $incomingSessionStartedAt;
+        $incomingSequence = $duplicate && $acceptedSession
+            ? (int) $acceptedSession->last_sequence
+            : (int) $validated['sequence'];
         $resumeRecorded = true;
         $resumeLesson = $currentLesson ?? $lesson;
         $courseName = (string) (
@@ -391,16 +506,16 @@ final class WatchHistoryController extends Controller
             $courseName,
             $position,
             $duration,
-            $validated,
             $incomingSessionId,
             $incomingSessionStartedAt,
+            $incomingObservedAt,
             $incomingSequence,
             $evidence,
             &$resumeRecorded
         ): WatchingLog {
             // The unique pair plus insert-or-ignore closes the first-watch race
             // without holding a coarse lock on every action from this user.
-            DB::table('watching_logs')->insertOrIgnore([
+            $created = DB::table('watching_logs')->insertOrIgnore([
                 'user_id' => $user->id,
                 'lesson_id' => $resumeLesson->id,
                 'lesson_name' => (string) $resumeLesson->title,
@@ -419,18 +534,31 @@ final class WatchHistoryController extends Controller
                 ->lockForUpdate()
                 ->firstOrFail();
 
-            if ($incomingSessionId && $incomingSessionStartedAt && $log->playback_session_started_at) {
-                $incomingKey = $incomingSessionStartedAt->format('Y-m-d H:i:s.u') . ':' . $incomingSessionId;
-                $storedKey = $log->playback_session_started_at->format('Y-m-d H:i:s.u')
-                    . ':' . (string) $log->playback_session_id;
-                if (strcmp($incomingKey, $storedKey) < 0) {
+            $storedObservedAt = $log->watched_at ?? $log->updated_at;
+            if (!$created && $incomingSessionId && $incomingObservedAt && $storedObservedAt) {
+                $incomingTime = $incomingObservedAt->format('Y-m-d H:i:s.u');
+                $storedTime = $storedObservedAt->format('Y-m-d H:i:s.u');
+                $sameSession = (string) $log->playback_session_id === (string) $incomingSessionId;
+                $timeOrder = strcmp($incomingTime, $storedTime);
+                if ($timeOrder < 0) {
+                    $resumeRecorded = false;
+                } elseif (
+                    $timeOrder === 0
+                    && $sameSession
+                    && $log->last_playback_sequence !== null
+                    && $incomingSequence <= (int) $log->last_playback_sequence
+                ) {
+                    $resumeRecorded = false;
+                } elseif (
+                    $timeOrder === 0
+                    && !$sameSession
+                    && strcmp((string) $incomingSessionId, (string) $log->playback_session_id) < 0
+                ) {
+                    // SQL timestamps may be second-precision. UUID order is
+                    // only a deterministic tie-break for two genuinely
+                    // simultaneous devices; it is never treated as time.
                     $resumeRecorded = false;
                 }
-            } elseif (!$incomingSessionId && $log->playback_session_started_at) {
-                // An unsequenced legacy retry cannot be ordered against a
-                // server-issued session from another device. Keep the newer
-                // authoritative resume pointer instead of letting it jump.
-                $resumeRecorded = false;
             }
 
             if ($resumeRecorded) {
@@ -441,7 +569,7 @@ final class WatchHistoryController extends Controller
                     'course_name' => $courseName,
                     'position_seconds' => $position,
                     'duration_seconds' => $duration ?? $log->duration_seconds,
-                    'watched_at' => now(),
+                    'watched_at' => $incomingObservedAt ?? now(),
                 ];
                 if ($incomingSessionId && $incomingSessionStartedAt) {
                     $resumeAttributes += [
@@ -464,16 +592,17 @@ final class WatchHistoryController extends Controller
             return $log;
         });
 
-        // Rewards use the same server-qualified delta. Seeking to the end no
-        // longer earns coins or manufactures completion evidence.
-        $reward = $rewards->recordStudy($user, (int) $evidence['credited_seconds']);
-
+        // The response exposes the exact server-qualified evidence and reward
+        // committed for this accepted sample, or the durable snapshot when
+        // this was a replay.
         return response()->json([
             'status' => 200,
             'success' => true,
             'message' => 'تم حفظ موضع المشاهدة',
             'data' => [
                 'recorded' => $resumeRecorded,
+                'duplicate' => $duplicate,
+                'reason' => $duplicate ? $sessionResult['reason'] : null,
                 'resume_ignored_as_stale_session' => !$resumeRecorded,
                 'tracking_enabled' => true,
                 'history_id' => $log->id,
@@ -488,6 +617,7 @@ final class WatchHistoryController extends Controller
                 'course_revision_changed' => $archiveContinuation !== null,
                 'current_lesson_id' => $currentLesson?->id,
                 'current_section_id' => $archiveContinuation['current_section']?->id ?? null,
+                'section_completion' => $completionResult,
                 'reward' => $reward,
             ],
         ]);

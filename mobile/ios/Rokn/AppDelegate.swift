@@ -16,6 +16,13 @@ class AppDelegate: ExpoAppDelegate {
     RoknDiagnostics.install()
     FirebaseApp.configure()
 
+    // Arabic is the shipping direction. Set it before the React factory reads
+    // Yoga configuration so the first iOS launch does not need a JS restart.
+    let i18n = RCTI18nUtil.sharedInstance()
+    i18n.allowRTL(true)
+    i18n.forceRTL(true)
+    i18n.swapLeftAndRightInRTL(true)
+
     let delegate = ReactNativeDelegate()
     let factory = ExpoReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

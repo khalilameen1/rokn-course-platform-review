@@ -6,3 +6,5 @@ export * from './engagement';
 export * from './learning';
 export * from './notifications';
 export * from './profile';
+export * from './savedLessons';
+export * from './watchHistory';

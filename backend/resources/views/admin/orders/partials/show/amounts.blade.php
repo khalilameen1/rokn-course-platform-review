@@ -3,16 +3,19 @@
     @if(in_array($order->payment_method, ['wallet', 'wallet_coins'], true))
         <div class="amount-row">
             <span class="amount-label">إجمالي تكلفة فتح الكورس:</span>
-            <span class="amount-value">{{ number_format($order->total_coins ?? 0) }} عملة ركن</span>
+            <span class="amount-value">{{ number_format($order->ledger_total_coins ?? 0) }} عملة ركن</span>
         </div>
         <div class="amount-row">
             <span class="amount-label">من الرصيد المدفوع:</span>
-            <span class="amount-value">{{ number_format($order->paid_coins ?? 0) }} عملة</span>
+            <span class="amount-value">{{ number_format($order->ledger_paid_coins ?? 0) }} عملة</span>
         </div>
         <div class="amount-row total">
             <span class="amount-label">من المكافآت:</span>
-            <span class="amount-value">{{ number_format($order->reward_coins ?? 0) }} عملة</span>
+            <span class="amount-value">{{ number_format($order->ledger_reward_coins ?? 0) }} عملة</span>
         </div>
+        @if(!$order->coin_allocation_complete)
+            <div class="text-warning mt-2"><small>ربط العملية بدفتر العملات غير مكتمل</small></div>
+        @endif
     @else
         <div class="amount-row">
             <span class="amount-label">المبلغ الأساسي:</span>

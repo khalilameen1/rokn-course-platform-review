@@ -543,13 +543,6 @@ final readonly class AiEntitlementBudgetService
     /** A repurchase resets aggregates but retains immutable usage events. */
     public function resetForNewPurchase(CourseEnrollment $enrollment): void
     {
-        if (
-            !DatabaseCapabilities::hasTable('ai_entitlement_usages')
-            || !DatabaseCapabilities::hasTable('ai_usage_events')
-        ) {
-            return;
-        }
-
         $this->cancelOutstandingReservations($enrollment, 'entitlement_replaced');
 
         DB::transaction(function () use ($enrollment): void {
@@ -564,13 +557,6 @@ final readonly class AiEntitlementBudgetService
         CourseEnrollment $enrollment,
         string $reason
     ): int {
-        if (
-            !DatabaseCapabilities::hasTable('ai_entitlement_usages')
-            || !DatabaseCapabilities::hasTable('ai_usage_events')
-        ) {
-            return 0;
-        }
-
         return DB::transaction(function () use ($enrollment, $reason): int {
             CourseEnrollment::query()->lockForUpdate()->findOrFail($enrollment->id);
             $usages = AiEntitlementUsage::query()
@@ -638,14 +624,6 @@ final readonly class AiEntitlementBudgetService
 
     public function releaseExpiredReservations(int $limit = 500): int
     {
-        if (
-            !DatabaseCapabilities::hasTable('ai_entitlement_usages')
-            || !DatabaseCapabilities::hasTable('ai_usage_events')
-            || !DatabaseCapabilities::hasColumn('ai_usage_events', 'reservation_expires_at')
-        ) {
-            return 0;
-        }
-
         $leaseStartedBefore = now()->subSeconds($this->reservationTtlSeconds());
         $pairs = DB::table('ai_usage_events')
             ->select(['enrollment_id', 'feature'])
@@ -890,7 +868,7 @@ final readonly class AiEntitlementBudgetService
             + max(0, $additional);
         $limit = max(
             1,
-            (int) config('course_plans.ai_unanswered_provider_request_limit', 2)
+            (int) config('course_plans.ai_unanswered_provider_request_limit', 4)
         );
         $wasPaused = $usage->provider_exposure_paused_until?->isFuture() ?? false;
         $pausedUntil = $count >= $limit
@@ -928,7 +906,7 @@ final readonly class AiEntitlementBudgetService
         $period = 'enrollment-' . $enrollmentId;
         $threshold = max(
             1,
-            (int) config('course_plans.ai_unanswered_provider_request_limit', 2)
+            (int) config('course_plans.ai_unanswered_provider_request_limit', 4)
         );
         $this->internalSignals->record(
             'ai_usage.threshold',
@@ -943,7 +921,7 @@ final readonly class AiEntitlementBudgetService
     {
         return max(
             60,
-            (int) config('course_plans.ai_unanswered_provider_window_seconds', 900)
+            (int) config('course_plans.ai_unanswered_provider_window_seconds', 600)
         );
     }
 
@@ -951,7 +929,7 @@ final readonly class AiEntitlementBudgetService
     {
         return max(
             60,
-            (int) config('course_plans.ai_provider_exposure_cooldown_seconds', 900)
+            (int) config('course_plans.ai_provider_exposure_cooldown_seconds', 300)
         );
     }
 
@@ -969,12 +947,11 @@ final readonly class AiEntitlementBudgetService
     private function reservationTtlSeconds(): int
     {
         return max(
-            60,
-            (int) config('course_plans.ai_reservation_ttl_seconds', 120),
-            // Expiry is a recovery lease, not a provider deadline. Keep a
-            // full minute for settlement after the longest permitted request
-            // so the sweeper cannot release a request that is still billable.
-            (int) config('openrouter.timeout_seconds', 45) + 60
+            1200,
+            (int) config('course_plans.ai_reservation_ttl_seconds', 1200),
+            (int) config('openrouter.queue_stale_seconds', 900)
+                + (int) config('openrouter.timeout_seconds', 45)
+                + 60
         );
     }
 }

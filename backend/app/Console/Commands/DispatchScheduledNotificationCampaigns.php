@@ -8,7 +8,6 @@ use App\Models\NotificationCampaign;
 use App\Services\NotificationCampaignService;
 use App\Support\DurableJobDispatch;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Schema;
 
 final class DispatchScheduledNotificationCampaigns extends Command
 {
@@ -17,11 +16,6 @@ final class DispatchScheduledNotificationCampaigns extends Command
 
     public function handle(NotificationCampaignService $campaigns): int
     {
-        if (!Schema::hasTable('notification_campaigns')
-            || !Schema::hasColumn('notification_campaigns', 'scheduled_at')) {
-            return self::SUCCESS;
-        }
-
         $limit = max(1, min(1000, (int) $this->option('limit')));
         $queued = 0;
         $due = NotificationCampaign::query()

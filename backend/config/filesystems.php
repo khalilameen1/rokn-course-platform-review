@@ -103,7 +103,8 @@ return [
 
         'public' => $publicDisk,
 
-        // Course resources are entitlements, not public assets.
+        // Retained only until the deletion ledger drains files from the
+        // retired module/section attachment model.
         'module-attachments' => [
             'driver' => 'local',
             'root' => env(

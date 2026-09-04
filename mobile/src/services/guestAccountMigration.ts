@@ -6,10 +6,7 @@ import {
   getItem,
   AsyncKeys,
 } from '../constants/helpers';
-import {
-  migrateGuestLearningState,
-  migrateGuestSavedCollections,
-} from '../components/VideoPlayer/courseLearningApi';
+import {migrateGuestLearningState} from '../components/VideoPlayer/courseLearningApi';
 import {migrateGuestProductFeedback} from './productFeedback';
 
 const PENDING_GUEST_MIGRATION_KEY = '@rokn/pending-guest-migration/v1';
@@ -67,11 +64,17 @@ const readPendingMigration = async (
     PENDING_GUEST_MIGRATION_KEY,
   ]);
   const scoped = parsePendingMigration(scopedRaw || '');
-  if (scoped && (!scoped.accountScope || scoped.accountScope === accountScope)) {
+  if (
+    scoped &&
+    (!scoped.accountScope || scoped.accountScope === accountScope)
+  ) {
     return {key: scopedMigrationKey, value: scoped};
   }
   const unbound = parsePendingMigration(unboundRaw || '');
-  if (unbound && (!unbound.accountScope || unbound.accountScope === accountScope)) {
+  if (
+    unbound &&
+    (!unbound.accountScope || unbound.accountScope === accountScope)
+  ) {
     return {key: PENDING_GUEST_MIGRATION_KEY, value: unbound};
   }
   return null;
@@ -123,7 +126,8 @@ const mergeStringList = async (
     ...(Array.isArray(source) ? source : []),
   ]
     .filter(
-      (item): item is string => typeof item === 'string' && Boolean(item.trim()),
+      (item): item is string =>
+        typeof item === 'string' && Boolean(item.trim()),
     )
     .map(item => item.trim());
   await AsyncStorage.setItem(
@@ -241,18 +245,19 @@ const moveAttachmentPromptReceipts = async (
     const suffix = sourceKey.slice(sourcePrefix.length);
     const targetKey = `${ATTACHMENT_PROMPT_KEY}:${accountScope}:${suffix}`;
     const sourceValue = await AsyncStorage.getItem(sourceKey);
-    if (sourceValue !== null) await AsyncStorage.setItem(targetKey, sourceValue);
+    if (sourceValue !== null)
+      await AsyncStorage.setItem(targetKey, sourceValue);
     await AsyncStorage.removeItem(sourceKey);
   }
 };
 
 /**
  * Moves every portable public-preview action to the newly authenticated
- * account. Local state is completed before navigation; server bookmark import
- * can continue in the background and remains retryable across process death.
+ * account. Local state is completed before navigation; remote feedback writes
+ * can continue in the background and remain retryable across process death.
  */
 const resumeGuestAccountMigration = async (
-  syncRemoteCollections = true,
+  syncRemoteFeedback = true,
 ): Promise<boolean> => {
   if (!extractApiToken(await getItem(AsyncKeys.USER_DATA))) return false;
   const accountBoundary = await captureAccountSessionBoundary();
@@ -265,19 +270,24 @@ const resumeGuestAccountMigration = async (
   if (!validScope(accountScope) || accountScope === guestScope) return false;
   // Once a guest journey is attached to an account it can never leak into a
   // different account if the first learner logs out during a network retry.
-  if (pending.accountScope && pending.accountScope !== accountScope) return false;
+  if (pending.accountScope && pending.accountScope !== accountScope)
+    return false;
   if (!pending.accountScope) {
     const boundKey = accountPendingKey(accountScope);
     await AsyncStorage.setItem(
       boundKey,
-      JSON.stringify({guestScope, accountScope} satisfies PendingGuestMigration),
+      JSON.stringify({
+        guestScope,
+        accountScope,
+      } satisfies PendingGuestMigration),
     );
     if (record.key !== boundKey) await AsyncStorage.removeItem(record.key);
     record.key = boundKey;
     pending.accountScope = accountScope;
   }
 
-  if (!(await migrateGuestLearningState(guestScope, accountBoundary))) return false;
+  if (!(await migrateGuestLearningState(guestScope, accountBoundary)))
+    return false;
   await Promise.all([
     mergeStringList(SEARCH_HISTORY_KEY, guestScope, accountScope, 7),
     moveHomeScroll(guestScope, accountScope),
@@ -293,18 +303,15 @@ const resumeGuestAccountMigration = async (
   ]);
   assertAccountSessionBoundary(accountBoundary);
 
-  if (!syncRemoteCollections) return true;
-  const [collectionsMigrated, feedbackMigrated] = await Promise.all([
-    migrateGuestSavedCollections(guestScope, accountBoundary),
-    migrateGuestProductFeedback(
-      guestScope,
-      accountScope,
-      true,
-      accountBoundary,
-    ),
-  ]);
+  if (!syncRemoteFeedback) return true;
+  const feedbackMigrated = await migrateGuestProductFeedback(
+    guestScope,
+    accountScope,
+    true,
+    accountBoundary,
+  );
   assertAccountSessionBoundary(accountBoundary);
-  if (!collectionsMigrated || !feedbackMigrated) return false;
+  if (!feedbackMigrated) return false;
   await AsyncStorage.multiRemove([
     record.key,
     `@rokn/course-player/v3:${guestScope}`,
@@ -315,12 +322,24 @@ const resumeGuestAccountMigration = async (
 let migrationQueue: Promise<unknown> = Promise.resolve();
 
 export const resumePendingGuestAccountMigration = (
-  syncRemoteCollections = true,
+  syncRemoteFeedback = true,
 ): Promise<boolean> => {
   const operation = migrationQueue.then(
-    () => resumeGuestAccountMigration(syncRemoteCollections),
-    () => resumeGuestAccountMigration(syncRemoteCollections),
+    () => resumeGuestAccountMigration(syncRemoteFeedback),
+    () => resumeGuestAccountMigration(syncRemoteFeedback),
   );
   migrationQueue = operation.catch(() => undefined);
   return operation;
 };
+
+/**
+ * Finish the one guest-to-account handoff in order. Local learning data moves
+ * first so login never waits on feedback sync; the remote pass then drains the
+ * remaining outbox. Every login surface calls this owner instead of carrying
+ * its own two-step migration recipe.
+ */
+export const resumeCompleteGuestAccountMigration =
+  async (): Promise<boolean> => {
+    await resumePendingGuestAccountMigration(false);
+    return resumePendingGuestAccountMigration(true);
+  };

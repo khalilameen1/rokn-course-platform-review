@@ -11,14 +11,12 @@
                 @endforeach
             </ul>
         </div>
-        <button type="button" class="alert-close" onclick="closeAlert(this)">
+        <button type="button" class="alert-close" onclick="closeAlert(this)" aria-label="إغلاق رسالة الخطأ">
             <i class="fa fa-times"></i>
         </button>
         <div class="alert-progress"></div>
     </div>
-@endif
-
-@if(session()->has('error'))
+@elseif(session()->has('error'))
     <div class="enhanced-alert enhanced-alert-error" role="alert">
         <div class="alert-icon">
             <i class="fa fa-exclamation-circle"></i>
@@ -27,7 +25,7 @@
             <h6 class="alert-title">خطأ</h6>
             <p class="alert-message">{{ session('error') }}</p>
         </div>
-        <button type="button" class="alert-close" onclick="closeAlert(this)">
+        <button type="button" class="alert-close" onclick="closeAlert(this)" aria-label="إغلاق رسالة الخطأ">
             <i class="fa fa-times"></i>
         </button>
         <div class="alert-progress"></div>
@@ -41,7 +39,7 @@
             <h6 class="alert-title">تم بنجاح</h6>
             <p class="alert-message">{{ session('success') }}</p>
         </div>
-        <button type="button" class="alert-close" onclick="closeAlert(this)">
+        <button type="button" class="alert-close" onclick="closeAlert(this)" aria-label="إغلاق رسالة النجاح">
             <i class="fa fa-times"></i>
         </button>
         <div class="alert-progress"></div>
@@ -60,9 +58,11 @@ function closeAlert(button) {
     }
 }
 
-// Auto-hide alerts after 5 seconds
+// Success feedback may clear itself. Validation and operation failures stay
+// visible until the editor dismisses them; long dashboard forms must not lose
+// the reason a save failed while the user scrolls back to the relevant field.
 document.addEventListener('DOMContentLoaded', function() {
-    const alerts = document.querySelectorAll('.enhanced-alert');
+    const alerts = document.querySelectorAll('.enhanced-alert-success');
     alerts.forEach(alert => {
         // Add auto-hide class for animation
         alert.classList.add('auto-hide');

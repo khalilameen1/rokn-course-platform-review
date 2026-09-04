@@ -1,5 +1,5 @@
 @extends('admin.layouts.app')
-@section('page.title', ' اتصل بنا ' )
+@section('page.title', 'رسائل الدعم')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('admin/assets/css/admin-learning-views.css') }}">
@@ -11,9 +11,11 @@
     <div class="contacts-header">
         <h1>
             <i class="fa fa-envelope"></i>
-            رسائل اتصل بنا
+            رسائل الموقع وطلبات حذف الحساب
         </h1>
     </div>
+
+    @include('admin.partials.support-inbox-tabs', ['supportSource' => 'website'])
 
     <div class="contacts-card">
         <div class="table-responsive">
@@ -21,11 +23,11 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>الأسم</th>
+                        <th>الاسم</th>
                         <th>الجوال</th>
                         <th>البريد</th>
                         <th>التاريخ</th>
-                        <th>حاله الرساله</th>
+                        <th>حالة الرسالة</th>
                         <th>نوع الطلب</th>
                         <th>الإجراءات</th>
                     </tr>
@@ -41,7 +43,7 @@
                             <td>
                                 <span class="status-badge {{ $contact->read ? 'read' : 'unread' }}">
                                     <i class="fa {{ $contact->read ? 'fa-check-circle' : 'fa-exclamation-circle' }}"></i>
-                                    {{ $contact->read ? 'تم القراءة' : 'رساله جديده' }}
+                                    {{ $contact->read ? 'مقروءة' : 'رسالة جديدة' }}
                                 </span>
                             </td>
                             <td>

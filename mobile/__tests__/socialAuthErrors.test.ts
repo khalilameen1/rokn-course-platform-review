@@ -29,9 +29,21 @@ describe('social auth failure presentation', () => {
     expect(socialAuthFailureCode({code: 'ERR_NETWORK'})).toBe(
       'NETWORK_UNAVAILABLE',
     );
+    expect(socialAuthFailureCode({response: {status: 503, data: {}}})).toBe(
+      'PROVIDER_UNAVAILABLE',
+    );
+    expect(socialAuthFailureCode({code: 'ETIMEDOUT'})).toBe('NETWORK_TIMEOUT');
+    expect(socialAuthMessage('NETWORK_TIMEOUT')).toBe(
+      'الاتصال بطيء\nحاول مرة أخرى',
+    );
     expect(
-      socialAuthFailureCode({response: {status: 503, data: {}}}),
-    ).toBe('PROVIDER_UNAVAILABLE');
+      socialAuthFailureCode(
+        new Error('SESSION_STORAGE_UNAVAILABLE_DEADLINE'),
+      ),
+    ).toBe('SESSION_STORAGE_UNAVAILABLE_DEADLINE');
+    expect(socialAuthMessage('SESSION_STORAGE_UNAVAILABLE_DEADLINE')).toBe(
+      'تعذّر حفظ تسجيل الدخول\nأغلق التطبيق وافتحه ثم حاول',
+    );
   });
 
   it('keeps learner copy short and hides cancelled attempts', () => {

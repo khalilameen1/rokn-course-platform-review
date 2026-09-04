@@ -7,7 +7,7 @@
     @include('admin.partials.page-header', [
         'pageTitle' => 'جلسات الأجهزة',
         'pageDescription' => 'جلسات الدخول النشطة دون عناوين IP أو معرّفات إعلانية.',
-        'pageIcon' => 'fa-laptop',
+        'pageIcon' => 'fa-mobile',
         'pageActionUrl' => route('admin.product-operations.index'),
         'pageActionLabel' => 'مركز التشغيل',
         'pageActionIcon' => 'fa-dashboard',
@@ -22,7 +22,7 @@
                     @include('admin.partials.metric-card', [
                         'metricLabel' => strtoupper($platform),
                         'metricValue' => number_format($total),
-                        'metricIcon' => $platform === 'android' ? 'fa-android' : ($platform === 'ios' ? 'fa-apple' : 'fa-desktop'),
+                        'metricIcon' => $platform === 'android' ? 'fa-android' : ($platform === 'ios' ? 'fa-apple' : 'fa-mobile'),
                     ])
                 </div>
             @endforeach
@@ -38,7 +38,14 @@
                     @forelse($sessions as $session)
                         <tr>
                             <td><strong>{{ $session->user?->name ?: 'حساب محذوف' }}</strong><br><small class="text-muted">{{ $session->user?->email }}</small></td>
-                            <td>{{ strtoupper($session->platform ?: 'other') }}</td>
+                            @php($isTablet = ($session->device_class ?? null) === 'tablet')
+                            <td>
+                                <i class="fa {{ $isTablet ? 'fa-tablet' : 'fa-mobile' }} ml-1"></i>
+                                {{ $isTablet ? 'جهاز لوحي' : 'هاتف' }}
+                                @if(in_array($session->platform, ['android', 'ios'], true))
+                                    <small class="text-muted">{{ $session->platform === 'ios' ? 'iOS' : 'Android' }}</small>
+                                @endif
+                            </td>
                             <td>{{ $session->app_version ?: '—' }} @if($session->app_build)<small class="text-muted">({{ $session->app_build }})</small>@endif</td>
                             <td>{{ \App\Support\BusinessClock::relative($session->last_used_at ?: $session->issued_at) ?: '—' }}</td>
                             <td>{{ \App\Support\BusinessClock::relative($session->expired_at) ?: '—' }}</td>

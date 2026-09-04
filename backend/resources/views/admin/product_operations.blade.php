@@ -388,23 +388,11 @@
                 'auth_methods' => 'طرق الدخول المعلنة ظاهرة وجاهزة',
                 'packages' => 'باقات قابلة للشراء', 'reward_tasks' => 'مهام ربح فعالة',
                 'support' => 'دعم واتساب',
-                'private_attachments' => 'المرفقات الداخلية خارج المسار العام',
                 'external_monitoring' => 'Sentry وNightwatch مربوطان',
             ] as $key => $label)
                 <div class="col-md-6 mb-2"><span class="badge {{ $readiness[$key] ? 'badge-success' : 'badge-danger' }} ml-2">{{ $readiness[$key] ? 'جاهز' : 'ناقص' }}</span>{{ $label }}</div>
             @endforeach
             </div>
-            @if(($counts['legacy_public_attachments'] ?? 0) > 0)
-                <div class="alert alert-danger mt-3 mb-2">
-                    توجد {{ number_format($counts['legacy_public_attachments']) }} مرفقات قديمة على التخزين العام.
-                    شغّل <code>php artisan attachments:privatize --execute</code> بعد تجهيز التخزين المشترك، ثم أعد التشغيل مع <code>--delete-public</code> بعد التحقق.
-                </div>
-            @endif
-            @if(($counts['external_attachment_links'] ?? 0) > 0)
-                <div class="alert alert-warning mt-2 mb-2">
-                    توجد {{ number_format($counts['external_attachment_links']) }} روابط مرفقات خارجية؛ ركن لا يستطيع منع مشاركتها أو إبطالها بعد فتحها.
-                </div>
-            @endif
             @php
                 $infrastructure = [
                     ['Bunny Stream', data_get($capabilityReport, 'capabilities.bunny.stream')],
@@ -468,6 +456,7 @@
             <p class="mb-2">عمليات تنتظر كشف التسوية <strong class="float-left">{{ number_format($finance['pending_settlements']) }}</strong></p>
             <p class="mb-2">عملات مشتراة استُهلكت <strong class="float-left">{{ number_format($finance['course_paid_coins']) }}</strong></p>
             <p class="mb-2">عملات مكافآت استُهلكت <strong class="float-left">{{ number_format($finance['course_reward_coins']) }}</strong></p>
+            @if($finance['course_ledger_incomplete_orders'] > 0)<p class="mb-2 text-warning">عمليات كورس تحتاج ربط الدفتر <strong class="float-left">{{ number_format($finance['course_ledger_incomplete_orders']) }}</strong></p>@endif
             <p class="mb-2">ترقيات المنح — مدفوعة / مكافآت <strong class="float-left">{{ number_format($finance['grant_upgrade_paid_coins']) }} / {{ number_format($finance['grant_upgrade_reward_coins']) }}</strong></p>
             <p class="mb-0">استرداد أو مراجعة <strong class="float-left">{{ number_format($finance['refunds']) }}</strong></p>
         </div></div></div>
@@ -480,12 +469,15 @@
         <div class="table-responsive"><table class="table admin-table mb-0 text-right">
             <thead class="thead-light"><tr><th>الكورس</th><th>الحالة</th><th>الخريطة</th><th>الطلاب</th><th>التقييم</th><th>مدفوعة / مكافآت</th><th>Rokn AI</th></tr></thead>
             <tbody>@forelse($courses as $course)<tr>
-                <td><a href="{{ route('admin.courses.edit', $course) }}"><strong>{{ $course->name_ar }}</strong></a>@if($course->is_main_course)<br><small class="text-primary">الكورس الرئيسي</small>@endif</td>
+                <td><a href="{{ route('admin.courses.show', $course) }}"><strong>{{ $course->name_ar }}</strong></a>@if($course->is_main_course)<br><small class="text-primary">الكورس الرئيسي</small>@endif</td>
                 <td>{{ $course->is_coming_soon ? ($course->is_catalog_visible ? 'قريبًا ظاهر' : 'مسودة مخفية') : 'منشور' }}<br><small>{{ (int)$course->price === 0 ? 'مجاني' : number_format($course->price).' عملة' }}</small></td>
                 <td>{{ number_format($course->modules_count) }} وحدة<br><small>{{ number_format($course->sections_count) }} عنصرًا</small></td>
                 <td>{{ number_format($course->active_enrollments_count) }}</td>
                 <td>{{ $course->ratings_count ? number_format((float)$course->ratings_avg_rating, 1).' / ٥' : 'لا يوجد' }}<br><small>{{ number_format($course->ratings_count) }} تقييم</small></td>
-                <td>{{ number_format((int)$course->paid_coins_spent) }} / {{ number_format((int)$course->reward_coins_spent) }}</td>
+                <td>
+                    {{ number_format((int)$course->paid_coins_spent) }} / {{ number_format((int)$course->reward_coins_spent) }}
+                    @if((int) $course->coin_ledger_incomplete_orders > 0)<br><small class="text-warning">{{ number_format((int) $course->coin_ledger_incomplete_orders) }} غير مكتملة</small>@endif
+                </td>
                 <td>{{ (int) $course->ai_plans_count > 0 ? 'حسب الفئة' : 'غير مشمول' }}</td>
             </tr>@empty<tr><td colspan="7" class="text-center text-muted py-5">لا توجد كورسات بعد</td></tr>@endforelse</tbody>
         </table></div>
@@ -500,7 +492,7 @@
             <a class="btn btn-outline-primary" href="{{ route('admin.project-submissions.index') }}">المشاريع</a>
             <a class="btn btn-outline-primary" href="{{ route('admin.levels.index') }}">الشارات</a>
             <a class="btn btn-outline-primary" href="{{ route('admin.notifications.index') }}">الإشعارات</a>
-            <a class="btn btn-outline-primary" href="{{ route('admin.settings') }}">الدعم والقواعد وRokn AI</a>
+            <a class="btn btn-outline-primary" href="{{ route('admin.settings') }}">إعدادات التطبيق وRokn AI</a>
         </div>
     </div></div>
 

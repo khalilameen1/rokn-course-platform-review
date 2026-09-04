@@ -9,19 +9,14 @@ use App\Models\SocialAccount;
 use App\Models\Setting;
 use App\Models\ApiToken;
 use App\Models\User;
-use App\Models\RewardRule;
-use App\Services\FacebookService;
-use App\Services\GoogleService;
-use App\Services\TikTokService;
-use App\Services\AppleService;
 use App\Services\SocialAuthProviderRegistry;
 use App\Services\DeviceLoginService;
 use App\Services\PortfolioShareIdentityService;
 use App\Services\SocialIdentityGuardService;
+use App\Services\SocialOAuthAttemptService;
 use App\Support\RoknLocale;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
@@ -31,33 +26,24 @@ use Illuminate\Validation\Rule;
 
 class SignController extends Controller
 {
-    private $facebookService;
-    private $googleService;
-    private $tikTokService;
-    private $appleService;
     private SocialAuthProviderRegistry $socialProviders;
     private DeviceLoginService $deviceLogin;
     private PortfolioShareIdentityService $portfolioShares;
     private SocialIdentityGuardService $identityGuards;
+    private SocialOAuthAttemptService $socialAttempts;
 
     public function __construct(
-        FacebookService $facebookService,
-        GoogleService $googleService,
-        TikTokService $tikTokService,
-        AppleService $appleService,
         SocialAuthProviderRegistry $socialProviders,
         DeviceLoginService $deviceLogin,
         PortfolioShareIdentityService $portfolioShares,
-        SocialIdentityGuardService $identityGuards
+        SocialIdentityGuardService $identityGuards,
+        SocialOAuthAttemptService $socialAttempts
     ) {
-        $this->facebookService = $facebookService;
-        $this->googleService = $googleService;
-        $this->tikTokService = $tikTokService;
-        $this->appleService = $appleService;
         $this->socialProviders = $socialProviders;
         $this->deviceLogin = $deviceLogin;
         $this->portfolioShares = $portfolioShares;
         $this->identityGuards = $identityGuards;
+        $this->socialAttempts = $socialAttempts;
     }
 
     /**
@@ -77,7 +63,10 @@ class SignController extends Controller
             'provider' => [
                 'required',
                 'string',
-                Rule::in($this->socialProviders->declared()->all()),
+                // Discovery and token exchange must use the same readiness
+                // decision. A declared but incomplete provider is not a login
+                // method and must never reach a verifier with half a config.
+                Rule::in($this->socialProviders->available()->all()),
             ],
             'token' => 'required|string|max:10000',
             'provider_name' => 'nullable|string|max:255',
@@ -90,6 +79,18 @@ class SignController extends Controller
         ]);
 
         $provider = $validated['provider'];
+        if (
+            $this->socialProviders->browserDeclared()->contains($provider)
+            && !$request->attributes->get('social_browser_attempt_verified', false)
+        ) {
+            return response()->json([
+                'status' => 422,
+                'success' => false,
+                'code' => 'social_browser_attempt_required',
+                'message' => "ابدأ تسجيل الدخول من جديد\nثم أكمله من المتصفح",
+                'data' => null,
+            ], 422);
+        }
         $token = $validated['token'];
         $localeInput = $validated['preferred_locale']
             ?? ($request->hasHeader('Accept-Language') ? $request->header('Accept-Language') : null);
@@ -98,18 +99,13 @@ class SignController extends Controller
             : (RoknLocale::normalize($localeInput) ?? RoknLocale::fromRequest($request));
 
         try {
-            // Verify token with appropriate service
-            $socialData = match($provider) {
-                'facebook' => $this->facebookService->verify($token),
-                'google' => $this->googleService->verify(
-                    $token,
-                    $request->attributes->get('social_expected_nonce_hash')
-                ),
-                'tiktok' => $this->tikTokService->verify($token),
-                'apple' => $this->appleService->verify($token, (string) $validated['nonce']),
-                default => throw new Exception('Unsupported provider'),
-            };
-        } catch (Exception $e) {
+            $socialData = $this->socialProviders->verifyIdentity(
+                $provider,
+                $token,
+                $request->attributes->get('social_expected_nonce_hash'),
+                $validated['nonce'] ?? null
+            );
+        } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Social identity verification failed', [
                 'provider' => $provider,
                 'exception' => get_class($e),
@@ -130,16 +126,7 @@ class SignController extends Controller
             ], $providerUnavailable ? 503 : 422);
         }
 
-        $providerId = trim((string) ($socialData['id'] ?? ''));
-        if ($providerId === '' || strlen($providerId) > 191) {
-            return response()->json([
-                'status' => 422,
-                'success' => false,
-                'code' => 'social_identity_verification_failed',
-                'message' => 'تعذّر التحقق من هوية الحساب',
-                'data' => null,
-            ], 422);
-        }
+        $providerId = $socialData['id'];
 
         if (!$attemptStartedAt instanceof CarbonInterface) {
             $issuedAt = $socialData['identity_issued_at'] ?? null;
@@ -162,6 +149,15 @@ class SignController extends Controller
                     'data' => null,
                 ], 422);
             }
+            if ($attemptStartedAt->isBefore(now()->subMinutes(10))) {
+                return response()->json([
+                    'status' => 410,
+                    'success' => false,
+                    'code' => 'social_login_fresh_attempt_required',
+                    'message' => "انتهت محاولة تسجيل الدخول\nابدأ مرة أخرى",
+                    'data' => null,
+                ], 410);
+            }
         }
 
         $email = isset($socialData['email']) && filter_var($socialData['email'], FILTER_VALIDATE_EMAIL)
@@ -182,7 +178,7 @@ class SignController extends Controller
         $picture = isset($socialData['picture']) ? (string) $socialData['picture'] : null;
 
         try {
-            [$user, $isNewUser] = DB::transaction(function () use (
+            $user = DB::transaction(function () use (
                 $provider,
                 $providerId,
                 $email,
@@ -191,35 +187,43 @@ class SignController extends Controller
                 $picture,
                 $attemptStartedAt,
                 $preferredLocale
-            ): array {
+            ): User {
                 $this->identityGuards->assertLoginStartedAfterLastDeletion(
                     $provider,
                     $providerId,
                     $attemptStartedAt
                 );
+                if ($emailIsVerified) {
+                    $this->identityGuards->lockVerifiedEmailLink((string) $email);
+                }
                 $socialAccount = SocialAccount::query()
                     ->where('provider', $provider)
                     ->where('provider_user_id', $providerId)
                     ->lockForUpdate()
                     ->first();
 
-                $user = $socialAccount?->user;
-
-                // Seamlessly migrate identities created before the social_accounts table existed.
-                if (!$user) {
-                    $user = User::query()
-                        ->where('social_provider', $provider)
-                        ->where('social_id', $providerId)
+                $user = $socialAccount
+                    ? User::withTrashed()
+                        ->whereKey($socialAccount->user_id)
                         ->lockForUpdate()
-                        ->first();
+                        ->first()
+                    : null;
+                if ($socialAccount && (!$user || $user->trashed() || !(bool) $user->active)) {
+                    throw new \DomainException('social_account_disabled');
                 }
 
                 // Linking by email is allowed only when the provider itself verified that email.
                 if (!$user && $emailIsVerified) {
-                    $emailOwner = User::query()
+                    $emailOwner = User::withTrashed()
                         ->where('email', $email)
                         ->lockForUpdate()
                         ->first();
+                    if ($emailOwner && ($emailOwner->trashed() || !(bool) $emailOwner->active)) {
+                        throw new \DomainException('social_account_disabled');
+                    }
+                    if ($emailOwner && strtolower((string) $emailOwner->role) !== 'client') {
+                        throw new \DomainException('social_account_email_reserved');
+                    }
                     if ($emailOwner && !$emailOwner->email_verified_at) {
                         // A learner may type any available address while
                         // editing the profile. That unverified string is not
@@ -229,9 +233,7 @@ class SignController extends Controller
                     $user = $emailOwner;
                 }
 
-                $isNewUser = false;
                 if (!$user) {
-                    $isNewUser = true;
                     $internalEmail = $emailIsVerified
                         ? $email
                         : sprintf('%s-%s@accounts.rokn.app', $provider, hash('sha256', $providerId));
@@ -327,7 +329,7 @@ class SignController extends Controller
                     $user->forceFill(['preferred_locale' => $preferredLocale])->save();
                 }
 
-                return [$user, $isNewUser];
+                return $user;
             }, 3);
         } catch (\Illuminate\Database\QueryException $e) {
             report($e);
@@ -351,6 +353,15 @@ class SignController extends Controller
                     'data' => null,
                 ], 410);
             }
+            if ($e->getMessage() === 'social_account_disabled') {
+                return response()->json([
+                    'status' => 403,
+                    'success' => false,
+                    'code' => 'account_disabled',
+                    'message' => "حسابك غير مفعّل\nتواصل مع الدعم",
+                    'data' => null,
+                ], 403);
+            }
 
             return response()->json([
                 'status' => 409,
@@ -362,7 +373,7 @@ class SignController extends Controller
         }
 
         // Check if user is active
-        if (!$user->active) {
+        if ($user->trashed() || !$user->active) {
             return response()->json([
                 'status' => 403,
                 'success' => false,
@@ -372,10 +383,18 @@ class SignController extends Controller
             ], 403);
         }
 
-        // Serialize policy evaluation with token issuance. Two first logins
-        // arriving together must not both observe an empty device lock.
-        $deviceSession = DB::transaction(function () use ($user, $validated): array {
-            $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+        $issueDeviceSession = function () use ($request, $user, $validated, $provider, $providerId): array {
+            $lockedUser = User::withTrashed()->whereKey($user->id)->lockForUpdate()->first();
+            if (!$lockedUser || $lockedUser->trashed() || !(bool) $lockedUser->active) {
+                return [
+                    'access' => [
+                        'allowed' => false,
+                        'code' => 'account_disabled',
+                        'message' => "حسابك غير مفعّل\nتواصل مع الدعم",
+                    ],
+                    'api_token' => null,
+                ];
+            }
             $access = $this->deviceLogin->checkDeviceAccess(
                 $lockedUser,
                 $validated['device_id'] ?? null
@@ -390,17 +409,44 @@ class SignController extends Controller
                 (string) $access['device_id']
             );
 
-            $apiToken = $lockedUser->generateApiToken();
+            $apiToken = $lockedUser->generateApiToken(
+                $provider,
+                $providerId,
+                $this->sessionMetadata($request, $validated)
+            );
             $this->deviceLogin->enforceActiveSessionLimit($lockedUser, $apiToken);
 
             return ['access' => $access, 'api_token' => $apiToken];
-        });
+        };
+
+        $browserAttemptVerified = (bool) $request->attributes->get(
+            'social_browser_attempt_verified',
+            false
+        );
+        if ($browserAttemptVerified) {
+            $deviceSession = $this->socialAttempts->whileCompletionClaimIsOwned(
+                (int) $request->attributes->get('social_oauth_attempt_id', 0),
+                (string) $request->attributes->get('social_oauth_completion_claim_id', ''),
+                $issueDeviceSession
+            );
+            if ($deviceSession === null) {
+                return response()->json([
+                    'status' => 409,
+                    'success' => false,
+                    'code' => 'social_login_in_progress',
+                    'message' => "جارٍ إكمال تسجيل الدخول\nحاول بعد قليل",
+                    'data' => null,
+                ], 409);
+            }
+        } else {
+            $deviceSession = DB::transaction($issueDeviceSession, 3);
+        }
         $deviceAccess = $deviceSession['access'];
         if (!$deviceAccess['allowed']) {
             return response()->json([
                 'status' => 403,
                 'success' => false,
-                'code' => 'device_login_denied',
+                'code' => $deviceAccess['code'] ?? 'device_login_denied',
                 'message' => $deviceAccess['message'],
                 'data' => null,
             ], 403);
@@ -419,7 +465,7 @@ class SignController extends Controller
         // A temporary outage during first registration must not permanently lose the welcome coins.
         $welcomeBonusGranted = 0;
         try {
-            $welcomeBonusGranted = \App\Services\StudentNotificationService::sendRegistrationBonus($user);
+            $welcomeBonusGranted = \App\Services\StudentNotificationService::sendRegistrationBonus($user, $provider);
         } catch (\Throwable $exception) {
             // Authentication must never be blocked by a notification or welcome-credit outage.
             report($exception);
@@ -485,21 +531,14 @@ class SignController extends Controller
     {
         $providers = $this->socialProviders->available();
         $settings = null;
-        $welcomeBonus = (int) config('social_auth.welcome_bonus_coins', 20);
+        $welcomeBonus = 0;
         try {
-            $discovery = Cache::remember('auth-methods:dynamic:v2', 60, function () use ($welcomeBonus): array {
+            $discovery = Cache::remember('auth-methods:dynamic:v2', 60, function (): array {
                 $settings = Setting::query()->first();
 
-                return [
-                    'settings' => $settings,
-                    'welcome_bonus' => RewardRule::configuredAmount(
-                        'welcome_bonus',
-                        (int) ($settings?->welcome_bonus_coins ?? $welcomeBonus)
-                    ),
-                ];
+                return ['settings' => $settings];
             });
             $settings = $discovery['settings'];
-            $welcomeBonus = (int) $discovery['welcome_bonus'];
         } catch (\Throwable $exception) {
             // Provider discovery must stay usable during a rolling migration
             // of optional reward/settings tables. The login transaction still
@@ -507,24 +546,44 @@ class SignController extends Controller
             report($exception);
             try {
                 $settings = Setting::query()->first();
-                $welcomeBonus = RewardRule::configuredAmount(
-                    'welcome_bonus',
-                    (int) ($settings?->welcome_bonus_coins ?? $welcomeBonus)
-                );
             } catch (\Throwable $databaseException) {
                 report($databaseException);
             }
         }
 
-        $publicApiUrl = rtrim(trim((string) config('social_auth.public_api_url')), '/');
-        $preferredProvider = (string) ($settings?->recommended_social_provider
-            ?: config('social_auth.recommended_provider', 'google'));
+        $publicApiUrl = $this->socialProviders->publicApiUrl();
+        $preferredProvider = strtolower(trim((string) ($settings?->recommended_social_provider
+            ?: config('social_auth.recommended_provider', 'google'))));
         $recommendedProvider = $providers->contains($preferredProvider)
             ? $preferredProvider
             : $providers->first();
-        $providerBonus = $recommendedProvider === $preferredProvider
-            ? max(0, (int) ($settings?->recommended_provider_bonus_coins ?? 0))
-            : 0;
+        try {
+            $offers = Cache::remember(
+                'auth-methods:registration-offers:v1:'.($recommendedProvider ?: 'none'),
+                60,
+                static fn (): array => [
+                    'welcome' => \App\Services\StudentNotificationService::registrationBonusOffer(),
+                    'recommended' => $recommendedProvider
+                        ? \App\Services\StudentNotificationService::registrationBonusOffer($recommendedProvider)
+                        : 0,
+                ]
+            );
+            $welcomeBonus = max(0, (int) ($offers['welcome'] ?? 0));
+            $recommendedTotal = max(0, (int) ($offers['recommended'] ?? 0));
+        } catch (\Throwable $exception) {
+            // Login discovery is core availability. Rewards are optional copy
+            // and may be omitted while their ledger/settings tables recover.
+            report($exception);
+            $welcomeBonus = 0;
+            $recommendedTotal = 0;
+        }
+        $providerBonus = max(0, $recommendedTotal - $welcomeBonus);
+        if ($recommendedProvider && $recommendedTotal === 0) {
+            // Do not put a generic welcome promise beside the primary login
+            // method when that provider's indivisible offer cannot be paid.
+            $welcomeBonus = 0;
+            $providerBonus = 0;
+        }
         $badgeAr = trim((string) ($settings?->recommended_provider_badge_ar ?? ''));
         $badgeEn = trim((string) ($settings?->recommended_provider_badge_en ?? ''));
 
@@ -534,56 +593,30 @@ class SignController extends Controller
             'message' => 'تم تحميل طرق الدخول',
             'data' => [
                 'providers' => $providers,
-                'authorization_api_url' => $publicApiUrl !== ''
-                    ? $publicApiUrl
-                    : rtrim((string) config('app.url'), '/') . '/api/v1',
-                'authorization_urls' => $providers
-                    ->reject(fn (string $provider) => $provider === 'apple')
+                'authorization_api_url' => $publicApiUrl,
+                'authorization_urls' => $this->socialProviders->browserAvailable()
                     ->mapWithKeys(fn (string $provider) => [
-                        $provider => $publicApiUrl !== ''
-                            ? $publicApiUrl . '/social-auth/' . rawurlencode($provider) . '/start'
-                            : route('api.social.start', ['socialProvider' => $provider]),
+                        $provider => $this->socialProviders->browserStartUrl($provider),
                     ]),
-                'native_only_providers' => $providers
-                    ->filter(fn (string $provider) => $provider === 'apple')
-                    ->values(),
+                'native_only_providers' => $this->socialProviders->nativeOnlyAvailable(),
                 'otp_enabled' => false,
                 'password_login_visible' => false,
                 'welcome_bonus_coins' => max(0, $welcomeBonus),
                 'recommended_provider_bonus_coins' => $providerBonus,
-                'recommended_provider_total_coins' => max(0, $welcomeBonus + $providerBonus),
+                'recommended_provider_total_coins' => $recommendedTotal,
                 'recommended_provider' => $recommendedProvider,
-                'recommendation_badge' => $recommendedProvider
+                'recommendation_badge' => $recommendedProvider && $recommendedTotal > 0
                     ? ($badgeAr !== ''
-                        ? str_replace('{coins}', (string) ($welcomeBonus + $providerBonus), $badgeAr)
-                        : 'اختيار أسرع + ' . ($welcomeBonus + $providerBonus) . ' عملة ركن')
+                        ? str_replace('{coins}', (string) $recommendedTotal, $badgeAr)
+                        : 'اختيار أسرع + ' . $recommendedTotal . ' عملة ركن')
                     : null,
-                'recommendation_badge_en' => $recommendedProvider
+                'recommendation_badge_en' => $recommendedProvider && $recommendedTotal > 0
                     ? ($badgeEn !== ''
-                        ? str_replace('{coins}', (string) ($welcomeBonus + $providerBonus), $badgeEn)
-                        : 'Faster choice + ' . ($welcomeBonus + $providerBonus) . ' Rokn coins')
+                        ? str_replace('{coins}', (string) $recommendedTotal, $badgeEn)
+                        : 'Faster choice + ' . $recommendedTotal . ' Rokn coins')
                     : null,
             ],
         ]);
-    }
-
-    /**
-     * Kept as a stable legacy endpoint so old builds receive a clear upgrade response.
-     */
-    public function otpDisabled()
-    {
-        $providers = $this->socialProviders->labels();
-        $providerNames = implode(' أو ', array_values($providers));
-
-        return response()->json([
-            'status' => 410,
-            'success' => false,
-            'code' => 'otp_not_supported',
-            'message' => 'تسجيل الدخول متاح عبر '.($providerNames ?: 'الحسابات الاجتماعية').' دون رمز OTP.',
-            'data' => [
-                'providers' => array_keys($providers),
-            ],
-        ], 410);
     }
 
     /**
@@ -597,46 +630,35 @@ class SignController extends Controller
         $validated = $request->validate([
             'device_token' => ['nullable', 'string', 'max:500'],
         ]);
-        $user = auth('api')->user();
+        $user = $request->user();
+        /** @var ApiToken|null $currentToken */
+        $currentToken = $request->attributes->get('rokn_api_token');
+        DB::transaction(function () use ($user, $validated, $currentToken): void {
+            $pushTokens = \App\Models\UserDeviceToken::query()
+                ->where('user_id', $user->id);
+            $currentDeviceId = trim((string) $currentToken?->device_id);
+            $hasReplacementOnCurrentDevice = $currentToken !== null
+                && $currentDeviceId !== ''
+                && $user->apiTokens()
+                    ->whereHasNotExpired()
+                    ->where('token', '<>', $currentToken->getKey())
+                    ->where('device_id', $currentDeviceId)
+                    ->exists();
+            if ($currentDeviceId !== '' && !$hasReplacementOnCurrentDevice) {
+                $pushTokens->where('device_id', $currentDeviceId)->delete();
+            } elseif ($currentDeviceId === '' && !empty($validated['device_token'])) {
+                $pushTokens->where('device_token', $validated['device_token'])->delete();
+            }
 
-        if ($user) {
-            /** @var ApiToken|null $currentToken */
-            $currentToken = $request->attributes->get('rokn_api_token');
-            \Illuminate\Support\Facades\DB::transaction(function () use ($user, $validated, $currentToken): void {
-                $pushTokens = \App\Models\UserDeviceToken::query()
-                    ->where('user_id', $user->id);
-                $currentDeviceId = trim((string) $currentToken?->device_id);
-                if (
-                    $currentDeviceId !== ''
-                    && \Illuminate\Support\Facades\Schema::hasColumn('user_device_tokens', 'device_id')
-                ) {
-                    $pushTokens->where('device_id', $currentDeviceId)->delete();
-                } elseif (! empty($validated['device_token'])) {
-                    $pushTokens->where('device_token', $validated['device_token'])->delete();
-                }
-                // A legacy session without a bound device or an explicit
-                // native token cannot identify one installation safely. Do
-                // not revoke the other signed-in phones by guessing.
-
-                // MultipleTokensGuard revokes only the bearer token used for
-                // this request. Other phones stay signed in.
-                auth('api')->logout();
-            });
-
-            return response()->json([
-                'status' => 200,
-                'success' => true,
-                'message' => 'تم تسجيل الخروج بنجاح',
-                'data' => null,
-            ], 200);
-        }
+            auth('api')->logout();
+        });
 
         return response()->json([
-            'status' => 404,
-            'success' => false,
-            'message' => 'المستخدم غير موجود',
+            'status' => 200,
+            'success' => true,
+            'message' => 'تم تسجيل الخروج بنجاح',
             'data' => null,
-        ], 404);
+        ]);
     }
 
     /**
@@ -719,21 +741,17 @@ class SignController extends Controller
                     'user_id' => $lockedUser->id,
                     'device_type' => $deviceType,
                 ];
-                if (\Illuminate\Support\Facades\Schema::hasColumn('user_device_tokens', 'device_os')) {
-                    $tokenAttributes['device_os'] = $deviceOs;
-                }
-                if (\Illuminate\Support\Facades\Schema::hasColumn('user_device_tokens', 'device_id')) {
-                    $deviceId = trim((string) $request->input('device_id'));
-                    $tokenAttributes['device_id'] = Str::isUuid($deviceId) ? $deviceId : null;
-                    if ($tokenAttributes['device_id']) {
-                        // One installation has one current FCM/account owner.
-                        // Retire an older token before binding its replacement,
-                        // including an interrupted account switch or rotation.
-                        \App\Models\UserDeviceToken::query()
-                            ->where('device_id', $tokenAttributes['device_id'])
-                            ->where('device_token', '<>', $deviceToken)
-                            ->delete();
-                    }
+                $tokenAttributes['device_os'] = $deviceOs;
+                $deviceId = trim((string) $request->input('device_id'));
+                $tokenAttributes['device_id'] = Str::isUuid($deviceId) ? $deviceId : null;
+                if ($tokenAttributes['device_id']) {
+                    // One installation has one current FCM/account owner.
+                    // Retire an older token before binding its replacement,
+                    // including an interrupted account switch or rotation.
+                    \App\Models\UserDeviceToken::query()
+                        ->where('device_id', $tokenAttributes['device_id'])
+                        ->where('device_token', '<>', $deviceToken)
+                        ->delete();
                 }
 
                 \App\Models\UserDeviceToken::updateOrCreate(
@@ -757,10 +775,7 @@ class SignController extends Controller
 
         $token = ApiToken::query()
             ->where('user_id', $user->id)
-            ->whereIn('token', array_values(array_unique([
-                hash('sha256', $plainToken),
-                $plainToken,
-            ])))
+            ->where('token', hash('sha256', $plainToken))
             ->whereHasNotExpired()
             ->first();
         $issuedAt = $token?->issued_at;
@@ -770,10 +785,11 @@ class SignController extends Controller
         }
 
         // The presented bearer must be minted in the same short window as a
-        // provider verification for this exact user. A fresh generic token or
-        // another account's OAuth response cannot authorize deletion.
-        $provider = strtolower(trim((string) $user->social_provider));
-        $providerUserId = trim((string) $user->social_id);
+        // provider verification for this exact user. Linked identities belong
+        // to social_accounts; the provider used for this session belongs to
+        // the bearer, never to the mutable user profile.
+        $provider = strtolower(trim((string) $token?->auth_provider));
+        $providerUserId = trim((string) $token?->auth_provider_user_id);
         if ($provider === '' || $providerUserId === '') {
             return false;
         }
@@ -802,6 +818,21 @@ class SignController extends Controller
         return null;
     }
 
+    /** @return array<string, mixed> */
+    private function sessionMetadata(Request $request, array $validated): array
+    {
+        return [
+            'device_id' => $validated['device_id'] ?? null,
+            'platform' => $request->header(
+                'X-Rokn-Platform',
+                $validated['device_os'] ?? ($validated['device_type'] ?? 'other')
+            ),
+            'device_class' => $request->header('X-Rokn-Device-Class'),
+            'app_version' => $request->header('X-Rokn-App-Version'),
+            'app_build' => $request->header('X-Rokn-App-Build'),
+        ];
+    }
+
     /**
      * Standalone endpoint to save or refresh device token
      *
@@ -817,16 +848,7 @@ class SignController extends Controller
             'device_id' => ['nullable', 'uuid'],
         ]);
 
-        $user = auth()->user() ?? auth('api')->user();
-
-        if (!$user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'غير مصرح',
-                'data' => null,
-            ], 401);
-        }
+        $user = $request->user();
 
         /** @var ApiToken|null $currentToken */
         $currentToken = $request->attributes->get('rokn_api_token');
@@ -867,15 +889,7 @@ class SignController extends Controller
             'device_token' => 'required|string|max:500',
         ]);
 
-        $user = auth()->user() ?? auth('api')->user();
-        if (!$user) {
-            return response()->json([
-                'status' => 401,
-                'success' => false,
-                'message' => 'غير مصرح',
-                'data' => null,
-            ], 401);
-        }
+        $user = $request->user();
 
         \App\Models\UserDeviceToken::query()
             ->where('user_id', $user->id)

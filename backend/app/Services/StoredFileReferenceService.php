@@ -142,7 +142,6 @@ final class StoredFileReferenceService
                 ['photos', 'path'],
                 ['users', 'profile_image'],
                 ['courses', 'image'],
-                ['questions', 'question_image'],
             ] as [$table, $column]) {
                 if ($this->exists($table, $column, $path)) {
                     return true;
@@ -160,26 +159,8 @@ final class StoredFileReferenceService
                     return true;
                 }
             }
-            // Exam attempts are immutable evidence of the exact visual
-            // question shown to a learner. Replacing or deleting the live
-            // question must not retire that image while an attempt snapshot
-            // still points to it. The managed path is embedded inside the
-            // absolute URL, so one conservative JSON text lookup covers both
-            // URL formats used by historical releases.
-            if (
-                Schema::hasTable('exam_attempts')
-                && Schema::hasColumn('exam_attempts', 'exam_data')
-                && DB::table('exam_attempts')
-                    ->where('exam_data', 'like', '%'.$path.'%')
-                    ->exists()
-            ) {
-                return true;
-            }
         }
 
-        if ($this->existsWithDisk('attachments', 'file_path', 'storage_disk', $disk, $path, 'public')) {
-            return true;
-        }
         if ($this->existsWithDisk('course_pdfs', 'file_path', 'storage_disk', $disk, $path, 'local')) {
             return true;
         }
@@ -196,12 +177,8 @@ final class StoredFileReferenceService
             return true;
         }
 
-        // Legacy project rows have no first-class disk column. An exact path
-        // match on any candidate disk must fail closed.
-        foreach (['project_submissions', 'user_project_evaluations'] as $table) {
-            if ($this->exists($table, 'submission_file', $path)) {
-                return true;
-            }
+        if ($this->exists('project_submissions', 'submission_file', $path)) {
+            return true;
         }
 
         return false;

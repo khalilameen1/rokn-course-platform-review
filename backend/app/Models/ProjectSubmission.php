@@ -69,29 +69,48 @@ class ProjectSubmission extends Model
         return $this->hasOne(ProjectFeedbackThread::class, 'submission_id');
     }
 
-    public function reviewDecisions()
+    /**
+     * The submission row is the only project-result authority.
+     *
+     * @return array{
+     *   status:string,
+     *   passed:bool,
+     *   score:?int,
+     *   feedback:?string,
+     *   source:?string,
+     *   assessment_type:?string,
+     *   skill_verified:bool,
+     *   progression_credit:bool,
+     *   reviewed_at:mixed
+     * }
+     */
+    public function reviewOutcome(): array
     {
-        return $this->hasMany(ProjectSubmissionReviewDecision::class, 'submission_id')
-            ->orderBy('sequence');
-    }
+        $submissionMetadata = is_array($this->submission_metadata)
+            ? $this->submission_metadata
+            : [];
+        $status = (string) $this->review_status;
 
-    public function latestReviewDecision()
-    {
-        return $this->hasOne(ProjectSubmissionReviewDecision::class, 'submission_id')
-            ->latestOfMany('sequence');
+        return [
+            'status' => $status,
+            'passed' => $status === self::STATUS_PASSED,
+            'score' => $this->score,
+            'feedback' => $this->feedback,
+            'source' => $this->review_source,
+            'assessment_type' => $submissionMetadata['assessment_type'] ?? null,
+            'skill_verified' => (bool) ($submissionMetadata['skill_verified'] ?? false),
+            'progression_credit' => (bool) (
+                $submissionMetadata['progression_credit']
+                ?? ($status === self::STATUS_PASSED)
+            ),
+            'reviewed_at' => $this->reviewed_at,
+        ];
     }
 
     public function aiInputAttachments()
     {
         return $this->hasMany(AiInputAttachment::class, 'owner_id')
             ->where('owner_type', AiInputAttachment::OWNER_PROJECT_SUBMISSION);
-    }
-
-    public function getSubmissionFileUrlAttribute(): ?string
-    {
-        return $this->submission_file
-            ? route('api.project-submissions.file', ['submission' => $this->public_id])
-            : null;
     }
 
     /**

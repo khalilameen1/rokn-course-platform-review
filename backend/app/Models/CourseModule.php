@@ -18,8 +18,6 @@ class CourseModule extends Model
         'title_en',
         'description_ar',
         'description_en',
-        'attachments_link',
-        'attachment_platform',
         'order',
     ];
 
@@ -66,22 +64,12 @@ class CourseModule extends Model
     }
 
     /**
-     * Get the attachments for this module.
-     */
-    public function attachments()
-    {
-        return $this->morphMany(Attachment::class, 'attachable')->orderBy('order');
-    }
-
-    /**
      * Get the project section in this module (if any).
      */
     public function projectSection()
     {
-        return $this->hasOne(CourseSection::class, 'module_id')->where(function ($query): void {
-            $query->where('section_type', 'project')
-                ->orWhere('sectionable_type', Project::class);
-        });
+        return $this->hasOne(CourseSection::class, 'module_id')
+            ->where('sectionable_type', Project::class);
     }
 
     /**
@@ -89,10 +77,9 @@ class CourseModule extends Model
      */
     public function hasProject(): bool
     {
-        return $this->sections()->where(function ($query): void {
-            $query->where('section_type', 'project')
-                ->orWhere('sectionable_type', Project::class);
-        })->exists();
+        return $this->sections()
+            ->where('sectionable_type', Project::class)
+            ->exists();
     }
 
     /**
@@ -120,10 +107,8 @@ class CourseModule extends Model
             ->contains((int) $project->id);
     }
 
-    /**
-     * Get user's evaluation for this module's project.
-     */
-    public function getUserEvaluation(int $userId)
+    /** Get the learner's latest canonical submission for this project. */
+    public function getUserProjectSubmission(int $userId): ?ProjectSubmission
     {
         $project = $this->project;
 
@@ -132,7 +117,7 @@ class CourseModule extends Model
         }
 
         return app(\App\Services\CourseRevisionLearnerReadService::class)
-            ->projectEvaluations($userId, [(int) $project->id])
+            ->projectSubmissions($userId, [(int) $project->id])
             ->get((int) $project->id);
     }
 

@@ -43,8 +43,8 @@ final readonly class BunnyDirectUploadService
         string $mime,
         string $originalName,
         string $idempotencyKey,
-        ?CourseSection $section = null,
-        ?int $expectedAuthoringVersion = null
+        ?CourseSection $section,
+        int $expectedAuthoringVersion
     ): array {
         $this->assertAuthoringContext($course, $admin, $section);
         $this->assertExpectedAuthoringVersion($course, $expectedAuthoringVersion);
@@ -83,25 +83,8 @@ final readonly class BunnyDirectUploadService
             'mime' => $mime,
             'original_name' => $originalName,
         ];
-        if ($expectedAuthoringVersion !== null) {
-            $requestIdentity['authoring_version'] = $expectedAuthoringVersion;
-        }
+        $requestIdentity['authoring_version'] = $expectedAuthoringVersion;
         $requestHash = hash('sha256', json_encode($requestIdentity, JSON_THROW_ON_ERROR));
-        $preRevisionRequestHash = hash('sha256', json_encode([
-            'course' => (int) $course->id,
-            'section' => $section ? (int) $section->id : null,
-            'title' => $title,
-            'size' => $size,
-            'mime' => $mime,
-            'original_name' => $originalName,
-        ], JSON_THROW_ON_ERROR));
-        $legacyRequestHash = hash('sha256', json_encode([
-            'course' => (int) $course->id,
-            'section' => $section ? (int) $section->id : null,
-            'title' => $title,
-            'size' => $size,
-            'mime' => $mime,
-        ], JSON_THROW_ON_ERROR));
         $lockName = sprintf('bunny-direct-upload:%d:%d:%s', $admin->id, $course->id, $idempotencyKey);
 
         return Cache::lock($lockName, 180)->block(10, function () use (
@@ -113,9 +96,7 @@ final readonly class BunnyDirectUploadService
             $mime,
             $idempotencyKey,
             $expectedAuthoringVersion,
-            $requestHash,
-            $preRevisionRequestHash,
-            $legacyRequestHash
+            $requestHash
         ): array {
             // The cache lock may wait behind a duplicate request. Recheck the
             // page revision after acquiring it so that wait cannot turn an
@@ -128,11 +109,6 @@ final readonly class BunnyDirectUploadService
                 ->first();
             if ($session) {
                 $sameRequest = hash_equals((string) $session->request_hash, $requestHash);
-                if ($expectedAuthoringVersion === null) {
-                    $sameRequest = $sameRequest
-                        || hash_equals((string) $session->request_hash, $preRevisionRequestHash)
-                        || hash_equals((string) $session->request_hash, $legacyRequestHash);
-                }
                 if (!$sameRequest) {
                     throw $this->terminalOperation("تغيرت بيانات الملف\nاختره مرة أخرى");
                 }
@@ -308,49 +284,37 @@ final readonly class BunnyDirectUploadService
     public function authorization(Course $course, User $admin, string $claim): array
     {
         $payload = $this->claim($course, $admin, $claim);
-        $refreshedClaim = $claim;
 
-        if ((int) ($payload['v'] ?? 1) === 2) {
-            $session = DB::transaction(function () use ($payload): BunnyDirectUpload {
-                $session = BunnyDirectUpload::query()
-                    ->whereKey((int) ($payload['upload_id'] ?? 0))
-                    ->lockForUpdate()
-                    ->first();
-                if (!$session
-                    || $session->status !== 'pending'
-                    || $session->expires_at->isPast()
-                    || !hash_equals((string) $session->video_guid, (string) $payload['video_id'])) {
-                    throw $this->terminalClaim('تم استخدام هذا الرفع من قبل أو انتهت صلاحيته', 'claim');
-                }
+        $session = DB::transaction(function () use ($payload): BunnyDirectUpload {
+            $session = BunnyDirectUpload::query()
+                ->whereKey((int) ($payload['upload_id'] ?? 0))
+                ->lockForUpdate()
+                ->first();
+            if (!$session
+                || $session->status !== 'pending'
+                || $session->expires_at->isPast()
+                || !hash_equals((string) $session->video_guid, (string) $payload['video_id'])) {
+                throw $this->terminalClaim('تم استخدام هذا الرفع من قبل أو انتهت صلاحيته', 'claim');
+            }
 
-                $candidate = BunnyVideoCleanupCandidate::query()
-                    ->where('video_guid', $payload['video_id'])
-                    ->whereNull('remote_deleted_at')
-                    ->whereNull('last_attempt_at')
-                    ->lockForUpdate()
-                    ->first();
-                if (!$candidate) {
-                    throw $this->terminalClaim('انتهت عملية الرفع أو تم استخدامها من قبل', 'claim');
-                }
-
-                $expiresAt = now()->addHours(max(2, (int) config('bunny.direct_upload_claim_ttl_hours', 24)));
-                $session->forceFill(['expires_at' => $expiresAt])->save();
-                $candidate->forceFill(['eligible_after' => $expiresAt])->save();
-
-                return $session->fresh();
-            }, 3);
-            $payload['expires_at'] = $session->expires_at->getTimestamp();
-            $refreshedClaim = $this->encryptedClaim($session, $payload);
-        } else {
-            $this->assertPendingSession($payload);
-            if (!BunnyVideoCleanupCandidate::query()
+            $candidate = BunnyVideoCleanupCandidate::query()
                 ->where('video_guid', $payload['video_id'])
                 ->whereNull('remote_deleted_at')
                 ->whereNull('last_attempt_at')
-                ->exists()) {
+                ->lockForUpdate()
+                ->first();
+            if (!$candidate) {
                 throw $this->terminalClaim('انتهت عملية الرفع أو تم استخدامها من قبل', 'claim');
             }
-        }
+
+            $expiresAt = now()->addHours(max(2, (int) config('bunny.direct_upload_claim_ttl_hours', 24)));
+            $session->forceFill(['expires_at' => $expiresAt])->save();
+            $candidate->forceFill(['eligible_after' => $expiresAt])->save();
+
+            return $session->fresh();
+        }, 3);
+        $payload['expires_at'] = $session->expires_at->getTimestamp();
+        $refreshedClaim = $this->encryptedClaim($session, $payload);
 
         return array_merge([
             'video_id' => $payload['video_id'],
@@ -423,7 +387,7 @@ final readonly class BunnyDirectUploadService
             throw $this->terminalClaim('بيانات الرفع غير صالحة');
         }
         if (!is_array($payload)
-            || !in_array((int) ($payload['v'] ?? 0), [1, 2], true)
+            || (int) ($payload['v'] ?? 0) !== 2
             || (int) ($payload['course_id'] ?? 0) !== (int) $course->id
             || (int) ($payload['admin_id'] ?? 0) !== (int) $admin->id
             || (int) ($payload['expires_at'] ?? 0) < time()
@@ -431,17 +395,16 @@ final readonly class BunnyDirectUploadService
             || (int) ($payload['size'] ?? 0) < 1
             || (int) ($payload['size'] ?? 0) > self::MAX_BYTES
             || !in_array((string) ($payload['mime'] ?? ''), self::MIMES, true)
-            || trim((string) ($payload['title'] ?? '')) === '') {
+            || trim((string) ($payload['title'] ?? '')) === ''
+            || (int) ($payload['authoring_version'] ?? 0) < 1) {
             throw $this->terminalClaim('انتهت صلاحية الرفع أو لا يخص هذا الكورس');
         }
-        if (array_key_exists('authoring_version', $payload)) {
-            $expectedVersion = (int) $payload['authoring_version'];
-            $currentVersion = (int) Course::query()
-                ->whereKey($course->id)
-                ->value('authoring_version');
-            if ($expectedVersion < 1 || $currentVersion !== $expectedVersion) {
-                throw $this->terminalClaim("تغيّرت المسودة أثناء الرفع\nأعد تحميل الصفحة قبل المتابعة");
-            }
+        $expectedVersion = (int) $payload['authoring_version'];
+        $currentVersion = (int) Course::query()
+            ->whereKey($course->id)
+            ->value('authoring_version');
+        if ($currentVersion !== $expectedVersion) {
+            throw $this->terminalClaim("تغيّرت المسودة أثناء الرفع\nأعد تحميل الصفحة قبل المتابعة");
         }
 
         return $payload;
@@ -456,7 +419,7 @@ final readonly class BunnyDirectUploadService
         int $size,
         string $mime,
         ?CourseSection $section,
-        ?int $expectedAuthoringVersion = null
+        int $expectedAuthoringVersion
     ): array {
         $claimPayload = [
             'v' => 2,
@@ -470,9 +433,7 @@ final readonly class BunnyDirectUploadService
             'title' => $title,
             'expires_at' => $session->expires_at->getTimestamp(),
         ];
-        if ($expectedAuthoringVersion !== null) {
-            $claimPayload['authoring_version'] = $expectedAuthoringVersion;
-        }
+        $claimPayload['authoring_version'] = $expectedAuthoringVersion;
         $claim = $this->encryptedClaim($session, $claimPayload);
 
         return array_merge([
@@ -497,9 +458,6 @@ final readonly class BunnyDirectUploadService
     /** @param array<string, mixed> $payload */
     private function assertPendingSession(array $payload): void
     {
-        if ((int) ($payload['v'] ?? 1) === 1) {
-            return;
-        }
         $session = BunnyDirectUpload::query()->find((int) ($payload['upload_id'] ?? 0));
         if (!$session
             || $session->status !== 'pending'
@@ -527,7 +485,7 @@ final readonly class BunnyDirectUploadService
 
     private function assertAuthoringContext(Course $course, User $admin, ?CourseSection $section): void
     {
-        if (!in_array(strtolower((string) $admin->role), ['admin', 'moderator'], true)) {
+        if (!in_array(strtolower(trim((string) $admin->role)), ['admin', 'moderator'], true)) {
             abort(403);
         }
         if (DatabaseCapabilities::hasTable('course_authoring_revisions')
@@ -549,12 +507,8 @@ final readonly class BunnyDirectUploadService
         }
     }
 
-    private function assertExpectedAuthoringVersion(Course $course, ?int $expectedVersion): void
+    private function assertExpectedAuthoringVersion(Course $course, int $expectedVersion): void
     {
-        if ($expectedVersion === null) {
-            return;
-        }
-
         $currentVersion = (int) Course::query()->whereKey($course->id)->value('authoring_version');
         if ($expectedVersion < 1 || $currentVersion !== $expectedVersion) {
             throw $this->terminalOperation("تغيّرت المسودة منذ فتح الصفحة\nأعد تحميلها قبل رفع الفيديو");

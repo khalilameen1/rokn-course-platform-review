@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
 
 final readonly class FinancialAnomalyService
 {
@@ -18,6 +19,46 @@ final readonly class FinancialAnomalyService
         private WalletService $wallet,
         private InternalSignalService $internalSignals
     ) {
+    }
+
+    /**
+     * Read-only entitlement decisions for a loaded enrollment set.
+     *
+     * @param Collection<int,CourseEnrollment> $enrollments
+     * @return array<int,bool> keyed by enrollment id
+     */
+    public function variableCostDecisions(Collection $enrollments): array
+    {
+        $enrollments = $enrollments->filter(fn ($row) => $row instanceof CourseEnrollment)->values();
+        if ($enrollments->isEmpty() || !Schema::hasTable('financial_anomalies')) {
+            return $enrollments->mapWithKeys(fn (CourseEnrollment $row) => [(int) $row->id => true])->all();
+        }
+
+        $userIds = $enrollments->pluck('user_id')->map(fn ($id) => (int) $id)->unique()->values();
+        $courseIds = $enrollments->pluck('course_id')->map(fn ($id) => (int) $id)->unique()->values();
+        $paid = $this->wallet->coursePaidContributionTotals(
+            $userIds->all(),
+            $courseIds->all()
+        );
+        $openExpected = FinancialAnomaly::query()
+            ->whereIn('user_id', $userIds)->whereIn('course_id', $courseIds)
+            ->where('status', FinancialAnomaly::STATUS_OPEN)
+            ->groupBy('user_id', 'course_id')
+            ->selectRaw('user_id, course_id, MAX(expected_paid_coins) as expected_total')
+            ->get()->keyBy(fn ($row) => ((int) $row->user_id).':'.((int) $row->course_id));
+
+        return $enrollments->mapWithKeys(function (CourseEnrollment $enrollment) use ($paid, $openExpected): array {
+            $key = ((int) $enrollment->user_id).':'.((int) $enrollment->course_id);
+            $expected = max(0, (int) (($this->plans->termsForEnrollment($enrollment)['minimum_paid_coins'] ?? 0)));
+            $actual = max(0, (int) ($paid->get($key)?->paid_total ?? 0));
+            $unresolvedExpected = max(0, (int) ($openExpected->get($key)?->expected_total ?? 0));
+            return [(int) $enrollment->id => $actual >= $expected && $actual >= $unresolvedExpected];
+        })->all();
+    }
+
+    public function allowsVariableCostFeaturesReadOnly(CourseEnrollment $enrollment): bool
+    {
+        return $this->variableCostDecisions(collect([$enrollment]))[(int) $enrollment->id] ?? false;
     }
 
     public function allowsVariableCostFeatures(CourseEnrollment $enrollment): bool

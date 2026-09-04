@@ -1,17 +1,10 @@
-import {
-  CommonActions,
-  NavigationContainer,
-  getStateFromPath as getNavigationStateFromPath,
-} from '@react-navigation/native';
-import type {LinkingOptions} from '@react-navigation/native';
+import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {I18nManager, Linking} from 'react-native';
 
 import React from 'react';
-import {useSelector} from 'react-redux';
-import type {RootState} from '../store/store';
+import {Image, StyleSheet, View} from 'react-native';
 
-import {navigationRef, openRoknDestination} from './RootNavigationHelper';
+import {navigationRef} from './RootNavigationHelper';
 
 import Reels from '../screens/Reels';
 import Home from '../screens/Home';
@@ -21,7 +14,6 @@ import MyCorner from '../screens/MyCorner';
 import Wallet from '../screens/Wallet';
 import Profile from '../screens/Profile';
 import Settings from '../screens/Settings';
-import LanguageSelect from '../screens/LanguageSelect';
 import AboutUs from '../screens/Informations/AboutUs';
 import PrivacyPolicy from '../screens/Informations/PrivacyPolicy';
 import TermsOfUse from '../screens/Informations/TermsOfUse';
@@ -29,189 +21,34 @@ import Notifications from '../screens/Notifications';
 import EditAccount from '../screens/EditAccount';
 import Feedback from '../screens/Feedback';
 import DeviceSessions from '../screens/DeviceSessions';
-import {
-  parseRoknDestination,
-  resolveInitialUrlWithinDeadline,
-  roknDestinationKey,
-  type RoknDestination,
-} from './deepLinks';
 import type {RootStackParamList} from './types';
 import {
   flushPendingNotificationNavigation,
   setNotificationNavigationReady,
 } from '../services/pushNotifications';
-import {
-  acknowledgePendingLoginReturnTo,
-  claimPendingLoginReturnTo,
-  clearPendingLoginReturnTo,
-  safeLoginReturnToFromRoute,
-} from './authReturn';
-import {
-  acknowledgePendingCheckoutReturn,
-  claimPendingCheckoutReturn,
-} from './checkoutReturn';
 import {useReducedMotion} from '../hooks/useReducedMotion';
-import {extractUserProfile} from '../services/secureSession';
-// import WalletWithdrawalRequest from '../screens/WalletWithdrawalRequest';
+import {
+  flushLateInitialDestination,
+  markRoknNavigationReady,
+  roknLinking,
+} from './roknLinking';
+import {useInterruptedJourneyRestore} from './useInterruptedJourneyRestore';
+import {Palette} from '../constants/designSystem';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-let lastDeliveredDestination = '';
-let lastDeliveredAt = 0;
-let lateInitialDestination: RoknDestination | null = null;
-let restoredNavigationReady = false;
-const WARM_LINK_DEDUPE_MS = 1_500;
-
-const rememberDeliveredDestination = (destination: RoknDestination) => {
-  lastDeliveredDestination = roknDestinationKey(destination);
-  lastDeliveredAt = Date.now();
-};
-
-const deliverLateInitialUrl = (url: string | null) => {
-  const destination = parseRoknDestination(url);
-  if (!destination) return;
-  rememberDeliveredDestination(destination);
-  if (!restoredNavigationReady || !openRoknDestination(destination)) {
-    lateInitialDestination = destination;
-  }
-};
-
-const flushLateInitialDestination = () => {
-  if (!restoredNavigationReady || !lateInitialDestination) return false;
-  const destination = lateInitialDestination;
-  if (!openRoknDestination(destination)) return false;
-  lateInitialDestination = null;
-  return true;
-};
-
-const navigationDeadline = <T,>(
-  promise: Promise<T>,
-  fallback: T,
-  timeoutMs = 1_500,
-) =>
-  new Promise<T>(resolve => {
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      resolve(fallback);
-    }, timeoutMs);
-    promise.then(
-      value => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(value);
-      },
-      () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(fallback);
-      },
-    );
-  });
-
-const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: [
-    'rokn://',
-    'https://rokn.app',
-    'https://www.rokn.app',
-    'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud',
-  ],
-  async getInitialURL() {
-    const url = await resolveInitialUrlWithinDeadline(
-      Linking.getInitialURL(),
-      deliverLateInitialUrl,
-    );
-    const destination = parseRoknDestination(url);
-    if (destination) rememberDeliveredDestination(destination);
-    return url;
-  },
-  subscribe(listener) {
-    const subscription = Linking.addEventListener('url', ({url}) => {
-      const destination = parseRoknDestination(url);
-      if (!destination) return;
-      const destinationKey = roknDestinationKey(destination);
-      const now = Date.now();
-      // Once navigation is ready, its destination-aware guard decides whether
-      // this is the duplicate native delivery of the route already on screen.
-      // A time-only guard here used to swallow a legitimate second tap after
-      // the learner had already left that destination.
-      if (openRoknDestination(destination)) {
-        lastDeliveredDestination = destinationKey;
-        lastDeliveredAt = now;
-        return;
-      }
-      if (
-        destinationKey === lastDeliveredDestination &&
-        now - lastDeliveredAt >= 0 &&
-        now - lastDeliveredAt < WARM_LINK_DEDUPE_MS
-      ) {
-        return;
-      }
-      lastDeliveredDestination = destinationKey;
-      lastDeliveredAt = now;
-      listener(url);
-    });
-    return () => subscription.remove();
-  },
-  // Custom-scheme URLs accept the notification route grammar. OAuth callbacks
-  // and encoded path fragments are rejected as screen parameters.
-  filter: url => parseRoknDestination(url) !== null,
-  getStateFromPath(path, options) {
-    const destination = parseRoknDestination(path);
-    if (!destination) return undefined;
-    const normalizedPath =
-      destination.name === 'Home'
-        ? 'home'
-        : destination.name === 'Profile'
-        ? 'profile'
-        : destination.name === 'Wallet'
-        ? 'wallet'
-        : destination.name === 'Feedback'
-        ? `support/${destination.params.caseId}`
-        : destination.name === 'CourseDetails'
-        ? `course/${destination.params.courseId}`
-        : destination.params.lessonId
-        ? `course/${destination.params.courseId}/watch?lessonId=${destination.params.lessonId}`
-        : `course/${destination.params.courseId}/watch${
-            destination.params.reelId ? `/${destination.params.reelId}` : ''
-          }`;
-    const state = getNavigationStateFromPath(normalizedPath, options);
-    if (!state || destination.name === 'Home' || !state.routes?.length) {
-      return state;
-    }
-    // A cold external link still belongs to the app journey. Put Home under
-    // the target so Android back and the in-screen back button agree instead
-    // of abruptly closing the app after the first tap.
-    return {
-      ...state,
-      index: state.routes.length,
-      routes: [{name: 'Home' as const}, ...state.routes],
-    };
-  },
-  config: {
-    screens: {
-      Home: 'home',
-      CourseDetails: 'course/:courseId',
-      Reels: 'course/:courseId/watch/:reelId?',
-      Profile: 'profile',
-      Wallet: 'wallet',
-      Feedback: 'support/:caseId',
-    },
-  },
-};
+const NavigationFallback = () => (
+  <View style={styles.fallback}>
+    <Image
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      source={require('../assets/images/logo.png')}
+      style={styles.fallbackLogo}
+    />
+  </View>
+);
 
 const Stacks = () => {
   const reducedMotion = useReducedMotion();
-  const language = useSelector((state: RootState) => state.settings.language);
-  const languageCode =
-    (typeof language === 'string' ? language : language?.code) || 'ar';
-  // Yoga fixes layout direction when the native process starts. A clean
-  // install defaults to Arabic while React Native may still be LTR; sending
-  // that first launch straight to Home mirrors every row and sheet until the
-  // user happens to restart. English is the only supported LTR preference.
-  const needsArabicBootstrap = languageCode !== 'en' && !I18nManager.isRTL;
 
   return (
     <Stack.Navigator
@@ -219,8 +56,7 @@ const Stacks = () => {
         animation: reducedMotion ? 'none' : 'default',
         headerShown: false,
       }}
-      initialRouteName={needsArabicBootstrap ? 'LanguageSelect' : 'Home'}>
-      <Stack.Screen name="LanguageSelect" component={LanguageSelect} />
+      initialRouteName="Home">
       <Stack.Screen name="Login" component={Login} />
       <Stack.Screen name="EditAccount" component={EditAccount} />
       <Stack.Screen name="Feedback" component={Feedback} />
@@ -241,194 +77,35 @@ const Stacks = () => {
 };
 
 const Navigation = () => {
-  const isLogin = useSelector((state: RootState) => state.auth.isLogin);
-  const sessionData = useSelector((state: RootState) => state.auth.userData);
-  const sessionProfile = extractUserProfile(sessionData);
-  const navigationSessionKey = isLogin
-    ? `user:${String(
-        sessionProfile.id ?? sessionProfile.user_id ?? 'authenticated',
-      )}`
-    : 'guest';
-  const restoreFlightRef = React.useRef<{
-    sessionKey: string;
-    promise: Promise<boolean>;
-  } | null>(null);
-  const currentNavigationSessionKeyRef = React.useRef(navigationSessionKey);
-  currentNavigationSessionKeyRef.current = navigationSessionKey;
-  const previousNavigationSessionKeyRef = React.useRef(navigationSessionKey);
-  const passiveSessionReturnRef = React.useRef<
-    ReturnType<typeof safeLoginReturnToFromRoute>
-  >(undefined);
-  if (previousNavigationSessionKeyRef.current !== navigationSessionKey) {
-    // SecureStore can finish after the guest shell is already usable on a
-    // slow phone. Capture the public screen before the account-keyed stack is
-    // replaced so passive session restoration does not throw an exploring
-    // learner back to Home. A deliberate OAuth journey still wins through its
-    // durable return envelope below.
-    passiveSessionReturnRef.current = navigationRef.isReady()
-      ? safeLoginReturnToFromRoute(navigationRef.getCurrentRoute())
-      : undefined;
-    previousNavigationSessionKeyRef.current = navigationSessionKey;
-  }
-  React.useEffect(() => {
-    restoredNavigationReady = false;
-    lateInitialDestination = null;
-    setNotificationNavigationReady(false);
-    return () => {
-      restoredNavigationReady = false;
-      lateInitialDestination = null;
-      setNotificationNavigationReady(false);
-    };
-  }, []);
-  const restoreInterruptedLogin = React.useCallback(
-    async (operationSessionKey: string) => {
-      const initialUrl = await navigationDeadline(
-        Linking.getInitialURL(),
-        null,
-      );
-      if (currentNavigationSessionKeyRef.current !== operationSessionKey) {
-        return false;
-      }
-      if (!restoredNavigationReady && parseRoknDestination(initialUrl)) {
-        // The learner explicitly opened a fresh app/notification link. It owns
-        // this cold launch and must not be replaced by yesterday's interrupted
-        // login. Once navigation is already running, getInitialURL can still
-        // return the URL that launched the process; it is not a new intent and
-        // must not erase the course return saved by a login started afterwards.
-        await clearPendingLoginReturnTo().catch(() => undefined);
-        return false;
-      }
-      const loginClaim = await navigationDeadline(
-        claimPendingLoginReturnTo(),
-        undefined,
-      );
-      if (currentNavigationSessionKeyRef.current !== operationSessionKey) {
-        return false;
-      }
-      if (loginClaim && navigationRef.isReady()) {
-        const returnTo = loginClaim.returnTo;
-        navigationRef.dispatch(
-          CommonActions.reset({
-            index: 1,
-            routes: [
-              {name: 'Home'},
-              isLogin
-                ? returnTo.name === 'CourseDetails' ||
-                  returnTo.name === 'Reels' ||
-                  returnTo.name === 'Profile'
-                  ? {name: returnTo.name, params: returnTo.params}
-                  : {name: returnTo.name}
-                : {name: 'Login', params: {returnTo}},
-            ],
-          }),
-        );
-        // While signed out the record is the durable hand-off across the OAuth
-        // browser. A signed-in reset has completed its job and can acknowledge
-        // only the exact envelope it read.
-        if (isLogin) {
-          await acknowledgePendingLoginReturnTo(loginClaim.receipt).catch(
-            () => undefined,
-          );
-        }
-        return true;
-      }
-
-      if (!isLogin || !navigationRef.isReady()) return false;
-      const checkoutClaim = await navigationDeadline(
-        claimPendingCheckoutReturn(),
-        undefined,
-      );
-      if (currentNavigationSessionKeyRef.current !== operationSessionKey) {
-        return false;
-      }
-      if (!checkoutClaim || !navigationRef.isReady()) return false;
-      const returnTo = checkoutClaim.returnTo;
-      navigationRef.dispatch(
-        CommonActions.reset({
-          index: 1,
-          routes: [
-            {name: 'Home'},
-            returnTo.name === 'CourseDetails' ||
-            returnTo.name === 'Reels' ||
-            returnTo.name === 'Profile'
-              ? {name: returnTo.name, params: returnTo.params}
-              : {name: returnTo.name},
-          ],
-        }),
-      );
-      await acknowledgePendingCheckoutReturn(checkoutClaim).catch(
-        () => undefined,
-      );
-      return true;
-    },
-    [isLogin],
-  );
-
-  const runInterruptedJourneyRestore = React.useCallback(() => {
-    const operationSessionKey = navigationSessionKey;
-    if (restoreFlightRef.current?.sessionKey === operationSessionKey) {
-      return restoreFlightRef.current.promise;
-    }
-    const flight = restoreInterruptedLogin(operationSessionKey).finally(() => {
-      if (restoreFlightRef.current?.promise === flight) {
-        restoreFlightRef.current = null;
-      }
-    });
-    restoreFlightRef.current = {
-      sessionKey: operationSessionKey,
-      promise: flight,
-    };
-    return flight;
-  }, [navigationSessionKey, restoreInterruptedLogin]);
-
-  React.useEffect(() => {
-    // A cold OAuth completion may deliberately outlive the launch deadline.
-    // When that durable session arrives after Navigation is already ready,
-    // finish the same return journey instead of leaving an authenticated
-    // learner stranded on Login until another restart.
-    if (isLogin && navigationRef.isReady()) {
-      const passiveReturn = passiveSessionReturnRef.current;
-      void runInterruptedJourneyRestore().then(restored => {
-        if (
-          !restored &&
-          passiveReturn &&
-          passiveSessionReturnRef.current === passiveReturn &&
-          navigationRef.isReady()
-        ) {
-          navigationRef.dispatch(
-            CommonActions.reset({
-              index: 1,
-              routes: [
-                {name: 'Home'},
-                'params' in passiveReturn && passiveReturn.params
-                  ? {name: passiveReturn.name, params: passiveReturn.params}
-                  : {name: passiveReturn.name},
-              ],
-            }),
-          );
-        }
-        if (passiveSessionReturnRef.current === passiveReturn) {
-          passiveSessionReturnRef.current = undefined;
-        }
-      });
-    }
-  }, [isLogin, runInterruptedJourneyRestore]);
+  const {run: restoreInterruptedJourney, sessionKey} =
+    useInterruptedJourneyRestore();
 
   return (
     <NavigationContainer
-      linking={linking}
+      fallback={<NavigationFallback />}
+      linking={roknLinking}
       onReady={() => {
-        void runInterruptedJourneyRestore().finally(() => {
-          restoredNavigationReady = true;
+        void restoreInterruptedJourney().finally(() => {
+          markRoknNavigationReady();
           flushLateInitialDestination();
           setNotificationNavigationReady(true);
           void flushPendingNotificationNavigation();
         });
       }}
       ref={navigationRef}>
-      <Stacks key={navigationSessionKey} />
+      <Stacks key={sessionKey} />
     </NavigationContainer>
   );
 };
+
+const styles = StyleSheet.create({
+  fallback: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Palette.canvas,
+  },
+  fallbackLogo: {width: 104, height: 42, resizeMode: 'contain'},
+});
 
 export default Navigation;

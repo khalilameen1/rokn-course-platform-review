@@ -90,6 +90,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             $table->string('name_en');
             $table->decimal('price', 10, 2);
             $table->unsignedInteger('coins');
+            $table->unsignedSmallInteger('sort_order')->default(100);
             $table->boolean('is_active')->default(true);
             $table->boolean('direct_enabled')->default(true);
             $table->string('google_product_id')->nullable()->unique();

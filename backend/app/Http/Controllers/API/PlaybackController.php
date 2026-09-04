@@ -47,17 +47,26 @@ final class PlaybackController extends Controller
                 ['code' => 'course_revision_changed']
             );
         } catch (AuthorizationException $exception) {
-            $progressLocked = str_contains(
-                strtolower($exception->getMessage()),
-                'not available yet'
-            );
+            $reason = strtolower(trim($exception->getMessage()));
+            $projectLocked = in_array($reason, [
+                'module_project_not_passed',
+                'project_submission_required',
+            ], true);
+            $purchaseLocked = $reason === 'course_purchase_required';
+            $previousLocked = $reason === 'previous_section_incomplete';
             return $responses->error(
-                $progressLocked
-                    ? 'أكمل المحتوى السابق لفتح هذا المقطع'
-                    : 'هذا المقطع غير متاح لحسابك',
+                $purchaseLocked
+                    ? 'أضف الكورس إلى حسابك لتشغيل هذا المقطع'
+                    : ($projectLocked
+                        ? 'سلّم مشروع العبور لفتح هذا المقطع'
+                        : 'أكمل المحتوى السابق لفتح هذا المقطع'),
                 403,
                 null,
-                ['code' => $progressLocked ? 'lesson_locked' : 'lesson_unavailable']
+                ['code' => $purchaseLocked
+                    ? 'course_purchase_required'
+                    : ($projectLocked
+                        ? 'module_project_not_passed'
+                        : ($previousLocked ? 'previous_section_incomplete' : 'lesson_locked'))]
             );
         } catch (RuntimeException $exception) {
             report($exception);

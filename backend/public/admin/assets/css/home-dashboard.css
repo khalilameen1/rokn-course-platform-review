@@ -10,6 +10,30 @@
     padding: 2rem 0;
 }
 
+.dashboard-priority-nav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin: 0 0 28px;
+    border-block: 1px solid #e2e5ee;
+}
+
+.dashboard-priority-nav a {
+    display: grid;
+    gap: 3px;
+    padding: 15px 18px;
+    color: #252941;
+    border-left: 1px solid #e2e5ee;
+}
+
+.dashboard-priority-nav a:last-child { border-left: 0; }
+.dashboard-priority-nav strong { font-size: .9rem; }
+.dashboard-priority-nav span { color: #74798e; font-size: .72rem; }
+
+@media (max-width: 900px) {
+    .dashboard-priority-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-priority-nav a { border-bottom: 1px solid #e2e5ee; }
+}
+
 /* Welcome Header */
 .welcome-header {
     border-radius: var(--border-radius);
@@ -43,80 +67,6 @@
     font-size: 1.1rem;
     opacity: 0.9;
     margin: 0.5rem 0 0 0;
-}
-
-/* Student Platform Link */
-.platform-link-container {
-    position: absolute;
-    top: 50%;
-    left: 2rem;
-    transform: translateY(-50%);
-    z-index: 10;
-}
-
-.student-platform-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 28px;
-    text-decoration: none;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 1rem;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    position: relative;
-    overflow: hidden;
-}
-
-.student-platform-link::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.5s;
-}
-
-.student-platform-link:hover::before {
-    left: 100%;
-}
-
-.student-platform-link:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
-    background: white;
-}
-
-.student-platform-link:active {
-    transform: translateY(-1px) scale(1.02);
-}
-
-.student-platform-link:hover {
-    transform: rotate(360deg);
-}
-
-.platform-link-text {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.platform-link-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    line-height: 1.2;
-}
-
-.platform-link-subtitle {
-    font-size: 0.75rem;
-    opacity: 0.8;
-    font-weight: 500;
 }
 
 @keyframes pulse-badge {
@@ -343,30 +293,6 @@
 
     .welcome-header h2 {
         font-size: 1.5rem;
-    }
-
-    .platform-link-container {
-        position: relative;
-        top: auto;
-        left: auto;
-        transform: none;
-        text-align: center;
-        margin-top: 1.5rem;
-    }
-
-    .student-platform-link {
-        font-size: 0.9rem;
-        padding: 12px 20px;
-        width: 100%;
-        justify-content: center;
-    }
-
-    .platform-link-title {
-        font-size: 0.9rem;
-    }
-
-    .platform-link-subtitle {
-        font-size: 0.7rem;
     }
 
     .stats-info h3 {

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\PaymentMethod;
+use App\Models\WalletTransaction;
 use App\Services\ArabicSearchNormalizer;
+use App\Services\CertificateTextTemplateService;
 use App\Services\SocialAuthProviderRegistry;
 use App\Services\RecoveryEvidenceService;
 use App\Services\AppReleasePolicyService;
@@ -84,27 +86,6 @@ class ProductionPreflight extends Command
     {
         try {
             $failures = [];
-            if (
-                Schema::hasTable('exam_attempts')
-                && Schema::hasTable('lists')
-                && Schema::hasColumns('exam_attempts', [
-                    'quiz_title',
-                    'quiz_description',
-                    'quiz_image',
-                ])
-            ) {
-                $repairable = DB::table('exam_attempts as attempt')
-                    ->join('lists as quiz', 'quiz.id', '=', 'attempt.quiz_id')
-                    ->whereNull('attempt.quiz_title')
-                    ->count();
-                if ($repairable > 0) {
-                    $failures[] = sprintf(
-                    '%d exam attempt snapshot(s) were written by the previous release; run rokn:release-finalize after old workers drain.',
-                    $repairable
-                    );
-                }
-            }
-
             if (
                 Schema::hasTable('saved_folders')
                 && Schema::hasColumn('saved_folders', 'normalized_name')
@@ -241,7 +222,7 @@ class ProductionPreflight extends Command
     private function requiredProductSchemaFailures(): array
     {
         $families = [
-            'social sign-in' => ['social_accounts', 'social_oauth_attempts'],
+            'social sign-in' => ['api_tokens', 'social_accounts', 'social_oauth_attempts'],
             'course access and AI' => [
                 'course_access_plans',
                 'ai_entitlement_usages',
@@ -320,10 +301,17 @@ class ProductionPreflight extends Command
                 'public_id',
                 'holder_name',
                 'course_name',
+                'certificate_text_template_key',
+                'certificate_text',
+                'status',
+                'verification_level',
+                'generation_lease_id',
+                'revoked_at',
                 'recovery_attempts',
                 'recovery_next_attempt_at',
                 'recovery_failed_at',
                 'recovery_failure_code',
+                'artifact_checked_at',
             ],
             'course_access_plans' => [
                 'project_followup_message_limit',
@@ -331,11 +319,35 @@ class ProductionPreflight extends Command
                 'project_followup_budget_usd',
                 'project_followup_reserve_usd',
             ],
+            'course_enrollments' => [
+                'access_plan_id', 'access_plan_order_id', 'access_plan_snapshot',
+            ],
+            'ai_usage_events' => ['reservation_expires_at'],
+            'wallet_transactions' => [
+                'public_id', 'direction', 'category', 'bucket', 'amount',
+                'paid_amount', 'reward_amount', 'balance_after',
+                'paid_balance_after', 'reward_balance_after',
+                'idempotency_key', 'occurred_at',
+            ],
+            'users' => [
+                'wallet_coins', 'wallet_purchased_coins', 'wallet_reward_coins',
+                'profile_revision',
+            ],
+            'settings' => ['ai_plan_policy', 'direct_checkout_discount_percent'],
+            'orders' => [
+                'gateway_gross_amount', 'gateway_fee_amount', 'gateway_net_amount',
+            ],
+            'api_tokens' => [
+                'session_id', 'device_id', 'platform', 'device_class', 'app_version',
+                'app_build', 'auth_provider', 'auth_provider_user_id',
+                'last_used_at', 'revoked_at',
+            ],
+            'user_device_tokens' => ['device_os', 'device_id'],
             'packages' => ['is_active', 'direct_enabled'],
             'courses' => [
                 'authoring_version', 'authoring_request_id', 'deleted_at',
                 'search_title_normalized', 'search_terms_normalized',
-                'attachment_prompt_frequency',
+                'attachment_prompt_frequency', 'certificate_text_template_key',
             ],
             'course_authoring_revisions' => [
                 'canonical_course_id', 'revision_course_id',
@@ -351,7 +363,8 @@ class ProductionPreflight extends Command
             'course_ratings' => ['version'],
             'social_oauth_attempts' => [
                 'code_challenge', 'nonce_hash', 'completion_processing_at',
-                'encrypted_completion_code', 'encrypted_session_response',
+                'completion_claim_id', 'encrypted_completion_code',
+                'encrypted_session_response',
             ],
             'portfolio_items' => ['client_request_id', 'request_fingerprint'],
             'portfolio_media' => [
@@ -361,7 +374,6 @@ class ProductionPreflight extends Command
                 'size_bytes',
                 'original_name',
             ],
-            'users' => ['profile_revision'],
             'notification_campaigns' => [
                 'scheduled_at', 'selection_cursor', 'selection_finished_at',
                 'resolved_count', 'skipped_count',
@@ -394,6 +406,16 @@ class ProductionPreflight extends Command
             && Schema::hasColumn('user_device_tokens', 'device_id')
             && !Schema::hasIndex('user_device_tokens', ['device_id'], 'unique')) {
             $failures[] = 'Push installation ownership is not unique. Run the notification delivery migration before release.';
+        }
+        if (Schema::hasTable('certificates')
+            && Schema::hasColumns('certificates', ['user_id', 'course_id'])
+            && !Schema::hasIndex('certificates', ['user_id', 'course_id'], 'unique')) {
+            $failures[] = 'Certificate issuance is not unique per learner and course. Run all certificate migrations before release.';
+        }
+        if (Schema::hasTable('certificates')
+            && Schema::hasColumn('certificates', 'public_id')
+            && !Schema::hasIndex('certificates', ['public_id'], 'unique')) {
+            $failures[] = 'Certificate public verification IDs are not unique. Run all certificate migrations before release.';
         }
 
         return $failures;
@@ -475,15 +497,19 @@ class ProductionPreflight extends Command
             && !isset($publicStorageUrlParts['pass'])
             && !isset($publicStorageUrlParts['query'])
             && !isset($publicStorageUrlParts['fragment']);
-        $attachmentDiskName = trim((string) config('course_attachments.disk'));
-        $attachmentDiskConfig = $attachmentDiskName !== ''
-            ? config("filesystems.disks.{$attachmentDiskName}")
-            : null;
         $feedbackDiskConfig = config('filesystems.disks.feedback');
         $paymentEvidenceDisk = trim((string) config('payment_evidence.disk'));
         $paymentEvidenceDiskConfig = $paymentEvidenceDisk !== ''
             ? config("filesystems.disks.{$paymentEvidenceDisk}")
             : null;
+        $certificateTemplatePath = trim((string) config('certificate.template_path'));
+        $certificateFontPath = trim((string) config('certificate.font_regular'));
+        $certificateTemplateSize = $certificateTemplatePath !== ''
+            && is_readable($certificateTemplatePath)
+            ? @getimagesize($certificateTemplatePath)
+            : false;
+        $certificateTextTemplates = app(CertificateTextTemplateService::class);
+        $certificateDefaultTextKey = trim((string) config('certificate.default_text_template_key'));
         $androidPackage = trim((string) config('app_links.android_package'));
         $androidFingerprints = array_values(array_unique(array_filter(array_map(
             static fn ($value): string => strtoupper(trim((string) $value)),
@@ -620,10 +646,6 @@ class ProductionPreflight extends Command
             'APP_TRUSTED_HOSTS must include the SOCIAL_AUTH_PUBLIC_API_URL host.'
         );
         $require(
-            config('social_auth.allow_legacy_pkce') === false,
-            'SOCIAL_AUTH_ALLOW_LEGACY_PKCE must be false in production.'
-        );
-        $require(
             $socialReturnUrls !== []
                 && collect($socialReturnUrls)->every(fn (string $url): bool => $this->validSocialReturnUrl($url)),
             'SOCIAL_AUTH_RETURN_URLS must contain only the explicit rokn://auth callback.'
@@ -669,10 +691,6 @@ class ProductionPreflight extends Command
         $require(config('session.driver') === 'redis', 'SESSION_DRIVER must be redis.');
         $require(config('session.secure') === true, 'SESSION_SECURE_COOKIE must be true.');
         $require(
-            config('multiple-tokens-auth.allow_legacy_transports') === false,
-            'API_TOKEN_ALLOW_LEGACY_TRANSPORTS must be false; production accepts Bearer tokens only.'
-        );
-        $require(
             $usesDynamicTrustedEdge || (
                 $trustedProxies !== []
                 && collect($trustedProxies)->every(fn ($proxy) => $this->validTrustedProxy((string) $proxy))
@@ -690,14 +708,6 @@ class ProductionPreflight extends Command
         $require(
             $this->validBareHostname((string) config('bunny.cdn_hostname')),
             'BUNNY_CDN_HOSTNAME must be a bare HTTPS hostname without a scheme, port, path, or credentials.'
-        );
-        $fallbackHostname = trim((string) config('bunny.fallback_cdn_hostname'));
-        $require(
-            $fallbackHostname === '' || (
-                $this->validBareHostname($fallbackHostname)
-                && strtolower($fallbackHostname) !== strtolower((string) config('bunny.cdn_hostname'))
-            ),
-            'BUNNY_FALLBACK_CDN_HOSTNAME must be blank or a distinct bare hostname serving the same Stream library.'
         );
         $require($this->configured('bunny.token_auth_key'), 'BUNNY_TOKEN_AUTH_KEY is required for signed playback.');
         $require($this->configured('bunny.storage_zone'), 'BUNNY_STORAGE_ZONE is required for portfolio and thumbnail uploads.');
@@ -770,6 +780,14 @@ class ProductionPreflight extends Command
             ),
             'OPENROUTER_DEFAULT_MODEL must be present in OPENROUTER_ALLOWED_MODELS.'
         );
+        $require(
+            in_array(
+                (string) config('openrouter.project_model'),
+                $allowedOpenRouterModels,
+                true
+            ),
+            'OPENROUTER_PROJECT_MODEL must be present in OPENROUTER_ALLOWED_MODELS.'
+        );
         foreach ((array) config('openrouter.fallback_models', []) as $fallbackModel) {
             $require(
                 is_string($fallbackModel)
@@ -784,6 +802,14 @@ class ProductionPreflight extends Command
                 true
             ),
             'OPENROUTER_PROVIDER_SORT must be latency, throughput, or price.'
+        );
+        $require(
+            in_array(
+                (string) config('openrouter.provider_data_collection'),
+                ['allow', 'deny'],
+                true
+            ),
+            'OPENROUTER_PROVIDER_DATA_COLLECTION must be allow or deny.'
         );
         if ((bool) config('openrouter.web_search_enabled')) {
             $require(
@@ -827,21 +853,19 @@ class ProductionPreflight extends Command
             'CERTIFICATE_DISK must be a shared disk.'
         );
         $require(
-            !in_array(config('course_attachments.disk'), ['local', 'public', null, ''], true),
-            'COURSE_ATTACHMENT_DISK must be the private shared module-attachment disk.'
+            is_array($certificateTemplateSize)
+                && (int) ($certificateTemplateSize[0] ?? 0) === 1200
+                && (int) ($certificateTemplateSize[1] ?? 0) === 900,
+            'CERTIFICATE_TEMPLATE_PATH must be a readable 1200x900 certificate identity image.'
         );
         $require(
-            is_array($attachmentDiskConfig)
-                && (
-                    strtolower((string) ($attachmentDiskConfig['driver'] ?? '')) === 's3'
-                    || ($attachmentDiskConfig['visibility'] ?? null) === 'private'
-                )
-                && (
-                    ($attachmentDiskConfig['driver'] ?? null) !== 'local'
-                    || rtrim((string) ($attachmentDiskConfig['root'] ?? ''), '/\\')
-                        !== rtrim(storage_path('app/module-attachments'), '/\\')
-                ),
-            'Course attachments must use a private durable shared disk.'
+            $certificateFontPath !== '' && is_readable($certificateFontPath),
+            'CERTIFICATE_FONT_PATH must be a readable Arabic-capable font file.'
+        );
+        $require(
+            $certificateTextTemplates->catalogue() !== []
+                && $certificateTextTemplates->resolve($certificateDefaultTextKey) !== null,
+            'Certificate text templates must contain a complete approved default template.'
         );
         $require(
             is_array($publicDiskConfig)
@@ -986,27 +1010,6 @@ class ProductionPreflight extends Command
         $failures = [];
 
         try {
-            if (Schema::hasTable('attachments')) {
-                if (!Schema::hasColumn('attachments', 'storage_disk')) {
-                    $legacyCount = DB::table('attachments')
-                        ->where('attachable_type', \App\Models\CourseModule::class)
-                        ->count();
-                    if ($legacyCount > 0) {
-                        $failures[] = "{$legacyCount} module attachment(s) predate private storage. Run migrations, then attachments:privatize --execute --delete-public.";
-                    }
-                } else {
-                    $legacyCount = DB::table('attachments')
-                        ->where('attachable_type', \App\Models\CourseModule::class)
-                        ->where(function ($query): void {
-                            $query->whereNull('storage_disk')->orWhere('storage_disk', 'public');
-                        })
-                        ->count();
-                    if ($legacyCount > 0) {
-                        $failures[] = "{$legacyCount} public module attachment(s) remain. Run attachments:privatize --execute --delete-public and audit again.";
-                    }
-                }
-            }
-
             if (Schema::hasTable('users') && Schema::hasColumn('users', 'profile_image')) {
                 $svgCount = DB::table('users')
                     ->whereNotNull('profile_image')
@@ -1156,7 +1159,6 @@ class ProductionPreflight extends Command
             static fn ($disk): string => trim((string) $disk),
             [
                 config('course_pdfs.disk'),
-                config('course_attachments.disk'),
                 config('projects.submission_disk'),
                 config('certificate.disk'),
                 config('operations.recovery_evidence_disk'),
@@ -1360,15 +1362,23 @@ class ProductionPreflight extends Command
 
         try {
             $failures = $releaseFailures;
-            $missingLots = DB::table('orders as orders')
-                ->leftJoin('wallet_credit_lots as lot', 'lot.source_order_id', '=', 'orders.id')
-                ->whereNotNull('orders.package_id')
-                ->where('orders.status', 'approved')
-                ->where('orders.financial_status', 'settled')
+            $missingLots = DB::table('wallet_transactions as wallet_credit')
+                ->leftJoin(
+                    'wallet_credit_lots as lot',
+                    'lot.credit_transaction_id',
+                    '=',
+                    'wallet_credit.id'
+                )
+                ->where('wallet_credit.direction', WalletTransaction::DIRECTION_CREDIT)
+                ->whereIn('wallet_credit.category', [
+                    'package_purchase',
+                    'course_service_compensation',
+                ])
+                ->where('wallet_credit.paid_amount', '>', 0)
                 ->whereNull('lot.id')
                 ->count();
             if ($missingLots > 0) {
-                $failures[] = "{$missingLots} settled paid package order(s) have no immutable credit lot.";
+                $failures[] = "{$missingLots} paid wallet credit(s) have no immutable credit lot.";
             }
 
             $unreconciledReversals = DB::table('orders as orders')
@@ -1424,6 +1434,17 @@ class ProductionPreflight extends Command
                 $failures[] = "{$incompleteOrders} paid course order(s) have incomplete source allocation.";
             }
 
+            $unlinkedPaidOrders = DB::table('orders')
+                ->whereNotNull('course_id')
+                ->where('payment_method', 'wallet_coins')
+                ->where('status', 'approved')
+                ->where('paid_coins', '>', 0)
+                ->whereNull('wallet_transaction_id')
+                ->count();
+            if ($unlinkedPaidOrders > 0) {
+                $failures[] = "{$unlinkedPaidOrders} paid course order(s) are not linked to their wallet debit.";
+            }
+
             $balanceMismatches = DB::query()->fromSub(
                 DB::table('users as users')
                     ->leftJoin('wallet_credit_lots as lot', function ($join): void {
@@ -1437,6 +1458,38 @@ class ProductionPreflight extends Command
             )->count();
             if ($balanceMismatches > 0) {
                 $failures[] = "{$balanceMismatches} learner paid balance(s) do not match active source lots.";
+            }
+
+            $ledgerTailMismatches = DB::table('wallet_transactions as wt')
+                ->join('users as users', 'users.id', '=', 'wt.user_id')
+                ->whereNotExists(function ($newer): void {
+                    $newer->selectRaw('1')
+                        ->from('wallet_transactions as newer')
+                        ->whereColumn('newer.user_id', 'wt.user_id')
+                        ->whereColumn('newer.id', '>', 'wt.id');
+                })
+                ->where(function ($mismatch): void {
+                    $mismatch->whereColumn('users.wallet_coins', '<>', 'wt.balance_after')
+                        ->orWhereColumn('users.wallet_purchased_coins', '<>', 'wt.paid_balance_after')
+                        ->orWhereColumn('users.wallet_reward_coins', '<>', 'wt.reward_balance_after')
+                        ->orWhereRaw('wt.balance_after <> wt.paid_balance_after + wt.reward_balance_after');
+                })
+                ->count();
+            if ($ledgerTailMismatches > 0) {
+                $failures[] = "{$ledgerTailMismatches} wallet ledger tail(s) do not match the learner balance projection.";
+            }
+
+            $unledgeredBalances = DB::table('users as users')
+                ->leftJoin('wallet_transactions as wt', 'wt.user_id', '=', 'users.id')
+                ->whereNull('wt.id')
+                ->where(function ($balance): void {
+                    $balance->where('users.wallet_coins', '<>', 0)
+                        ->orWhere('users.wallet_purchased_coins', '<>', 0)
+                        ->orWhere('users.wallet_reward_coins', '<>', 0);
+                })
+                ->count();
+            if ($unledgeredBalances > 0) {
+                $failures[] = "{$unledgeredBalances} non-zero learner wallet(s) have no ledger entry.";
             }
 
             if ($failures !== []) {

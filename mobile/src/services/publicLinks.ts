@@ -12,6 +12,8 @@ const portfolioBaseUrl = /^https:\/\/(?:www\.)?rokn\.app$/i.test(
   ? configuredPublicBase
   : 'https://rokn.app';
 const trustedPublicHosts = new Set(['rokn.app', 'www.rokn.app']);
+const certificateCredentialPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 try {
   // Test deployments legitimately issue unlisted links on the exact API
   // origin until the canonical domain is attached. Trust that one configured
@@ -59,15 +61,17 @@ export const trustedPortfolioShareUrl = (value: unknown) => {
   }
 };
 
-export const certificateUrlFor = (_username: string, credential: string) =>
-  `${portfolioBaseUrl}/c/${encodeURIComponent(credential)}`;
-
 /** Certificate destinations are server data, not trusted navigation input. */
 export const trustedCertificateVerificationUrl = (
   value: unknown,
   credential: string,
 ) => {
-  if (typeof value !== 'string' || !value.trim() || !credential.trim()) {
+  const normalizedCredential = credential.trim();
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    !certificateCredentialPattern.test(normalizedCredential)
+  ) {
     return null;
   }
   try {
@@ -78,8 +82,45 @@ export const trustedCertificateVerificationUrl = (
       url.username ||
       url.password ||
       url.port ||
+      url.search ||
+      url.hash ||
       !trustedPublicHosts.has(hostname) ||
-      url.pathname !== `/c/${encodeURIComponent(credential)}`
+      url.pathname !== `/c/${encodeURIComponent(normalizedCredential)}`
+    ) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+};
+
+/** Certificate files must stay on the same public origin and credential. */
+export const trustedCertificateFileUrl = (
+  value: unknown,
+  credential: string,
+  kind: 'artifact' | 'download',
+) => {
+  const normalizedCredential = credential.trim();
+  if (
+    typeof value !== 'string' ||
+    !value.trim() ||
+    !certificateCredentialPattern.test(normalizedCredential)
+  ) {
+    return null;
+  }
+  try {
+    const url = new URL(value.trim());
+    const hostname = url.hostname.toLowerCase();
+    if (
+      url.protocol !== 'https:' ||
+      url.username ||
+      url.password ||
+      url.port ||
+      url.search ||
+      url.hash ||
+      !trustedPublicHosts.has(hostname) ||
+      url.pathname !== `/c/${encodeURIComponent(normalizedCredential)}/${kind}`
     ) {
       return null;
     }

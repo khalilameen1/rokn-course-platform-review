@@ -7,7 +7,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
-use App\Models\StudentSectionProgress;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -98,5 +98,27 @@ final class CurriculumCompletionService
         $revision = (int) ($enrollment->completed_curriculum_revision ?? 0);
 
         return $revision > 0 ? $revision : null;
+    }
+
+    /**
+     * Resolve a dashboard page without repeating the same schema probe for
+     * every enrollment.
+     *
+     * @param Collection<int,CourseEnrollment> $enrollments
+     * @return Collection<int,int> keyed by enrollment id
+     */
+    public function earnedRevisions(Collection $enrollments): Collection
+    {
+        if (!Schema::hasColumn('course_enrollments', 'completed_curriculum_revision')) {
+            return collect();
+        }
+
+        return $enrollments
+            ->filter(fn (CourseEnrollment $enrollment): bool =>
+                (int) ($enrollment->completed_curriculum_revision ?? 0) > 0
+            )
+            ->mapWithKeys(fn (CourseEnrollment $enrollment): array => [
+                (int) $enrollment->id => (int) $enrollment->completed_curriculum_revision,
+            ]);
     }
 }

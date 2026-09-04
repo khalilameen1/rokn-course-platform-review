@@ -24,26 +24,18 @@ final class AdminCourseOperationsViewTest extends TestCase
         }
     }
 
-    public function test_course_module_forms_keep_their_routes_and_fields(): void
+    public function test_course_module_authoring_has_no_parallel_page(): void
     {
-        $create = $this->viewSource('course-modules/create.blade.php');
-        $edit = $this->viewSource('course-modules/edit.blade.php');
-        $source = $create.$edit;
+        $root = dirname(__DIR__, 2);
+        $controller = file_get_contents($root.'/app/Http/Controllers/Admin/CourseModuleController.php');
 
-        self::assertStringContainsString('admin/assets/css/course-modules.css', $create);
-        self::assertStringContainsString('admin/assets/css/course-modules.css', $edit);
-        foreach ([
-            'admin.courses.modules.store',
-            'admin.courses.modules.update',
-            "Form::text('title_ar'",
-            "Form::text('attachments_link'",
-            "Form::select('attachment_platform'",
-        ] as $contract) {
-            self::assertStringContainsString($contract, $source);
-        }
-
-        self::assertStringNotContainsString("Form::textarea('description_ar'", $source);
-        self::assertStringNotContainsString("Form::textarea('description_en'", $source);
+        self::assertIsString($controller);
+        self::assertFileDoesNotExist($root.'/resources/views/admin/course-modules/create.blade.php');
+        self::assertFileDoesNotExist($root.'/resources/views/admin/course-modules/edit.blade.php');
+        self::assertFileDoesNotExist($root.'/resources/views/admin/course-modules/partials/fields.blade.php');
+        self::assertFileDoesNotExist($root.'/public/admin/assets/css/course-modules.css');
+        self::assertSame(2, substr_count($controller, 'return $this->authoringRedirect($course);'));
+        self::assertStringNotContainsString("view('admin.course-modules.", $controller);
     }
 
     public function test_teacher_editor_keeps_account_and_profile_fields(): void
@@ -68,8 +60,6 @@ final class AdminCourseOperationsViewTest extends TestCase
     public static function interactiveViews(): array
     {
         return [
-            'course module create' => ['course-modules/create.blade.php', true],
-            'course module edit' => ['course-modules/edit.blade.php', true],
             'teacher list' => ['teachers/index.blade.php', true],
             'teacher create' => ['teachers/create.blade.php', true],
             'teacher edit' => ['teachers/edit.blade.php', true],

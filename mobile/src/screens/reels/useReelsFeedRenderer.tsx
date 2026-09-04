@@ -16,8 +16,8 @@ import type {
   PlaybackPlayerEvent,
   PlaybackRuntimeMetrics,
 } from '../../components/VideoPlayer/playbackTelemetry';
+import {manifestRefreshDelayMs} from '../../components/VideoPlayer/playbackTelemetry';
 import type {RootNavigation} from '../../navigation/types';
-import {isLocalDemoId} from '../../config/runtime';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
 
 export type ReelsNavigation = RootNavigation;
@@ -43,7 +43,6 @@ export const useReelsFeedRenderer = ({
   positions,
   preview,
   previewCount,
-  previewGateVisible,
   requestPlaybackManifest,
   screenFocused,
   savedLessons,
@@ -56,7 +55,6 @@ export const useReelsFeedRenderer = ({
   setChatVisible,
   onContentOverlayVisibilityChange,
   submitProject,
-  passQuiz,
   toggleSaved,
   topInset,
 }: {
@@ -87,7 +85,6 @@ export const useReelsFeedRenderer = ({
   positions: MutableRefObject<Record<string, number>>;
   preview: boolean;
   previewCount?: number;
-  previewGateVisible: boolean;
   requestPlaybackManifest: (
     reel: CourseReel,
     expectedSessionId?: string,
@@ -110,7 +107,6 @@ export const useReelsFeedRenderer = ({
     files: SelectedProjectFile[],
     note?: string,
   ) => Promise<ProjectSubmissionOutcome>;
-  passQuiz: (quizId: string) => Promise<void> | void;
   toggleSaved: (
     reel: CourseReel,
     folder?: SavedFolderOption | null,
@@ -121,6 +117,8 @@ export const useReelsFeedRenderer = ({
     ({item, index}: {item: CourseFeedItem; index: number}) => {
       if (!course || !layout.height || !frameWidth) return null;
       const reel = item.type === 'reel' ? item.reel : undefined;
+      const signedSourceExpired = Boolean(reel?.playbackSessionId) &&
+        manifestRefreshDelayMs(reel?.playbackExpiresAt) === 0;
       return (
         <FeedRow
           item={item}
@@ -129,9 +127,11 @@ export const useReelsFeedRenderer = ({
           pageHeight={layout.height}
           frameWidth={frameWidth}
           isVisible={index === currentIndex && screenFocused}
-          playbackBlocked={playbackBlocked || previewGateVisible}
+          playbackBlocked={playbackBlocked}
           shouldMountVideo={
+            screenFocused &&
             Boolean(reel?.videoUrl.trim()) &&
+            !signedSourceExpired &&
             (index === currentIndex ||
               (preloadNext && index === currentIndex + 1))
           }
@@ -150,7 +150,7 @@ export const useReelsFeedRenderer = ({
             if (reel) toggleSaved(reel, folder).catch(() => undefined);
           }}
           onBeforeOpenSave={() => {
-            if (isLocalDemoId(course.id) || serverSession === true) {
+            if (serverSession === true) {
               return true;
             }
             openGuestLogin(navigation, {
@@ -165,7 +165,7 @@ export const useReelsFeedRenderer = ({
             return false;
           }}
           onOpenChat={() => {
-            if (isLocalDemoId(course.id) || serverSession === true) {
+            if (serverSession === true) {
               setChatVisible(true);
               return;
             }
@@ -199,21 +199,12 @@ export const useReelsFeedRenderer = ({
             item.type === 'project'
               ? submitProject(item.project.id, file, note)
               : Promise.resolve({
-                  passed: false,
-                  synced: false,
-                  provisional: false,
+                  submissionStatus: 'draft' as const,
+                  accepted: false,
                   canContinue: false,
                 })
           }
           onContinueAfterProject={
-            index < feedLength - 1
-              ? () => scheduleDelayedAction(() => scrollToIndex(index + 1), 80)
-              : undefined
-          }
-          onQuizPassed={() =>
-            item.type === 'quiz' ? passQuiz(item.quiz.id) : undefined
-          }
-          onContinueAfterQuiz={
             index < feedLength - 1
               ? () => scheduleDelayedAction(() => scrollToIndex(index + 1), 80)
               : undefined
@@ -243,7 +234,6 @@ export const useReelsFeedRenderer = ({
       positions,
       preview,
       previewCount,
-      previewGateVisible,
       requestPlaybackManifest,
       screenFocused,
       savedLessons,
@@ -256,7 +246,6 @@ export const useReelsFeedRenderer = ({
       setChatVisible,
       onContentOverlayVisibilityChange,
       submitProject,
-      passQuiz,
       toggleSaved,
       topInset,
     ],

@@ -1,41 +1,23 @@
 import {normalizeText} from '../../utils/searchText';
-import type {DemoCourse} from '../../data/demoContent';
+import type {Course} from '../../types/Course';
 import {recommendCourses} from '../../services/courseRecommendations';
 
 export type HomeCourseSection = {
   id: string;
   title: string;
-  data: DemoCourse[];
+  data: Course[];
 };
 
-const byHomeOrder = (first: DemoCourse, second: DemoCourse) =>
+const byHomeOrder = (first: Course, second: Course) =>
   (first.homeSortOrder ?? 100) - (second.homeSortOrder ?? 100) ||
   first.title.localeCompare(second.title, 'ar') ||
   String(first.id).localeCompare(String(second.id), 'en', {numeric: true});
 
 export const buildHomeSections = ({
   catalogue,
-  demoCatalogue,
-  demoSections,
-  usingLocalDemo,
 }: {
-  catalogue: DemoCourse[];
-  demoCatalogue: DemoCourse[];
-  demoSections: HomeCourseSection[];
-  usingLocalDemo: boolean;
+  catalogue: Course[];
 }): HomeCourseSection[] => {
-  if (usingLocalDemo) {
-    const currentCourseById = new Map(
-      demoCatalogue.map(course => [course.id, course]),
-    );
-    return demoSections.map(section => ({
-      ...section,
-      data: section.data.map(
-        course => currentCourseById.get(course.id) ?? course,
-      ),
-    }));
-  }
-
   const ownedCourses = catalogue
     .filter(course => course.owned && course.published !== false)
     .sort((first, second) => {
@@ -44,11 +26,13 @@ export const buildHomeSections = ({
       return progressOrder || byHomeOrder(first, second);
     });
   const continueCourses = ownedCourses.filter(
-    course => Number(course.progress || 0) > 0 && Number(course.progress) < 100,
+    course =>
+      course.started === true &&
+      Number(course.progress || 0) < 100,
   );
   const rowMap = new Map<
     string,
-    {id: string; title: string; order: number; data: DemoCourse[]}
+    {id: string; title: string; order: number; data: Course[]}
   >();
 
   catalogue.forEach(course => {
@@ -76,10 +60,10 @@ export const buildHomeSections = ({
         first.title.localeCompare(second.title, 'ar'),
     );
   const unassigned = catalogue.filter(course => !course.homeRows?.length);
-  const fallbackPublished = unassigned
+  const unassignedPublished = unassigned
     .filter(course => course.published !== false)
     .sort(byHomeOrder);
-  const fallbackUpcoming = catalogue
+  const upcoming = catalogue
     .filter(course => course.published === false)
     .sort(byHomeOrder);
 
@@ -92,36 +76,26 @@ export const buildHomeSections = ({
         }
       : null,
     ...configuredRows,
-    fallbackPublished.length
-      ? {id: 'published', title: 'كورسات مختارة لك', data: fallbackPublished}
+    unassignedPublished.length
+      ? {id: 'published', title: 'كورسات مختارة لك', data: unassignedPublished}
       : null,
-    fallbackUpcoming.length
-      ? {id: 'upcoming', title: 'قريبًا في ركن', data: fallbackUpcoming}
+    upcoming.length
+      ? {id: 'upcoming', title: 'قريبًا في ركن', data: upcoming}
       : null,
   ].filter((section): section is HomeCourseSection => Boolean(section));
 };
 
-export const selectHeroCourses = ({
-  catalogue,
-  demoCourse,
-  usingLocalDemo,
-}: {
-  catalogue: DemoCourse[];
-  demoCourse: DemoCourse;
-  usingLocalDemo: boolean;
-}): DemoCourse[] =>
-  usingLocalDemo
-    ? [demoCourse]
-    : [
-        catalogue.find(
-          course => course.published !== false && course.isMainCourse === true,
-        ) ?? catalogue.find(course => course.published !== false),
-      ].filter((course): course is DemoCourse => Boolean(course));
+export const selectHeroCourses = (catalogue: Course[]): Course[] =>
+  [
+    catalogue.find(
+      course => course.published !== false && course.isMainCourse === true,
+    ) ?? catalogue.find(course => course.published !== false),
+  ].filter((course): course is Course => Boolean(course));
 
 export const selectHomeRecommendations = (
-  catalogue: DemoCourse[],
-  heroCourses: DemoCourse[],
-): DemoCourse[] => {
+  catalogue: Course[],
+  heroCourses: Course[],
+): Course[] => {
   const preferredCategories = catalogue
     .filter(course => course.owned === true || Number(course.progress || 0) > 0)
     .map(course => course.category);
@@ -133,7 +107,7 @@ export const selectHomeRecommendations = (
 };
 
 export const buildQuickSearches = (
-  catalogue: DemoCourse[],
+  catalogue: Course[],
   defaults: string[],
 ): string[] =>
   Array.from(
@@ -148,22 +122,16 @@ export const buildQuickSearches = (
     .slice(0, 6);
 
 export const searchHomeCatalogue = ({
-  browseCatalogue,
   catalogue,
-  demoCatalogue,
   remoteCourses,
   searchQuery,
   loadedSearchQuery,
-  usingLocalDemo,
 }: {
-  browseCatalogue: DemoCourse[];
-  catalogue: DemoCourse[];
-  demoCatalogue: DemoCourse[];
-  remoteCourses: DemoCourse[] | null;
+  catalogue: Course[];
+  remoteCourses: Course[] | null;
   searchQuery: string;
   loadedSearchQuery: string;
-  usingLocalDemo: boolean;
-}): DemoCourse[] => {
+}): Course[] => {
   const query = normalizeText(searchQuery);
   if (!query) return [];
   const resultQuery = normalizeText(loadedSearchQuery);
@@ -173,38 +141,10 @@ export const searchHomeCatalogue = ({
   // A server search may match keywords and descriptions that are deliberately
   // absent from the compact card. Filtering that result again on the phone
   // creates false empty states. Once the response arrives, it is authoritative.
-  if (
-    !usingLocalDemo &&
-    remoteBelongsToCurrentQuery
-  ) {
+  if (remoteBelongsToCurrentQuery) {
     return Array.from(
       new Map(catalogue.map(course => [course.id, course])).values(),
     );
   }
-
-  const source = usingLocalDemo
-    ? demoCatalogue
-    : remoteBelongsToCurrentQuery
-    ? catalogue
-    : browseCatalogue;
-
-  const seen = new Set<string>();
-  const queryTokens = query.split(' ').filter(Boolean);
-  return source.filter(course => {
-    if (seen.has(course.id)) return false;
-    const searchable = normalizeText([
-      course.title,
-      course.description,
-      course.instructor,
-      course.label,
-      ...(course.homeRows?.map(row => row.title) || []),
-    ]
-      .filter((value): value is string => Boolean(value))
-      .join(' '));
-    const matches =
-      searchable.includes(query) ||
-      queryTokens.every(token => searchable.includes(token));
-    if (matches) seen.add(course.id);
-    return matches;
-  });
+  return [];
 };

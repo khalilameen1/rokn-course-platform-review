@@ -10,15 +10,15 @@ use Tests\TestCase;
 
 final class ModeratorPlatformConfigurationBoundaryTest extends TestCase
 {
-    public function test_moderator_can_read_levels_but_cannot_change_the_global_progression_ladder(): void
+    public function test_global_progression_ladder_is_administrator_only(): void
     {
         $matrix = app(AdminPermissionMatrix::class);
         $index = Route::getRoutes()->getByName('admin.levels.index');
 
         self::assertNotNull($index);
         self::assertSame(['GET', 'HEAD'], $index->methods());
-        self::assertNotContains('admin.only', $index->gatherMiddleware());
-        self::assertTrue($matrix->allows('moderator', 'admin.levels.index', 'GET'));
+        self::assertContains('admin.only', $index->gatherMiddleware());
+        self::assertFalse($matrix->allows('moderator', 'admin.levels.index', 'GET'));
 
         $mutations = [
             'admin.levels.create' => 'GET',
@@ -38,5 +38,31 @@ final class ModeratorPlatformConfigurationBoundaryTest extends TestCase
         }
 
         self::assertNull(Route::getRoutes()->getByName('admin.levels.show'));
+    }
+
+    public function test_global_course_taxonomy_pages_are_administrator_only(): void
+    {
+        $matrix = app(AdminPermissionMatrix::class);
+
+        foreach (['classifications', 'paths'] as $resource) {
+            $index = Route::getRoutes()->getByName("admin.{$resource}.index");
+            self::assertNotNull($index);
+            self::assertContains('admin.only', $index->gatherMiddleware());
+            self::assertFalse($matrix->allows('moderator', "admin.{$resource}.index", 'GET'));
+
+            foreach ([
+                'create' => 'GET',
+                'store' => 'POST',
+                'edit' => 'GET',
+                'update' => 'PATCH',
+                'destroy' => 'DELETE',
+            ] as $action => $method) {
+                $name = "admin.{$resource}.{$action}";
+                $route = Route::getRoutes()->getByName($name);
+                self::assertNotNull($route, $name);
+                self::assertContains('admin.only', $route->gatherMiddleware(), $name);
+                self::assertFalse($matrix->allows('moderator', $name, $method), $name);
+            }
+        }
     }
 }

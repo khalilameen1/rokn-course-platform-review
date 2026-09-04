@@ -46,7 +46,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
 
         $this->actingAs($moderator)
-            ->get(route('admin.courses.edit', $course))
+            ->get(route('admin.courses.show', $course))
             ->assertOk()
             ->assertDontSee('ai_budget_usd')
             ->assertDontSee('project_feedback_budget_usd')
@@ -60,7 +60,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
         // fresh browser session before checking the administrator view.
         $this->flushSession();
         $this->actingAs($administrator)
-            ->get(route('admin.courses.edit', $course))
+            ->get(route('admin.courses.show', $course))
             ->assertOk()
             ->assertDontSee('ai_budget_usd')
             ->assertDontSee('project_feedback_budget_usd')

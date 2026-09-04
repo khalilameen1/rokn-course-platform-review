@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * One revision protects the complete course authoring aggregate. A module,
- * section, quiz or attachment edit is not independent from the outline the
+ * section, project or attachment edit is not independent from the outline the
  * moderator saw when they started editing.
  */
 final class CourseAuthoringConcurrencyService

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "verified package-lock.json production closure",
-  "packageCount": 735,
-  "packagePathCount": 818,
+  "packageCount": 734,
+  "packagePathCount": 817,
   "packages": [
     {
       "coordinate": "@babel/code-frame@7.10.4",
@@ -12461,26 +12461,6 @@
           "path": "LICENSE",
           "sha256": "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173",
           "text": "MIT License\n\nCopyright (c) Meta Platforms, Inc. and affiliates.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
-        }
-      ]
-    },
-    {
-      "coordinate": "redux-persist@6.0.0",
-      "name": "redux-persist",
-      "version": "6.0.0",
-      "selectedLicense": "MIT",
-      "declaredLicense": "MIT",
-      "integrity": "sha512-71LLMbUq2r02ng2We9S215LtPu3fY0KgaGE0k8WRgl6RkqxtGfl7HUozz1Dftwsb0D/5mZ8dwAaPbtnzfvbEwQ==",
-      "resolved": "https://registry.npmjs.org/redux-persist/-/redux-persist-6.0.0.tgz",
-      "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/redux-persist/-/redux-persist-6.0.0.tgz",
-      "publishedLegalFileCount": 1,
-      "apacheNotice": null,
-      "files": [
-        {
-          "path": "LICENSE",
-          "sha256": "d042262c37aebcd68193e4846a8d39fdae22c7d40b65d8a29a3df11bbc6ac1e9",
-          "text": "MIT License\n\nCopyright (c) 2017 Zack Story\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE."
         }
       ]
     },

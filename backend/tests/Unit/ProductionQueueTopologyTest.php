@@ -19,14 +19,11 @@ final class ProductionQueueTopologyTest extends TestCase
         $job = new GenerateCourseChatReply(
             1,
             1,
-            500,
-            'answer-key',
             'openai/gpt-5-mini',
             [['role' => 'user', 'content' => 'question']],
             .3,
             420,
-            [],
-            60
+            []
         );
 
         self::assertGreaterThanOrEqual(

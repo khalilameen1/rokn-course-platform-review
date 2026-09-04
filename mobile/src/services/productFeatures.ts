@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../constants/api';
+import {roknApiUrl} from '../constants/apiBaseUrl';
 import {serverNowMs} from '../utils/serverClock';
 
 export type ProductFeatureKey =
@@ -33,7 +34,9 @@ const FEATURE_KEYS: ProductFeatureKey[] = [
   'project_uploads',
   'ai_chat',
 ];
-const SNAPSHOT_KEY = '@rokn/product-feature-snapshot/v2';
+const SNAPSHOT_KEY = `@rokn/product-feature-snapshot/v3:${encodeURIComponent(
+  roknApiUrl,
+)}`;
 const MAX_SNAPSHOT_TTL_MS = 15 * 60 * 1000;
 const REQUIRE_REMOTE_FLAGS =
   process.env.EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS === '1' ||

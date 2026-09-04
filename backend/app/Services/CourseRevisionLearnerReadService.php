@@ -8,8 +8,8 @@ use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\LessonWatchEvidence;
 use App\Models\Project;
+use App\Models\ProjectSubmission;
 use App\Models\StudentSectionProgress;
-use App\Models\UserProjectEvaluation;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 
@@ -101,35 +101,50 @@ final readonly class CourseRevisionLearnerReadService
     /** @return Collection<int,int> current project IDs */
     public function passedProjectIds(int $userId, iterable $currentProjectIds): Collection
     {
-        $aliases = $this->revisions->equivalentEntityMap(Project::class, $currentProjectIds);
-        $reverse = $this->reverse($aliases);
-        if ($reverse === []) return collect();
-
-        return UserProjectEvaluation::query()
-            ->where('user_id', $userId)
-            ->whereIn('project_id', array_keys($reverse))
-            ->where('passed', true)
-            ->pluck('project_id')
-            ->map(fn ($id): int => $reverse[(int) $id])
-            ->unique()->values();
+        return $this->projectSubmissions($userId, $currentProjectIds)
+            ->filter(fn (ProjectSubmission $submission): bool =>
+                $submission->reviewOutcome()['passed']
+            )
+            ->keys()
+            ->map(static fn ($id): int => (int) $id)
+            ->values();
     }
 
-    /** @return Collection<int,UserProjectEvaluation> keyed by current project ID */
-    public function projectEvaluations(int $userId, iterable $currentProjectIds): Collection
+    /**
+     * Latest canonical submission keyed by the current published project ID.
+     *
+     * A course revision can leave submissions attached to an archived project
+     * snapshot. We first bound the query to the latest row for every equivalent
+     * project, then choose the newest row across that logical project. This
+     * keeps navigation, reports, portfolio and certificate eligibility on one
+     * state instead of a mutable shadow evaluation table.
+     *
+     * @param list<string> $with
+     * @return Collection<int,ProjectSubmission>
+     */
+    public function projectSubmissions(
+        int $userId,
+        iterable $currentProjectIds,
+        array $with = []
+    ): Collection
     {
         $aliases = $this->revisions->equivalentEntityMap(Project::class, $currentProjectIds);
         $reverse = $this->reverse($aliases);
         if ($reverse === []) return collect();
 
-        return UserProjectEvaluation::query()
+        $latestIds = ProjectSubmission::query()
+            ->selectRaw('MAX(id)')
             ->where('user_id', $userId)
             ->whereIn('project_id', array_keys($reverse))
-            // Passing is an earned progression fact. A later failed retry may
-            // add feedback, but it cannot make the already-passed gate appear
-            // closed in one screen while navigation correctly remains open.
-            ->orderByDesc('passed')->orderByDesc('updated_at')->orderByDesc('id')->get()
-            ->groupBy(fn (UserProjectEvaluation $row): int => $reverse[(int) $row->project_id])
-            ->map(fn (Collection $rows): UserProjectEvaluation => $rows->first());
+            ->groupBy('project_id');
+
+        return ProjectSubmission::query()
+            ->with(array_values(array_unique($with)))
+            ->whereIn('id', $latestIds)
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy(fn (ProjectSubmission $row): int => $reverse[(int) $row->project_id])
+            ->map(fn (Collection $rows): ProjectSubmission => $rows->first());
     }
 
     public function lessonEvidence(int $userId, int $currentLessonId): ?LessonWatchEvidence

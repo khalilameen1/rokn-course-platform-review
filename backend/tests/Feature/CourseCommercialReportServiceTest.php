@@ -26,7 +26,9 @@ final class CourseCommercialReportServiceTest extends TestCase
         foreach ([
             'student_notifications',
             'wallet_debit_allocations', 'wallet_credit_lots', 'ai_usage_events',
+            'wallet_transactions',
             'operating_cost_pools', 'course_enrollments',
+            'playback_sessions', 'course_sections',
             'orders', 'course_codes', 'courses', 'users', 'settings',
         ] as $table) {
             Schema::dropIfExists($table);
@@ -46,7 +48,7 @@ final class CourseCommercialReportServiceTest extends TestCase
 
         DB::table('orders')->insert([
             [
-                'id' => 100, 'user_id' => 1, 'course_id' => null, 'package_id' => 1, 'course_code_id' => null,
+                'id' => 100, 'user_id' => 1, 'course_id' => null, 'package_id' => 1, 'course_code_id' => null, 'wallet_transaction_id' => null,
                 'payment_method' => Order::PAYMENT_METHOD_KASHIER, 'amount' => 100,
                 'discount_amount' => 0, 'final_amount' => 100, 'gateway_gross_amount' => 100,
                 'gateway_fee_amount' => 3, 'gateway_net_amount' => 97, 'gateway_currency' => 'EGP',
@@ -55,7 +57,7 @@ final class CourseCommercialReportServiceTest extends TestCase
                 'approved_at' => $now, 'created_at' => $now, 'updated_at' => $now,
             ],
             [
-                'id' => 101, 'user_id' => 1, 'course_id' => 10, 'package_id' => null, 'course_code_id' => null,
+                'id' => 101, 'user_id' => 1, 'course_id' => 10, 'package_id' => null, 'course_code_id' => null, 'wallet_transaction_id' => 501,
                 'payment_method' => Order::PAYMENT_METHOD_WALLET_COINS, 'amount' => 70,
                 'discount_amount' => 0, 'final_amount' => 70, 'gateway_gross_amount' => null,
                 'gateway_fee_amount' => null, 'gateway_net_amount' => null, 'gateway_currency' => null,
@@ -64,7 +66,7 @@ final class CourseCommercialReportServiceTest extends TestCase
                 'approved_at' => $now, 'created_at' => $now, 'updated_at' => $now,
             ],
             [
-                'id' => 102, 'user_id' => 2, 'course_id' => 10, 'package_id' => null,
+                'id' => 102, 'user_id' => 2, 'course_id' => 10, 'package_id' => null, 'wallet_transaction_id' => null,
                 'course_code_id' => 8, 'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE,
                 'amount' => 0, 'discount_amount' => 0, 'final_amount' => 0,
                 'gateway_gross_amount' => null, 'gateway_fee_amount' => null,
@@ -77,6 +79,26 @@ final class CourseCommercialReportServiceTest extends TestCase
         DB::table('course_enrollments')->insert([
             ['id' => 201, 'user_id' => 1, 'course_id' => 10, 'order_id' => 101, 'access_plan_order_id' => 101, 'is_active' => 1, 'enrolled_at' => $now, 'access_granted_at' => $now, 'created_at' => $now, 'updated_at' => $now],
             ['id' => 202, 'user_id' => 2, 'course_id' => 10, 'order_id' => 102, 'access_plan_order_id' => null, 'is_active' => 1, 'enrolled_at' => $now, 'access_granted_at' => $now, 'created_at' => $now, 'updated_at' => $now],
+        ]);
+        DB::table('wallet_transactions')->insert([
+            'id' => 501,
+            'public_id' => '33333333-3333-4333-8333-333333333333',
+            'user_id' => 1,
+            'direction' => 'debit',
+            'category' => 'course_purchase',
+            'bucket' => 'mixed',
+            'amount' => 70,
+            'paid_amount' => 50,
+            'reward_amount' => 20,
+            'balance_after' => 30,
+            'paid_balance_after' => 50,
+            'reward_balance_after' => 0,
+            'source_type' => Course::class,
+            'source_id' => 10,
+            'idempotency_key' => 'course-test-101',
+            'occurred_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
         DB::table('wallet_credit_lots')->insert([
             'id' => 301, 'user_id' => 1, 'source_order_id' => 100,
@@ -169,6 +191,9 @@ final class CourseCommercialReportServiceTest extends TestCase
             $report['service_breakdown']->firstWhere('key', 'notifications')['with_estimates_egp']
         );
         self::assertSame('منحة', $report['rows']->firstWhere('source', 'grant')['source_label']);
+        $plan = $report['plan_breakdown']->firstWhere('plan_name', 'إتاحة قديمة');
+        self::assertSame(10.0, $plan['service_breakdown_actual_egp']['openrouter']);
+        self::assertSame(20.0, $plan['service_breakdown_actual_egp']['infrastructure']);
 
         $platform = app(PlatformCommercialReportService::class)->report();
         self::assertSame(2, $platform['unique_students']);
@@ -252,8 +277,26 @@ final class CourseCommercialReportServiceTest extends TestCase
             $table->boolean('active')->default(true); $table->timestamps(); $table->softDeletes();
         });
         Schema::create('courses', function (Blueprint $table): void {
-            $table->id(); $table->unsignedBigInteger('parent_id')->nullable();
+            $table->id();
             $table->string('name_ar'); $table->timestamps();
+            $table->softDeletes();
+        });
+        Schema::create('course_sections', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('course_id');
+        });
+        Schema::create('playback_sessions', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_section_id');
+            $table->timestamp('started_playing_at')->nullable();
+            $table->timestamp('started_at')->nullable();
+            $table->timestamp('ended_at')->nullable();
+            $table->timestamp('last_heartbeat_at')->nullable();
+            $table->unsignedInteger('duration_seconds')->nullable();
+            $table->unsignedBigInteger('buffer_duration_ms')->default(0);
+            $table->unsignedInteger('effective_bitrate_kbps')->nullable();
+            $table->string('effective_quality')->nullable();
         });
         Schema::create('course_codes', function (Blueprint $table): void {
             $table->id(); $table->string('code'); $table->boolean('is_grant')->default(false);
@@ -262,6 +305,7 @@ final class CourseCommercialReportServiceTest extends TestCase
         Schema::create('orders', function (Blueprint $table): void {
             $table->id(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('course_id')->nullable();
             $table->unsignedBigInteger('package_id')->nullable(); $table->unsignedBigInteger('course_code_id')->nullable();
+            $table->unsignedBigInteger('wallet_transaction_id')->nullable();
             $table->unsignedBigInteger('access_plan_id')->nullable(); $table->json('access_plan_snapshot')->nullable();
             $table->string('payment_method'); $table->decimal('amount', 12, 2); $table->decimal('discount_amount', 12, 2);
             $table->decimal('final_amount', 12, 2); $table->decimal('gateway_gross_amount', 12, 2)->nullable();
@@ -271,6 +315,15 @@ final class CourseCommercialReportServiceTest extends TestCase
             $table->unsignedInteger('reward_coins')->default(0); $table->timestamp('approved_at')->nullable();
             $table->timestamp('reversed_at')->nullable();
             $table->timestamps(); $table->softDeletes();
+        });
+        Schema::create('wallet_transactions', function (Blueprint $table): void {
+            $table->id(); $table->uuid('public_id')->unique(); $table->unsignedBigInteger('user_id');
+            $table->string('direction'); $table->string('category'); $table->string('bucket');
+            $table->unsignedInteger('amount'); $table->unsignedInteger('paid_amount');
+            $table->unsignedInteger('reward_amount'); $table->integer('balance_after');
+            $table->integer('paid_balance_after'); $table->integer('reward_balance_after');
+            $table->nullableMorphs('source'); $table->string('idempotency_key');
+            $table->timestamp('occurred_at'); $table->timestamps();
         });
         Schema::create('course_enrollments', function (Blueprint $table): void {
             $table->id(); $table->unsignedBigInteger('user_id'); $table->unsignedBigInteger('course_id');

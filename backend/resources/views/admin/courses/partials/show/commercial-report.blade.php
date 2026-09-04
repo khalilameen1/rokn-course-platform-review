@@ -1,4 +1,4 @@
-<div id="commercial-report" class="tab-content">
+<div class="course-report-content">
     <div class="text-left mb-3">
         <a class="btn btn-outline-primary" href="{{ route('admin.courses.commercial-report.export', $course) }}">
             <i class="fa fa-download ml-1"></i> تصدير كشف الطلاب والتكلفة CSV
@@ -8,11 +8,21 @@
         المبلغ النقدي منسوب للكورس بنسبة العملات المدفوعة التي خرجت من كل باقة شحن فعلية.
         العملات الترحيبية والمكتسبة تظهر منفصلة ولا تُحسب دخلًا نقديًا.
     </div>
+    @if(!$commercialReport['coin_allocation_complete'])
+        <div class="alert alert-warning mb-3">
+            توجد عمليات قديمة غير مرتبطة بدفتر العملات
+            حُجبت قيمها بدل احتساب حقول غير قابلة للمراجعة
+        </div>
+    @endif
 
     <div class="statistics-grid">
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['active_students']) }}</span>
             <span class="stat-label">طلاب نشطون</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-counter">{{ number_format($commercialReport['historical_students']) }}</span>
+            <span class="stat-label">إجمالي من التحقوا</span>
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['grant_students']) }}</span>
@@ -24,7 +34,7 @@
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['paid_students']) }}</span>
-            <span class="stat-label">شراء مباشر بالعملات</span>
+            <span class="stat-label">استخدموا عملات مشتراة</span>
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['paid_coins']) }}</span>
@@ -43,6 +53,8 @@
             <span class="stat-counter">
                 @if($commercialReport['cash_net_complete'])
                     {{ number_format($commercialReport['cash_net_egp'], 2) }} ج.م
+                @elseif($commercialReport['cash_net_known_egp'] > 0)
+                    {{ number_format($commercialReport['cash_net_known_egp'], 2) }} ج.م مؤكدة جزئيًا
                 @else
                     بانتظار التسوية
                 @endif
@@ -142,24 +154,33 @@
         <h3 class="section-title"><i class="fa fa-tags ml-2"></i> توزيع الباقات</h3>
         <div class="table-responsive">
             <table class="table table-striped">
-                <thead><tr><th>الباقة</th><th>الطلاب</th><th>العملات</th><th>صافي/طالب</th><th>تكلفة/طالب</th><th>التكلفة من الصافي</th><th>OpenRouter</th><th>تكلفة فعلية</th><th>التكلفة مع التقديرات</th><th>الهامش الفعلي</th><th>الهامش التقديري</th></tr></thead>
+                <thead><tr><th>الفئة</th><th>النشطون / الإجمالي</th><th>صافي/طالب</th><th>تكلفة/طالب</th><th>استهلاك AI</th><th>المشاهدة</th><th>التكلفة من الصافي</th><th>هامش الفئة</th></tr></thead>
                 <tbody>
                 @forelse($commercialReport['plan_breakdown'] as $planCode => $plan)
                     <tr>
-                        <td>{{ $plan['plan_name'] }}@if($planCode)<br><small class="text-muted">{{ $planCode }}</small>@endif</td>
-                        <td>{{ number_format($plan['students']) }}</td>
-                        <td>{{ number_format($plan['coins']) }}</td>
+                        <td>{{ $plan['plan_name'] }}</td>
+                        <td>{{ number_format($plan['active_students']) }} / {{ number_format($plan['students']) }}</td>
                         <td>{{ $plan['average_net_per_student_egp'] === null ? '—' : number_format($plan['average_net_per_student_egp'], 2).' ج.م' }}</td>
-                        <td>{{ $plan['average_cost_per_student_egp'] === null ? '—' : number_format($plan['average_cost_per_student_egp'], 2).' ج.م' }}</td>
+                        <td>
+                            {{ $plan['average_cost_per_student_egp'] === null ? '—' : number_format($plan['average_cost_per_student_egp'], 2).' ج.م' }}
+                            <details><summary><small>تفصيل الخدمات</small></summary>@foreach(\App\Services\CourseCostReportService::serviceLabels() as $key => $label)<div><small>{{ $label }}: {{ ($plan['service_breakdown_actual_egp'][$key] ?? null) === null ? 'ناقص' : number_format($plan['service_breakdown_actual_egp'][$key], 2).' ج.م' }}</small></div>@endforeach</details>
+                        </td>
+                        <td>
+                            {{ number_format($plan['ai_requests']) }} رد · {{ number_format($plan['ai_tokens']) }} توكن
+                            @if($plan['ai_failed_requests'] || $plan['ai_unanswered_requests'])
+                                <br><small class="text-warning">{{ number_format($plan['ai_failed_requests'] + $plan['ai_unanswered_requests']) }} لم تكتمل</small>
+                            @endif
+                            <br><small>{{ $plan['ai_cost_usd'] === null ? 'تكلفة غير مكتملة' : '$'.number_format($plan['ai_cost_usd'], 6) }}</small>
+                        </td>
+                        <td>{{ number_format($plan['playback_minutes'], 0) }} دقيقة<br><small>{{ number_format($plan['playback_gb_estimated'], 3) }} GB مقدرة</small></td>
                         <td>{{ $plan['cost_to_net_revenue_percentage'] === null ? '—' : number_format($plan['cost_to_net_revenue_percentage'], 2).'%' }}</td>
-                        <td>${{ number_format($plan['ai_cost_usd'], 6) }}</td>
-                        <td>{{ $plan['service_cost_egp'] === null ? 'غير مكتمل' : number_format($plan['service_cost_egp'], 2).' ج.م' }}</td>
-                        <td>{{ $plan['estimated_cost_egp'] === null ? 'غير مكتمل' : number_format($plan['estimated_cost_egp'], 2).' ج.م' }}</td>
-                        <td>{{ $plan['margin_egp'] === null ? 'غير مكتمل' : number_format($plan['margin_egp'], 2).' ج.م' }}</td>
-                        <td>{{ $plan['estimated_margin_egp'] === null ? 'غير مكتمل' : number_format($plan['estimated_margin_egp'], 2).' ج.م' }}</td>
+                        <td>
+                            {{ $plan['margin_egp'] === null ? 'غير مكتمل' : number_format($plan['margin_egp'], 2).' ج.م' }}
+                            @if($plan['estimated_margin_egp'] !== null && $plan['margin_egp'] === null)<br><small>تقديري {{ number_format($plan['estimated_margin_egp'], 2) }} ج.م</small>@endif
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="11" class="text-center text-muted">لا توجد عمليات شراء بعد.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted">لا توجد عمليات شراء بعد.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -177,7 +198,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                @forelse($commercialReport['rows'] as $row)
+                @forelse($commercialReport['student_rows'] as $row)
                     <tr>
                         <td>
                             <strong>{{ $row['user']?->name ?? 'مستخدم محذوف' }}</strong><br>
@@ -202,6 +223,9 @@
                         <td>
                             {{ number_format($row['paid_coins']) }} مشتراة<br>
                             {{ number_format($row['reward_coins']) }} مكافآت
+                            @if(!$row['coin_allocation_complete'])
+                                <br><small class="text-warning">ربط الدفتر غير مكتمل</small>
+                            @endif
                         </td>
                         <td>
                             {{ number_format($row['cash_gross_egp'], 2) }} ج.م
@@ -213,6 +237,8 @@
                         <td>
                             @if($row['cash_net_complete'])
                                 {{ number_format($row['cash_net_known_egp'], 2) }} ج.م
+                            @elseif($row['cash_net_known_egp'] > 0)
+                                {{ number_format($row['cash_net_known_egp'], 2) }} ج.م مؤكدة جزئيًا
                             @else
                                 <span class="text-warning">بانتظار التسوية</span>
                             @endif
@@ -242,5 +268,10 @@
                 </tbody>
             </table>
         </div>
+        @if($commercialReport['student_rows']->hasPages())
+            <div class="mt-3 d-flex justify-content-center">
+                {{ $commercialReport['student_rows']->onEachSide(1)->links() }}
+            </div>
+        @endif
     </div>
 </div>

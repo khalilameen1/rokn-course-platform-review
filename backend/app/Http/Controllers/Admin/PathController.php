@@ -44,7 +44,7 @@ class PathController extends Controller
     public function create()
     {
         $interests = Classification::all();
-        $courses = Course::query()->whereNull('parent_id')->orderBy('name_ar')->get();
+        $courses = Course::query()->orderBy('name_ar')->get();
         return view('admin.paths.create', compact('interests', 'courses'));
     }
 
@@ -65,7 +65,7 @@ class PathController extends Controller
             'course_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists('courses', 'id')->where(fn ($courses) => $courses->whereNull('parent_id')),
+                Rule::exists('courses', 'id'),
             ],
             'authoring_request_id' => 'required|uuid',
         ]);
@@ -103,7 +103,7 @@ class PathController extends Controller
     {
         $path = Path::with(['interests', 'courses'])->findOrFail($id);
         $interests = Classification::all();
-        $courses = Course::query()->whereNull('parent_id')->orderBy('name_ar')->get();
+        $courses = Course::query()->orderBy('name_ar')->get();
         $editorVersion = $this->editorVersion($path);
         return view('admin.paths.edit', compact('path', 'interests', 'courses', 'editorVersion'));
     }
@@ -128,7 +128,7 @@ class PathController extends Controller
             'course_ids.*' => [
                 'integer',
                 'distinct',
-                Rule::exists('courses', 'id')->where(fn ($courses) => $courses->whereNull('parent_id')),
+                Rule::exists('courses', 'id'),
             ],
             'editor_version' => 'required|string|size:64',
         ]);
@@ -143,7 +143,6 @@ class PathController extends Controller
         DB::transaction(function () use ($path, $validated, $editorVersion, $courseIds): void {
             $locked = Path::query()->whereKey($path->id)->lockForUpdate()->firstOrFail();
             $affectedCourseIds = Course::query()
-                ->whereNull('parent_id')
                 ->where('path_id', $locked->id)
                 ->pluck('id')
                 ->merge($courseIds)
@@ -168,7 +167,6 @@ class PathController extends Controller
             ]);
             $locked->interests()->sync($validated['interest_ids'] ?? []);
             Course::query()
-                ->whereNull('parent_id')
                 ->where('path_id', $locked->id)
                 ->whereNotIn('id', $courseIds)
                 ->get()
@@ -214,7 +212,6 @@ class PathController extends Controller
             $path->title_en,
             collect($path->interests->modelKeys())->map(fn ($id): int => (int) $id)->sort()->values()->all(),
             Course::query()
-                ->whereNull('parent_id')
                 ->orderBy('id')
                 ->get(['id', 'path_id'])
                 ->map(fn (Course $course): array => [(int) $course->id, (int) ($course->path_id ?? 0)])

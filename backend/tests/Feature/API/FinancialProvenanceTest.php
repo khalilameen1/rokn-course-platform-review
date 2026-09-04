@@ -40,19 +40,13 @@ final class FinancialProvenanceTest extends ApiTestCase
             $table->unsignedInteger('package_coins')->nullable();
             $table->unsignedBigInteger('parent_order_id')->nullable();
         });
-        Schema::create('course_modules', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('course_id');
-            $table->unsignedInteger('order')->default(1);
-            $table->timestamps();
-            $table->softDeletes();
-        });
         Schema::create('packages', function (Blueprint $table): void {
             $table->id();
             $table->string('name_ar')->nullable();
             $table->string('name_en')->nullable();
             $table->decimal('price', 10, 2)->default(0);
             $table->unsignedInteger('coins')->default(0);
+            $table->unsignedSmallInteger('sort_order')->default(100);
             $table->timestamps();
         });
         Schema::create('package_user', function (Blueprint $table): void {
@@ -81,6 +75,10 @@ final class FinancialProvenanceTest extends ApiTestCase
             $table->unique(['provider', 'external_event_id']);
         });
 
+        // ApiTestCase provides the hold table needed by the common API fixture.
+        // This suite owns the complete provenance schema (including its unique
+        // source/course constraint), so replace the shared fixture explicitly.
+        Schema::dropIfExists('financial_entitlement_holds');
         $this->createProvenanceSchema();
         $this->setWallet(0, 0);
         DB::table('courses')->where('id', $this->courseId)->update(['ai_chat_enabled' => true]);
@@ -88,7 +86,6 @@ final class FinancialProvenanceTest extends ApiTestCase
 
     protected function tearDown(): void
     {
-        Schema::dropIfExists('course_modules');
         Schema::dropIfExists('financial_entitlement_holds');
         Schema::dropIfExists('wallet_debit_allocations');
         Schema::dropIfExists('wallet_credit_lots');
@@ -694,6 +691,7 @@ final class FinancialProvenanceTest extends ApiTestCase
                 : [],
             0
         );
+        $order->forceFill(['wallet_transaction_id' => $debit->id])->save();
         app(FinancialProvenanceService::class)->allocateCourseDebit($order, $debit);
 
         $enrollment ??= CourseEnrollment::query()->create([
@@ -746,6 +744,7 @@ final class FinancialProvenanceTest extends ApiTestCase
             ],
             0
         );
+        $order->forceFill(['wallet_transaction_id' => $debit->id])->save();
         app(FinancialProvenanceService::class)->allocateCourseDebit($order, $debit);
         $enrollment->forceFill(['access_plan_order_id' => $order->id])->save();
 
@@ -781,10 +780,27 @@ final class FinancialProvenanceTest extends ApiTestCase
 
     private function setWallet(int $paid, int $reward): void
     {
-        $this->user->forceFill([
+        $transactionIds = DB::table('wallet_transactions')
+            ->where('user_id', $this->user->id)
+            ->pluck('id');
+
+        if (Schema::hasTable('wallet_debit_allocations') && $transactionIds->isNotEmpty()) {
+            DB::table('wallet_debit_allocations')
+                ->whereIn('wallet_transaction_id', $transactionIds)
+                ->delete();
+        }
+
+        if (Schema::hasTable('wallet_credit_lots')) {
+            DB::table('wallet_credit_lots')->where('user_id', $this->user->id)->delete();
+        }
+
+        DB::table('wallet_transactions')->where('user_id', $this->user->id)->delete();
+
+        $this->user->newQuery()->whereKey($this->user->id)->update([
             'wallet_purchased_coins' => $paid,
             'wallet_reward_coins' => $reward,
             'wallet_coins' => $paid + $reward,
-        ])->save();
+        ]);
+        $this->user->refresh();
     }
 }

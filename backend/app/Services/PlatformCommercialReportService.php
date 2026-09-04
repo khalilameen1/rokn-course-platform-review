@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
-use App\Support\DatabaseCapabilities;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /** Platform-wide unit economics assembled from the same auditable course ledger. */
 final readonly class PlatformCommercialReportService
@@ -23,16 +21,8 @@ final readonly class PlatformCommercialReportService
     {
         // Retiring a course removes it from the catalogue, not from lifetime
         // revenue and cost history.
-        $courseQuery = Course::query();
-        if (DatabaseCapabilities::hasColumn('courses', 'deleted_at')) {
-            // Course may have been booted before a dynamically-created test or
-            // tenant table gained deleted_at. Removing the scope is safe in
-            // both states; withTrashed() is only registered when that scope
-            // was present during model boot.
-            $courseQuery->withoutGlobalScope(SoftDeletingScope::class);
-        }
-        $courseModels = $courseQuery->whereNull('parent_id')
-            ->whereHas('enrollments')
+        $courseQuery = Course::query()->withoutGlobalScope(SoftDeletingScope::class);
+        $courseModels = $courseQuery->whereHas('enrollments')
             ->when($filters['course_id'] ?? null, fn ($query, $courseId) =>
                 $query->whereKey((int) $courseId)
             )
@@ -48,8 +38,7 @@ final readonly class PlatformCommercialReportService
                 $courseReport['rows']->map(function (array $row) use ($course): array {
                     $row['course_id'] = (int) $course->id;
                     $row['course_name'] = (string) $course->title;
-                    $row['course_archived'] = DatabaseCapabilities::hasColumn('courses', 'deleted_at')
-                        && $course->trashed();
+                    $row['course_archived'] = $course->trashed();
 
                     return $row;
                 })
@@ -84,6 +73,13 @@ final readonly class PlatformCommercialReportService
                     'courses' => $userRows->pluck('course_name')->filter()->unique()->values(),
                     'plans' => $userRows->pluck('plan_name')->filter()->unique()->values(),
                     'sources' => $userRows->pluck('source_label')->filter()->unique()->values(),
+                    'payment_channels' => $userRows
+                        ->flatMap(fn (array $row): array => collect($row['cash_channels'] ?? [])
+                            ->pluck('label')
+                            ->all())
+                        ->filter()
+                        ->unique()
+                        ->values(),
                     'actual_cost_by_service_egp' => $this->sumServiceMaps(
                         $userRows,
                         'actual_cost_by_service_egp'
@@ -257,24 +253,13 @@ final readonly class PlatformCommercialReportService
     private function notificationUsage(Collection $userIds): Collection
     {
         $userIds = $userIds->filter()->unique()->values();
-        if ($userIds->isEmpty() || !Schema::hasTable('student_notifications')) {
+        if ($userIds->isEmpty()) {
             return collect();
         }
 
-        $hasRead = Schema::hasColumn('student_notifications', 'is_read');
-        $hasAttempted = Schema::hasColumn('student_notifications', 'push_attempted_at');
-        $hasProviderAccepted = Schema::hasColumn('student_notifications', 'push_sent_at');
-        $readSql = $hasRead ? 'SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END)' : '0';
-        $attemptedSql = $hasAttempted
-            ? 'SUM(CASE WHEN push_attempted_at IS NOT NULL THEN 1 ELSE 0 END)'
-            : '0';
-        $providerAcceptedSql = $hasProviderAccepted
-            ? 'SUM(CASE WHEN push_sent_at IS NOT NULL THEN 1 ELSE 0 END)'
-            : '0';
-
         return DB::table('student_notifications')
             ->whereIn('user_id', $userIds)
-            ->selectRaw("user_id, COUNT(*) as in_app_notifications, {$readSql} as read_notifications, {$attemptedSql} as push_attempts, {$providerAcceptedSql} as push_provider_accepted")
+            ->selectRaw('user_id, COUNT(*) as in_app_notifications, SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END) as read_notifications, SUM(CASE WHEN push_attempted_at IS NOT NULL THEN 1 ELSE 0 END) as push_attempts, SUM(CASE WHEN push_sent_at IS NOT NULL THEN 1 ELSE 0 END) as push_provider_accepted')
             ->groupBy('user_id')
             ->get()
             ->mapWithKeys(fn ($row): array => [(int) $row->user_id => [

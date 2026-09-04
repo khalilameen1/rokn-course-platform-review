@@ -11,17 +11,17 @@ import {SectionHeading} from '../ui/PremiumUI';
 interface CoursesSectionProps {
   data: Course[];
   title?: string;
-  onEndReached?: () => void;
+  onCoursePress: (course: Course) => void;
 }
 
 const CoursesSection = memo<CoursesSectionProps>(
-  ({data, title = 'كورسات مختارة لك', onEndReached}) => {
+  ({data, title = 'كورسات مختارة لك', onCoursePress}) => {
     const {gutter} = useResponsiveLayout();
     const renderCourse = useCallback(
-      ({item, index}: ListRenderItemInfo<Course>) => (
-        <CourseCard item={item} index={index} />
+      ({item}: ListRenderItemInfo<Course>) => (
+        <CourseCard item={item} onPress={onCoursePress} />
       ),
-      [],
+      [onCoursePress],
     );
 
     if (!data.length) return null;
@@ -44,8 +44,6 @@ const CoursesSection = memo<CoursesSectionProps>(
           initialNumToRender={5}
           keyExtractor={item => item.id}
           maxToRenderPerBatch={6}
-          onEndReached={onEndReached}
-          onEndReachedThreshold={0.45}
           removeClippedSubviews
           renderItem={renderCourse}
           showsHorizontalScrollIndicator={false}
@@ -56,7 +54,7 @@ const CoursesSection = memo<CoursesSectionProps>(
   },
   (previous, next) =>
     previous.title === next.title &&
-    previous.onEndReached === next.onEndReached &&
+    previous.onCoursePress === next.onCoursePress &&
     previous.data.length === next.data.length &&
     previous.data.every((item, index) => item === next.data[index]),
 );

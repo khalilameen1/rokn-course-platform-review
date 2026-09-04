@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class PortfolioItem extends Model
@@ -35,6 +36,18 @@ class PortfolioItem extends Model
         'expected_media_count' => 'integer',
         'deletion_started_at' => 'datetime',
     ];
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->whereNull('deletion_started_at');
+    }
+
+    public function scopeShareable(Builder $query): Builder
+    {
+        return $query->available()
+            ->where('is_public', true)
+            ->whereHas('mediaFiles');
+    }
 
     public function user()
     {

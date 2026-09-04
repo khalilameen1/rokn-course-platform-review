@@ -138,6 +138,39 @@ final class PlaybackSessionLifecycleTest extends TestCase
         self::assertSame(2100, $summary['overall']['average_effective_bitrate_kbps']);
     }
 
+    public function test_an_expired_session_cannot_be_replayed_with_a_higher_sequence(): void
+    {
+        $user = $this->user(61);
+        $session = $this->playbackSession($user, 81, [
+            'started_at' => now()->subHours(13),
+        ]);
+        $service = new PlaybackSessionService(new PlaybackCapabilityService());
+
+        $expired = $service->accept($user, 81, [
+            'playback_session_id' => $session->id,
+            'sequence' => 1,
+            'event_type' => 'heartbeat',
+            'position_seconds' => 10,
+        ]);
+        self::assertFalse($expired['accepted']);
+        self::assertSame('invalid_session', $expired['reason']);
+
+        $session->refresh();
+        self::assertSame('session_expired', $session->end_reason);
+        self::assertNotNull($session->ended_at);
+        self::assertSame(0, $session->last_sequence);
+
+        $replay = $service->accept($user, 81, [
+            'playback_session_id' => $session->id,
+            'sequence' => 2,
+            'event_type' => 'heartbeat',
+            'position_seconds' => 20,
+        ]);
+        self::assertFalse($replay['accepted']);
+        self::assertSame('session_ended', $replay['reason']);
+        self::assertSame(0, $session->fresh()->last_sequence);
+    }
+
     private function user(int $id): User
     {
         $user = new User();

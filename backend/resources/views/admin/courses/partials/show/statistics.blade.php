@@ -1,25 +1,16 @@
-        <!-- Statistics Tab -->
-        <div id="statistics" class="tab-content">
+        <div class="course-report-content">
             <div class="statistics-grid">
                 <div class="stat-card">
                     <span class="stat-counter">{{ $sections->count() }}</span>
                     <span class="stat-label">إجمالي الأقسام</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-counter">{{ $sections->where('sectionable_type', 'App\Models\Lesson')->count() }}</span>
-                    <span class="stat-label">الدروس</span>
+                    <span class="stat-counter">{{ $sections->filter(fn ($section) => $section->isLesson())->count() }}</span>
+                    <span class="stat-label">المقاطع</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-counter">{{ $sections->where('sectionable_type', 'App\Models\Question')->count() }}</span>
-                    <span class="stat-label">الأسئلة</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-counter">{{ $sections->where('sectionable_type', 'App\Models\ItemList')->count() }}</span>
-                    <span class="stat-label">الاختبارات</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-counter">{{ $sections->where('sectionable_type', 'App\Models\Link')->count() }}</span>
-                    <span class="stat-label">الروابط</span>
+                    <span class="stat-counter">{{ $sections->filter(fn ($section) => $section->isProject())->count() }}</span>
+                    <span class="stat-label">مشروعات العبور</span>
                 </div>
                 <div class="stat-card">
                     <span class="stat-counter">{{ number_format($learningHealthSummary['enrolled_students']) }}</span>
@@ -52,7 +43,7 @@
                     </div>
                 @endif
             </div>
-            @if($commercialReport)
+            @if($canViewCommercialReport)
                 <div class="mt-4">
                     <a class="btn btn-primary-center btn-modern" href="{{ route('admin.student-progress.index', ['course_id' => $course->id]) }}">
                         <i class="fa fa-users" aria-hidden="true"></i>

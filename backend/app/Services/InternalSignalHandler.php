@@ -9,23 +9,25 @@ use App\Jobs\SendAiUsageThresholdAlert;
 use App\Jobs\SendFinancialAnomalyAlert;
 use App\Listeners\AwardCourseCompletionReward;
 use App\Listeners\AwardLevelBadge;
-use App\Listeners\GenerateCourseCertificate;
 use App\Models\InternalSignal;
 use App\Models\Course;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\ProjectSubmission;
+use App\Models\CourseSection;
+use App\Support\RoknAppLink;
 
 final readonly class InternalSignalHandler
 {
     public function __construct(
         private AwardLevelBadge $badges,
-        private GenerateCourseCertificate $certificates,
         private AwardCourseCompletionReward $rewards,
         private LearningRewardService $learningRewards,
         private AiPlatformUsageMonitor $aiUsage,
         private CourseAccessPlanService $accessPlans,
         private InternalSignalService $internalSignals,
-        private CurriculumCompletionService $curriculumCompletion
+        private CurriculumCompletionService $curriculumCompletion,
+        private CourseStagedAuthoringService $stagedAuthoring
     ) {
     }
 
@@ -39,9 +41,6 @@ final readonly class InternalSignalHandler
             case 'course.completed.badge':
                 $this->badges->handle($this->courseEvent($payload));
                 return;
-            case 'course.completed.certificate':
-                $this->certificates->handle($this->courseEvent($payload));
-                return;
             case 'course.completed.reward':
                 $this->rewards->handle($this->courseEvent($payload));
                 return;
@@ -50,6 +49,9 @@ final readonly class InternalSignalHandler
                 return;
             case 'project.passed.first_reward':
                 $this->projectPassedReward($payload);
+                return;
+            case 'project.review.notification':
+                $this->projectReviewNotification($payload);
                 return;
             case 'financial_anomaly.alert_admin':
                 (new SendFinancialAnomalyAlert(
@@ -102,7 +104,7 @@ final readonly class InternalSignalHandler
         if ($revision > 0) {
             $effectPayload['curriculum_revision'] = $revision;
         }
-        foreach (['badge', 'certificate', 'reward'] as $effect) {
+        foreach (['badge', 'reward'] as $effect) {
             $payloadForEffect = $effectPayload;
             if ($effect === 'reward' && array_key_exists('reward_contract', $payload)) {
                 $payloadForEffect['reward_contract'] = $payload['reward_contract'];
@@ -182,6 +184,58 @@ final readonly class InternalSignalHandler
                 ? $payload['reward_contract']
                 : null,
             isset($payload['course_id']) ? (int) $payload['course_id'] : null
+        );
+    }
+
+    private function projectReviewNotification(array $payload): void
+    {
+        $submission = ProjectSubmission::query()->find((int) ($payload['submission_id'] ?? 0));
+        $user = User::query()->find((int) ($payload['user_id'] ?? 0));
+        $historicalProjectId = (int) ($payload['project_id'] ?? 0);
+        if (!$submission || !$user || $historicalProjectId <= 0) return;
+
+        $status = (string) ($payload['status'] ?? '');
+        if (
+            (int) $submission->user_id !== (int) $user->id
+            || !hash_equals((string) $submission->review_status, $status)
+        ) {
+            return;
+        }
+
+        $projectId = $this->stagedAuthoring->currentEntityId(
+            Project::class,
+            $historicalProjectId
+        ) ?? $historicalProjectId;
+        $section = CourseSection::query()
+            ->where('sectionable_type', Project::class)
+            ->where('sectionable_id', $projectId)
+            ->first();
+        $course = Course::query()->find((int) (
+            $section?->course_id ?: ($payload['course_id'] ?? 0)
+        ));
+        if (!$course) return;
+
+        $passed = $status === ProjectSubmission::STATUS_PASSED;
+        if (!$passed && $status !== ProjectSubmission::STATUS_NEEDS_RESUBMISSION) return;
+
+        StudentNotificationService::notifyUser(
+            $user,
+            StudentNotificationService::TYPE_PROJECT_UPDATE,
+            $passed ? 'تم اعتماد مشروعك' : 'مشروعك يحتاج تعديلًا',
+            $passed ? 'Your project was approved' : 'Your project needs changes',
+            $passed ? (string) $course->title : 'راجع الملاحظات وأرسل المشروع من جديد',
+            $passed ? (string) ($course->name_en ?: $course->title) : 'Review the feedback and submit your project again.',
+            $section
+                ? RoknAppLink::project((int) $course->id, $projectId)
+                : RoknAppLink::course((int) $course->id),
+            Course::class,
+            (int) $course->id,
+            'project-review:' . $submission->public_id . ':' . $status,
+            [
+                'course' => (string) $course->title,
+                'project' => (string) ($section?->title ?: 'مشروع العبور'),
+            ],
+            $course->image
         );
     }
 

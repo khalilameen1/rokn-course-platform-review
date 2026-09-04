@@ -33,6 +33,7 @@
                         @endif
                     </div>
                 </div>
+                @if($canManageCredentials)
                 <div class="card-footer">
                     <strong class="card-title">بيانات التواصل</strong>
                     <ul class="list-group list-group-flush">
@@ -47,6 +48,7 @@
                         </li>
                     </ul>
                 </div>
+                @endif
             </div>
         </div>
 

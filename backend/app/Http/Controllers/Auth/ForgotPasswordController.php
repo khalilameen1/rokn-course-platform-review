@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Foundation\Auth\SendsPasswordResetEmails;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ForgotPasswordController extends Controller
 {
@@ -40,11 +42,20 @@ class ForgotPasswordController extends Controller
             ->whereRaw('LOWER(role) IN (?, ?)', ['admin', 'moderator'])
             ->first(['email', 'role']);
 
-        $this->broker()->sendResetLink([
-            'email' => $user?->email ?? $email,
-            'role' => $user?->getRawOriginal('role') ?? '__dashboard_only__',
-            'active' => true,
-        ]);
+        try {
+            $this->broker()->sendResetLink([
+                'email' => $user?->email ?? $email,
+                'role' => $user?->getRawOriginal('role') ?? '__dashboard_only__',
+                'active' => true,
+            ]);
+        } catch (Throwable $exception) {
+            // Password recovery must not expose a mail-provider outage or turn
+            // it into a public 500. Operators still get a useful, non-PII key.
+            Log::warning('Dashboard password reset notification could not be sent.', [
+                'email_hash' => hash('sha256', $email),
+                'exception' => $exception::class,
+            ]);
+        }
 
         // Unknown, learner, inactive, throttled, and eligible addresses receive
         // the same browser response. Delivery is the only observable outcome.

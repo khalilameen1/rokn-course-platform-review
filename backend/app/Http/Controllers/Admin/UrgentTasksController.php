@@ -103,18 +103,6 @@ class UrgentTasksController extends Controller
         ));
     }
 
-    /** Keep the legacy shortcut useful without treating optional quizzes as an incident. */
-    public function coursesWithoutQuiz()
-    {
-        // Quizzes are optional learning content. Readiness is evaluated by the
-        // course publishing contract, which already exposes the exact missing
-        // items on every course card instead of inventing a false urgent task.
-        return redirect()->route('admin.courses.index')->with(
-            'success',
-            'ستجد حالة اكتمال كل كورس وما ينقصه داخل قائمة الكورسات'
-        );
-    }
-
     /**
      * Approve an order.
      */

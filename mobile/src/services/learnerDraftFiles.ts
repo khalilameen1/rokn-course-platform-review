@@ -64,6 +64,10 @@ const isManagedPath = (path: string) => {
   );
 };
 
+export const learnerDraftFileIsManaged = (
+  file?: Pick<LearnerDraftFile, 'uri'> | null,
+) => isManagedPath(filePath(file?.uri));
+
 const accountScopeFromPath = (path: string): string | undefined => {
   if (!isManagedPath(path)) return undefined;
   const normalizedRoot = CACHE_ROOT.replace(/\\/g, '/').replace(/\/$/, '');

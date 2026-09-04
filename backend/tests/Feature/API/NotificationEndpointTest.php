@@ -10,26 +10,6 @@ namespace Tests\Feature\API;
  */
 class NotificationEndpointTest extends ApiTestCase
 {
-    public function test_can_view_unread_notifications_count(): void
-    {
-        $this->actingAs($this->user, 'api')
-            ->getJson('/api/v1/notifications/unread-count')
-            ->assertOk()
-            ->assertJsonPath('data.unread_count', 1);
-    }
-
-    public function test_can_view_last_ten_notifications(): void
-    {
-        $this->actingAs($this->user, 'api')
-            ->withHeader('Accept-Language', 'en')
-            ->getJson('/api/v1/notifications/last-ten')
-            ->assertOk()
-            ->assertJsonPath('data.0.title', 'Notification 1')
-            ->assertJsonPath('data.0.message', 'Notification body')
-            ->assertJsonPath('data.0.title_ar', 'اشعار 1')
-            ->assertJsonPath('data.0.message_ar', 'محتوى الاشعار');
-    }
-
     public function test_can_view_all_notifications(): void
     {
         $this->actingAs($this->user, 'api')
@@ -53,6 +33,13 @@ class NotificationEndpointTest extends ApiTestCase
             'user_id' => $this->user->id,
             'is_read' => true,
         ]);
+
+        $readAt = \App\Models\StudentNotification::query()->findOrFail(1)->read_at;
+        $this->travel(5)->minutes();
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/notifications/1/mark-read')
+            ->assertOk()
+            ->assertJsonPath('data.read_at', $readAt?->toIso8601String());
     }
 
     public function test_can_mark_all_notifications_as_read(): void
@@ -62,14 +49,24 @@ class NotificationEndpointTest extends ApiTestCase
             ->assertOk()
             ->assertJsonPath('data.updated_count', 1);
 
-        $this->actingAs($this->user, 'api')
-            ->getJson('/api/v1/notifications/unread-count')
-            ->assertJsonPath('data.unread_count', 0);
+        $this->assertDatabaseMissing('student_notifications', [
+            'user_id' => $this->user->id,
+            'is_read' => false,
+        ]);
     }
 
     public function test_notification_endpoints_require_authentication(): void
     {
         $this->getJson('/api/v1/notifications')->assertUnauthorized();
-        $this->getJson('/api/v1/notifications/unread-count')->assertUnauthorized();
+    }
+
+    public function test_parallel_notification_summary_routes_are_absent(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/notifications/unread-count')
+            ->assertNotFound();
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/notifications/last-ten')
+            ->assertNotFound();
     }
 }

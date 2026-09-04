@@ -25,7 +25,6 @@ return new class extends Migration
             $this->template('certificate_ready', 'transactional', 'شهادتك جاهزة', 'Certificate ready', '{course}', '{course}', 'افتح الشهادة', 'View certificate', 16),
             $this->template('project_update', 'transactional', 'نتيجة مشروعك جاهزة', 'Project result ready', '{course}', '{course}', 'افتح النتيجة', 'View result', 17),
             $this->template('new_course_lesson', 'announcement', 'مقطع جديد', 'New lesson', "{lesson}\n{course}", "{lesson}\n{course}", 'شاهد الآن', 'Watch now', 40),
-            $this->template('new_quiz', 'announcement', 'اختبار جديد', 'New quiz', "{quiz}\n{course}", "{quiz}\n{course}", 'افتح الاختبار', 'Open quiz', 41),
             $this->template('course_update', 'announcement', 'جديد في كورسك', 'Course update', '{course}', '{course}', 'افتح الكورس', 'View course', 42),
             $this->template('course_promotion', 'announcement', 'كورس يناسبك', 'A course for you', '{course}', '{course}', 'تفاصيل الكورس', 'View course', 43),
             $this->template('continue_course', 'retention', 'أكمل من مكانك', 'Continue learning', '{course}', '{course}', 'أكمل الآن', 'Continue', 51),

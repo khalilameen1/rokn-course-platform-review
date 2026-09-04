@@ -8,6 +8,7 @@ use App\Models\PortfolioItem;
 use App\Models\AiInputAttachment;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Services\ProjectSubmissionFileRetentionService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Console\Command;
 use Illuminate\Database\Query\Builder;
@@ -20,7 +21,7 @@ final class PruneOperationalData extends Command
     protected $signature = 'data:prune-operational {--limit=5000 : Maximum rows per table per run}';
     protected $description = 'Bound privacy-sensitive and high-volume operational tables without touching financial ledgers.';
 
-    public function handle(BunnyService $bunny): int
+    public function handle(BunnyService $bunny, ProjectSubmissionFileRetentionService $submissionFiles): int
     {
         $limit = max(100, min(20000, (int) $this->option('limit')));
         $counts = [];
@@ -121,6 +122,7 @@ final class PruneOperationalData extends Command
                     ->delete();
         }
         $counts['orphan_ai_inputs'] = $this->pruneAiInputs($limit);
+        $counts['project_submission_files'] = $submissionFiles->purgeExpiredTerminalFailures($limit);
         $counts['portfolio_drafts'] = $this->prunePortfolioDrafts($limit, $bunny);
         $counts['certificate_lease_artifacts'] = $this->pruneCertificateLeaseArtifacts($limit);
         $counts['admin_audit_logs'] = $this->deleteByIds(

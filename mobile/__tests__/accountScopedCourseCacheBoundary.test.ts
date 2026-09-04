@@ -21,6 +21,7 @@ jest.mock('../src/services/secureSession', () => {
 });
 
 import {
+  getCachedPublishedCourses,
   getCourseDetails,
   getPublishedCoursesPage,
 } from '../src/services/api/courses';
@@ -100,6 +101,42 @@ describe('account-scoped course cache boundary', () => {
     await expect(flight).resolves.toMatchObject({
       courses: [expect.objectContaining({id: '52'})],
     });
+  });
+
+  it('keeps ownership out of the shared public catalogue cache', async () => {
+    mockSessionSnapshot = {
+      ready: true,
+      session: {user: {id: 7}, api_token: 'token-seven'},
+      epoch: 12,
+    };
+    mockGet.mockResolvedValue({
+      data: {
+        data: {
+          courses: [
+            {
+              id: 52,
+              title: 'كورس ركن',
+              access_type: 'paid',
+              progress: 70,
+              enrollment: {is_active: true, progress_percentage: 70},
+            },
+          ],
+          catalogue_revision: 1,
+          pagination: {current_page: 1, last_page: 1, total: 1},
+        },
+      },
+    });
+
+    await getPublishedCoursesPage();
+    mockSessionSnapshot = {
+      ready: true,
+      session: {user: {id: 8}, api_token: 'token-eight'},
+      epoch: 13,
+    };
+    const cached = await getCachedPublishedCourses();
+
+    expect(cached[0]).toMatchObject({id: '52', owned: false});
+    expect(cached[0]).not.toHaveProperty('progress');
   });
 
   it('accepts a null average for an unrated published course', async () => {

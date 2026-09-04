@@ -69,6 +69,19 @@ class SavedFolderEndpointTest extends ApiTestCase
             ->assertUnprocessable();
     }
 
+    public function test_saved_lesson_state_preserves_numeric_lesson_ids(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/saved-lessons/state?lesson_ids[]=10')
+            ->assertOk()
+            ->assertJson([
+                'status' => 200,
+                'success' => true,
+                'message' => 'تم تحميل حالة الحفظ',
+                'data' => ['saved_lesson_ids' => [10]],
+            ]);
+    }
+
     public function test_can_list_saved_folders(): void
     {
         $this->actingAs($this->user, 'api')
@@ -174,6 +187,35 @@ class SavedFolderEndpointTest extends ApiTestCase
             ->deleteJson('/api/v1/saved-folders/999/lessons/10')
             ->assertOk()
             ->assertJsonPath('data.already_removed', true);
+    }
+
+    public function test_removing_from_one_folder_keeps_the_other_membership(): void
+    {
+        $secondFolder = DB::table('saved_folders')->insertGetId([
+            'user_id' => $this->user->id,
+            'name' => 'الثاني',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('saved_folder_lessons')->insert([
+            'saved_folder_id' => $secondFolder,
+            'lesson_id' => 10,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->user, 'api')
+            ->deleteJson('/api/v1/saved-folders/1/lessons/10')
+            ->assertOk();
+
+        self::assertFalse(DB::table('saved_folder_lessons')
+            ->where('saved_folder_id', 1)
+            ->where('lesson_id', 10)
+            ->exists());
+        self::assertTrue(DB::table('saved_folder_lessons')
+            ->where('saved_folder_id', $secondFolder)
+            ->where('lesson_id', 10)
+            ->exists());
     }
 
     public function test_can_delete_saved_folder(): void

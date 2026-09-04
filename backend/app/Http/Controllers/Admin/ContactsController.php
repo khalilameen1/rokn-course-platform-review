@@ -20,7 +20,6 @@ class ContactsController extends Controller
     public function index()
     {
         $contacts = Contact::query()
-            ->with(['resolver', 'resolvedUser'])
             ->orderBy('read')
             ->latest()
             ->latest('id')

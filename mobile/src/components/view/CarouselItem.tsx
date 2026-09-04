@@ -1,7 +1,7 @@
 import React, {memo} from 'react';
 import {ImageBackground, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {DemoCourse} from '../../data/demoContent';
+import type {Course} from '../../types/Course';
 import {formatArabicDisplayText} from '../../constants/arabicFormatting';
 import {
   Palette,
@@ -17,11 +17,9 @@ import {CoinAmount} from '../ui/RoknCoin';
 
 const CarouselItem = ({
   course,
-  isFocused: _isFocused,
   onButtonPress,
 }: {
-  course: DemoCourse;
-  isFocused: boolean;
+  course: Course;
   onButtonPress: () => void;
 }) => {
   const {isTablet} = useResponsiveLayout();
@@ -53,7 +51,7 @@ const CarouselItem = ({
               <Text style={styles.courseState}>قريبًا</Text>
             ) : owned ? (
               <Text style={styles.courseState}>
-                {Number(course.progress || 0) > 0
+                {course.started === true
                   ? 'استكمل من مكانك'
                   : 'ابدأ التعلّم الآن'}
               </Text>

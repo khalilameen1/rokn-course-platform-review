@@ -19,7 +19,7 @@ final class ProfileImageSecurityTest extends ApiTestCase
         );
 
         $this->actingAs($this->user, 'api')
-            ->postJson('/api/v1/update_profile', ['profile_image' => $svg])
+            ->postJson('/api/v1/user/profile', ['profile_image' => $svg])
             ->assertUnprocessable();
 
         self::assertNull($this->user->fresh()->profile_image);
@@ -29,7 +29,7 @@ final class ProfileImageSecurityTest extends ApiTestCase
     {
         Storage::fake('public');
 
-        $this->actingAs($this->user, 'api')->postJson('/api/v1/update_profile', [
+        $this->actingAs($this->user, 'api')->postJson('/api/v1/user/profile', [
             'profile_image' => UploadedFile::fake()->image('avatar.png', 120, 120)->size(2),
         ])->assertOk();
 

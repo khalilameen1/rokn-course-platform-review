@@ -8,7 +8,6 @@ use App\Models\CourseSection;
 use App\Models\CourseAuthoringRevision;
 use App\Models\Lesson;
 use App\Models\WatchingLog;
-use App\Support\DatabaseCapabilities;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -62,18 +61,16 @@ final readonly class LatestWatchResumeService
         // swap still carries the archived course_id, so resolve course lineage
         // before ranking instead of filtering those valid rows out.
         $courseAliasToCurrent = $ids->mapWithKeys(fn (int $id): array => [$id => $id]);
-        if (DatabaseCapabilities::hasTable('course_authoring_revisions')) {
-            DB::table('course_authoring_revisions')
-                ->where('status', CourseAuthoringRevision::ARCHIVED)
-                ->whereIn('canonical_course_id', $ids)
-                ->get(['canonical_course_id', 'revision_course_id'])
-                ->each(function ($revision) use ($courseAliasToCurrent): void {
-                    $courseAliasToCurrent->put(
-                        (int) $revision->revision_course_id,
-                        (int) $revision->canonical_course_id
-                    );
-                });
-        }
+        DB::table('course_authoring_revisions')
+            ->where('status', CourseAuthoringRevision::ARCHIVED)
+            ->whereIn('canonical_course_id', $ids)
+            ->get(['canonical_course_id', 'revision_course_id'])
+            ->each(function ($revision) use ($courseAliasToCurrent): void {
+                $courseAliasToCurrent->put(
+                    (int) $revision->revision_course_id,
+                    (int) $revision->canonical_course_id
+                );
+            });
 
         $courseCaseBindings = [];
         $courseCase = 'CASE course_id';

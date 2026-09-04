@@ -76,7 +76,7 @@ final class GradeController extends Controller
     {
         try {
             $courses = $this->catalogue->orderForDiscovery(
-                $this->catalogue->applyPublicContract($grade->courses())
+                $this->catalogue->applyPublicContract($grade->courses()->getQuery())
             )->get();
             $this->duration->attachMany($courses);
 

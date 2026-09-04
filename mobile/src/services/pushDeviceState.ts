@@ -1,23 +1,33 @@
 import {Platform} from 'react-native';
 import {
   accountScopedStorageKey,
+  assertAccountSessionBoundary,
   getItem,
   removeItem,
   saveItem,
+  type AccountSessionBoundary,
 } from '../constants/helpers';
 import {deleteBackendPushToken} from './nativePushTokens';
 
 export const PUSH_TOKEN_KEY = '@rokn/push-device-token/v1';
-export const LEGACY_PUSH_UNREGISTER_PENDING_KEY =
-  '@rokn/push-unregister-pending/v1';
 export const PUSH_TOKEN_INVALIDATION_PENDING_KEY =
   '@rokn/push-token-invalidation-pending/v1';
 
-export const pushStorageKey = (baseKey: string) =>
-  accountScopedStorageKey(baseKey);
+export const pushStorageKey = (
+  baseKey: string,
+  ownerBoundary?: AccountSessionBoundary,
+) => accountScopedStorageKey(baseKey, ownerBoundary);
 
-export const getStoredPushDeviceToken = async () =>
-  getItem<string>(await pushStorageKey(PUSH_TOKEN_KEY));
+export const getStoredPushDeviceToken = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
+  const value = await getItem<string>(
+    await pushStorageKey(PUSH_TOKEN_KEY, ownerBoundary),
+  );
+  if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
+  return value;
+};
 
 /** Retry a device-only tombstone. It contains no token, bearer or account id. */
 export const retryPendingNativePushTokenInvalidation = async () => {
@@ -39,12 +49,12 @@ export const retryPendingNativePushTokenInvalidation = async () => {
  * Firebase token is deleted first, so a stale server record can no longer
  * deliver private notifications. No bearer or account data is retained.
  */
-export const invalidateLocalPushDeviceRegistration = async () => {
+export const invalidateLocalPushDeviceRegistration = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
   // Resolve account-scoped keys before a concurrent logout removes the session.
-  const [tokenKey, pendingKey] = await Promise.all([
-    pushStorageKey(PUSH_TOKEN_KEY),
-    pushStorageKey(LEGACY_PUSH_UNREGISTER_PENDING_KEY),
-  ]);
+  const tokenKey = await pushStorageKey(PUSH_TOKEN_KEY, ownerBoundary);
 
   const nativeTokenDeleted = await deleteBackendPushToken();
   if (nativeTokenDeleted) {
@@ -57,6 +67,6 @@ export const invalidateLocalPushDeviceRegistration = async () => {
     }
   }
 
-  await Promise.all([removeItem(tokenKey), removeItem(pendingKey)]);
+  await removeItem(tokenKey);
   return nativeTokenDeleted;
 };

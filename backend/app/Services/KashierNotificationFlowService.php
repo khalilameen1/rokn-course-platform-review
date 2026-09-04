@@ -15,31 +15,21 @@ final readonly class KashierNotificationFlowService
     public function __construct(
         private KashierService $kashier,
         private KashierPaymentService $payments,
-        private PaymentApiResponseService $responses
+        private PaymentApiResponseService $responses,
+        private KashierCallbackSignatureService $signatures
     ) {
     }
 
     public function callback(Request $request): View
     {
-        $params = $request->all();
-        $isValidSignature = $this->payments->parseAndValidateSignature(
-            $request,
-            $this->kashier,
-            $params
-        );
-        $hasSignatureCandidate = $this->hasSignatureCandidate($request, $params);
-
-        $orderRef = $params['merchantOrderId']
-            ?? $params['orderId']
-            ?? $params['merchant_order_id']
-            ?? $params['order_ref']
-            ?? null;
-        $paymentStatus = strtoupper(trim((string) (
-            $params['paymentStatus'] ?? $params['status'] ?? 'FAILURE'
-        )));
-        $transactionId = $this->payments->normalizeTransactionId(
-            $params['transactionId'] ?? $params['transaction_id'] ?? null
-        );
+        [
+            'params' => $params,
+            'signature_valid' => $isValidSignature,
+            'has_signature' => $hasSignatureCandidate,
+            'order_ref' => $orderRef,
+            'payment_status' => $paymentStatus,
+            'transaction_id' => $transactionId,
+        ] = $this->notification($request);
 
         if (!$this->payments->isValidOrderReference($orderRef)) {
             Log::warning('Kashier callback rejected: missing or invalid order reference');
@@ -103,105 +93,26 @@ final readonly class KashierNotificationFlowService
             ]);
         }
 
-        if ($reversalType = $this->payments->financialReversalType($paymentStatus)) {
-            $this->payments->recordFinancialReversal(
-                $order,
-                $reversalType,
-                $paymentStatus,
-                $transactionId,
-                $params
-            );
-
-            return view('payment.result', [
-                'success' => false,
-                'order_ref' => $orderRef,
-                'message' => 'نراجع عملية رد المبلغ',
-            ]);
-        }
-
-        if ($this->payments->flagApprovedTransactionConflict($order, $transactionId, $params)) {
-            return view('payment.result', [
-                'success' => false,
-                'order_ref' => $orderRef,
-                'message' => 'نراجع حالة الدفع الآن',
-            ]);
-        }
-
-        if ($this->isSettled($order)) {
-            Log::info('Kashier callback: order already approved (idempotent)', [
-                'order_ref' => $orderRef,
-                'transaction_id' => $order->transaction_id,
-            ]);
-
-            return view('payment.result', [
-                'success' => true,
-                'order_ref' => $orderRef,
-                'transaction_id' => $order->transaction_id,
-                'package' => $order->package,
-                'message' => 'تمت معالجة الدفع من قبل',
-            ]);
-        }
-
-        if ($this->payments->isCaptureNotificationStatus($paymentStatus)) {
-            return $this->handleSuccessfulCallback($order, $orderRef, $transactionId, $params);
-        }
-
-        if (!$this->payments->isProviderFailureStatus($paymentStatus)) {
-            return view('payment.result', [
-                'success' => false,
-                'pending' => true,
-                'order_ref' => $orderRef,
-                'message' => "نعالج عملية الدفع الآن\nعد إلى التطبيق لمتابعة حالتها",
-            ]);
-        }
-
-        $order = $this->payments->cancelPendingOrder($order, $params);
-
-        if ($this->isSettled($order)) {
-            return view('payment.result', [
-                'success' => true,
-                'order_ref' => $orderRef,
-                'transaction_id' => $order->transaction_id,
-                'package' => $order->package,
-                'message' => 'تمت معالجة الدفع من قبل',
-            ]);
-        }
-
-        Log::warning('Kashier callback: payment failed (signed)', [
-            'order_ref' => $orderRef,
-            'order_id' => $order->id,
-            'payment_status' => $paymentStatus,
-            'transaction_id' => $transactionId,
-        ]);
-
-        return view('payment.result', [
-            'success' => false,
-            'order_ref' => $orderRef,
-            'message' => 'لم تكتمل عملية الدفع',
-        ]);
+        return $this->callbackResponse($this->applySignedNotification(
+            $order,
+            $orderRef,
+            $paymentStatus,
+            $transactionId,
+            $params,
+            'callback'
+        ));
     }
 
     public function webhook(Request $request): JsonResponse
     {
-        $params = $request->all();
-        $isValidSignature = $this->payments->parseAndValidateSignature(
-            $request,
-            $this->kashier,
-            $params
-        );
-        $hasSignatureCandidate = $this->hasSignatureCandidate($request, $params);
-
-        $orderRef = $params['merchantOrderId']
-            ?? $params['orderId']
-            ?? $params['merchant_order_id']
-            ?? $params['order_ref']
-            ?? null;
-        $paymentStatus = strtoupper(trim((string) (
-            $params['paymentStatus'] ?? $params['status'] ?? 'FAILURE'
-        )));
-        $transactionId = $this->payments->normalizeTransactionId(
-            $params['transactionId'] ?? $params['transaction_id'] ?? null
-        );
+        [
+            'params' => $params,
+            'signature_valid' => $isValidSignature,
+            'has_signature' => $hasSignatureCandidate,
+            'order_ref' => $orderRef,
+            'payment_status' => $paymentStatus,
+            'transaction_id' => $transactionId,
+        ] = $this->notification($request);
 
         if (!$this->payments->isValidOrderReference($orderRef)) {
             Log::warning('Kashier webhook rejected: missing or invalid order reference');
@@ -259,53 +170,14 @@ final readonly class KashierNotificationFlowService
             return $this->responses->make(false, 'Order not found', [], 404, 'order_not_found');
         }
 
-        if ($reversalType = $this->payments->financialReversalType($paymentStatus)) {
-            $this->payments->recordFinancialReversal(
-                $order,
-                $reversalType,
-                $paymentStatus,
-                $transactionId,
-                $params
-            );
-
-            return $this->responses->make(true, 'Financial reversal queued for review');
-        }
-
-        if ($this->payments->flagApprovedTransactionConflict($order, $transactionId, $params)) {
-            return $this->responses->make(true, 'Conflicting payment event queued for review');
-        }
-
-        if ($this->isSettled($order)) {
-            Log::info('Kashier webhook: order already approved (idempotent)', [
-                'order_ref' => $orderRef,
-                'transaction_id' => $order->transaction_id,
-            ]);
-
-            return $this->responses->make(true, 'Already processed');
-        }
-
-        if ($this->payments->isCaptureNotificationStatus($paymentStatus)) {
-            return $this->handleSuccessfulWebhook($order, $orderRef, $transactionId, $params);
-        }
-
-        if (!$this->payments->isProviderFailureStatus($paymentStatus)) {
-            return $this->responses->make(true, 'Payment state accepted for reconciliation', [], 202);
-        }
-
-        $order = $this->payments->cancelPendingOrder($order, $params);
-
-        if ($this->isSettled($order)) {
-            return $this->responses->make(true, 'Already processed');
-        }
-
-        Log::warning('Kashier webhook: payment failed (signed)', [
-            'order_ref' => $orderRef,
-            'order_id' => $order->id,
-            'payment_status' => $paymentStatus,
-            'transaction_id' => $transactionId,
-        ]);
-
-        return $this->responses->make(true, 'Payment failure recorded');
+        return $this->webhookResponse($this->applySignedNotification(
+            $order,
+            $orderRef,
+            $paymentStatus,
+            $transactionId,
+            $params,
+            'webhook'
+        ));
     }
 
     /**
@@ -324,7 +196,7 @@ final readonly class KashierNotificationFlowService
 
         $order = Order::byOrderRef($orderRef)->with(['user', 'package'])->first();
 
-        if ($order && $this->isSettled($order)) {
+        if ($order && $order->isFinanciallyEffective()) {
             return view('payment.result', [
                 'success' => true,
                 'order_ref' => $orderRef,
@@ -352,7 +224,7 @@ final readonly class KashierNotificationFlowService
                         ]);
                     }
 
-                    if (!$this->isSettled($order)) {
+                    if (!$order->isFinanciallyEffective()) {
                         return view('payment.result', [
                             'success' => false,
                             'order_ref' => $orderRef,
@@ -421,14 +293,66 @@ final readonly class KashierNotificationFlowService
     }
 
     /**
+     * Apply one signed provider observation. Callback and webhook differ only
+     * in presentation; all financial transitions happen here.
+     *
      * @param array<string, mixed> $params
+     * @return array{state: string, order: Order, order_ref: string, transaction_id: ?string}
      */
-    private function handleSuccessfulCallback(
+    private function applySignedNotification(
         Order $order,
         string $orderRef,
+        string $paymentStatus,
         ?string $transactionId,
-        array $params
-    ): View {
+        array $params,
+        string $source
+    ): array {
+        if ($reversalType = $this->payments->financialReversalType($paymentStatus)) {
+            $this->payments->recordFinancialReversal(
+                $order,
+                $reversalType,
+                $paymentStatus,
+                $transactionId,
+                $params
+            );
+
+            return $this->notificationResult('reversal', $order->fresh(['user', 'package']), $orderRef, $transactionId);
+        }
+
+        $isCapture = $this->payments->isCaptureNotificationStatus($paymentStatus);
+        if ($isCapture && $this->payments->flagApprovedTransactionConflict($order, $transactionId, $params)) {
+            return $this->notificationResult('conflict', $order->fresh(['user', 'package']), $orderRef, $transactionId);
+        }
+
+        if ($order->isFinanciallyEffective()) {
+            Log::info("Kashier {$source}: order already approved (idempotent)", [
+                'order_ref' => $orderRef,
+                'transaction_id' => $order->transaction_id,
+            ]);
+
+            return $this->notificationResult('settled', $order, $orderRef, $order->transaction_id);
+        }
+
+        if (!$isCapture) {
+            if (!$this->payments->isProviderFailureStatus($paymentStatus)) {
+                return $this->notificationResult('pending', $order, $orderRef, $transactionId);
+            }
+
+            $order = $this->payments->cancelPendingOrder($order, $params);
+            if ($order->isFinanciallyEffective()) {
+                return $this->notificationResult('settled', $order, $orderRef, $order->transaction_id);
+            }
+
+            Log::warning("Kashier {$source}: payment failed (signed)", [
+                'order_ref' => $orderRef,
+                'order_id' => $order->id,
+                'payment_status' => $paymentStatus,
+                'transaction_id' => $transactionId,
+            ]);
+
+            return $this->notificationResult('failed', $order, $orderRef, $transactionId);
+        }
+
         [$transactionId, $captureEvidence] = $this->payments->captureEvidenceWithTransactionId(
             $orderRef,
             $transactionId,
@@ -439,22 +363,13 @@ final readonly class KashierNotificationFlowService
             $order = $this->payments->fulfillOrder($order, $transactionId, $captureEvidence);
 
             if ($this->payments->transactionIdConflicts($order, $transactionId)) {
-                return view('payment.result', [
-                    'success' => false,
-                    'order_ref' => $orderRef,
-                    'message' => 'نراجع حالة الدفع الآن',
-                ]);
+                return $this->notificationResult('conflict', $order, $orderRef, $transactionId);
+            }
+            if (!$order->isFinanciallyEffective()) {
+                return $this->notificationResult('capture_review', $order, $orderRef, $transactionId);
             }
 
-            if (!$this->isSettled($order)) {
-                return view('payment.result', [
-                    'success' => false,
-                    'order_ref' => $orderRef,
-                    'message' => "وصل الدفع\nنراجع إضافة العملات الآن",
-                ]);
-            }
-
-            Log::info('Kashier callback: payment fulfilled successfully', [
+            Log::info("Kashier {$source}: payment fulfilled successfully", [
                 'order_ref' => $orderRef,
                 'order_id' => $order->id,
                 'transaction_id' => $transactionId,
@@ -464,16 +379,9 @@ final readonly class KashierNotificationFlowService
                 'wallet_total' => $order->user->wallet_coins,
             ]);
 
-            return view('payment.result', [
-                'success' => true,
-                'order_ref' => $orderRef,
-                'transaction_id' => $transactionId,
-                'package' => $order->package,
-                'coins_credited' => $this->payments->coinAmount($order),
-                'message' => 'تم الدفع بنجاح',
-            ]);
+            return $this->notificationResult('paid', $order, $orderRef, $transactionId);
         } catch (\Exception $exception) {
-            Log::error('Kashier callback: fulfillment failed after successful payment', [
+            Log::error("Kashier {$source}: fulfillment failed after successful payment", [
                 'order_ref' => $orderRef,
                 'order_id' => $order->id,
                 'transaction_id' => $transactionId,
@@ -482,70 +390,162 @@ final readonly class KashierNotificationFlowService
                 'error_fingerprint' => hash('sha256', $exception->getMessage()),
             ]);
 
-            return view('payment.result', [
-                'success' => false,
-                'order_ref' => $orderRef,
-                'message' => "وصل الدفع ولم تُضف العملات\nتواصل مع الدعم",
-            ]);
+            return $this->notificationResult('fulfillment_error', $order, $orderRef, $transactionId);
         }
     }
 
     /**
-     * @param array<string, mixed> $params
+     * @return array{state: string, order: Order, order_ref: string, transaction_id: ?string}
      */
-    private function handleSuccessfulWebhook(
+    private function notificationResult(
+        string $state,
         Order $order,
         string $orderRef,
-        ?string $transactionId,
-        array $params
-    ): JsonResponse {
-        [$transactionId, $captureEvidence] = $this->payments->captureEvidenceWithTransactionId(
-            $orderRef,
-            $transactionId,
+        ?string $transactionId
+    ): array {
+        return [
+            'state' => $state,
+            'order' => $order,
+            'order_ref' => $orderRef,
+            'transaction_id' => $transactionId,
+        ];
+    }
+
+    /** @param array{state: string, order: Order, order_ref: string, transaction_id: ?string} $result */
+    private function callbackResponse(array $result): View
+    {
+        $order = $result['order'];
+        $base = ['order_ref' => $result['order_ref']];
+
+        return match ($result['state']) {
+            'paid' => view('payment.result', $base + [
+                'success' => true,
+                'transaction_id' => $result['transaction_id'],
+                'package' => $order->package,
+                'coins_credited' => $this->payments->coinAmount($order),
+                'message' => 'تم الدفع بنجاح',
+            ]),
+            'settled' => view('payment.result', $base + [
+                'success' => true,
+                'transaction_id' => $order->transaction_id,
+                'package' => $order->package,
+                'message' => 'تمت معالجة الدفع من قبل',
+            ]),
+            'pending' => view('payment.result', $base + [
+                'success' => false,
+                'pending' => true,
+                'message' => "نعالج عملية الدفع الآن\nعد إلى التطبيق لمتابعة حالتها",
+            ]),
+            'reversal' => view('payment.result', $base + [
+                'success' => false,
+                'message' => 'نراجع عملية رد المبلغ',
+            ]),
+            'conflict' => view('payment.result', $base + [
+                'success' => false,
+                'message' => 'نراجع حالة الدفع الآن',
+            ]),
+            'capture_review' => view('payment.result', $base + [
+                'success' => false,
+                'message' => "وصل الدفع\nنراجع إضافة العملات الآن",
+            ]),
+            'fulfillment_error' => view('payment.result', $base + [
+                'success' => false,
+                'message' => "وصل الدفع ولم تُضف العملات\nتواصل مع الدعم",
+            ]),
+            default => view('payment.result', $base + [
+                'success' => false,
+                'message' => 'لم تكتمل عملية الدفع',
+            ]),
+        };
+    }
+
+    /** @param array{state: string, order: Order, order_ref: string, transaction_id: ?string} $result */
+    private function webhookResponse(array $result): JsonResponse
+    {
+        return match ($result['state']) {
+            'paid' => $this->responses->make(true, 'Webhook processed successfully'),
+            'settled' => $this->responses->make(true, 'Already processed'),
+            'pending' => $this->responses->make(true, 'Payment state accepted for reconciliation', [], 202),
+            'reversal' => $this->responses->make(true, 'Financial reversal queued for review'),
+            'conflict' => $this->responses->make(true, 'Conflicting payment event queued for review'),
+            'capture_review' => $this->responses->make(true, 'Payment capture queued for review'),
+            'fulfillment_error' => $this->responses->make(false, 'Fulfillment error', [], 500, 'fulfillment_error'),
+            default => $this->responses->make(true, 'Payment failure recorded'),
+        };
+    }
+
+    /**
+     * @return array{
+     *   params: array<string, mixed>,
+     *   signature_valid: bool,
+     *   has_signature: bool,
+     *   order_ref: mixed,
+     *   payment_status: string,
+     *   transaction_id: ?string
+     * }
+     */
+    private function notification(Request $request): array
+    {
+        $params = $request->all();
+        $isValidSignature = $this->signatures->validate(
+            $this->signatureHeaders($request),
+            $request->getContent(),
+            $this->kashier,
             $params
         );
 
-        try {
-            $order = $this->payments->fulfillOrder($order, $transactionId, $captureEvidence);
-
-            if ($this->payments->transactionIdConflicts($order, $transactionId)) {
-                return $this->responses->make(true, 'Conflicting payment event queued for review');
-            }
-
-            if (!$this->isSettled($order)) {
-                return $this->responses->make(true, 'Payment capture queued for review');
-            }
-
-            Log::info('Kashier webhook: payment fulfilled successfully', [
-                'order_ref' => $orderRef,
-                'order_id' => $order->id,
-                'transaction_id' => $transactionId,
-                'user_id' => $order->user_id,
-                'package_id' => $order->package_id,
-                'coins_credited' => $this->payments->coinAmount($order),
-                'wallet_total' => $order->user->wallet_coins,
-            ]);
-
-            return $this->responses->make(true, 'Webhook processed successfully');
-        } catch (\Exception $exception) {
-            Log::error('Kashier webhook: fulfillment failed after successful payment', [
-                'order_ref' => $orderRef,
-                'order_id' => $order->id,
-                'transaction_id' => $transactionId,
-                'user_id' => $order->user_id,
-                'exception' => $exception::class,
-                'error_fingerprint' => hash('sha256', $exception->getMessage()),
-            ]);
-
-            return $this->responses->make(false, 'Fulfillment error', [], 500, 'fulfillment_error');
-        }
+        return [
+            'params' => $params,
+            'signature_valid' => $isValidSignature,
+            'has_signature' => $this->hasSignatureCandidate($request, $params),
+            'order_ref' => $this->firstScalar($params, [
+                'merchantOrderId',
+                'merchant_order_id',
+                'order_ref',
+                'data.merchantOrderId',
+                'data.merchant_order_id',
+                'data.order_ref',
+                'response.merchantOrderId',
+                'response.merchant_order_id',
+                'response.order_ref',
+            ]),
+            'payment_status' => strtoupper(trim((string) (
+                $this->firstScalar($params, [
+                    'paymentStatus',
+                    'payment_status',
+                    'status',
+                    'data.paymentStatus',
+                    'data.payment_status',
+                    'data.status',
+                    'response.paymentStatus',
+                    'response.payment_status',
+                    'response.status',
+                ]) ?? 'UNKNOWN'
+            ))),
+            'transaction_id' => $this->payments->normalizeTransactionId(
+                $this->firstScalar($params, [
+                    'transactionId',
+                    'transaction_id',
+                    'data.transactionId',
+                    'data.transaction_id',
+                    'response.transactionId',
+                    'response.transaction_id',
+                ])
+            ),
+        ];
     }
 
-    private function isSettled(Order $order): bool
+    /** @param array<string, mixed> $payload @param list<string> $paths */
+    private function firstScalar(array $payload, array $paths): int|float|string|null
     {
-        return $order->status === Order::STATUS_APPROVED
-            && $order->financial_status === Order::FINANCIAL_SETTLED
-            && $order->reversed_at === null;
+        foreach ($paths as $path) {
+            $value = data_get($payload, $path);
+            if (is_int($value) || is_float($value) || is_string($value)) {
+                return $value;
+            }
+        }
+
+        return null;
     }
 
     /** @param array<string, mixed> $params */
@@ -568,5 +568,15 @@ final readonly class KashierNotificationFlowService
         }
 
         return false;
+    }
+
+    /** @return list<mixed> */
+    private function signatureHeaders(Request $request): array
+    {
+        return [
+            $request->header('x-kashier-signature'),
+            $request->header('kashier-signature'),
+            $request->header('signature'),
+        ];
     }
 }

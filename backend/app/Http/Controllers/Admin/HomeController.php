@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Order;
 use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Services\CoursePublishingService;
+use App\Services\CourseFinancialLedgerReportService;
 use App\Services\PaymentChannelReportService;
 use App\Support\BusinessClock;
 
@@ -26,12 +28,16 @@ class HomeController extends Controller
 
     public function index(
         CoursePublishingService $publishingService,
-        PaymentChannelReportService $paymentChannels
+        PaymentChannelReportService $paymentChannels,
+        CourseFinancialLedgerReportService $financialLedger,
+        AdminPermissionMatrix $permissions
     )
     {
-        // Content moderators work in course authoring. The executive dashboard
-        // and student-submission review contain financial or learner data.
-        if (strtolower((string) optional(auth()->user())->role) !== 'admin') {
+        // Content moderators enter through the authoring workspace. Financial
+        // and learner-account operations stay on the administrator dashboard.
+        if (!$permissions->isAdministrator(auth()->user()?->role)) {
+            $revisionCourseIds = fn () => CourseAuthoringRevision::query()
+                ->select('revision_course_id');
             $courses = Course::query()
                 ->with([
                     'photo',
@@ -39,19 +45,51 @@ class HomeController extends Controller
                     'classifications:id,name_ar,name_en',
                 ])
                 ->withCount(['modules', 'sections'])
-                ->whereNull('parent_id')
+                ->whereNotIn('courses.id', $revisionCourseIds())
                 ->latest('updated_at')
                 ->latest('id')
                 ->paginate(12)
                 ->withQueryString();
+            $activeRevisions = CourseAuthoringRevision::query()
+                ->where('status', CourseAuthoringRevision::DRAFT)
+                ->whereIn('canonical_course_id', $courses->getCollection()->modelKeys())
+                ->get(['canonical_course_id', 'revision_course_id'])
+                ->keyBy('canonical_course_id');
+            $workingDrafts = Course::query()
+                ->with([
+                    'photo',
+                    'teachers:id,name,name_ar,name_en,profile_image',
+                    'classifications:id,name_ar,name_en',
+                ])
+                ->withCount(['modules', 'sections'])
+                ->whereIn('id', $activeRevisions->pluck('revision_course_id'))
+                ->get()
+                ->keyBy('id');
+            $courses->setCollection($courses->getCollection()->map(function (Course $canonical) use (
+                $activeRevisions,
+                $workingDrafts
+            ): Course {
+                $revision = $activeRevisions->get((int) $canonical->id);
+
+                return $revision
+                    ? ($workingDrafts->get((int) $revision->revision_course_id) ?: $canonical)
+                    : $canonical;
+            }));
             $publishingAudits = $courses->getCollection()->mapWithKeys(
                 fn (Course $course): array => [$course->id => $publishingService->auditCatalogCard($course)]
             );
             $contentSummary = [
-                'courses' => Course::query()->whereNull('parent_id')->count(),
-                'modules' => CourseModule::query()->whereHas('course', fn ($query) => $query->whereNull('parent_id'))->count(),
-                'sections' => CourseSection::query()->whereHas('course', fn ($query) => $query->whereNull('parent_id'))->count(),
-                'published' => Course::query()->whereNull('parent_id')->where('is_coming_soon', false)->count(),
+                'courses' => Course::query()
+                    ->whereNotIn('courses.id', $revisionCourseIds())
+                    ->count(),
+                'modules' => CourseModule::query()->whereHas('course', fn ($query) => $query
+                    ->whereNotIn('courses.id', $revisionCourseIds()))->count(),
+                'sections' => CourseSection::query()->whereHas('course', fn ($query) => $query
+                    ->whereNotIn('courses.id', $revisionCourseIds()))->count(),
+                'published' => Course::query()
+                    ->whereNotIn('courses.id', $revisionCourseIds())
+                    ->where('is_coming_soon', false)
+                    ->count(),
             ];
 
             return view('admin.home.moderator', compact('courses', 'publishingAudits', 'contentSummary'));
@@ -59,14 +97,9 @@ class HomeController extends Controller
 
         // Cash-channel totals exclude sandbox/test transactions. Wallet totals
         // remain virtual units and are reported independently below.
-        $pendingCashOrders = Order::query()
-            ->whereIn('payment_method', $paymentChannels->methods())
-            ->whereNotNull('package_id')
-            ->where('status', Order::STATUS_PENDING);
-
         $paymentChannelReport = $paymentChannels->summary();
         $totalRevenue = (float) $paymentChannelReport['egp']['confirmed_gross_amount'];
-        $pendingCash = (float) (clone $pendingCashOrders)->sum('final_amount');
+        $pendingCash = $paymentChannels->pendingCheckoutSummary();
 
         $businessNow = BusinessClock::now();
         $chartStart = $businessNow->subMonths(5)->startOfMonth()->utc();
@@ -88,8 +121,8 @@ class HomeController extends Controller
         $revenueStats = [
             'total_revenue' => $totalRevenue,
             'catalog_estimated_revenue' => (float) $paymentChannelReport['egp']['catalog_estimated_gross_amount'],
-            'pending_payments' => $pendingCash,
-            'pending_bills_count' => (clone $pendingCashOrders)->count(),
+            'pending_payments' => $pendingCash['egp_amount'],
+            'pending_bills_count' => $pendingCash['count'],
             'confirmed_net_revenue' => $paymentChannelReport['egp']['confirmed_net_amount'],
             'provider_settlement_pending_count' => $paymentChannelReport['egp']['pending_settlement_count'],
         ];
@@ -108,38 +141,35 @@ class HomeController extends Controller
 
         $monthStart = $currentMonth->startOfMonth()->utc();
         $nextMonthStart = $currentMonth->addMonth()->startOfMonth()->utc();
-        $courseStats = Order::query()
-            ->select('course_id')
-            ->selectRaw('COUNT(*) as total_buy_count')
-            ->selectRaw('SUM(COALESCE(paid_coins, 0)) as paid_coins')
-            ->selectRaw('SUM(COALESCE(reward_coins, 0)) as reward_coins')
-            ->selectRaw(
-                'SUM(CASE WHEN approved_at >= ? AND approved_at < ? THEN 1 ELSE 0 END) as current_month_buy_count',
-                [$monthStart, $nextMonthStart]
-            )
-            ->whereNotNull('course_id')
-            ->whereHas('course', fn ($course) => $course->whereNull('parent_id'))
-            ->whereIn('payment_method', [
-                Order::PAYMENT_METHOD_WALLET,
-                Order::PAYMENT_METHOD_WALLET_COINS,
-            ])
-            ->financiallyEffective()
-            ->with('course:id,name_ar,name_en')
-            ->groupBy('course_id')
-            ->get()
-            ->map(fn (Order $order): array => [
-                'name' => (string) ($order->course?->name_ar ?: $order->course?->name_en),
-                'total_buy_count' => (int) $order->total_buy_count,
-                'paid_coins' => (int) $order->paid_coins,
-                'reward_coins' => (int) $order->reward_coins,
-                'current_month_buy_count' => (int) $order->current_month_buy_count,
-            ])
+        $courseCoinSummaries = $financialLedger->courseSummaries(
+            null,
+            $monthStart,
+            $nextMonthStart
+        );
+        $courseNames = Course::withTrashed()
+            ->whereIn('id', $courseCoinSummaries->keys())
+            ->get(['id', 'name_ar', 'name_en'])
+            ->keyBy('id');
+        $courseStats = $courseCoinSummaries
+            ->filter(fn (array $summary, int $courseId): bool => $courseNames->has($courseId))
+            ->map(function (array $summary, int $courseId) use ($courseNames): array {
+                $course = $courseNames->get($courseId);
+
+                return [
+                    'name' => (string) ($course?->name_ar ?: $course?->name_en),
+                    'total_buy_count' => (int) $summary['total_buy_count'],
+                    'paid_coins' => (int) $summary['paid_coins'],
+                    'reward_coins' => (int) $summary['reward_coins'],
+                    'current_month_buy_count' => (int) $summary['current_period_buy_count'],
+                    'incomplete_orders' => (int) $summary['incomplete_orders'],
+                ];
+            })
             ->sortByDesc('paid_coins')
             ->values();
 
         $designSettings = $this->getDesignSettings();
         $platformStats = [
-            'courses' => Course::query()->whereNull('parent_id')->count(),
+            'courses' => Course::query()->count(),
             'lessons' => \App\Models\Lesson::query()->count(),
             'students' => User::query()->students()->count(),
         ];

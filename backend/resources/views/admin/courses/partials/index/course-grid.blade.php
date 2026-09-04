@@ -50,7 +50,11 @@
         @if($courses->count() > 0)
             <div class="courses-grid" id="coursesGrid">
                 @foreach($courses as $course)
-                    <div class="course-card" data-url="{{ $course->trashed() ? '' : route('admin.courses.show', $course->id) }}" onclick="navigateToCourse(event, this)">
+                    @php
+                        $courseWorkspaceId = (int) ($courseAuthoringEntryIds->get($course->id) ?? $course->id);
+                        $courseHasActiveDraft = (bool) ($courseHasActiveDrafts->get($course->id) ?? false);
+                    @endphp
+                    <div class="course-card" data-url="{{ $course->trashed() ? '' : route('admin.courses.show', $courseWorkspaceId) }}" onclick="navigateToCourse(event, this)">
                         <!-- Course Image -->
                         <div class="course-image-container">
                             @if($course->image)
@@ -76,22 +80,21 @@
                             <!-- Course Title -->
                             <h3 class="course-title">{{ $course->title }}</h3>
 
-                            @php($publishingAudit = $publishingAudits->get($course->id))
                             <div class="mb-3">
                                 @if($course->trashed())
                                     <span class="badge badge-dark px-3 py-2">مؤرشف · محتواه غير متاح للطلاب</span>
+                                @elseif($courseHasActiveDraft)
+                                    <span class="badge badge-info px-3 py-2">
+                                        نسخة منشورة · تعديلات محفوظة كمسودة
+                                    </span>
                                 @elseif(!$course->is_coming_soon && $course->is_catalog_visible)
                                     <span class="badge badge-success px-3 py-2">منشور</span>
                                 @elseif(!$course->is_coming_soon)
                                     <span class="badge badge-secondary px-3 py-2">منشور للطلاب · مخفي من الاكتشاف</span>
                                 @elseif($course->is_catalog_visible)
                                     <span class="badge badge-primary px-3 py-2">مُعلن في التطبيق · قريبًا</span>
-                                @elseif($publishingAudit && $publishingAudit['ready'])
-                                    <span class="badge badge-info px-3 py-2">مسودة جاهزة للنشر</span>
                                 @else
-                                    <span class="badge badge-warning px-3 py-2">
-                                        مسودة · {{ count($publishingAudit['issues'] ?? []) }} عناصر ناقصة
-                                    </span>
+                                    <span class="badge badge-warning px-3 py-2">مسودة</span>
                                 @endif
                             </div>
 
@@ -156,6 +159,9 @@
                                 </div>
                                 <small class="course-finance-summary__note">
                                     تُستهلك المكافآت أولًا ثم العملات المشتراة. هذه وحدات عملات ركن وليست إيرادًا نقديًا؛ دخل Kashier مستقل في طلبات الباقات.
+                                    @if((int) ($course->coin_ledger_incomplete_orders ?? 0) > 0)
+                                        <br><span class="text-warning">{{ number_format((int) $course->coin_ledger_incomplete_orders) }} عملية تحتاج ربط الدفتر</span>
+                                    @endif
                                 </small>
                             </div>
                             @endif
@@ -203,19 +209,11 @@
                                         </button>
                                     </form>
                                 @else
-                                <a href="{{ route('admin.courses.show', $course->id) }}" class="btn-card btn-card-primary">
+                                <a href="{{ route('admin.courses.show', $courseWorkspaceId) }}" class="btn-card btn-card-primary">
                                     <i class="fa fa-magic"></i>
                                     فتح الاستوديو
                                 </a>
-                                <a href="{{ route('admin.courses.edit', $course->id) }}" class="btn-card btn-card-success">
-                                    <i class="fa fa-edit"></i>
-                                    تعديل
-                                </a>
-                                <a href="{{ route('admin.courses.sections.index', $course->id) }}" class="btn-card btn-card-info">
-                                    <i class="fa fa-list"></i>
-                                    الأقسام
-                                </a>
-                                @if(strtolower((string) auth()->user()?->role) === 'admin')
+                                @if($canViewFinance)
                                     @php($preservesLearnerAccess = $course->published_at !== null || (int) ($course->last_published_authoring_version ?? 0) > 0 || !$course->is_coming_soon)
                                     @if($preservesLearnerAccess && !$course->is_catalog_visible)
                                         <button type="button" class="btn-card btn-card-danger" disabled aria-disabled="true">
@@ -233,7 +231,7 @@
                         </div>
 
                         <!-- Hidden Delete Form -->
-                        @if(!$course->trashed() && strtolower((string) auth()->user()?->role) === 'admin')
+                        @if(!$course->trashed() && $canViewFinance)
                             <form class="course-delete-form" id="deleteForm{{ $course->id }}" action="{{ route('admin.courses.destroy', $course->id) }}" method="post">
                                 <input name="_method" type="hidden" value="DELETE">
                                 @csrf

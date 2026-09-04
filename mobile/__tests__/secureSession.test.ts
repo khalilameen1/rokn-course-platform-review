@@ -4,11 +4,8 @@ import {NativeModules, Platform} from 'react-native';
 import {
   assertSecureSessionStorageAvailable,
   deleteSecureSession,
-  extractApiToken,
-  extractUserProfile,
-  migrateLegacySession,
   peekSecureSession,
-  resetSecureSessionMigrationForTests,
+  resetSecureSessionForTests,
   restoreSecureAuthState,
   savePendingSocialAuthAttempt,
   sanitizeSessionForStorage,
@@ -17,6 +14,7 @@ import {
   replacePendingSocialAuthAttempt,
   deletePendingSocialAuthAttempt,
   secureStoreOptionsForPlatform,
+  sessionIdentityKey,
 } from '../src/services/secureSession';
 
 const secureValues = new Map<string, string>();
@@ -37,7 +35,7 @@ describe('secure mobile session persistence', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     secureValues.clear();
-    resetSecureSessionMigrationForTests();
+    resetSecureSessionForTests();
     await AsyncStorage.clear();
     secureGet.mockImplementation(async key => secureValues.get(key) ?? null);
     secureIsAvailable.mockResolvedValue(true);
@@ -54,6 +52,31 @@ describe('secure mobile session persistence', () => {
     expect(secureStoreOptionsForPlatform('ios')).toEqual({
       keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     });
+  });
+
+  it('derives non-secret distinct owners when authenticated profiles have no id', () => {
+    const first = sessionIdentityKey({api_token: 'first-private-bearer'});
+    const second = sessionIdentityKey({api_token: 'second-private-bearer'});
+
+    expect(first).toMatch(/^session-[0-9a-f]{32}$/u);
+    expect(second).toMatch(/^session-[0-9a-f]{32}$/u);
+    expect(first).not.toBe(second);
+    expect(first).not.toContain('first-private-bearer');
+    expect(sessionIdentityKey(null)).toBe('guest');
+  });
+
+  it('keeps the same account owner across bearer replacement when it has an id', () => {
+    const first = sessionIdentityKey({
+      api_token: 'old-token',
+      user: {id: 41},
+    });
+    const replacement = sessionIdentityKey({
+      api_token: 'new-token',
+      user: {id: 41},
+    });
+
+    expect(first).toBe(replacement);
+    expect(first).toMatch(/^account-[0-9a-f]{32}$/u);
   });
 
   it('proves secure storage can round-trip before opening a social provider', async () => {
@@ -115,7 +138,7 @@ describe('secure mobile session persistence', () => {
       configurable: true,
     });
     NativeModules.RoknSecureSession = nativeModule;
-    resetSecureSessionMigrationForTests();
+    resetSecureSessionForTests();
 
     try {
       await expect(
@@ -135,7 +158,7 @@ describe('secure mobile session persistence', () => {
         value: originalPlatform,
         configurable: true,
       });
-      resetSecureSessionMigrationForTests();
+      resetSecureSessionForTests();
     }
   });
 
@@ -144,64 +167,6 @@ describe('secure mobile session persistence', () => {
     await expect(assertSecureSessionStorageAvailable()).rejects.toThrow(
       'SESSION_STORAGE_UNAVAILABLE',
     );
-  });
-
-  it('migrates both legacy plaintext copies without losing the signed-in user', async () => {
-    const legacySession = {
-      api_token: 'legacy-api-token',
-      access_token: 'provider-token',
-      user: {id: 42, name: 'Rokn learner', refresh_token: 'refresh-token'},
-    };
-    await AsyncStorage.setItem('USER_DATA', JSON.stringify(legacySession));
-    await AsyncStorage.setItem(
-      'persist:auth',
-      JSON.stringify({
-        userData: JSON.stringify(legacySession),
-        isLogin: 'true',
-      }),
-    );
-
-    const restoredAuth = await restoreSecureAuthState();
-    const restored = restoredAuth.session;
-
-    expect(restoredAuth.isAuthenticated).toBe(true);
-    expect(extractApiToken(restored)).toBe('legacy-api-token');
-    expect(extractUserProfile(restored)).toMatchObject({
-      id: 42,
-      name: 'Rokn learner',
-    });
-    expect(secureSet).toHaveBeenCalledWith(
-      'rokn.auth.api-token.v2',
-      'legacy-api-token',
-      expect.any(Object),
-    );
-    expect(secureSet).toHaveBeenCalledWith(
-      'rokn.auth.api-token.v1',
-      'legacy-api-token',
-      expect.any(Object),
-    );
-    expect(await AsyncStorage.getItem('persist:auth')).toBeNull();
-    const plaintextProfile = await AsyncStorage.getItem('USER_DATA');
-    expect(plaintextProfile).not.toContain('legacy-api-token');
-    expect(plaintextProfile).not.toContain('provider-token');
-    expect(plaintextProfile).not.toContain('refresh-token');
-  });
-
-  it('does not erase a legacy token when the secure migration write fails', async () => {
-    const legacy = {api_token: 'keep-me', user: {id: 9}};
-    await AsyncStorage.setItem('USER_DATA', JSON.stringify(legacy));
-    await AsyncStorage.setItem(
-      'persist:auth',
-      JSON.stringify({userData: JSON.stringify(legacy)}),
-    );
-    secureSet.mockRejectedValueOnce(new Error('keychain unavailable'));
-
-    await expect(migrateLegacySession()).rejects.toThrow(
-      'keychain unavailable',
-    );
-
-    expect(await AsyncStorage.getItem('USER_DATA')).toContain('keep-me');
-    expect(await AsyncStorage.getItem('persist:auth')).toContain('keep-me');
   });
 
   it('stores only the API token securely and keeps a sanitized profile', async () => {
@@ -222,7 +187,6 @@ describe('secure mobile session persistence', () => {
 
     await saveSecureSession(session);
 
-    expect(secureValues.get('rokn.auth.api-token.v1')).toBe('api-secret');
     expect(secureValues.get('rokn.auth.api-token.v2')).toBe('api-secret');
     expect(await AsyncStorage.getItem('USER_DATA')).toBe(
       JSON.stringify({user: {id: 7, name: 'Student', token_balance: 120}}),
@@ -232,46 +196,18 @@ describe('secure mobile session persistence', () => {
     });
   });
 
-  it('re-sanitizes an already migrated profile when credential aliases evolve', async () => {
-    await AsyncStorage.setItem(
-      'USER_DATA',
-      JSON.stringify({
-        user: {id: 8, name: 'Learner'},
-        providerToken: 'old-provider-token',
-      }),
-    );
-    await AsyncStorage.setItem('@rokn/auth-secure-migration-v1', '1');
-    secureValues.set('rokn.auth.api-token.v1', 'secure-api-token');
-
-    const restored = await restoreSecureAuthState();
-
-    expect(restored.isAuthenticated).toBe(true);
-    expect(restored.session).toMatchObject({
-      api_token: 'secure-api-token',
-      user: {id: 8, name: 'Learner'},
-    });
-    expect(secureValues.get('rokn.auth.api-token.v2')).toBe('secure-api-token');
-    expect(await AsyncStorage.getItem('USER_DATA')).toBe(
-      JSON.stringify({user: {id: 8, name: 'Learner'}}),
-    );
-  });
-
-  it('removes secure and legacy session copies on logout', async () => {
-    secureValues.set('rokn.auth.api-token.v1', 'api-secret');
-    await AsyncStorage.setItem('USER_DATA', JSON.stringify({user: {id: 7}}));
-    await AsyncStorage.setItem('persist:auth', '{"userData":"{}"}');
+  it('removes the secure session on logout', async () => {
+    await saveSecureSession({api_token: 'api-secret', user: {id: 7}});
 
     await expect(deleteSecureSession()).resolves.toBe(true);
 
-    expect(secureValues.has('rokn.auth.api-token.v1')).toBe(false);
     expect(secureValues.has('rokn.auth.api-token.v2')).toBe(false);
     expect(await AsyncStorage.getItem('USER_DATA')).toBeNull();
-    expect(await AsyncStorage.getItem('persist:auth')).toBeNull();
   });
 
   it('hydrates the keychain once and serves later request interceptors from memory', async () => {
     await saveSecureSession({api_token: 'cached-token', user: {id: 15}});
-    resetSecureSessionMigrationForTests();
+    resetSecureSessionForTests();
     secureGet.mockClear();
 
     const first = await restoreSecureAuthState();
@@ -281,6 +217,23 @@ describe('secure mobile session persistence', () => {
     expect(first.session).toEqual(second.session);
     expect(readsAfterHydration).toBeGreaterThan(0);
     expect(secureGet).toHaveBeenCalledTimes(readsAfterHydration);
+  });
+
+  it('rejects a bearer and profile mixed by process death during account replacement', async () => {
+    await saveSecureSession({api_token: 'account-a-token', user: {id: 71}});
+    // Account replacement writes the new secure bearer before the public
+    // profile, then commits their binding last. Reproduce a process death in
+    // that gap: the previous profile must never inherit the new account token.
+    secureValues.set('rokn.auth.api-token.v2', 'account-b-token');
+    resetSecureSessionForTests();
+
+    await expect(restoreSecureAuthState()).resolves.toEqual({
+      session: null,
+      isAuthenticated: false,
+    });
+    expect(await AsyncStorage.getItem('USER_DATA')).toBeNull();
+    expect(secureValues.has('rokn.auth.api-token.v2')).toBe(false);
+    expect(secureValues.has('rokn.auth.session-binding.v1')).toBe(false);
   });
 
   it('lets public journeys inspect bootstrap without starting a keychain read', async () => {

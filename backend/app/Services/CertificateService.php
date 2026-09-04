@@ -22,7 +22,6 @@ use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\QrCode;
 use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image;
@@ -31,9 +30,9 @@ class CertificateService
 {
     public function __construct(
         private readonly FinancialProvenanceService $financialProvenance,
-        private readonly CourseChatAccessService $courseAccess,
         private readonly CertificateEligibilityService $eligibility,
-        private readonly CourseStagedAuthoringService $stagedAuthoring
+        private readonly CourseStagedAuthoringService $stagedAuthoring,
+        private readonly CertificateTextTemplateService $textTemplates
     ) {
     }
 
@@ -43,7 +42,6 @@ class CertificateService
     public function generate(
         User $user,
         Course $course,
-        ?Project $project = null,
         ?string $requestedHolderName = null,
         bool $renderArtifact = true
     ): ?Certificate
@@ -63,55 +61,22 @@ class CertificateService
         // revocation state and the hold checked here before any recovery.
         if ($certificate) {
             if (
-                ($certificate->status ?? 'active') === 'revoked'
+                !$certificate->isActiveCredential()
                 || ($latestEnrollment && $this->financialProvenance
                     ->enrollmentHasActiveHold($latestEnrollment, ['course']))
             ) {
                 return null;
             }
-        } else {
-            $enrollment = $this->eligibility->enrollmentFor($user, $course);
-            if (
-                !$enrollment
-                || $this->financialProvenance->enrollmentHasActiveHold($enrollment, ['course'])
-                || !$this->courseAccess->enrollmentHasCertificateAccess($enrollment)
-            ) {
-                return null;
-            }
         }
 
-        $verificationLevel = $this->verificationLevel($user, $course);
-        // Allows rolling deployments: old web workers may run briefly before
-        // this additive migration reaches every database connection.
-        $supportsVerificationLevel = Schema::hasColumn('certificates', 'verification_level');
-        $supportsIdentitySnapshots = Schema::hasColumns('certificates', [
-            'holder_name',
-            'course_name',
-        ]);
-        $supportsTextSnapshots = Schema::hasColumns('certificates', [
-            'certificate_text_template_key',
-            'certificate_text',
-        ]);
-        $textTemplate = $supportsTextSnapshots
-            ? $this->selectedTextTemplateForCourse($course)
-            : $this->resolvedTextTemplateForCourse($course);
-        if ($supportsTextSnapshots && $textTemplate === null) {
-            return null;
-        }
         $requestedHolderName = UnicodeText::limit(
             UnicodeText::clean($requestedHolderName, false),
             120
         );
         // Creating a credential is an explicit learner action because this
-        // text becomes an immutable identity snapshot. Recovery of an old
+        // text becomes an immutable identity snapshot. Recovery of its
         // pending row remains automatic and uses its stored snapshot.
         if (!$certificate && UnicodeText::graphemeLength($requestedHolderName) < 2) {
-            return null;
-        }
-
-        // Revocation is terminal. A missing artifact or a retry must never
-        // turn a revoked credential active again.
-        if ($certificate && ($certificate->status ?? 'active') === 'revoked') {
             return null;
         }
 
@@ -120,16 +85,6 @@ class CertificateService
         // immutable row even if progress tables are later archived.
         if (!$certificate && !$this->eligibility->for($user, $course)['available']) {
             return null;
-        }
-
-        if ($certificate && $supportsIdentitySnapshots) {
-            $this->fillMissingIdentitySnapshots($certificate, $user, $course);
-        }
-        if ($certificate && $this->artifactExists($certificate)) {
-            if (Schema::hasColumn('certificates', 'artifact_checked_at')) {
-                $certificate->forceFill(['artifact_checked_at' => now()])->save();
-            }
-            return $certificate;
         }
 
         if (!$certificate) {
@@ -145,13 +100,7 @@ class CertificateService
                 $certificate = DB::transaction(function () use (
                     $user,
                     &$course,
-                    $project,
-                    $requestedHolderName,
-                    $supportsIdentitySnapshots,
-                    $supportsVerificationLevel,
-                    $supportsTextSnapshots,
-                    &$verificationLevel,
-                    &$textTemplate
+                    $requestedHolderName
                 ): ?Certificate {
                     $lockedUser = User::query()
                         ->whereKey($user->id)
@@ -173,33 +122,31 @@ class CertificateService
                     }
 
                     $course = $lockedCourse;
-                    $verificationLevel = $this->verificationLevel($lockedUser, $lockedCourse);
-                    $textTemplate = $supportsTextSnapshots
-                        ? $this->selectedTextTemplateForCourse($lockedCourse)
-                        : $this->resolvedTextTemplateForCourse($lockedCourse);
-                    if ($supportsTextSnapshots && $textTemplate === null) {
+                    $verificationLevel = $this->verificationLevel(
+                        $lockedUser,
+                        $lockedCourse
+                    );
+                    $textTemplate = $this->textTemplates->forCourse($lockedCourse);
+                    if ($textTemplate === null) {
+                        return null;
+                    }
+                    $courseName = $this->courseName($lockedCourse);
+                    if ($courseName === '') {
                         return null;
                     }
                     $createAttributes = [
                         'public_id'    => (string) Str::uuid(),
                         'user_id'      => $lockedUser->id,
                         'course_id'    => $lockedCourse->id,
-                        'project_id'   => $project?->id,
                         'image_path'   => 'pending',
                         'generated_at' => now(),
                         'status'       => 'active',
                     ];
-                    if ($supportsIdentitySnapshots) {
-                        $createAttributes['holder_name'] = $requestedHolderName;
-                        $createAttributes['course_name'] = $this->courseName($lockedCourse);
-                    }
-                    if ($supportsVerificationLevel) {
-                        $createAttributes['verification_level'] = $verificationLevel;
-                    }
-                    if ($supportsTextSnapshots) {
-                        $createAttributes['certificate_text_template_key'] = $textTemplate['key'];
-                        $createAttributes['certificate_text'] = $textTemplate['text'];
-                    }
+                    $createAttributes['holder_name'] = $requestedHolderName;
+                    $createAttributes['course_name'] = $courseName;
+                    $createAttributes['verification_level'] = $verificationLevel;
+                    $createAttributes['certificate_text_template_key'] = $textTemplate['key'];
+                    $createAttributes['certificate_text'] = $textTemplate['text'];
 
                     return Certificate::query()
                         ->where('user_id', $lockedUser->id)
@@ -217,25 +164,21 @@ class CertificateService
                 if (!$certificate) {
                     throw $e;
                 }
-                if (($certificate->status ?? 'active') === 'revoked') {
+                if (!$certificate->isActiveCredential()) {
                     return null;
                 }
             }
         }
 
-        if (!$certificate->public_id) {
-            Certificate::query()
-                ->whereKey($certificate->id)
-                ->whereNull('public_id')
-                ->update(['public_id' => (string) Str::uuid()]);
-            $certificate->refresh();
+        if (!$certificate->hasCompleteCredentialSnapshot()) {
+            // A request creates the immutable identity/editorial snapshot in
+            // one transaction. Recovery never invents missing claims from
+            // mutable profile, course or configuration state.
+            return null;
         }
-
-        if ($supportsIdentitySnapshots) {
-            $this->fillMissingIdentitySnapshots($certificate, $user, $course);
-        }
-        if ($supportsTextSnapshots) {
-            $this->fillMissingTextSnapshot($certificate, $textTemplate);
+        if ($certificate->hasStoredArtifact()) {
+            $certificate->forceFill(['artifact_checked_at' => now()])->save();
+            return $certificate;
         }
 
         // The HTTP request only reserves the immutable credential. Rendering
@@ -248,28 +191,31 @@ class CertificateService
         }
 
         $leaseId = (string) Str::uuid();
-        $certificate = DB::transaction(function () use ($certificate, $leaseId): ?Certificate {
+        $leaseStaleBefore = now()->subMinutes(max(
+            2,
+            (int) config('operations.certificate_recovery_stale_minutes', 5)
+        ));
+        $certificate = DB::transaction(function () use (
+            $certificate,
+            $leaseId,
+            $leaseStaleBefore
+        ): ?Certificate {
             $locked = Certificate::query()->lockForUpdate()->find($certificate->id);
             if (
                 !$locked
-                || ($locked->status ?? 'active') !== 'active'
-                || $locked->revoked_at !== null
+                || !$locked->isActiveCredential()
                 || !User::query()->whereKey($locked->user_id)->exists()
             ) {
                 return null;
             }
             if (
                 trim((string) $locked->generation_lease_id) !== ''
-                && $locked->updated_at?->isAfter(now()->subMinutes(5))
+                && $locked->updated_at?->isAfter($leaseStaleBefore)
             ) {
                 return null;
             }
-            // A legacy pending row may not have an issue date. Claim the date
-            // under the generation lease so every retry prints and reports the
-            // same immutable value.
             $locked->forceFill([
                 'generation_lease_id' => $leaseId,
-                'generated_at' => $locked->generated_at ?? now(),
             ])->save();
             return $locked->fresh();
         }, 3);
@@ -281,8 +227,6 @@ class CertificateService
         // recovery. Retrying a pending or lost image keeps the original date.
         $previousPath = trim((string) $certificate->image_path);
         $filePath = $this->createCertificateImage(
-            $user,
-            $course,
             $certificate,
             $certificate->generated_at,
             $leaseId
@@ -290,7 +234,7 @@ class CertificateService
 
         if (!$filePath) {
             // Keep the pending row as the durable recovery marker. The queued
-            // listener or an authenticated recovery request can safely retry.
+            // recovery worker or an authenticated recovery request can safely retry.
             Certificate::query()
                 ->whereKey($certificate->id)
                 ->where('generation_lease_id', $leaseId)
@@ -303,23 +247,17 @@ class CertificateService
             'status' => 'active',
             'generation_lease_id' => null,
         ];
-        if (Schema::hasColumn('certificates', 'recovery_attempts')) {
-            $updateAttributes += [
-                'recovery_attempts' => 0,
-                'recovery_next_attempt_at' => null,
-                'recovery_failed_at' => null,
-                'recovery_failure_code' => null,
-            ];
-        }
-        if (Schema::hasColumn('certificates', 'artifact_checked_at')) {
-            $updateAttributes['artifact_checked_at'] = now();
-        }
+        $updateAttributes += [
+            'recovery_attempts' => 0,
+            'recovery_next_attempt_at' => null,
+            'recovery_failed_at' => null,
+            'recovery_failure_code' => null,
+            'artifact_checked_at' => now(),
+        ];
         $committed = Certificate::query()
             ->whereKey($certificate->id)
             ->where('generation_lease_id', $leaseId)
-            ->where(function ($query): void {
-                $query->whereNull('status')->orWhere('status', 'active');
-            })
+            ->where('status', 'active')
             ->whereNull('revoked_at')
             ->whereHas('user')
             ->update($updateAttributes);
@@ -343,7 +281,7 @@ class CertificateService
             'Your certificate is ready',
             'أكملت الكورس وأصبحت شهادتك جاهزة',
             'You completed the course and your certificate is ready.',
-            'rokn://profile',
+            'rokn://profile/certificates',
             Course::class,
             (int) $course->id,
             'certificate-ready:' . $certificate->id,
@@ -360,7 +298,7 @@ class CertificateService
     {
         // A course may contain several graduation projects. The certificate
         // label describes the strongest verified evidence in that course, not
-        // whichever project happened to be returned first by a legacy query.
+        // whichever project happened to be returned first by an arbitrary query.
         $graduationProjectIds = Project::query()
             ->where('is_graduation_project', true)
             ->whereHas('section', fn ($sections) => $sections->where('course_id', $course->id))
@@ -386,8 +324,6 @@ class CertificateService
      * ----------------------------------------------------------------*/
 
     private function createCertificateImage(
-        User $user,
-        Course $course,
         Certificate $certificate,
         \DateTimeInterface $generatedAt,
         string $generationLeaseId
@@ -410,8 +346,10 @@ class CertificateService
             $height = $img->height();
 
             // ----- 1. Student name -----
-            $studentName = UnicodeText::clean($certificate->holder_name, false)
-                ?: $this->holderName($user);
+            $studentName = UnicodeText::clean($certificate->holder_name, false);
+            if ($studentName === '') {
+                return null;
+            }
             $studentName = $this->shapeIfArabic($studentName);
 
             $pos = $positions['name'];
@@ -459,21 +397,21 @@ class CertificateService
             }
 
             // ----- 3. Course name -----
-            $courseName = UnicodeText::clean($certificate->course_name, false)
-                ?: $this->courseName($course);
-            if ($courseName) {
-                $courseName = $this->shapeIfArabic($courseName);
-                $pos = $positions['course'];
-                $pos['size'] = $this->fittedFontSize($courseName, $fontPath, $pos, $width);
-                $placement = $this->horizontalTextPlacement($courseName, $fontPath, $pos, $width);
-                $img->text($courseName, $placement['x'], (int)($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
-                    $font->file($fontPath);
-                    $font->size($pos['size']);
-                    $font->color($pos['color']);
-                    $font->align($placement['align']);
-                    $font->valign('middle');
-                });
+            $courseName = UnicodeText::clean($certificate->course_name, false);
+            if ($courseName === '') {
+                return null;
             }
+            $courseName = $this->shapeIfArabic($courseName);
+            $pos = $positions['course'];
+            $pos['size'] = $this->fittedFontSize($courseName, $fontPath, $pos, $width);
+            $placement = $this->horizontalTextPlacement($courseName, $fontPath, $pos, $width);
+            $img->text($courseName, $placement['x'], (int)($height * $pos['y']), function ($font) use ($fontPath, $pos, $placement) {
+                $font->file($fontPath);
+                $font->size($pos['size']);
+                $font->color($pos['color']);
+                $font->align($placement['align']);
+                $font->valign('middle');
+            });
 
             // ----- 4. Certificate ID -----
             // The printed credential must match the public API and QR target;
@@ -544,11 +482,6 @@ class CertificateService
             report($e);
             return null;
         }
-    }
-
-    private function artifactExists(Certificate $certificate): bool
-    {
-        return $certificate->hasStoredArtifact();
     }
 
     /**
@@ -647,142 +580,16 @@ class CertificateService
         }
     }
 
-    private function fillMissingIdentitySnapshots(
-        Certificate $certificate,
-        User $user,
-        Course $course
-    ): void {
-        $updates = [];
-        if (trim((string) $certificate->holder_name) === '') {
-            $updates['holder_name'] = $this->holderName($user);
-        }
-        if (trim((string) $certificate->course_name) === '') {
-            $updates['course_name'] = $this->courseName($course);
-        }
-        if ($updates === []) {
-            return;
-        }
-
-        // Conditional writes make concurrent recovery safe and ensure that a
-        // later profile or course edit can never replace the issued identity.
-        foreach ($updates as $column => $value) {
-            Certificate::query()
-                ->whereKey($certificate->id)
-                ->where(function ($query) use ($column): void {
-                    $query->whereNull($column)->orWhere($column, '');
-                })
-                ->update([$column => $value]);
-        }
-        $certificate->refresh();
-    }
-
-    /** @param array{key:string,text:string} $template */
-    private function fillMissingTextSnapshot(
-        Certificate $certificate,
-        array $template
-    ): void {
-        DB::transaction(function () use ($certificate, $template): void {
-            $locked = Certificate::query()->lockForUpdate()->find($certificate->id);
-            if (!$locked) return;
-
-            $key = trim((string) $locked->certificate_text_template_key);
-            $text = trim((string) $locked->certificate_text);
-            if ($key !== '' && $text !== '') return;
-
-            // The two values are one immutable editorial snapshot. Fill them
-            // together under the same row lock so parallel recovery cannot
-            // combine a key from one course setting with another text. This
-            // path runs only when no artifact exists yet, so an incomplete
-            // pair has no prior printed claim to preserve. Repair the pair
-            // from the one course snapshot captured by this generation call;
-            // never derive half of it from mutable live config.
-            Certificate::query()->whereKey($locked->id)->update([
-                'certificate_text_template_key' => $template['key'],
-                'certificate_text' => $template['text'],
-            ]);
-        }, 3);
-        $certificate->refresh();
-    }
-
-    /**
-     * Resolve the same editorial wording used by certificate issuance.
-     *
-     * Dashboard preview calls this method as well so a moderator never
-     * reviews a parallel approximation of the learner's certificate text.
-     *
-     * @return array{key:string,text:string}
-     */
-    public function resolvedTextTemplateForCourse(Course $course): array
-    {
-        $selected = $this->selectedTextTemplateForCourse($course);
-        if ($selected !== null) {
-            return $selected;
-        }
-
-        $default = $this->configuredTextTemplate((string) config(
-            'certificate.default_text_template_key',
-            'completion'
-        ));
-        if ($default === null) {
-            throw new \LogicException('Certificate text templates are not configured.');
-        }
-
-        return $default;
-    }
-
-    /**
-     * Resolve the exact moderator selection without substituting another
-     * claim. Issuance and publish validation use this strict form; the public
-     * resolver above only supplies the configured default for an unsaved
-     * draft/rolling-deployment preview.
-     *
-     * @return array{key:string,text:string}|null
-     */
-    public function selectedTextTemplateForCourse(Course $course): ?array
-    {
-        $selectedKey = trim((string) $course->getRawOriginal(
-            'certificate_text_template_key'
-        ));
-
-        return $this->configuredTextTemplate($selectedKey);
-    }
-
-    /** @return array{key:string,text:string}|null */
-    private function configuredTextTemplate(string $key): ?array
-    {
-        $key = trim($key);
-        $template = data_get((array) config('certificate.text_templates', []), $key);
-        if ($key === '' || !is_array($template)) {
-            return null;
-        }
-
-        $text = UnicodeText::limit(
-            UnicodeText::clean($template['text'] ?? null, false),
-            255
-        );
-
-        return $text === '' ? null : ['key' => $key, 'text' => $text];
-    }
-
-    private function holderName(User $user): string
-    {
-        return $this->firstText([
-            $user->getRawOriginal('name_ar'),
-            $user->getRawOriginal('name_en'),
-            $user->getRawOriginal('name'),
-        ], 'طالب ركن');
-    }
-
     private function courseName(Course $course): string
     {
         return $this->firstText([
             $course->getRawOriginal('name_ar'),
             $course->getRawOriginal('name_en'),
-        ], 'كورس ركن');
+        ]);
     }
 
     /** @param array<int, mixed> $values */
-    private function firstText(array $values, string $fallback): string
+    private function firstText(array $values): string
     {
         foreach ($values as $value) {
             $text = UnicodeText::clean($value, false);
@@ -791,7 +598,7 @@ class CertificateService
             }
         }
 
-        return $fallback;
+        return '';
     }
 
     /* ------------------------------------------------------------------

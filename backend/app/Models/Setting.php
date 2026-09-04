@@ -47,8 +47,6 @@ class Setting extends Model
         'bunny_security_key_secret',
         'android_app_url',
         'ios_app_url',
-        'about_us_url',
-        'privacy_policy_url',
         'support_whatsapp_url',
         'how_to_use_coins_ar',
         'how_to_use_coins_en',
@@ -72,11 +70,9 @@ class Setting extends Model
         'first_project_reward_coins',
         'course_completion_reward_coins',
         'course_completion_rolling_30_day_cap',
-        'ai_daily_user_limit',
         'ai_global_daily_request_limit',
         'ai_global_daily_token_budget',
         'ai_global_monthly_token_budget',
-        'ai_answer_cache_minutes',
         'ai_plan_policy',
     ];
 
@@ -110,11 +106,9 @@ class Setting extends Model
         'first_project_reward_coins' => 'integer',
         'course_completion_reward_coins' => 'integer',
         'course_completion_rolling_30_day_cap' => 'integer',
-        'ai_daily_user_limit' => 'integer',
         'ai_global_daily_request_limit' => 'integer',
         'ai_global_daily_token_budget' => 'integer',
         'ai_global_monthly_token_budget' => 'integer',
-        'ai_answer_cache_minutes' => 'integer',
         'ai_plan_policy' => 'array',
     ];
 

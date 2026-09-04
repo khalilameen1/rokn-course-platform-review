@@ -8,7 +8,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Services\PackageChannelPricingService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -25,6 +24,8 @@ final class PackageController extends Controller
             ->where('is_active', true)
             ->where('price', '>', 0)
             ->where('coins', '>', 0)
+            ->purchasable()
+            ->orderBy('sort_order')
             ->orderBy('coins')
             ->orderBy('id')
             ->get()
@@ -49,6 +50,7 @@ final class PackageController extends Controller
             ->where('is_active', true)
             ->where('price', '>', 0)
             ->where('coins', '>', 0)
+            ->purchasable()
             ->find($id);
 
         if (!$package) {
@@ -66,20 +68,6 @@ final class PackageController extends Controller
             'message' => 'تم تحميل الباقة',
             'data' => $this->pricing->packagePayload($package),
         ]);
-    }
-
-    public function purchase(Request $request, int|string $id): JsonResponse
-    {
-        return response()->json([
-            'status' => 410,
-            'success' => false,
-            'code' => 'external_checkout_required',
-            'message' => 'استخدم الدفع داخل التطبيق لشحن العملات',
-            'data' => [
-                'package_id' => (int) $id,
-                'initiate_endpoint' => '/api/v1/payment/initiate',
-            ],
-        ], 410);
     }
 
 }

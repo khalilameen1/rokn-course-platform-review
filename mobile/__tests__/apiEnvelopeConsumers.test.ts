@@ -1,5 +1,8 @@
 import {publicRequest} from '../src/constants/api';
-import {issueCertificate} from '../src/services/api/certificates';
+import {
+  issueCertificate,
+  recoverCertificate,
+} from '../src/services/api/certificates';
 import {getNotificationsPage} from '../src/services/api/notifications';
 
 jest.mock('../src/constants/api', () => ({
@@ -27,8 +30,70 @@ describe('API envelope consumers', () => {
       },
     });
 
-    await expect(issueCertificate('52')).resolves.toBeNull();
+    await expect(recoverCertificate('52')).resolves.toBeNull();
     expect(mockedRequest.post).toHaveBeenCalledWith('certificates/52/issue');
+  });
+
+  it('keeps the issued image and PDF on the certificate trust boundary', async () => {
+    const credential = '11111111-1111-4111-8111-111111111111';
+    mockedRequest.post.mockResolvedValue({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          public_id: credential,
+          course_id: 52,
+          holder_name: 'طالب ركن',
+          course_name: 'كورس تجريبي',
+          certificate_text_template_key: 'projects',
+          certificate_text: 'تقديرًا لإنجاز مشروعات كورس',
+          status: 'active',
+          verification_level: 'completion',
+          verification_label: 'إتمام الكورس',
+          verification_url: `https://rokn.app/c/${credential}`,
+          certificate_url: `https://rokn.app/c/${credential}/artifact`,
+          certificate_pdf_url: `https://rokn.app/c/${credential}/download`,
+        },
+      },
+    });
+
+    await expect(issueCertificate('52', 'طالب ركن')).resolves.toMatchObject({
+      publicId: credential,
+      certificateUrl: `https://rokn.app/c/${credential}/artifact`,
+      certificatePdfUrl: `https://rokn.app/c/${credential}/download`,
+      certificateTextTemplateKey: 'projects',
+      certificateText: 'تقديرًا لإنجاز مشروعات كورس',
+    });
+    expect(mockedRequest.post).toHaveBeenCalledWith(
+      'certificates/52/issue',
+      {holder_name: 'طالب ركن'},
+    );
+  });
+
+  it('does not invent one generic certificate sentence when the snapshot is missing', async () => {
+    const credential = '22222222-2222-4222-8222-222222222222';
+    mockedRequest.post.mockResolvedValue({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          public_id: credential,
+          course_id: 52,
+          holder_name: 'طالب ركن',
+          course_name: 'كورس تجريبي',
+          status: 'active',
+          verification_level: 'completion',
+          verification_label: 'إتمام الكورس',
+          verification_url: `https://rokn.app/c/${credential}`,
+          certificate_url: `https://rokn.app/c/${credential}/artifact`,
+          certificate_pdf_url: `https://rokn.app/c/${credential}/download`,
+        },
+      },
+    });
+
+    await expect(issueCertificate('52', 'طالب ركن')).rejects.toThrow(
+      'CERTIFICATE_TEXT_CONTRACT_INVALID',
+    );
   });
 
   it('reads cursor metadata from the envelope', async () => {

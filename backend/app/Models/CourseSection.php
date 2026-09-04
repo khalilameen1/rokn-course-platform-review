@@ -24,6 +24,17 @@ class CourseSection extends Model
         'order'
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function (CourseSection $section): void {
+            $section->section_type = match ($section->sectionable_type) {
+                Lesson::class => 'lesson',
+                Project::class => 'project',
+                default => $section->section_type,
+            };
+        });
+    }
+
     /**
      * Get the title attribute based on Accept-Language header.
      */
@@ -37,9 +48,7 @@ class CourseSection extends Model
         return $this->localizedValue('title_ar', 'title_en', 'title');
     }
 
-    /**
-     * Get the sectionable content (lesson, quiz, etc.)
-     */
+    /** Get the learner content owned by this position in the course map. */
     public function sectionable()
     {
         return $this->morphTo();
@@ -70,14 +79,6 @@ class CourseSection extends Model
     }
 
     /**
-     * Get the attachments for this section.
-     */
-    public function attachments()
-    {
-        return $this->morphMany(Attachment::class, 'attachable')->orderBy('order');
-    }
-
-    /**
      * Check if this is a project section.
      */
     public function isProject(): bool
@@ -93,28 +94,13 @@ class CourseSection extends Model
         return $this->getSectionType() === 'lesson';
     }
 
-    /**
-     * Get the section type based on sectionable_type or section_type field
-     */
-    public function getSectionType()
+    public function getSectionType(): string
     {
-        // If section_type is set to project, return project
-        if ($this->section_type === 'project') {
-            return 'project';
-        }
-
-        // Otherwise determine from sectionable_type
-        $types = [
-            'App\Models\Lesson' => 'lesson',
-            'App\Models\Question' => 'question',
-            'App\Models\Link' => 'link',
-            'App\Models\ItemList' => 'quiz',
-            'App\Models\Course' => 'course',
-            'App\Models\CoursePdf' => 'pdf',
-            'App\Models\Project' => 'project'
-        ];
-
-        return $types[$this->sectionable_type] ?? 'lesson';
+        return match ($this->sectionable_type) {
+            Lesson::class => 'lesson',
+            Project::class => 'project',
+            default => 'unsupported',
+        };
     }
 
     /**

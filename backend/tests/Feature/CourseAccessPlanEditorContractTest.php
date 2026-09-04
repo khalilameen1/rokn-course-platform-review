@@ -9,11 +9,8 @@ use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseAuthoringConcurrencyService;
-use App\Services\CoursePublishingService;
-use App\Services\CourseStagedAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\View\View;
+use Illuminate\Http\RedirectResponse;
 use Tests\TestCase;
 
 final class CourseAccessPlanEditorContractTest extends TestCase
@@ -149,18 +146,11 @@ final class CourseAccessPlanEditorContractTest extends TestCase
             'is_catalog_visible' => false,
         ])->save();
 
-        $response = app(CourseController::class)->edit(
-            $course,
-            app(CoursePublishingService::class),
-            app(CourseAccessPlanService::class),
-            app(CourseAuthoringConcurrencyService::class),
-            app(CourseStagedAuthoringService::class)
-        );
+        $response = app(CourseController::class)->edit($course);
 
-        self::assertInstanceOf(View::class, $response);
+        self::assertInstanceOf(RedirectResponse::class, $response);
+        self::assertSame(route('admin.courses.show', $course), $response->getTargetUrl());
         self::assertSame(0, $course->accessPlans()->count());
         self::assertSame(12, (int) $course->fresh()->authoring_version);
-        self::assertSame(2100, (int) $response->getData()['course']
-            ->accessPlans->firstWhere('code', CourseAccessPlan::BASIC)?->price_coins);
     }
 }

@@ -11,7 +11,6 @@ use App\Services\DeviceLoginService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 final class UserSessionController extends Controller
 {
@@ -30,6 +29,9 @@ final class UserSessionController extends Controller
             ->map(static fn (ApiToken $token): array => [
                 'id' => $token->session_id,
                 'platform' => $token->platform ?: 'other',
+                'device_class' => in_array($token->device_class, ['phone', 'tablet'], true)
+                    ? $token->device_class
+                    : null,
                 'app_version' => $token->app_version,
                 'app_build' => $token->app_build,
                 'issued_at' => optional($token->issued_at)->toIso8601String(),
@@ -142,13 +144,27 @@ final class UserSessionController extends Controller
     private function removePushRegistrationForDevices(int $userId, array $deviceIds): void
     {
         $deviceIds = array_values(array_filter(array_unique($deviceIds)));
-        if ($deviceIds === [] || !Schema::hasColumn('user_device_tokens', 'device_id')) {
+        if ($deviceIds === []) {
+            return;
+        }
+
+        $activeDeviceIds = ApiToken::query()
+            ->where('user_id', $userId)
+            ->whereHasNotExpired()
+            ->whereIn('device_id', $deviceIds)
+            ->pluck('device_id')
+            ->map(static fn ($deviceId): string => trim((string) $deviceId))
+            ->filter()
+            ->unique()
+            ->all();
+        $orphanedDeviceIds = array_values(array_diff($deviceIds, $activeDeviceIds));
+        if ($orphanedDeviceIds === []) {
             return;
         }
 
         UserDeviceToken::query()
             ->where('user_id', $userId)
-            ->whereIn('device_id', $deviceIds)
+            ->whereIn('device_id', $orphanedDeviceIds)
             ->delete();
     }
 }

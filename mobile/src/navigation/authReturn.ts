@@ -6,7 +6,6 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {serverNowMs} from '../utils/serverClock';
 import {safeRoknRouteId} from './deepLinks';
-import {LOCAL_DEMO_ENABLED} from '../config/runtime';
 import {
   getCurrentAccountStorageScope,
   getCurrentGuestJourneyScope,
@@ -21,12 +20,7 @@ type RouteSnapshot = {
 };
 
 const cleanId = (value: unknown): string | undefined => {
-  const normalized = safeRoknRouteId(value);
-  if (normalized) return normalized;
-  const localValue = typeof value === 'string' ? value.trim() : '';
-  return LOCAL_DEMO_ENABLED && /^demo-[a-z0-9-]{1,80}$/i.test(localValue)
-    ? localValue
-    : undefined;
+  return safeRoknRouteId(value) || undefined;
 };
 
 const cleanPurchasePlanCode = (value: unknown): string | undefined => {
@@ -118,6 +112,7 @@ export const safeLoginReturnTo = (
       courseId,
       reelId: cleanId(params?.reelId),
       lessonId: cleanId(params?.lessonId),
+      projectId: cleanId(params?.projectId),
       preview: params?.preview === true,
       openCourseChatUpgrade: params?.openCourseChatUpgrade === true,
       previewCount:
@@ -179,6 +174,7 @@ export const safeLoginReturnToFromRoute = (
         courseId,
         reelId: cleanId(params.reelId),
         lessonId: cleanId(params.lessonId),
+        projectId: cleanId(params.projectId),
         preview: params.preview === true,
         openCourseChatUpgrade: params.openCourseChatUpgrade === true,
         previewCount:
@@ -190,6 +186,79 @@ export const safeLoginReturnToFromRoute = (
   }
 
   return undefined;
+};
+
+export type LoginReturnMode = 'authenticated' | 'guest';
+export type LoginReturnDestination = {name: 'Home'} | LoginReturnTo;
+
+/**
+ * Only a secure-session restore may replace the guest identity without an
+ * explicit navigation action. A direct account switch must start from that
+ * account's fresh navigator instead of inheriting the previous learner's
+ * visible route.
+ */
+export const shouldPreserveVisibleJourneyAcrossSessionChange = (
+  previousSessionKey: string,
+  nextSessionKey: string,
+) => previousSessionKey === 'guest' && nextSessionKey !== 'guest';
+
+/**
+ * One route policy for the live Login screen and the durable OAuth return.
+ * Guest continuation keeps public destinations, strips purchase-only intent,
+ * and turns a player return into the course preview instead of another login
+ * loop. Authenticated continuation preserves the exact validated journey.
+ */
+export const resolveLoginReturnDestination = (
+  value: unknown,
+  mode: LoginReturnMode,
+): LoginReturnDestination => {
+  const returnTo = safeLoginReturnTo(value);
+  if (!returnTo) return {name: 'Home'};
+  if (mode === 'authenticated') return returnTo;
+
+  if (
+    returnTo.name === 'EditAccount' ||
+    returnTo.name === 'DeviceSessions' ||
+    returnTo.name === 'Notifications'
+  ) {
+    return {name: 'Home'};
+  }
+  if (returnTo.name === 'CourseDetails') {
+    return {
+      name: 'CourseDetails',
+      params: {
+        courseId: returnTo.params.courseId,
+        resumeReelId: returnTo.params.resumeReelId,
+      },
+    };
+  }
+  if (returnTo.name === 'Reels') {
+    return {
+      name: 'Reels',
+      params: {
+        courseId: returnTo.params.courseId,
+        reelId: returnTo.params.reelId,
+        lessonId: returnTo.params.lessonId,
+        projectId: returnTo.params.projectId,
+        preview: true,
+        previewCount: returnTo.params.previewCount,
+      },
+    };
+  }
+  return returnTo;
+};
+
+export const loginReturnResetState = (
+  value: unknown,
+  mode: LoginReturnMode,
+) => {
+  const destination = resolveLoginReturnDestination(value, mode);
+  return destination.name === 'Home'
+    ? {index: 0, routes: [{name: 'Home' as const}]}
+    : {
+        index: 1,
+        routes: [{name: 'Home' as const}, destination],
+      };
 };
 
 export const savePendingLoginReturnTo = async (
@@ -295,14 +364,4 @@ export const acknowledgePendingLoginReturnTo = async (receipt: string) => {
     return true;
   }
   return false;
-};
-
-/** Compatibility helper for callers that genuinely need destructive read. */
-export const consumePendingLoginReturnTo = async (): Promise<
-  LoginReturnTo | undefined
-> => {
-  const claim = await claimPendingLoginReturnTo();
-  if (!claim) return undefined;
-  await acknowledgePendingLoginReturnTo(claim.receipt);
-  return claim.returnTo;
 };

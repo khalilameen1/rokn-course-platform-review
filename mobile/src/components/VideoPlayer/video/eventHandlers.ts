@@ -47,17 +47,17 @@ type VideoEventContext = {
   hasStarted: MutableValue<boolean>;
   isFallbackSource: boolean;
   isPlaying: MutableValue<boolean>;
-  isVisible: boolean;
   lastPosition: MutableValue<number>;
   loadStartedAt: MutableValue<number | null>;
   longBufferTimer: MutableValue<ReturnType<typeof setTimeout> | null>;
   onComplete?: () => void;
+  onPlaybackHealthy: () => void;
   onProgressChange?: (currentTime: number, duration: number) => void;
+  acceptsLearningEvents: () => boolean;
   ownsPlayback: () => boolean;
   pendingSeek: MutableValue<number | null>;
   publishRuntimeMetrics: (updates: Partial<PlaybackRuntimeMetrics>) => void;
   recoverOrFail: (reason: 'source' | 'timeout') => boolean;
-  recoveryAttempts: MutableValue<number>;
   reelInitialPosition: MutableValue<number>;
   retryPosition: MutableValue<number | null>;
   setBufferedTime: SetValue<number>;
@@ -134,11 +134,10 @@ export const createVideoEventHandlers = (
     }
   },
   onProgress: event => {
-    if (!context.ownsPlayback()) return;
+    if (!context.ownsPlayback() || !context.acceptsLearningEvents()) return;
     const rawTime = Number(event.currentTime || 0);
     const nextTime = Number.isFinite(rawTime) ? Math.max(0, rawTime) : 0;
-    const rawDuration =
-      context.duration || Number(event.seekableDuration || 0);
+    const rawDuration = context.duration || Number(event.seekableDuration || 0);
     const nextDuration = Number.isFinite(rawDuration)
       ? Math.max(0, rawDuration)
       : 0;
@@ -154,15 +153,30 @@ export const createVideoEventHandlers = (
       context.durationRef.current = nextDuration;
     }
     const pendingSeek = context.pendingSeek.current;
-    if (pendingSeek !== null && Math.abs(nextTime - pendingSeek) > 2) {
-      return;
+    if (pendingSeek !== null) {
+      if (Math.abs(nextTime - pendingSeek) > 2) {
+        return;
+      }
+      // Some Android decoders (especially older ExoPlayer builds/devices)
+      // reach the requested position through onProgress without emitting a
+      // matching onSeek callback. Treat the first close progress sample as
+      // the acknowledgement; otherwise every later sample is rejected once
+      // playback moves more than two seconds past the stale seek target.
+      context.pendingSeek.current = null;
+    }
+    if (nextTime > context.lastPosition.current + 0.25) {
+      // A manifest response or metadata load is not proof that playback was
+      // repaired. Reset the bounded recovery streak only after the decoder
+      // advances real media, otherwise a bad signed source can refresh and
+      // retry forever without ever showing a frame.
+      context.onPlaybackHealthy();
     }
     context.lastPosition.current = nextTime;
     context.setCurrentTime(nextTime);
     context.onProgressChange?.(nextTime, nextDuration);
   },
   onSeek: event => {
-    if (!context.ownsPlayback()) return;
+    if (!context.ownsPlayback() || !context.acceptsLearningEvents()) return;
     const pendingTarget = context.pendingSeek.current;
     const acknowledgedTarget = Number(event.seekTime);
     if (
@@ -174,8 +188,7 @@ export const createVideoEventHandlers = (
     }
     const nextTime = Math.max(
       0,
-      Number(event.currentTime ?? event.seekTime ?? pendingTarget) ||
-        0,
+      Number(event.currentTime ?? event.seekTime ?? pendingTarget) || 0,
     );
     context.pendingSeek.current = null;
     context.lastPosition.current = nextTime;
@@ -215,6 +228,10 @@ export const createVideoEventHandlers = (
   },
   onPlaybackStateChanged: event => {
     if (!context.ownsPlayback()) return;
+    if (!context.acceptsLearningEvents()) {
+      context.isPlaying.current = false;
+      return;
+    }
     if (event.isPlaying && !context.isPlaying.current) {
       if (
         !context.hasStarted.current &&
@@ -241,6 +258,7 @@ export const createVideoEventHandlers = (
     context.setIsBuffering(event.isBuffering);
     if (
       event.isBuffering &&
+      context.acceptsLearningEvents() &&
       context.hasStarted.current &&
       context.bufferingStartedAt.current === null
     ) {
@@ -263,46 +281,12 @@ export const createVideoEventHandlers = (
         bufferDurationMs: context.bufferDurationMs.current,
       });
     }
-    if (context.longBufferTimer.current) {
+    // The controller effect is the only owner of the buffering watchdog.
+    // Repeated native `onBuffer(true)` callbacks must not clear that timer
+    // without changing React state, otherwise the reel can spin forever.
+    if (!event.isBuffering && context.longBufferTimer.current) {
       clearTimeout(context.longBufferTimer.current);
       context.longBufferTimer.current = null;
-    }
-    if (event.isBuffering && context.isVisible) {
-      const timeoutMs = context.recoveryAttempts.current ? 7000 : 12_000;
-      const timer = setTimeout(() => {
-        if (context.longBufferTimer.current !== timer) return;
-        context.longBufferTimer.current = null;
-        if (!context.ownsPlayback()) return;
-        if (context.bufferingStartedAt.current !== null) {
-          context.bufferDurationMs.current += Math.max(
-            0,
-            Date.now() - context.bufferingStartedAt.current,
-          );
-          context.bufferingStartedAt.current = null;
-          context.publishRuntimeMetrics({
-            bufferCount: context.bufferCount.current,
-            bufferDurationMs: context.bufferDurationMs.current,
-          });
-        }
-        reportClientError(
-          new Error(`video_buffer_timeout:${context.data.id}`),
-          {
-            source: 'video_player',
-          },
-        );
-        const willRecover = context.recoverOrFail('timeout');
-        context.emitPlaybackEvent('error', {
-          errorCode: 'buffer_timeout',
-          ...(willRecover ? {} : {endReason: 'playback_error'}),
-          diagnostics: {
-            source_type: context.sourceType || 'unknown',
-            stage: context.isFallbackSource ? 'fallback' : 'primary',
-            reason: 'buffer_timeout',
-            retry_stage: willRecover ? 'automatic_recovery' : 'exhausted',
-          },
-        });
-      }, timeoutMs);
-      context.longBufferTimer.current = timer;
     }
   },
   onError: event => {
@@ -352,7 +336,7 @@ export const createVideoEventHandlers = (
     });
   },
   onEnd: () => {
-    if (!context.ownsPlayback()) return;
+    if (!context.ownsPlayback() || !context.acceptsLearningEvents()) return;
     if (context.longBufferTimer.current) {
       clearTimeout(context.longBufferTimer.current);
       context.longBufferTimer.current = null;

@@ -9,22 +9,10 @@
                             تفاصيل الطلب #{{ $order->id }}
                         </h5>
                         <div>
-                            @if($order->status === 'pending')
-                                <span class="status-badge-large badge-warning">
-                                    <i class="fa fa-clock-o"></i> في الانتظار
-                                </span>
-                            @elseif($order->status === 'approved')
-                                <span class="status-badge-large badge-success">
-                                    <i class="fa fa-check-circle"></i> مُعتمد
-                                </span>
-                            @elseif($order->status === 'rejected')
-                                <span class="status-badge-large badge-danger">
-                                    <i class="fa fa-times-circle"></i> مرفوض
-                                </span>
-                            @elseif($order->status === 'cancelled')
-                                <span class="status-badge-large badge-secondary">
-                                    <i class="fa fa-ban"></i> ملغي
-                                </span>
+                            @php($operationTone = $order->payment_operation_tone === 'muted' ? 'secondary' : $order->payment_operation_tone)
+                            <span class="status-badge-large badge-{{ $operationTone }}">{{ $order->payment_operation_label }}</span>
+                            @if($order->status === \App\Models\Order::STATUS_APPROVED && !$order->isFinanciallyEffective())
+                                <div class="mt-1"><small class="text-danger">{{ $order->financialStatusLabel() }}</small></div>
                             @endif
                         </div>
                     </div>
@@ -36,15 +24,17 @@
                             <span>العميل:</span>
                         </div>
                         <div class="info-value">
-                            <a href="{{ route('admin.users.show', $order->user->id) }}" class="user-link">
-                                {{ $order->user->name }}
-                            </a>
+                            @if($order->user)
+                                <a href="{{ route('admin.users.show', $order->user) }}" class="user-link">{{ $order->user->name }}</a>
+                            @else
+                                <strong>حساب محذوف</strong>
+                            @endif
                             <div>
                                 <small class="text-muted">
-                                    <i class="fa fa-envelope"></i> {{ $order->user->email }}
+                                    <i class="fa fa-envelope"></i> {{ $order->user?->email ?: '—' }}
                                 </small>
                             </div>
-                            @if($order->user->phone)
+                            @if($order->user?->phone)
                                 <div>
                                     <small class="text-muted">
                                         <i class="fa fa-phone"></i> {{ $order->user->phone }}
@@ -62,9 +52,13 @@
                         </div>
                         <div class="info-value">
                             <strong>{{ $order->course->title }}</strong>
-                            @if($order->course->price)
+                            @php($planSnapshot = is_array($order->access_plan_snapshot) ? $order->access_plan_snapshot : [])
+                            @if($planSnapshot !== [])
+                                <div><small class="text-muted">الفئة: {{ $planSnapshot['name_ar'] ?? $planSnapshot['code'] ?? 'غير محددة' }}</small></div>
+                            @endif
+                            @if(isset($planSnapshot['price_coins']))
                                 <div>
-                                    <small class="text-muted">سعر فتح الكورس: {{ number_format($order->course->price) }} عملة ركن</small>
+                                    <small class="text-muted">سعر عقد الفئة وقت الشراء: {{ number_format((int) $planSnapshot['price_coins']) }} عملة ركن</small>
                                 </div>
                             @endif
                         </div>
@@ -116,6 +110,25 @@
                             <code>{{ $order->transaction_id ?: $order->storePurchase?->external_transaction_id }}</code>
                             @if($order->storePurchase?->environment)
                                 <div><small class="text-muted">البيئة: {{ $order->storePurchase->environment }}</small></div>
+                            @endif
+                        </div>
+                    </div>
+                    @endif
+
+                    @if($order->requiresProviderVerification())
+                    <div class="info-row">
+                        <div class="info-label"><i class="fa fa-shield"></i><span>دليل المزود:</span></div>
+                        <div class="info-value">
+                            <strong class="admin-code">{{ $order->provider_evidence_status ?: 'لم تصل حالة قابلة للتحقق' }}</strong>
+                            @if($order->provider_evidence_source)
+                                <div><small class="text-muted">المصدر: {{ $order->provider_evidence_source }}</small></div>
+                            @endif
+                            @if($reconciliationFindingsCount > 0)
+                                <div class="mt-2">
+                                    <a href="{{ route('admin.payment-reconciliation-findings.index', ['state' => '', 'order_ref' => $order->order_ref]) }}">
+                                        {{ number_format($reconciliationFindingsCount) }} نتيجة مطابقة تحتاج الرجوع لسجل المراجعة
+                                    </a>
+                                </div>
                             @endif
                         </div>
                     </div>

@@ -234,6 +234,11 @@ class Order extends Model
         return $this->hasMany(OrderFinancialEvent::class);
     }
 
+    public function latestPaymentReconciliationFinding()
+    {
+        return $this->hasOne(PaymentReconciliationFinding::class)->latestOfMany('last_seen_at');
+    }
+
     public function paidCreditLot()
     {
         return $this->hasOne(WalletCreditLot::class, 'source_order_id');
@@ -371,6 +376,22 @@ class Order extends Model
             && $this->reversed_at === null;
     }
 
+    public function financialStatusLabel(): string
+    {
+        if ($this->isFinanciallyEffective()) {
+            return 'مُعتمد وفعّال';
+        }
+
+        return match ($this->financial_status) {
+            self::FINANCIAL_REFUNDED => 'مسترد',
+            self::FINANCIAL_CHARGEBACK => 'اعتراض بنكي',
+            self::FINANCIAL_REVERSED => 'معكوس',
+            self::FINANCIAL_PARTIALLY_RECOVERED => 'استرداد جزئي',
+            self::FINANCIAL_REVIEW_REQUIRED => 'مراجعة مالية',
+            default => 'غير فعّال ماليًا',
+        };
+    }
+
     public function isCheckoutExpired(): bool
     {
         if ($this->checkout_expires_at !== null) {
@@ -397,28 +418,4 @@ class Order extends Model
         return $this->status === self::STATUS_REJECTED;
     }
 
-    /**
-     * Approve the order.
-     */
-    public function approve($approvedBy = null)
-    {
-        $this->update([
-            'status' => self::STATUS_APPROVED,
-            'approved_at' => now(),
-            'approved_by' => $approvedBy
-        ]);
-    }
-
-    /**
-     * Reject the order.
-     */
-    public function reject($notes = null)
-    {
-        $this->update([
-            'status' => self::STATUS_REJECTED,
-            'approved_at' => null,
-            'approved_by' => null,
-            'notes' => $notes
-        ]);
-    }
 }

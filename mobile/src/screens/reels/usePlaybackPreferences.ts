@@ -35,6 +35,31 @@ export const usePlaybackPreferences = (
     setSelectedQuality('auto');
     setDataSaver(false);
     setPlaybackPreferencesReady(false);
+    const applyResolvedPreferences = (
+      savedQuality: unknown,
+      savedSpeed: unknown,
+    ) => {
+      if (!active) return;
+      const dataSaverPreference =
+        savedQuality === 'data_saver' || savedQuality === 'توفير البيانات';
+      setDataSaver(dataSaverPreference);
+      const normalizedQuality = dataSaverPreference
+        ? '360p'
+        : savedQuality === 'تلقائي'
+        ? 'auto'
+        : savedQuality;
+      if (
+        ['auto', '1080p', '720p', '480p', '360p'].includes(
+          String(normalizedQuality),
+        )
+      ) {
+        setSelectedQuality(normalizedQuality as VideoQuality);
+      }
+      const normalizedSpeed = Number(savedSpeed);
+      if ([0.75, 1, 1.25, 1.5, 2].includes(normalizedSpeed)) {
+        setPlaybackSpeed(normalizedSpeed);
+      }
+    };
     void (async () => {
       const boundary = await captureAccountSessionBoundary();
       const qualityKey = await accountScopedStorageKey(
@@ -51,8 +76,13 @@ export const usePlaybackPreferences = (
       ]);
       assertAccountSessionBoundary(boundary);
       if (!active) return;
+      applyResolvedPreferences(savedQuality, savedSpeed);
+      // Playback can start from the durable device preference (or the reset
+      // defaults) now. Profile reconciliation is useful but must never hold
+      // the first signed manifest behind a separate network request.
+      setPlaybackPreferencesReady(true);
       const profile = (await hasSession())
-        ? await getProfile().catch(() => null)
+        ? await getProfile(boundary).catch(() => null)
         : null;
       assertAccountSessionBoundary(boundary);
       if (!active) return;
@@ -64,24 +94,7 @@ export const usePlaybackPreferences = (
           saveItem(speedKey, savedSpeed),
         ]);
         assertAccountSessionBoundary(boundary);
-      }
-      setDataSaver(savedQuality === 'data_saver');
-      const normalizedQuality =
-        savedQuality === 'data_saver' || savedQuality === 'توفير البيانات'
-          ? '360p'
-          : savedQuality === 'تلقائي'
-          ? 'auto'
-          : savedQuality;
-      if (
-        ['auto', '1080p', '720p', '480p', '360p'].includes(
-          String(normalizedQuality),
-        )
-      ) {
-        setSelectedQuality(normalizedQuality as VideoQuality);
-      }
-      const normalizedSpeed = Number(savedSpeed);
-      if ([0.75, 1, 1.25, 1.5, 2].includes(normalizedSpeed)) {
-        setPlaybackSpeed(normalizedSpeed);
+        applyResolvedPreferences(savedQuality, savedSpeed);
       }
     })()
       .catch(() => undefined)
@@ -105,9 +118,10 @@ export const usePlaybackPreferences = (
           );
           assertAccountSessionBoundary(boundary);
           if (serverSession) {
-            await updatePlaybackPreferences({
-              videoQualityPreference: quality,
-            });
+            await updatePlaybackPreferences(
+              {videoQualityPreference: quality},
+              boundary,
+            );
             assertAccountSessionBoundary(boundary);
           }
         })
@@ -127,7 +141,7 @@ export const usePlaybackPreferences = (
           );
           assertAccountSessionBoundary(boundary);
           if (serverSession) {
-            await updatePlaybackPreferences({playbackSpeed: speed});
+            await updatePlaybackPreferences({playbackSpeed: speed}, boundary);
             assertAccountSessionBoundary(boundary);
           }
         })

@@ -18,7 +18,6 @@ export interface CourseAttachment {
   external?: boolean;
   platform: AttachmentPlatform;
   courseId?: string;
-  moduleId?: string;
   temporary?: boolean;
   expiresAt?: string;
 }
@@ -56,19 +55,36 @@ export interface CourseReel {
     | string;
   isCompleted: boolean;
   reelNumber: number;
+  /** Published section order; keeps projects in their real map position. */
+  sectionOrder?: number;
 }
 
-export type ProjectStatus =
-  | 'not_submitted'
-  | 'reviewing'
-  | 'passed'
-  | 'needs_retry';
+export type ProjectStatus = 'draft' | 'evaluating' | 'passed' | 'needs_changes';
+
+export type ProjectReportStatus =
+  | 'not_included'
+  | 'not_requested'
+  | 'queued'
+  | 'ready'
+  | 'failed';
+
+export type CourseLearningGateState =
+  | 'locked_purchase'
+  | 'locked_project'
+  | 'available'
+  | 'completed';
 
 export interface ProjectFeedbackMessage {
   id: string;
   clientRequestId?: string;
   role: 'assistant' | 'user';
-  status: 'queued' | 'sent' | 'streaming' | 'completed' | 'failed' | 'cancelled';
+  status:
+    | 'queued'
+    | 'sent'
+    | 'streaming'
+    | 'completed'
+    | 'failed'
+    | 'cancelled';
   errorCode?: string;
   text?: string;
   createdAt?: string;
@@ -94,45 +110,35 @@ export interface CourseProject {
   requirements: string;
   status: ProjectStatus;
   isGraduationProject: boolean;
-  attachments: CourseAttachment[];
   isLocked?: boolean;
   lockReason?: string;
+  sectionOrder?: number;
   feedbackLevel?: 'pass_only' | 'report' | 'enhanced';
   outputEnabled?: boolean;
   reportEnabled?: boolean;
+  reportStatus?: ProjectReportStatus;
+  replyEnabled?: boolean;
+  canSubmit?: boolean;
+  canContinue?: boolean;
+  reviewFeedback?: string;
+  canRetryReport?: boolean;
+  reportRetryEndpoint?: string;
   feedbackThread?: ProjectFeedbackThread;
+  submissionTextEnabled?: boolean;
+  submissionFilesEnabled?: boolean;
   submissionMaxFiles?: number;
   submissionAllowedMimeTypes?: string[];
-  submissionAttachments?: ChatAttachmentDraft[];
-}
-
-export interface CourseQuiz {
-  id: string;
-  sectionId: string;
-  moduleId: string;
-  title: string;
-  description?: string;
-  timeMinutes?: number;
-  isLocked: boolean;
-  passed: boolean;
-  scorePercentage?: number;
 }
 
 export interface CourseLearningModule {
   id: string;
   title: string;
-  /** Legacy/demo metadata; production modules intentionally render the title only. */
-  description?: string;
   order: number;
   isLocked: boolean;
   /** Server-owned reason for the module gate when supplied. */
   lockReason?: string;
-  attachments: CourseAttachment[];
   reels: CourseReel[];
-  quizzes?: CourseQuiz[];
   projects?: CourseProject[];
-  /** Compatibility alias for screens that present the first crossing project. */
-  project?: CourseProject;
 }
 
 export interface CourseAttachmentPrompt {
@@ -141,7 +147,7 @@ export interface CourseAttachmentPrompt {
   title: string;
   body: string;
   buttonText: string;
-  frequency: 'once_per_course' | 'once_per_module';
+  frequency: 'once_per_course';
 }
 
 export interface CourseLearningData {
@@ -149,8 +155,9 @@ export interface CourseLearningData {
   title: string;
   image?: string | number;
   totalReels: number;
+  /** Download-only course files. They never belong to one module or project. */
+  attachments: CourseAttachment[];
   modules: CourseLearningModule[];
-  isDemo?: boolean;
   /** How this learner received access; supplied by the entitlement API. */
   accessType?: string;
   /** Course-chat availability from the entitlement API. */
@@ -161,7 +168,7 @@ export interface CourseLearningData {
   certificateAvailable?: boolean;
   /** The purchased/granted plan includes certificate issuance after completion. */
   certificateIncluded?: boolean;
-  /** Dashboard-controlled discovery prompt; file URLs remain module scoped. */
+  /** Dashboard-controlled discovery prompt for the course files. */
   attachmentPrompt?: CourseAttachmentPrompt;
 }
 
@@ -177,12 +184,6 @@ export type CourseFeedItem =
       type: 'project';
       moduleId: string;
       project: CourseProject;
-    }
-  | {
-      key: string;
-      type: 'quiz';
-      moduleId: string;
-      quiz: CourseQuiz;
     };
 
 export interface SelectedProjectFile {
@@ -197,16 +198,21 @@ export interface ChatMessage {
   role: 'assistant' | 'user';
   text: string;
   createdAt: number;
-  pending?: boolean;
   clientRequestId?: string;
   deliveryStatus?:
+    | 'submitting'
+    | 'checking'
     | 'queued'
     | 'sent'
     | 'streaming'
+    | 'interrupted'
     | 'completed'
     | 'failed'
     | 'cancelled';
   errorCode?: string;
+  /** Server-owned terminal retry decision for this exact logical turn. */
+  canRetry?: boolean;
+  retryAfterSeconds?: number;
   /** Failed/system UI copy is visible but never becomes model context. */
   contextEligible?: boolean;
   attachments?: ChatAttachmentDraft[];

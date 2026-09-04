@@ -29,8 +29,8 @@ describe('course AI entitlement', () => {
     expect(includesCourseAssistant({accessType: 'paid'})).toBe(false);
   });
 
-  it('keeps the explicitly opted-in local demo usable', () => {
-    expect(includesCourseAssistant({isDemo: true})).toBe(true);
+  it('requires explicit server capability instead of local fixture flags', () => {
+    expect(includesCourseAssistant({})).toBe(false);
   });
 
   it('keeps scholarship certificates locked until a full-track upgrade', () => {

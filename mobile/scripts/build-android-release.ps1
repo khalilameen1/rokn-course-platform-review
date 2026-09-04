@@ -312,7 +312,6 @@ $env:ANDROID_SDK_ROOT = $androidSdk
 $env:NODE_ENV = 'production'
 $env:EXPO_PUBLIC_DISTRIBUTION_CHANNEL = $Channel
 $env:EXPO_PUBLIC_BUILD_PROFILE = $Profile
-$env:EXPO_PUBLIC_ENABLE_LOCAL_DEMO = '0'
 $env:EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS = '1'
 
 if ($Profile -eq 'production') {

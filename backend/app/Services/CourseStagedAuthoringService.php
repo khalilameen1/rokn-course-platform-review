@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Attachment;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CoursePdf;
 use App\Models\CourseSection;
-use App\Models\ItemList;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
-use App\Models\Link;
 use App\Models\PlaybackSession;
 use App\Models\Photo;
 use App\Models\Project;
-use App\Models\Question;
 use App\Models\User;
-use App\Support\DatabaseCapabilities;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -74,7 +69,6 @@ final class CourseStagedAuthoringService
 
     public function canonicalFor(Course $course): Course
     {
-        if (!DatabaseCapabilities::hasTable('course_authoring_revisions')) return $course;
         $revision = CourseAuthoringRevision::query()
             ->where('revision_course_id', $course->id)->latest('id')->first();
 
@@ -83,9 +77,23 @@ final class CourseStagedAuthoringService
             : $course;
     }
 
+    /** Return an existing working revision without creating one on a read. */
+    public function activeDraftFor(Course $course): ?Course
+    {
+        $canonical = $this->canonicalFor($course);
+        $revision = CourseAuthoringRevision::query()
+            ->where('canonical_course_id', $canonical->id)
+            ->where('status', CourseAuthoringRevision::DRAFT)
+            ->where('active_slot', $this->slot((int) $canonical->id))
+            ->first(['revision_course_id']);
+
+        return $revision
+            ? Course::query()->find($revision->revision_course_id)
+            : null;
+    }
+
     public function isManagedDraft(Course $course): bool
     {
-        if (!DatabaseCapabilities::hasTable('course_authoring_revisions')) return false;
         return CourseAuthoringRevision::query()
             ->where('revision_course_id', $course->id)
             ->where('status', CourseAuthoringRevision::DRAFT)
@@ -169,7 +177,7 @@ final class CourseStagedAuthoringService
             ]))->saveQuietly();
             $this->finalizeLearnerLineage($revision);
             if ($canonical->is_main_course) {
-                Course::query()->whereNull('parent_id')->where('id', '<>', $canonical->id)
+                Course::query()->where('id', '<>', $canonical->id)
                     ->whereNotIn('id', CourseAuthoringRevision::query()->select('revision_course_id'))
                     ->update(['is_main_course' => false]);
             }
@@ -230,7 +238,8 @@ final class CourseStagedAuthoringService
                         now()->addYears(10)
                     );
                     cache()->increment('courses:catalog-revision');
-                } catch (\Throwable) {
+                } catch (\Throwable $exception) {
+                    report($exception);
                 }
             });
 
@@ -245,7 +254,6 @@ final class CourseStagedAuthoringService
 
     public function activeArchiveForCourse(Course $course): ?CourseAuthoringRevision
     {
-        if (!DatabaseCapabilities::hasTable('course_authoring_revisions')) return null;
         return CourseAuthoringRevision::query()
             ->where('revision_course_id', $course->id)
             ->where('status', CourseAuthoringRevision::ARCHIVED)
@@ -386,9 +394,6 @@ final class CourseStagedAuthoringService
             $copy->course_id = $draft->id;
             $copy->saveQuietly();
             $moduleMap[(int) $module->id] = $copy;
-            foreach ($this->cloneAttachments($module, $copy) as $mapping) {
-                $entityMappings[] = $mapping;
-            }
         });
         foreach ($moduleMap as $sourceId => $copy) {
             $entityMappings[] = [$copy::class, (int) $sourceId, (int) $copy->id];
@@ -397,10 +402,9 @@ final class CourseStagedAuthoringService
         $source->sections()->with('sectionable')->get()->each(function (CourseSection $section) use (
             $draft,
             $moduleMap,
-            $pdfMap,
             &$entityMappings
         ): void {
-            $content = $this->cloneSectionable($section->sectionable, $draft, $pdfMap);
+            $content = $this->cloneSectionable($section->sectionable, $draft);
             $copy = $section->replicate();
             $copy->course_id = $draft->id;
             $copy->module_id = $section->module_id ? $moduleMap[(int) $section->module_id]->id : null;
@@ -413,7 +417,6 @@ final class CourseStagedAuthoringService
             if (
                 $content
                 && $section->sectionable
-                && !$section->sectionable instanceof CoursePdf
                 && $content->getKey() !== $section->sectionable->getKey()
             ) {
                 $entityMappings[] = [
@@ -422,61 +425,22 @@ final class CourseStagedAuthoringService
                     (int) $content->getKey(),
                 ];
             }
-            foreach ($this->cloneAttachments($section, $copy) as $mapping) {
-                $entityMappings[] = $mapping;
-            }
         });
-
-        // Lessons may carry the legacy inline quiz pointer in addition to the
-        // ordered section graph. Replication happens before every quiz ID is
-        // known, so close that relation in one deterministic second pass.
-        $lessonMap = collect($entityMappings)
-            ->where(0, Lesson::class)->mapWithKeys(fn (array $row): array => [$row[1] => $row[2]]);
-        $quizMap = collect($entityMappings)
-            ->where(0, ItemList::class)->mapWithKeys(fn (array $row): array => [$row[1] => $row[2]]);
-        if ($lessonMap->isNotEmpty() && $quizMap->isNotEmpty()) {
-            Lesson::query()->whereIn('id', $lessonMap->keys())->get(['id', 'quiz_id'])
-                ->each(function (Lesson $sourceLesson) use ($lessonMap, $quizMap): void {
-                    $targetQuizId = $sourceLesson->quiz_id
-                        ? $quizMap->get((int) $sourceLesson->quiz_id)
-                        : null;
-                    Lesson::query()->whereKey($lessonMap->get((int) $sourceLesson->id))->update([
-                        'quiz_id' => $targetQuizId,
-                    ]);
-                });
-        }
 
         return [$draft, $entityMappings];
     }
 
-    /** @param array<int,CoursePdf> $pdfMap */
-    private function cloneSectionable(?Model $content, Course $draft, array $pdfMap): ?Model
+    private function cloneSectionable(?Model $content, Course $draft): ?Model
     {
         if (!$content) return null;
-        if ($content instanceof CoursePdf) return $pdfMap[(int) $content->id] ?? null;
-
-        // Nested courses are editable section content. Sharing this row would
-        // let an inline draft edit mutate the published graph. Copy only this
-        // section-owned descriptor; its parent is remapped again at publish.
-        if ($content instanceof Course) {
-            $copy = $content->replicate(['authoring_request_id', 'published_at']);
-            $copy->forceFill([
-                'parent_id' => $draft->id,
-                'is_coming_soon' => true,
-                'is_catalog_visible' => false,
-                'is_main_course' => false,
-                'published_at' => null,
-                'authoring_request_id' => null,
-            ])->saveQuietly();
-            $this->clonePhotos($content, $copy);
-
-            return $copy;
+        if (!$content instanceof Lesson && !$content instanceof Project) {
+            throw ValidationException::withMessages([
+                'course' => 'يحتوي الكورس عنصرًا قديمًا غير مدعوم. احذفه قبل إنشاء مسودة جديدة.',
+            ]);
         }
 
         $copy = $content->replicate(['authoring_request_id']);
         if ($copy instanceof Lesson) $copy->list_id = $draft->id;
-        if ($copy instanceof ItemList) $copy->course_id = $draft->id;
-        if ($copy instanceof Link) $copy->list_id = $draft->id;
         $copy->saveQuietly();
 
         if ($content instanceof Lesson) {
@@ -487,46 +451,7 @@ final class CourseStagedAuthoringService
                 $stateCopy->saveQuietly();
             }
         }
-        if ($content instanceof ItemList) {
-            $this->clonePhotos($content, $copy);
-            Question::query()->where('list_id', $content->id)->get()->each(function (Question $question) use ($copy): void {
-                $questionCopy = $question->replicate(['authoring_request_id']);
-                $questionCopy->list_id = $copy->id;
-                $questionCopy->saveQuietly();
-                $this->clonePhotos($question, $questionCopy);
-            });
-        }
-
         return $copy;
-    }
-
-    /** @return list<array{0:string,1:int,2:int}> */
-    private function cloneAttachments(Model $source, Model $target): array
-    {
-        $mappings = [];
-        $source->attachments()->get()->each(function (Attachment $attachment) use (
-            $target,
-            &$mappings
-        ): void {
-            $copy = $attachment->replicate();
-            $copy->attachable_type = $target::class;
-            $copy->attachable_id = $target->getKey();
-            $copy->saveQuietly();
-            $mappings[] = [Attachment::class, (int) $attachment->id, (int) $copy->id];
-        });
-
-        return $mappings;
-    }
-
-    private function clonePhotos(Model $source, Model $target): void
-    {
-        if (!method_exists($source, 'allPhotos')) return;
-        $source->allPhotos()->get()->each(function (Photo $photo) use ($target): void {
-            $copy = $photo->replicate();
-            $copy->photoable_type = $target::class;
-            $copy->photoable_id = $target->getKey();
-            $copy->saveQuietly();
-        });
     }
 
     private function swapGraphs(Course $canonical, Course $archive): void
@@ -566,12 +491,6 @@ final class CourseStagedAuthoringService
     {
         $lessons = $sections->where('sectionable_type', Lesson::class)->pluck('sectionable_id');
         if ($lessons->isNotEmpty()) DB::table('lessons')->whereIn('id', $lessons)->update(['list_id' => $courseId]);
-        $quizzes = $sections->where('sectionable_type', ItemList::class)->pluck('sectionable_id');
-        if ($quizzes->isNotEmpty()) DB::table('lists')->whereIn('id', $quizzes)->update(['course_id' => $courseId]);
-        $links = $sections->where('sectionable_type', Link::class)->pluck('sectionable_id');
-        if ($links->isNotEmpty()) DB::table('links')->whereIn('id', $links)->update(['list_id' => $courseId]);
-        $nestedCourses = $sections->where('sectionable_type', Course::class)->pluck('sectionable_id');
-        if ($nestedCourses->isNotEmpty()) DB::table('courses')->whereIn('id', $nestedCourses)->update(['parent_id' => $courseId]);
     }
 
     /**
@@ -632,40 +551,6 @@ final class CourseStagedAuthoringService
                 ->update(['survives_publish' => true]);
         }
 
-        $currentModuleIds = DB::table('course_modules')
-            ->where('course_id', $revision->canonical_course_id)
-            ->pluck('id');
-        $currentSectionIds = DB::table('course_sections')
-            ->where('course_id', $revision->canonical_course_id)
-            ->whereNull('deleted_at')
-            ->pluck('id');
-        $currentAttachmentIds = collect();
-        if ($currentModuleIds->isNotEmpty() || $currentSectionIds->isNotEmpty()) {
-            $currentAttachmentIds = Attachment::query()
-                ->where(function ($attachments) use ($currentModuleIds, $currentSectionIds): void {
-                    if ($currentModuleIds->isNotEmpty()) {
-                        $attachments->orWhere(function ($modules) use ($currentModuleIds): void {
-                            $modules->where('attachable_type', \App\Models\CourseModule::class)
-                                ->whereIn('attachable_id', $currentModuleIds);
-                        });
-                    }
-                    if ($currentSectionIds->isNotEmpty()) {
-                        $attachments->orWhere(function ($sections) use ($currentSectionIds): void {
-                            $sections->where('attachable_type', CourseSection::class)
-                                ->whereIn('attachable_id', $currentSectionIds);
-                        });
-                    }
-                })
-                ->pluck('id');
-        }
-        if ($currentAttachmentIds->isNotEmpty()) {
-            DB::table('course_authoring_revision_entities')
-                ->where('course_authoring_revision_id', $revision->id)
-                ->where('entity_type', Attachment::class)
-                ->whereIn('revision_entity_id', $currentAttachmentIds)
-                ->update(['survives_publish' => true]);
-        }
-
         // Legacy lesson-scoped codes are no longer created, but their stored
         // pointers still have to follow this publish even when every lesson
         // was removed. Leaving an archived lesson ID behind makes the admin
@@ -697,8 +582,6 @@ final class CourseStagedAuthoringService
         $aliases = array_fill_keys($currentIds, []);
         foreach ($currentIds as $id) $aliases[$id] = [$id];
         if ($currentIds === []) return $aliases;
-        if (!$this->hasLearnerLineageSchema()) return $aliases;
-
         $rootsByCurrent = DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
             ->where('entities.entity_type', $entityType)
@@ -731,8 +614,6 @@ final class CourseStagedAuthoringService
 
     public function currentEntityId(string $entityType, int $historicalId): ?int
     {
-        if (!$this->hasLearnerLineageSchema()) return null;
-
         $current = $historicalId;
         $visited = [$current => true];
         while (true) {
@@ -759,8 +640,6 @@ final class CourseStagedAuthoringService
             ->filter()->unique()->values()->all();
         $resolved = array_combine($origins, $origins) ?: [];
         if ($origins === []) return $resolved;
-        if (!$this->hasLearnerLineageSchema()) return $resolved;
-
         $rows = DB::table('course_authoring_revision_entities as entities')
             ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
             ->where('entities.entity_type', $entityType)
@@ -793,12 +672,6 @@ final class CourseStagedAuthoringService
         }
 
         return $resolved;
-    }
-
-    private function hasLearnerLineageSchema(): bool
-    {
-        return DatabaseCapabilities::hasTable('course_authoring_revisions')
-            && DatabaseCapabilities::hasTable('course_authoring_revision_entities');
     }
 
     /** @param array<int,int> $lessonMap */

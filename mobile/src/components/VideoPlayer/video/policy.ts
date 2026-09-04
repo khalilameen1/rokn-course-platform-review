@@ -65,16 +65,18 @@ export const selectVideoSource = ({
 }) => {
   const primaryUri = normalizeVideoUri(videoUrl);
   const fallbackUri = normalizeVideoUri(fallbackVideoUrl);
-  const hasSupportedFallback =
-    Boolean(fallbackUri) && !isUnsupportedVideoPageUri(fallbackUri);
-  const useSupportedFallback =
-    isUnsupportedVideoPageUri(primaryUri) && hasSupportedFallback;
-  const isFallbackSource = usingFallback || useSupportedFallback;
   const selectedVariantUri =
     effectiveQuality === 'auto'
       ? ''
       : normalizeVideoUri(qualitySources?.[effectiveQuality]);
   const preferredUri = selectedVariantUri || primaryUri;
+  const hasSupportedFallback =
+    Boolean(fallbackUri) &&
+    fallbackUri !== preferredUri &&
+    !isUnsupportedVideoPageUri(fallbackUri);
+  const useSupportedFallback =
+    isUnsupportedVideoPageUri(preferredUri) && hasSupportedFallback;
+  const isFallbackSource = usingFallback || useSupportedFallback;
   const uri = isFallbackSource ? fallbackUri || preferredUri : preferredUri;
   const sourceType = sourceTypeForUri(uri);
 
@@ -127,6 +129,7 @@ export const selectPlaybackRecoveryStep = ({
   recoveryAttempts,
   recoveryPending,
   sameSourceRetryUsed,
+  sourceRefreshRequired = false,
 }: {
   adaptiveSource: boolean;
   availableQualities: VideoQuality[];
@@ -138,9 +141,11 @@ export const selectPlaybackRecoveryStep = ({
   recoveryAttempts: number;
   recoveryPending: boolean;
   sameSourceRetryUsed: boolean;
+  sourceRefreshRequired?: boolean;
 }): PlaybackRecoveryStep => {
   if (recoveryPending) return {kind: 'pending'};
   if (!isVisible) return {kind: 'defer'};
+  if (sourceRefreshRequired && !sameSourceRetryUsed) return {kind: 'retry'};
 
   const lowerQuality =
     adaptiveSource || hasSelectedVariant
@@ -175,8 +180,7 @@ export const selectVideoTimeline = ({
   duration: number;
   previewTime: number | null;
 }): VideoTimelinePresentation => {
-  const safeDuration =
-    Number.isFinite(duration) && duration > 0 ? duration : 0;
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 0;
   const requestedTime = previewTime ?? currentTime;
   const safeTime = Number.isFinite(requestedTime)
     ? Math.max(0, requestedTime)
@@ -187,9 +191,7 @@ export const selectVideoTimeline = ({
   const safeBufferedTime = Number.isFinite(bufferedTime)
     ? Math.max(0, bufferedTime)
     : 0;
-  const progress = safeDuration
-    ? Math.min(1, displayedTime / safeDuration)
-    : 0;
+  const progress = safeDuration ? Math.min(1, displayedTime / safeDuration) : 0;
   const bufferedProgress = safeDuration
     ? Math.min(1, Math.max(progress, safeBufferedTime / safeDuration))
     : 0;

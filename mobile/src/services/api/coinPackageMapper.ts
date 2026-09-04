@@ -1,11 +1,17 @@
 import {DISTRIBUTION_CHANNEL} from '../../constants/distribution';
-import {learnerFacingText} from '../../utils/errorPayload';
-import type {DemoCoinPackage} from '../demoExperience';
-import {
-  firstBoolean,
-  nonNegativeNumber,
-  resourceList,
-} from './common';
+import {nonNegativeNumber, resourceList} from './common';
+
+export type CoinPackage = {
+  id: string;
+  coins: number;
+  price: number;
+  label: string;
+  displayPrice?: string;
+  storeProductIds?: {
+    google?: string;
+    apple?: string;
+  };
+};
 
 export type CoinPackageDto = {
   id?: unknown;
@@ -15,7 +21,6 @@ export type CoinPackageDto = {
   name?: unknown;
   name_ar?: unknown;
   name_en?: unknown;
-  recommended?: unknown;
   store_products?: {
     google?: unknown;
     apple?: unknown;
@@ -27,36 +32,51 @@ export type CoinPackageDto = {
   };
 };
 
+const firstNonEmptyText = (...values: unknown[]) =>
+  values.map(value => String(value ?? '').trim()).find(Boolean) ?? '';
+
 export const mapCoinPackages = (
   value: unknown,
   invalidContractCode: string,
-): DemoCoinPackage[] => {
+): CoinPackage[] => {
   const candidates = resourceList<CoinPackageDto>(value);
-  const eligible = candidates.filter(item => {
+  const channelEnabled = (item: CoinPackageDto) => {
     if (DISTRIBUTION_CHANNEL === 'direct') {
-      return item.channels?.direct !== false && item.direct_price != null;
+      return item.channels?.direct;
     }
     if (DISTRIBUTION_CHANNEL === 'play') {
-      return item.channels?.google !== false && Boolean(item.store_products?.google);
+      return item.channels?.google;
     }
-    return item.channels?.apple !== false && Boolean(item.store_products?.apple);
-  });
+    return item.channels?.apple;
+  };
   const seenIds = new Set<string>();
-  const malformed = eligible.some(item => {
+  const malformed = candidates.some(item => {
     const id = String(item.id ?? '').trim();
     const coins = nonNegativeNumber(item.coins);
-    const price = nonNegativeNumber(
-      DISTRIBUTION_CHANNEL === 'direct'
-        ? item.direct_price ?? item.price
-        : item.price,
+    const enabled = channelEnabled(item);
+    const selectedPrice = nonNegativeNumber(
+      DISTRIBUTION_CHANNEL === 'direct' ? item.direct_price : item.price,
     );
+    const productId = String(
+      DISTRIBUTION_CHANNEL === 'play'
+        ? item.store_products?.google ?? ''
+        : DISTRIBUTION_CHANNEL === 'appstore'
+        ? item.store_products?.apple ?? ''
+        : '',
+    ).trim();
+    const label = firstNonEmptyText(item.name_ar, item.name_en, item.name);
     if (
-      !id ||
+      !/^\d+$/.test(id) ||
+      !Number.isSafeInteger(Number(id)) ||
+      Number(id) <= 0 ||
       seenIds.has(id) ||
       coins === null ||
+      !Number.isSafeInteger(coins) ||
       coins <= 0 ||
-      price === null ||
-      price <= 0
+      !label ||
+      typeof enabled !== 'boolean' ||
+      (enabled && (selectedPrice === null || selectedPrice <= 0)) ||
+      (enabled && DISTRIBUTION_CHANNEL !== 'direct' && !productId)
     ) {
       return true;
     }
@@ -66,29 +86,26 @@ export const mapCoinPackages = (
   if (malformed) {
     throw new Error(invalidContractCode);
   }
+  const eligible = candidates.filter(item => channelEnabled(item) === true);
   const packages = eligible.map(item => {
     const id = String(item.id).trim();
     const coins = Number(item.coins);
     const price = Number(
       DISTRIBUTION_CHANNEL === 'direct'
-        ? item.direct_price ?? item.price
+        ? item.direct_price
         : item.price,
     );
     return {
       id,
       coins,
       price,
-      label: learnerFacingText(
-        item.name || item.name_ar || item.name_en,
-        'باقة عملات ركن',
-      ),
-      recommended: firstBoolean(item.recommended) ?? false,
+      label: firstNonEmptyText(item.name_ar, item.name_en, item.name),
       storeProductIds: {
         google: item.store_products?.google
-          ? String(item.store_products.google)
+          ? String(item.store_products.google).trim()
           : undefined,
         apple: item.store_products?.apple
-          ? String(item.store_products.apple)
+          ? String(item.store_products.apple).trim()
           : undefined,
       },
     };

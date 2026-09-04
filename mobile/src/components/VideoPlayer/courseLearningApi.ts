@@ -33,7 +33,6 @@ export {
   createSavedFolderOption,
   deleteSavedFolderOption,
   getSavedFolderOptions,
-  migrateGuestSavedCollections,
   reconcileServerSavedLessons,
   removeLessonFromSavedFolder,
   saveLessonToFolder,
@@ -46,24 +45,13 @@ export {
   retryPendingProjectSubmissions,
   loadProjectFeedbackThread,
   loadProjectResolution,
+  retryProjectReport,
   watchProjectResolution,
   openProjectInputAttachment,
   sendProjectFeedbackMessage,
   uploadProjectFeedbackAttachment,
   submitProjectAttempt,
-  unlockAfterProject,
 } from './courseLearning/projects';
-export {
-  finishCourseQuiz,
-  loadCourseQuiz,
-  startCourseQuiz,
-  submitCourseQuizAnswer,
-} from './courseLearning/quizzes';
-export type {
-  QuizData,
-  QuizQuestion,
-  QuizResult,
-} from './courseLearning/quizzes';
 export type {
   ProjectSubmissionOutcome,
   ProjectSubmissionRetryOutcome,

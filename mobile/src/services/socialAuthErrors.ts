@@ -27,11 +27,32 @@ export const socialAuthFailureCode = (error: unknown): string => {
     (root && ('status' in root || 'data' in root) ? root : null);
   const responseData = asRecord(response?.data);
   const message = error instanceof Error ? error.message : '';
+  const messageCode = normalizedCode(message);
+
+  // App-owned failures are already closed diagnostic codes. Classify them
+  // before inspecting English fragments such as "timeout" so a keychain
+  // deadline is not presented as a network outage.
+  if (
+    messageCode &&
+    (messageCode.startsWith('LOGIN_') ||
+      messageCode.startsWith('PROVIDER_') ||
+      messageCode.startsWith('SESSION_') ||
+      messageCode.startsWith('SOCIAL_LOGIN_') ||
+      messageCode.startsWith('NETWORK_'))
+  ) {
+    return messageCode;
+  }
 
   if (
-    root?.code === 'ERR_NETWORK' ||
     root?.code === 'ECONNABORTED' ||
-    /network|timeout|internet|connection/i.test(message)
+    root?.code === 'ETIMEDOUT' ||
+    /timeout/i.test(message)
+  ) {
+    return 'NETWORK_TIMEOUT';
+  }
+  if (
+    root?.code === 'ERR_NETWORK' ||
+    /network|internet|connection/i.test(message)
   ) {
     return 'NETWORK_UNAVAILABLE';
   }
@@ -40,17 +61,6 @@ export const socialAuthFailureCode = (error: unknown): string => {
     responseData?.code ?? responseData?.error ?? root?.code,
   );
   if (backendCode) return backendCode;
-
-  const messageCode = normalizedCode(message);
-  if (
-    messageCode &&
-    (messageCode.startsWith('LOGIN_') ||
-      messageCode.startsWith('PROVIDER_') ||
-      messageCode.startsWith('SESSION_') ||
-      messageCode.startsWith('SOCIAL_LOGIN_'))
-  ) {
-    return messageCode;
-  }
 
   const status = Number(response?.status);
   if (status >= 500) return 'PROVIDER_UNAVAILABLE';
@@ -106,6 +116,9 @@ export const socialAuthMessage = (code: string): string => {
   }
   if (code === 'NETWORK_UNAVAILABLE') {
     return 'تحقق من الاتصال\nثم حاول مرة أخرى';
+  }
+  if (code === 'NETWORK_TIMEOUT' || code === 'LOGIN_TIMEOUT') {
+    return 'الاتصال بطيء\nحاول مرة أخرى';
   }
   return 'لم يكتمل تسجيل الدخول\nحاول مرة أخرى';
 };

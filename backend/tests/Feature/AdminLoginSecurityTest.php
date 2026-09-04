@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
@@ -189,6 +190,32 @@ final class AdminLoginSecurityTest extends TestCase
         );
         Notification::assertNotSentTo($client, ResetPassword::class);
         Notification::assertSentTo($admin, ResetPassword::class);
+    }
+
+    public function test_password_reset_provider_failure_never_becomes_a_public_server_error(): void
+    {
+        $admin = $this->createAdmin('mail-outage-admin@rokn.test', 'correct-password');
+        $broker = \Mockery::mock(\Illuminate\Contracts\Auth\PasswordBroker::class);
+        $broker->shouldReceive('sendResetLink')
+            ->once()
+            ->andThrow(new \RuntimeException('mail provider unavailable'));
+
+        Password::shouldReceive('broker')->once()->andReturn($broker);
+        Log::spy();
+
+        $this->post('/password/email', ['email' => $admin->email])
+            ->assertRedirect()
+            ->assertSessionHas('status');
+
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->with(
+                'Dashboard password reset notification could not be sent.',
+                \Mockery::on(fn (array $context): bool =>
+                    $context['email_hash'] === hash('sha256', $admin->email)
+                    && $context['exception'] === \RuntimeException::class
+                )
+            );
     }
 
     public function test_legacy_learner_reset_token_cannot_create_a_web_password_session(): void

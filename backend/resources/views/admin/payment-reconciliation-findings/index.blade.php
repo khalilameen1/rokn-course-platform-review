@@ -14,10 +14,40 @@
         'resolved' => 'success',
         'ignored' => 'muted',
     ];
+    $kindLabels = [
+        'provider_unavailable' => 'تعذر الاتصال بمزود الدفع',
+        'provider_status_missing' => 'المزود لم يُرجع حالة',
+        'captured_evidence_mismatch' => 'بيانات التحصيل لا تطابق الطلب',
+        'captured_transaction_conflict' => 'مرجع التحصيل مرتبط بعملية أخرى',
+        'captured_local_fulfillment_blocked' => 'تم التحصيل ولم يكتمل التسليم',
+        'provider_reversal_requires_review' => 'المزود عكس عملية مكتملة',
+        'provider_failed_local_settled' => 'المزود رفض عملية مسجلة محليًا كمكتملة',
+        'provider_pending_after_local_expiry' => 'العملية ما زالت معلقة لدى المزود بعد انتهائها محليًا',
+        'provider_local_status_mismatch' => 'حالة المزود تختلف عن حالة الطلب',
+        'late_capture_overlaps_newer_payment' => 'تحصيل متأخر يتداخل مع محاولة أحدث',
+        'capture_after_account_deletion' => 'تم التحصيل بعد حذف الحساب',
+        'reconciliation_exception' => 'تعذر إكمال فحص المطابقة',
+    ];
+    $kindActions = [
+        'provider_unavailable' => 'أعد المراجعة بعد عودة المزود',
+        'provider_status_missing' => 'تحقق من العملية في لوحة المزود',
+        'captured_evidence_mismatch' => 'طابق المبلغ والعملة ومرجع العملية',
+        'captured_transaction_conflict' => 'تحقق من الطلب الصحيح قبل أي تسوية',
+        'captured_local_fulfillment_blocked' => 'راجع سبب تعطل التسليم في الطلب',
+        'provider_reversal_requires_review' => 'راجع الاسترداد وأثره المالي',
+        'provider_failed_local_settled' => 'راجع دليل الدفع قبل تسجيل القرار',
+        'provider_pending_after_local_expiry' => 'انتظر نتيجة نهائية أو تحقق لدى المزود',
+        'provider_local_status_mismatch' => 'طابق حالة الطلب مع دليل المزود',
+        'late_capture_overlaps_newer_payment' => 'راجع المحاولتين قبل أي تدخل',
+        'capture_after_account_deletion' => 'صعّد العملية للدعم المالي',
+        'reconciliation_exception' => 'راجع اتصال المزود ثم أعد الفحص',
+    ];
     $totalFindings = collect($stateCounts)->sum();
 @endphp
 
 <div class="admin-page">
+    @include('admin.payments.partials.navigation')
+
     @include('admin.partials.page-header', [
         'pageTitle' => 'مراجعة تسوية المدفوعات',
         'pageDescription' => 'طابور بشري لمراجعة اختلافات بوابة الدفع. القرارات هنا توثّق المراجعة فقط ولا تغيّر الطلب أو الرصيد.',
@@ -89,7 +119,7 @@
                         <select id="kind" name="kind" class="form-control">
                             <option value="">كل الأنواع</option>
                             @foreach($kinds as $kind)
-                                <option value="{{ $kind }}" @selected(($filters['kind'] ?? '') === $kind)>{{ str_replace('_', ' ', $kind) }}</option>
+                                <option value="{{ $kind }}" @selected(($filters['kind'] ?? '') === $kind)>{{ $kindLabels[$kind] ?? 'نتيجة تحتاج مراجعة' }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -136,10 +166,11 @@
                             <br><small class="text-muted">{{ $finding->provider }} · {{ $finding->provider_transaction_id ?: 'بلا رقم معاملة' }}</small>
                         </td>
                         <td>
-                            <span class="admin-code">{{ $finding->kind }}</span>
+                            <strong>{{ $kindLabels[$finding->kind] ?? 'نتيجة تحتاج مراجعة' }}</strong>
+                            <div class="mt-1 text-muted">{{ $kindActions[$finding->kind] ?? 'راجع الطلب ودليل المزود قبل تسجيل القرار' }}</div>
                             @if(!empty($finding->evidence))
                                 <details class="mt-2">
-                                    <summary>الدليل الآمن</summary>
+                                    <summary>تفاصيل المطابقة</summary>
                                     <pre class="admin-copy admin-value--ltr mb-0">{{ json_encode($finding->evidence, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
                                 </details>
                             @endif

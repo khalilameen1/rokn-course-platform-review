@@ -1,6 +1,6 @@
 import {createAsyncThunk} from '@reduxjs/toolkit';
 
-import {APIError, getExceptionPayload} from '../../constants/api';
+import {getExceptionPayload, type APIError} from '../../constants/apiErrors';
 import {
   deleteRemoteAccount,
   type AccountDeletionResult,

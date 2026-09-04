@@ -40,7 +40,10 @@ final class BackfillFinancialProvenance extends Command
             ->where(function ($query): void {
                 $query->where(function ($credits): void {
                     $credits->where('direction', WalletTransaction::DIRECTION_CREDIT)
-                        ->where('category', 'package_purchase')
+                        ->whereIn('category', [
+                            'package_purchase',
+                            'course_service_compensation',
+                        ])
                         ->where('paid_amount', '>', 0);
                 })->orWhere(function ($debits): void {
                     $debits->where('direction', WalletTransaction::DIRECTION_DEBIT)
@@ -50,72 +53,106 @@ final class BackfillFinancialProvenance extends Command
             })
             ->when($userId, fn ($builder) => $builder->where('user_id', $userId))
             ->orderBy('user_id')
-            ->orderBy('occurred_at')
             ->orderBy('id');
 
         $stats = [
             'package_credits' => 0,
+            'compensation_credits' => 0,
             'course_debits' => 0,
             'lots_written' => 0,
             'allocations_written' => 0,
             'unresolved' => 0,
         ];
 
-        // Stream in ledger chronology. chunkById would reorder by primary key
-        // and could let a later package fund an earlier historical debit.
+        // The per-user primary key is the append sequence used by wallet
+        // balance snapshots. Provider timestamps can move backwards slightly,
+        // so provenance must replay the same authoritative order.
         foreach ($query->cursor() as $transaction) {
-                try {
-                    if ($transaction->direction === WalletTransaction::DIRECTION_CREDIT) {
-                        $stats['package_credits']++;
-                        $order = $this->packageOrderForCredit($transaction);
-                        if (!$order) {
+            try {
+                if ($transaction->direction === WalletTransaction::DIRECTION_CREDIT) {
+                    if ($transaction->category === 'course_service_compensation') {
+                        $stats['compensation_credits']++;
+                        $originalDebit = $this->originalDebitForCompensation($transaction);
+                        if (!$originalDebit) {
                             $stats['unresolved']++;
-                            $this->warn("Credit #{$transaction->id}: source package order is missing or inconsistent.");
+                            $this->warn(
+                                "Credit #{$transaction->id}: original compensated debit is missing or inconsistent."
+                            );
                             continue;
                         }
                         if ($apply) {
-                            $before = $order->paidCreditLot()->exists();
-                            $provenance->recordPaidPackageCredit($order, $transaction);
+                            $before = $transaction->paidCreditLot()->exists();
+                            $provenance->recordPaidCompensationCredit(
+                                $originalDebit,
+                                $transaction
+                            );
                             $stats['lots_written'] += $before ? 0 : 1;
                         }
                         continue;
                     }
 
-                    $stats['course_debits']++;
-                    $order = $this->courseOrderForDebit($transaction);
+                    $stats['package_credits']++;
+                    $order = $this->packageOrderForCredit($transaction);
                     if (!$order) {
                         $stats['unresolved']++;
-                        $this->warn("Debit #{$transaction->id}: no unique immutable course order match.");
+                        $this->warn("Credit #{$transaction->id}: source package order is missing or inconsistent.");
                         continue;
                     }
                     if ($apply) {
-                        $before = WalletDebitAllocation::query()
-                            ->where('wallet_transaction_id', $transaction->id)
-                            ->count();
-                        $provenance->allocateCourseDebit($order, $transaction);
-                        $after = WalletDebitAllocation::query()
-                            ->where('wallet_transaction_id', $transaction->id)
-                            ->count();
-                        $stats['allocations_written'] += max(0, $after - $before);
+                        if ($order->package_coins === null) {
+                            $order->forceFill([
+                                'package_coins' => (int) $transaction->paid_amount,
+                            ])->save();
+                        }
+                        $before = $order->paidCreditLot()->exists();
+                        $provenance->recordPaidPackageCredit($order, $transaction);
+                        $stats['lots_written'] += $before ? 0 : 1;
                     }
-                } catch (Throwable $exception) {
-                    $stats['unresolved']++;
-                    $this->warn(
-                        "Transaction #{$transaction->id}: {$exception->getMessage()}"
-                    );
+                    continue;
                 }
+
+                $stats['course_debits']++;
+                $order = $this->courseOrderForDebit($transaction);
+                if (!$order) {
+                    $stats['unresolved']++;
+                    $this->warn("Debit #{$transaction->id}: no unique immutable course order match.");
+                    continue;
+                }
+                if ($apply) {
+                    if ($order->wallet_transaction_id === null) {
+                        $order->forceFill([
+                            'wallet_transaction_id' => (int) $transaction->id,
+                        ])->save();
+                    }
+                    $before = WalletDebitAllocation::query()
+                        ->where('wallet_transaction_id', $transaction->id)
+                        ->count();
+                    $provenance->allocateCourseDebit($order, $transaction);
+                    $after = WalletDebitAllocation::query()
+                        ->where('wallet_transaction_id', $transaction->id)
+                        ->count();
+                    $stats['allocations_written'] += max(0, $after - $before);
+                }
+            } catch (Throwable $exception) {
+                $stats['unresolved']++;
+                $this->warn(
+                    "Transaction #{$transaction->id}: {$exception->getMessage()}"
+                );
+            }
         }
 
         $remaining = $this->remainingAuditFailures($userId);
         $this->table(['Check', 'Count'], [
             ['Package paid credits', $stats['package_credits']],
+            ['Paid service compensations', $stats['compensation_credits']],
             ['Course paid debits', $stats['course_debits']],
             ['Lots written', $stats['lots_written']],
             ['Allocation rows written', $stats['allocations_written']],
             ['Unresolved during scan', $stats['unresolved']],
-            ['Package credits without lot', $remaining['missing_lots']],
+            ['Paid wallet credits without lot', $remaining['missing_lots']],
             ['Paid debits with incomplete allocation', $remaining['incomplete_debits']],
             ['Paid course orders with incomplete allocation', $remaining['incomplete_orders']],
+            ['Paid course orders without debit link', $remaining['unlinked_orders']],
             ['Historical reversals needing finance review', $remaining['unreconciled_reversals']],
             ['Learners whose paid balance does not match active lots', $remaining['balance_mismatches']],
         ]);
@@ -148,6 +185,10 @@ final class BackfillFinancialProvenance extends Command
                 Order::FINANCIAL_REVERSED,
                 Order::FINANCIAL_PARTIALLY_RECOVERED,
             ])
+            ->where(function ($contract) use ($credit): void {
+                $contract->whereNull('package_coins')
+                    ->orWhere('package_coins', (int) $credit->paid_amount);
+            })
             ->first();
     }
 
@@ -157,13 +198,28 @@ final class BackfillFinancialProvenance extends Command
             return null;
         }
 
+        $linked = Order::query()
+            ->where('wallet_transaction_id', $debit->id)
+            ->where('user_id', $debit->user_id)
+            ->where('course_id', $debit->source_id)
+            ->where('status', Order::STATUS_APPROVED)
+            ->where('payment_method', Order::PAYMENT_METHOD_WALLET_COINS)
+            ->where('paid_coins', $debit->paid_amount)
+            ->where('reward_coins', $debit->reward_amount)
+            ->limit(2)
+            ->get();
+        if ($linked->isNotEmpty()) {
+            return $linked->count() === 1 ? $linked->first() : null;
+        }
+
         $query = Order::query()
             ->where('user_id', $debit->user_id)
             ->where('course_id', $debit->source_id)
             ->where('status', Order::STATUS_APPROVED)
             ->where('payment_method', Order::PAYMENT_METHOD_WALLET_COINS)
             ->where('paid_coins', $debit->paid_amount)
-            ->where('reward_coins', $debit->reward_amount);
+            ->where('reward_coins', $debit->reward_amount)
+            ->whereNull('wallet_transaction_id');
 
         if ($debit->category === 'course_purchase') {
             $query->where('notes', 'Idempotency: ' . $debit->idempotency_key);
@@ -198,13 +254,34 @@ final class BackfillFinancialProvenance extends Command
         return $matches->count() === 1 ? $matches->first() : null;
     }
 
-    /** @return array{missing_lots:int,incomplete_debits:int,incomplete_orders:int,unreconciled_reversals:int,balance_mismatches:int} */
+    private function originalDebitForCompensation(
+        WalletTransaction $compensation
+    ): ?WalletTransaction {
+        $publicId = trim((string) data_get(
+            $compensation->metadata,
+            'refunded_transaction_id'
+        ));
+        if ($publicId === '') {
+            return null;
+        }
+
+        return WalletTransaction::query()
+            ->where('public_id', $publicId)
+            ->where('user_id', $compensation->user_id)
+            ->where('direction', WalletTransaction::DIRECTION_DEBIT)
+            ->first();
+    }
+
+    /** @return array{missing_lots:int,incomplete_debits:int,incomplete_orders:int,unlinked_orders:int,unreconciled_reversals:int,balance_mismatches:int} */
     private function remainingAuditFailures(?int $userId): array
     {
         $creditQuery = DB::table('wallet_transactions as wt')
             ->leftJoin('wallet_credit_lots as lot', 'lot.credit_transaction_id', '=', 'wt.id')
             ->where('wt.direction', WalletTransaction::DIRECTION_CREDIT)
-            ->where('wt.category', 'package_purchase')
+            ->whereIn('wt.category', [
+                'package_purchase',
+                'course_service_compensation',
+            ])
             ->where('wt.paid_amount', '>', 0)
             ->whereNull('lot.id')
             ->when($userId, fn ($query) => $query->where('wt.user_id', $userId));
@@ -237,6 +314,15 @@ final class BackfillFinancialProvenance extends Command
             ->groupBy('users.id', 'users.wallet_purchased_coins')
             ->havingRaw('COALESCE(SUM(lot.remaining_amount), 0) <> users.wallet_purchased_coins');
 
+        $unlinkedOrders = DB::table('orders')
+            ->whereNotNull('course_id')
+            ->where('payment_method', Order::PAYMENT_METHOD_WALLET_COINS)
+            ->where('status', Order::STATUS_APPROVED)
+            ->where('paid_coins', '>', 0)
+            ->whereNull('wallet_transaction_id')
+            ->when($userId, fn ($query) => $query->where('user_id', $userId))
+            ->count();
+
         // Never mutate a historical reversal in a bulk migration. Flag it so
         // finance can reconcile the exact provider event/order deliberately.
         $unreconciledReversals = DB::table('orders as orders')
@@ -264,6 +350,7 @@ final class BackfillFinancialProvenance extends Command
             'missing_lots' => $creditQuery->count(),
             'incomplete_debits' => DB::query()->fromSub($debitRows->select('wt.id'), 'x')->count(),
             'incomplete_orders' => DB::query()->fromSub($orderRows->select('orders.id'), 'x')->count(),
+            'unlinked_orders' => $unlinkedOrders,
             'unreconciled_reversals' => $unreconciledReversals,
             'balance_mismatches' => DB::query()->fromSub($balanceRows->select('users.id'), 'x')->count(),
         ];

@@ -12,7 +12,6 @@ use App\Models\CoursePdf;
 use App\Models\CourseRating;
 use App\Models\CourseSection;
 use App\Models\DesignSetting;
-use App\Models\ExamAttempt;
 use App\Models\Grade;
 use App\Models\Link;
 use App\Models\OperatingCostPool;
@@ -39,7 +38,6 @@ final class SoftDeleteContractTest extends TestCase
             CoinEarningMethod::class,
             Coupon::class,
             Bill::class,
-            ExamAttempt::class,
             DesignSetting::class,
             Grade::class,
             Link::class,

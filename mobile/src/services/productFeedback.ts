@@ -11,7 +11,6 @@ import {
 } from '../constants/helpers';
 import {firstBoolean} from './api/common';
 import {secureRandomUuid} from '../utils/secureRandom';
-import {errorStatus} from '../utils/errorPayload';
 import {
   learnerDraftFileIsReadable,
   removeLearnerDraftFile,
@@ -31,6 +30,7 @@ export type FeedbackAttachment = {
 };
 
 export type ProductFeedbackContext = {
+  includeDiagnostics?: boolean;
   locale?: string;
   sourceScreen?: string;
 };
@@ -39,6 +39,7 @@ export type ProductFeedbackDraft = {
   attachment?: FeedbackAttachment;
   category: ProductFeedbackCategory;
   clientRequestId: string;
+  includeDiagnostics: boolean;
   message: string;
   updatedAt: number;
 };
@@ -98,6 +99,8 @@ const REPLY_DRAFT_PREFIX = '@rokn/product-feedback-reply/v1:';
 const MIGRATED_DRAFT_CONFLICTS_KEY =
   '@rokn/product-feedback-draft-conflicts/v1';
 const DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let draftOperation: Promise<unknown> = Promise.resolve();
 
 const withDraftLock = <T>(operation: () => Promise<T>) => {
@@ -115,8 +118,10 @@ export type ProductFeedbackDraftConflict = {
   type: 'new' | 'reply';
 };
 
-export const loadProductFeedbackDraftConflicts = async () => {
-  const boundary = await captureAccountSessionBoundary();
+export const loadProductFeedbackDraftConflicts = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await accountScopedStorageKey(
     MIGRATED_DRAFT_CONFLICTS_KEY,
     boundary,
@@ -155,8 +160,11 @@ export const loadProductFeedbackDraftConflicts = async () => {
 };
 
 /** Swap a migrated conflict into the active slot without discarding either copy. */
-export const restoreProductFeedbackDraftConflict = async (id: string) => {
-  const boundary = await captureAccountSessionBoundary();
+export const restoreProductFeedbackDraftConflict = async (
+  id: string,
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const conflictsKey = await accountScopedStorageKey(
     MIGRATED_DRAFT_CONFLICTS_KEY,
     boundary,
@@ -192,6 +200,12 @@ const backendCategory: Record<ProductFeedbackCategory, string> = {
   content: 'course_content',
   playback: 'playback',
 };
+
+const isUuid = (value: unknown) => UUID_PATTERN.test(String(value || ''));
+const isProductFeedbackCategory = (
+  value: unknown,
+): value is ProductFeedbackCategory =>
+  Object.prototype.hasOwnProperty.call(backendCategory, String(value));
 
 const normalizeScreenKey = (value?: string) => {
   const normalized = String(value || 'feedback')
@@ -237,30 +251,32 @@ const createFeedbackBody = ({
   message: string;
   clientRequestId: string;
 }) => {
-  const screen = Dimensions.get('window');
   const form = new FormData() as NativeFormData;
   form.append('client_request_id', clientRequestId);
   form.append('category', backendCategory[category]);
   form.append('message', message.trim());
-  form.append('platform', Platform.OS);
-  form.append('app_version', appConfig.expo.version);
-  form.append('screen_key', normalizeScreenKey(context?.sourceScreen));
-  form.append('locale', String(context?.locale || 'ar').slice(0, 16));
-  form.append(
-    'screen_size',
-    `${Math.round(screen.width)}x${Math.round(screen.height)}`,
-  );
-  form.append('font_scale', String(screen.fontScale || 1));
-  const currentBuildNumber = buildNumber();
-  if (currentBuildNumber) {
-    form.append('build_number', String(currentBuildNumber));
+  if (context?.includeDiagnostics) {
+    const screen = Dimensions.get('window');
+    form.append('platform', Platform.OS);
+    form.append('app_version', appConfig.expo.version);
+    form.append('screen_key', normalizeScreenKey(context.sourceScreen));
+    form.append('locale', String(context.locale || 'ar').slice(0, 16));
+    form.append(
+      'screen_size',
+      `${Math.round(screen.width)}x${Math.round(screen.height)}`,
+    );
+    form.append('font_scale', String(screen.fontScale || 1));
+    const currentBuildNumber = buildNumber();
+    if (currentBuildNumber) {
+      form.append('build_number', String(currentBuildNumber));
+    }
+    const currentOsMajor = osMajor();
+    if (currentOsMajor) {
+      form.append('os_major', String(currentOsMajor));
+    }
+    form.append('device_tier', 'unknown');
+    form.append('network_type', 'unknown');
   }
-  const currentOsMajor = osMajor();
-  if (currentOsMajor) {
-    form.append('os_major', String(currentOsMajor));
-  }
-  form.append('device_tier', 'unknown');
-  form.append('network_type', 'unknown');
   if (attachment) {
     form.append('screenshot', {
       name: attachment.fileName || `rokn-feedback-${Date.now()}.jpg`,
@@ -275,14 +291,25 @@ const createFeedbackBody = ({
  * Feedback remains server-owned. A pending screenshot is copied only into the
  * app's private draft directory so an interrupted send can be resumed.
  */
-export const submitProductFeedback = async (input: {
-  attachment?: FeedbackAttachment;
-  category: ProductFeedbackCategory;
-  context?: ProductFeedbackContext;
-  message: string;
-  clientRequestId: string;
-}): Promise<ProductFeedbackReceipt> => {
-  const boundary = await captureAccountSessionBoundary();
+export const submitProductFeedback = async (
+  input: {
+    attachment?: FeedbackAttachment;
+    category: ProductFeedbackCategory;
+    context?: ProductFeedbackContext;
+    message: string;
+    clientRequestId: string;
+  },
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<ProductFeedbackReceipt> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  if (
+    !isUuid(input.clientRequestId) ||
+    input.message.trim().length < 10 ||
+    input.message.length > 2000
+  ) {
+    throw new Error('INVALID_FEEDBACK_ATTEMPT');
+  }
+  assertAccountSessionBoundary(boundary);
   const response = await publicRequest.post(
     'feedback',
     createFeedbackBody(input),
@@ -396,8 +423,10 @@ const parseCase = (value: unknown): ProductFeedbackCase => {
   const publicId = String(value.public_id || '').trim();
   const createdAt = String(value.created_at || '').trim();
   const updatedAt = String(value.updated_at || '').trim();
+  const message = String(value.message || '').trim();
   if (
     !/^[0-9A-HJKMNP-TV-Z]{26}$/i.test(publicId) ||
+    !message ||
     !Number.isFinite(Date.parse(createdAt)) ||
     !Number.isFinite(Date.parse(updatedAt))
   ) {
@@ -408,7 +437,7 @@ const parseCase = (value: unknown): ProductFeedbackCase => {
     caseNumber: safeCaseNumber(value.case_number, publicId),
     category: String(value.category || 'bug'),
     createdAt,
-    message: String(value.message || '').trim(),
+    message,
     messages: parseMessages(value.messages),
     publicId,
     status: String(value.status || 'in_progress'),
@@ -613,37 +642,38 @@ export const loadProductFeedbackCase = async (
   return parseCase((response.data as {data?: unknown})?.data);
 };
 
-export const loadProductFeedbackCases = async (): Promise<
-  ProductFeedbackCase[]
-> => {
-  const boundary = await captureAccountSessionBoundary();
+export const loadProductFeedbackCases = async (
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<ProductFeedbackCase[]> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const cases = new Map<string, ProductFeedbackCase>();
   let loadError: unknown;
-  try {
-    assertAccountSessionBoundary(boundary);
-    const response = await publicRequest.get('feedback');
-    assertAccountSessionBoundary(boundary);
-    const data = (response.data as {data?: unknown})?.data;
-    if (!isRecord(data) || !Array.isArray(data.items)) {
-      throw new Error('INVALID_SUPPORT_CASES_RESPONSE');
+  if (boundary.scope.startsWith('user-')) {
+    try {
+      assertAccountSessionBoundary(boundary);
+      const response = await publicRequest.get('feedback');
+      assertAccountSessionBoundary(boundary);
+      const data = (response.data as {data?: unknown})?.data;
+      if (!isRecord(data) || !Array.isArray(data.items)) {
+        throw new Error('INVALID_SUPPORT_CASES_RESPONSE');
+      }
+      // A partially accepted response silently hides the malformed case from
+      // its owner. Reject the snapshot and keep the screen's last known list so
+      // the same support history can be retried intact.
+      data.items.map(parseCase).forEach(item => cases.set(item.publicId, item));
+    } catch (error) {
+      loadError = error;
     }
-    const items = data.items;
-    items.forEach(item => {
-      try {
-        const parsed = parseCase(item);
-        cases.set(parsed.publicId, parsed);
-      } catch {}
-    });
-  } catch (error) {
-    const status = errorStatus(error);
-    if (status !== 401) loadError = error;
   }
 
   assertAccountSessionBoundary(boundary);
   const receipts = await loadStoredReceipts(boundary);
   assertAccountSessionBoundary(boundary);
+  const receiptsToLoad = loadError
+    ? receipts
+    : receipts.filter(receipt => !cases.has(receipt.publicId));
   const settled = await Promise.allSettled(
-    receipts.map(async receipt => ({
+    receiptsToLoad.map(async receipt => ({
       accessToken: receipt.accessToken,
       case: await loadProductFeedbackCase(
         receipt.publicId,
@@ -671,14 +701,24 @@ export const loadProductFeedbackCases = async (): Promise<
   );
 };
 
-export const replyToProductFeedback = async (input: {
-  accessToken?: string;
-  attachment?: FeedbackAttachment;
-  clientRequestId: string;
-  message: string;
-  publicId: string;
-}): Promise<ProductFeedbackCase> => {
-  const boundary = await captureAccountSessionBoundary();
+export const replyToProductFeedback = async (
+  input: {
+    accessToken?: string;
+    attachment?: FeedbackAttachment;
+    clientRequestId: string;
+    message: string;
+    publicId: string;
+  },
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<ProductFeedbackCase> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  if (
+    !isUuid(input.clientRequestId) ||
+    input.message.trim().length < 2 ||
+    input.message.length > 2000
+  ) {
+    throw new Error('INVALID_SUPPORT_REPLY_ATTEMPT');
+  }
   const form = new FormData() as NativeFormData;
   form.append('client_request_id', input.clientRequestId);
   form.append('message', input.message.trim());
@@ -708,8 +748,11 @@ export const replyToProductFeedback = async (input: {
 const replyDraftKey = (publicId: string, boundary: AccountSessionBoundary) =>
   accountScopedStorageKey(`${REPLY_DRAFT_PREFIX}${publicId}`, boundary);
 
-export const loadProductFeedbackReplyDraft = async (publicId: string) => {
-  const boundary = await captureAccountSessionBoundary();
+export const loadProductFeedbackReplyDraft = async (
+  publicId: string,
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await replyDraftKey(publicId, boundary);
   return withDraftLock(async () => {
     assertAccountSessionBoundary(boundary);
@@ -720,7 +763,7 @@ export const loadProductFeedbackReplyDraft = async (publicId: string) => {
       const parsed = JSON.parse(value) as Partial<ProductFeedbackReplyDraft>;
       if (
         typeof parsed.message === 'string' &&
-        /^[0-9a-f-]{36}$/i.test(String(parsed.clientRequestId || ''))
+        isUuid(parsed.clientRequestId)
       ) {
         let attachment = parsed.attachment;
         let clientRequestId = String(parsed.clientRequestId);
@@ -738,29 +781,26 @@ export const loadProductFeedbackReplyDraft = async (publicId: string) => {
           message: parsed.message.slice(0, 2000),
         } satisfies ProductFeedbackReplyDraft;
       }
-    } catch {
-      // Builds before v2 stored the reply as plain text. Keep the text while the
-      // caller creates a fresh idempotency key for that unsent logical reply.
-    }
-    return {
-      clientRequestId: '',
-      message: value.slice(0, 2000),
-    } satisfies ProductFeedbackReplyDraft;
+    } catch {}
+    await AsyncStorage.removeItem(key);
+    assertAccountSessionBoundary(boundary);
+    return null;
   });
 };
 
 export const saveProductFeedbackReplyDraft = async (
   publicId: string,
   draft: ProductFeedbackReplyDraft | null,
+  ownerBoundary?: AccountSessionBoundary,
 ) => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await replyDraftKey(publicId, boundary);
   await withDraftLock(async () => {
     assertAccountSessionBoundary(boundary);
     const normalized = draft?.message.slice(0, 2000) || '';
     if (
       (normalized.trim() || draft?.attachment) &&
-      /^[0-9a-f-]{36}$/i.test(String(draft?.clientRequestId || ''))
+      isUuid(draft?.clientRequestId)
     ) {
       await AsyncStorage.setItem(
         key,
@@ -778,58 +818,71 @@ export const saveProductFeedbackReplyDraft = async (
   });
 };
 
-export const loadProductFeedbackDraft =
-  async (): Promise<ProductFeedbackDraft | null> => {
-    const boundary = await captureAccountSessionBoundary();
-    const key = await accountScopedStorageKey(DRAFT_KEY, boundary);
-    return withDraftLock(async () => {
-      assertAccountSessionBoundary(boundary);
-      const raw = await AsyncStorage.getItem(key);
-      assertAccountSessionBoundary(boundary);
-      if (!raw) return null;
-      let parsed: Partial<ProductFeedbackDraft> | null = null;
-      try {
-        const draft = JSON.parse(raw) as Partial<ProductFeedbackDraft>;
-        parsed = draft;
-        const valid =
-          ['problem', 'idea', 'content', 'playback'].includes(
-            String(draft.category),
-          ) &&
-          typeof draft.message === 'string' &&
-          /^[0-9a-f-]{36}$/i.test(String(draft.clientRequestId || '')) &&
-          Number.isFinite(draft.updatedAt) &&
-          Date.now() - Number(draft.updatedAt) <= DRAFT_TTL_MS;
-        if (valid) {
-          const value = draft as ProductFeedbackDraft;
-          if (
-            !value.attachment ||
-            (await learnerDraftFileIsReadable(value.attachment))
-          ) {
-            return value;
-          }
-          await removeLearnerDraftFile(value.attachment);
-          assertAccountSessionBoundary(boundary);
-          const repaired = {...value, attachment: undefined};
-          await AsyncStorage.setItem(key, JSON.stringify(repaired));
-          assertAccountSessionBoundary(boundary);
-          return repaired;
+export const loadProductFeedbackDraft = async (
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<ProductFeedbackDraft | null> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  const key = await accountScopedStorageKey(DRAFT_KEY, boundary);
+  return withDraftLock(async () => {
+    assertAccountSessionBoundary(boundary);
+    const raw = await AsyncStorage.getItem(key);
+    assertAccountSessionBoundary(boundary);
+    if (!raw) return null;
+    let parsed: Partial<ProductFeedbackDraft> | null = null;
+    try {
+      const draft = JSON.parse(raw) as Partial<ProductFeedbackDraft>;
+      parsed = draft;
+      const valid =
+        isProductFeedbackCategory(draft.category) &&
+        typeof draft.message === 'string' &&
+        draft.message.length <= 1600 &&
+        typeof draft.includeDiagnostics === 'boolean' &&
+        isUuid(draft.clientRequestId) &&
+        Number.isFinite(draft.updatedAt) &&
+        Number(draft.updatedAt) <= Date.now() + 5 * 60 * 1000 &&
+        Date.now() - Number(draft.updatedAt) <= DRAFT_TTL_MS;
+      if (valid) {
+        const value = draft as ProductFeedbackDraft;
+        if (
+          !value.attachment ||
+          (await learnerDraftFileIsReadable(value.attachment))
+        ) {
+          return value;
         }
-      } catch {}
-      await removeLearnerDraftFile(parsed?.attachment);
-      assertAccountSessionBoundary(boundary);
-      await AsyncStorage.removeItem(key);
-      assertAccountSessionBoundary(boundary);
-      return null;
-    });
-  };
+        await removeLearnerDraftFile(value.attachment);
+        assertAccountSessionBoundary(boundary);
+        const repaired = {...value, attachment: undefined};
+        await AsyncStorage.setItem(key, JSON.stringify(repaired));
+        assertAccountSessionBoundary(boundary);
+        return repaired;
+      }
+    } catch {}
+    await removeLearnerDraftFile(parsed?.attachment);
+    assertAccountSessionBoundary(boundary);
+    await AsyncStorage.removeItem(key);
+    assertAccountSessionBoundary(boundary);
+    return null;
+  });
+};
 
 export const saveProductFeedbackDraft = async (
   draft: ProductFeedbackDraft,
+  ownerBoundary?: AccountSessionBoundary,
 ): Promise<void> => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await accountScopedStorageKey(DRAFT_KEY, boundary);
   await withDraftLock(async () => {
     assertAccountSessionBoundary(boundary);
+    if (
+      !isProductFeedbackCategory(draft.category) ||
+      !isUuid(draft.clientRequestId) ||
+      typeof draft.includeDiagnostics !== 'boolean' ||
+      typeof draft.message !== 'string' ||
+      !Number.isFinite(draft.updatedAt) ||
+      draft.message.length > 1600
+    ) {
+      throw new Error('INVALID_FEEDBACK_DRAFT');
+    }
     if (!draft.message.trim() && !draft.attachment) {
       await AsyncStorage.removeItem(key);
       assertAccountSessionBoundary(boundary);
@@ -840,8 +893,10 @@ export const saveProductFeedbackDraft = async (
   });
 };
 
-export const clearProductFeedbackDraft = async (): Promise<void> => {
-  const boundary = await captureAccountSessionBoundary();
+export const clearProductFeedbackDraft = async (
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<void> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await accountScopedStorageKey(DRAFT_KEY, boundary);
   await withDraftLock(async () => {
     assertAccountSessionBoundary(boundary);

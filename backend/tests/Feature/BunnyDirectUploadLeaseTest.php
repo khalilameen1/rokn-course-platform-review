@@ -38,7 +38,9 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             1024,
             'video/mp4',
             'lesson.mp4',
-            $key
+            $key,
+            null,
+            (int) $course->authoring_version
         );
     }
 
@@ -89,7 +91,9 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             1024,
             'video/mp4',
             'lesson.mp4',
-            $key
+            $key,
+            null,
+            (int) $course->authoring_version
         );
 
         self::assertSame($guid, $result['video_id']);
@@ -130,7 +134,9 @@ final class BunnyDirectUploadLeaseTest extends TestCase
                 1024,
                 'video/mp4',
                 'lesson.mp4',
-                $key
+                $key,
+                null,
+                (int) $course->authoring_version
             );
             self::fail('The replacement allocation should report the simulated provider failure.');
         } catch (\RuntimeException $exception) {
@@ -175,6 +181,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             'size' => 1024,
             'mime' => 'video/mp4',
             'title' => 'الدرس الأول',
+            'authoring_version' => (int) $course->authoring_version,
             'expires_at' => $oldExpiry->timestamp,
         ], JSON_THROW_ON_ERROR));
 
@@ -214,6 +221,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             'course_type' => 'online',
             'is_coming_soon' => true,
             'is_catalog_visible' => false,
+            'authoring_version' => 1,
         ])->save();
 
         return [$admin, $course];
@@ -228,6 +236,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             'size' => 1024,
             'mime' => 'video/mp4',
             'original_name' => 'lesson.mp4',
+            'authoring_version' => (int) $course->authoring_version,
         ], JSON_THROW_ON_ERROR));
         $session = BunnyDirectUpload::query()->create([
             'user_id' => $admin->id,

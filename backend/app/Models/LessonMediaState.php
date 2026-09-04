@@ -56,6 +56,13 @@ final class LessonMediaState extends Model
 
     public function shouldInvalidateCourseCatalogue(): bool
     {
-        return $this->wasRecentlyCreated || $this->wasChanged('duration_seconds');
+        return $this->wasRecentlyCreated || $this->wasChanged([
+            'provider_media_id',
+            'status',
+            'duration_seconds',
+            'integrity_status',
+            'last_reconciled_at',
+            'quarantined_at',
+        ]);
     }
 }

@@ -50,7 +50,6 @@ final class OperatingCostPoolController extends Controller
             ->paginate(30)
             ->withQueryString();
         $courses = Course::query()
-            ->whereNull('parent_id')
             ->withCount('activeEnrollments')
             ->orderBy('name_ar')
             ->get(['id', 'name_ar']);
@@ -174,7 +173,6 @@ final class OperatingCostPoolController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
         $courses = Course::withTrashed()
-            ->whereNull('parent_id')
             ->whereHas('enrollments')
             ->orderBy('name_ar')
             ->get(['id', 'name_ar']);
@@ -194,8 +192,9 @@ final class OperatingCostPoolController extends Controller
             $output = fopen('php://output', 'wb');
             fwrite($output, "\xEF\xBB\xBF");
             fputcsv($output, array_merge([
-                'الطالب', 'البريد', 'الكورسات', 'الباقات', 'مصادر الإتاحة',
+                'الطالب', 'البريد', 'الكورسات', 'الباقات', 'مصادر الإتاحة', 'قنوات الشحن',
                 'صافي الدخل', 'تكلفة الخدمات', 'هامش المساهمة', 'نسبة التكلفة للصافي',
+                'حالة ربط دفتر العملات',
                 'طلبات AI ناجحة', 'طلبات AI فاشلة', 'نسبة فشل AI',
                 'طلبات AI بتكلفة تقديرية', 'حالة تكلفة AI',
                 'توكنات AI', 'دقائق الفيديو', 'GB مشاهدة مقدرة',
@@ -212,10 +211,12 @@ final class OperatingCostPoolController extends Controller
                     $row['courses']->implode(' | '),
                     $row['plans']->implode(' | '),
                     $row['sources']->implode(' | '),
+                    $row['payment_channels']->implode(' | '),
                     $row['net_egp'],
                     $row['service_cost_egp'],
                     $row['margin_egp'],
                     $row['cost_to_net_revenue_percentage'],
+                    $row['coin_allocation_complete'] ? 'مكتمل' : 'غير مكتمل',
                     $row['ai_requests'],
                     $row['ai_failed_requests'],
                     $row['ai_failure_rate_percentage'],

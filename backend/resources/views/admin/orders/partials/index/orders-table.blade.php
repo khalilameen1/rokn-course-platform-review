@@ -20,9 +20,9 @@
                                 <tr>
                                     <th class="text-center orders-column--id">#</th>
                                     <th class="text-center">العميل</th>
-                                    <th class="text-center">الدورة</th>
-                                    <th class="text-center orders-column--amount">المبلغ النهائي</th>
-                                    <th class="text-center orders-column--payment">طريقة الدفع</th>
+                                    <th class="text-center">المنتج</th>
+                                    <th class="text-center orders-column--amount">الإجمالي والصافي</th>
+                                    <th class="text-center orders-column--payment">القناة ودليل المزود</th>
                                     <th class="text-center orders-column--status">الحالة</th>
                                     <th class="text-center orders-column--date">تاريخ الإنشاء</th>
                                     <th class="text-center orders-column--actions">الإجراءات</th>
@@ -38,16 +38,24 @@
                                     </td>
                                     <td class="text-center">
                                         <div class="user-info">
-                                            <h6>{{ $order->user->name }}</h6>
-                                            <small>{{ $order->user->email }}</small>
+                                            <h6>{{ $order->user?->name ?: 'حساب محذوف' }}</h6>
+                                            <small>{{ $order->user?->email ?: '—' }}</small>
                                         </div>
                                     </td>
                                     <td class="text-center">
                                         <div class="course-info">
                                             @if($order->course)
                                                 <h6>{{ Str::limit($order->course->title, 40) }}</h6>
+                                                @php
+                                                    $planSnapshot = is_array($order->access_plan_snapshot)
+                                                        ? $order->access_plan_snapshot
+                                                        : [];
+                                                @endphp
+                                                @if($planSnapshot !== [])
+                                                    <small class="text-muted">{{ $planSnapshot['name_ar'] ?? $planSnapshot['code'] ?? 'فئة غير محددة' }}</small>
+                                                @endif
                                             @elseif($order->package)
-                                                <h6>{{ Str::limit($order->package->name_ar ?: $order->package->name_en, 40) }}</h6>
+                                                <h6><a href="{{ route('admin.packages.show', $order->package) }}">{{ Str::limit($order->package->name_ar ?: $order->package->name_en, 40) }}</a></h6>
                                                 <small class="text-muted">{{ number_format($order->package_coins ?? $order->package->coins) }} عملة ركن</small>
                                             @else
                                                 <h6>طلب بدون منتج مرتبط</h6>
@@ -62,7 +70,7 @@
                                             $isCashChannel = in_array($order->payment_method, ['kashier', 'google_play', 'app_store'], true);
                                             $isWalletOrder = in_array($order->payment_method, ['wallet', 'wallet_coins'], true);
                                             $displayAmount = $isWalletOrder
-                                                ? (int) ($order->total_coins ?? 0)
+                                                ? (int) ($order->ledger_total_coins ?? 0)
                                                 : (float) ($isCashChannel ? ($order->gateway_gross_amount ?? $order->final_amount) : $order->final_amount);
                                             $displayUnit = $isWalletOrder ? 'عملة ركن' : ($isCashChannel ? ($order->gateway_currency ?: 'EGP') : 'جنيه');
                                         @endphp
@@ -70,6 +78,14 @@
                                         <small class="text-muted">{{ $displayUnit }}</small>
                                         @if($isCashChannel && ($order->gateway_gross_amount === null || $order->gateway_settlement_status === 'catalog_estimate'))
                                             <br><small class="text-warning">تقدير كتالوج</small>
+                                        @endif
+                                        @if($isCashChannel)
+                                            <br><small class="{{ $order->gateway_net_amount === null ? 'text-warning' : 'text-success' }}">
+                                                الصافي: {{ $order->gateway_net_amount === null ? 'بانتظار التسوية' : number_format($order->gateway_net_amount, 2).' '.($order->gateway_currency ?: 'EGP') }}
+                                            </small>
+                                        @endif
+                                        @if($isWalletOrder && !$order->coin_allocation_complete)
+                                            <br><small class="text-warning">ربط الدفتر غير مكتمل</small>
                                         @endif
                                         @if($order->discount_amount > 0)
                                             <br><small class="discount-info"><i class="fa fa-tag"></i> خصم: {{ number_format($order->discount_amount, 2) }}</small>
@@ -84,6 +100,12 @@
                                         @elseif(in_array($order->payment_method, ['kashier', 'google_play', 'app_store'], true) && $order->gateway_net_amount === null)
                                             <br><span class="badge badge-warning mt-1">الصافي بانتظار التسوية</span>
                                         @endif
+                                        @if($order->provider_evidence_status)
+                                            <br><small class="text-muted admin-code">{{ $order->provider_evidence_status }}</small>
+                                        @endif
+                                        @if($order->provider_evidence_source)
+                                            <br><small class="text-muted">{{ $order->provider_evidence_source }}</small>
+                                        @endif
                                         @php($paymentEvidenceUrl = $order->payment_screenshot_url)
                                         @if($paymentEvidenceUrl)
                                             <br>
@@ -95,22 +117,10 @@
                                         @endif
                                     </td>
                                     <td class="text-center">
-                                        @if($order->status === 'pending')
-                                            <span class="order-badge badge-warning">
-                                                <i class="fa fa-clock-o"></i> انتظار
-                                            </span>
-                                        @elseif($order->status === 'approved')
-                                            <span class="order-badge badge-success">
-                                                <i class="fa fa-check-circle"></i> مُعتمد
-                                            </span>
-                                        @elseif($order->status === 'rejected')
-                                            <span class="order-badge badge-danger">
-                                                <i class="fa fa-times-circle"></i> مرفوض
-                                            </span>
-                                        @elseif($order->status === 'cancelled')
-                                            <span class="order-badge badge-secondary">
-                                                <i class="fa fa-ban"></i> ملغي
-                                            </span>
+                                        @php($operationTone = $order->payment_operation_tone === 'muted' ? 'secondary' : $order->payment_operation_tone)
+                                        <span class="order-badge badge-{{ $operationTone }}">{{ $order->payment_operation_label }}</span>
+                                        @if($order->status === \App\Models\Order::STATUS_APPROVED && !$order->isFinanciallyEffective())
+                                            <br><small class="text-danger">{{ $order->financialStatusLabel() }}</small>
                                         @endif
                                     </td>
                                     <td class="text-center">
@@ -128,19 +138,6 @@
                                                 <a class="dropdown-item" href="{{ route('admin.orders.show', $order) }}">
                                                     <i class="fa fa-eye"></i> مشاهدة
                                                 </a>
-                                                @if($order->status === 'pending' && !$order->requiresProviderVerification())
-                                                    <a class="dropdown-item" href="#" onclick="updateOrderStatus({{ $order->id }}, 'approved'); return false;">
-                                                        <i class="fa fa-check text-success"></i> اعتماد
-                                                    </a>
-                                                    <a class="dropdown-item" href="#" onclick="updateOrderStatus({{ $order->id }}, 'rejected'); return false;">
-                                                        <i class="fa fa-times text-danger"></i> رفض
-                                                    </a>
-                                                @endif
-                                                @if($order->status === 'rejected' && !$order->requiresProviderVerification())
-                                                    <a class="dropdown-item" href="#" onclick="updateOrderStatus({{ $order->id }}, 'approved'); return false;">
-                                                        <i class="fa fa-check text-success"></i> اعتماد
-                                                    </a>
-                                                @endif
                                             </div>
                                         </div>
                                     </td>

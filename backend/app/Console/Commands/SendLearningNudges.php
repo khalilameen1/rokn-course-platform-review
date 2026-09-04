@@ -8,6 +8,7 @@ use App\Models\CourseEnrollment;
 use App\Models\User;
 use App\Services\StudentNotificationService;
 use App\Services\EngagementMessageService;
+use App\Services\NotificationDeliveryPolicy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use App\Support\BusinessClock;
@@ -28,6 +29,7 @@ final class SendLearningNudges extends Command
         }
         $cooldownHours = max(1, (int) ($template['cooldown_hours'] ?? 24));
         $cooldownBoundary = $clock->copy()->subHours($cooldownHours);
+        $cooldownFamily = NotificationDeliveryPolicy::cooldownFamily('learning_nudge');
         $deliveryWindow = (string) floor($clock->timestamp / ($cooldownHours * 3600));
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $sent = 0;
@@ -54,8 +56,8 @@ final class SendLearningNudges extends Command
                 // the learner disabled optional watch-history/resume storage.
                 $query->where('last_heartbeat_at', '>=', $cooldownBoundary);
             })
-            ->whereDoesntHave('studentNotifications', function ($query) use ($cooldownBoundary): void {
-                $query->where('notification_type', 'learning_nudge')
+            ->whereDoesntHave('studentNotifications', function ($query) use ($cooldownBoundary, $cooldownFamily): void {
+                $query->whereIn('notification_type', $cooldownFamily)
                     ->where('created_at', '>=', $cooldownBoundary);
             })
             ->where(function ($query) use ($cooldownBoundary): void {
@@ -89,7 +91,6 @@ final class SendLearningNudges extends Command
             $enrollment = $student->enrollments->first(
                 fn (CourseEnrollment $candidate): bool =>
                     $candidate->course?->isPublishedForLearning()
-                    && !$candidate->course->isNestedCourse()
             );
             $course = $enrollment?->course;
             if (!$course) {
@@ -105,7 +106,7 @@ final class SendLearningNudges extends Command
                     'Continue learning',
                     "{$courseName}\nمقطع واحد يكفي للعودة",
                     "Continue {$courseName}",
-                    '/courses/' . $course->id . '/watch',
+                    '/course/' . $course->id . '/watch',
                     $course::class,
                     (int) $course->id,
                     'learning-nudge:' . $student->id . ':' . $course->id . ':' . $deliveryWindow,

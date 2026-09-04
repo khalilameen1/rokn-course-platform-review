@@ -10,6 +10,8 @@
 
 @section('content')
 <div class="admin-page orders-container">
+    @include('admin.payments.partials.navigation')
+
     @include('admin.orders.partials.index.statistics')
 
     @include('admin.orders.partials.index.payment-channel-report')

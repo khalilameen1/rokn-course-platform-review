@@ -22,6 +22,7 @@ abstract class ApiTestCase extends TestCase
     protected User $user;
     protected int $gradeId;
     protected int $courseId;
+    protected int $moduleId;
     protected int $sectionId;
     protected int $pathId;
 
@@ -50,12 +51,15 @@ abstract class ApiTestCase extends TestCase
             $table->string('provider', 24);
             $table->string('return_to', 255);
             $table->string('code_challenge', 128)->nullable();
+            $table->char('nonce_hash', 64)->nullable();
             $table->text('encrypted_token')->nullable();
+            $table->text('encrypted_completion_code')->nullable();
             $table->text('encrypted_session_response')->nullable();
             $table->timestamp('state_expires_at');
             $table->timestamp('state_consumed_at')->nullable();
             $table->timestamp('completion_expires_at')->nullable();
             $table->timestamp('completion_processing_at')->nullable();
+            $table->uuid('completion_claim_id')->nullable()->index();
             $table->timestamp('completion_consumed_at')->nullable();
             $table->timestamps();
         });
@@ -102,9 +106,9 @@ abstract class ApiTestCase extends TestCase
             $table->date('birthday')->nullable();
             $table->integer('rate')->default(0);
             $table->float('balance')->default(0);
-            $table->integer('wallet_coins')->default(1000);
+            $table->integer('wallet_coins')->default(0);
             $table->unsignedInteger('wallet_purchased_coins')->default(0);
-            $table->unsignedInteger('wallet_reward_coins')->default(1000);
+            $table->unsignedInteger('wallet_reward_coins')->default(0);
             $table->string('api_token', 100)->unique()->nullable();
             $table->string('device_os')->nullable();
             $table->string('locked_device_id')->nullable();
@@ -129,6 +133,11 @@ abstract class ApiTestCase extends TestCase
             $table->boolean('is_online')->default(false);
             $table->boolean('provider_request')->default(false);
             $table->boolean('notifications_status')->default(false);
+            $table->boolean('watch_history_enabled')->default(true);
+            $table->boolean('marketing_notifications_enabled')->default(false);
+            $table->timestamp('terms_accepted_at')->nullable();
+            $table->timestamp('privacy_notice_acknowledged_at')->nullable();
+            $table->string('legal_notice_version', 32)->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();
@@ -162,7 +171,6 @@ abstract class ApiTestCase extends TestCase
             $table->string('name_en')->nullable();
             $table->text('description_ar')->nullable();
             $table->text('description_en')->nullable();
-            $table->unsignedBigInteger('parent_id')->nullable();
             $table->unsignedBigInteger('grade_id')->nullable();
             $table->string('image')->nullable();
             $table->string('search_keywords_ar')->nullable();
@@ -208,6 +216,19 @@ abstract class ApiTestCase extends TestCase
             $table->unsignedBigInteger('course_id');
         });
 
+        Schema::create('course_modules', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('course_id');
+            $table->string('title')->nullable();
+            $table->string('title_ar')->nullable();
+            $table->string('title_en')->nullable();
+            $table->text('description')->nullable();
+            $table->text('description_ar')->nullable();
+            $table->text('description_en')->nullable();
+            $table->integer('order')->default(0);
+            $table->timestamps();
+        });
+
         Schema::create('course_sections', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('course_id');
@@ -223,6 +244,19 @@ abstract class ApiTestCase extends TestCase
             $table->boolean('is_free')->default(true);
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('attachments', function (Blueprint $table): void {
+            $table->id();
+            $table->string('attachable_type');
+            $table->unsignedBigInteger('attachable_id');
+            $table->string('title');
+            $table->string('file_path');
+            $table->string('storage_disk', 64)->default('public');
+            $table->string('file_type')->nullable();
+            $table->unsignedBigInteger('file_size')->nullable();
+            $table->integer('order')->default(0);
+            $table->timestamps();
         });
 
         Schema::create('course_enrollments', function (Blueprint $table) {
@@ -257,6 +291,7 @@ abstract class ApiTestCase extends TestCase
             $table->unsignedBigInteger('package_id')->nullable();
             $table->unsignedBigInteger('course_code_id')->nullable();
             $table->unsignedBigInteger('coupon_id')->nullable();
+            $table->unsignedBigInteger('wallet_transaction_id')->nullable();
             $table->string('coupon_code')->nullable();
             $table->string('payment_method', 50)->default('online');
             $table->unsignedBigInteger('payment_method_id')->nullable();
@@ -423,83 +458,6 @@ abstract class ApiTestCase extends TestCase
             $table->softDeletes();
         });
 
-        Schema::create('quizzes', function (Blueprint $table) {
-            $table->id();
-            $table->string('title_ar')->nullable();
-            $table->string('title_en')->nullable();
-            $table->unsignedBigInteger('course_id')->nullable();
-            $table->unsignedBigInteger('section_id')->nullable();
-            $table->boolean('active')->default(true);
-            $table->timestamps();
-        });
-
-        Schema::create('random_quizzes', function (Blueprint $table) {
-            $table->id();
-            $table->string('title_ar')->nullable();
-            $table->string('title_en')->nullable();
-            $table->boolean('active')->default(true);
-            $table->timestamps();
-        });
-
-        Schema::create('exams', function (Blueprint $table) {
-            $table->id();
-            $table->string('title_ar')->nullable();
-            $table->string('title_en')->nullable();
-            $table->unsignedBigInteger('course_id')->nullable();
-            $table->boolean('active')->default(true);
-            $table->timestamps();
-        });
-
-        Schema::create('exam_attempts', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('quiz_id')->nullable();
-            $table->unsignedBigInteger('course_id')->nullable();
-            $table->unsignedBigInteger('section_id')->nullable();
-            $table->integer('attempt_number')->default(1);
-            $table->float('score')->default(0);
-            $table->boolean('passed')->default(false);
-            $table->boolean('is_passed')->default(false);
-            $table->string('status')->default('in_progress');
-            $table->integer('time_taken_minutes')->default(0);
-            $table->integer('total_questions')->default(10);
-            $table->integer('answered_questions')->default(0);
-            $table->integer('correct_answers')->default(0);
-            $table->float('score_percentage')->default(0);
-            $table->integer('score_points')->default(0);
-            $table->json('exam_data')->nullable();
-            $table->json('security_summary')->nullable();
-            $table->string('quiz_title')->nullable();
-            $table->text('quiz_description')->nullable();
-            $table->string('quiz_image')->nullable();
-            $table->timestamp('started_at')->nullable();
-            $table->timestamp('completed_at')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        Schema::create('exam_answers', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('exam_attempt_id');
-            $table->unsignedBigInteger('question_id');
-            $table->string('selected_answer')->nullable();
-            $table->boolean('is_correct')->default(false);
-            $table->integer('points_earned')->default(0);
-            $table->integer('max_points')->default(1);
-            $table->timestamp('answered_at')->nullable();
-            $table->json('question_data')->nullable();
-            $table->timestamps();
-        });
-
-        Schema::create('exam_security_logs', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('exam_attempt_id');
-            $table->string('event_type');
-            $table->json('details')->nullable();
-            $table->timestamp('timestamp')->nullable();
-            $table->timestamps();
-        });
-
         Schema::create('certificates', function (Blueprint $table) {
             $table->id();
             $table->uuid('public_id')->nullable()->unique();
@@ -508,9 +466,12 @@ abstract class ApiTestCase extends TestCase
             $table->unsignedBigInteger('project_id')->nullable();
             $table->string('holder_name')->nullable();
             $table->string('course_name')->nullable();
+            $table->string('certificate_text_template_key', 32)->nullable();
+            $table->string('certificate_text')->nullable();
             $table->string('image_path')->default('pending');
+            $table->uuid('generation_lease_id')->nullable();
             $table->string('status', 20)->default('active');
-            $table->string('verification_level', 24)->default('standard');
+            $table->string('verification_level', 24)->default('completion');
             $table->timestamp('generated_at')->nullable();
             $table->timestamp('revoked_at')->nullable();
             $table->unsignedTinyInteger('recovery_attempts')->default(0);
@@ -591,6 +552,28 @@ abstract class ApiTestCase extends TestCase
             $table->unique(['user_id', 'delivery_key']);
         });
 
+        Schema::create('admin_notifications', function (Blueprint $table): void {
+            $table->id();
+            $table->string('system_key', 80)->nullable()->unique();
+            $table->string('surface', 32)->default('announcement');
+            $table->string('title_ar')->nullable();
+            $table->string('title_en')->nullable();
+            $table->string('description_ar')->nullable();
+            $table->string('description_en')->nullable();
+            $table->string('action_label_ar')->nullable();
+            $table->string('action_label_en')->nullable();
+            $table->string('secondary_action_label_ar')->nullable();
+            $table->string('secondary_action_label_en')->nullable();
+            $table->string('link')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_dismissible')->default(true);
+            $table->unsignedSmallInteger('priority')->default(100);
+            $table->unsignedSmallInteger('cooldown_hours')->default(72);
+            $table->timestamp('starts_at')->nullable();
+            $table->timestamp('ends_at')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('coin_earning_methods', function (Blueprint $table) {
             $table->id();
             $table->string('title_ar')->default('مهمة');
@@ -607,6 +590,7 @@ abstract class ApiTestCase extends TestCase
             $table->timestamp('starts_at')->nullable();
             $table->timestamp('ends_at')->nullable();
             $table->unsignedInteger('total_claim_limit')->nullable();
+            $table->unsignedSmallInteger('sort_order')->default(100);
             $table->timestamps();
             $table->softDeletes();
         });
@@ -620,12 +604,20 @@ abstract class ApiTestCase extends TestCase
         });
 
         Schema::create('api_tokens', function (Blueprint $table) {
-            $table->id();
             $table->unsignedBigInteger('user_id');
-            $table->string('token', 255)->unique();
-            $table->timestamp('issued_at')->nullable();
-            $table->timestamp('expired_at')->nullable();
-            $table->timestamps();
+            $table->string('token', 80)->unique();
+            $table->timestamp('issued_at');
+            $table->timestamp('expired_at');
+            $table->uuid('session_id')->nullable()->unique();
+            $table->uuid('device_id')->nullable();
+            $table->string('platform', 16)->nullable()->index();
+            $table->string('device_class', 12)->nullable();
+            $table->string('app_version', 32)->nullable();
+            $table->string('app_build', 16)->nullable();
+            $table->string('auth_provider', 24)->nullable();
+            $table->string('auth_provider_user_id', 191)->nullable();
+            $table->timestamp('last_used_at')->nullable()->index();
+            $table->timestamp('revoked_at')->nullable()->index();
         });
 
         Schema::create('social_accounts', function (Blueprint $table) {
@@ -670,6 +662,7 @@ abstract class ApiTestCase extends TestCase
             $table->string('device_token');
             $table->string('device_type')->nullable();
             $table->string('device_os')->nullable();
+            $table->uuid('device_id')->nullable();
             $table->timestamps();
         });
 
@@ -705,14 +698,20 @@ abstract class ApiTestCase extends TestCase
             $table->unsignedBigInteger('list_id')->nullable();
             $table->unsignedBigInteger('course_id')->nullable();
             $table->unsignedBigInteger('section_id')->nullable();
-            $table->unsignedBigInteger('quiz_id')->nullable();
             $table->string('title')->nullable();
             $table->string('title_ar')->nullable();
             $table->string('title_en')->nullable();
             $table->text('description')->nullable();
             $table->boolean('is_opened')->default(true);
+            $table->string('video_link')->nullable();
+            $table->string('video_source_type')->default('youtube');
+            $table->string('bunny_video_id')->nullable();
             $table->integer('duration_minutes')->default(10);
             $table->string('image')->nullable();
+            $table->string('thumbnail_path')->nullable();
+            $table->string('file_link1')->nullable();
+            $table->string('file_link2')->nullable();
+            $table->integer('priority')->default(0);
             $table->timestamps();
         });
 
@@ -866,6 +865,89 @@ abstract class ApiTestCase extends TestCase
             $table->unique(['user_id', 'idempotency_key']);
         });
 
+        Schema::create('financial_entitlement_holds', function (Blueprint $table): void {
+            $table->id();
+            $table->uuid('public_id')->unique();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('course_order_id');
+            $table->unsignedBigInteger('source_order_id');
+            $table->unsignedBigInteger('enrollment_id')->nullable();
+            $table->timestamp('enrollment_deactivated_at')->nullable();
+            $table->timestamp('plan_reverted_at')->nullable();
+            $table->unsignedBigInteger('certificate_id')->nullable();
+            $table->timestamp('certificate_revoked_at')->nullable();
+            $table->unsignedBigInteger('resolved_by')->nullable();
+            $table->string('status', 24)->default('active');
+            $table->string('entitlement_scope', 16)->default('course');
+            $table->string('reason')->nullable();
+            $table->string('resolution', 24)->nullable();
+            $table->text('resolution_note')->nullable();
+            $table->timestamp('held_at');
+            $table->timestamp('resolved_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('course_authoring_revisions', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('canonical_course_id');
+            $table->unsignedBigInteger('revision_course_id');
+            $table->unsignedBigInteger('base_authoring_version');
+            $table->unsignedBigInteger('published_authoring_version')->nullable();
+            $table->string('status', 16)->default('draft');
+            $table->string('active_slot', 80)->nullable()->unique();
+            $table->uuid('clone_key')->unique();
+            $table->timestamp('published_at')->nullable();
+            $table->timestamp('retain_until')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('course_authoring_revision_entities', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('course_authoring_revision_id');
+            $table->string('entity_type', 120);
+            $table->unsignedBigInteger('source_entity_id');
+            $table->unsignedBigInteger('revision_entity_id');
+            $table->boolean('survives_publish')->default(false);
+            $table->boolean('carries_learner_state')->default(false);
+            $table->unsignedBigInteger('learner_root_entity_id')->nullable();
+        });
+
+        Schema::create('watching_logs', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('lesson_id');
+            $table->string('lesson_name');
+            $table->unsignedBigInteger('course_id');
+            $table->unsignedBigInteger('course_section_id')->nullable();
+            $table->string('course_name');
+            $table->unsignedInteger('position_seconds')->default(0);
+            $table->unsignedInteger('duration_seconds')->nullable();
+            $table->uuid('playback_session_id')->nullable();
+            $table->timestamp('playback_session_started_at')->nullable();
+            $table->unsignedInteger('last_playback_sequence')->nullable();
+            $table->timestamp('watched_at')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamps();
+            $table->unique(['user_id', 'lesson_id']);
+        });
+
+        Schema::create('notification_push_deliveries', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('student_notification_id');
+            $table->unsignedBigInteger('user_device_token_id');
+            $table->string('token_fingerprint', 64);
+            $table->string('device_os', 20)->nullable();
+            $table->string('status', 24)->default('pending');
+            $table->unsignedTinyInteger('attempts')->default(0);
+            $table->timestamp('attempted_at')->nullable();
+            $table->timestamp('accepted_at')->nullable();
+            $table->timestamp('failed_at')->nullable();
+            $table->string('failure_code', 64)->nullable();
+            $table->timestamps();
+            $table->unique(['student_notification_id', 'user_device_token_id']);
+        });
+
         Schema::create('saved_sections', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('saved_folder_id');
@@ -940,6 +1022,49 @@ abstract class ApiTestCase extends TestCase
             $table->unique(['course_id', 'code']);
         });
 
+        Schema::create('ai_entitlement_usages', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('enrollment_id');
+            $table->unsignedBigInteger('access_plan_id')->nullable();
+            $table->string('feature', 40);
+            $table->unsignedInteger('used_requests')->default(0);
+            $table->unsignedInteger('reserved_requests')->default(0);
+            $table->unsignedInteger('unanswered_provider_requests')->default(0);
+            $table->timestamp('unanswered_provider_last_at')->nullable();
+            $table->timestamp('provider_exposure_paused_until')->nullable();
+            $table->unsignedBigInteger('used_tokens')->default(0);
+            $table->unsignedBigInteger('reserved_tokens')->default(0);
+            $table->decimal('used_cost_usd', 12, 6)->default(0);
+            $table->decimal('reserved_cost_usd', 12, 6)->default(0);
+            $table->timestamps();
+            $table->unique(['enrollment_id', 'feature']);
+        });
+
+        Schema::create('ai_usage_events', function (Blueprint $table): void {
+            $table->id();
+            $table->uuid('request_id')->unique();
+            $table->unsignedBigInteger('enrollment_id');
+            $table->unsignedBigInteger('access_plan_id')->nullable();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_id');
+            $table->string('feature', 40);
+            $table->string('model')->nullable();
+            $table->string('status', 20)->default('reserved');
+            $table->timestamp('reservation_expires_at')->nullable();
+            $table->unsignedInteger('reserved_tokens')->default(0);
+            $table->decimal('reserved_cost_usd', 12, 6)->default(0);
+            $table->unsignedInteger('prompt_tokens')->default(0);
+            $table->unsignedInteger('completion_tokens')->default(0);
+            $table->unsignedInteger('total_tokens')->default(0);
+            $table->decimal('cost_usd', 12, 6)->default(0);
+            $table->decimal('fx_rate_to_egp', 12, 4)->nullable();
+            $table->decimal('cost_egp', 14, 6)->nullable();
+            $table->string('provider_request_id')->nullable();
+            $table->json('metadata')->nullable();
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamps();
+        });
+
         Schema::create('student_section_progress', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
@@ -950,44 +1075,9 @@ abstract class ApiTestCase extends TestCase
             $table->timestamps();
         });
 
-        Schema::create('lists', function (Blueprint $table) {
-            $table->id();
-            $table->string('title')->nullable();
-            $table->string('title_ar')->nullable();
-            $table->string('title_en')->nullable();
-            $table->unsignedBigInteger('category_id')->nullable();
-            $table->unsignedBigInteger('course_id')->nullable();
-            $table->string('type')->default('quiz');
-            $table->integer('priority')->default(1);
-            $table->text('description')->nullable();
-            $table->text('description_ar')->nullable();
-            $table->text('description_en')->nullable();
-            $table->string('image')->nullable();
-            $table->boolean('is_opened')->default(true);
-            $table->integer('time_minutes')->default(30);
-            $table->timestamps();
-        });
-
-        Schema::create('questions', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('list_id');
-            $table->string('title')->nullable();
-            $table->text('question')->nullable();
-            $table->string('question_image')->nullable();
-            $table->text('description')->nullable();
-            $table->integer('priority')->default(1);
-            $table->string('choice1')->nullable();
-            $table->string('choice2')->nullable();
-            $table->string('choice3')->nullable();
-            $table->string('choice4')->nullable();
-            $table->string('choice5')->nullable();
-            $table->string('choice6')->nullable();
-            $table->string('right_answer')->nullable();
-            $table->timestamps();
-        });
-
         (require database_path('migrations/2026_09_01_000071_create_social_identity_guards_table.php'))->up();
         (require database_path('migrations/2026_09_01_000068_add_portfolio_lifecycle_state.php'))->up();
+        (require database_path('migrations/2026_09_01_000070_add_public_id_to_portfolio_media.php'))->up();
         (require database_path('migrations/2026_09_01_000073_create_portfolio_video_uploads_table.php'))->up();
         (require database_path('migrations/2026_09_01_000078_create_internal_signals_table.php'))->up();
 
@@ -996,11 +1086,15 @@ abstract class ApiTestCase extends TestCase
     private function tearDownSchema(): void
     {
         $tables = [
-            'internal_signals', 'social_identity_guards', 'social_oauth_attempts', 'course_grant_claims', 'course_code_usages', 'exam_security_logs', 'exam_answers', 'student_section_progress', 'account_file_deletions', 'api_tokens', 'photos', 'verification_codes', 'user_device_tokens', 'deleted_social_reward_tombstones', 'social_accounts', 'user_coin_task_attempts', 'user_coin_earnings', 'coin_earning_methods',
+            'internal_signals', 'social_identity_guards', 'social_oauth_attempts', 'course_grant_claims', 'course_code_usages', 'student_section_progress', 'account_file_deletions', 'api_tokens', 'photos', 'verification_codes', 'user_device_tokens', 'deleted_social_reward_tombstones', 'social_accounts', 'user_coin_task_attempts', 'user_coin_earnings', 'coin_earning_methods',
+            'notification_push_deliveries', 'admin_notifications', 'financial_entitlement_holds',
+            'ai_usage_events', 'ai_entitlement_usages',
+            'course_authoring_revision_entities', 'course_authoring_revisions',
+            'watching_logs',
             'payment_methods', 'categories', 'portfolios', 'portfolio_video_uploads', 'portfolio_media', 'portfolio_items', 'saved_folder_lessons', 'saved_sections', 'wallet_transactions', 'reward_rules', 'user_reward_checkins', 'user_daily_learning_activities', 'playback_sessions', 'lesson_media_states', 'lesson_watch_evidence', 'lessons', 'saved_folders',
-            'student_notifications', 'classification_user', 'classifications', 'paths', 'certificates', 'exam_attempts',
-            'exams', 'random_quizzes', 'quizzes', 'questions', 'lists', 'course_pdfs', 'project_submissions', 'course_codes', 'bills', 'orders',
-            'course_enrollments', 'course_access_plans', 'course_sections', 'projects', 'course_ratings', 'course_teacher', 'classification_course', 'courses', 'grades', 'profile_update_receipts', 'users', 'settings'
+            'student_notifications', 'classification_user', 'classifications', 'paths', 'certificates',
+            'course_pdfs', 'project_submissions', 'course_codes', 'bills', 'orders',
+            'course_enrollments', 'course_access_plans', 'attachments', 'course_sections', 'course_modules', 'projects', 'course_ratings', 'course_teacher', 'classification_course', 'courses', 'grades', 'profile_update_receipts', 'users', 'settings'
         ];
 
         foreach ($tables as $table) {
@@ -1066,8 +1160,18 @@ abstract class ApiTestCase extends TestCase
             'updated_at' => now(),
         ]);
 
+        $this->moduleId = (int) DB::table('course_modules')->insertGetId([
+            'course_id' => $this->courseId,
+            'title_ar' => 'الوحدة الأولى',
+            'title_en' => 'Module 1',
+            'order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $this->sectionId = (int) DB::table('course_sections')->insertGetId([
             'course_id' => $this->courseId,
+            'module_id' => $this->moduleId,
             'title_ar' => 'قسم 1',
             'title_en' => 'Section 1',
             'section_type' => 'lesson',
@@ -1094,7 +1198,30 @@ abstract class ApiTestCase extends TestCase
         $this->user->password = bcrypt('password123');
         $this->user->active = true;
         $this->user->wallet_coins = 1000;
+        $this->user->wallet_reward_coins = 1000;
+        $this->user->watch_history_enabled = true;
         $this->user->save();
+
+        DB::table('wallet_transactions')->insert([
+            'public_id' => (string) \Illuminate\Support\Str::uuid(),
+            'user_id' => $this->user->id,
+            'direction' => 'credit',
+            'category' => 'opening_balance',
+            'bucket' => 'reward',
+            'amount' => 1000,
+            'paid_amount' => 0,
+            'reward_amount' => 1000,
+            'balance_after' => 1000,
+            'paid_balance_after' => 0,
+            'reward_balance_after' => 1000,
+            'source_type' => null,
+            'source_id' => null,
+            'idempotency_key' => "wallet-opening:user:{$this->user->id}",
+            'metadata' => json_encode(['fixture' => 'api_test_case'], JSON_THROW_ON_ERROR),
+            'occurred_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         $instructorId = (int) DB::table('users')->insertGetId([
             'name' => 'API Test Instructor',
@@ -1224,33 +1351,6 @@ abstract class ApiTestCase extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::table('lists')->insert([
-            'id' => 1,
-            'title' => 'Quiz 1',
-            'title_ar' => 'اختبار 1',
-            'title_en' => 'Quiz 1',
-            'course_id' => $this->courseId,
-            'type' => 'quiz',
-            'time_minutes' => 30,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('questions')->insert([
-            'id' => 1,
-            'list_id' => 1,
-            'title' => 'Question 1',
-            'question' => 'What is 2 + 2?',
-            'choice1' => '3',
-            'choice2' => '4',
-            'choice3' => '5',
-            'choice4' => '6',
-            'right_answer' => '4',
-            'priority' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
         DB::table('saved_sections')->insert([
             'id' => 1,
             'saved_folder_id' => 1,
@@ -1267,50 +1367,5 @@ abstract class ApiTestCase extends TestCase
             'updated_at' => now(),
         ]);
 
-        DB::table('quizzes')->insert([
-            'id' => 1,
-            'title_ar' => 'اختبار 1',
-            'title_en' => 'Quiz 1',
-            'course_id' => $this->courseId,
-            'section_id' => $this->sectionId,
-            'active' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('random_quizzes')->insert([
-            'id' => 1,
-            'title_ar' => 'عشوائي 1',
-            'title_en' => 'Random Quiz 1',
-            'active' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('exams')->insert([
-            'id' => 1,
-            'title_ar' => 'امتحان 1',
-            'title_en' => 'Exam 1',
-            'course_id' => $this->courseId,
-            'active' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        DB::table('exam_attempts')->insert([
-            'id' => 1,
-            'user_id' => $this->user->id,
-            'quiz_id' => 1,
-            'course_id' => $this->courseId,
-            'section_id' => $this->sectionId,
-            'attempt_number' => 1,
-            'status' => 'in_progress',
-            'total_questions' => 10,
-            'answered_questions' => 0,
-            'correct_answers' => 0,
-            'started_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
     }
 }

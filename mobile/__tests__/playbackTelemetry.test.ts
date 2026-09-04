@@ -55,5 +55,12 @@ describe('playback telemetry policy', () => {
         now,
       ),
     ).toBe(510_000);
+    expect(
+      scheduledManifestRefreshDelayMs(
+        '2026-08-11T10:20:00.000Z',
+        '2026-08-11T10:10:00.000Z',
+        now,
+      ),
+    ).toBe(510_000);
   });
 });

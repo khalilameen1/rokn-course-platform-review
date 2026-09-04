@@ -5,17 +5,10 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 /**
- * Feature tests covering Interests & Classifications API endpoints:
- * listing interests/classifications and updating user interest selections.
+ * Feature tests covering classifications and user interest selections.
  */
 class ClassificationEndpointTest extends ApiTestCase
 {
-    public function test_can_list_interests(): void
-    {
-        $response = $this->getJson('/api/v1/interests');
-        $this->assertNotEquals(404, $response->status());
-    }
-
     public function test_can_list_classifications(): void
     {
         $response = $this->getJson('/api/v1/classifications');

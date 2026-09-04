@@ -1,4 +1,4 @@
-import {useFocusEffect} from '@react-navigation/native';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import React, {useCallback, useRef, useState} from 'react';
 import {
   ActivityIndicator,
@@ -11,10 +11,15 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useSelector} from 'react-redux';
+import Svg, {Circle, Rect} from 'react-native-svg';
 import {Container, Content} from '../components/containers/Containers';
-import {PremiumCard, ResponsiveFrame} from '../components/ui/PremiumUI';
+import {
+  PremiumCard,
+  ResponsiveFrame,
+  StatusView,
+} from '../components/ui/PremiumUI';
 import HeaderWithBack from '../components/view/HeaderWithBack';
-import {toArabicDigits} from '../constants/arabicFormatting';
 import {formatRoknDate} from '../utils/dateTime';
 import {
   Palette,
@@ -33,7 +38,15 @@ import {
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
+  extractApiToken,
 } from '../constants/helpers';
+import {
+  currentDeviceClass,
+  type RoknDeviceClass,
+} from '../constants/deviceClass';
+import {openGuestLogin} from '../navigation/journeyNavigation';
+import type {RootNavigation} from '../navigation/types';
+import type {RootState} from '../store/store';
 
 const dateLabel = (value?: string | null) => {
   if (!value) return 'غير معروف';
@@ -43,15 +56,47 @@ const dateLabel = (value?: string | null) => {
   }) || 'غير معروف';
 };
 
-const platformLabel = (platform: DeviceSession['platform']) => {
-  if (platform === 'android') return 'هاتف Android';
-  if (platform === 'ios') return 'iPhone أو iPad';
-  if (platform === 'web') return 'متصفح ويب';
-  return 'جهاز آخر';
+const deviceClassForSession = (session: DeviceSession): RoknDeviceClass =>
+  session.device_class || (session.current ? currentDeviceClass() : 'phone');
+
+const sessionLabel = (session: DeviceSession) => {
+  const tablet = deviceClassForSession(session) === 'tablet';
+  if (session.platform === 'android') {
+    return tablet ? 'جهاز لوحي Android' : 'هاتف Android';
+  }
+  if (session.platform === 'ios') return tablet ? 'iPad' : 'iPhone';
+  return tablet ? 'جهاز لوحي' : 'هاتف';
+};
+
+const SessionDeviceIcon = ({deviceClass}: {deviceClass: RoknDeviceClass}) => {
+  const tablet = deviceClass === 'tablet';
+  return (
+    <Svg height={26} viewBox="0 0 26 26" width={26}>
+      <Rect
+        fill="none"
+        height={tablet ? 20 : 22}
+        rx={tablet ? 2.8 : 4}
+        stroke={Palette.primary}
+        strokeWidth={1.8}
+        width={tablet ? 17 : 13}
+        x={tablet ? 4.5 : 6.5}
+        y={tablet ? 3 : 2}
+      />
+      <Circle
+        cx={13}
+        cy={tablet ? 19.5 : 20.5}
+        fill={Palette.primary}
+        r={1}
+      />
+    </Svg>
+  );
 };
 
 export default function DeviceSessions() {
+  const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
+  const storedUser = useSelector((state: RootState) => state.auth.userData);
+  const authenticated = Boolean(extractApiToken(storedUser));
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -93,12 +138,20 @@ export default function DeviceSessions() {
     useCallback(() => {
       screenActiveRef.current = true;
       if (!mutationFlightRef.current) setRemoving(null);
-      void load();
+      if (authenticated) {
+        void load();
+      } else {
+        loadGenerationRef.current += 1;
+        setSessions([]);
+        setError('');
+        setLoading(false);
+        setRefreshing(false);
+      }
       return () => {
         screenActiveRef.current = false;
         loadGenerationRef.current += 1;
       };
-    }, [load]),
+    }, [authenticated, load]),
   );
 
   const revoke = (session: DeviceSession) => {
@@ -196,6 +249,27 @@ export default function DeviceSessions() {
     );
   };
 
+  if (!authenticated) {
+    return (
+      <Container noPadding>
+        <Content noPadding>
+          <ResponsiveFrame>
+            <HeaderWithBack title="الأجهزة المسجّل عليها" />
+            <StatusView
+              actionLabel="تسجيل الدخول"
+              description="سجّل الدخول لإدارة أجهزتك"
+              onAction={() =>
+                openGuestLogin(navigation, {name: 'DeviceSessions'})
+              }
+              state="empty"
+              title="أجهزتك مرتبطة بحسابك"
+            />
+          </ResponsiveFrame>
+        </Content>
+      </Container>
+    );
+  }
+
   return (
     <Container noPadding>
       <Content noPadding>
@@ -261,22 +335,22 @@ export default function DeviceSessions() {
               sessions.map(session => (
                 <PremiumCard key={session.id} style={styles.sessionCard}>
                   <View style={styles.sessionHeader}>
+                    <View
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      style={styles.deviceIcon}>
+                      <SessionDeviceIcon
+                        deviceClass={deviceClassForSession(session)}
+                      />
+                    </View>
                     <View style={styles.sessionCopy}>
                       <Text style={styles.sessionTitle}>
-                        {platformLabel(session.platform)}
+                        {sessionLabel(session)}
                       </Text>
                       <Text style={styles.sessionMeta}>
                         آخر استخدام{' '}
                         {dateLabel(session.last_used_at || session.issued_at)}
                       </Text>
-                      {!!session.app_version && (
-                        <Text style={styles.sessionMeta}>
-                          إصدار {toArabicDigits(session.app_version)}
-                          {session.app_build
-                            ? ` (${toArabicDigits(session.app_build)})`
-                            : ''}
-                        </Text>
-                      )}
                     </View>
                     {session.current && (
                       <View style={styles.currentPill}>
@@ -322,6 +396,15 @@ const styles = StyleSheet.create({
   },
   sessionCard: {padding: Spacing.lg, borderRadius: Radius.lg},
   sessionHeader: {...rtlRowStyle, alignItems: 'flex-start', gap: Spacing.md},
+  deviceIcon: {
+    width: 44,
+    height: 44,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.md,
+    backgroundColor: Palette.primarySoft,
+  },
   sessionCopy: {flex: 1, minWidth: 0},
   sessionTitle: {...Type.section, ...textDirection, color: Palette.text},
   sessionMeta: {

@@ -50,7 +50,7 @@ final class PublicContentController extends Controller
         $payload['source'] = $managedBody !== null ? 'dashboard' : 'application';
 
         if ($page === 'contact') {
-            $settings = $publicSettings->snapshot();
+            $settings = $publicSettings->snapshot($locale);
             $payload['contact'] = [
                 'email' => $settings['support_contacts']['email'] ?? null,
                 'phone' => $settings['support_contacts']['phone'] ?? null,

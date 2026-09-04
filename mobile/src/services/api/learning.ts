@@ -5,8 +5,7 @@ import {
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
 import {publicRequest} from '../../constants/api';
-import type {DemoCourse} from '../../data/demoContent';
-import {getLearningCourses} from './courses';
+import {getLearningCourses, type CourseProgress} from './courses';
 import {
   firstBoolean,
   isApiRecord,
@@ -46,7 +45,12 @@ type LearningPathLevelDto = {
 };
 
 type LearningPathDto = {
-  path?: {id?: unknown; title?: unknown; title_ar?: unknown; title_en?: unknown};
+  path?: {
+    id?: unknown;
+    title?: unknown;
+    title_ar?: unknown;
+    title_en?: unknown;
+  };
   current_level?: LearningPathLevelDto | null;
   next_level?: LearningPathLevelDto | null;
   levels?: unknown;
@@ -56,45 +60,7 @@ type LearningPathDto = {
   total_sections?: unknown;
 };
 
-type SavedFolderDto = {id?: unknown; name?: unknown};
-type SavedLessonDto = {
-  id?: unknown;
-  folder_memberships?: unknown;
-  course?: {id?: unknown; title?: unknown; image?: unknown};
-  course_id?: unknown;
-  title?: unknown;
-  duration_minutes?: unknown;
-  duration_seconds?: unknown;
-  image?: unknown;
-};
-
-type SavedLessonsPayloadDto = {
-  lessons?: unknown;
-  pagination?: {
-    current_page?: unknown;
-    last_page?: unknown;
-    total?: unknown;
-  };
-};
-
-const SAVED_LESSONS_CACHE_KEY = '@rokn/saved-lessons/v2';
-const SAVED_LESSONS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-
-export type LearningCourse = {
-  id: string;
-  title: string;
-  imageUrl?: string;
-  progress: number;
-  completedSections: number;
-  totalSections: number;
-  category: DemoCourse['category'];
-  lastLessonId?: string;
-  lastLessonTitle?: string;
-  nextLessonId?: string;
-  nextLessonTitle?: string;
-  nextSectionType?: string;
-  lastWatchedAt?: string;
-};
+export type LearningCourse = CourseProgress;
 
 export type LearningDashboard = {
   courses: LearningCourse[];
@@ -153,17 +119,13 @@ const mapPathLevel = (
   return {
     id: String(level.id),
     name: String(level.name_ar || level.name_en || 'المستوى التالي'),
-    imageUrl: level.badge_image_url
-      ? String(level.badge_image_url)
-      : undefined,
+    imageUrl: level.badge_image_url ? String(level.badge_image_url) : undefined,
     order: Math.max(0, Number(level.order) || 0),
   };
 };
 
 const getLearningPaths = async (): Promise<LearningPathProgress[]> => {
-  const data = payload<unknown>(
-    await publicRequest.get('user/paths'),
-  );
+  const data = payload<unknown>(await publicRequest.get('user/paths'));
   if (!isResourceListPayload(data)) {
     throw new Error('LEARNING_PATHS_CONTRACT_INVALID');
   }
@@ -196,45 +158,39 @@ const getLearningPaths = async (): Promise<LearningPathProgress[]> => {
         return mapped;
       })
       .sort((left, right) => left.order - right.order);
-    if (
-      nextLevel &&
-      upcomingLevels[0]?.id !== nextLevel.id
-    ) {
+    if (nextLevel && upcomingLevels[0]?.id !== nextLevel.id) {
       throw new Error('LEARNING_PATHS_CONTRACT_INVALID');
     }
     return {
-        id: String(item.path.id),
-        title: String(
-          item.path.title ||
-            item.path.title_ar ||
-            item.path.title_en ||
-            'مسارك المهني',
-        ),
-        currentLevel,
-        nextLevel,
-        upcomingLevels,
-        progress: Math.min(
-          100,
-          Math.max(0, Number(item.progress_percentage) || 0),
-        ),
-        remainingToNextLevel: Math.min(
-          100,
-          Math.max(0, Number(item.required_progress_percentage) || 0),
-        ),
-        completedSections: Math.max(
-          0,
-          Number(item.completed_sections) || 0,
-        ),
-        totalSections: Math.max(0, Number(item.total_sections) || 0),
-      };
+      id: String(item.path.id),
+      title: String(
+        item.path.title ||
+          item.path.title_ar ||
+          item.path.title_en ||
+          'مسارك المهني',
+      ),
+      currentLevel,
+      nextLevel,
+      upcomingLevels,
+      progress: Math.min(
+        100,
+        Math.max(0, Number(item.progress_percentage) || 0),
+      ),
+      remainingToNextLevel: Math.min(
+        100,
+        Math.max(0, Number(item.required_progress_percentage) || 0),
+      ),
+      completedSections: Math.max(0, Number(item.completed_sections) || 0),
+      totalSections: Math.max(0, Number(item.total_sections) || 0),
+    };
   });
 };
 
-const LEARNING_DASHBOARD_CACHE = '@rokn/learning-dashboard/v2';
+const LEARNING_DASHBOARD_CACHE = '@rokn/learning-dashboard/v3';
 const LEARNING_DASHBOARD_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 type LearningDashboardCache = {
-  version: 2;
+  version: 3;
   savedAt: number;
   dashboard: LearningDashboard;
 };
@@ -252,11 +208,32 @@ const normalizeCachedLearningDashboard = (
       course =>
         !isRecord(course) ||
         typeof course.id !== 'string' ||
-        course.id.length === 0 ||
+        !/^[1-9]\d*$/.test(course.id) ||
         typeof course.title !== 'string' ||
+        course.title.trim().length === 0 ||
         !Number.isFinite(course.progress) ||
+        Number(course.progress) < 0 ||
+        Number(course.progress) > 100 ||
         !Number.isFinite(course.completedSections) ||
-        !Number.isFinite(course.totalSections),
+        !Number.isSafeInteger(course.completedSections) ||
+        Number(course.completedSections) < 0 ||
+        !Number.isFinite(course.totalSections) ||
+        !Number.isSafeInteger(course.totalSections) ||
+        Number(course.totalSections) < 1 ||
+        Number(course.completedSections) > Number(course.totalSections) ||
+        !['freelance', 'language', 'religious'].includes(
+          String(course.category || ''),
+        ) ||
+        typeof course.accessType !== 'string' ||
+        course.accessType.length === 0 ||
+        typeof course.chatAvailable !== 'boolean' ||
+        typeof course.certificateAvailable !== 'boolean' ||
+        (course.nextSectionType !== undefined &&
+          (!['lesson', 'project'].includes(String(course.nextSectionType)) ||
+            typeof course.nextSectionId !== 'string' ||
+            !/^[1-9]\d*$/.test(course.nextSectionId) ||
+            typeof course.nextSectionTitle !== 'string' ||
+            course.nextSectionTitle.trim().length === 0)),
     ) ||
     !Array.isArray(value.paths) ||
     value.paths.some(
@@ -303,15 +280,12 @@ export const getCachedLearningDashboard = async () => {
   const accountBoundary = await captureAccountSessionBoundary();
   try {
     const raw = await AsyncStorage.getItem(
-      await accountScopedStorageKey(
-        LEARNING_DASHBOARD_CACHE,
-        accountBoundary,
-      ),
+      await accountScopedStorageKey(LEARNING_DASHBOARD_CACHE, accountBoundary),
     );
     if (!raw) return null;
     const cached = JSON.parse(raw) as Partial<LearningDashboardCache>;
     if (
-      cached.version !== 2 ||
+      cached.version !== 3 ||
       !isServerTimestampFresh(
         Number(cached.savedAt),
         LEARNING_DASHBOARD_CACHE_TTL_MS,
@@ -330,20 +304,27 @@ export const getCachedLearningDashboard = async () => {
 
 export const getLearningDashboard = async (): Promise<LearningDashboard> => {
   const accountBoundary = await captureAccountSessionBoundary();
-  const dashboardCacheKey = await accountScopedStorageKey(
+  const cacheKeyRequest = accountScopedStorageKey(
     LEARNING_DASHBOARD_CACHE,
     accountBoundary,
   );
-  const cachedDashboard = await getCachedLearningDashboard();
-  const [profileResult, streakResult, learningResult, pathsResult] =
-    await Promise.allSettled([
-      publicRequest.get('user/profile', {
-        params: {include_learning: 0, include_badges: 1},
-      }),
-      publicRequest.get('streaks'),
-      getLearningCourses(),
-      getLearningPaths(),
+  const cachedDashboardRequest = getCachedLearningDashboard();
+  const dashboardRequest = Promise.allSettled([
+    publicRequest.get('user/profile', {
+      params: {include_learning: 0, include_badges: 1},
+    }),
+    publicRequest.get('streaks'),
+    getLearningCourses(),
+    getLearningPaths(),
+  ]);
+  const [dashboardCacheKey, cachedDashboard, dashboardResults] =
+    await Promise.all([
+      cacheKeyRequest,
+      cachedDashboardRequest,
+      dashboardRequest,
     ]);
+  const [profileResult, streakResult, learningResult, pathsResult] =
+    dashboardResults;
   assertAccountSessionBoundary(accountBoundary);
   if (learningResult.status === 'rejected') throw learningResult.reason;
   const partialFailure = [profileResult, streakResult, pathsResult].some(
@@ -365,27 +346,27 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
         : cachedDashboard?.paths || [],
     badges:
       profileResult.status === 'fulfilled'
-        ? resourceList<EarnedBadgeDto>(profile.earned_badges).flatMap(
-      badge => {
-        const id = String(badge.id ?? '').trim();
-        if (!id) return [];
-        return [
-          {
-            id,
-            levelId: badge.level_id ? String(badge.level_id) : undefined,
-            title: String(badge.name_ar || badge.name_en || 'شارة مهنية'),
-            imageUrl: badge.badge_image ? String(badge.badge_image) : undefined,
-            courseId: badge.course_id ? String(badge.course_id) : undefined,
-            courseTitle:
-              badge.course_name_ar || badge.course_name_en
-                ? String(badge.course_name_ar || badge.course_name_en)
-                : undefined,
-            track: badge.track ? String(badge.track) : undefined,
-            earnedAt: badge.earned_at ? String(badge.earned_at) : undefined,
-          },
-        ];
-      },
-    )
+        ? resourceList<EarnedBadgeDto>(profile.earned_badges).flatMap(badge => {
+            const id = String(badge.id ?? '').trim();
+            if (!id) return [];
+            return [
+              {
+                id,
+                levelId: badge.level_id ? String(badge.level_id) : undefined,
+                title: String(badge.name_ar || badge.name_en || 'شارة مهنية'),
+                imageUrl: badge.badge_image
+                  ? String(badge.badge_image)
+                  : undefined,
+                courseId: badge.course_id ? String(badge.course_id) : undefined,
+                courseTitle:
+                  badge.course_name_ar || badge.course_name_en
+                    ? String(badge.course_name_ar || badge.course_name_en)
+                    : undefined,
+                track: badge.track ? String(badge.track) : undefined,
+                earnedAt: badge.earned_at ? String(badge.earned_at) : undefined,
+              },
+            ];
+          })
         : cachedDashboard?.badges || [],
     activityDays:
       streakResult.status === 'fulfilled'
@@ -416,7 +397,7 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
     await AsyncStorage.setItem(
       dashboardCacheKey,
       JSON.stringify({
-        version: 2,
+        version: 3,
         savedAt: serverNowMs(),
         dashboard: {...dashboard, courses: dashboard.courses.slice(0, 100)},
       } satisfies LearningDashboardCache),
@@ -425,303 +406,3 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
   assertAccountSessionBoundary(accountBoundary);
   return dashboard;
 };
-
-export type SavedLesson = {
-  id: string;
-  folderId: string;
-  folderName: string;
-  courseId: string;
-  title: string;
-  courseTitle: string;
-  duration: string;
-  imageUrl?: string;
-};
-
-export type SavedLessonsPage = {
-  lessons: SavedLesson[];
-  page: number;
-  hasMore: boolean;
-  total: number;
-  fromCache: boolean;
-};
-
-const savedLessonsCacheKey = (capturedKey?: string) =>
-  capturedKey
-    ? Promise.resolve(capturedKey)
-    : accountScopedStorageKey(SAVED_LESSONS_CACHE_KEY);
-
-const readSavedLessonsCache = async (
-  capturedKey?: string,
-): Promise<SavedLesson[] | null> => {
-  try {
-    const raw = await AsyncStorage.getItem(
-      await savedLessonsCacheKey(capturedKey),
-    );
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as {
-      version?: unknown;
-      savedAt?: unknown;
-      lessons?: unknown;
-    };
-    if (
-      parsed?.version !== 2 ||
-      !isServerTimestampFresh(
-        Number(parsed.savedAt),
-        SAVED_LESSONS_CACHE_TTL_MS,
-      ) ||
-      !Array.isArray(parsed.lessons) ||
-      parsed.lessons.some(
-        lesson =>
-          !isRecord(lesson) ||
-          typeof lesson.id !== 'string' ||
-          lesson.id.length === 0 ||
-          typeof lesson.folderId !== 'string' ||
-          lesson.folderId.length === 0 ||
-          typeof lesson.courseId !== 'string' ||
-          lesson.courseId.length === 0 ||
-          typeof lesson.title !== 'string' ||
-          typeof lesson.courseTitle !== 'string' ||
-          typeof lesson.duration !== 'string',
-      )
-    ) {
-      return null;
-    }
-    return parsed.lessons as SavedLesson[];
-  } catch {
-    return null;
-  }
-};
-
-export const getSavedLessonsPage = async (
-  page = 1,
-  perPage = 20,
-): Promise<SavedLessonsPage> => {
-  const safePage = Math.max(1, Math.floor(page));
-  const safePerPage = Math.min(50, Math.max(1, Math.floor(perPage)));
-  const accountBoundary = await captureAccountSessionBoundary();
-  const capturedCacheKey = await accountScopedStorageKey(
-    SAVED_LESSONS_CACHE_KEY,
-    accountBoundary,
-  );
-  try {
-    const rawData = payload<unknown>(
-      await publicRequest.get('saved-lessons', {
-        params: {page: safePage, per_page: safePerPage},
-      }),
-    );
-    assertAccountSessionBoundary(accountBoundary);
-    if (!isRecord(rawData) || !Array.isArray(rawData.lessons)) {
-      throw new Error('SAVED_LESSONS_CONTRACT_INVALID');
-    }
-    const data = rawData as SavedLessonsPayloadDto;
-    const rawLessons = resourceList<SavedLessonDto>(data.lessons);
-    if (
-      rawLessons.some(lesson => {
-        if (!isApiRecord(lesson)) return true;
-        const lessonId = String(lesson.id ?? '').trim();
-        const courseId = String(
-          lesson.course?.id ?? lesson.course_id ?? '',
-        ).trim();
-        const memberships = resourceList<SavedFolderDto>(
-          lesson.folder_memberships,
-        );
-        const durationSeconds = Number(lesson.duration_seconds);
-        return (
-          !/^\d+$/.test(lessonId) ||
-          !/^\d+$/.test(courseId) ||
-          !String(lesson.title || '').trim() ||
-          !isRecord(lesson.course) ||
-          !String(lesson.course.title || '').trim() ||
-          !String(lesson.image || lesson.course.image || '').trim() ||
-          !Number.isSafeInteger(durationSeconds) ||
-          durationSeconds < 1 ||
-          !isResourceListPayload(lesson.folder_memberships) ||
-          memberships.length === 0 ||
-          memberships.some(
-            folder =>
-              !isApiRecord(folder) ||
-              !/^\d+$/.test(String(folder.id ?? '').trim()) ||
-              !String(folder.name || '').trim(),
-          )
-        );
-      })
-    ) {
-      throw new Error('SAVED_LESSONS_CONTRACT_INVALID');
-    }
-    const lessons = rawLessons.flatMap(
-      lesson => {
-        const courseId = String(
-          lesson.course?.id ?? lesson.course_id ?? '',
-        ).trim();
-        return resourceList<SavedFolderDto>(lesson.folder_memberships)
-          .map(folder => ({
-            id: String(lesson.id),
-            folderId: String(folder.id),
-            folderName: String(folder.name),
-            courseId,
-            title: String(lesson.title),
-            courseTitle: String(lesson.course?.title),
-            duration: (() => {
-              const seconds = Math.max(
-                0,
-                Math.floor(
-                  Number(lesson.duration_seconds) ||
-                    Number(lesson.duration_minutes || 0) * 60,
-                ),
-              );
-              return `${String(Math.floor(seconds / 60)).padStart(
-                2,
-                '0',
-              )}:${String(seconds % 60).padStart(2, '0')}`;
-            })(),
-            imageUrl:
-              lesson.image || lesson.course?.image
-                ? String(lesson.image || lesson.course?.image)
-                : undefined,
-          }));
-      },
-    );
-    const pagination = data?.pagination;
-    if (
-      !isRecord(pagination) ||
-      !Number.isSafeInteger(Number(pagination.current_page)) ||
-      Number(pagination.current_page) < 1 ||
-      !Number.isSafeInteger(Number(pagination.last_page)) ||
-      Number(pagination.last_page) < Number(pagination.current_page)
-    ) {
-      throw new Error('SAVED_LESSONS_CONTRACT_INVALID');
-    }
-    const currentPage = Math.max(
-      1,
-      Number(pagination.current_page ?? safePage) || safePage,
-    );
-    const lastPage = Math.max(
-      currentPage,
-      Number(pagination.last_page ?? currentPage) || currentPage,
-    );
-    if (currentPage === 1) {
-      assertAccountSessionBoundary(accountBoundary);
-      await AsyncStorage.setItem(
-        capturedCacheKey,
-        JSON.stringify({
-          version: 2,
-          savedAt: serverNowMs(),
-          lessons,
-        }),
-      ).catch(() => undefined);
-    }
-    assertAccountSessionBoundary(accountBoundary);
-    return {
-      lessons,
-      page: currentPage,
-      hasMore: currentPage < lastPage,
-      total: Math.max(0, Number(pagination.total ?? lessons.length) || 0),
-      fromCache: false,
-    };
-  } catch (error) {
-    assertAccountSessionBoundary(accountBoundary);
-    // Only page one has an offline snapshot; later-page failures remain errors.
-    const cached =
-      safePage === 1
-        ? await readSavedLessonsCache(capturedCacheKey)
-        : null;
-    if (cached) {
-      assertAccountSessionBoundary(accountBoundary);
-      return {
-        lessons: cached,
-        page: 1,
-        hasMore: false,
-        total: cached.length,
-        fromCache: true,
-      };
-    }
-    throw error;
-  }
-};
-
-/** First-page convenience wrapper. */
-export const getSavedLessons = async (): Promise<SavedLesson[]> =>
-  (await getSavedLessonsPage()).lessons;
-
-const filterSavedLessonsCache = async (
-  keep: (lesson: SavedLesson) => boolean,
-  ownerBoundary?: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
-) => {
-  const accountBoundary =
-    ownerBoundary || (await captureAccountSessionBoundary());
-  const capturedCacheKey = await accountScopedStorageKey(
-    SAVED_LESSONS_CACHE_KEY,
-    accountBoundary,
-  );
-  assertAccountSessionBoundary(accountBoundary);
-  const cached = await readSavedLessonsCache(capturedCacheKey);
-  if (!cached) return;
-  assertAccountSessionBoundary(accountBoundary);
-  await AsyncStorage.setItem(
-    capturedCacheKey,
-    JSON.stringify({
-      version: 2,
-      savedAt: serverNowMs(),
-      lessons: cached.filter(keep),
-    }),
-  );
-  assertAccountSessionBoundary(accountBoundary);
-};
-
-export const removeSavedLessonFromCache = (
-  folderId: string,
-  lessonId: string,
-  ownerBoundary?: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
-) =>
-  filterSavedLessonsCache(
-    lesson => lesson.folderId !== folderId || lesson.id !== lessonId,
-    ownerBoundary,
-  );
-
-export const removeSavedFolderFromCache = (
-  folderId: string,
-  ownerBoundary?: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
-) =>
-  filterSavedLessonsCache(
-    lesson => lesson.folderId !== folderId,
-    ownerBoundary,
-  );
-
-export const removeSavedLessonEverywhereFromCache = (
-  lessonId: string,
-  ownerBoundary?: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
-) =>
-  filterSavedLessonsCache(
-    lesson => lesson.id !== lessonId,
-    ownerBoundary,
-  );
-
-export const deleteSavedLesson = async (folderId: string, lessonId: string) => {
-  const normalizedFolderId = String(folderId).trim();
-  const normalizedLessonId = String(lessonId).trim();
-  if (!/^\d+$/.test(normalizedFolderId) || !/^\d+$/.test(normalizedLessonId)) {
-    throw new Error('INVALID_SAVED_LESSON_ROUTE');
-  }
-  const accountBoundary = await captureAccountSessionBoundary();
-  const response = await publicRequest.delete(
-    `saved-folders/${normalizedFolderId}/lessons/${normalizedLessonId}`,
-  );
-  assertAccountSessionBoundary(accountBoundary);
-  await removeSavedLessonFromCache(
-    normalizedFolderId,
-    normalizedLessonId,
-    accountBoundary,
-  ).catch(() => undefined);
-  assertAccountSessionBoundary(accountBoundary);
-  return response;
-};
-
-export type ProductionLearningCourse = LearningCourse;
-export type ProductionLearningDashboard = LearningDashboard;
-export type ProductionSavedLesson = SavedLesson;
-export type ProductionSavedLessonsPage = SavedLessonsPage;
-export const getCachedProductionLearningDashboard = getCachedLearningDashboard;
-export const getProductionLearningDashboard = getLearningDashboard;
-export const getProductionSavedLessonsPage = getSavedLessonsPage;
-export const getProductionSavedLessons = getSavedLessons;
-export const deleteProductionSavedLesson = deleteSavedLesson;

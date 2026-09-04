@@ -78,16 +78,6 @@ class BunnyService
         );
     }
 
-    private function getFallbackCdnHostname(): ?string
-    {
-        $hostname = $this->validHostname(config('bunny.fallback_cdn_hostname'));
-        if (!$hostname || $hostname === strtolower((string) $this->getCdnHostname())) {
-            return null;
-        }
-
-        return $hostname;
-    }
-
     /**
      * Get the storage zone name
      */
@@ -506,94 +496,6 @@ class BunnyService
     }
 
     /**
-     * Atomically publish a newly uploaded Bunny video for a lesson.
-     *
-     * The old remote object and database pointer stay untouched until the new
-     * object has been created, streamed, and verified. A compare-and-swap
-     * protects concurrent dashboard edits. The superseded object is retained
-     * deliberately; a separate reviewed retention job may remove it later.
-     */
-    public function replaceLessonVideo(Lesson $lesson, UploadedFile $file): bool
-    {
-        if (!$this->isEnabled() || !$lesson->exists) {
-            return false;
-        }
-
-        $oldVideoGuid = $lesson->bunny_video_id
-            ? (string) $lesson->bunny_video_id
-            : null;
-        $newVideoGuid = $this->uploadVerifiedVideo(
-            (string) ($lesson->title ?: 'Rokn lesson') . ' - ' . $lesson->getKey(),
-            $file,
-            $lesson
-        );
-
-        if (!$newVideoGuid) {
-            return false;
-        }
-
-        try {
-            DB::transaction(function () use ($lesson, $oldVideoGuid, $newVideoGuid): void {
-                $lockedLesson = Lesson::query()->lockForUpdate()->findOrFail($lesson->getKey());
-                $currentVideoGuid = $lockedLesson->bunny_video_id
-                    ? (string) $lockedLesson->bunny_video_id
-                    : null;
-
-                if ($currentVideoGuid !== $oldVideoGuid) {
-                    throw new RuntimeException('The lesson video changed while the replacement was uploading.');
-                }
-
-                $this->consumeVideoCleanupCandidate($newVideoGuid);
-
-                $lockedLesson->update([
-                    'bunny_video_id' => $newVideoGuid,
-                    'video_source_type' => 'bunny',
-                    'video_link' => null,
-                ]);
-                LessonMediaState::query()->updateOrCreate(
-                    ['lesson_id' => $lockedLesson->id],
-                    LessonMediaState::resetForGeneration($newVideoGuid)
-                );
-                if ($oldVideoGuid) {
-                    $candidate = $this->queueVideoCleanup(
-                        $oldVideoGuid,
-                        $lockedLesson,
-                        'superseded_video',
-                        168,
-                        true
-                    );
-                    if (!$candidate) {
-                        throw new RuntimeException('Unable to persist superseded video cleanup.');
-                    }
-                }
-            });
-
-            $lesson->forceFill([
-                'bunny_video_id' => $newVideoGuid,
-                'video_source_type' => 'bunny',
-                'video_link' => null,
-            ]);
-        } catch (Throwable $exception) {
-            $this->queueVideoCleanup($newVideoGuid, $lesson, 'publish_race_or_failure', 24, true);
-            Log::warning('Verified Bunny candidate was not published and requires reviewed cleanup', [
-                'lesson_id' => $lesson->getKey(),
-                'video_guid' => $newVideoGuid,
-                'exception' => $exception::class,
-            ]);
-            return false;
-        }
-
-        if ($oldVideoGuid) {
-            Log::info('Superseded Bunny lesson video retained by safety policy', [
-                'lesson_id' => $lesson->getKey(),
-                'video_guid' => $oldVideoGuid,
-            ]);
-        }
-
-        return true;
-    }
-
-    /**
      * Upload and verify a remote video without publishing a database pointer.
      *
      * Controllers use this two-phase primitive so the expensive remote upload
@@ -747,37 +649,6 @@ class BunnyService
         ];
     }
 
-    /**
-     * Issue a signed HLS URL through an independently configured CDN hostname.
-     * This is streaming failover, not an offline/download URL.
-     */
-    public function getFallbackVideo(string $videoGuid): ?array
-    {
-        if (!$this->playbackIsSecurelyConfigured()) {
-            return null;
-        }
-
-        $hostname = $this->getFallbackCdnHostname();
-        if (!$hostname) {
-            return null;
-        }
-
-        $expiresAt = time() + $this->playbackUrlTtlSeconds();
-        $path = "/{$videoGuid}/playlist.m3u8";
-        $directoryPath = "/{$videoGuid}/";
-
-        return [
-            'url' => $this->generateSignedDirectoryUrl(
-                $hostname,
-                $path,
-                $directoryPath,
-                $expiresAt
-            ),
-            'type' => 'hls',
-            'expires_at' => date('c', $expiresAt),
-        ];
-    }
-
     /** Issue a thumbnail URL in the same protected Stream directory. */
     public function getVideoThumbnail(string $videoGuid, string $fileName): ?array
     {
@@ -853,8 +724,7 @@ class BunnyService
 
         $cdnHostname = $this->getCdnHostname();
         if (!$cdnHostname) {
-            // Fallback to default CDN hostname
-            $cdnHostname = "vz-{$this->getLibraryId()}.b-cdn.net";
+            return null;
         }
 
         $expiresAt = time() + max(600, min(7200, $expiresInSeconds));
@@ -1017,7 +887,7 @@ class BunnyService
     public function getVideoDataForLesson(Lesson $lesson): array
     {
         $data = [
-            'video_source_type' => $lesson->video_source_type ?? 'youtube',
+            'video_source_type' => 'bunny',
             'video_link' => null,
             'bunny_video_url' => null,
             'bunny_video_expires_at' => null,
@@ -1035,6 +905,7 @@ class BunnyService
                 !$state
                 || (string) $state->provider_media_id !== (string) $lesson->bunny_video_id
                 || $state->status !== 'ready'
+                || $state->last_reconciled_at === null
                 || $state->integrity_status === 'quarantined'
             ) {
                 return $data;
@@ -1045,9 +916,6 @@ class BunnyService
                 $data['bunny_video_url'] = $signedUrl['url'];
                 $data['bunny_video_expires_at'] = $signedUrl['expires_at'];
             }
-        } else {
-            // YouTube or other external link
-            $data['video_link'] = $lesson->video_link;
         }
 
         return $data;

@@ -79,6 +79,30 @@ final class SocialIdentityGuardService
         }, 3);
     }
 
+    /**
+     * Two different providers can return the same verified email at the same
+     * time. Lock that linking key before looking up or creating its user so a
+     * first login cannot become a transient duplicate-email failure.
+     */
+    public function lockVerifiedEmailLink(string $email): void
+    {
+        $email = strtolower(trim($email));
+        if ($email === '') {
+            throw new \InvalidArgumentException('Verified email is required.');
+        }
+
+        $hash = hash_hmac('sha256', 'verified-email|'.$email, (string) config('app.key'));
+        DB::table('social_identity_guards')->insertOrIgnore([
+            'identity_hash' => $hash,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        SocialIdentityGuard::query()
+            ->where('identity_hash', $hash)
+            ->lockForUpdate()
+            ->firstOrFail();
+    }
+
     private function hash(string $provider, string $providerUserId): string
     {
         return hash_hmac(

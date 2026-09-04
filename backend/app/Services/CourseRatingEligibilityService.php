@@ -28,8 +28,7 @@ final readonly class CourseRatingEligibilityService
     ): array
     {
         if (
-            $course->isNestedCourse()
-            || !$course->isPublishedForLearning()
+            !$course->isPublishedForLearning()
             || !($hasLearningAccess
                 ?? $this->courseAccess->hasLearningAccess((int) $user->id, (int) $course->id))
         ) {

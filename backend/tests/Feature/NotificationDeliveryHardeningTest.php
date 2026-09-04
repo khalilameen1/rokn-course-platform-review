@@ -7,7 +7,6 @@ namespace Tests\Feature;
 use App\Jobs\SendUserPushNotification;
 use App\Models\StudentNotification;
 use App\Models\User;
-use App\Services\FcmNotificationService;
 use App\Services\StudentNotificationPresentationService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Carbon;
@@ -145,37 +144,6 @@ final class NotificationDeliveryHardeningTest extends TestCase
         ]);
         self::assertNull($notification->fresh()->push_sent_at);
         self::assertNotNull($notification->fresh()->push_failed_at);
-    }
-
-    public function test_legacy_push_path_also_preserves_a_token_rotated_in_flight(): void
-    {
-        $user = $this->user('legacy-rotated-push@example.com');
-        $tokenId = $this->token($user, 'legacy-stale-token');
-        $this->fakeUnregisteredResponseAfterRotation(
-            $tokenId,
-            'legacy-fresh-token'
-        );
-        $user->unsetRelation('deviceTokens');
-        self::assertTrue((bool) $user->notifications_status);
-        self::assertSame(1, $user->deviceTokens()->count());
-
-        $result = FcmNotificationService::sendToUserDetailed(
-            $user,
-            'عنوان',
-            'Title',
-            'رسالة',
-            'Message',
-            null,
-            ['notification_type' => 'service_notice']
-        );
-
-        self::assertFalse($result['accepted']);
-        self::assertFalse($result['retryable']);
-        $this->assertDatabaseHas('user_device_tokens', [
-            'id' => $tokenId,
-            'user_id' => $user->id,
-            'device_token' => 'legacy-fresh-token',
-        ]);
     }
 
     private function user(string $email): User

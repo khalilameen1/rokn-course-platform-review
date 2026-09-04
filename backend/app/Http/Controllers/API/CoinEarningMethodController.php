@@ -29,13 +29,10 @@ final class CoinEarningMethodController extends Controller
     {
         // Registration credit is granted automatically during verified social
         // login. It must never appear as a second, manually claimable task.
-        $methods = CoinEarningMethod::active()
-            ->where(function ($query): void {
-                $query->whereNull('action_key')
-                    ->orWhere('action_key', '!=', 'register');
-            })
+        $methods = CoinEarningMethod::learnerTask()
             ->withCount('userEarnings')
-            ->latest()
+            ->orderBy('sort_order')
+            ->orderBy('id')
             ->get()
             ->filter(function (CoinEarningMethod $method): bool {
                 $hasCapacity = $method->total_claim_limit === null
@@ -84,7 +81,6 @@ final class CoinEarningMethodController extends Controller
 
             $method->is_consumed = $claimed;
             $method->task_state = $state;
-            $method->claim_available_at = $attempt?->claim_available_at;
         });
 
         return response()->json([
@@ -106,9 +102,8 @@ final class CoinEarningMethodController extends Controller
         $user = auth('api')->user();
         $actionUrl = $method->resolvedActionUrl();
         if (
-            !$method->isAvailableNow()
+            !$method->isLearnerTask()
             || !$method->hasClaimCapacity()
-            || $method->action_key === 'register'
         ) {
             return $this->error('المهمة غير متاحة', 404, 'task_unavailable');
         }
@@ -183,12 +178,11 @@ final class CoinEarningMethodController extends Controller
         return response()->json([
             'status' => 200,
             'success' => true,
-            'message' => "بدأت المهمة\nعد إلى التطبيق لاستلام المكافأة",
+            'message' => 'المهمة جاهزة',
             'data' => [
                 'attempt_id' => $attempt->public_id,
                 'task_state' => $attempt->claim_available_at?->isFuture() ? 'started' : 'ready_to_claim',
                 'action_url' => $actionUrl,
-                'claim_available_at' => $attempt->claim_available_at?->toIso8601String(),
             ],
         ]);
     }
@@ -200,10 +194,7 @@ final class CoinEarningMethodController extends Controller
         ]);
 
         $user = auth('api')->user();
-        $method = CoinEarningMethod::active()->findOrFail($request->integer('method_id'));
-        if ($method->action_key === 'register') {
-            return $this->error('المهمة غير متاحة', 404, 'task_unavailable');
-        }
+        $method = CoinEarningMethod::learnerTask()->findOrFail($request->integer('method_id'));
         if ($this->tombstones->userHasConsumedMethod($user, $method)) {
             $freshUser = $user->fresh();
             return response()->json([
@@ -213,7 +204,7 @@ final class CoinEarningMethodController extends Controller
                 'data' => [
                     'already_claimed' => true,
                     'earned_amount' => 0,
-                    'new_balance' => (int) $freshUser->wallet_coins,
+                    'new_balance' => $walletService->balances($freshUser)['total'],
                     'task_state' => 'claimed',
                 ],
             ]);
@@ -226,7 +217,7 @@ final class CoinEarningMethodController extends Controller
                 ->exists()
         ) {
             return $this->error(
-                "افتح واتساب من المهمة\nثم أرسل الرسالة الجاهزة",
+                'لم يكتمل ربط واتساب بعد',
                 409,
                 'whatsapp_not_verified'
             );
@@ -262,7 +253,7 @@ final class CoinEarningMethodController extends Controller
                     return [
                         'already_claimed' => true,
                         'earned_amount' => (int) ($earning?->amount ?? $method->coins_amount),
-                        'new_balance' => (int) $user->fresh()->wallet_coins,
+                        'new_balance' => $walletService->balances($user->fresh())['total'],
                     ];
                 }
                 if (!$lockedMethod->hasClaimCapacity()) {
@@ -322,11 +313,11 @@ final class CoinEarningMethodController extends Controller
             $code = $exception->getMessage();
             return $this->error(
                 match ($code) {
-                    'task_not_started' => "ابدأ المهمة أولًا\nثم عد لاستلام المكافأة",
+                    'task_not_started' => 'لم تبدأ المهمة بعد',
                     'task_quota_reached' => 'انتهت مكافآت هذه الحملة',
                     'task_unavailable' => 'هذه المهمة غير متاحة الآن',
                     'reward_balance_full' => "استخدم بعض عملات المكافآت أولًا\nثم استلم هذه المكافأة",
-                    default => 'أكمل المهمة ثم عد لاستلام المكافأة',
+                    default => 'لم تكتمل المهمة بعد',
                 },
                 409,
                 $code

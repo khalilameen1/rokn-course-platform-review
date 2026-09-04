@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\Classification;
 use App\Models\Course;
 use App\Models\Lesson;
-use App\Support\DatabaseCapabilities;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
@@ -24,39 +26,6 @@ final readonly class CourseCatalogueQueryService
     /**
      * @param array<string, mixed> $filters
      */
-    public function cachedCatalogue(array $filters): LengthAwarePaginator
-    {
-        $filters['search'] = $this->canonicalSearchInput($filters['search'] ?? null);
-        $page = $filters['page'] ?? 1;
-        $perPage = $filters['per_page'] ?? 20;
-        $revision = $this->revision();
-        $key = 'courses:' . md5((string) json_encode([
-            'catalog_contract' => 7,
-            'catalog_revision' => $revision,
-            'page' => $page,
-            'per_page' => $perPage,
-            'grade_id' => $filters['grade_id'] ?? null,
-            'type' => $filters['type'] ?? null,
-            'course_type' => $filters['course_type'] ?? null,
-            'search' => $this->normalizedSearchKey($filters['search'] ?? null),
-        ]));
-
-        $build = function () use ($filters, $page, $perPage): LengthAwarePaginator {
-            $courses = $this->orderForDiscovery(
-                $this->applyFilters($this->catalogueQuery(), $filters)
-            )
-                ->paginate((int) $perPage, ['*'], 'page', (int) $page);
-            $this->duration->attachMany($courses->getCollection());
-
-            return $courses;
-        };
-
-        return $this->rememberPaginator($key, $build);
-    }
-
-    /**
-     * @param array<string, mixed> $filters
-     */
     public function mobileCatalogue(array $filters): LengthAwarePaginator
     {
         $filters['search'] = $this->canonicalSearchInput($filters['search'] ?? null);
@@ -64,7 +33,7 @@ final readonly class CourseCatalogueQueryService
         $perPage = (int) ($filters['per_page'] ?? 15);
         $revision = $this->revision();
         $key = 'courses:mobile:' . md5((string) json_encode([
-            'catalog_contract' => 8,
+            'catalog_contract' => 9,
             'catalog_revision' => $revision,
             'page' => $page,
             'per_page' => $perPage,
@@ -90,33 +59,137 @@ final readonly class CourseCatalogueQueryService
             return $courses;
         };
 
-        return $this->rememberPaginator($key, $build);
+        return $this->rememberPage($key, $build);
     }
 
-    /** @param callable():LengthAwarePaginator $build */
-    private function rememberPaginator(string $key, callable $build): LengthAwarePaginator
+    /** @return EloquentCollection<int, Classification> */
+    public function publicClassifications(): EloquentCollection
+    {
+        $revision = $this->revision();
+        $key = "course-classifications:v3:{$revision}";
+        $build = fn (): EloquentCollection => Classification::query()
+            ->whereHas('courses', fn (Builder $courses) => $this->constrainPublic($courses))
+            ->orderBy('home_order')
+            ->orderBy('name_ar')
+            ->orderBy('id')
+            ->get();
+
+        try {
+            $cached = Cache::get($key);
+            if ($cached instanceof EloquentCollection) {
+                return $cached;
+            }
+        } catch (Throwable) {
+            return $build();
+        }
+
+        $buildStarted = false;
+        try {
+            return Cache::lock("lock:{$key}", 10)->block(2, function () use (
+                $key,
+                $build,
+                &$buildStarted
+            ): EloquentCollection {
+                $cached = Cache::get($key);
+                if ($cached instanceof EloquentCollection) {
+                    return $cached;
+                }
+
+                $buildStarted = true;
+                $classifications = $build();
+                try {
+                    Cache::put($key, $classifications, self::CACHE_TTL_SECONDS);
+                } catch (Throwable) {
+                    // The database read is complete; a cache write failure
+                    // must not repeat it.
+                }
+
+                return $classifications;
+            });
+        } catch (Throwable $exception) {
+            if ($buildStarted) {
+                throw $exception;
+            }
+
+            return $build();
+        }
+    }
+
+    /** @param Closure():LengthAwarePaginator $build */
+    public function rememberPage(
+        string $key,
+        Closure $build,
+        int $ttlSeconds = self::CACHE_TTL_SECONDS
+    ): LengthAwarePaginator
     {
         try {
             $cached = Cache::get($key);
             if ($cached instanceof LengthAwarePaginator) {
                 return $cached;
             }
+        } catch (Throwable) {
+            return $build();
+        }
 
-            return Cache::lock("lock:{$key}", 10)->block(3, function () use ($key, $build) {
+        $buildStarted = false;
+        try {
+            return Cache::lock("lock:{$key}", 10)->block(3, function () use (
+                $key,
+                $build,
+                $ttlSeconds,
+                &$buildStarted
+            ) {
                 $cached = Cache::get($key);
                 if ($cached instanceof LengthAwarePaginator) {
                     return $cached;
                 }
 
+                $buildStarted = true;
                 $courses = $build();
-                Cache::put($key, $courses, self::CACHE_TTL_SECONDS);
+                try {
+                    Cache::put($key, $courses, max(1, $ttlSeconds));
+                } catch (Throwable) {
+                    // The database result is already complete. A cache write
+                    // failure must not repeat the full catalogue query.
+                }
 
                 return $courses;
             });
-        } catch (Throwable) {
-            // Redis accelerates discovery; it never owns catalogue availability.
+        } catch (Throwable $exception) {
+            if ($buildStarted) {
+                throw $exception;
+            }
+
             return $build();
         }
+    }
+
+    /**
+     * Read one pagination snapshot without duplicating revision rules in every
+     * catalogue controller.
+     *
+     * @template T
+     * @param Closure():T $read
+     * @return array{changed:bool,revision:int,data:T|null}
+     */
+    public function readStablePage(
+        int $page,
+        ?int $expectedRevision,
+        Closure $read
+    ): array {
+        $revision = $this->revision();
+        if ($page > 1 && $expectedRevision !== null && $expectedRevision !== $revision) {
+            return ['changed' => true, 'revision' => $revision, 'data' => null];
+        }
+
+        $data = $read();
+        $finalRevision = $this->revision();
+
+        return [
+            'changed' => $finalRevision !== $revision,
+            'revision' => $finalRevision,
+            'data' => $finalRevision === $revision ? $data : null,
+        ];
     }
 
     public function revision(): int
@@ -157,10 +230,6 @@ final readonly class CourseCatalogueQueryService
     public function applyPublicContract(Builder $query): Builder
     {
         $query = $this->applyPublicBoundary($query)
-            // BaseCourseResource asks whether a row is nested before exposing
-            // a share URL. Carry that fact in the catalogue query so rendering
-            // hundreds of cards never performs one existence query per card.
-            ->withExists('courseSection')
             ->with([
                 'photo',
                 'coursePath',
@@ -187,7 +256,15 @@ final readonly class CourseCatalogueQueryService
                         ->where('sectionable_type', Lesson::class)
                         ->whereIn(
                             'sectionable_id',
-                            Lesson::query()->select('id')->where('is_opened', true)
+                            Lesson::query()
+                                ->select('id')
+                                ->where('is_opened', true)
+                                ->whereHas('mediaState', function ($states): void {
+                                    $states->where('status', 'ready')
+                                        ->whereNotNull('last_reconciled_at')
+                                        ->where('integrity_status', '<>', 'quarantined')
+                                        ->whereColumn('lesson_media_states.provider_media_id', 'lessons.bunny_video_id');
+                                })
                         );
                 },
             ]);
@@ -201,10 +278,6 @@ final readonly class CourseCatalogueQueryService
      */
     public function withPublicPlanFacts(Builder $query): Builder
     {
-        if (!DatabaseCapabilities::hasTable('course_access_plans')) {
-            return $query;
-        }
-
         return $query
             ->withMin([
                 'accessPlans as catalog_min_price_coins' => fn (Builder $plans) =>
@@ -232,8 +305,6 @@ final readonly class CourseCatalogueQueryService
     private function applyPublicBoundary(Builder $query): Builder
     {
         $query = $query
-            ->whereNull('parent_id')
-            ->whereDoesntHave('courseSection')
             ->visibleInCatalog()
             ->where(function (Builder $identity): void {
                 $identity->where(function (Builder $arabic): void {
@@ -267,23 +338,14 @@ final readonly class CourseCatalogueQueryService
                         $published->where('is_coming_soon', false)
                             ->whereHas('sections');
 
-                        if (DatabaseCapabilities::hasTable('course_access_plans')) {
-                            $published->whereHas(
-                                'accessPlans',
-                                fn (Builder $plans) => $plans->where('is_active', true)
-                            );
-                        }
+                        $published->whereHas(
+                            'accessPlans',
+                            fn (Builder $plans) => $plans->where('is_active', true)
+                        );
                     });
             });
 
         return $query;
-    }
-
-    public function isPubliclyDiscoverable(int $courseId): bool
-    {
-        return $this->constrainPublic(Course::query())
-            ->whereKey($courseId)
-            ->exists();
     }
 
     /** A total order prevents page drift when several courses share a rank. */
@@ -326,21 +388,18 @@ final readonly class CourseCatalogueQueryService
         return $value !== '' ? mb_substr($value, 0, 120) : null;
     }
 
-    private function applySearch(Builder $courses, string $raw): void
+    public function applySearch(Builder $courses, string $raw): Builder
     {
         $normalized = $this->searchNormalizer->normalize($raw);
         if (
             $normalized === ''
-            ||
-            !DatabaseCapabilities::hasColumn('courses', 'search_title_normalized')
-            || !DatabaseCapabilities::hasColumn('courses', 'search_terms_normalized')
         ) {
             $literal = addcslashes($raw, '\\%_');
             $courses->where(function (Builder $names) use ($literal): void {
                 $names->where('name_ar', 'like', "%{$literal}%")
                     ->orWhere('name_en', 'like', "%{$literal}%");
             });
-            return;
+            return $courses;
         }
 
         $tokens = array_values(array_unique(array_filter(
@@ -385,6 +444,13 @@ final readonly class CourseCatalogueQueryService
                 });
             }
         });
+
+        // Keep relevance ordering identical for catalogue search and the
+        // dedicated discovery endpoint before the shared stable tie-breakers.
+        return $courses->orderByRaw(
+            'CASE WHEN search_title_normalized = ? THEN 0 WHEN search_title_normalized LIKE ? THEN 1 ELSE 2 END',
+            [$normalized, $normalized . '%']
+        );
     }
 
     /** @param list<string> $literals @param list<string> $columns */

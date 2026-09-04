@@ -9,10 +9,7 @@ return [
         explode(',', (string) env('SOCIAL_AUTH_PROVIDERS', 'google,tiktok,facebook,apple'))
     )))),
     'recommended_provider' => env('SOCIAL_AUTH_RECOMMENDED_PROVIDER', 'google'),
-    'recommendation_badge' => 'احصل على ٢٠ عملة عند التسجيل لأول مرة',
     'welcome_bonus_coins' => (int) env('WELCOME_BONUS_COINS', 20),
-    'otp_enabled' => false,
-    'password_login_visible' => false,
     'legal_notice_version' => env('LEGAL_NOTICE_VERSION', '2026-08-06'),
     'timeout_seconds' => (int) env('SOCIAL_AUTH_TIMEOUT_SECONDS', 10),
     // Account deletion requires a bearer minted immediately after the learner
@@ -23,9 +20,6 @@ return [
     // key and is used only as HMAC material; raw provider identifiers are never
     // persisted in deleted-account reward tombstones.
     'reward_tombstone_hmac_key' => env('REWARD_TOMBSTONE_HMAC_KEY'),
-    // Temporary compatibility switch for builds that predate PKCE. Keep false
-    // in production and remove once old builds are outside their support window.
-    'allow_legacy_pkce' => (bool) env('SOCIAL_AUTH_ALLOW_LEGACY_PKCE', false),
     // Set this to the externally reachable API prefix when APP_URL or reverse
     // proxy detection cannot generate the exact provider callback URL.
     'public_api_url' => env('SOCIAL_AUTH_PUBLIC_API_URL'),

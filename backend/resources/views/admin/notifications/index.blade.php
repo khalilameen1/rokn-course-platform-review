@@ -22,15 +22,18 @@
                     <td>
                         <div class="notification-campaign-copy">
                             @if($campaign->image_url)<img alt="" src="{{ $campaign->image_url }}">@endif
-                            <div><strong>{{ $campaign->title_ar }}</strong><br><span>{{ $campaign->message_ar }}</span><br><small class="text-muted">{{ $campaign->notification_type }}</small></div>
+                            <div><strong>{{ $campaign->title_ar }}</strong><br><span>{{ $campaign->message_ar }}</span>@if($campaign->action_label_ar)<br><small class="text-muted">زر: {{ $campaign->action_label_ar }}</small>@endif</div>
                         </div>
                     </td>
                     <td>
                         @php($status = $campaign->status ?? 'completed')
                         @php($withdrawn = ($campaign->failure_code ?? null) === 'course_withdrawn_before_delivery')
-                        {{ $withdrawn ? 'لم يُرسل — الكورس غير متاح' : (['scheduled' => 'في موعده', 'queued' => 'في القائمة', 'delivering' => 'جارٍ التوزيع', 'completed' => 'اكتمل', 'failed' => 'تعذّر الإرسال'][$status] ?? $status) }}
-                        @if($status === 'failed' && $campaign->failure_code && !$withdrawn)
-                            <br><small class="text-muted">{{ $campaign->failure_code }}</small>
+                        {{ $withdrawn ? 'لم يُرسل — الكورس غير متاح' : (['scheduled' => 'في موعده', 'queued' => 'في القائمة', 'delivering' => 'جارٍ التوزيع', 'completed' => 'اكتمل', 'failed' => 'تعذّر الإرسال'][$status] ?? 'حالة غير معروفة') }}
+                        @if($status === 'failed' && !$withdrawn)
+                            @php($failureCode = (string) ($campaign->failure_code ?? ''))
+                            <br><small class="text-danger">
+                                {{ str_starts_with($failureCode, 'queue_') ? 'تعذر وضع الحملة في قائمة التنفيذ' : (str_starts_with($failureCode, 'coordinator_') || str_starts_with($failureCode, 'chunk_') ? 'توقف توزيع الحملة قبل اكتماله' : 'لم يكتمل توزيع الحملة') }}
+                            </small>
                         @endif
                     </td>
                     <td>{{ data_get($campaign, 'scheduled_at') ? \App\Support\BusinessClock::format(data_get($campaign, 'scheduled_at')) : ($campaign->queued_at ? \App\Support\BusinessClock::format($campaign->queued_at) : 'الآن') }}</td>
@@ -45,7 +48,20 @@
                         @if(($campaign->push_partial_count ?? 0) > 0)<br><small class="text-warning">جزئي {{ number_format($campaign->push_partial_count) }}</small>@endif
                     </td>
                     <td>{{ number_format($campaign->read_count) }}</td>
-                    <td><code>{{ $campaign->link ?: 'الرئيسية' }}</code></td>
+                    <td>
+                        @php($destination = match (true) {
+                            str_starts_with((string) $campaign->link, 'rokn://wallet') => 'المحفظة',
+                            str_starts_with((string) $campaign->link, 'rokn://profile/certificates') => 'الشهادات',
+                            str_starts_with((string) $campaign->link, 'rokn://profile/portfolio') => 'البرتـفوليو',
+                            str_starts_with((string) $campaign->link, 'rokn://profile/saved') => 'المحفوظات',
+                            str_starts_with((string) $campaign->link, 'rokn://profile') => 'الملف الشخصي',
+                            str_starts_with((string) $campaign->link, 'rokn://support/') => 'الدعم',
+                            str_starts_with((string) $campaign->link, 'rokn://course/') => 'الكورس',
+                            default => 'الرئيسية',
+                        })
+                        {{ $destination }}
+                        <br><small class="text-muted">{{ !empty($campaign->user_ids) ? 'طالب محدد' : (['all' => 'كل الطلاب', 'enrolled' => 'المسجلون في الكورس', 'not_enrolled' => 'غير المسجلين في الكورس'][$campaign->audience] ?? 'جمهور محدد') }}</small>
+                    </td>
                     <td>
                         @if($status === 'failed' && isset($campaign->id))
                             <form method="POST" action="{{ route('admin.notifications.retry', $campaign) }}" onsubmit="const button=this.querySelector('button[type=submit]'); if(button.disabled) return false; button.disabled=true;">

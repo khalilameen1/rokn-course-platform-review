@@ -8,9 +8,6 @@ export type CourseDetailsRouteParams = {
   openPurchase?: boolean;
   purchasePlanCode?: string;
   purchaseCouponCode?: string;
-  coinPrice?: number | null;
-  title?: string;
-  description?: string;
   resumeAfterPreview?: boolean;
   resumeReelId?: string;
 };
@@ -19,13 +16,11 @@ export type ReelsRouteParams = {
   courseId?: string | number;
   reelId?: string | number;
   lessonId?: string | number;
+  projectId?: string | number;
   initialReelIndex?: number;
   initialPositionSeconds?: number;
   preview?: boolean;
   previewCount?: number;
-  coinPrice?: number | null;
-  title?: string;
-  description?: string;
   openCourseChatUpgrade?: boolean;
 };
 
@@ -52,6 +47,7 @@ export type LoginReturnTo =
         courseId: string;
         reelId?: string;
         lessonId?: string;
+        projectId?: string;
         preview?: boolean;
         previewCount?: number;
         openCourseChatUpgrade?: boolean;
@@ -71,7 +67,6 @@ export type LoginRouteParams = {
 };
 
 export type RootStackParamList = {
-  LanguageSelect: undefined;
   Login: LoginRouteParams | undefined;
   EditAccount: undefined;
   Feedback: {sourceScreen?: string; caseId?: string} | undefined;

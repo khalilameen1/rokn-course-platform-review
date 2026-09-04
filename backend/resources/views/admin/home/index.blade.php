@@ -9,23 +9,17 @@
 @section('content')
 
 <div class="admin-page dashboard-container">
-    <!-- Welcome Header -->
-    <div class="welcome-header fade-in-up">
-        <h2>مرحباً بك {{ auth()->user()->name }}</h2>
+    <div class="welcome-header">
+        <h2>التشغيل اليومي</h2>
         <p>حالة ركن الآن</p>
+    </div>
 
-        <!-- Student Platform Link -->
-         <!--
-        <div class="platform-link-container">
-            <a href="{{ route('admin.student-platform') }}" class="student-platform-link">
-                <i class="fa fa-user"></i>
-                <div class="platform-link-text">
-                    <span class="platform-link-title">منصة الطالب</span>
-                    <span class="platform-link-subtitle">عرض رابط المنصة</span>
-                </div>
-            </a>
-        </div>-->
-    </div> 
+    <nav class="dashboard-priority-nav" aria-label="ما يحتاج متابعة">
+        <a href="{{ route('admin.product-operations.index') }}"><strong>حالة النشر</strong><span>فحوص المنتج والكورسات</span></a>
+        <a href="{{ route('admin.playback-operations.index') }}"><strong>الوسائط</strong><span>مشكلات تشغيل الفيديو</span></a>
+        <a href="{{ route('admin.project-submissions.index') }}"><strong>المشاريع</strong><span>المراجعات المنتظرة</span></a>
+        <a href="{{ route('admin.orders.index') }}"><strong>{{ number_format($revenueStats['pending_bills_count']) }} مدفوعات معلقة</strong><span>راجع مسار عمليات الدفع</span></a>
+    </nav>
 
     <!-- Statistics Cards Row -->
     <div class="row mb-4">
@@ -42,21 +36,6 @@
                 </div>
             </div>
         </div>
-<!--
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-4">
-            <div class="stats-card success fade-in-up dashboard-delay-2">
-                <div class="stats-card-body">
-                    <div class="stats-icon success">
-                        <i class="fa fa-clipboard"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="count">{{ \App\Models\ItemList::quiz()->count() }}</h3>
-                        <p>الاختبارات</p>
-                    </div>
-                </div>
-            </div>
-        </div>
--->
         <div class="col-xl-4 col-lg-4 col-md-4 col-sm-6 mb-4">
             <div class="stats-card warning fade-in-up dashboard-delay-3">
                 <div class="stats-card-body">
@@ -86,43 +65,6 @@
                 </div>
             </div>
         </div>
-<!-- {{--
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-4">
-            <div class="stats-card danger fade-in-up dashboard-delay-5">
-                <div class="stats-card-body">
-                    <div class="stats-icon danger">
-                        <i class="fa fa-eye"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="count">
-                            {{ \App\Models\Visitor::where('tenant_id', auth()->user()->tenant_id)->count() }}
-                        </h3>
-                        <p>الزوار</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-       
-
-        <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-4">
-            <div class="stats-card dark fade-in-up dashboard-delay-6">
-                <div class="stats-card-body">
-                    <div class="stats-icon btn-secondary">
-                        <i class="fa fa-question-circle"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="count">
-                            {{ \App\Models\Question::whereHas('itemList', function($query) {
-                                $query->where('tenant_id', auth()->user()->tenant_id);
-                            })->count() }}
-                        </h3>
-                        <p>الأسئلة</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-         --}}
-        -->
     </div>
 
     <!-- Revenue Statistics Section -->
@@ -192,8 +134,8 @@
                     </div>
                     <div class="stats-info">
                         <h3 class="revenue-count">{{ number_format($revenueStats['pending_payments'], 0) }}</h3>
-                        <p>مدفوعات معلقة بكل القنوات</p>
-                        <small class="text-muted">{{ $revenueStats['pending_bills_count'] }} عملية</small>
+                        <p>قيمة EGP معلقة</p>
+                        <small class="text-muted">{{ $revenueStats['pending_bills_count'] }} عملية بكل القنوات</small>
                     </div>
                 </div>
             </div>
@@ -327,6 +269,9 @@
                                     <small class="dashboard-secondary-text">
                                         الشهر الحالي: {{ $course['current_month_buy_count'] }}
                                     </small>
+                                    @if($course['incomplete_orders'])
+                                        <br><small class="text-warning">{{ number_format($course['incomplete_orders']) }} عملية تحتاج ربط الدفتر</small>
+                                    @endif
                                 </td>
                                 <td class="text-center dashboard-course-table__cell">
                                     <strong>{{ $course['total_buy_count'] }}</strong>

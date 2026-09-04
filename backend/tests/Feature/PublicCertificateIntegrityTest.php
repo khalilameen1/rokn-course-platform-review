@@ -13,6 +13,7 @@ use App\Models\Course;
 use App\Models\User;
 use App\Services\PublicPortfolioService;
 use App\Services\CertificateService;
+use App\Support\RoknAppLink;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -37,7 +38,7 @@ final class PublicCertificateIntegrityTest extends TestCase
         [$user, $course, $certificate] = $this->credential();
         $permanentUrl = RoknPublicUrl::certificate((string) $certificate->public_id);
 
-        self::assertSame($permanentUrl, $certificate->portfolio_url);
+        self::assertSame($permanentUrl, RoknPublicUrl::certificate((string) $certificate->public_id));
 
         $certificate->forceFill([
             'public_id' => (string) Str::uuid(),
@@ -46,8 +47,14 @@ final class PublicCertificateIntegrityTest extends TestCase
             'certificate_text_template_key' => 'projects',
             'certificate_text' => 'نص مستبدل',
             'generated_at' => now()->addDay(),
+            'verification_level' => 'reviewed_project',
         ])->save();
-        self::assertSame($permanentUrl, $certificate->fresh()->portfolio_url);
+        $preservedCertificate = $certificate->fresh();
+        self::assertSame(
+            $permanentUrl,
+            RoknPublicUrl::certificate((string) $preservedCertificate->public_id)
+        );
+        self::assertSame('completion', $preservedCertificate->verification_level);
 
         $user->forceFill([
             'name' => 'اسم حالي مختلف',
@@ -65,26 +72,62 @@ final class PublicCertificateIntegrityTest extends TestCase
             ->assertSee('اسم الكورس وقت الإصدار')
             ->assertSee('تقديرًا لإتمام المتطلبات التطبيقية لكورس');
 
-        $payload = (new CertificateResource($certificate->fresh()->load('course')))->resolve();
+        $payload = (new CertificateResource($certificate->fresh()))->resolve();
         self::assertSame('اسم حامل الشهادة', $payload['holder_name']);
         self::assertSame('اسم الكورس وقت الإصدار', $payload['course_name']);
-        self::assertSame('اسم الكورس وقت الإصدار', $payload['course']['name']);
+        self::assertSame((int) $course->id, $payload['course_id']);
+        self::assertArrayNotHasKey('course', $payload);
+        self::assertArrayNotHasKey('certificate_id', $payload);
+        self::assertArrayNotHasKey('download_url', $payload);
+        self::assertArrayNotHasKey('portfolio_url', $payload);
+        self::assertArrayNotHasKey('share_url', $payload);
         self::assertSame('applied', $payload['certificate_text_template_key']);
         self::assertSame(
             'تقديرًا لإتمام المتطلبات التطبيقية لكورس',
             $payload['certificate_text']
         );
         self::assertSame($permanentUrl, $payload['verification_url']);
+        self::assertSame(
+            RoknPublicUrl::certificatePdf((string) $certificate->public_id),
+            $payload['certificate_pdf_url']
+        );
     }
 
-    public function test_legacy_slug_qr_redirects_to_permanent_route_after_slug_changes(): void
+    public function test_active_certificate_downloads_the_issued_artwork_as_pdf(): void
     {
-        [$user, , $certificate] = $this->credential();
-        $user->forceFill(['portfolio_slug' => 'renamed-profile'])->save();
+        [, , $certificate] = $this->credential();
 
-        $this->get('/@old-profile?certificate='.$certificate->public_id)
-            ->assertMovedPermanently()
-            ->assertRedirect(RoknPublicUrl::certificate((string) $certificate->public_id));
+        $response = $this->get('/c/'.$certificate->public_id.'/download')
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+        $cacheControl = (string) $response->headers->get('Cache-Control');
+        self::assertStringContainsString('private', $cacheControl);
+        self::assertStringContainsString('no-store', $cacheControl);
+        self::assertStringContainsString('max-age=0', $cacheControl);
+        self::assertStringStartsWith('%PDF-', $response->getContent());
+    }
+
+    public function test_revoked_certificate_artifact_and_pdf_are_not_downloadable(): void
+    {
+        [, , $certificate] = $this->credential();
+        $certificate->forceFill([
+            'status' => 'revoked',
+            'revoked_at' => now(),
+        ])->save();
+
+        $this->get('/c/'.$certificate->public_id.'/artifact')->assertNotFound();
+        $this->get('/c/'.$certificate->public_id.'/download')->assertNotFound();
+    }
+
+    public function test_certificate_tab_is_a_supported_internal_notification_destination(): void
+    {
+        self::assertSame(
+            'rokn://profile/certificates',
+            RoknAppLink::normalize('rokn://profile/certificates')
+        );
+        self::assertNull(RoknAppLink::normalize('rokn://profile/anything'));
     }
 
     public function test_revoked_credential_is_verification_only_and_uses_snapshots(): void
@@ -110,27 +153,22 @@ final class PublicCertificateIntegrityTest extends TestCase
             ->assertDontSee('اسم كورس جديد');
     }
 
-    public function test_legacy_artifact_does_not_gain_wording_that_was_never_printed(): void
+    public function test_incomplete_snapshot_is_never_published_as_a_credential(): void
     {
         [, , $certificate] = $this->credential();
         \Illuminate\Support\Facades\DB::table('certificates')
             ->where('id', $certificate->id)
-            ->update([
-                'certificate_text_template_key' => null,
-                'certificate_text' => null,
-            ]);
-        config()->set(
-            'certificate.text_templates.completion.text',
-            'نص حي لا يجوز إضافته إلى شهادة قديمة'
+            ->update(['certificate_text' => null]);
+
+        $certificate = $certificate->fresh();
+        self::assertFalse($certificate->hasCompleteCredentialSnapshot());
+        self::assertNull(
+            app(PublicPortfolioService::class)->findCredential(
+                (string) $certificate->public_id
+            )
         );
-
-        $payload = (new CertificateResource($certificate->fresh()->load('course')))->resolve();
-        self::assertNull($payload['certificate_text_template_key']);
-        self::assertNull($payload['certificate_text']);
-
-        $this->get('/c/'.$certificate->public_id)
-            ->assertOk()
-            ->assertDontSee('نص حي لا يجوز إضافته إلى شهادة قديمة');
+        $this->get('/c/'.$certificate->public_id.'/artifact')->assertNotFound();
+        $this->get('/c/'.$certificate->public_id.'/download')->assertNotFound();
     }
 
     public function test_course_certificate_wording_accepts_only_a_complete_approved_choice(): void
@@ -146,12 +184,24 @@ final class PublicCertificateIntegrityTest extends TestCase
             $base + ['certificate_text_template_key' => 'projects'],
             $rules
         )->fails());
+        self::assertFalse(Validator::make(
+            $base + ['certificate_text_template_key' => 'skills'],
+            $rules
+        )->fails());
+        self::assertSame(
+            'تقديرًا لإتمام التدريب المهاري في كورس',
+            config('certificate.text_templates.skills.text')
+        );
         self::assertTrue(Validator::make(
             $base + ['certificate_text_template_key' => ''],
             $rules
         )->errors()->has('certificate_text_template_key'));
         self::assertTrue(Validator::make(
             $base + ['certificate_text_template_key' => 'custom-live-text'],
+            $rules
+        )->errors()->has('certificate_text_template_key'));
+        self::assertTrue(Validator::make(
+            $base,
             $rules
         )->errors()->has('certificate_text_template_key'));
     }
@@ -248,7 +298,11 @@ final class PublicCertificateIntegrityTest extends TestCase
         $course->delete();
 
         self::assertNull(Course::query()->find($course->id));
-        self::assertNotNull($certificate->fresh()->course);
+        self::assertNotNull(Course::withTrashed()->find($course->id));
+        self::assertSame(
+            'اسم الكورس وقت الإصدار',
+            $certificate->fresh()->course_name
+        );
         $this->get('/c/'.$certificate->public_id)
             ->assertOk()
             ->assertSee('اسم الكورس وقت الإصدار');
@@ -286,7 +340,13 @@ final class PublicCertificateIntegrityTest extends TestCase
             'status' => 'active',
             'verification_level' => 'completion',
         ]);
-        Storage::disk('public')->put('certificates/issued.png', 'issued certificate');
+        Storage::disk('public')->put(
+            'certificates/issued.png',
+            base64_decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAQAAAADCAIAAAA7l3MiAAAAFElEQVR4nGP8z8DAwMDAxAADCBYAG8cBBRuqgFoAAAAASUVORK5CYII=',
+                true
+            )
+        );
 
         return [$user, $course, $certificate];
     }

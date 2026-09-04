@@ -13,6 +13,8 @@ namespace App\Auth;
  */
 final class AdminPermissionMatrix
 {
+    public const ACCOUNT_CREDENTIALS = 'account.credentials';
+
     /** @var array<string, list<string>> */
     private const MODERATOR_RULES = [
         'admin.dashboard' => ['GET'],
@@ -21,22 +23,24 @@ final class AdminPermissionMatrix
         'admin.mfa.challenge' => ['GET'],
         'admin.mfa.challenge.verify' => ['POST'],
         'admin.mfa.backup-codes' => ['GET'],
+        'admin.admin_data' => ['GET'],
+        'admin.update_admin_data' => ['POST'],
 
-        // Full course authoring, including pricing tiers and AI contracts.
+        // Course authoring, including the learner-facing plan presentation.
+        // Global AI policy, student operations and finance remain admin-owned.
         'admin.courses.index' => ['GET'],
         'admin.courses.show' => ['GET'],
         'admin.courses.create' => ['GET'],
         'admin.courses.store' => ['POST'],
+        'admin.courses.draft.start' => ['POST'],
         'admin.courses.edit' => ['GET'],
         'admin.courses.update' => ['PUT', 'PATCH'],
         'admin.courses.student-preview' => ['GET'],
         'admin.courses.media-health.probe' => ['POST'],
 
         // Educational content authoring and review workflows.
-        'admin.courses.sections.index' => ['GET'],
         'admin.courses.sections.create' => ['GET'],
         'admin.courses.sections.store' => ['POST'],
-        'admin.courses.sections.show' => ['GET'],
         'admin.courses.sections.edit' => ['GET'],
         'admin.courses.sections.update' => ['PUT', 'PATCH'],
         'admin.courses.sections.destroy' => ['DELETE'],
@@ -58,36 +62,12 @@ final class AdminPermissionMatrix
         'admin.courses.pdfs.reorder' => ['POST'],
         'admin.courses.pdfs.toggle-status' => ['POST'],
         'admin.courses.pdfs.preview' => ['GET'],
-        'admin.attachments.store' => ['POST'],
-        'admin.attachments.destroy' => ['DELETE'],
-        'admin.quizzes.index' => ['GET'],
-        'admin.quizzes.create' => ['GET'],
-        'admin.quizzes.store' => ['POST'],
-        'admin.quizzes.edit' => ['GET'],
-        'admin.quizzes.update' => ['PUT', 'PATCH'],
-        'admin.quizzes.destroy' => ['DELETE'],
-        'admin.quizzes.copy' => ['POST'],
-        'admin.questions.index' => ['GET'],
-        'admin.questions.create' => ['GET'],
-        'admin.questions.store' => ['POST'],
-        'admin.questions.show' => ['GET'],
-        'admin.questions.edit' => ['GET'],
-        'admin.questions.update' => ['PUT', 'PATCH'],
-        'admin.questions.destroy' => ['DELETE'],
-        'admin.lessons.index' => ['GET'],
-        'admin.lessons.create' => ['GET'],
-        'admin.lessons.show' => ['GET'],
-        'admin.lessons.edit' => ['GET'],
-
-        // content.review — inspect learner work and record the human decision.
-        // Financial dashboards and provider operations remain administrator-only.
         'admin.project-submissions.index' => ['GET'],
         'admin.project-submissions.show' => ['GET'],
         'admin.project-submissions.download' => ['GET'],
         'admin.project-submissions.attachments.download' => ['GET'],
         'admin.project-submissions.pass' => ['POST'],
         'admin.project-submissions.reject' => ['POST'],
-
         // Teachers and curriculum reference data belong to course operations.
         'admin.teachers.index' => ['GET'],
         'admin.teachers.create' => ['GET'],
@@ -96,32 +76,15 @@ final class AdminPermissionMatrix
         'admin.teachers.edit' => ['GET'],
         'admin.teachers.update' => ['PUT', 'PATCH'],
         'admin.teachers.deactive' => ['PATCH'],
-        'admin.categories.index' => ['GET'],
-        'admin.grades.index' => ['GET'],
-        'admin.grades.courses' => ['GET'],
-        'admin.classifications.index' => ['GET'],
-        'admin.classifications.create' => ['GET'],
-        'admin.classifications.store' => ['POST'],
-        'admin.classifications.edit' => ['GET'],
-        'admin.classifications.update' => ['PUT', 'PATCH'],
-        'admin.classifications.destroy' => ['DELETE'],
-        'admin.paths.index' => ['GET'],
-        'admin.paths.create' => ['GET'],
-        'admin.paths.store' => ['POST'],
-        'admin.paths.edit' => ['GET'],
-        'admin.paths.update' => ['PUT', 'PATCH'],
-        'admin.paths.destroy' => ['DELETE'],
-        'admin.levels.index' => ['GET'],
     ];
 
     public function allows(?string $role, ?string $routeName, string $method): bool
     {
-        $role = strtolower(trim((string) $role));
-        if ($role === 'admin') {
+        if ($this->isAdministrator($role)) {
             return true;
         }
 
-        if ($role !== 'moderator' || blank($routeName)) {
+        if ($this->normalizedRole($role) !== 'moderator' || blank($routeName)) {
             return false;
         }
 
@@ -135,9 +98,30 @@ final class AdminPermissionMatrix
         return is_array($methods) && in_array($method, $methods, true);
     }
 
+    /**
+     * Credential visibility is deliberately separate from content ownership.
+     * A moderator may maintain an instructor's public profile without gaining
+     * the ability to inspect or replace that instructor's login identity.
+     */
+    public function allowsCapability(?string $role, string $capability): bool
+    {
+        return $capability === self::ACCOUNT_CREDENTIALS
+            && $this->isAdministrator($role);
+    }
+
+    public function isAdministrator(?string $role): bool
+    {
+        return $this->normalizedRole($role) === 'admin';
+    }
+
     /** @return array<string, list<string>> */
     public function moderatorRules(): array
     {
         return self::MODERATOR_RULES;
+    }
+
+    private function normalizedRole(?string $role): string
+    {
+        return strtolower(trim((string) $role));
     }
 }

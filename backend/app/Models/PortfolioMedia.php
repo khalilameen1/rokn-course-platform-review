@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -39,6 +40,11 @@ class PortfolioMedia extends Model
         static::creating(function (PortfolioMedia $media): void {
             if (!$media->public_id) $media->public_id = (string) Str::uuid();
         });
+    }
+
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->whereNull('deletion_lease_id');
     }
 
     public function portfolioItem()

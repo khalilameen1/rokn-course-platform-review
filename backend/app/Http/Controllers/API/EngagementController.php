@@ -23,14 +23,9 @@ final class EngagementController extends Controller
         /** @var User $user */
         $user = auth('api')->user();
         $methods = CoinEarningMethod::query()
-            ->active()
-            ->where(function ($query): void {
-                $query->whereNull('action_key')->orWhere('action_key', '!=', 'register');
-            })
-            // Lead with the current social follow task, matching the familiar
-            // short-drama-app loop: leave, return, then claim.
+            ->learnerTask()
             ->withCount('userEarnings')
-            ->orderByDesc('requires_external_visit')
+            ->orderBy('sort_order')
             ->orderBy('id')
             ->get();
 

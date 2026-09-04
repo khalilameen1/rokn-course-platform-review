@@ -4,6 +4,21 @@ import type {
   CourseLearningData,
   CourseReel,
 } from '../../components/VideoPlayer/types';
+import {courseStepAfterReel} from '../../components/VideoPlayer/courseLearning/sequence';
+import {advanceAfterReel} from '../../components/VideoPlayer/courseLearning/projectProgression';
+
+/**
+ * Locked projects intentionally arrive without their private
+ * content. Once the preceding reel is accepted, refresh that one boundary
+ * before opening it instead of displaying a locally-unlocked empty shell.
+ */
+export const reelCompletionNeedsLearningMapRefresh = (
+  course: CourseLearningData,
+  reel: CourseReel,
+): boolean => {
+  const next = courseStepAfterReel(course, reel)?.step;
+  return next?.type === 'project';
+};
 
 export const buildPlaybackEvidence = (
   reel: Pick<CourseReel, 'playbackSessionId'>,
@@ -25,92 +40,14 @@ export const nextLearningTitle = (
   course: CourseLearningData,
   reel: CourseReel,
 ) => {
-  const moduleIndex = course.modules.findIndex(
-    module => module.id === reel.moduleId,
-  );
-  const module = course.modules[moduleIndex];
-  const reelIndex = module?.reels.findIndex(item => item.id === reel.id) ?? -1;
-  const firstPendingQuiz = (module?.quizzes || []).find(quiz => !quiz.passed);
-  const projects = module?.projects?.length
-    ? module.projects
-    : module?.project
-    ? [module.project]
-    : [];
-  const firstPendingProject = projects.find(project => project.status !== 'passed');
-  return (
-    module?.reels[reelIndex + 1]?.title ||
-    (reelIndex === module?.reels.length - 1
-      ? firstPendingQuiz?.title ||
-        (firstPendingProject
-          ? `مشروع العبور\n${firstPendingProject.title}`
-          : course.modules[moduleIndex + 1]?.reels[0]?.title)
-      : undefined)
-  );
+  const nextStep = courseStepAfterReel(course, reel)?.step;
+  return nextStep?.type === 'reel'
+    ? nextStep.reel.title
+    : nextStep?.project.title;
 };
 
 export const markReelCompleted = (
   course: CourseLearningData,
   reel: CourseReel,
-): CourseLearningData => {
-  const moduleIndex = course.modules.findIndex(
-    module => module.id === reel.moduleId,
-  );
-  const activeModule = course.modules[moduleIndex];
-  const reelIndex = activeModule?.reels.findIndex(item => item.id === reel.id);
-  const projects = activeModule?.projects?.length
-    ? activeModule.projects
-    : activeModule?.project
-    ? [activeModule.project]
-    : [];
-  const unlockFollowingModule =
-    reelIndex === activeModule?.reels.length - 1 &&
-    !projects.length &&
-    !(activeModule?.quizzes || []).length;
-
-  return {
-    ...course,
-    modules: course.modules.map((module, index) => {
-      if (module.id === reel.moduleId) {
-        return {
-          ...module,
-          reels: module.reels.map((item, itemIndex) =>
-            item.id === reel.id
-              ? {...item, isCompleted: true}
-              : itemIndex === reelIndex + 1
-              ? {...item, isLocked: false, lockReason: undefined}
-              : item,
-          ),
-          projects:
-            itemIsLastReel(reelIndex, module.reels.length) &&
-            !(module.quizzes || []).length
-              ? projects.map((project, projectIndex) =>
-                  projectIndex === 0
-                    ? {...project, isLocked: false, lockReason: undefined}
-                    : project,
-                )
-              : module.projects,
-          project:
-            itemIsLastReel(reelIndex, module.reels.length) &&
-            !(module.quizzes || []).length && module.project
-              ? {...module.project, isLocked: false, lockReason: undefined}
-              : module.project,
-        };
-      }
-      if (unlockFollowingModule && index === moduleIndex + 1) {
-        return {
-          ...module,
-          isLocked: false,
-          reels: module.reels.map((item, itemIndex) =>
-            itemIndex === 0
-              ? {...item, isLocked: false, lockReason: undefined}
-              : item,
-          ),
-        };
-      }
-      return module;
-    }),
-  };
-};
-
-const itemIsLastReel = (index: number | undefined, length: number): boolean =>
-  typeof index === 'number' && index >= 0 && index === length - 1;
+  unlockSuccessor = true,
+): CourseLearningData => advanceAfterReel(course, reel, unlockSuccessor);

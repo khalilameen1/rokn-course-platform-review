@@ -31,7 +31,6 @@ final class ProcessInternalSignal implements ShouldQueue
     public static function queueForType(?string $type): string
     {
         return match (trim((string) $type)) {
-            'course.completed.certificate' => (string) config('queue.channels.media', 'media'),
             'financial_anomaly.opened',
             'financial_anomaly.alert_admin',
             'ai_usage.settled',

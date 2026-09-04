@@ -7,13 +7,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Certificate;
 use App\Models\ClientEvent;
-use App\Models\Attachment;
 use App\Models\CoinEarningMethod;
 use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\CourseGrantClaim;
 use App\Models\FinancialAnomaly;
-use App\Models\CourseModule;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\PortfolioItem;
@@ -31,6 +29,7 @@ use App\Jobs\DeliverOutboxEvent;
 use App\Services\ProductionCapabilityService;
 use App\Services\AppReleasePolicyService;
 use App\Services\CourseCatalogueQueryService;
+use App\Services\CourseFinancialLedgerReportService;
 use App\Support\BusinessClock;
 use App\Support\AdminSingletonLock;
 use App\Services\OperationsReadinessService;
@@ -57,6 +56,7 @@ class ProductOperationsController extends Controller
         OperationsReadinessService $operationsReadiness,
         ProductFeatureFlagService $productFeatureFlags,
         PaymentChannelReportService $paymentChannels,
+        CourseFinancialLedgerReportService $financialLedger,
         ProviderOperationalEvidenceService $providerEvidenceService,
         OperationalRuntimeService $operationalRuntime
     ): View
@@ -64,16 +64,7 @@ class ProductOperationsController extends Controller
         [$todayStart, $todayEnd] = BusinessClock::localDayRangeUtc(
             BusinessClock::now()->format('Y-m-d')
         );
-        $courseAllocation = static function ($query): void {
-            $query->financiallyEffective()
-                ->whereIn('payment_method', [
-                    Order::PAYMENT_METHOD_WALLET,
-                    Order::PAYMENT_METHOD_WALLET_COINS,
-                ]);
-        };
-
         $courses = Course::query()
-            ->whereNull('parent_id')
             ->withCount([
                 'sections',
                 'modules',
@@ -86,12 +77,20 @@ class ProductOperationsController extends Controller
                     }),
             ])
             ->withAvg('ratings', 'rating')
-            ->withSum(['orders as total_coins_spent' => $courseAllocation], 'total_coins')
-            ->withSum(['orders as paid_coins_spent' => $courseAllocation], 'paid_coins')
-            ->withSum(['orders as reward_coins_spent' => $courseAllocation], 'reward_coins')
             ->orderByDesc('is_main_course')
             ->orderByDesc('id')
             ->get();
+        $courseCoinSummaries = $financialLedger->courseSummaries(collect($courses->modelKeys()));
+        $courses->each(function (Course $course) use ($courseCoinSummaries): void {
+            $summary = $courseCoinSummaries->get((int) $course->id, []);
+            $course->setAttribute('total_coins_spent', (int) ($summary['total_coins'] ?? 0));
+            $course->setAttribute('paid_coins_spent', (int) ($summary['paid_coins'] ?? 0));
+            $course->setAttribute('reward_coins_spent', (int) ($summary['reward_coins'] ?? 0));
+            $course->setAttribute(
+                'coin_ledger_incomplete_orders',
+                (int) ($summary['incomplete_orders'] ?? 0)
+            );
+        });
 
         $settings = Setting::query()->first() ?? new Setting();
         $capabilityReport = $capabilities->report();
@@ -113,15 +112,8 @@ class ProductOperationsController extends Controller
                     ? 'لا توجد قناة إصدار معلنة'
                     : 'لا توجد نسخة فعالة وصالحة: '.$missingReleaseChannels->implode(' و')),
         ];
-        $legacyPublicAttachments = Attachment::query()
-            ->where('attachable_type', CourseModule::class)
-            ->where(function ($query): void {
-                $query->whereNull('storage_disk')->orWhere('storage_disk', 'public');
-            })
-            ->count();
-
         $readiness = [
-            'hero' => Course::query()->whereNull('parent_id')->where('is_main_course', true)->count() === 1,
+            'hero' => Course::query()->where('is_main_course', true)->count() === 1,
             // Measure the public boundary itself. A published database row can
             // still be hidden or malformed and therefore absent from the app.
             'published_course' => $catalogue->constrainPublic(Course::query())->exists(),
@@ -129,7 +121,6 @@ class ProductOperationsController extends Controller
             'packages' => Package::query()->where('price', '>', 0)->where('coins', '>', 0)->exists(),
             'reward_tasks' => CoinEarningMethod::query()->active()->exists(),
             'support' => filled($settings->support_whatsapp_url),
-            'private_attachments' => $legacyPublicAttachments === 0,
             'external_monitoring' => filled(config('sentry.dsn'))
                 && (bool) config('nightwatch.enabled')
                 && filled(config('nightwatch.token')),
@@ -143,7 +134,11 @@ class ProductOperationsController extends Controller
                         $codes->where('is_grant', true)
                             ->orWhereNotNull('allowed_email_domains');
                     });
-            });
+            })
+            ->get();
+        $grantUpgradeAllocations = $financialLedger->allocationsForOrders(
+            $grantUpgradeOrders
+        );
 
         $hasIntegrityState = Schema::hasTable('lesson_media_states')
             && Schema::hasColumn('lesson_media_states', 'integrity_status');
@@ -207,18 +202,13 @@ class ProductOperationsController extends Controller
                 })
                 ->count(),
             'grant_claims' => CourseGrantClaim::query()->count(),
-            'grant_upgrades' => (clone $grantUpgradeOrders)->count(),
+            'grant_upgrades' => $grantUpgradeOrders->count(),
             'pending_projects' => ProjectSubmission::query()->where('review_status', ProjectSubmission::STATUS_PENDING)->count(),
             'certificates' => $issuedCertificates->count(),
             'certificates_pending' => $pendingCertificates->count(),
             'certificates_revoked' => $revokedCertificates->count(),
             'portfolio_items' => PortfolioItem::query()->count(),
             'notifications' => StudentNotification::query()->count(),
-            'legacy_public_attachments' => $legacyPublicAttachments,
-            'external_attachment_links' => CourseModule::query()
-                ->whereNotNull('attachments_link')
-                ->where('attachments_link', '<>', '')
-                ->count(),
             'media_ready' => $mediaReadyQuery->count(),
             'media_attention' => (clone $mediaAttentionQuery)->count(),
             'playback_sessions_today' => PlaybackSession::query()
@@ -272,6 +262,9 @@ class ProductOperationsController extends Controller
             'course_coins' => (int) $courses->sum('total_coins_spent'),
             'course_paid_coins' => (int) $courses->sum('paid_coins_spent'),
             'course_reward_coins' => (int) $courses->sum('reward_coins_spent'),
+            'course_ledger_incomplete_orders' => (int) $courses->sum(
+                'coin_ledger_incomplete_orders'
+            ),
             'refunds' => Order::query()->whereIn('financial_status', [
                 Order::FINANCIAL_REFUNDED,
                 Order::FINANCIAL_CHARGEBACK,
@@ -279,8 +272,8 @@ class ProductOperationsController extends Controller
                 Order::FINANCIAL_PARTIALLY_RECOVERED,
                 Order::FINANCIAL_REVIEW_REQUIRED,
             ])->count(),
-            'grant_upgrade_paid_coins' => (int) (clone $grantUpgradeOrders)->sum('paid_coins'),
-            'grant_upgrade_reward_coins' => (int) (clone $grantUpgradeOrders)->sum('reward_coins'),
+            'grant_upgrade_paid_coins' => (int) $grantUpgradeAllocations->sum('paid_coins'),
+            'grant_upgrade_reward_coins' => (int) $grantUpgradeAllocations->sum('reward_coins'),
         ];
 
         $playbackOperations = $playbackOperationsService->snapshot(12);

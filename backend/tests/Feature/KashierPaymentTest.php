@@ -109,6 +109,7 @@ class KashierPaymentTest extends TestCase
             $table->string('name_en')->nullable();
             $table->decimal('price', 10, 2)->default(0);
             $table->integer('coins')->default(0);
+            $table->unsignedSmallInteger('sort_order')->default(100);
             $table->boolean('is_active')->default(true);
             $table->boolean('direct_enabled')->default(true);
             $table->timestamps();
@@ -143,6 +144,12 @@ class KashierPaymentTest extends TestCase
             $table->decimal('amount', 10, 2)->default(0);
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('final_amount', 10, 2)->default(0);
+            $table->decimal('gateway_gross_amount', 10, 2)->nullable();
+            $table->decimal('gateway_fee_amount', 10, 2)->nullable();
+            $table->decimal('gateway_net_amount', 10, 2)->nullable();
+            $table->string('gateway_currency', 3)->nullable();
+            $table->string('gateway_settlement_status', 32)->nullable();
+            $table->timestamp('gateway_settled_at')->nullable();
             $table->unsignedInteger('total_coins')->default(0);
             $table->unsignedInteger('paid_coins')->default(0);
             $table->unsignedInteger('reward_coins')->default(0);
@@ -181,6 +188,24 @@ class KashierPaymentTest extends TestCase
             $table->timestamp('occurred_at');
             $table->timestamps();
             $table->unique(['user_id', 'idempotency_key']);
+        });
+
+        Schema::create('order_financial_events', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('order_id');
+            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->string('event_type', 32);
+            $table->string('event_key', 96);
+            $table->string('provider', 32)->nullable();
+            $table->string('external_event_id', 191)->nullable();
+            $table->unsignedInteger('recovered_coins')->default(0);
+            $table->unsignedInteger('unrecovered_coins')->default(0);
+            $table->text('reason')->nullable();
+            $table->json('payload')->nullable();
+            $table->timestamp('occurred_at');
+            $table->timestamps();
+            $table->unique(['order_id', 'event_key']);
+            $table->unique(['provider', 'external_event_id']);
         });
 
         // Paid package acknowledgement is deliberately fail-closed unless
@@ -288,29 +313,6 @@ class KashierPaymentTest extends TestCase
             $table->dateTime('expired_at');
         });
 
-        // Required by User model appends (exam_attempts_count, etc.)
-        Schema::create('exam_attempts', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('quiz_id')->nullable();
-            $table->unsignedBigInteger('course_id')->nullable();
-            $table->unsignedBigInteger('section_id')->nullable();
-            $table->string('attempt_number')->default('1');
-            $table->enum('status', ['in_progress', 'completed', 'abandoned'])->default('in_progress');
-            $table->timestamp('started_at')->useCurrent();
-            $table->timestamp('completed_at')->nullable();
-            $table->integer('time_taken_minutes')->nullable();
-            $table->integer('total_questions')->default(0);
-            $table->integer('answered_questions')->default(0);
-            $table->integer('correct_answers')->default(0);
-            $table->decimal('score_percentage', 5, 2)->nullable();
-            $table->decimal('score_points', 8, 2)->nullable();
-            $table->boolean('is_passed')->default(false);
-            $table->json('exam_data')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
         Schema::create('student_section_progress', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
@@ -337,10 +339,10 @@ class KashierPaymentTest extends TestCase
         Schema::dropIfExists('wallet_credit_lots');
         Schema::dropIfExists('student_notifications');
         Schema::dropIfExists('user_device_tokens');
-        Schema::dropIfExists('exam_attempts');
         Schema::dropIfExists('student_section_progress');
         Schema::dropIfExists('api_tokens');
         Schema::dropIfExists('photos');
+        Schema::dropIfExists('order_financial_events');
         Schema::dropIfExists('wallet_transactions');
         Schema::dropIfExists('orders');
         Schema::dropIfExists('package_user');
@@ -577,6 +579,31 @@ class KashierPaymentTest extends TestCase
         self::assertSame(2, Order::query()->where('user_id', $this->user->id)->count());
     }
 
+    public function test_a_new_same_package_intent_replaces_an_active_reference_absent_at_provider(): void
+    {
+        $pending = $this->createPendingOrder('PKG-ACTIVE-NOT-FOUND');
+        $pending->forceFill([
+            'checkout_request_key' => 'server-original-checkout-key',
+            'checkout_expires_at' => now()->addMinutes(20),
+        ])->save();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([], 404),
+        ]);
+
+        $key = '96e07193-d6a9-4b62-9976-b652b4e4f8a7';
+        $response = $this->actingAs($this->user, 'api')
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+                'idempotency_key' => $key,
+            ]);
+
+        $response->assertOk();
+        self::assertSame(Order::STATUS_CANCELLED, $pending->fresh()->status);
+        self::assertNotSame($pending->order_ref, $response->json('order_ref'));
+        self::assertSame(2, Order::query()->where('user_id', $this->user->id)->count());
+    }
+
     public function test_closing_an_unpaid_provider_checkout_never_treats_the_success_envelope_as_payment(): void
     {
         $order = $this->createPendingOrder('PKG-ABANDON-UNPAID');
@@ -681,6 +708,9 @@ class KashierPaymentTest extends TestCase
             'price' => 250,
             'coins' => 900,
         ]);
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([], 404),
+        ]);
         $response = $this->actingAs($this->user, 'api')
             ->withHeader('Idempotency-Key', '96e07193-d6a9-4b62-9976-b652b4e4f8a7')
             ->postJson('/api/v1/payment/initiate', [
@@ -708,7 +738,7 @@ class KashierPaymentTest extends TestCase
                 ->where('status', Order::STATUS_PENDING)
                 ->count()
         );
-        self::assertSame(Order::STATUS_PENDING, $pending->fresh()->status);
+        self::assertSame(Order::STATUS_CANCELLED, $pending->fresh()->status);
     }
 
     public function test_an_expired_provider_pending_checkout_does_not_monopolize_the_same_package(): void
@@ -732,6 +762,32 @@ class KashierPaymentTest extends TestCase
             ->postJson('/api/v1/payment/initiate', [
                 'package_id' => $this->package->id,
                 'idempotency_key' => '96e07193-d6a9-4b62-9976-b652b4e4f8a7',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('package.id', $this->package->id);
+        self::assertSame(Order::STATUS_CANCELLED, $pending->fresh()->status);
+        self::assertNotSame($pending->order_ref, $response->json('order_ref'));
+        self::assertSame(2, Order::query()->where('user_id', $this->user->id)->count());
+    }
+
+    public function test_an_expired_checkout_does_not_become_a_permanent_lock_during_provider_outage(): void
+    {
+        $pending = $this->createPendingOrder('PKG-EXPIRED-PROVIDER-DOWN');
+        $pending->forceFill([
+            'checkout_request_key' => 'server-original-checkout-key',
+            'checkout_expires_at' => now()->subMinute(),
+        ])->save();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([], 503),
+        ]);
+
+        $key = '96e07193-d6a9-4b62-9976-b652b4e4f8a7';
+        $response = $this->actingAs($this->user, 'api')
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+                'idempotency_key' => $key,
             ]);
 
         $response->assertOk()
@@ -852,7 +908,7 @@ class KashierPaymentTest extends TestCase
         self::assertNotSame($pending->order_ref, $response->json('order_ref'));
     }
 
-    public function test_a_different_package_can_start_while_the_old_package_is_provider_pending(): void
+    public function test_an_expired_unpaid_provider_attempt_does_not_block_a_different_package(): void
     {
         $pending = $this->createPendingOrder('PKG-OTHER-PROVIDER-PENDING');
         $pending->forceFill([
@@ -865,6 +921,14 @@ class KashierPaymentTest extends TestCase
             'price' => 250,
             'coins' => 900,
         ]);
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([
+                'response' => [
+                    'status' => 'PENDING',
+                    'merchantOrderId' => $pending->order_ref,
+                ],
+            ], 200),
+        ]);
 
         $response = $this->actingAs($this->user, 'api')
             ->withHeader('Idempotency-Key', '96e07193-d6a9-4b62-9976-b652b4e4f8a7')
@@ -875,7 +939,7 @@ class KashierPaymentTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('package.id', $otherPackage->id);
-        self::assertSame(Order::STATUS_PENDING, $pending->fresh()->status);
+        self::assertSame(Order::STATUS_CANCELLED, $pending->fresh()->status);
         self::assertSame(2, Order::query()->where('user_id', $this->user->id)->count());
     }
 
@@ -905,6 +969,40 @@ class KashierPaymentTest extends TestCase
             'status' => Order::STATUS_PENDING,
         ]);
         self::assertNotNull(Order::query()->firstOrFail()->checkout_expires_at);
+    }
+
+    public function test_explicit_idempotency_replay_reports_a_completed_checkout_as_paid(): void
+    {
+        $key = '96e07193-d6a9-4b62-9976-b652b4e4f8a7';
+        $payload = [
+            'package_id' => $this->package->id,
+            'idempotency_key' => $key,
+        ];
+
+        $first = $this->actingAs($this->user, 'api')
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/payment/initiate', $payload)
+            ->assertOk();
+        $order = Order::query()->where('order_ref', $first->json('order_ref'))->firstOrFail();
+        app(KashierPaymentService::class)->fulfillOrder($order, 'TXN-IDEMPOTENT-PAID', [
+            'merchantOrderId' => $order->order_ref,
+            'paymentStatus' => 'SUCCESS',
+            'transactionId' => 'TXN-IDEMPOTENT-PAID',
+            'amount' => number_format((float) $order->final_amount, 2, '.', ''),
+            'currency' => 'EGP',
+        ]);
+
+        $this->actingAs($this->user, 'api')
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/payment/initiate', $payload)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('checkout_state', 'paid')
+            ->assertJsonPath('order_ref', $order->order_ref)
+            ->assertJsonPath('transaction_id', 'TXN-IDEMPOTENT-PAID');
+
+        self::assertSame(1, Order::query()->where('user_id', $this->user->id)->count());
+        self::assertSame(self::PACKAGE_COINS, (int) $this->user->fresh()->wallet_coins);
     }
 
    public function test_idempotency_header_and_body_must_match_exactly(): void
@@ -1314,6 +1412,33 @@ class KashierPaymentTest extends TestCase
         ]);
     }
 
+    public function test_signed_notification_without_a_payment_status_cannot_cancel_the_order(): void
+    {
+        $this->createPendingOrder('PKG-MISSING-PAYMENT-STATUS');
+        $params = $this->buildKashierParams('PKG-MISSING-PAYMENT-STATUS', 'SUCCESS');
+        unset($params['paymentStatus'], $params['signature']);
+        $queryString = '';
+        foreach ($params as $key => $value) {
+            $queryString .= "&{$key}={$value}";
+        }
+        $params['signature'] = hash_hmac(
+            'sha256',
+            ltrim($queryString, '&'),
+            self::TEST_API_KEY,
+            false
+        );
+
+        $this->postJson('/payment/webhook', $params)
+            ->assertStatus(202)
+            ->assertJsonPath('message', 'Payment state accepted for reconciliation');
+
+        $this->assertDatabaseHas('orders', [
+            'order_ref' => 'PKG-MISSING-PAYMENT-STATUS',
+            'status' => Order::STATUS_PENDING,
+            'financial_status' => Order::FINANCIAL_PENDING,
+        ]);
+    }
+
     public function test_webhook_is_idempotent_for_already_approved_order(): void
     {
         $order = $this->createPendingOrder();
@@ -1343,6 +1468,31 @@ class KashierPaymentTest extends TestCase
             'order_ref'      => $this->orderRef,
             'transaction_id' => 'TXN-FIRST',
         ]);
+    }
+
+    public function test_settled_replay_without_transaction_id_keeps_the_original_settlement(): void
+    {
+        $order = $this->createPendingOrder('PKG-SETTLED-SPARSE-REPLAY');
+        $payments = app(KashierPaymentService::class);
+        $settled = $payments->fulfillOrder($order, 'TXN-ORIGINAL-SPARSE', [
+            'merchantOrderId' => $order->order_ref,
+            'paymentStatus' => 'SUCCESS',
+            'transactionId' => 'TXN-ORIGINAL-SPARSE',
+            'amount' => number_format(self::PACKAGE_PRICE, 2, '.', ''),
+            'currency' => 'EGP',
+        ]);
+
+        $replayed = $payments->fulfillOrder($settled, null, [
+            'merchantOrderId' => $order->order_ref,
+            'paymentStatus' => 'SUCCESS',
+            'amount' => number_format(self::PACKAGE_PRICE, 2, '.', ''),
+            'currency' => 'EGP',
+        ]);
+
+        self::assertTrue($replayed->isFinanciallyEffective());
+        self::assertSame('TXN-ORIGINAL-SPARSE', $replayed->transaction_id);
+        self::assertSame(self::PACKAGE_COINS, (int) $this->user->fresh()->wallet_coins);
+        self::assertSame(1, \DB::table('wallet_transactions')->where('category', 'package_purchase')->count());
     }
 
     public function test_provider_credentials_and_card_tokens_are_not_stored_with_the_order(): void
@@ -1510,11 +1660,11 @@ class KashierPaymentTest extends TestCase
         self::assertSame(1, \DB::table('package_user')->count());
     }
 
-   public function test_success_without_a_transaction_id_is_not_fulfilled(): void
+    public function test_success_without_a_transaction_id_is_not_fulfilled(): void
     {
         $order = $this->createPendingOrder();
         Http::fake([
-            'test-api.kashier.io/*' => Http::response([
+            'https://test-api.kashier.io/*' => Http::response([
                 'response' => ['status' => 'CAPTURED'],
             ], 200),
         ]);
@@ -1534,6 +1684,60 @@ class KashierPaymentTest extends TestCase
         self::assertSame(0, \DB::table('wallet_transactions')->count());
     }
 
+    public function test_reconciliation_can_finish_a_capture_after_transaction_identity_arrives(): void
+    {
+        $order = $this->createPendingOrder('PKG-RECOVER-IDENTITY');
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::sequence()
+                ->push([
+                    'response' => ['status' => 'CAPTURED'],
+                ], 200)
+                ->push([
+                    'response' => [
+                        'status' => 'CAPTURED',
+                        'transactionId' => 'TXN-RECOVERED-LATER',
+                        'merchantOrderId' => $order->order_ref,
+                        'amount' => self::PACKAGE_PRICE,
+                        'currency' => 'EGP',
+                    ],
+                ], 200),
+        ]);
+        $params = $this->buildKashierParams($order->order_ref, 'SUCCESS', '');
+
+        $this->postJson('/payment/webhook', $params)
+            ->assertOk()
+            ->assertJsonPath('message', 'Payment capture queued for review');
+
+        $this->actingAs($this->user, 'api')
+            ->postJson("/api/v1/payment/reconcile/{$order->order_ref}")
+            ->assertOk()
+            ->assertJsonPath('data.status', Order::STATUS_APPROVED)
+            ->assertJsonPath('data.financial_status', Order::FINANCIAL_SETTLED);
+
+        self::assertSame(self::PACKAGE_COINS, (int) $this->user->fresh()->wallet_coins);
+        self::assertSame(1, \DB::table('wallet_transactions')->count());
+    }
+
+    public function test_a_signed_failure_cannot_quarantine_an_already_settled_capture(): void
+    {
+        $order = $this->createPendingOrder('PKG-SETTLED-THEN-FAILURE');
+        $success = $this->buildKashierParams($order->order_ref, 'SUCCESS', 'TXN-SETTLED');
+        $this->postJson('/payment/webhook', $success)->assertOk();
+
+        $failure = $this->buildKashierParams($order->order_ref, 'FAILURE', 'TXN-FAILED-ATTEMPT');
+        $this->postJson('/payment/webhook', $failure)
+            ->assertOk()
+            ->assertJsonPath('message', 'Already processed');
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => Order::STATUS_APPROVED,
+            'financial_status' => Order::FINANCIAL_SETTLED,
+            'transaction_id' => 'TXN-SETTLED',
+        ]);
+        self::assertSame(self::PACKAGE_COINS, (int) $this->user->fresh()->wallet_coins);
+    }
+
    public function test_order_api_verification_rejects_unsafe_references_before_http(): void
     {
         Http::fake();
@@ -1549,7 +1753,7 @@ class KashierPaymentTest extends TestCase
     {
         $order = $this->createPendingOrder();
         Http::fake([
-            'test-api.kashier.io/*' => Http::response([
+            'https://test-api.kashier.io/*' => Http::response([
                 'response' => [
                     'status' => 'CAPTURED',
                     'transactionId' => 'TXN-RECOVERED-BY-API',
@@ -1656,7 +1860,7 @@ class KashierPaymentTest extends TestCase
     {
         $this->createPendingOrder();
         Http::fake([
-            'test-api.kashier.io/*' => Http::response([
+            'https://test-api.kashier.io/*' => Http::response([
                 'response' => ['status' => 'PENDING'],
             ], 200),
         ]);
@@ -1684,6 +1888,31 @@ class KashierPaymentTest extends TestCase
             ->assertJsonPath('financial_status', Order::FINANCIAL_PENDING);
 
         self::assertSame(Order::STATUS_PENDING, $order->fresh()->status);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+        self::assertSame(0, \Illuminate\Support\Facades\DB::table('wallet_transactions')->count());
+    }
+
+    public function test_explicit_reconciliation_closes_a_provider_reversed_attempt(): void
+    {
+        $order = $this->createPendingOrder('PKG-POLL-REVERSED');
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([
+                'response' => [
+                    'status' => 'REFUNDED',
+                    'transactionId' => 'TXN-POLL-REVERSED',
+                    'merchantOrderId' => $order->order_ref,
+                    'amount' => self::PACKAGE_PRICE,
+                    'currency' => 'EGP',
+                ],
+            ], 200),
+        ]);
+
+        $this->actingAs($this->user, 'api')
+            ->postJson("/api/v1/payment/reconcile/{$order->order_ref}")
+            ->assertOk()
+            ->assertJsonPath('status', Order::STATUS_CANCELLED)
+            ->assertJsonPath('financial_status', Order::FINANCIAL_REFUNDED);
+
         self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
         self::assertSame(0, \Illuminate\Support\Facades\DB::table('wallet_transactions')->count());
     }

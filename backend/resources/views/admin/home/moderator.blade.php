@@ -10,9 +10,9 @@
 <div class="admin-page moderator-workspace">
     <header class="moderator-workspace__hero">
         <div>
-            <span class="moderator-workspace__eyebrow">مساحة فريق المحتوى</span>
-            <h1>ابنِ الكورس كما سيراه الطالب</h1>
-            <p>افتح أي كورس، عدّل بياناته، ونظّم وحداته ودروسه من استوديو واحد.</p>
+            <span class="moderator-workspace__eyebrow">مساحة المحتوى</span>
+            <h1>الكورسات</h1>
+            <p>ابدأ بما يحتاج إكمالًا ثم راجع المعاينة قبل النشر</p>
         </div>
         <a href="{{ route('admin.courses.create') }}" class="moderator-workspace__create">
             <i class="fa fa-plus" aria-hidden="true"></i>
@@ -27,10 +27,20 @@
         <div><strong>{{ number_format($contentSummary['published']) }}</strong><span>منشور</span></div>
     </section>
 
+    @php
+        $coursesNeedingAttention = $courses->getCollection()->filter(function ($course) use ($publishingAudits) {
+            $audit = $publishingAudits->get($course->id);
+            return $course->is_coming_soon && $audit && !$audit['ready'];
+        });
+        $orderedCourses = $coursesNeedingAttention->concat(
+            $courses->getCollection()->reject(fn ($course) => $coursesNeedingAttention->contains('id', $course->id))
+        );
+    @endphp
+
     <div class="moderator-workspace__section-heading">
         <div>
-            <h2>الكورسات</h2>
-            <p>مرتبة حسب آخر تعديل، مثل قائمة الفيديوهات في استوديو المحتوى.</p>
+            <h2>{{ $coursesNeedingAttention->isNotEmpty() ? 'يحتاج تدخلًا الآن' : 'آخر الكورسات تعديلًا' }}</h2>
+            <p>{{ $coursesNeedingAttention->isNotEmpty() ? $coursesNeedingAttention->count().' كورسات لم تكتمل جاهزيتها للنشر' : 'لا توجد مسودات ناقصة في هذه الصفحة' }}</p>
         </div>
         <a href="{{ route('admin.courses.index') }}">عرض القائمة الكاملة</a>
     </div>
@@ -44,11 +54,10 @@
         </section>
     @else
         <section class="moderator-course-list" aria-label="قائمة الكورسات">
-            @foreach($courses as $course)
+            @foreach($orderedCourses as $course)
                 @php
                     $audit = $publishingAudits->get($course->id);
                     $courseTitle = trim((string) ($course->name_ar ?: $course->name_en)) ?: 'كورس بلا عنوان';
-                    $courseDescription = trim((string) ($course->description_ar ?: $course->description_en)) ?: 'أضف وصفًا واضحًا للكورس ليظهر للطالب.';
                 @endphp
                 <article class="moderator-course-row">
                     <a class="moderator-course-row__cover" href="{{ route('admin.courses.show', $course) }}" aria-label="فتح استوديو {{ $courseTitle }}">
@@ -69,7 +78,6 @@
                                 <span class="moderator-status moderator-status--draft">مسودة</span>
                             @endif
                         </div>
-                        <p>{{ Illuminate\Support\Str::limit($courseDescription, 120) }}</p>
                         <div class="moderator-course-row__meta">
                             <span><i class="fa fa-list-alt" aria-hidden="true"></i> {{ $course->modules_count }} وحدات</span>
                             <span><i class="fa fa-play-circle" aria-hidden="true"></i> {{ $course->sections_count }} عناصر</span>
@@ -86,7 +94,6 @@
                         <a class="moderator-course-row__primary" href="{{ route('admin.courses.show', $course) }}">
                             فتح الاستوديو
                         </a>
-                        <a href="{{ route('admin.courses.edit', $course) }}">الإعدادات</a>
                     </div>
                 </article>
             @endforeach

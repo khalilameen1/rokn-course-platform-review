@@ -1,4 +1,9 @@
 import {publicRequest} from '../../constants/api';
+import {
+  assertAccountSessionBoundary,
+  captureAccountSessionBoundary,
+  type AccountSessionBoundary,
+} from '../../constants/helpers';
 import {mapNotification} from '../notificationMapper';
 import type {Notification} from '../notificationMapper';
 import {
@@ -10,7 +15,7 @@ import {
   responseEnvelope,
 } from './common';
 
-export type {Notification, ProductionNotification} from '../notificationMapper';
+export type {Notification} from '../notificationMapper';
 
 export type NotificationsPage = {
   notifications: Notification[];
@@ -49,7 +54,8 @@ const mapNotificationContract = (value: unknown): Notification => {
     mapped.id !== id ||
     !mapped.title.trim() ||
     !mapped.description.trim() ||
-    !mapped.createdAt
+    !mapped.createdAt ||
+    Boolean(mapped.link) !== Boolean(mapped.actionLabel.trim())
   ) {
     throw new Error('NOTIFICATIONS_CONTRACT_INVALID');
   }
@@ -73,12 +79,16 @@ export const getNotificationsPage = async ({
   perPage = 30,
   cursor,
   signal,
+  ownerBoundary,
 }: {
   page?: number;
   perPage?: number;
   cursor?: string | null;
   signal?: AbortSignal;
+  ownerBoundary?: AccountSessionBoundary;
 } = {}): Promise<NotificationsPage> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const response = await publicRequest.get('notifications', {
     signal,
     params: {
@@ -88,6 +98,7 @@ export const getNotificationsPage = async ({
       ...(cursor ? {cursor} : {}),
     },
   });
+  assertAccountSessionBoundary(boundary);
   const data = payload<NotificationsPayloadDto | NotificationDto[]>(response);
   if (!isResourceListPayload(data)) {
     throw new Error('NOTIFICATIONS_CONTRACT_INVALID');
@@ -113,6 +124,13 @@ export const getNotificationsPage = async ({
   // notification unreachable forever. Reject the page so the screen keeps its
   // last-known-good inbox and retries the same cursor.
   const notifications = items.map(mapNotificationContract);
+  if (
+    new Set(notifications.map(item => item.id)).size !== notifications.length
+  ) {
+    // Accepting a duplicate row would produce two cards for one mutation and
+    // make cursor continuation ambiguous. Keep the last good inbox instead.
+    throw new Error('NOTIFICATIONS_CONTRACT_INVALID');
+  }
   const hasMore =
     firstBoolean(pagination.has_more_pages) ??
     (Number.isSafeInteger(Number(pagination.last_page)) &&
@@ -124,6 +142,7 @@ export const getNotificationsPage = async ({
   if (hasMore && !nextCursor) {
     throw new Error('NOTIFICATIONS_PAGINATION_CONTRACT_INVALID');
   }
+  assertAccountSessionBoundary(boundary);
   return {
     notifications,
     page: currentPage,
@@ -132,15 +151,23 @@ export const getNotificationsPage = async ({
   };
 };
 
-export const getNotifications = async (): Promise<Notification[]> =>
-  (await getNotificationsPage()).notifications;
+export const getNotifications = async (
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<Notification[]> =>
+  (await getNotificationsPage({ownerBoundary})).notifications;
 
-export const getNotification = async (id: string): Promise<Notification> => {
+export const getNotification = async (
+  id: string,
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<Notification> => {
   const normalizedId = String(id || '').trim();
   if (!/^\d+$/.test(normalizedId)) {
     throw new Error('INVALID_NOTIFICATION_ID');
   }
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const response = await publicRequest.get(`notifications/${normalizedId}`);
+  assertAccountSessionBoundary(boundary);
   const data = payload<unknown>(response);
   const item = isApiRecord(data)
     ? isApiRecord(data.data)
@@ -151,22 +178,34 @@ export const getNotification = async (id: string): Promise<Notification> => {
   if (String(item.id ?? '').trim() !== normalizedId) {
     throw new Error('NOTIFICATION_NOT_FOUND');
   }
-  return mapNotificationContract(item);
+  const notification = mapNotificationContract(item);
+  assertAccountSessionBoundary(boundary);
+  return notification;
 };
 
-export const markNotificationRead = (id: string) => {
+export const markNotificationRead = async (
+  id: string,
+  ownerBoundary?: AccountSessionBoundary,
+) => {
   const normalizedId = String(id || '').trim();
   if (!/^\d+$/.test(normalizedId)) {
-    return Promise.reject(new Error('INVALID_NOTIFICATION_ID'));
+    throw new Error('INVALID_NOTIFICATION_ID');
   }
-  return publicRequest.post(`notifications/${normalizedId}/mark-read`);
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
+  const response = await publicRequest.post(
+    `notifications/${normalizedId}/mark-read`,
+  );
+  assertAccountSessionBoundary(boundary);
+  return response;
 };
 
-export const markAllNotificationsRead = () =>
-  publicRequest.post('notifications/mark-all-read');
-
-export type ProductionNotificationsPage = NotificationsPage;
-export const getProductionNotificationsPage = getNotificationsPage;
-export const getProductionNotifications = getNotifications;
-export const markProductionNotificationRead = markNotificationRead;
-export const markAllProductionNotificationsRead = markAllNotificationsRead;
+export const markAllNotificationsRead = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
+  const response = await publicRequest.post('notifications/mark-all-read');
+  assertAccountSessionBoundary(boundary);
+  return response;
+};

@@ -2,7 +2,10 @@ const mockGetItem = jest.fn(async (_key: string): Promise<any> => null);
 const mockSaveItem = jest.fn(async (_key: string, _value: unknown) => true);
 const mockRemoveItem = jest.fn(async (_key: string) => true);
 const mockPost = jest.fn(async (_url: string, _body: unknown) => ({data: {}}));
-const mockDelete = jest.fn(async (_url: string, _config: unknown) => ({data: {}}));
+const mockDelete = jest.fn(async (_url: string, _config: unknown) => ({
+  data: {},
+}));
+const mockGet = jest.fn(async (_url: string) => ({data: {}}));
 const mockGetPermissions = jest.fn();
 const mockRequestPermissions = jest.fn();
 const mockGetDeviceToken = jest.fn();
@@ -74,9 +77,17 @@ jest.mock('../src/constants/helpers', () => ({
 
 jest.mock('../src/constants/api', () => ({
   publicRequest: {
+    get: (url: string) => mockGet(url),
     post: (url: string, body: unknown) => mockPost(url, body),
     delete: (url: string, config: unknown) => mockDelete(url, config),
   },
+}));
+
+jest.mock('../src/services/secureSession', () => ({
+  peekSecureSession: () => ({
+    ready: true,
+    session: {api_token: 'session-token'},
+  }),
 }));
 
 jest.mock('../src/navigation/RootNavigationHelper', () => ({
@@ -243,10 +254,14 @@ describe('push notification opt-in', () => {
     reactNative.NativeModules.RoknPushTokens = module;
   });
 
-  it('opens the relative course links emitted by the backend inside the app', async () => {
+  it('opens a local reminder destination inside the app', async () => {
     await openNotificationLink({
       notification: {
-        request: {content: {data: {link: '/courses/42'}}},
+        request: {
+          content: {
+            data: {rokn_reminder_id: 'rokn-local-42', link: '/course/42'},
+          },
+        },
       },
     } as any);
 
@@ -261,6 +276,7 @@ describe('push notification opt-in', () => {
         request: {
           content: {
             data: {
+              rokn_reminder_id: 'rokn-local-72',
               notification_type: 'enrolled_stalled',
               course_id: '72',
             },
@@ -274,7 +290,7 @@ describe('push notification opt-in', () => {
     });
   });
 
-  it('ignores arbitrary external links supplied in a push payload', async () => {
+  it('opens the owned inbox instead of trusting an id-less remote payload', async () => {
     await openNotificationLink({
       notification: {
         request: {
@@ -283,8 +299,43 @@ describe('push notification opt-in', () => {
       },
     } as any);
 
-    expect(mockNavigate).toHaveBeenCalledWith('Home', undefined);
+    expect(mockNavigate).toHaveBeenCalledWith('Notifications');
     expect(mockOpenUrl).not.toHaveBeenCalled();
+  });
+
+  it('uses the fetched delivery destination for an id-backed push', async () => {
+    mockGetItem.mockImplementation(async (key: string) =>
+      key === 'USER_DATA' ? {api_token: 'session-token'} : null,
+    );
+    mockGet.mockResolvedValue({
+      data: {
+        data: {
+          id: 9,
+          notification_type: 'new_course',
+          title_ar: 'كورس جديد',
+          message_ar: 'شاهد التفاصيل',
+          action_label_ar: 'افتح الكورس',
+          link: '/course/42',
+          is_read: false,
+          created_at: '2026-09-04T10:00:00+03:00',
+        },
+      },
+    });
+
+    await openNotificationLink({
+      actionIdentifier: 'default',
+      notification: {
+        request: {
+          identifier: 'notification-9',
+          content: {data: {notification_id: '9', course_id: '77'}},
+        },
+      },
+    } as any);
+
+    expect(mockGet).toHaveBeenCalledWith('notifications/9');
+    expect(mockNavigate).toHaveBeenCalledWith('CourseDetails', {
+      courseId: '42',
+    });
   });
 
   it('does not deduplicate a notification tap across two accounts', async () => {
@@ -293,7 +344,9 @@ describe('push notification opt-in', () => {
       notification: {
         request: {
           identifier: 'same-native-id',
-          content: {data: {link: '/courses/42'}},
+          content: {
+            data: {rokn_reminder_id: 'rokn-local-42', link: '/course/42'},
+          },
         },
       },
     } as any;

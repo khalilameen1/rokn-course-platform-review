@@ -78,7 +78,6 @@
             <data android:path="/wallet" />
             <data android:pathPrefix="/support/" />
             <data android:pathPrefix="/course/" />
-            <data android:pathPrefix="/courses/" />
         </intent-filter>
         <intent-filter android:autoVerify="true">
             <action android:name="android.intent.action.VIEW" />
@@ -91,7 +90,6 @@
             <data android:path="/wallet" />
             <data android:pathPrefix="/support/" />
             <data android:pathPrefix="/course/" />
-            <data android:pathPrefix="/courses/" />
         </intent-filter>
       </activity>
       <activity

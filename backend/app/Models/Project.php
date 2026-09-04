@@ -14,13 +14,9 @@ class Project extends Model
         'requirements_text',
         'requirements_text_ar',
         'requirements_text_en',
-        'ai_prompt',
-        'ai_model_type',
-        'temperature',
-        'tokens_number',
-        'passing_score',
         'fallback_review_delay_seconds',
         'is_graduation_project',
+        'submission_text_enabled',
         'submission_max_files',
         'submission_allowed_mime_types',
     ];
@@ -51,9 +47,7 @@ class Project extends Model
 
     protected $casts = [
         'is_graduation_project' => 'boolean',
-        'passing_score' => 'integer',
-        'temperature' => 'float',
-        'tokens_number' => 'integer',
+        'submission_text_enabled' => 'boolean',
         'fallback_review_delay_seconds' => 'integer',
         'submission_max_files' => 'integer',
         'submission_allowed_mime_types' => 'array',
@@ -67,26 +61,15 @@ class Project extends Model
         return $this->morphOne(CourseSection::class, 'sectionable');
     }
 
-    /**
-     * Get all evaluations for this project.
-     */
-    public function evaluations()
-    {
-        return $this->hasMany(UserProjectEvaluation::class);
-    }
-
     public function submissions()
     {
         return $this->hasMany(ProjectSubmission::class);
     }
 
-    /**
-     * Get evaluation for a specific user.
-     */
-    public function evaluationForUser(int $userId)
+    public function latestSubmissionForUser(int $userId): ?ProjectSubmission
     {
         return app(\App\Services\CourseRevisionLearnerReadService::class)
-            ->projectEvaluations($userId, [(int) $this->id])
+            ->projectSubmissions($userId, [(int) $this->id])
             ->get((int) $this->id);
     }
 
@@ -95,8 +78,9 @@ class Project extends Model
      */
     public function userPassed(int $userId): bool
     {
-        $evaluation = $this->evaluationForUser($userId);
-        return $evaluation && $evaluation->passed;
+        return app(\App\Services\CourseRevisionLearnerReadService::class)
+            ->passedProjectIds($userId, [(int) $this->id])
+            ->contains((int) $this->id);
     }
 
     /**

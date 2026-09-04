@@ -6,9 +6,9 @@ namespace App\Services;
 
 use App\Jobs\SendStudentNotification;
 use App\Models\NotificationCampaign;
+use App\Models\StudentNotification;
 use App\Support\DurableJobDispatch;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final class NotificationCampaignService
@@ -31,10 +31,12 @@ final class NotificationCampaignService
         ?string $imageUrl = null,
         ?string $actionLabelAr = null,
         ?string $actionLabelEn = null,
-        ?\DateTimeInterface $scheduledAt = null
+        ?\DateTimeInterface $scheduledAt = null,
+        ?int $authoredBy = null
     ): bool {
         $userIds = $this->normalizeUserIds($userIds);
         $excludeUserIds = $this->normalizeUserIds($excludeUserIds);
+        $this->validateAudienceSelector($userIds, $excludeUserIds, $courseId, $audience);
         $deliveryKey = trim($deliveryKey);
         if ($deliveryKey === '') {
             $deliveryKey = (string) Str::uuid();
@@ -42,38 +44,29 @@ final class NotificationCampaignService
             $deliveryKey = hash('sha256', $deliveryKey);
         }
 
-        $job = new SendStudentNotification(
-            $notificationType,
-            $userIds,
-            $notifiableType,
-            $notifiableId,
-            $titleAr,
-            $titleEn,
-            $messageAr,
-            $messageEn,
-            $link,
-            $excludeUserIds,
-            $deliveryKey,
-            $courseId,
-            $audience,
-            $imageUrl,
-            $actionLabelAr,
-            $actionLabelEn
+        $hasExplicitImage = trim((string) $imageUrl) !== '';
+        $presentation = app(StudentNotificationPresentationService::class)->for(
+            new StudentNotification([
+                'notification_type' => $notificationType,
+                'notifiable_type' => $notifiableType,
+                'notifiable_id' => $notifiableId,
+                'link' => $link,
+                'image_url' => $imageUrl,
+                'action_label_ar' => $actionLabelAr,
+                'action_label_en' => $actionLabelEn,
+            ])
         );
-
-        if (!Schema::hasTable('notification_campaigns')) {
-            DurableJobDispatch::now($job);
-            return true;
-        }
+        $link = $presentation['link'];
+        $imageUrl = $presentation['image_url'];
+        $actionLabelAr = $presentation['action_label_ar'];
+        $actionLabelEn = $presentation['action_label_en'];
 
         $requestedAt = $scheduledAt
             ? \Illuminate\Support\Carbon::instance($scheduledAt)->utc()
             : now();
         $allowedAt = NotificationDeliveryPolicy::nextAllowedAt($notificationType, $requestedAt);
         $scheduledAt = $allowedAt->isAfter(now()->addSeconds(30)) ? $allowedAt : null;
-        $supportsScheduling = Schema::hasColumn('notification_campaigns', 'scheduled_at');
-        $isScheduled = $supportsScheduling
-            && $scheduledAt
+        $isScheduled = $scheduledAt
             && $scheduledAt->isAfter(now()->addSeconds(30));
         $campaignValues = [
             'notification_type' => $notificationType,
@@ -83,7 +76,7 @@ final class NotificationCampaignService
             'notifiable_id' => $notifiableId,
             'user_ids' => array_values($userIds),
             'exclude_user_ids' => array_values($excludeUserIds),
-            'authored_by' => auth()->id(),
+            'authored_by' => $authoredBy && $authoredBy > 0 ? $authoredBy : null,
             'title_ar' => $titleAr,
             'title_en' => $titleEn,
             'message_ar' => $messageAr,
@@ -97,16 +90,14 @@ final class NotificationCampaignService
                 : NotificationCampaign::STATUS_QUEUED,
             'queued_at' => $isScheduled ? null : now(),
         ];
-        if ($supportsScheduling) {
-            $campaignValues['scheduled_at'] = $isScheduled ? $scheduledAt : null;
-        }
+        $campaignValues['scheduled_at'] = $isScheduled ? $scheduledAt : null;
         $campaign = NotificationCampaign::query()->firstOrCreate(
             ['delivery_key' => $deliveryKey],
             $campaignValues
         );
 
         if (!$campaign->wasRecentlyCreated) {
-            if (!$this->sameImmutablePayload($campaign, $campaignValues)) {
+            if (!$this->sameImmutablePayload($campaign, $campaignValues, $hasExplicitImage)) {
                 throw new \DomainException('notification_delivery_key_payload_mismatch');
             }
             return false;
@@ -121,9 +112,9 @@ final class NotificationCampaignService
         // not turn that committed campaign into a false failed form submit (or
         // let the controller delete its image). Persist a retryable dead letter
         // while keeping the dashboard request successful and truthful.
-        DB::afterCommit(static function () use ($job, $campaign): void {
+        DB::afterCommit(static function () use ($deliveryKey, $campaign): void {
             try {
-                DurableJobDispatch::now($job);
+                DurableJobDispatch::now(new SendStudentNotification($deliveryKey));
             } catch (\Throwable $exception) {
                 NotificationCampaign::query()
                     ->whereKey($campaign->getKey())
@@ -187,24 +178,7 @@ final class NotificationCampaignService
 
     public function jobForCampaign(NotificationCampaign $campaign): SendStudentNotification
     {
-        return new SendStudentNotification(
-            (string) $campaign->notification_type,
-            (array) ($campaign->user_ids ?? []),
-            $campaign->notifiable_type,
-            $campaign->notifiable_id ? (int) $campaign->notifiable_id : null,
-            (string) $campaign->title_ar,
-            (string) $campaign->title_en,
-            (string) $campaign->message_ar,
-            (string) $campaign->message_en,
-            $campaign->link,
-            (array) ($campaign->exclude_user_ids ?? []),
-            (string) $campaign->delivery_key,
-            $campaign->course_id ? (int) $campaign->course_id : null,
-            (string) $campaign->audience,
-            $campaign->image_url,
-            $campaign->action_label_ar,
-            $campaign->action_label_en
-        );
+        return new SendStudentNotification((string) $campaign->delivery_key);
     }
 
     /** @param array<int,mixed> $ids @return array<int> */
@@ -217,12 +191,44 @@ final class NotificationCampaignService
         return $ids;
     }
 
+    /** @param array<int> $userIds @param array<int> $excludeUserIds */
+    private function validateAudienceSelector(
+        array $userIds,
+        array $excludeUserIds,
+        ?int $courseId,
+        string $audience
+    ): void {
+        if (!in_array($audience, [
+            SendStudentNotification::AUDIENCE_ALL,
+            SendStudentNotification::AUDIENCE_ENROLLED,
+            SendStudentNotification::AUDIENCE_NOT_ENROLLED,
+        ], true)) {
+            throw new \InvalidArgumentException('Unsupported notification audience selector.');
+        }
+        if ($courseId !== null && $courseId <= 0) {
+            throw new \InvalidArgumentException('Course selector must contain a positive course ID.');
+        }
+        if ($audience !== SendStudentNotification::AUDIENCE_ALL && $courseId === null) {
+            throw new \InvalidArgumentException('Course ID is required for a course notification audience.');
+        }
+        if (count($userIds) > SendStudentNotification::MAX_EXPLICIT_USER_IDS) {
+            throw new \InvalidArgumentException('Explicit notification audience exceeds the safe broadcast limit.');
+        }
+        if (count($excludeUserIds) > SendStudentNotification::MAX_EXPLICIT_USER_IDS) {
+            throw new \InvalidArgumentException('Explicit notification exclusions exceed the safe broadcast limit.');
+        }
+    }
+
     /** @param array<string,mixed> $expected */
-    private function sameImmutablePayload(NotificationCampaign $campaign, array $expected): bool
+    private function sameImmutablePayload(
+        NotificationCampaign $campaign,
+        array $expected,
+        bool $hasExplicitImage
+    ): bool
     {
         foreach ([
             'notification_type', 'audience', 'notifiable_type', 'title_ar', 'title_en',
-            'message_ar', 'message_en', 'action_label_ar', 'action_label_en', 'link', 'image_url',
+            'message_ar', 'message_en',
         ] as $field) {
             if ((string) ($campaign->{$field} ?? '') !== (string) ($expected[$field] ?? '')) {
                 return false;
@@ -233,6 +239,18 @@ final class NotificationCampaignService
                 return false;
             }
         }
+        if ((int) ($campaign->authored_by ?? 0) !== (int) ($expected['authored_by'] ?? 0)) {
+            return false;
+        }
+        if ($hasExplicitImage
+            && (string) ($campaign->image_url ?? '') !== (string) ($expected['image_url'] ?? '')) {
+            return false;
+        }
+
+        // The destination and CTA are presentation snapshots. A course can be
+        // withdrawn between attempts, so recomputing them must not make a retry
+        // of the same delivery key look like a different campaign. The first
+        // committed snapshot remains authoritative.
 
         return $this->normalizeUserIds((array) ($campaign->user_ids ?? []))
                 === $this->normalizeUserIds((array) ($expected['user_ids'] ?? []))

@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Certificate;
-use App\Support\DownloadFilename;
+use App\Services\CertificatePdfService;
 use App\Services\PublicPortfolioService;
+use App\Support\DownloadFilename;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,12 +29,15 @@ final class PublicCertificateController extends Controller
     {
         $certificate = Certificate::query()
             ->where('public_id', $publicId)
-            ->where(function ($query): void {
-                $query->whereNull('status')->orWhere('status', 'active');
-            })
+            ->where('status', 'active')
             ->whereNull('revoked_at')
             ->first();
-        abort_unless($certificate && $certificate->hasStoredArtifact(), 404);
+        abort_unless(
+            $certificate
+                && $certificate->hasCompleteCredentialSnapshot()
+                && $certificate->hasStoredArtifact(),
+            404
+        );
 
         $disk = Storage::disk((string) config('certificate.disk', 'public'));
         $path = (string) $certificate->image_path;
@@ -60,5 +64,25 @@ final class PublicCertificateController extends Controller
             'Referrer-Policy' => 'no-referrer',
             'X-Robots-Tag' => 'noindex, nofollow, noarchive',
         ], 'inline');
+    }
+
+    /** Download the issued artwork as a full-bleed PDF without re-rendering it. */
+    public function download(
+        string $publicId,
+        CertificatePdfService $pdf
+    ): \Illuminate\Http\Response {
+        $certificate = Certificate::query()
+            ->where('public_id', $publicId)
+            ->where('status', 'active')
+            ->whereNull('revoked_at')
+            ->first();
+        abort_unless(
+            $certificate
+                && $certificate->hasCompleteCredentialSnapshot()
+                && $certificate->hasStoredArtifact(),
+            404
+        );
+
+        return $pdf->download($certificate);
     }
 }

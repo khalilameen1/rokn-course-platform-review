@@ -9,6 +9,11 @@
         'passed' => ['label' => 'مقبولة', 'icon' => 'fa-check-circle'],
         'needs_resubmission' => ['label' => 'تحتاج إعادة إرسال', 'icon' => 'fa-repeat'],
     ];
+    $effortLabels = [
+        'valid' => 'تسليم صالح للمراجعة',
+        'invalid' => 'تسليم غير كافٍ',
+        'unknown' => 'لم يُفحص بعد',
+    ];
 @endphp
 
 <div class="admin-page animated fadeIn">
@@ -35,8 +40,8 @@
         <div class="card-body">
             <form method="GET" action="{{ route('admin.project-submissions.index') }}" class="row align-items-end">
                 <div class="col-md-6 mb-2">
-                    <label for="search">{{ $isAdministrator ? 'بحث بالطالب أو رقم المحاولة' : 'بحث برقم المحاولة' }}</label>
-                    <input id="search" name="search" type="search" class="form-control" value="{{ $filters['search'] ?? '' }}" placeholder="{{ $isAdministrator ? 'الاسم، البريد، الهاتف، أو UUID' : 'UUID' }}">
+                    <label for="search">{{ $isAdministrator ? 'بحث بالطالب أو الكورس أو المحاولة' : 'بحث بالكورس أو المشروع أو المحاولة' }}</label>
+                    <input id="search" name="search" type="search" class="form-control" value="{{ $filters['search'] ?? '' }}" placeholder="{{ $isAdministrator ? 'الاسم أو البريد أو الهاتف أو الكورس أو UUID' : 'اسم الكورس أو المشروع أو UUID' }}">
                 </div>
                 <div class="col-md-3 mb-2">
                     <label for="status">الحالة</label>
@@ -75,7 +80,7 @@
                         </td>
                         <td><strong>{{ optional($course)->title ?: 'كورس غير متاح' }}</strong><br><small class="text-muted">{{ optional($section)->title ?: 'مشروع #' . $submission->project_id }}</small></td>
                         <td>@include('admin.partials.status-badge', ['badgeStatus' => $submission->review_status])</td>
-                        <td><span class="admin-code">{{ Str::limit($submission->public_id, 18) }}</span><br><small class="text-muted">الجهد: {{ $submission->effort_status }}</small></td>
+                        <td><span class="admin-code">{{ Str::limit($submission->public_id, 18) }}</span><br><small class="text-muted">{{ $effortLabels[$submission->effort_status] ?? 'حالة التسليم غير معروفة' }}</small></td>
                         <td>{{ $submission->submitted_at ? \App\Support\BusinessClock::format($submission->submitted_at) : '—' }}</td>
                         <td><a href="{{ route('admin.project-submissions.show', $submission) }}" class="btn btn-sm btn-outline-primary"><i class="fa fa-eye"></i> مراجعة</a></td>
                     </tr>

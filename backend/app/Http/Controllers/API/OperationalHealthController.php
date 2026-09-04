@@ -33,7 +33,6 @@ final class OperationalHealthController extends Controller
         'orders',
         'wallet_transactions',
         'project_submissions',
-        'exam_attempts',
         'student_notifications',
         'lesson_media_states',
         'playback_sessions',
@@ -43,14 +42,21 @@ final class OperationalHealthController extends Controller
 
     private const CRITICAL_COLUMNS = [
         'users' => ['profile_revision'],
-        'api_tokens' => ['token', 'user_id', 'expired_at'],
+        'api_tokens' => [
+            'token', 'user_id', 'issued_at', 'expired_at', 'session_id',
+            'device_id', 'platform', 'device_class', 'app_version', 'app_build',
+            'auth_provider', 'auth_provider_user_id', 'last_used_at', 'revoked_at',
+        ],
         'social_accounts' => ['user_id', 'provider', 'provider_user_id'],
         'social_oauth_attempts' => [
             'state_hash',
             'completion_hash',
             'code_challenge',
+            'nonce_hash',
+            'encrypted_completion_code',
             'encrypted_session_response',
             'completion_processing_at',
+            'completion_claim_id',
         ],
         'packages' => ['is_active', 'direct_enabled'],
         'course_access_plans' => [
@@ -95,11 +101,25 @@ final class OperationalHealthController extends Controller
     ];
 
     private const LAUNCH_COLUMNS = [
-        'exam_attempts' => [
-            'quiz_title',
-            'quiz_description',
-            'quiz_image',
+        'course_enrollments' => [
+            'access_plan_id', 'access_plan_order_id', 'access_plan_snapshot',
         ],
+        'ai_usage_events' => ['reservation_expires_at'],
+        'wallet_transactions' => [
+            'public_id', 'direction', 'category', 'bucket', 'amount',
+            'paid_amount', 'reward_amount', 'balance_after',
+            'paid_balance_after', 'reward_balance_after',
+            'idempotency_key', 'occurred_at',
+        ],
+        'users' => [
+            'profile_revision', 'wallet_coins', 'wallet_purchased_coins',
+            'wallet_reward_coins',
+        ],
+        'orders' => [
+            'gateway_gross_amount', 'gateway_fee_amount', 'gateway_net_amount',
+        ],
+        'settings' => ['ai_plan_policy', 'direct_checkout_discount_percent'],
+        'user_device_tokens' => ['device_os', 'device_id'],
     ];
 
     public function live(): JsonResponse
@@ -355,19 +375,6 @@ final class OperationalHealthController extends Controller
                     return false;
                 }
             }
-        }
-
-        try {
-            if (
-                DB::table('exam_attempts as attempt')
-                    ->join('lists as quiz', 'quiz.id', '=', 'attempt.quiz_id')
-                    ->whereNull('attempt.quiz_title')
-                    ->exists()
-            ) {
-                return false;
-            }
-        } catch (Throwable) {
-            return false;
         }
 
         return true;

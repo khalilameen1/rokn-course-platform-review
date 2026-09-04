@@ -242,8 +242,7 @@ final readonly class LearningEvidenceService
             return $mediaDuration;
         }
 
-        $legacyMinutes = max(0, (int) $lesson->duration_minutes);
-        return $legacyMinutes > 0 ? $legacyMinutes * 60 : null;
+        return null;
     }
 
     private function emptyResult(): array

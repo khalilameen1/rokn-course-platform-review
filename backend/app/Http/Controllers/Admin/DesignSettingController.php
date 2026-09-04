@@ -42,28 +42,6 @@ final class DesignSettingController extends Controller
     {
         $validated = $request->validate($this->rules());
         $submittedEditorVersion = (string) $validated['editor_version'];
-        foreach (['facebook', 'youtube', 'instagram', 'tiktok', 'telegram'] as $channel) {
-            $field = "{$channel}_url";
-            $value = $validated[$field] ?? null;
-            if ($value === null || trim((string) $value) === '') {
-                $validated[$field] = null;
-                continue;
-            }
-            $validated[$field] = $publicSettings->socialUrl($channel, $value);
-            if ($validated[$field] === null) {
-                throw ValidationException::withMessages([
-                    $field => ['أدخل رابط الحساب الصحيح لهذه المنصة يبدأ بـ https'],
-                ]);
-            }
-        }
-        if (!empty($validated['whatsapp_url'])) {
-            $validated['whatsapp_url'] = $publicSettings->whatsAppUrl($validated['whatsapp_url']);
-            if ($validated['whatsapp_url'] === null) {
-                throw ValidationException::withMessages([
-                    'whatsapp_url' => ['أدخل رقمًا دوليًا أو رابطًا صحيحًا يبدأ بـ https://wa.me/'],
-                ]);
-            }
-        }
         if (!empty($validated['how_platform_works_video_link'])) {
             $validated['how_platform_works_video_link'] = $publicSettings->embedVideoUrl(
                 $validated['how_platform_works_video_link']
@@ -83,16 +61,10 @@ final class DesignSettingController extends Controller
             'logo_file',
             'icon_file',
             'home_background_file',
-            'powered_by_titles',
-            'powered_by_urls',
             'editor_version',
             'authoring_request_id',
         ])->all();
         $data['show_how_platform_works'] = $request->boolean('show_how_platform_works');
-        $data['powered_by'] = $this->normalisePartners(
-            $validated['powered_by_titles'] ?? [],
-            $validated['powered_by_urls'] ?? []
-        );
 
         $settings = DesignSetting::query()->first();
         $newFiles = [];
@@ -185,19 +157,6 @@ final class DesignSettingController extends Controller
             'logo_file' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:1524'],
             'icon_file' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:1524'],
             'home_background_file' => ['nullable', 'image', 'mimes:jpeg,png,webp', 'max:2048'],
-            'facebook_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
-            'youtube_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
-            'instagram_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
-            'tiktok_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
-            'whatsapp_url' => ['nullable', 'string', 'max:2048'],
-            'telegram_url' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
-            'technical_contact' => ['nullable', 'string', 'max:32'],
-            'policy_content_ar' => ['nullable', 'string'],
-            'policy_content_en' => ['nullable', 'string'],
-            'powered_by_titles' => ['nullable', 'array', 'max:20'],
-            'powered_by_titles.*' => ['nullable', 'string', 'max:100'],
-            'powered_by_urls' => ['nullable', 'array', 'max:20'],
-            'powered_by_urls.*' => ['nullable', 'url', 'starts_with:https://', 'max:2048'],
             'show_how_platform_works' => ['nullable', 'boolean'],
             'how_platform_works_title_ar' => ['nullable', 'string', 'max:255'],
             'how_platform_works_title_en' => ['nullable', 'string', 'max:255'],
@@ -205,25 +164,6 @@ final class DesignSettingController extends Controller
             'editor_version' => ['required', 'string', 'size:64'],
             'authoring_request_id' => ['required', 'uuid'],
         ];
-    }
-
-    /**
-     * @param array<int, mixed> $titles
-     * @param array<int, mixed> $urls
-     * @return list<array{title: string, url: string}>
-     */
-    private function normalisePartners(array $titles, array $urls): array
-    {
-        $partners = [];
-        foreach ($titles as $index => $title) {
-            $title = trim((string) $title);
-            $url = trim((string) ($urls[$index] ?? ''));
-            if ($title !== '' && $url !== '') {
-                $partners[] = ['title' => $title, 'url' => $url];
-            }
-        }
-
-        return $partners;
     }
 
     private function publicPathFromUrl(string $url): ?string

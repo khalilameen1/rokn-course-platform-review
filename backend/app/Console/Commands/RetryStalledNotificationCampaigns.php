@@ -8,7 +8,6 @@ use App\Models\NotificationCampaign;
 use App\Services\NotificationCampaignService;
 use App\Support\DurableJobDispatch;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Schema;
 
 final class RetryStalledNotificationCampaigns extends Command
 {
@@ -17,10 +16,6 @@ final class RetryStalledNotificationCampaigns extends Command
 
     public function handle(NotificationCampaignService $campaigns): int
     {
-        if (!Schema::hasTable('notification_campaigns')) {
-            return self::SUCCESS;
-        }
-
         $limit = max(1, min(500, (int) $this->option('limit')));
         $exhaustedBefore = now()->subMinutes(30);
 

@@ -75,7 +75,6 @@ final class DashboardProductParityTest extends TestCase
             'ai_global_daily_request_limit',
             'ai_global_daily_token_budget',
             'ai_global_monthly_token_budget',
-            'ai_answer_cache_minutes',
         ] as $column) {
             self::assertTrue(Schema::hasColumn('settings', $column));
         }
@@ -105,23 +104,24 @@ final class DashboardProductParityTest extends TestCase
         }
     }
 
-    public function test_legacy_lesson_dashboard_has_no_mutation_routes(): void
+    public function test_retired_standalone_learning_dashboards_have_no_routes(): void
     {
-        foreach (['admin.lessons.store', 'admin.lessons.update', 'admin.lessons.destroy'] as $name) {
+        foreach ([
+            'admin.lessons.index',
+            'admin.lessons.create',
+            'admin.lessons.store',
+            'admin.lessons.show',
+            'admin.lessons.edit',
+            'admin.lessons.update',
+            'admin.lessons.destroy',
+        ] as $name) {
             self::assertNull(app('router')->getRoutes()->getByName($name), $name);
-        }
-
-        foreach (['admin.lessons.index', 'admin.lessons.create', 'admin.lessons.show', 'admin.lessons.edit'] as $name) {
-            $route = app('router')->getRoutes()->getByName($name);
-            self::assertNotNull($route, $name);
-            self::assertSame(['GET', 'HEAD'], $route->methods(), $name);
         }
     }
 
     public function test_dashboard_mutations_never_use_get_and_are_audited(): void
     {
         $expectations = [
-            'admin.quizzes.copy' => ['POST'],
             'admin.teachers.deactive' => ['PATCH'],
             'admin.users.deactive' => ['PATCH'],
             'admin.contacts.read' => ['POST'],
@@ -150,13 +150,12 @@ final class DashboardProductParityTest extends TestCase
         $first = $this->get('/profile/1');
         $missing = $this->get('/profile/999999999');
 
-        $first->assertStatus(410);
-        $missing->assertStatus(410);
+        $first->assertNotFound();
+        $missing->assertNotFound();
         self::assertSame($first->getContent(), $missing->getContent());
 
         $private = new User([
             'portfolio_slug' => 'private-student',
-            'portfolio_is_public' => false,
         ]);
         self::assertSame(
             rtrim((string) config('public_links.base_url'), '/').'/@private-student',
@@ -165,7 +164,6 @@ final class DashboardProductParityTest extends TestCase
 
         $public = new User([
             'portfolio_slug' => 'published-student',
-            'portfolio_is_public' => true,
         ]);
         self::assertSame(
             rtrim((string) config('public_links.base_url'), '/').'/@published-student',

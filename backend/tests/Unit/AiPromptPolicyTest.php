@@ -19,20 +19,13 @@ final class AiPromptPolicyTest extends TestCase
         ];
 
         foreach ($prompts as $prompt) {
-            self::assertStringContainsString('ادخل في الإجابة مباشرة', $prompt);
-            self::assertStringContainsString('اتبع فصحى الطالب أو عاميته المصرية النظيفة', $prompt);
-            self::assertStringContainsString('لا تستخدم الفاصلة أو النقطة في النثر العربي', $prompt);
-            self::assertStringContainsString('اكتب في فقرات طبيعية', $prompt);
-            self::assertStringContainsString('لا تضع كل جملة أو عبارة في سطر', $prompt);
-            self::assertStringContainsString('علامة الاستفهام والتعجب والأقواس عند الحاجة', $prompt);
-            self::assertStringContainsString('لا تجامل الطالب', $prompt);
-            self::assertStringContainsString('ممنوع افتتاحيات المدح', $prompt);
-            self::assertStringContainsString('هذا يدل على فكر واسع', $prompt);
-            self::assertStringContainsString('الحقيقة التي يقبلها المختص', $prompt);
-            self::assertStringContainsString('لا تكرر احترازات', $prompt);
-            self::assertStringContainsString('لا بإطالة المحادثة', $prompt);
-            self::assertStringContainsString('عندما يكتمل التعليم فعلًا', $prompt);
-            self::assertStringContainsString('صحح الافتراض الخاطئ', $prompt);
+            self::assertStringContainsString('ابدأ بالحكم أو الحل مباشرة', $prompt);
+            self::assertStringContainsString('عامية مصرية نظيفة', $prompt);
+            self::assertStringContainsString('فقرات طبيعية بدل الفاصلة والنقطة', $prompt);
+            self::assertStringContainsString('لا تستخدم كليشيهات المساعد', $prompt);
+            self::assertStringContainsString('ما يقبله المختص', $prompt);
+            self::assertStringContainsString('رجح بين البدائل بمعيار واضح', $prompt);
+            self::assertStringContainsString('ما يحتاج تحققًا', $prompt);
             self::assertStringContainsString('لا تخمن', $prompt);
         }
     }

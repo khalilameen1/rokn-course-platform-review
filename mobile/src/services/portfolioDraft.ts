@@ -26,81 +26,107 @@ export type PortfolioDraft = {
 const STORAGE_KEY = '@rokn/portfolio-editor-draft/v1';
 const REFERENCE_OWNER = 'portfolio-editor-draft';
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
-let draftOperation: Promise<unknown> = Promise.resolve();
+const draftOperations = new Map<string, Promise<unknown>>();
 
-const withDraftLock = <T>(operation: () => Promise<T>) => {
-  const result = draftOperation.then(operation, operation);
-  draftOperation = result.then(
+const withDraftLock = <T>(key: string, operation: () => Promise<T>) => {
+  const previous = draftOperations.get(key) ?? Promise.resolve();
+  const result = previous.then(operation, operation);
+  const tail = result.then(
     () => undefined,
     () => undefined,
   );
+  draftOperations.set(key, tail);
+  void tail.finally(() => {
+    if (draftOperations.get(key) === tail) draftOperations.delete(key);
+  });
   return result;
 };
 
-export const readPortfolioEditorDraft =
-  async (
-    ownerBoundary?: AccountSessionBoundary,
-  ): Promise<PortfolioDraft | null> => {
-    const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-    const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
-    return withDraftLock(async () => {
-      assertAccountSessionBoundary(boundary);
-      const raw = await AsyncStorage.getItem(key);
-      if (!raw) {
-        await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
-        return null;
-      }
-      let parsed: Partial<PortfolioDraft> | null = null;
-      try {
-        const value = JSON.parse(raw) as Partial<PortfolioDraft>;
-        parsed = value;
-        if (
-          typeof value.title === 'string' &&
-          typeof value.summary === 'string' &&
-          /^[0-9a-f-]{36}$/i.test(String(value.clientRequestId || '')) &&
-          Number.isFinite(value.updatedAt) &&
-          Date.now() - Number(value.updatedAt) <= TTL_MS
-        ) {
-          const draft = value as PortfolioDraft;
-          const media = await Promise.all(
-            (draft.media || []).map(async file =>
-              (await learnerDraftFileIsReadable(file)) ? file : null,
-            ),
-          );
-          const readableMedia = media.filter(
-            (file): file is NonNullable<typeof file> => file !== null,
-          );
-          if (!draft.cover || (await learnerDraftFileIsReadable(draft.cover))) {
-            await retainLearnerDraftFiles(
-              REFERENCE_OWNER,
-              [...readableMedia, ...(draft.cover ? [draft.cover] : [])],
-              boundary.scope,
-            );
-            assertAccountSessionBoundary(boundary);
-            return {...draft, media: readableMedia};
-          }
-          const repaired = {...draft, cover: undefined, media: readableMedia};
-          await retainLearnerDraftFiles(
-            REFERENCE_OWNER,
-            readableMedia,
-            boundary.scope,
-          );
-          await AsyncStorage.setItem(key, JSON.stringify(repaired));
-          assertAccountSessionBoundary(boundary);
-          await removeLearnerDraftFile(draft.cover);
-          return repaired;
-        }
-      } catch {}
+const draftFiles = (draft?: Partial<PortfolioDraft> | null) => [
+  ...(Array.isArray(draft?.media) ? draft.media : []),
+  ...(draft?.cover?.uri ? [draft.cover] : []),
+];
+
+const parseDraft = (raw: string): Partial<PortfolioDraft> | null => {
+  try {
+    const value = JSON.parse(raw);
+    return value && typeof value === 'object'
+      ? (value as Partial<PortfolioDraft>)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+const validDraft = (value: Partial<PortfolioDraft> | null) =>
+  Boolean(
+    value &&
+      typeof value.title === 'string' &&
+      typeof value.summary === 'string' &&
+      /^[0-9a-f-]{36}$/i.test(String(value.clientRequestId || '')) &&
+      Number.isFinite(value.updatedAt) &&
+      Date.now() - Number(value.updatedAt) <= TTL_MS,
+  );
+
+export const readPortfolioEditorDraft = async (
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<PortfolioDraft | null> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
+  return withDraftLock(key, async () => {
+    assertAccountSessionBoundary(boundary);
+    const raw = await AsyncStorage.getItem(key);
+    if (!raw) {
       await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
-      await AsyncStorage.removeItem(key);
-      assertAccountSessionBoundary(boundary);
-      await Promise.all([
-        removeLearnerDraftFile(parsed?.cover),
-        ...(parsed?.media || []).map(removeLearnerDraftFile),
-      ]);
       return null;
-    });
-  };
+    }
+    const parsed = parseDraft(raw);
+    if (validDraft(parsed)) {
+      const draft = parsed as PortfolioDraft;
+      const media = await Promise.all(
+        (draft.media || []).map(async file =>
+          (await learnerDraftFileIsReadable(file)) ? file : null,
+        ),
+      );
+      const readableMedia = media.filter(
+        (file): file is NonNullable<typeof file> => file !== null,
+      );
+      const coverReadable = draft.cover
+        ? await learnerDraftFileIsReadable(draft.cover)
+        : true;
+      const repaired = {
+        ...draft,
+        cover: coverReadable ? draft.cover : undefined,
+        media: readableMedia,
+      };
+      const changed =
+        readableMedia.length !== (draft.media || []).length || !coverReadable;
+      if (changed) await AsyncStorage.setItem(key, JSON.stringify(repaired));
+      await retainLearnerDraftFiles(
+        REFERENCE_OWNER,
+        draftFiles(repaired),
+        boundary.scope,
+      );
+      if (changed) {
+        const readableUris = new Set(
+          draftFiles(repaired).map(file => file.uri),
+        );
+        await Promise.all(
+          draftFiles(draft)
+            .filter(file => !readableUris.has(file.uri))
+            .map(removeLearnerDraftFile),
+        );
+      }
+      assertAccountSessionBoundary(boundary);
+      return repaired;
+    }
+    await AsyncStorage.removeItem(key);
+    await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
+    await Promise.all(draftFiles(parsed).map(removeLearnerDraftFile));
+    assertAccountSessionBoundary(boundary);
+    return null;
+  });
+};
 
 export const writePortfolioEditorDraft = async (
   draft: PortfolioDraft,
@@ -108,25 +134,39 @@ export const writePortfolioEditorDraft = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
-  await withDraftLock(async () => {
+  await withDraftLock(key, async () => {
     assertAccountSessionBoundary(boundary);
+    const previous = parseDraft((await AsyncStorage.getItem(key)) || '');
     if (
       !draft.title.trim() &&
       !draft.summary.trim() &&
       !draft.cover &&
       !draft.media?.length
     ) {
-      await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
       await AsyncStorage.removeItem(key);
+      await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
+      await Promise.all(draftFiles(previous).map(removeLearnerDraftFile));
       assertAccountSessionBoundary(boundary);
       return;
     }
-    await retainLearnerDraftFiles(
-      REFERENCE_OWNER,
-      [...(draft.media || []), ...(draft.cover ? [draft.cover] : [])],
-      boundary.scope,
+    const nextFiles = draftFiles(draft);
+    await retainLearnerDraftFiles(REFERENCE_OWNER, nextFiles, boundary.scope);
+    try {
+      await AsyncStorage.setItem(key, JSON.stringify(draft));
+    } catch (error) {
+      await retainLearnerDraftFiles(
+        REFERENCE_OWNER,
+        draftFiles(previous),
+        boundary.scope,
+      ).catch(() => undefined);
+      throw error;
+    }
+    const nextUris = new Set(nextFiles.map(file => file.uri));
+    await Promise.all(
+      draftFiles(previous)
+        .filter(file => !nextUris.has(file.uri))
+        .map(removeLearnerDraftFile),
     );
-    await AsyncStorage.setItem(key, JSON.stringify(draft));
     assertAccountSessionBoundary(boundary);
   });
 };
@@ -136,20 +176,16 @@ export const clearPortfolioEditorDraft = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
-  await withDraftLock(async () => {
+  await withDraftLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const raw = await AsyncStorage.getItem(key);
-    await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
     await AsyncStorage.removeItem(key);
-    assertAccountSessionBoundary(boundary);
+    await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
     if (raw) {
-      try {
-        const draft = JSON.parse(raw) as Partial<PortfolioDraft>;
-        await Promise.all([
-          removeLearnerDraftFile(draft.cover),
-          ...(draft.media || []).map(removeLearnerDraftFile),
-        ]);
-      } catch {}
+      await Promise.all(
+        draftFiles(parseDraft(raw)).map(removeLearnerDraftFile),
+      );
     }
+    assertAccountSessionBoundary(boundary);
   });
 };

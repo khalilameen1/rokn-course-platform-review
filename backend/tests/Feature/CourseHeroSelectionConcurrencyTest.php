@@ -49,25 +49,25 @@ final class CourseHeroSelectionConcurrencyTest extends TestCase
     public function test_course_update_orchestration_passes_its_owned_revision_between_stages(): void
     {
         $source = file_get_contents(
-            app_path('Http/Controllers/Admin/CourseController.php')
+            app_path('Services/AdminCourseAuthoringService.php')
         );
 
         self::assertIsString($source);
         $source = str_replace("\r\n", "\n", $source);
         self::assertStringContainsString(
-            '$ownedAuthoringVersion = $authoring->advance($lockedCourse);',
+            '$ownedVersion = $this->authoring->advance($locked);',
             $source
         );
         self::assertStringContainsString(
-            '$lockedCourse = $authoring->lockExpected($course, (int) $ownedAuthoringVersion);',
+            '$publish = $this->publishDirectly($course, (int) $ownedVersion, $catalogVisible);',
             $source
         );
         self::assertStringContainsString(
-            '$lockedCourse = $authoring->lockExpected($freshCourse, (int) $ownedAuthoringVersion);',
+            '$catalog = $this->publishCatalogCard($fresh, (int) $ownedVersion);',
             $source
         );
         self::assertStringContainsString(
-            "(int) \$ownedAuthoringVersion,\n                    \$heroRequestedMain",
+            '$this->heroSelection->synchronize($course, (int) $ownedVersion, $heroRequested);',
             $source
         );
         self::assertStringNotContainsString(

@@ -101,10 +101,20 @@ describe('reels playback course state', () => {
 
   it('disables only the failed lesson while retaining course metadata', () => {
     const course = courseFixture();
-    const next = disableLessonPlayback(course, course.id, 'lesson-1');
+    const next = disableLessonPlayback(
+      course,
+      course.id,
+      'lesson-1',
+      'course_purchase_required',
+    );
 
     expect(next?.title).toBe(course.title);
-    expect(next?.modules[0].reels[0]).toMatchObject({videoUrl: ''});
+    expect(next?.modules[0].reels[0]).toMatchObject({
+      videoUrl: '',
+      mediaStatus: 'failed',
+      isLocked: true,
+      lockReason: 'course_purchase_required',
+    });
     expect(next?.modules[0].reels[0].playbackSessionId).toBeUndefined();
     expect(next?.modules[0].reels[1]).toBe(course.modules[0].reels[1]);
   });
@@ -114,13 +124,13 @@ const courseFixture = (): CourseLearningData => ({
   id: 'course-1',
   title: 'Course',
   totalReels: 2,
+  attachments: [],
   modules: [
     {
       id: 'module-1',
       title: 'Module',
       order: 1,
       isLocked: false,
-      attachments: [],
       reels: [
         {
           id: 'reel-1',

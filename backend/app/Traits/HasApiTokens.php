@@ -7,7 +7,6 @@ namespace App\Traits;
 use App\Models\ApiToken;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 trait HasApiTokens
@@ -17,51 +16,42 @@ trait HasApiTokens
         return $this->hasMany(ApiToken::class, 'user_id');
     }
 
-    public function generateApiToken(): string
+    public function generateApiToken(
+        ?string $verifiedSocialProvider = null,
+        ?string $verifiedSocialProviderUserId = null,
+        array $session = []
+    ): string
     {
+        $verifiedSocialProvider = strtolower(trim((string) $verifiedSocialProvider));
+        $verifiedSocialProviderUserId = trim((string) $verifiedSocialProviderUserId);
+        if ($verifiedSocialProvider === '' || $verifiedSocialProviderUserId === '') {
+            $verifiedSocialProvider = null;
+            $verifiedSocialProviderUserId = null;
+        }
+
         for ($attempt = 0; $attempt < 5; $attempt++) {
             $plainToken = bin2hex(random_bytes(40));
-            $storedToken = (bool) config('multiple-tokens-auth.hash', true)
-                ? hash('sha256', $plainToken)
-                : $plainToken;
 
             try {
                 $attributes = [
-                    'token' => $storedToken,
+                    'token' => hash('sha256', $plainToken),
+                    'issued_at' => now(),
                     'expired_at' => now()->addDays(
                         (int) config('multiple-tokens-auth.token.life_length', 60)
                     ),
+                    'session_id' => (string) Str::uuid(),
+                    'device_id' => $this->sessionDeviceId($session),
+                    'platform' => $this->sessionPlatform($session),
+                    'device_class' => $this->sessionDeviceClass($session),
+                    'app_version' => $this->sessionValue($session['app_version'] ?? '', 32) ?: null,
+                    'app_build' => $this->sessionValue($session['app_build'] ?? '', 16) ?: null,
+                    // A linked account can be verified through more than one
+                    // provider. Bind the identity used for this login to this
+                    // bearer instead of reading a mutable provider from users.
+                    'auth_provider' => $verifiedSocialProvider,
+                    'auth_provider_user_id' => $verifiedSocialProviderUserId,
+                    'last_used_at' => now(),
                 ];
-                if (Schema::hasColumn((string) config('multiple-tokens-auth.table', 'api_tokens'), 'issued_at')) {
-                    $attributes['issued_at'] = now();
-                }
-                $table = (string) config('multiple-tokens-auth.table', 'api_tokens');
-                if (Schema::hasColumn($table, 'session_id')) {
-                    $attributes['session_id'] = (string) Str::uuid();
-                }
-                if (Schema::hasColumn($table, 'device_id')) {
-                    $deviceId = trim((string) request()->input('device_id'));
-                    $attributes['device_id'] = Str::isUuid($deviceId) ? $deviceId : null;
-                }
-                if (Schema::hasColumn($table, 'platform')) {
-                    $platform = strtolower($this->safeSessionHeader(
-                        'X-Rokn-Platform',
-                        (string) request()->input('device_os', request()->input('device_type', 'other')),
-                        16
-                    ));
-                    $attributes['platform'] = in_array($platform, ['android', 'ios', 'web'], true)
-                        ? $platform
-                        : 'other';
-                }
-                if (Schema::hasColumn($table, 'app_version')) {
-                    $attributes['app_version'] = $this->safeSessionHeader('X-Rokn-App-Version', '', 32) ?: null;
-                }
-                if (Schema::hasColumn($table, 'app_build')) {
-                    $attributes['app_build'] = $this->safeSessionHeader('X-Rokn-App-Build', '', 16) ?: null;
-                }
-                if (Schema::hasColumn($table, 'last_used_at')) {
-                    $attributes['last_used_at'] = now();
-                }
                 $this->apiTokens()->create($attributes);
 
                 return $plainToken;
@@ -80,13 +70,35 @@ trait HasApiTokens
         $this->apiTokens()->delete();
     }
 
-    private function safeSessionHeader(string $name, string $fallback, int $maxLength): string
+    private function sessionValue(mixed $value, int $maxLength): string
     {
-        $value = trim((string) request()->header($name, $fallback));
+        $value = trim((string) $value);
         // Session metadata is deliberately coarse and excludes hardware IDs,
         // advertising IDs, names, IP addresses and raw user-agent strings.
         $value = preg_replace('/[^0-9A-Za-z._-]/', '', $value) ?? '';
 
         return mb_substr($value, 0, $maxLength);
+    }
+
+    private function sessionDeviceId(array $session): ?string
+    {
+        $deviceId = trim((string) ($session['device_id'] ?? ''));
+        return Str::isUuid($deviceId) ? $deviceId : null;
+    }
+
+    private function sessionPlatform(array $session): string
+    {
+        $platform = strtolower($this->sessionValue($session['platform'] ?? 'other', 16));
+
+        return in_array($platform, ['android', 'ios', 'web'], true) ? $platform : 'other';
+    }
+
+    private function sessionDeviceClass(array $session): ?string
+    {
+        $deviceClass = strtolower($this->sessionValue($session['device_class'] ?? '', 12));
+
+        return in_array($deviceClass, ['phone', 'tablet'], true)
+            ? $deviceClass
+            : null;
     }
 }

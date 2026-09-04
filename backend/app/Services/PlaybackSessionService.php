@@ -16,13 +16,9 @@ final class PlaybackSessionService
     {
         $sessionId = (string) ($sample['playback_session_id'] ?? '');
         if ($sessionId === '') {
-            // Old clients may still save a resume pointer, but without a
-            // server-issued session there is no sequence namespace or elapsed
-            // sample we can trust for academic progress or coin rewards.
             return [
-                'accepted' => true,
-                'reason' => 'legacy_client',
-                'trusted_evidence' => false,
+                'accepted' => false,
+                'reason' => 'invalid_session',
             ];
         }
 

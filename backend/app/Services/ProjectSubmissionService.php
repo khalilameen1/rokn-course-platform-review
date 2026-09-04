@@ -7,20 +7,14 @@ namespace App\Services;
 use App\Jobs\GenerateProjectFeedback;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
-use App\Models\ProjectSubmissionReviewDecision;
-use App\Models\Certificate;
 use App\Models\CourseSection;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\AiInputAttachment;
-use App\Models\StudentSectionProgress;
 use App\Models\User;
-use App\Models\UserProjectEvaluation;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Support\DownloadFilename;
@@ -32,14 +26,15 @@ use ZipArchive;
 final class ProjectSubmissionService
 {
     public function __construct(
-        private readonly CourseSectionSequenceService $sectionSequence,
         private readonly AiInputAttachmentService $attachments,
         private readonly StoredFileDeletionService $storedFiles,
         private readonly InternalSignalService $internalSignals,
         private readonly CourseChatAccessService $courseAccess,
         private readonly CourseAccessPlanService $accessPlans,
         private readonly CourseStagedAuthoringService $stagedAuthoring,
-        private readonly CourseRevisionLearnerReadService $revisionReads
+        private readonly CourseRevisionLearnerReadService $revisionReads,
+        private readonly ProjectSubmissionFileRetentionService $fileRetention,
+        private readonly CourseCompletionService $courseCompletion
     ) {
     }
 
@@ -47,7 +42,7 @@ final class ProjectSubmissionService
         User $user,
         Project $project,
         ?string $text,
-        array|UploadedFile|null $files,
+        ?array $files,
         string $idempotencyKey,
         array $metadata = []
     ): ProjectSubmission {
@@ -63,14 +58,11 @@ final class ProjectSubmissionService
             throw new \RuntimeException('The configured project submission disk is not available.');
         }
 
-        // Keep the service boundary compatible with older callers that submit
-        // one attachment while the API now supports a batch.
-        $files = $files instanceof UploadedFile ? [$files] : ($files ?? []);
+        $files ??= [];
         $files = array_values(array_filter($files, static fn ($file): bool => $file instanceof UploadedFile));
-        $allowedMimes = array_map('strtolower', (array) (
-            $project->submission_allowed_mime_types
-            ?: config('projects.allowed_mime_types', [])
-        ));
+        $allowedMimes = $project->submission_allowed_mime_types === null
+            ? array_map('strtolower', (array) config('projects.allowed_mime_types', []))
+            : array_map('strtolower', (array) $project->submission_allowed_mime_types);
         foreach ($files as $file) {
             $canonicalMime = $this->attachments->canonicalMime($file);
             if ($canonicalMime === null || !in_array($canonicalMime, $allowedMimes, true)) {
@@ -91,7 +83,7 @@ final class ProjectSubmissionService
             ->first();
 
         if ($existing) {
-            $this->assertIdempotentReplay($existing, $requestFingerprint, $text, $files);
+            $this->assertIdempotentReplay($existing, $requestFingerprint);
             return $this->finalizeIfDue($existing);
         }
 
@@ -170,7 +162,16 @@ final class ProjectSubmissionService
                 // locking either one would serialize every learner submitting
                 // the same assignment. The mutable enrollment/submission state
                 // below remains locked at its owning learner boundary.
-                User::query()->where('active', true)->lockForUpdate()->findOrFail($user->id);
+                $activeUser = User::query()
+                    ->whereKey($user->id)
+                    ->where('active', true)
+                    ->lockForUpdate()
+                    ->first();
+                if (!$activeUser) {
+                    throw new AuthorizationException(
+                        'The learner account is no longer active.'
+                    );
+                }
                 $projectSnapshot = Project::query()->findOrFail($project->id);
 
                 $existing = ProjectSubmission::query()
@@ -179,7 +180,7 @@ final class ProjectSubmissionService
                     ->where('idempotency_key', $idempotencyKey)
                     ->first();
                 if ($existing) {
-                    $this->assertIdempotentReplay($existing, $requestFingerprint, $text, $files);
+                    $this->assertIdempotentReplay($existing, $requestFingerprint);
                     return $existing;
                 }
 
@@ -203,37 +204,34 @@ final class ProjectSubmissionService
                     ->where('sectionable_id', $projectSnapshot->id)
                     ->with('course:id,name_ar,name_en')
                     ->first();
-                $enrollment = null;
-                $accessTerms = null;
-                if ($projectSection) {
-                    $selectedEnrollment = $this->courseAccess->activeProjectEnrollmentFor(
+                if (!$projectSection) {
+                    throw new AuthorizationException(
+                        'The project is no longer part of the published course.'
+                    );
+                }
+                $selectedEnrollment = $this->courseAccess->activeProjectEnrollmentFor(
+                    (int) $user->id,
+                    (int) $projectSection->course_id
+                );
+                $enrollment = $selectedEnrollment
+                    ? CourseEnrollment::query()
+                        ->whereKey($selectedEnrollment->id)
+                        ->where('user_id', $user->id)
+                        ->lockForUpdate()
+                        ->first()
+                    : null;
+                if (
+                    !$enrollment?->isActive()
+                    || !$this->courseAccess->hasLearningAccess(
                         (int) $user->id,
                         (int) $projectSection->course_id
+                    )
+                ) {
+                    throw new AuthorizationException(
+                        'The learner no longer has an active enrollment for this project.'
                     );
-                    if ($selectedEnrollment) {
-                        $enrollment = CourseEnrollment::query()
-                            ->whereKey($selectedEnrollment->id)
-                            ->where('user_id', $user->id)
-                            ->lockForUpdate()
-                            ->first();
-                        if (
-                            $enrollment?->isActive()
-                            && $this->courseAccess->hasLearningAccess(
-                                (int) $user->id,
-                                (int) $projectSection->course_id
-                            )
-                        ) {
-                            $accessTerms = $this->accessPlans->termsForEnrollment($enrollment);
-                        } else {
-                            $enrollment = null;
-                        }
-                    }
-                    if (!$enrollment) {
-                        throw new AuthorizationException(
-                            'The learner no longer has an active enrollment for this project.'
-                        );
-                    }
                 }
+                $accessTerms = $this->accessPlans->termsForEnrollment($enrollment);
                 $evaluationSnapshot = ProjectSubmissionEvaluationSnapshot::capture(
                     $projectSnapshot,
                     $projectSection,
@@ -246,7 +244,7 @@ final class ProjectSubmissionService
                     ? ProjectSubmission::STATUS_NEEDS_RESUBMISSION
                     : ProjectSubmission::STATUS_PENDING;
                 $feedback = $isInvalid
-                    ? 'المحاولة غير واضحة بما يكفي للمراجعة. ارفع صورة أو ملفًا يوضح ما نفذته.'
+                    ? "المحاولة غير واضحة بما يكفي للمراجعة\nارفع صورة أو ملفًا يوضح ما نفذته"
                     : null;
                 $submission = ProjectSubmission::create([
                     'public_id' => (string) Str::uuid(),
@@ -290,32 +288,12 @@ final class ProjectSubmissionService
                     'reviewed_at' => $isInvalid ? now() : null,
                 ]);
 
-                $decision = null;
                 if ($isInvalid) {
-                    $decision = $this->appendReviewDecision(
-                        $submission,
-                        $reviewStatus,
-                        0,
-                        (string) $feedback,
-                        'effort_guard',
-                        null,
-                        [
-                            'assessment_type' => 'effort_guard',
-                            'skill_verified' => false,
-                            'progression_credit' => false,
-                        ]
-                    );
                     $submissionMetadata = (array) $submission->submission_metadata;
-                    $submissionMetadata['review_history'] = [
-                        $this->decisionHistoryEntry($decision),
-                    ];
+                    $submissionMetadata['assessment_type'] = 'effort_guard';
+                    $submissionMetadata['skill_verified'] = false;
+                    $submissionMetadata['progression_credit'] = false;
                     $submission->forceFill([
-                        'review_status' => $decision->status,
-                        'review_source' => $decision->source,
-                        'score' => $decision->score,
-                        'feedback' => $decision->feedback,
-                        'reviewed_at' => $decision->decided_at,
-                        'reviewed_by' => $decision->reviewer_id,
                         'submission_metadata' => $submissionMetadata,
                     ])->save();
                 }
@@ -341,39 +319,21 @@ final class ProjectSubmissionService
                     }
                 }
 
-                // Legacy summary remains available to existing mobile/API consumers,
-                // but no score or pass decision is accepted from the client.
-                UserProjectEvaluation::updateOrCreate(
-                    ['user_id' => $user->id, 'project_id' => $project->id],
-                    [
-                        'score' => 0,
-                        'passed' => false,
-                        'evaluation_data' => [
-                            'status' => $decision?->status ?? $reviewStatus,
-                            'submission_id' => $submission->public_id,
-                            'source' => $decision?->source
-                                ?? ($isInvalid ? 'effort_guard' : 'server_review_policy'),
-                            'decision_id' => $decision?->decision_id,
-                            'decision_sequence' => $decision?->sequence,
-                        ],
-                        'submission_text' => $text,
-                        'submission_file' => $primaryPath,
-                    ]
-                );
-
                 return $submission;
             });
 
-            return $this->finalizeIfDue($submission);
+            $result = $this->finalizeIfDue($submission);
+            $this->fileRetention->purgeIfEligible($result);
+            return $result->fresh();
         } catch (QueryException $exception) {
             $existing = ProjectSubmission::query()
                 ->where('user_id', $user->id)
-                ->where('project_id', $project->id)
+                ->whereIn('project_id', $equivalentProjectIds)
                 ->where('idempotency_key', $idempotencyKey)
                 ->first();
 
             if ($existing) {
-                $this->assertIdempotentReplay($existing, $requestFingerprint, $text, $files);
+                $this->assertIdempotentReplay($existing, $requestFingerprint);
                 return $this->finalizeIfDue($existing);
             }
 
@@ -415,7 +375,7 @@ final class ProjectSubmissionService
                 || $locked->effort_status !== ProjectSubmission::EFFORT_INVALID;
             $feedback = $passed
                 ? 'استلمنا محاولة واضحة وفتحنا لك المقطع التالي\nهذا قبول للاستكمال وليس تقييمًا للعمل'
-                : 'المحاولة غير واضحة بما يكفي للمراجعة. ارفع صورة أو ملفًا يوضح ما نفذته.';
+                : "المحاولة غير واضحة بما يكفي للمراجعة\nارفع صورة أو ملفًا يوضح ما نفذته";
 
             return $this->applyReviewOutcome(
                 $locked,
@@ -432,20 +392,22 @@ final class ProjectSubmissionService
             // Feedback is a paid enhancement, never a gate. Queue/provider
             // failures cannot revoke the already granted progression.
             $this->queueFeedback((int) $result->id);
+        } else {
+            $this->fileRetention->purgeIfEligible($result);
         }
 
         return $result;
     }
 
-    public function reviewByAdmin(
+    public function reviewByStaff(
         ProjectSubmission $submission,
         User $reviewer,
         bool $passed,
         ?string $feedback = null
     ): ProjectSubmission {
-        if (!(bool) $reviewer->active
-            || !in_array(Str::lower((string) $reviewer->role), ['admin', 'moderator'], true)) {
-            throw new AuthorizationException('Only an active content reviewer can review project submissions.');
+        $reviewerRole = Str::lower((string) $reviewer->role);
+        if (!(bool) $reviewer->active || !in_array($reviewerRole, ['admin', 'moderator'], true)) {
+            throw new AuthorizationException('Only an active dashboard reviewer can review project submissions.');
         }
 
         $reviewed = DB::transaction(function () use ($submission, $reviewer, $passed, $feedback): ProjectSubmission {
@@ -463,6 +425,15 @@ final class ProjectSubmissionService
                 ]);
             }
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
+            $latestAttemptId = ProjectSubmission::query()
+                ->where('user_id', $locked->user_id)
+                ->where('project_id', $locked->project_id)
+                ->max('id');
+            if ((int) $latestAttemptId !== (int) $locked->id) {
+                throw ValidationException::withMessages([
+                    'submission' => ['هذه محاولة قديمة. راجع أحدث محاولة للطالب قبل تسجيل القرار.'],
+                ]);
+            }
             $isGracefulFallback = $locked->review_status === ProjectSubmission::STATUS_PASSED
                 && $locked->review_source === 'graceful_fallback';
             if (
@@ -487,8 +458,8 @@ final class ProjectSubmissionService
             $reviewFeedback = trim((string) $feedback);
             if ($reviewFeedback === '') {
                 $reviewFeedback = $passed
-                    ? 'راجع فريق ركن المحاولة وقبلها.'
-                    : 'راجع فريق ركن المحاولة وطلب إعادة إرسالها.';
+                    ? 'راجع فريق ركن المحاولة وقبلها'
+                    : 'راجع فريق ركن المحاولة وطلب إعادة إرسالها';
             }
 
             return $this->applyReviewOutcome(
@@ -505,6 +476,8 @@ final class ProjectSubmissionService
             && $this->submissionIncludesProjectReport($reviewed)
         ) {
             $this->queueFeedback((int) $reviewed->id);
+        } else {
+            $this->fileRetention->purgeIfEligible($reviewed);
         }
 
         return $reviewed;
@@ -546,79 +519,41 @@ final class ProjectSubmissionService
             ];
         }
 
-        $decision = $this->appendReviewDecision(
-            $locked,
-            $status,
-            $score,
-            $feedback,
-            $source,
-            $reviewer,
-            [
-                'assessment_type' => $metadata['assessment_type'],
-                'skill_verified' => $metadata['skill_verified'],
-                'progression_credit' => $metadata['progression_credit'],
-                'effort_status' => $locked->effort_status,
-            ],
-            $reviewedAt
-        );
-        $history = is_array($metadata['review_history'] ?? null)
-            ? $metadata['review_history']
-            : [];
-        $history[] = $this->decisionHistoryEntry($decision);
-        // The dashboard compatibility summary stays small. The complete,
-        // immutable sequence lives in project_submission_review_decisions.
-        $metadata['review_history'] = array_slice($history, -20);
-
         $locked->update([
-            'review_status' => $decision->status,
-            'review_source' => $decision->source,
-            'score' => $decision->score,
-            'feedback' => $decision->feedback,
-            'reviewed_at' => $decision->decided_at,
-            'reviewed_by' => $decision->reviewer_id,
+            'review_status' => $status,
+            'review_source' => $source,
+            'score' => $score,
+            'feedback' => $feedback,
+            'reviewed_at' => $reviewedAt,
+            'reviewed_by' => $reviewer?->id,
             'submission_metadata' => $metadata,
         ]);
-
-        $evaluationAttributes = [
-                // This legacy summary column is not nullable on older
-                // installations. Consumers must use assessment_type and
-                // skill_verified before presenting it as a graded score.
-                'score' => $decision->score ?? 0,
-                'passed' => $decision->status === ProjectSubmission::STATUS_PASSED,
-                'evaluation_data' => [
-                    'status' => $decision->status,
-                    'submission_id' => $locked->public_id,
-                    'source' => $decision->source,
-                    'effort_status' => $locked->effort_status,
-                    'decision_id' => $decision->decision_id,
-                    'decision_sequence' => $decision->sequence,
-                    'reviewer_id' => $decision->reviewer_id,
-                    'reviewer_role' => $decision->reviewer_role,
-                    'assessment_type' => $metadata['assessment_type'],
-                    'skill_verified' => $metadata['skill_verified'],
-                    'progression_credit' => $metadata['progression_credit'],
-                ],
-                'submission_text' => $locked->submission_text,
-                'submission_file' => $locked->submission_file,
-            ];
-        UserProjectEvaluation::updateOrCreate(
-            ['user_id' => $locked->user_id, 'project_id' => $locked->project_id],
-            $evaluationAttributes
-        );
 
         $currentProjectId = $this->stagedAuthoring->currentEntityId(
             Project::class,
             (int) $locked->project_id
         );
-        if ($currentProjectId) {
-            // A mutable current-projection lets the learner continue, while
-            // the submission, decision sequence and feedback remain attached
-            // to the immutable archived project snapshot.
-            UserProjectEvaluation::updateOrCreate(
-                ['user_id' => $locked->user_id, 'project_id' => $currentProjectId],
-                $evaluationAttributes
-            );
-        }
+
+        $projectSection = CourseSection::query()
+            ->where('sectionable_type', Project::class)
+            ->where('sectionable_id', $currentProjectId ?: $locked->project_id)
+            ->first();
+        $this->internalSignals->record(
+            'project.review.notification',
+            "submission:{$locked->public_id}:status:{$status}",
+            [
+                'submission_id' => (int) $locked->id,
+                'user_id' => (int) $locked->user_id,
+                'project_id' => (int) ($currentProjectId ?: $locked->project_id),
+                'course_id' => (int) (
+                    $projectSection?->course_id
+                    ?? data_get($locked->evaluation_snapshot, 'course_id', 0)
+                ),
+                'status' => $status,
+            ],
+            ProjectSubmission::class,
+            (int) $locked->id
+        );
 
         if (!$passed) {
             return $locked->fresh();
@@ -635,68 +570,13 @@ final class ProjectSubmissionService
             (int) $locked->id
         );
 
-        $projectSection = CourseSection::query()
-            ->where('sectionable_type', Project::class)
-            ->where('sectionable_id', $currentProjectId ?: $locked->project_id)
-            ->first();
         if (!$projectSection) {
             return $locked->fresh();
         }
 
-        $completedAt = now();
-        DB::table('student_section_progress')->insertOrIgnore([
-            'user_id' => $locked->user_id,
-            'course_section_id' => $projectSection->id,
-            'is_completed' => true,
-            'completed_at' => $completedAt,
-            'created_at' => $completedAt,
-            'updated_at' => $completedAt,
-        ]);
-        StudentSectionProgress::query()
-            ->where('user_id', $locked->user_id)
-            ->where('course_section_id', $projectSection->id)
-            ->where('is_completed', false)
-            ->update([
-                'is_completed' => true,
-                'completed_at' => $completedAt,
-                'updated_at' => $completedAt,
-            ]);
-
-        $course = $projectSection->course;
-        if (!$course) {
-            return $locked->fresh();
-        }
-
-        if (
-            $passed
-            && $source === 'admin_manual'
-            && Schema::hasColumn('certificates', 'verification_level')
-        ) {
-            Certificate::query()
-                ->where('user_id', $locked->user_id)
-                ->where('course_id', $course->id)
-                ->where('status', 'active')
-                ->update(['verification_level' => 'reviewed_project']);
-        }
-
-        $courseSections = CourseSection::query()
-            ->where('course_id', $course->id)
-            ->get();
-        $courseSectionIds = $this->sectionSequence->learning($courseSections)->pluck('id');
-        $completedSections = $this->revisionReads
-            ->completedSectionIds((int) $locked->user_id, $courseSectionIds)
-            ->count();
-
-        if ($courseSectionIds->isEmpty() || $completedSections !== $courseSectionIds->count()) {
-            return $locked->fresh();
-        }
-
-        $this->internalSignals->record(
-            'course.completed',
-            "user:{$locked->user_id}:course:{$course->id}",
-            ['user_id' => (int) $locked->user_id, 'course_id' => (int) $course->id],
-            'course_enrollment',
-            "{$locked->user_id}:{$course->id}"
+        $this->courseCompletion->recordPassedProject(
+            (int) $locked->user_id,
+            $projectSection
         );
 
         return $locked->fresh();
@@ -712,57 +592,6 @@ final class ProjectSubmissionService
             // must not look failed merely because that first enqueue failed.
             report($exception);
         }
-    }
-
-    /**
-     * The submission row is locked by every caller, so sequence allocation and
-     * the derived current summary commit atomically with this append-only row.
-     *
-     * @param array<string,mixed> $metadata
-     */
-    private function appendReviewDecision(
-        ProjectSubmission $submission,
-        string $status,
-        ?int $score,
-        string $feedback,
-        string $source,
-        ?User $reviewer,
-        array $metadata,
-        ?\Carbon\CarbonInterface $decidedAt = null
-    ): ProjectSubmissionReviewDecision {
-        $sequence = (int) ProjectSubmissionReviewDecision::query()
-            ->where('submission_id', $submission->id)
-            ->max('sequence') + 1;
-
-        return ProjectSubmissionReviewDecision::query()->create([
-            'decision_id' => (string) Str::uuid(),
-            'submission_id' => $submission->id,
-            'sequence' => $sequence,
-            'status' => $status,
-            'score' => $score,
-            'feedback' => $feedback,
-            'source' => $source,
-            'reviewer_id' => $reviewer?->id,
-            'reviewer_role' => $reviewer?->role,
-            'decided_at' => $decidedAt ?? now(),
-            'decision_metadata' => $metadata,
-        ]);
-    }
-
-    /** @return array<string,mixed> */
-    private function decisionHistoryEntry(ProjectSubmissionReviewDecision $decision): array
-    {
-        return [
-            'decision_id' => $decision->decision_id,
-            'sequence' => (int) $decision->sequence,
-            'status' => $decision->status,
-            'score' => $decision->score,
-            'feedback' => $decision->feedback,
-            'source' => $decision->source,
-            'reviewer_id' => $decision->reviewer_id,
-            'reviewer_role' => $decision->reviewer_role,
-            'reviewed_at' => $decision->decided_at?->toIso8601String(),
-        ];
     }
 
     public function finalizeDue(int $limit = 100): int
@@ -828,16 +657,22 @@ final class ProjectSubmissionService
         }
 
         if ($mime === 'application/pdf') {
-            $body = file_get_contents($path);
-            if (!is_string($body) || !str_starts_with($body, '%PDF-')) return false;
-            $eof = strrpos($body, '%%EOF');
-            $page = strpos($body, '/Type /Page');
-            $stream = strpos($body, 'stream');
-            $endStream = $stream === false ? false : strpos($body, 'endstream', $stream + 6);
+            $handle = fopen($path, 'rb');
+            if ($handle === false) return false;
+            try {
+                $head = fread($handle, 262144);
+                if (!is_string($head) || !str_starts_with($head, '%PDF-')) return false;
+                $size = max(0, (int) filesize($path));
+                if ($size > 16384) fseek($handle, -16384, SEEK_END);
+                else rewind($handle);
+                $tail = fread($handle, 16384);
 
-            return $eof !== false && $page !== false && $stream !== false
-                && $endStream !== false
-                && trim(substr($body, $stream + 6, $endStream - $stream - 6)) !== '';
+                return str_contains($head, '/Type /Page')
+                    && is_string($tail)
+                    && str_contains($tail, '%%EOF');
+            } finally {
+                fclose($handle);
+            }
         }
 
         if (in_array($mime, [
@@ -943,22 +778,14 @@ final class ProjectSubmissionService
 
     private function assertIdempotentReplay(
         ProjectSubmission $submission,
-        string $fingerprint,
-        ?string $text,
-        array $files
+        string $fingerprint
     ): void {
         $storedFingerprint = (string) data_get(
             $submission->submission_metadata,
             'request_fingerprint',
             ''
         );
-        $legacyMatches = trim((string) $submission->submission_text) === trim((string) $text)
-            && count((array) data_get($submission->submission_metadata, 'files', [])) === count($files);
-
-        if (
-            ($storedFingerprint !== '' && !hash_equals($storedFingerprint, $fingerprint))
-            || ($storedFingerprint === '' && !$legacyMatches)
-        ) {
+        if ($storedFingerprint === '' || !hash_equals($storedFingerprint, $fingerprint)) {
             throw new \UnexpectedValueException(
                 'Project submission idempotency key was reused for different content.'
             );

@@ -58,7 +58,9 @@ describe('native store billing', () => {
         type: 'in-app',
       },
     ]);
-    const {hydrateNativeStorePackages} = require('../src/services/nativeStoreBilling');
+    const {
+      hydrateNativeStorePackages,
+    } = require('../src/services/nativeStoreBilling');
 
     const result = await hydrateNativeStorePackages([
       {
@@ -104,7 +106,9 @@ describe('native store billing', () => {
       });
       return null;
     });
-    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
 
     const result = await purchaseNativeCoinPackage({
       id: '1',
@@ -133,7 +137,7 @@ describe('native store billing', () => {
       purchase: expect.objectContaining({purchaseToken: 'store-token'}),
       isConsumable: true,
     });
-    expect(result).toMatchObject({success: true, coinsAdded: 600, demo: false});
+    expect(result).toMatchObject({success: true, coinsAdded: 600});
     expect(mockApi.post.mock.invocationCallOrder[0]).toBeLessThan(
       mockExpoIap.finishTransaction.mock.invocationCallOrder[0],
     );
@@ -158,7 +162,9 @@ describe('native store billing', () => {
       });
       return null;
     });
-    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
 
     await expect(
       purchaseNativeCoinPackage({
@@ -202,7 +208,9 @@ describe('native store billing', () => {
       });
       return null;
     });
-    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
 
     await expect(
       purchaseNativeCoinPackage({
@@ -221,7 +229,9 @@ describe('native store billing', () => {
       data: {data: {google_obfuscated_account_id: 'account-binding'}},
     });
     mockExpoIap.requestPurchase.mockRejectedValue({code: 'user-cancelled'});
-    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
 
     await expect(
       purchaseNativeCoinPackage({
@@ -250,7 +260,9 @@ describe('native store billing', () => {
         obfuscatedAccountIdAndroid: 'binding-user-a',
       },
     ]);
-    const {reconcileNativeStorePurchases} = require('../src/services/nativeStoreBilling');
+    const {
+      reconcileNativeStorePurchases,
+    } = require('../src/services/nativeStoreBilling');
 
     await expect(reconcileNativeStorePurchases()).resolves.toEqual({
       pending: false,
@@ -291,7 +303,9 @@ describe('native store billing', () => {
       }
       return null;
     });
-    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
     const coinPackage = {
       id: '1',
       coins: 600,
@@ -303,10 +317,12 @@ describe('native store billing', () => {
     const userAOutcome = purchaseNativeCoinPackage(coinPackage);
     await firstPurchaseStarted;
     mockAccountScope = 'user-b';
-    await expect(purchaseNativeCoinPackage(coinPackage)).resolves.toMatchObject({
-      success: true,
-      coinsAdded: 600,
-    });
+    await expect(purchaseNativeCoinPackage(coinPackage)).resolves.toMatchObject(
+      {
+        success: true,
+        coinsAdded: 600,
+      },
+    );
 
     mockAccountScope = 'user-a';
     purchaseUpdate({
@@ -346,7 +362,9 @@ describe('native store billing', () => {
         obfuscatedAccountIdAndroid: 'binding-user-a',
       },
     ]);
-    const {reconcileNativeStorePurchases} = require('../src/services/nativeStoreBilling');
+    const {
+      reconcileNativeStorePurchases,
+    } = require('../src/services/nativeStoreBilling');
 
     await expect(reconcileNativeStorePurchases()).resolves.toEqual({
       pending: false,

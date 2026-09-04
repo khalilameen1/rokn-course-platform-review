@@ -174,7 +174,7 @@
                                                 عرض
                                             </a>
 
-                                            <a href="{{ route('admin.courses.edit', $course->id) }}"
+                                            <a href="{{ route('admin.courses.show', $course->id) }}"
                                                class="btn-course btn-secondary-custom"
                                                title="تعديل الكورس">
                                                 <i class="fa fa-edit"></i>

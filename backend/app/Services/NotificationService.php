@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Jobs\SendStudentNotification;
 use App\Models\Course;
 use App\Models\Lesson;
+use App\Support\RoknAppLink;
 use Illuminate\Support\Str;
 
 class NotificationService
@@ -39,7 +40,7 @@ class NotificationService
             return false;
         }
 
-        $link = "/Courses/{$course->id}";
+        $link = RoknAppLink::course((int) $course->id);
 
         return app(NotificationCampaignService::class)->queue(
             'new_course_lesson',
@@ -53,59 +54,6 @@ class NotificationService
             $link,
             [],
             'lesson-published:' . $lesson->id,
-            (int) $course->id,
-            SendStudentNotification::AUDIENCE_ENROLLED,
-            $copy['image_url'] ?? null,
-            $copy['action_label_ar'] ?? null,
-            $copy['action_label_en'] ?? null
-        );
-    }
-
-    /**
-     * Send notification for a new quiz.
-     *
-     * @param mixed $quiz
-     * @param Course $course
-     * @return bool
-     */
-    public static function notifyNewQuiz($quiz, Course $course): bool
-    {
-        if (!self::courseCanReceiveContentNotifications($course)) {
-            return false;
-        }
-
-        $quizTitle = $quiz->title ?? 'اختبار جديد';
-        $courseNameAr = (string) ($course->name_ar ?? $course->title ?? 'الكورس');
-        $courseNameEn = (string) ($course->name_en ?? $course->title ?? 'Course');
-        $copy = self::templatePayload('new_quiz', [
-            'course' => $courseNameAr,
-            'quiz' => (string) $quizTitle,
-        ], [
-            'title_ar' => 'اختبار جديد',
-            'title_en' => 'New quiz available',
-            'message_ar' => $quizTitle . "\n" . $courseNameAr,
-            'message_en' => $quizTitle . "\n" . $courseNameEn,
-            'action_label_ar' => 'افتح الاختبار',
-            'action_label_en' => 'Open quiz',
-        ]);
-        if ($copy === null) {
-            return false;
-        }
-
-        $link = "/Courses/{$course->id}";
-
-        return app(NotificationCampaignService::class)->queue(
-            'new_quiz',
-            [],
-            get_class($quiz),
-            $quiz->id,
-            $copy['title_ar'],
-            $copy['title_en'],
-            $copy['message_ar'],
-            $copy['message_en'],
-            $link,
-            [],
-            'quiz-published:' . $quiz->id,
             (int) $course->id,
             SendStudentNotification::AUDIENCE_ENROLLED,
             $copy['image_url'] ?? null,
@@ -153,7 +101,8 @@ class NotificationService
             $data['image_url'] ?? null,
             $data['action_label_ar'] ?? null,
             $data['action_label_en'] ?? null,
-            $data['scheduled_at'] ?? null
+            $data['scheduled_at'] ?? null,
+            isset($data['authored_by']) ? (int) $data['authored_by'] : null
         );
     }
 
@@ -190,7 +139,7 @@ class NotificationService
             return false;
         }
 
-        $link = "/Courses/{$course->id}";
+        $link = RoknAppLink::course((int) $course->id);
 
         return app(NotificationCampaignService::class)->queue(
             'course_update',
@@ -239,7 +188,7 @@ class NotificationService
             $copy['title_en'],
             $copy['message_ar'],
             $copy['message_en'],
-            '/Courses/' . $course->id,
+            RoknAppLink::course((int) $course->id),
             [],
             $deliveryKey,
             (int) $course->id,

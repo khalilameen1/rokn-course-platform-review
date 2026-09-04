@@ -4,9 +4,6 @@ return [
     'stream_api_key' => env('BUNNY_STREAM_API_KEY'),
     'library_id' => env('BUNNY_STREAM_LIBRARY_ID'),
     'cdn_hostname' => env('BUNNY_CDN_HOSTNAME'),
-    // Optional second streaming hostname/pull zone. It must serve the same
-    // Bunny Stream library and use the same directory token-auth key.
-    'fallback_cdn_hostname' => env('BUNNY_FALLBACK_CDN_HOSTNAME'),
     'storage_zone' => env('BUNNY_STORAGE_ZONE'),
     'storage_password' => env('BUNNY_STORAGE_PASSWORD'),
     // Storage assets require their own Pull Zone hostname and token key.

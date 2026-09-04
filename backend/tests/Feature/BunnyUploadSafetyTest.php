@@ -14,7 +14,6 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -33,6 +32,7 @@ final class BunnyUploadSafetyTest extends TestCase
             $table->id();
             $table->string('name_ar')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('lessons', function (Blueprint $table): void {
             $table->id();
@@ -101,82 +101,6 @@ final class BunnyUploadSafetyTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_verified_replacement_is_published_without_deleting_the_previous_video(): void
-    {
-        $lesson = Lesson::create([
-            'title_ar' => 'درس اختباري',
-            'video_source_type' => 'bunny',
-            'bunny_video_id' => 'old-guid',
-        ]);
-
-        Http::fake(function (Request $request) {
-            if ($request->method() === 'POST') {
-                return Http::response(['guid' => 'new-guid', 'title' => 'new'], 201);
-            }
-            if ($request->method() === 'PUT') {
-                return Http::response([], 200);
-            }
-            if ($request->method() === 'GET') {
-                return Http::response([
-                    'guid' => 'new-guid',
-                    'videoLibraryId' => '123',
-                ], 200);
-            }
-
-            self::fail('Replacement must never delete a remote video inline.');
-        });
-
-        $result = app(BunnyService::class)->replaceLessonVideo(
-            $lesson,
-            UploadedFile::fake()->create('lesson.mp4', 4, 'video/mp4')
-        );
-
-        self::assertTrue($result);
-        self::assertSame('new-guid', $lesson->fresh()->bunny_video_id);
-        self::assertSame('bunny', $lesson->fresh()->video_source_type);
-        $this->assertDatabaseHas('bunny_video_cleanup_candidates', [
-            'video_guid' => 'old-guid',
-            'reason' => 'superseded_video',
-            'requires_review' => true,
-        ]);
-        // One marker-recovery probe precedes allocation, followed by create,
-        // upload and provider-integrity verification.
-        Http::assertSentCount(4);
-        Http::assertNotSent(fn (Request $request) => $request->method() === 'DELETE');
-    }
-
-    public function test_failed_verification_never_changes_the_database_pointer_or_reports_success(): void
-    {
-        $lesson = Lesson::create([
-            'title_ar' => 'درس اختباري',
-            'video_source_type' => 'bunny',
-            'bunny_video_id' => 'old-guid',
-        ]);
-
-        Http::fake(function (Request $request) {
-            return match ($request->method()) {
-                'POST' => Http::response(['guid' => 'candidate-guid', 'title' => 'candidate'], 201),
-                'PUT' => Http::response([], 200),
-                'GET' => Http::response([], 503),
-                default => Http::response([], 500),
-            };
-        });
-
-        $result = app(BunnyService::class)->replaceLessonVideo(
-            $lesson,
-            UploadedFile::fake()->create('lesson.mp4', 4, 'video/mp4')
-        );
-
-        self::assertFalse($result);
-        self::assertSame('old-guid', $lesson->fresh()->bunny_video_id);
-        $this->assertDatabaseHas('bunny_video_cleanup_candidates', [
-            'video_guid' => 'candidate-guid',
-            'reason' => 'unpublished_upload',
-            'requires_review' => false,
-        ]);
-        Http::assertNotSent(fn (Request $request) => $request->method() === 'DELETE');
-    }
-
     public function test_video_upload_uses_a_file_stream_instead_of_reading_the_whole_file(): void
     {
         $source = file_get_contents(app_path('Services/BunnyService.php'));
@@ -201,44 +125,14 @@ final class BunnyUploadSafetyTest extends TestCase
             'video_source_type' => 'bunny',
             'bunny_video_id' => 'old-generation',
         ]);
-        $oldJob = new ProbeLessonMedia((int) $lesson->id);
+        $oldJob = new ProbeLessonMedia((int) $lesson->id, 'old-generation');
         $lesson->forceFill(['bunny_video_id' => 'new-generation'])->save();
-        $newJob = new ProbeLessonMedia((int) $lesson->id);
+        $newJob = new ProbeLessonMedia((int) $lesson->id, 'new-generation');
 
         self::assertNotSame($oldJob->uniqueId(), $newJob->uniqueId());
         Http::preventStrayRequests();
         $oldJob->handle(app(MediaHealthService::class), app(MediaReconciliationService::class));
         Http::assertNothingSent();
-    }
-
-    public function test_legacy_serialized_probe_hands_off_to_the_current_generation(): void
-    {
-        $courseId = \Illuminate\Support\Facades\DB::table('courses')->insertGetId([
-            'name_ar' => 'كورس',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        $lesson = Lesson::query()->create([
-            'list_id' => $courseId,
-            'title_ar' => 'درس',
-            'video_source_type' => 'bunny',
-            'bunny_video_id' => 'current-generation',
-        ]);
-        $legacy = new ProbeLessonMedia((int) $lesson->id);
-        unset($legacy->expectedVideoGuid);
-        /** @var ProbeLessonMedia $restored */
-        $restored = unserialize(serialize($legacy));
-
-        self::assertSame('lesson-media-probe:' . $lesson->id . ':legacy', $restored->uniqueId());
-        Queue::fake();
-        Http::preventStrayRequests();
-        $restored->handle(app(MediaHealthService::class), app(MediaReconciliationService::class));
-
-        Http::assertNothingSent();
-        Queue::assertPushed(ProbeLessonMedia::class, static fn (ProbeLessonMedia $job): bool =>
-            $job->lessonId === (int) $lesson->id
-            && $job->expectedVideoGuid === 'current-generation'
-        );
     }
 
     public function test_storage_uploads_use_unique_server_names_and_mime_extensions(): void

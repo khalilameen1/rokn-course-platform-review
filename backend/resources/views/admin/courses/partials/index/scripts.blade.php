@@ -1,17 +1,4 @@
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // The result set is paginated on the server. Filtering only the cards on
-    // the current page creates false empty states while matching courses exist
-    // on later pages, so search is submitted as one authoritative query.
-});
-
-function resetFilters() {
-    document.getElementById('courseSearch').value = '';
-    document.getElementById('classificationFilter').value = '';
-
-    window.location.href = @json(route('admin.courses.index'));
-}
-
 function navigateToCourse(event, card) {
     // Don't navigate if clicking on buttons or links
     if (event.target.closest('.btn-card') || event.target.closest('button') || event.target.closest('a')) {

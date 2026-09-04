@@ -140,6 +140,13 @@ export const scheduledManifestRefreshDelayMs = (
   now = serverNowMs(),
 ) => {
   const scheduled = expiryMilliseconds(refreshAfter);
-  if (scheduled) return Math.max(0, Math.floor(scheduled - now));
-  return manifestRefreshDelayMs(expiresAt, now);
+  const scheduledDelay = scheduled
+    ? Math.max(0, Math.floor(scheduled - now))
+    : null;
+  const expirySafeDelay = manifestRefreshDelayMs(expiresAt, now);
+  if (scheduledDelay === null) return expirySafeDelay;
+  if (expirySafeDelay === null) return scheduledDelay;
+  // A malformed or stale refresh_after value must never schedule renewal
+  // beyond the point where the signed source itself becomes unsafe to use.
+  return Math.min(scheduledDelay, expirySafeDelay);
 };

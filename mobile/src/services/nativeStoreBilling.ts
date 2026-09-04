@@ -16,7 +16,7 @@ import {
   IS_APP_STORE_DISTRIBUTION,
   IS_PLAY_DISTRIBUTION,
 } from '../constants/distribution';
-import type {DemoCoinPackage} from './demoExperience';
+import type {CoinPackage} from './api/coinPackageMapper';
 import {firstBoolean, payload} from './api/common';
 import {reportClientError} from './operationalTelemetry';
 import {errorCode} from '../utils/errorPayload';
@@ -40,7 +40,6 @@ export type NativeCoinCheckoutResult = {
   cancelled: boolean;
   coinsAdded: number;
   orderRef?: string;
-  demo: false;
 };
 
 type ActivePurchase = {
@@ -104,7 +103,9 @@ const provider = () => {
 };
 
 const normalizedBinding = (value: unknown) =>
-  String(value || '').trim().toLowerCase();
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 const contextBinding = (context: StoreBillingContext) =>
   normalizedBinding(
@@ -122,32 +123,30 @@ const purchaseBinding = (purchase: Purchase) =>
       : '',
   );
 
-const currentStoreBillingOwner = async (): Promise<StoreBillingOwner | null> => {
-  const accountScope = await accountScopedStorageKey(
-    '@rokn/native-store-reconciliation/v1',
-  );
-  try {
-    const context = payload<StoreBillingContext>(
-      await publicRequest.get('store-billing/context'),
-    );
-    const accountBinding = contextBinding(context);
-    const confirmedAccountScope = await accountScopedStorageKey(
+const currentStoreBillingOwner =
+  async (): Promise<StoreBillingOwner | null> => {
+    const accountScope = await accountScopedStorageKey(
       '@rokn/native-store-reconciliation/v1',
     );
-    return accountBinding && confirmedAccountScope === accountScope
-      ? {accountScope, accountBinding}
-      : null;
-  } catch {
-    // Guests and interrupted sessions do not own an authenticated store
-    // receipt. Leave it in the provider queue for its bound Rokn account.
-    return null;
-  }
-};
+    try {
+      const context = payload<StoreBillingContext>(
+        await publicRequest.get('store-billing/context'),
+      );
+      const accountBinding = contextBinding(context);
+      const confirmedAccountScope = await accountScopedStorageKey(
+        '@rokn/native-store-reconciliation/v1',
+      );
+      return accountBinding && confirmedAccountScope === accountScope
+        ? {accountScope, accountBinding}
+        : null;
+    } catch {
+      // Guests and interrupted sessions do not own an authenticated store
+      // receipt. Leave it in the provider queue for its bound Rokn account.
+      return null;
+    }
+  };
 
-const purchaseBelongsTo = (
-  purchase: Purchase,
-  owner: StoreBillingOwner,
-) => {
+const purchaseBelongsTo = (purchase: Purchase, owner: StoreBillingOwner) => {
   const receiptBinding = purchaseBinding(purchase);
   if (receiptBinding) return receiptBinding === owner.accountBinding;
 
@@ -163,7 +162,7 @@ const receiptBelongsToAnotherAccount = (error: unknown) =>
     errorCode(error).trim().toLowerCase(),
   );
 
-const packageProductId = (coinPackage: DemoCoinPackage) =>
+const packageProductId = (coinPackage: CoinPackage) =>
   IS_PLAY_DISTRIBUTION
     ? coinPackage.storeProductIds?.google
     : IS_APP_STORE_DISTRIBUTION
@@ -210,7 +209,6 @@ const verifyAndFinish = async (
       cancelled: false,
       coinsAdded: 0,
       orderRef: purchaseTransactionId(purchase),
-      demo: false as const,
     };
   }
   if (purchase.purchaseState !== 'purchased') {
@@ -268,7 +266,6 @@ const verifyAndFinish = async (
       cancelled: !credited,
       coinsAdded: credited ? coinsAdded : 0,
       orderRef: purchaseTransactionId(purchase),
-      demo: false,
     };
   })();
   processing.set(key, {accountScope, promise: operation});
@@ -337,7 +334,6 @@ const installListeners = () => {
         pending: false,
         cancelled: true,
         coinsAdded: 0,
-        demo: false,
       });
       return;
     }
@@ -437,8 +433,8 @@ export const reconcileNativeStorePurchases = async () => {
 };
 
 export const hydrateNativeStorePackages = async (
-  packages: DemoCoinPackage[],
-): Promise<DemoCoinPackage[]> => {
+  packages: CoinPackage[],
+): Promise<CoinPackage[]> => {
   await ensureConnection();
   await reconcileOutstandingPurchases();
   const configured = packages
@@ -446,9 +442,8 @@ export const hydrateNativeStorePackages = async (
       coinPackage,
       productId: packageProductId(coinPackage),
     }))
-    .filter(
-      (entry): entry is {coinPackage: DemoCoinPackage; productId: string} =>
-        Boolean(entry.productId),
+    .filter((entry): entry is {coinPackage: CoinPackage; productId: string} =>
+      Boolean(entry.productId),
     );
   if (!configured.length) return [];
 
@@ -474,7 +469,7 @@ export const hydrateNativeStorePackages = async (
 };
 
 export const purchaseNativeCoinPackage = async (
-  coinPackage: DemoCoinPackage,
+  coinPackage: CoinPackage,
 ): Promise<NativeCoinCheckoutResult> => {
   const productId = packageProductId(coinPackage);
   if (!productId) throw new Error('STORE_PRODUCT_NOT_CONFIGURED');
@@ -509,7 +504,6 @@ export const purchaseNativeCoinPackage = async (
         pending: true,
         cancelled: false,
         coinsAdded: 0,
-        demo: false,
       }),
     );
   }, 5 * 60 * 1000);
@@ -548,7 +542,6 @@ export const purchaseNativeCoinPackage = async (
           pending: false,
           cancelled: true,
           coinsAdded: 0,
-          demo: false,
         });
         return;
       }

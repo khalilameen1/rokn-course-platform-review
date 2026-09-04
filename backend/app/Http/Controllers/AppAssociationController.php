@@ -62,7 +62,6 @@ final class AppAssociationController extends Controller
                         '/wallet',
                         '/support/*',
                         '/course/*',
-                        '/courses/*',
                     ],
                 ], $appIds),
             ],

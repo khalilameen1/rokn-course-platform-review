@@ -6,7 +6,6 @@ namespace App\Console\Commands;
 
 use App\Services\ArabicSearchNormalizer;
 use App\Services\SavedFolderConsistencyService;
-use App\Support\UnicodeText;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -57,16 +56,13 @@ final class FinalizeReleaseBackfills extends Command
                 return self::FAILURE;
             }
 
-            $updated = $this->finalizeExamSnapshots((int) $batch);
             $repairedFolders = $savedFolders->repairLegacyFolders((int) $batch);
             $reindexedCourses = $this->finalizeCourseSearch($searchNormalizer, (int) $batch);
-            $remaining = $this->repairableExamSnapshotCount();
             $remainingFolders = $savedFolders->repairableCount();
             $remainingCourses = $this->staleCourseSearchCount($searchNormalizer, (int) $batch);
-            if ($remaining > 0 || $remainingFolders > 0 || $remainingCourses > 0) {
+            if ($remainingFolders > 0 || $remainingCourses > 0) {
                 $this->error(
-                    "{$remaining} repairable exam snapshot(s) and "
-                    ."{$remainingFolders} saved folder(s) and "
+                    "{$remainingFolders} saved folder(s) and "
                     ."{$remainingCourses} stale course search row(s) remain."
                 );
 
@@ -100,8 +96,7 @@ final class FinalizeReleaseBackfills extends Command
             }
 
             $this->info(
-                "Release backfills finalized; {$updated} exam snapshot(s) and "
-                ."{$repairedFolders} saved folder(s) repaired; "
+                "Release backfills finalized; {$repairedFolders} saved folder(s) repaired; "
                 ."{$reindexedCourses} course search row(s) refreshed."
             );
 
@@ -124,78 +119,6 @@ final class FinalizeReleaseBackfills extends Command
         return collect(array_keys($files))->contains(
             static fn (string $migration): bool => !isset($ran[$migration])
         );
-    }
-
-    private function finalizeExamSnapshots(int $batch): int
-    {
-        if (!$this->examSnapshotSchemaExists()) {
-            return 0;
-        }
-
-        $updated = 0;
-        DB::table('exam_attempts as attempt')
-            ->join('lists as quiz', 'quiz.id', '=', 'attempt.quiz_id')
-            ->whereNull('attempt.quiz_title')
-            ->select([
-                'attempt.id',
-                'quiz.title',
-                'quiz.title_ar',
-                'quiz.title_en',
-                'quiz.description',
-                'quiz.description_ar',
-                'quiz.description_en',
-                'quiz.image',
-            ])
-            ->orderBy('attempt.id')
-            ->chunkById($batch, function ($attempts) use (&$updated): void {
-                DB::transaction(function () use ($attempts, &$updated): void {
-                    foreach ($attempts as $attempt) {
-                        $updated += DB::table('exam_attempts')
-                            ->where('id', $attempt->id)
-                            ->whereNull('quiz_title')
-                            ->update([
-                                'quiz_title' => $this->firstText([
-                                    $attempt->title_ar,
-                                    $attempt->title_en,
-                                    $attempt->title,
-                                ], 'اختبار'),
-                                'quiz_description' => $this->firstText([
-                                    $attempt->description_ar,
-                                    $attempt->description_en,
-                                    $attempt->description,
-                                ]),
-                                'quiz_image' => $this->firstText([$attempt->image]),
-                            ]);
-                    }
-                }, 3);
-            }, 'attempt.id', 'id');
-
-        return $updated;
-    }
-
-    private function repairableExamSnapshotCount(): int
-    {
-        if (!$this->examSnapshotSchemaExists()) {
-            return 0;
-        }
-
-        // An attempt whose quiz was deleted remains valid historical evidence;
-        // finalization neither deletes it nor invents mutable source data.
-        return DB::table('exam_attempts as attempt')
-            ->join('lists as quiz', 'quiz.id', '=', 'attempt.quiz_id')
-            ->whereNull('attempt.quiz_title')
-            ->count();
-    }
-
-    private function examSnapshotSchemaExists(): bool
-    {
-        return Schema::hasTable('exam_attempts')
-            && Schema::hasTable('lists')
-            && Schema::hasColumns('exam_attempts', [
-                'quiz_title',
-                'quiz_description',
-                'quiz_image',
-            ]);
     }
 
     private function finalizeCourseSearch(ArabicSearchNormalizer $normalizer, int $batch): int
@@ -293,16 +216,4 @@ final class FinalizeReleaseBackfills extends Command
             ]);
     }
 
-    /** @param list<mixed> $values */
-    private function firstText(array $values, ?string $fallback = null): ?string
-    {
-        foreach ($values as $value) {
-            $text = UnicodeText::clean($value, false);
-            if ($text !== '') {
-                return $text;
-            }
-        }
-
-        return $fallback;
-    }
 }

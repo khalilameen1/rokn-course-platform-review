@@ -35,12 +35,14 @@ final class RecoverPendingCertificates extends Command
         ));
 
         $candidates = Certificate::query()
-            ->where(function ($query): void {
-                $query->whereNull('status')->orWhere('status', 'active');
-            })
+            ->where('status', 'active')
+            ->whereNull('revoked_at')
             ->where(function ($recoverable): void {
                 $recoverable->whereNull('recovery_failure_code')
-                    ->orWhere('recovery_failure_code', '!=', 'subject_missing');
+                    ->orWhereNotIn('recovery_failure_code', [
+                        'subject_missing',
+                        'snapshot_invalid',
+                    ]);
             })
             ->where(function ($query): void {
                 $query->whereNull('recovery_next_attempt_at')

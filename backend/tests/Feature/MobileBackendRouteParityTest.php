@@ -12,19 +12,22 @@ use Tests\TestCase;
 final class MobileBackendRouteParityTest extends TestCase
 {
     #[DataProvider('mobileRouteProvider')]
-    public function test_every_mobile_route_resolves_in_versioned_and_legacy_contracts(
+    public function test_every_mobile_route_resolves_in_the_versioned_contract(
         string $method,
         string $path,
     ): void {
-        foreach (['/api/v1/', '/api/'] as $prefix) {
-            $route = $this->app['router']->getRoutes()->match(
-                Request::create($prefix.$path, $method),
-            );
+        $route = $this->app['router']->getRoutes()->match(
+            Request::create('/api/v1/'.$path, $method),
+        );
 
-            self::assertInstanceOf(Route::class, $route);
-            self::assertSame($method, $route->methods()[0]);
-            self::assertStringStartsWith('api/', $route->uri());
-        }
+        self::assertInstanceOf(Route::class, $route);
+        self::assertSame($method, $route->methods()[0]);
+        self::assertStringStartsWith('api/v1/', $route->uri());
+    }
+
+    public function test_unversioned_mobile_api_is_absent(): void
+    {
+        $this->getJson('/api/courses/list')->assertNotFound();
     }
 
     /** @return iterable<string, array{string, string}> */
@@ -63,18 +66,12 @@ final class MobileBackendRouteParityTest extends TestCase
         yield 'learning dashboard' => ['GET', 'learning/courses'];
         yield 'profile read' => ['GET', 'user/profile'];
         yield 'profile update' => ['PUT', 'user/profile'];
-        yield 'legacy profile update' => ['POST', 'update_profile'];
         yield 'user paths' => ['GET', 'user/paths'];
         yield 'watch history read' => ['GET', 'user/watch-history'];
         yield 'watch history write' => ['POST', 'user/watch-history'];
         yield 'watch history clear' => ['DELETE', 'user/watch-history'];
         yield 'playback manifest' => ['POST', 'lessons/1/playback-manifest'];
         yield 'section completion' => ['POST', 'courses/1/sections/1/complete'];
-        yield 'section exam' => ['GET', 'courses/1/sections/1/exam'];
-        yield 'exam start' => ['POST', 'exams/start'];
-        yield 'exam answer' => ['POST', 'exams/submit-answer'];
-        yield 'exam end' => ['POST', 'exams/end'];
-        yield 'exam results' => ['GET', 'exams/1/results'];
         yield 'streaks' => ['GET', 'streaks'];
         yield 'certificates' => ['GET', 'certificates'];
         yield 'certificate recovery' => ['POST', 'certificates/1/issue'];
@@ -93,10 +90,11 @@ final class MobileBackendRouteParityTest extends TestCase
         yield 'saved folder lesson delete' => ['DELETE', 'saved-folders/1/lessons/1'];
         yield 'project submission' => ['POST', 'projects/1/submissions'];
         yield 'project submission status' => ['GET', 'project-submissions/submission-id'];
+        yield 'project report retry' => ['POST', 'project-submissions/submission-id/report/retry'];
         yield 'project details' => ['GET', 'projects/1'];
-        yield 'legacy project evaluation' => ['POST', 'projects/1/evaluate'];
         yield 'project feedback thread' => ['GET', 'project-feedback-threads/thread-id'];
         yield 'project feedback reply' => ['POST', 'project-feedback-threads/thread-id/messages'];
+        yield 'project feedback attachment' => ['POST', 'project-feedback-threads/thread-id/attachments'];
         yield 'wallet' => ['GET', 'wallet'];
         yield 'daily reward' => ['POST', 'rewards/daily'];
         yield 'coin packages' => ['GET', 'packages'];
@@ -108,12 +106,18 @@ final class MobileBackendRouteParityTest extends TestCase
         yield 'payment initiate' => ['POST', 'payment/initiate'];
         yield 'payment status' => ['GET', 'payment/status/order-reference'];
         yield 'payment reconciliation' => ['POST', 'payment/reconcile/order-reference'];
+        yield 'payment abandonment' => ['POST', 'payment/abandon/order-reference'];
         yield 'store billing context' => ['GET', 'store-billing/context'];
         yield 'native store verification' => ['POST', 'store-purchases/verify'];
         yield 'portfolio profile read' => ['GET', 'portfolio-profile'];
         yield 'portfolio profile update' => ['PUT', 'portfolio-profile'];
         yield 'portfolio list' => ['GET', 'portfolio'];
         yield 'portfolio create' => ['POST', 'portfolio'];
+        yield 'portfolio details' => ['GET', 'portfolio/1'];
+        yield 'portfolio update' => ['POST', 'portfolio/1'];
+        yield 'portfolio publish' => ['POST', 'portfolio/1/finalize'];
+        yield 'portfolio media append' => ['POST', 'portfolio/1/media'];
+        yield 'portfolio media delete' => ['DELETE', 'portfolio/1/media/1'];
         yield 'portfolio delete' => ['DELETE', 'portfolio/1'];
         yield 'portfolio eligible projects' => ['GET', 'portfolio/eligible-projects'];
         yield 'feedback' => ['POST', 'feedback'];

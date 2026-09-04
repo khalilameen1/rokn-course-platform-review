@@ -34,9 +34,6 @@ class DesignSetting extends Model
         'tiktok_url',
         'whatsapp_url',
         'telegram_url',
-        'technical_contact',
-        'policy_content_ar',
-        'policy_content_en',
         'powered_by',
         'show_how_platform_works',
         'how_platform_works_title_ar',
@@ -88,11 +85,6 @@ class DesignSetting extends Model
         return $this->slogan_3_ar ?: $this->slogan_3_en;
     }
 
-    public function getPolicyContentAttribute()
-    {
-        return $this->policy_content_ar ?: $this->policy_content_en;
-    }
-
     public function getSlogansArray(): array
     {
         return [
@@ -122,11 +114,6 @@ class DesignSetting extends Model
             'whatsapp' => $this->whatsapp_url,
             'telegram' => $this->telegram_url,
         ];
-    }
-
-    public function getSupportContactsArray(): array
-    {
-        return ['technical' => $this->technical_contact];
     }
 
     public function getBackgroundImagesArray(): array
@@ -176,9 +163,6 @@ class DesignSetting extends Model
             'tiktok_url' => null,
             'whatsapp_url' => null,
             'telegram_url' => null,
-            'technical_contact' => null,
-            'policy_content_ar' => null,
-            'policy_content_en' => null,
             'powered_by' => [],
             'show_how_platform_works' => false,
             'how_platform_works_title_ar' => null,

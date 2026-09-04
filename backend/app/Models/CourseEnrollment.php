@@ -139,7 +139,6 @@ class CourseEnrollment extends Model
             if (
                 !(bool) $enrollment->is_active
                 || !$enrollment->order_id
-                || !\Illuminate\Support\Facades\Schema::hasTable('financial_entitlement_holds')
             ) {
                 return;
             }

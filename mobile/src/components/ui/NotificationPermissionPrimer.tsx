@@ -28,7 +28,7 @@ import {MoreBellIcon} from '../../assets/SVG';
 import {RoknCoinStack} from './RoknCoin';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
 
-type PrimerPhase = 'idle' | 'requesting' | 'denied';
+type PrimerPhase = 'idle' | 'requesting' | 'denied' | 'failed';
 
 type Props = {
   visible: boolean;
@@ -156,6 +156,15 @@ export default function NotificationPermissionPrimer({
         action: 'فتح إعدادات الهاتف',
       };
     }
+    if (phase === 'failed') {
+      return {
+        eyebrow: '',
+        title: 'تعذّر تفعيل الإشعارات',
+        body: 'تحقق من الاتصال ثم حاول مرة أخرى',
+        footnote: '',
+        action: 'حاول مرة أخرى',
+      };
+    }
     return {
       eyebrow: '',
       title: 'فعّل الإشعارات',
@@ -199,7 +208,10 @@ export default function NotificationPermissionPrimer({
         setPhase('denied');
       }
     } catch {
-      setPhase('denied');
+      // OS denial and a failed account/token write are different recovery
+      // paths. Sending an already-authorized learner to system settings hides
+      // the real retry and leaves local/server preference state diverged.
+      setPhase('failed');
     } finally {
       requestFlightRef.current = false;
     }

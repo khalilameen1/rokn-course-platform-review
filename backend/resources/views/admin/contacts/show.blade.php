@@ -12,7 +12,7 @@
         <div>
             <h1>{{ $contact->isAccountDeletionRequest() ? 'طلب حذف حساب' : 'تفاصيل الرسالة' }}</h1>
         </div>
-        <a class="contact-back" href="{{ route('admin.contacts.index') }}"><i class="fa fa-arrow-right"></i> كل الرسائل</a>
+        <a class="contact-back" href="{{ route('admin.contacts.index') }}"><i class="fa fa-arrow-right"></i> رسائل الموقع</a>
     </div>
 
     @if(session('success'))<div class="flash flash-success">{{ session('success') }}</div>@endif

@@ -1,5 +1,6 @@
             <!-- Course Settings Section -->
-            <div class="form-section">
+            <div class="form-section" id="course-editor-settings">
+                @include('admin.courses.partials.publishing-area-issues', ['area' => 'settings'])
                 <h2 class="section-title">
                     <div class="section-icon">
                         <i class="fa fa-cog"></i>
@@ -129,53 +130,47 @@
                     </div>
                 </div>
 
+                @if($canManageHero)
                 <div class="form-row">
                     <div class="form-group-modern">
-                        <label class="checkbox-item {{ $course->is_main_course ? 'selected' : '' }}" for="is_main_course">
+                        <label class="checkbox-item {{ $mainCourseDefault ? 'selected' : '' }}" for="is_main_course">
                             <div class="custom-checkbox">
-                                <i class="fa fa-check{{ $course->is_main_course ? '' : ' course-editor__check-icon--hidden' }}"></i>
+                                <i class="fa fa-check{{ $mainCourseDefault ? '' : ' course-editor__check-icon--hidden' }}"></i>
                             </div>
                             <div>
                                 <div class="course-editor__option-title">كورس رئيسي</div>
                                 <div class="course-editor__option-description">يظهر كبطل الصفحة الوحيد. اختياره يستبدل الكورس الرئيسي السابق تلقائيًا.</div>
                             </div>
                             {!! Form::hidden('is_main_course', 0) !!}
-                            {!! Form::checkbox('is_main_course', 1, null, ['id' => 'is_main_course', 'class' => 'course-editor__native-checkbox']) !!}
-                        </label>
-                    </div>
-                    <div class="form-group-modern">
-                        <label class="checkbox-item {{ $course->is_coming_soon ? 'selected' : '' }}" for="is_coming_soon">
-                            <div class="custom-checkbox">
-                                <i class="fa fa-check{{ $course->is_coming_soon ? '' : ' course-editor__check-icon--hidden' }}"></i>
-                            </div>
-                            <div>
-                                <div class="course-editor__option-title">مسودة مخفية</div>
-                                <div class="course-editor__option-description">فعّلها لإخفاء الكورس. ألغِها لطلب النشر؛ لن يُنشر قبل اجتياز قائمة الاكتمال أعلاه.</div>
-                            </div>
-                            {!! Form::hidden('is_coming_soon', 0) !!}
-                            {!! Form::checkbox('is_coming_soon', 1, $course->is_coming_soon, ['id' => 'is_coming_soon', 'class' => 'course-editor__native-checkbox']) !!}
+                            {!! Form::checkbox('is_main_course', 1, old('is_main_course', $mainCourseDefault), ['id' => 'is_main_course', 'class' => 'course-editor__native-checkbox']) !!}
                         </label>
                     </div>
                 </div>
+                @endif
+
+                {{-- The update route owns both operations. The clicked submit
+                     button supplies the one explicit intent; publication is no
+                     longer hidden inside an inverted draft checkbox. --}}
+                <input type="hidden" name="is_coming_soon" value="1">
 
                 <div class="form-row">
                     <div class="form-group-modern">
-                        <label class="checkbox-item {{ $course->is_catalog_visible ? 'selected' : '' }}" for="is_catalog_visible">
+                        <label class="checkbox-item {{ $catalogVisibilityDefault ? 'selected' : '' }}" for="is_catalog_visible">
                             <div class="custom-checkbox">
-                                <i class="fa fa-check{{ $course->is_catalog_visible ? '' : ' course-editor__check-icon--hidden' }}"></i>
+                                <i class="fa fa-check{{ $catalogVisibilityDefault ? '' : ' course-editor__check-icon--hidden' }}"></i>
                             </div>
                             <div>
                                 <div class="course-editor__option-title">
-                                    {{ $course->is_coming_soon ? 'إظهار بطاقة «قريبًا» في التطبيق' : 'إظهار الكورس في التطبيق والبحث' }}
+                                    {{ $hasPublishedRevision ? 'إظهار الكورس في التطبيق والبحث' : 'إظهار بطاقة «قريبًا» في التطبيق' }}
                                 </div>
                                 <div class="course-editor__option-description">
-                                    {{ $course->is_coming_soon
-                                        ? 'لن تظهر البطاقة قبل اكتمال الغلاف والمحاضر والتصنيف والوصف'
-                                        : 'يمكن إخفاؤه من الاكتشاف مع بقاء وصول الطلاب المسجلين' }}
+                                    {{ $hasPublishedRevision
+                                        ? 'يمكن إخفاؤه من الاكتشاف مع بقاء وصول الطلاب المسجلين'
+                                        : 'لن تظهر البطاقة قبل اكتمال الغلاف والمحاضر والتصنيف والوصف' }}
                                 </div>
                             </div>
                             {!! Form::hidden('is_catalog_visible', 0) !!}
-                            {!! Form::checkbox('is_catalog_visible', 1, $course->is_catalog_visible, ['id' => 'is_catalog_visible', 'class' => 'course-editor__native-checkbox']) !!}
+                            {!! Form::checkbox('is_catalog_visible', 1, old('is_catalog_visible', $catalogVisibilityDefault), ['id' => 'is_catalog_visible', 'class' => 'course-editor__native-checkbox']) !!}
                         </label>
                     </div>
                 </div>

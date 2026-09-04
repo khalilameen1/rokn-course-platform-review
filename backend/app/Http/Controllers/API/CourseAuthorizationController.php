@@ -5,24 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\Bill;
 use App\Models\PaymentMethod;
 use App\Services\CourseChatAccessService;
-use App\Services\CourseSectionSequenceService;
-use App\Services\LatestWatchResumeService;
-use App\Services\CourseRevisionLearnerReadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class CourseAuthorizationController extends Controller
 {
     public function __construct(
-        private readonly CourseChatAccessService $courseAccess,
-        private readonly CourseSectionSequenceService $sectionSequence,
-        private readonly LatestWatchResumeService $latestResume,
-        private readonly CourseRevisionLearnerReadService $revisionReads
+        private readonly CourseChatAccessService $courseAccess
     ) {
     }
 
@@ -52,196 +45,6 @@ final class CourseAuthorizationController extends Controller
     }
 
     /**
-     * Get user's course enrollments.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function myEnrollments(Request $request): JsonResponse
-    {
-        $user = auth('api')->user();
-
-        $enrollments = CourseEnrollment::with([
-                'course.sections' => fn ($sections) => $sections
-                    ->orderBy('order')
-                    ->orderBy('id'),
-                'order',
-            ])
-            ->where('user_id', $user->id)
-            ->where('is_active', true)
-            ->where(function ($query): void {
-                $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
-            })
-            ->whereHas('course', function ($courses): void {
-                $courses->where('is_coming_soon', false)->whereHas('sections');
-            })
-            ->latest('access_granted_at')
-            ->latest('id')
-            ->get()
-            ->filter(fn (CourseEnrollment $enrollment): bool =>
-                $this->courseAccess->hasLearningAccess(
-                    (int) $enrollment->user_id,
-                    (int) $enrollment->course_id
-                )
-            )
-            ->values();
-
-        $learningSectionsByCourse = $enrollments->mapWithKeys(fn (CourseEnrollment $enrollment): array => [
-            (int) $enrollment->course_id => $this->sectionSequence->learning(
-                $enrollment->course->sections
-            ),
-        ]);
-        $allSectionIds = $learningSectionsByCourse
-            ->flatten(1)
-            ->pluck('id')
-            ->unique()
-            ->values()
-            ->all();
-
-        $progressRows = collect();
-        if (!empty($allSectionIds)) {
-            $progressRows = $this->revisionReads->sectionProgressRows(
-                (int) $user->id,
-                $allSectionIds
-            );
-        }
-
-        $completedSectionIds = $progressRows
-            ->where('is_completed', true)
-            ->pluck('course_section_id')
-            ->unique();
-
-        // One compact query supplies resume position and real "started" state.
-        // It remains separate from academic completion, which is still governed
-        // exclusively by StudentSectionProgress and project rules.
-        $latestWatchByCourse = $this->latestResume->forUser(
-            (int) $user->id,
-            $enrollments->pluck('course_id')
-        );
-
-        // Pre-load certificate course IDs in a single query (avoids N+1)
-        $certificateCourseIds = \App\Models\Certificate::where('user_id', $user->id)
-            ->whereIn('course_id', $enrollments->pluck('course_id'))
-            ->where('status', 'active')
-            ->pluck('course_id')
-            ->flip();
-
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل كورساتك',
-            'data' => $enrollments->map(function ($enrollment) use (
-                $completedSectionIds,
-                $certificateCourseIds,
-                $progressRows,
-                $latestWatchByCourse,
-                $learningSectionsByCourse
-            ) {
-                $learningSections = $learningSectionsByCourse->get(
-                    (int) $enrollment->course_id,
-                    collect()
-                );
-                $sectionIds = $learningSections->pluck('id');
-                $totalSections = $sectionIds->count();
-                $completedSections = $sectionIds->intersect($completedSectionIds)->count();
-                $progressPercentage = $totalSections > 0
-                    ? round(($completedSections / $totalSections) * 100, 2)
-                    : 0.0;
-
-                $courseProgress = $progressRows->whereIn('course_section_id', $sectionIds);
-                $latestWatch = $latestWatchByCourse->get($enrollment->course_id);
-                $isCompleted = $totalSections > 0 && $completedSections >= $totalSections;
-                $hasStarted = $courseProgress->isNotEmpty() || $latestWatch !== null;
-                $learningState = $isCompleted
-                    ? 'completed'
-                    : ($hasStarted ? 'in_progress' : 'not_started');
-
-                $resumeSection = null;
-                if ($latestWatch?->course_section_id
-                    && !$completedSectionIds->contains($latestWatch->course_section_id)) {
-                    $resumeSection = $learningSections
-                        ->firstWhere('id', $latestWatch->course_section_id);
-                }
-
-                if (!$resumeSection && !$isCompleted) {
-                    $resumeSection = $learningSections->first(
-                        function ($section) use ($completedSectionIds) {
-                            return !$completedSectionIds->contains($section->id);
-                        }
-                    );
-                }
-
-                $continueTarget = null;
-                if ($resumeSection) {
-                    $sectionType = $resumeSection->getSectionType();
-                    $reelNumber = $sectionType === 'lesson'
-                        ? $learningSections
-                            ->takeUntil(fn ($section) => $section->id === $resumeSection->id)
-                            ->filter(fn ($section) => $section->getSectionType() === 'lesson')
-                            ->count() + 1
-                        : null;
-
-                    $continueTarget = [
-                        'course_section_id' => $resumeSection->id,
-                        'type' => $sectionType,
-                        'lesson_id' => $sectionType === 'lesson' ? $resumeSection->sectionable_id : null,
-                        'project_id' => $sectionType === 'project' ? $resumeSection->sectionable_id : null,
-                        'module_id' => $resumeSection->module_id,
-                        'order' => $resumeSection->order,
-                        'reel_number' => $reelNumber,
-                        'position_seconds' => $latestWatch?->course_section_id === $resumeSection->id
-                            ? $latestWatch->position_seconds
-                            : 0,
-                    ];
-                }
-
-                $latestProgressAt = $courseProgress->sortByDesc('updated_at')->first()?->updated_at;
-                $latestWatchAt = $latestWatch?->watched_at ?? $latestWatch?->updated_at;
-                $lastActivityAt = collect([
-                    $latestProgressAt,
-                    $latestWatchAt,
-                    $enrollment->enrolled_at,
-                ])->filter()->sortByDesc(fn ($date) => $date->getTimestamp())->first();
-
-                return [
-                    'enrollment_id' => $enrollment->id,
-                    'id' => $enrollment->course->id,
-                    'title' => $enrollment->course->name_ar,
-                    'title_en' => $enrollment->course->name_en,
-                    'image' => $enrollment->course->image,
-                    'price' => $enrollment->course->price,
-                    'progress_percentage' => $progressPercentage,
-                    'learning_state' => $learningState,
-                    'is_started' => $hasStarted,
-                    'is_completed' => $isCompleted,
-                    'completed_sections_count' => $completedSections,
-                    'total_sections_count' => $totalSections,
-                    'last_activity_at' => $lastActivityAt,
-                    'continue_target' => $continueTarget,
-                    'course' => [
-                        'id' => $enrollment->course->id,
-                        'title' => $enrollment->course->name_ar,
-                        'title_en' => $enrollment->course->name_en,
-                        'image' => $enrollment->course->image,
-                        'description' => $enrollment->course->description,
-                        'created_at' => $enrollment->course->created_at,
-                        'price' => $enrollment->course->price,
-                        'progress_percentage' => $progressPercentage,
-                        'learning_state' => $learningState,
-                        'completed_sections_count' => $completedSections,
-                        'total_sections_count' => $totalSections,
-                    ],
-                    'enrolled_at' => $enrollment->enrolled_at,
-                    'expires_at' => $enrollment->expires_at,
-                    'is_active' => $enrollment->isActive(),
-                    'access_granted_at' => $enrollment->access_granted_at,
-                    'has_certificate' => isset($certificateCourseIds[$enrollment->course_id]),
-                ];
-            })
-        ]);
-    }
-
-    /**
      * Check if user has access to a course.
      *
      * @param Request $request
@@ -259,15 +62,13 @@ final class CourseAuthorizationController extends Controller
         // Keep this legacy endpoint on the same entitlement contract as the
         // course-details resource. Direct enrollment rows can also represent
         // course-code/institutional grants, so they must not be labelled paid.
-        $entitlement = $this->courseAccess->entitlementFor(
+        $resolution = $this->courseAccess->resolveEntitlement(
             (int) $user->id,
             (int) $courseId
         );
+        $entitlement = $resolution['entitlement'];
         $enrollment = $entitlement['has_learning_access']
-            ? $this->courseAccess->activeEnrollmentFor(
-                (int) $user->id,
-                (int) $courseId
-            )
+            ? $resolution['enrollment']
             : null;
         $hasAccess = $enrollment !== null;
 

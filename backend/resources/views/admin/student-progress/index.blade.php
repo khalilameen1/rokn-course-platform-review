@@ -105,18 +105,12 @@
                                     <div class="mt-3">
                                         @php
                                             $typeLabels = [
-                                                'lesson' => '📖 دروس',
-                                                'quiz' => '📝 اختبارات',
-                                                'question' => '❓ أسئلة',
-                                                'link' => '🔗 روابط',
-                                                'course' => '📚 دورات'
+                                                'lesson' => 'مقاطع',
+                                                'project' => 'مشروعات عبور',
                                             ];
                                             $badgeClasses = [
                                                 'lesson' => 'badge-lesson',
-                                                'quiz' => 'badge-quiz',
-                                                'question' => 'badge-question',
-                                                'link' => 'badge-link',
-                                                'course' => 'badge-course'
+                                                'project' => 'badge-project',
                                             ];
                                         @endphp
                                         @foreach($userProgress['progress']['sections_by_type'] as $type => $count)

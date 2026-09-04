@@ -251,8 +251,10 @@ export const uploadPortfolioVideo = async (
   projectId: string,
   file: LearnerDraftFile,
   clientRequestId: string,
+  ownerBoundary?: AccountSessionBoundary,
 ): Promise<unknown> => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
   assertAccountSessionBoundary(boundary);
   const path = localPath(file.uri);

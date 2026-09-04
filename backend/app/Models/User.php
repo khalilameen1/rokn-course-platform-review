@@ -78,9 +78,9 @@ class User extends Authenticatable
         'name_ar', 'name_en', 'bio_ar', 'bio_en',
         'notifications_status', 'preferred_locale', 'leaderboard_opt_in', 'last_learning_nudge_at',
         'watch_history_enabled', 'marketing_notifications_enabled',
-        'autoplay_next_enabled', 'video_quality_preference', 'video_fit_mode', 'playback_speed',
+        'video_quality_preference', 'playback_speed',
         'terms_accepted_at', 'privacy_notice_acknowledged_at', 'legal_notice_version',
-        'portfolio_slug', 'portfolio_is_public', 'portfolio_headline', 'portfolio_location',
+        'portfolio_slug', 'portfolio_headline', 'portfolio_location',
         'portfolio_skills', 'portfolio_links',
         'authoring_request_id',
     ];
@@ -167,12 +167,10 @@ class User extends Authenticatable
         'active' => 'boolean',
         'profile_revision' => 'integer',
         'email_verified_at' => 'datetime',
-        'portfolio_is_public' => 'boolean',
         'portfolio_skills' => 'array',
         'portfolio_links' => 'array',
         'watch_history_enabled' => 'boolean',
         'marketing_notifications_enabled' => 'boolean',
-        'autoplay_next_enabled' => 'boolean',
         'playback_speed' => 'float',
         'leaderboard_opt_in' => 'boolean',
         'last_learning_nudge_at' => 'datetime',
@@ -191,11 +189,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $appends = [
-        'exam_attempts_count',
-        'completed_exams_count',
-        'average_exam_score',
         'completed_lessons_count',
-        'exam_statistics',
         'lesson_progress_statistics'
     ];
 
@@ -206,7 +200,7 @@ class User extends Authenticatable
 
     public function latestNote()
     {
-        return $this->hasOne(UserNote::class)->latest();
+        return $this->hasOne(UserNote::class)->latestOfMany();
     }
 
     public function addNote()
@@ -238,22 +232,6 @@ class User extends Authenticatable
     }
 
 
-    public function courses()
-    {
-        return $this->hasManyThrough('App\Models\ItemList', 'course_user', 'user_id', 'course_id')
-            ->where('item_lists.type', 'course')
-            ->withTimestamps();
-
-    }
-
-    /**
-     * Get exam attempts for this user.
-     */
-    public function examAttempts()
-    {
-        return $this->hasMany(ExamAttempt::class);
-    }
-
     /**
      * Get student section progress for this user.
      */
@@ -268,64 +246,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Get count of exams user has attempted (opened).
-     */
-    public function getExamAttemptsCountAttribute()
-    {
-        return $this->examAttempts()->count();
-    }
-
-    /**
-     * Get count of exams user has completed till the end.
-     */
-    public function getCompletedExamsCountAttribute()
-    {
-        return $this->examAttempts()->completed()->count();
-    }
-
-    /**
-     * Get average score of student in all completed exams.
-     */
-    public function getAverageExamScoreAttribute()
-    {
-        $completedExams = $this->examAttempts()->completed()->get();
-
-        if ($completedExams->isEmpty()) {
-            return 0;
-        }
-
-        $totalScore = $completedExams->sum('score_percentage');
-        return round($totalScore / $completedExams->count(), 2);
-    }
-
-    /**
      * Get count of lessons user has completed.
      */
     public function getCompletedLessonsCountAttribute()
     {
         return $this->sectionProgress()->completed()->count();
-    }
-
-    /**
-     * Get comprehensive exam statistics for the user.
-     */
-    public function getExamStatisticsAttribute()
-    {
-        $attempts = $this->examAttempts();
-        $completedAttempts = $attempts->completed()->get();
-
-        return [
-            'total_attempts' => $attempts->count(),
-            'completed_exams' => $completedAttempts->count(),
-            'average_score' => $completedAttempts->isNotEmpty()
-                ? round($completedAttempts->avg('score_percentage'), 2)
-                : 0,
-            'passed_exams' => $completedAttempts->where('is_passed', true)->count(),
-            'failed_exams' => $completedAttempts->where('is_passed', false)->count(),
-            'completion_rate' => $attempts->count() > 0
-                ? round(($completedAttempts->count() / $attempts->count()) * 100, 2)
-                : 0
-        ];
     }
 
     /**

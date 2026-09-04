@@ -1,5 +1,6 @@
 import React, {useEffect, useMemo, useState} from 'react';
-import {Alert, Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {Container, Content} from '../../components/containers/Containers';
 import {
   PremiumCard,
@@ -17,8 +18,8 @@ import {
   textDirection,
   useResponsiveLayout,
 } from '../../constants/designSystem';
-import {openSupportWhatsApp} from '../../services/supportWhatsApp';
 import {getManagedPublicContent} from '../../services/publicContent';
+import type {RootNavigation} from '../../navigation/types';
 
 const SECTIONS = [
   {
@@ -84,6 +85,7 @@ const SECTIONS = [
 ];
 
 export default function PrivacyPolicy() {
+  const navigation = useNavigation<RootNavigation>();
   const {fontScale, isTablet, width} = useResponsiveLayout();
   const stackContact = width < 430 || fontScale > 1.2;
   const [managedBody, setManagedBody] = useState('');
@@ -104,18 +106,8 @@ export default function PrivacyPolicy() {
     [managedBody],
   );
 
-  const contactSupport = async () => {
-    try {
-      await openSupportWhatsApp(
-        'مرحبًا فريق ركن، لدي سؤال بخصوص الخصوصية أو بيانات حسابي.',
-      );
-    } catch {
-      Alert.alert(
-        'تعذّر فتح واتساب',
-        "تعذّر تحميل رقم الدعم\nتحقق من الاتصال ثم حاول مرة أخرى",
-      );
-    }
-  };
+  const contactSupport = () =>
+    navigation.navigate('Feedback', {sourceScreen: 'privacy'});
 
   return (
     <Container noPadding>
@@ -179,7 +171,7 @@ export default function PrivacyPolicy() {
                 stackContact && styles.contactButtonStacked,
                 pressed && styles.pressed,
               ]}>
-              <Text style={styles.contactButtonText}>تواصل عبر واتساب</Text>
+              <Text style={styles.contactButtonText}>تواصل مع ركن</Text>
             </Pressable>
           </PremiumCard>
         </ResponsiveFrame>

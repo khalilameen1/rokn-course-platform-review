@@ -1,4 +1,4 @@
-import type {DemoCourse} from '../data/demoContent';
+import type {Course} from '../types/Course';
 
 export const DEFAULT_RECOMMENDATION_LIMIT = 10;
 export const MINIMUM_RECOMMENDATION_COUNT = 4;
@@ -7,13 +7,13 @@ type RecommendationOptions = {
   /** Courses already occupying the current context, such as the Home hero. */
   excludedCourseIds?: readonly string[];
   /** Categories inferred only from courses the learner already opened. */
-  preferredCategories?: readonly DemoCourse['category'][];
+  preferredCategories?: readonly Course['category'][];
   limit?: number;
   minimumResults?: number;
 };
 
 type RankedCourse = {
-  course: DemoCourse;
+  course: Course;
   originalIndex: number;
   baseScore: number;
 };
@@ -24,7 +24,7 @@ const boundedHomeOrder = (value: unknown): number => {
   return Math.max(0, Math.min(1000, Number.isFinite(parsed) ? parsed : 100));
 };
 
-const isActionableCourse = (course: DemoCourse): boolean => {
+const isActionableCourse = (course: Course): boolean => {
   const progress = Number(course.progress || 0);
   return (
     Boolean(String(course.id || '').trim()) &&
@@ -36,9 +36,9 @@ const isActionableCourse = (course: DemoCourse): boolean => {
 };
 
 const rankCourse = (
-  course: DemoCourse,
+  course: Course,
   originalIndex: number,
-  preferredCategories: ReadonlySet<DemoCourse['category']>,
+  preferredCategories: ReadonlySet<Course['category']>,
 ): RankedCourse => {
   const configuredOrder = boundedHomeOrder(course.homeSortOrder);
   const baseScore =
@@ -62,9 +62,9 @@ const rankCourse = (
  * the app. It never persists learner profiling and never changes access state.
  */
 export const recommendCourses = (
-  courses: readonly DemoCourse[],
+  courses: readonly Course[],
   options: RecommendationOptions = {},
-): DemoCourse[] => {
+): Course[] => {
   const minimumResults = Math.max(
     1,
     Math.floor(options.minimumResults ?? MINIMUM_RECOMMENDATION_COUNT),
@@ -99,8 +99,8 @@ export const recommendCourses = (
 
   if (remaining.length < minimumResults) return [];
 
-  const selected: DemoCourse[] = [];
-  const categoryUsage = new Map<DemoCourse['category'], number>();
+  const selected: Course[] = [];
+  const categoryUsage = new Map<Course['category'], number>();
 
   // A small repeat penalty keeps adjacent suggestions varied without making
   // the result random or hiding the strongest course in a relevant category.

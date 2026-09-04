@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Course;
@@ -15,6 +16,11 @@ use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
 {
+    public function __construct(
+        private readonly AdminPermissionMatrix $permissions
+    ) {
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -22,24 +28,37 @@ class TeacherController extends Controller
      */
     public function index(Request $request)
     {
+        $canManageCredentials = $this->canManageCredentials($request);
         $teachers = User::query()
+            ->select($this->teacherColumns($canManageCredentials))
             ->where('role', 'teacher')
             ->with('photo')
             ->withCount('teachingCourses');
 
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
-            $teachers->where(function($query) use ($search) {
+            $teachers->where(function($query) use ($search, $canManageCredentials) {
                 $query->where('name_ar', 'LIKE', "%{$search}%")
-                      ->orWhere('name_en', 'LIKE', "%{$search}%")
-                      ->orWhere('email', 'LIKE', "%{$search}%")
-                      ->orWhere('phone', 'LIKE', "%{$search}%");
+                      ->orWhere('name_en', 'LIKE', "%{$search}%");
+                if ($canManageCredentials) {
+                    $query->orWhere('email', 'LIKE', "%{$search}%")
+                        ->orWhere('phone', 'LIKE', "%{$search}%");
+                }
             });
         }
 
         $teachers = $teachers->latest()->latest('id')->paginate(10)->withQueryString();
+        $canDeleteTeacher = $this->permissions->allows(
+            $request->user()?->role,
+            'admin.teachers.destroy',
+            'DELETE'
+        );
 
-        return view('admin.teachers.index', compact('teachers'));
+        return view('admin.teachers.index', compact(
+            'teachers',
+            'canManageCredentials',
+            'canDeleteTeacher'
+        ));
     }
 
     /**
@@ -47,9 +66,11 @@ class TeacherController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Request $request)
     {
-        return view('admin.teachers.create');
+        return view('admin.teachers.create', [
+            'canManageCredentials' => $this->canManageCredentials($request),
+        ]);
     }
 
     /**
@@ -60,15 +81,23 @@ class TeacherController extends Controller
      */
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
+        $canManageCredentials = $this->canManageCredentials($request);
         $intentTeacherId = User::withTrashed()
             ->where('authoring_request_id', (string) $request->input('authoring_request_id'))
             ->value('id');
         $request->validate([
             'name_ar' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($intentTeacherId)],
-            'phone' => ['required', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($intentTeacherId)],
-            'password' => 'required|string|min:6|confirmed',
+            'email' => $canManageCredentials
+                ? ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($intentTeacherId)]
+                : ['prohibited'],
+            'phone' => $canManageCredentials
+                ? ['required', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($intentTeacherId)]
+                : ['prohibited'],
+            'password' => $canManageCredentials
+                ? ['required', 'string', 'min:10', 'max:72', 'confirmed']
+                : ['prohibited'],
+            'password_confirmation' => $canManageCredentials ? ['required', 'same:password'] : ['prohibited'],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'job_title' => 'nullable|string|max:255',
             'bio_ar' => 'nullable|string',
@@ -91,22 +120,29 @@ class TeacherController extends Controller
             throw new \RuntimeException('Teacher image storage failed');
         }
         try {
-            DB::transaction(function () use ($request, $imagePath, $requestId, $createIntents): void {
+            DB::transaction(function () use ($request, $imagePath, $requestId, $createIntents, $canManageCredentials): void {
                 $teacher = User::withTrashed()->where('authoring_request_id', $requestId)
                     ->lockForUpdate()->first();
                 if (!$teacher) {
-                    $teacher = User::create([
-                    'name_ar' => $request->string('name_ar')->trim(),
-                    'name_en' => $request->filled('name_en') ? $request->string('name_en')->trim() : null,
-                    'email' => strtolower($request->string('email')->trim()),
-                    'phone' => $request->string('phone')->trim(),
-                    'password' => Hash::make($request->password),
-                    'job_title' => $request->input('job_title'),
-                    'bio_ar' => $request->input('bio_ar'),
-                    'bio_en' => $request->input('bio_en'),
-                    'authoring_request_id' => $requestId,
+                    $teacher = new User();
+                    $teacher->fill([
+                        'name_ar' => $request->string('name_ar')->trim(),
+                        'name_en' => $request->filled('name_en') ? $request->string('name_en')->trim() : null,
+                        'email' => $canManageCredentials ? strtolower($request->string('email')->trim()) : null,
+                        'phone' => $canManageCredentials ? (string) $request->string('phone')->trim() : null,
+                        'password' => $canManageCredentials ? Hash::make((string) $request->input('password')) : null,
+                        'job_title' => $request->input('job_title'),
+                        'bio_ar' => $request->input('bio_ar'),
+                        'bio_en' => $request->input('bio_en'),
+                        'authoring_request_id' => $requestId,
                     ]);
-                    $teacher->forceFill(['role' => 'teacher', 'active' => $request->boolean('active')])->save();
+                    // Role is intentionally guarded against request mass
+                    // assignment. Persist it with the profile in one insert;
+                    // saving first violates the users.role NOT NULL contract.
+                    $teacher->forceFill([
+                        'role' => 'teacher',
+                        'active' => $request->boolean('active'),
+                    ])->save();
                 }
                 if ($imagePath) {
                     $teacher->allPhotos()->firstOrCreate(['path' => $imagePath, 'type' => 'featured']);
@@ -133,10 +169,14 @@ class TeacherController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(Request $request, $id)
     {
-        $teacher = User::where('role', 'teacher')->findOrFail($id);
-        $canViewEnrollmentCounts = strtolower(trim((string) auth()->user()?->role)) === 'admin';
+        $canManageCredentials = $this->canManageCredentials($request);
+        $teacher = User::query()
+            ->select($this->teacherColumns($canManageCredentials))
+            ->where('role', 'teacher')
+            ->findOrFail($id);
+        $canViewEnrollmentCounts = $this->permissions->isAdministrator($request->user()?->role);
         $coursesQuery = $teacher->teachingCourses()
             ->orderByDesc('courses.id');
         if ($canViewEnrollmentCounts) {
@@ -147,7 +187,8 @@ class TeacherController extends Controller
         return view('admin.teachers.show', compact(
             'teacher',
             'courses',
-            'canViewEnrollmentCounts'
+            'canViewEnrollmentCounts',
+            'canManageCredentials'
         ));
     }
 
@@ -157,10 +198,13 @@ class TeacherController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Request $request, $id)
     {
         $teacher = User::where('role', 'teacher')->findOrFail($id);
-        return view('admin.teachers.edit', compact('teacher'));
+        return view('admin.teachers.edit', [
+            'teacher' => $teacher,
+            'canManageCredentials' => $this->canManageCredentials($request),
+        ]);
     }
 
     /**
@@ -173,13 +217,21 @@ class TeacherController extends Controller
     public function update(Request $request, $id)
     {
         $teacher = User::where('role', 'teacher')->findOrFail($id);
+        $canManageCredentials = $this->canManageCredentials($request);
 
         $request->validate([
             'name_ar' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,'.$teacher->id,
-            'phone' => 'required|string|max:20|unique:users,phone,'.$teacher->id,
-            'password' => 'nullable|string|min:6|confirmed',
+            'email' => $canManageCredentials
+                ? ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($teacher->id)]
+                : ['prohibited'],
+            'phone' => $canManageCredentials
+                ? ['required', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($teacher->id)]
+                : ['prohibited'],
+            'password' => $canManageCredentials
+                ? ['nullable', 'string', 'min:10', 'max:72', 'confirmed']
+                : ['prohibited'],
+            'password_confirmation' => $canManageCredentials ? ['nullable', 'same:password'] : ['prohibited'],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'job_title' => 'nullable|string|max:255',
             'bio_ar' => 'nullable|string',
@@ -187,9 +239,12 @@ class TeacherController extends Controller
             'editor_version' => 'required|string|size:64',
         ]);
 
-        $userData = $request->only(['name_ar', 'name_en', 'email', 'phone', 'job_title', 'bio_ar', 'bio_en']);
-        $userData['email'] = strtolower(trim((string) $userData['email']));
-        if ($request->filled('password')) {
+        $userData = $request->only(['name_ar', 'name_en', 'job_title', 'bio_ar', 'bio_en']);
+        if ($canManageCredentials) {
+            $userData['email'] = strtolower(trim((string) $request->input('email')));
+            $userData['phone'] = trim((string) $request->input('phone'));
+        }
+        if ($canManageCredentials && $request->filled('password')) {
             $userData['password'] = Hash::make($request->password);
         }
 
@@ -284,7 +339,6 @@ class TeacherController extends Controller
     private function assertCanDeactivate(User $teacher): void
     {
         $publishedCourses = Course::query()
-            ->whereNull('parent_id')
             ->where('is_coming_soon', false)
             ->where(function ($courses) use ($teacher): void {
                 $courses->where('teacher_id', $teacher->id)
@@ -311,5 +365,36 @@ class TeacherController extends Controller
                 ]);
             }
         }
+    }
+
+    private function canManageCredentials(Request $request): bool
+    {
+        return $this->permissions->allowsCapability(
+            $request->user()?->role,
+            AdminPermissionMatrix::ACCOUNT_CREDENTIALS
+        );
+    }
+
+    /** @return list<string> */
+    private function teacherColumns(bool $includeCredentials): array
+    {
+        $columns = [
+            'id',
+            'name_ar',
+            'name_en',
+            'job_title',
+            'bio_ar',
+            'bio_en',
+            'active',
+            'role',
+            'created_at',
+        ];
+
+        if ($includeCredentials) {
+            $columns[] = 'email';
+            $columns[] = 'phone';
+        }
+
+        return $columns;
     }
 }

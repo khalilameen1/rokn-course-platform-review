@@ -151,16 +151,6 @@ body.dark-mode {
     color: white;
 }
 
-.icon-quiz {
-    background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%);
-    color: white;
-}
-
-.icon-question {
-    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    color: white;
-}
-
 .icon-link {
     background: linear-gradient(135deg, #30cfd0 0%, #330867 100%);
     color: white;
@@ -380,16 +370,6 @@ body.dark-mode .btn-back-action:hover {
 .type-badge-lesson {
     background: #e3f2fd;
     color: #1976d2;
-}
-
-.type-badge-quiz {
-    background: #f3e5f5;
-    color: #7b1fa2;
-}
-
-.type-badge-question {
-    background: #fff3e0;
-    color: #f57c00;
 }
 
 .type-badge-link {

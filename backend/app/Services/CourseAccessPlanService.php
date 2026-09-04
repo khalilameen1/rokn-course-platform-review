@@ -9,11 +9,9 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Setting;
 use App\Support\CourseAccessPlanSnapshot;
-use App\Support\DatabaseCapabilities;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 
 final readonly class CourseAccessPlanService
@@ -33,10 +31,6 @@ final readonly class CourseAccessPlanService
     /** @return Collection<int, CourseAccessPlan> */
     public function publicPlans(Course $course, bool $lockForUpdate = false): Collection
     {
-        if (!DatabaseCapabilities::hasTable('course_access_plans')) {
-            return collect();
-        }
-
         $query = $course->accessPlans()
             ->where('is_active', true)
             ->orderBy('sort_order')
@@ -51,25 +45,22 @@ final readonly class CourseAccessPlanService
 
     public function selectedPlan(
         Course $course,
-        ?string $code,
+        string $code,
         bool $lockForUpdate = false
-    ): ?CourseAccessPlan
+    ): CourseAccessPlan
     {
         $plans = $this->publicPlans($course, $lockForUpdate);
         if ($plans->isEmpty()) {
-            if (DatabaseCapabilities::hasTable('course_access_plans') && $course->accessPlans()->exists()) {
-                throw ValidationException::withMessages([
-                    'access_plan_code' => ['فتح هذا الكورس متوقف مؤقتًا حتى تُنشر خطة متاحة.'],
-                ]);
-            }
-            // Pre-migration enrollments retain the single-price contract.
-            return null;
+            throw ValidationException::withMessages([
+                'access_plan_code' => ['فتح هذا الكورس متوقف مؤقتًا حتى تُنشر خطة متاحة.'],
+            ]);
         }
 
-        $normalized = strtolower(trim((string) $code));
+        $normalized = strtolower(trim($code));
         if ($normalized === '') {
-            // Older clients default to the basic commercial contract.
-            return $plans->firstWhere('code', CourseAccessPlan::BASIC) ?: $plans->first();
+            throw ValidationException::withMessages([
+                'access_plan_code' => ['اختر الفئة المناسبة لك.'],
+            ]);
         }
 
         $plan = $plans->firstWhere('code', $normalized);
@@ -84,9 +75,6 @@ final readonly class CourseAccessPlanService
 
     public function planForEnrollment(CourseEnrollment $enrollment): ?CourseAccessPlan
     {
-        if (!DatabaseCapabilities::hasColumn('course_enrollments', 'access_plan_id')) {
-            return null;
-        }
         if (!$enrollment->access_plan_id) {
             return null;
         }
@@ -270,10 +258,6 @@ final readonly class CourseAccessPlanService
 
     public function createDefaults(Course $course): void
     {
-        if (!DatabaseCapabilities::hasTable('course_access_plans')) {
-            return;
-        }
-
         DB::transaction(function () use ($course): void {
             $lockedCourse = Course::query()->lockForUpdate()->findOrFail($course->id);
             if ($lockedCourse->accessPlans()->exists()) {
@@ -317,8 +301,6 @@ final readonly class CourseAccessPlanService
     /** @return array<string,array<string,mixed>> */
     private function globalAiPolicy(): array
     {
-        if (!Schema::hasColumn('settings', 'ai_plan_policy')) return [];
-
         return (array) (Setting::query()->value('ai_plan_policy') ?? []);
     }
 
@@ -408,10 +390,6 @@ final readonly class CourseAccessPlanService
      */
     public function plansForEditor(Course $course): Collection
     {
-        if (!DatabaseCapabilities::hasTable('course_access_plans')) {
-            return collect();
-        }
-
         $plans = $course->accessPlans()
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -440,9 +418,6 @@ final readonly class CourseAccessPlanService
         array $input
     ): void
     {
-        if (!DatabaseCapabilities::hasTable('course_access_plans')) {
-            return;
-        }
         $allowedCodes = [CourseAccessPlan::BASIC, CourseAccessPlan::GUIDED, CourseAccessPlan::MENTOR];
         $allowedFeedback = ['pass_only', 'report', 'enhanced'];
         $allowedModels = array_values(array_filter(config('openrouter.allowed_models', [])));
@@ -535,7 +510,7 @@ final readonly class CourseAccessPlanService
                 $maxOutputTokens = max(
                     80,
                     min(
-                        (int) config('openrouter.max_tokens', 500),
+                        (int) config('openrouter.max_tokens', 800),
                         (int) ($row['max_output_tokens'] ?? 320)
                     )
                 );
@@ -693,12 +668,6 @@ final readonly class CourseAccessPlanService
           return $updated;
       }
 
-    /** Compatibility for older command callers: explicitly grants both families. */
-    public function grantChatAttachmentsToCurrentEnrollments(Course $course): int
-    {
-        return $this->grantAttachmentsToCurrentEnrollments($course, true, true);
-    }
-
     private function defaultName(string $code): string
     {
         return match ($code) {
@@ -710,9 +679,16 @@ final readonly class CourseAccessPlanService
 
     private function defaultDefinitions(int $base, callable $round): array
     {
-        $guidedPrice = $base + $this->costToCoins(.45 + .20, $round);
+        $guided = (array) config('course_plans.ai_tiers.guided');
+        $mentor = (array) config('course_plans.ai_tiers.mentor');
+        $guidedCost = (float) $guided['ai_budget_usd']
+            + (float) $guided['project_feedback_budget_usd'];
+        $mentorCost = (float) $mentor['ai_budget_usd']
+            + (float) $mentor['project_feedback_budget_usd']
+            + (float) $mentor['project_followup_budget_usd'];
+        $guidedPrice = $base + $this->costToCoins($guidedCost, $round);
         $mentorPrice = max(
-            $base + $this->costToCoins(1.50 + .60 + .30, $round),
+            $base + $this->costToCoins($mentorCost, $round),
             $guidedPrice + 1000
         );
         return [
@@ -750,20 +726,20 @@ final readonly class CourseAccessPlanService
                 'name_ar' => 'التعلّم بإرشاد',
                 'name_en' => 'Guided learning',
                 'price_coins' => $guidedPrice,
-                'minimum_paid_coins' => $this->costToCoins(.45 + .20, $round),
+                'minimum_paid_coins' => $this->costToCoins($guidedCost, $round),
                 'chat_enabled' => true,
-                'chat_message_limit' => 25,
-                'chat_token_budget' => 12000,
+                'chat_message_limit' => (int) $guided['chat_message_limit'],
+                'chat_token_budget' => (int) $guided['chat_token_budget'],
                 'chat_attachments_enabled' => true,
-                'chat_attachment_max_files' => 2,
+                'chat_attachment_max_files' => (int) $guided['chat_attachment_max_files'],
                 'project_followup_attachments_enabled' => false,
                 'project_followup_attachment_max_files' => 0,
-                'ai_budget_usd' => .45,
-                'request_reserve_usd' => .015,
-                'max_output_tokens' => 320,
-                'project_feedback_token_budget' => 6000,
-                'project_feedback_budget_usd' => .20,
-                'project_feedback_reserve_usd' => .04,
+                'ai_budget_usd' => (float) $guided['ai_budget_usd'],
+                'request_reserve_usd' => (float) $guided['request_reserve_usd'],
+                'max_output_tokens' => (int) $guided['max_output_tokens'],
+                'project_feedback_token_budget' => (int) $guided['project_feedback_token_budget'],
+                'project_feedback_budget_usd' => (float) $guided['project_feedback_budget_usd'],
+                'project_feedback_reserve_usd' => (float) $guided['project_feedback_reserve_usd'],
                 'project_followup_message_limit' => 0,
                 'project_followup_token_budget' => 0,
                 'project_followup_budget_usd' => 0,
@@ -779,24 +755,24 @@ final readonly class CourseAccessPlanService
                 'name_ar' => 'التعلّم بمتابعة',
                 'name_en' => 'Supported learning',
                 'price_coins' => $mentorPrice,
-                'minimum_paid_coins' => $this->costToCoins(1.50 + .60 + .30, $round),
+                'minimum_paid_coins' => $this->costToCoins($mentorCost, $round),
                 'chat_enabled' => true,
-                'chat_message_limit' => 80,
-                'chat_token_budget' => 42000,
+                'chat_message_limit' => (int) $mentor['chat_message_limit'],
+                'chat_token_budget' => (int) $mentor['chat_token_budget'],
                 'chat_attachments_enabled' => true,
-                'chat_attachment_max_files' => 3,
+                'chat_attachment_max_files' => (int) $mentor['chat_attachment_max_files'],
                 'project_followup_attachments_enabled' => true,
-                'project_followup_attachment_max_files' => 3,
-                'ai_budget_usd' => 1.5,
-                'request_reserve_usd' => .025,
-                'max_output_tokens' => 480,
-                'project_feedback_token_budget' => 16000,
-                'project_feedback_budget_usd' => .60,
-                'project_feedback_reserve_usd' => .08,
-                'project_followup_message_limit' => 20,
-                'project_followup_token_budget' => 12000,
-                'project_followup_budget_usd' => .30,
-                'project_followup_reserve_usd' => .025,
+                'project_followup_attachment_max_files' => (int) $mentor['project_followup_attachment_max_files'],
+                'ai_budget_usd' => (float) $mentor['ai_budget_usd'],
+                'request_reserve_usd' => (float) $mentor['request_reserve_usd'],
+                'max_output_tokens' => (int) $mentor['max_output_tokens'],
+                'project_feedback_token_budget' => (int) $mentor['project_feedback_token_budget'],
+                'project_feedback_budget_usd' => (float) $mentor['project_feedback_budget_usd'],
+                'project_feedback_reserve_usd' => (float) $mentor['project_feedback_reserve_usd'],
+                'project_followup_message_limit' => (int) $mentor['project_followup_message_limit'],
+                'project_followup_token_budget' => (int) $mentor['project_followup_token_budget'],
+                'project_followup_budget_usd' => (float) $mentor['project_followup_budget_usd'],
+                'project_followup_reserve_usd' => (float) $mentor['project_followup_reserve_usd'],
                 'project_feedback_level' => 'enhanced',
                 'project_output_enabled' => true,
                 'certificate_enabled' => true,

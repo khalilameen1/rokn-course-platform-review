@@ -1,5 +1,5 @@
 import {publicRequest} from '../constants/api';
-import {AsyncKeys, getItem, removeItem, saveItem} from '../constants/helpers';
+import {getItem, removeItem, saveItem} from '../constants/helpers';
 import {isServerTimestampFresh, serverNowMs} from '../utils/serverClock';
 
 export type PublicContentPage = 'about' | 'privacy' | 'terms';
@@ -17,8 +17,8 @@ type CachedPublicContent = {
 const PUBLIC_CONTENT_CACHE_VERSION = 2;
 const PUBLIC_CONTENT_CACHE_TTL_MS = 60 * 1000;
 const PUBLIC_CONTENT_MAX_STALE_MS = 24 * 60 * 60 * 1000;
-const cacheKey = (page: PublicContentPage, locale: string) =>
-  `@rokn/public-content/v${PUBLIC_CONTENT_CACHE_VERSION}/${locale}/${page}`;
+const cacheKey = (page: PublicContentPage) =>
+  `@rokn/public-content/v${PUBLIC_CONTENT_CACHE_VERSION}/ar/${page}`;
 
 const plainText = (value: unknown) =>
   (typeof value === 'string' ? value : '')
@@ -35,11 +35,7 @@ const plainText = (value: unknown) =>
     .trim();
 
 export const getManagedPublicContent = async (page: PublicContentPage) => {
-  const language = await getItem<string>(AsyncKeys.LANGUAGE);
-  const locale = String(language || 'ar').toLowerCase().startsWith('en')
-    ? 'en'
-    : 'ar';
-  const key = cacheKey(page, locale);
+  const key = cacheKey(page);
   const cached = await getItem<CachedPublicContent>(key);
   if (
     cached?.body &&

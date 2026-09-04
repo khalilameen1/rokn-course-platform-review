@@ -441,16 +441,6 @@
         cursor: pointer;
     }
 
-    .powered-by-row {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        padding: 20px;
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.03) 0%, rgba(118, 75, 162, 0.03) 100%);
-        border-radius: 12px;
-        margin-bottom: 15px;
-    }
-
     .save-button-wrapper {
         padding: 30px;
         background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
@@ -547,9 +537,6 @@
             flex: unset;
         }
 
-        .powered-by-row {
-            grid-template-columns: 1fr;
-        }
     }
 
     /* Color Legend Styles */

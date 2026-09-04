@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useEffect,
   useRef,
   type Dispatch,
   type MutableRefObject,
@@ -17,32 +16,22 @@ import type {
   CourseLearningData,
   CourseReel,
 } from '../../components/VideoPlayer/types';
-import {recordDemoQualifiedStudy} from '../../services/demoExperience';
-import {isLocalDemoId} from '../../config/runtime';
 import {scheduleNextLearningReminder} from '../../services/smartReminders';
 import {
   buildPlaybackEvidence,
   markReelCompleted,
   nextLearningTitle,
+  reelCompletionNeedsLearningMapRefresh,
 } from './progress';
-
-type StudySample = {
-  reelId: string;
-  mediaTime: number;
-  sampledAt: number;
-};
 
 type ReelsProgressRefs = {
   completionSent: MutableRefObject<Set<string>>;
-  demoRewardsEnabled: MutableRefObject<boolean>;
   feedLength: MutableRefObject<number>;
   lastPersisted: MutableRefObject<Record<string, number>>;
   ownerGeneration: MutableRefObject<number>;
-  pendingStudySeconds: MutableRefObject<number>;
   playbackDurations: MutableRefObject<Record<string, number>>;
   playbackRuntime: MutableRefObject<Record<string, PlaybackRuntimeMetrics>>;
   positions: MutableRefObject<Record<string, number>>;
-  studySample: MutableRefObject<StudySample | null>;
 };
 
 export const useReelsProgress = ({
@@ -54,6 +43,7 @@ export const useReelsProgress = ({
   playbackSpeed,
   previewMode,
   refs,
+  refreshAfterSectionCompletion,
   scheduleDelayedAction,
   scrollToIndex,
   setChatVisible,
@@ -68,6 +58,7 @@ export const useReelsProgress = ({
   playbackSpeed: number;
   previewMode: boolean;
   refs: ReelsProgressRefs;
+  refreshAfterSectionCompletion: (targetIndex: number) => Promise<boolean>;
   scheduleDelayedAction: (action: () => void, delayMs: number) => void;
   scrollToIndex: (index: number, animated?: boolean) => void;
   setChatVisible: Dispatch<SetStateAction<boolean>>;
@@ -98,7 +89,13 @@ export const useReelsProgress = ({
   const updateReelCompletion = useCallback(
     (courseId: string, reel: CourseReel) => {
       setCourse(current =>
-        current?.id === courseId ? markReelCompleted(current, reel) : current,
+        current?.id === courseId
+          ? markReelCompleted(
+              current,
+              reel,
+              !reelCompletionNeedsLearningMapRefresh(current, reel),
+            )
+          : current,
       );
     },
     [setCourse],
@@ -117,10 +114,7 @@ export const useReelsProgress = ({
           if (!ownsCourse(courseId)) return false;
           await flushPendingPlaybackPositions();
           if (!ownsCourse(courseId)) return false;
-          const completed = await markSectionComplete(
-            courseId,
-            reel.sectionId,
-          );
+          const completed = await markSectionComplete(courseId, reel.sectionId);
           if (!ownsCourse(courseId)) return false;
           if (!completed) {
             refs.completionSent.current.delete(reel.sectionId);
@@ -150,59 +144,12 @@ export const useReelsProgress = ({
     ],
   );
 
-  const flushDemoStudy = useCallback(
-    (all = false) => {
-      if (!refs.demoRewardsEnabled.current) return;
-      const available = refs.pendingStudySeconds.current;
-      const seconds = all
-        ? Math.floor(available)
-        : Math.floor(available / 30) * 30;
-      if (seconds <= 0) return;
-      refs.pendingStudySeconds.current = Math.max(0, available - seconds);
-      void recordDemoQualifiedStudy(seconds).catch(() => undefined);
-    },
-    [refs.demoRewardsEnabled, refs.pendingStudySeconds],
-  );
-
-  useEffect(
-    () => () => {
-      flushDemoStudy(true);
-    },
-    [flushDemoStudy],
-  );
-
   const persistProgress = useCallback(
     (reel: CourseReel, currentTime: number, duration: number) => {
       if (!course || !ownsCourse(course.id)) return;
       refs.positions.current[`${course.id}:${reel.id}`] = currentTime;
       if (duration > 0) refs.playbackDurations.current[reel.id] = duration;
       const runtime = refs.playbackRuntime.current[reel.id];
-      if (refs.demoRewardsEnabled.current && !previewMode && duration > 0) {
-        const now = Date.now();
-        const previous = refs.studySample.current;
-        refs.studySample.current = {
-          reelId: reel.id,
-          mediaTime: currentTime,
-          sampledAt: now,
-        };
-        if (previous?.reelId === reel.id) {
-          const wallDelta = (now - previous.sampledAt) / 1000;
-          const mediaDelta = currentTime - previous.mediaTime;
-          const seekLimit = wallDelta * Math.max(1, playbackSpeed) * 2.5 + 2;
-          if (
-            wallDelta > 0 &&
-            wallDelta <= 20 &&
-            mediaDelta > 0 &&
-            mediaDelta <= seekLimit
-          ) {
-            refs.pendingStudySeconds.current += Math.min(
-              wallDelta,
-              mediaDelta / Math.max(0.5, playbackSpeed),
-            );
-            flushDemoStudy();
-          }
-        }
-      }
       const hasSavedSample = Object.prototype.hasOwnProperty.call(
         refs.lastPersisted.current,
         reel.id,
@@ -244,7 +191,7 @@ export const useReelsProgress = ({
             true,
             evidence,
           );
-        const completeLocally = previewMode || isLocalDemoId(course.id);
+        const completeLocally = previewMode;
         if (completeLocally) {
           updateReelCompletion(course.id, reel);
         }
@@ -271,7 +218,6 @@ export const useReelsProgress = ({
     [
       course,
       feedItems,
-      flushDemoStudy,
       maybeOfferReminders,
       ownsActiveReel,
       ownsCourse,
@@ -286,12 +232,11 @@ export const useReelsProgress = ({
   const completeAndAdvance = useCallback(
     (reel: CourseReel) => {
       if (!course || !ownsCourse(course.id)) return;
-      flushDemoStudy(true);
-      const completeLocally = previewMode || isLocalDemoId(course.id);
+      const completeLocally = previewMode;
       if (completeLocally) {
         updateReelCompletion(course.id, reel);
       }
-      const advance = () => {
+      const advance = async () => {
         if (!ownsActiveReel(course.id, reel)) return;
         maybeOfferReminders();
         const isLastPreviewReel =
@@ -307,6 +252,19 @@ export const useReelsProgress = ({
         if (isLastPreviewReel) {
           setChatVisible(false);
           setPreviewGateVisible(true);
+          return;
+        }
+        if (
+          !previewMode &&
+          reelCompletionNeedsLearningMapRefresh(course, reel)
+        ) {
+          // The fresh contract owns project requirements, report tier and the
+          // newly-opened gate. On failure, stay on the completed reel so the
+          // learner never lands on an empty or incorrectly locked transition.
+          // Autoplay controls reel-to-reel motion. A crossing project is the
+          // next authored step itself, so it must open after completion even
+          // when automatic video playback is disabled.
+          await refreshAfterSectionCompletion(currentIndex + 1);
           return;
         }
         if (autoplay) {
@@ -335,19 +293,19 @@ export const useReelsProgress = ({
           buildPlaybackEvidence(reel, runtime, playbackSpeed),
         );
         void confirmReelCompletion(reel, evidenceSave).then(completed => {
-          if (completed || completeLocally) advance();
+          if (completed || completeLocally) void advance();
         });
         return;
       }
       if (completeLocally || reel.isCompleted) {
-        advance();
+        void advance();
         return;
       }
       // persistProgress may have crossed the completion threshold immediately
       // before the native onEnd callback. Join that same request instead of
       // dropping autoplay merely because the server is still confirming it.
       void confirmReelCompletion(reel, Promise.resolve()).then(completed => {
-        if (completed) advance();
+        if (completed) void advance();
       });
     },
     [
@@ -355,13 +313,13 @@ export const useReelsProgress = ({
       course,
       confirmReelCompletion,
       currentIndex,
-      flushDemoStudy,
       maybeOfferReminders,
       ownsActiveReel,
       ownsCourse,
       playbackSpeed,
       previewMode,
       refs,
+      refreshAfterSectionCompletion,
       scheduleDelayedAction,
       scrollToIndex,
       setChatVisible,

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Console\Commands\ProductionPreflight;
-use App\Models\CourseModule;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -209,7 +208,6 @@ class ProductionPreflightTest extends TestCase
             'app.url' => 'https://api.rokn.academy',
             'trusted_hosts.hosts' => [],
             'social_auth.public_api_url' => '',
-            'social_auth.allow_legacy_pkce' => true,
             'social_auth.return_urls' => ['rokn://auth', 'https://attacker.invalid/callback'],
             'services.facebook.graph_version' => 'v19.0',
             'services.apple.client_id' => null,
@@ -219,7 +217,6 @@ class ProductionPreflightTest extends TestCase
         $output = Artisan::output();
         self::assertStringContainsString('APP_TRUSTED_HOSTS', $output);
         self::assertStringContainsString('SOCIAL_AUTH_PUBLIC_API_URL', $output);
-        self::assertStringContainsString('SOCIAL_AUTH_ALLOW_LEGACY_PKCE', $output);
         self::assertStringContainsString('SOCIAL_AUTH_RETURN_URLS', $output);
         self::assertStringContainsString('FACEBOOK_GRAPH_VERSION', $output);
         self::assertStringContainsString('APPLE_CLIENT_ID', $output);
@@ -285,7 +282,6 @@ class ProductionPreflightTest extends TestCase
                 'app_links.android_sha256_fingerprints' => [$androidFingerprint],
                 'app_links.apple_app_ids' => ['ABCDE12345.com.rokn.app'],
                 'social_auth.public_api_url' => 'https://api.rokn.academy/api/v1',
-                'social_auth.allow_legacy_pkce' => false,
                 'social_auth.return_urls' => ['rokn://auth'],
                 'database.default' => 'mysql',
                 'database.redis.default.host' => 'redis.internal',
@@ -293,7 +289,6 @@ class ProductionPreflightTest extends TestCase
                 'queue.default' => 'redis',
                 'session.driver' => 'redis',
                 'session.secure' => true,
-                'multiple-tokens-auth.allow_legacy_transports' => false,
                 'trusted_proxies.proxies' => ['10.20.30.0/24'],
                 'bunny.stream_api_key' => 'configured',
                 'bunny.library_id' => 'configured',
@@ -314,7 +309,7 @@ class ProductionPreflightTest extends TestCase
                 'whatsapp.linking.webhook_secret' => str_repeat('w', 48),
                 'services.facebook.client_id' => 'configured',
                 'services.facebook.client_secret' => 'configured',
-                'services.facebook.graph_version' => 'v999.0',
+                'services.facebook.graph_version' => 'v26.0',
                 'services.google.client_id' => 'configured',
                 'services.google.client_secret' => 'configured',
                 'services.tiktok.client_key' => 'configured',
@@ -322,6 +317,7 @@ class ProductionPreflightTest extends TestCase
                 'services.apple.client_id' => 'com.rokn',
                 'openrouter.api_key' => 'configured',
                 'openrouter.default_model' => 'configured',
+                'openrouter.project_model' => 'configured',
                 'openrouter.allowed_models' => ['configured'],
                 'openrouter.fallback_models' => [],
                 'openrouter.provider_sort' => 'latency',
@@ -355,11 +351,6 @@ class ProductionPreflightTest extends TestCase
                 'firebase.credentials.file' => $credentials,
             ]);
 
-            config(['multiple-tokens-auth.allow_legacy_transports' => true]);
-            self::assertSame(1, Artisan::call('rokn:preflight', ['--configuration-only' => true]));
-            self::assertStringContainsString('Bearer tokens only', Artisan::output());
-
-            config(['multiple-tokens-auth.allow_legacy_transports' => false]);
             $status = Artisan::call('rokn:preflight', ['--configuration-only' => true]);
             $output = Artisan::output();
             self::assertSame(0, $status, $output);
@@ -385,14 +376,8 @@ class ProductionPreflightTest extends TestCase
         }
     }
 
-    public function test_preflight_blocks_legacy_public_module_files_and_svg_profiles(): void
+    public function test_preflight_blocks_legacy_public_assets_and_svg_profiles(): void
     {
-        Schema::create('attachments', function (Blueprint $table): void {
-            $table->id();
-            $table->string('attachable_type');
-            $table->unsignedBigInteger('attachable_id');
-            $table->string('storage_disk')->nullable();
-        });
         Schema::create('users', function (Blueprint $table): void {
             $table->id();
             $table->string('profile_image')->nullable();
@@ -417,11 +402,6 @@ class ProductionPreflightTest extends TestCase
         });
 
         try {
-            DB::table('attachments')->insert([
-                'attachable_type' => CourseModule::class,
-                'attachable_id' => 15,
-                'storage_disk' => 'public',
-            ]);
             DB::table('users')->insert([
                 'profile_image' => 'profile-images/legacy-avatar.SVG',
             ]);
@@ -446,9 +426,7 @@ class ProductionPreflightTest extends TestCase
 
             self::assertSame(1, Artisan::call('rokn:preflight'));
             $output = Artisan::output();
-            self::assertStringContainsString('public module attachment', $output);
             self::assertStringContainsString('public SVG profile image', $output);
-            self::assertStringContainsString('attachments:privatize --execute --delete-public', $output);
             self::assertStringContainsString('security:quarantine-profile-svg --execute', $output);
             self::assertStringContainsString('duplicate Bunny portfolio image', $output);
             self::assertStringContainsString('duplicate Bunny lesson thumbnail', $output);
@@ -463,7 +441,6 @@ class ProductionPreflightTest extends TestCase
             Schema::dropIfExists('lessons');
             Schema::dropIfExists('portfolio_media');
             Schema::dropIfExists('users');
-            Schema::dropIfExists('attachments');
         }
     }
 }

@@ -7,9 +7,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 use App\Support\RoknLocale;
 use App\Services\BunnyService;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseDurationService;
 use App\Services\CourseSectionSequenceService;
-use App\Services\SafeExternalUrl;
 use App\Support\RoknPublicUrl;
 
 class BaseCourseResource extends JsonResource
@@ -18,6 +16,15 @@ class BaseCourseResource extends JsonResource
     private ?bool $entitlementChatAvailable = null;
     private ?bool $entitlementCertificateIncluded = null;
     private ?bool $entitlementCertificateAvailable = null;
+    private ?bool $entitlementLearningStarted = null;
+    private bool $includeAccessPlans = false;
+
+    public function withAccessPlans(): static
+    {
+        $this->includeAccessPlans = true;
+
+        return $this;
+    }
 
     /**
      * Attach request-specific access without mutating or serialising it on the
@@ -28,13 +35,15 @@ class BaseCourseResource extends JsonResource
         string $accessType,
         bool $chatAvailable,
         bool $certificateIncluded = false,
-        bool $certificateAvailable = false
+        bool $certificateAvailable = false,
+        bool $learningStarted = false
     ): static
     {
         $this->entitlementAccessType = $accessType;
         $this->entitlementChatAvailable = $chatAvailable;
         $this->entitlementCertificateIncluded = $certificateIncluded;
         $this->entitlementCertificateAvailable = $certificateAvailable;
+        $this->entitlementLearningStarted = $learningStarted;
 
         return $this;
     }
@@ -69,33 +78,37 @@ class BaseCourseResource extends JsonResource
         $ratingsAverage = array_key_exists('ratings_avg_rating', $attributes)
             ? (float) $attributes['ratings_avg_rating']
             : null;
+        $loadedSections = $this->relationLoaded('modules')
+            ? app(CourseSectionSequenceService::class)->fromModules($this->modules)
+            : ($this->relationLoaded('sections') ? $this->sections : null);
         $previewReelsCount = array_key_exists('preview_reels_count', $attributes)
             ? (int) $attributes['preview_reels_count']
-            : ($this->relationLoaded('sections')
-                ? $this->sections->filter(fn ($section) =>
+            : ($loadedSections !== null
+                ? $loadedSections->filter(fn ($section) =>
                     $section->getSectionType() === 'lesson'
                     && $section->relationLoaded('sectionable')
                     && (bool) ($section->sectionable?->is_opened ?? false)
+                    && $section->sectionable->hasReadyMediaState()
                 )->count()
                 : 0);
         $activeStudentsCount = array_key_exists('active_enrollments_count', $attributes)
             ? max(0, (int) $attributes['active_enrollments_count'])
             : null;
+        $sectionsCount = array_key_exists('sections_count', $attributes)
+            ? max(0, (int) $attributes['sections_count'])
+            : ($loadedSections?->count() ?? 0);
         // Public social proof is real-time enrollment data. The legacy manual
         // counter stays out of the public contract and financial reporting.
         $displayStudentsCount = $activeStudentsCount;
-        $durationMinutes = array_key_exists('duration_minutes_computed', $attributes)
-            ? max(0, (int) $attributes['duration_minutes_computed'])
-            : app(CourseDurationService::class)->minutes($this->resource);
-        $videoCount = $this->relationLoaded('sections')
-            ? $this->sections->where('sectionable_type', \App\Models\Lesson::class)->count()
+        $durationMinutes = max(0, (int) ($attributes['duration_minutes_computed'] ?? 0));
+        $videoCount = $loadedSections !== null
+            ? $loadedSections->where('sectionable_type', \App\Models\Lesson::class)->count()
             : (array_key_exists('video_reels_count', $attributes)
                 ? max(0, (int) $attributes['video_reels_count'])
-                : max(0, (int) ($this->video_count ?? 0)));
+                : 0);
         $coursePublished = $this->resource->isPublishedForLearning();
         $courseShareable = $coursePublished
-            && (bool) $this->is_catalog_visible
-            && !$this->resource->isNestedCourse();
+            && (bool) $this->is_catalog_visible;
 
         return [
             'id' => (int)$this->id,
@@ -123,6 +136,10 @@ class BaseCourseResource extends JsonResource
                 $this->entitlementCertificateIncluded !== null,
                 $this->entitlementCertificateIncluded
             ),
+            'learning_started' => $this->when(
+                $this->entitlementLearningStarted !== null,
+                $this->entitlementLearningStarted
+            ),
             'title' => (string) $this->title,
             'description' => $this->description ,
             'image' => $this->image ? (string)$this->image : null,
@@ -135,13 +152,12 @@ class BaseCourseResource extends JsonResource
             // Plan prices belong only on course details. Keeping them out of
             // catalogue rows avoids N+1 queries and preserves the clean home.
             'access_plans' => $this->when(
-                $request->route('courseId') !== null && $coursePublished,
+                $this->includeAccessPlans && $coursePublished,
                 function () use ($activePlans) {
                     $plans = app(CourseAccessPlanService::class);
 
-                    return ($this->relationLoaded('accessPlans')
-                        ? $activePlans->sortBy([['sort_order', 'asc'], ['id', 'asc']])
-                        : $plans->publicPlans($this->resource))
+                    return $activePlans
+                        ->sortBy([['sort_order', 'asc'], ['id', 'asc']])
                         ->map(fn ($plan) => $plans->publicPayload($plan))
                         ->values();
                 }
@@ -183,36 +199,8 @@ class BaseCourseResource extends JsonResource
                 ];
             }),
 
-            // The public map never contains paid reel content. Explicit
-            // previews keep their playable data for the try-before-unlock flow.
-            'sections' => $this->whenLoaded('sections', function () use ($coursePublished) {
-                return app(CourseSectionSequenceService::class)
-                    ->ordered($this->sections)
-                    ->map(function ($section) use ($coursePublished) {
-                    $isPreview = $coursePublished
-                        && $section->getSectionType() === 'lesson'
-                        && $section->relationLoaded('sectionable')
-                        && (bool) ($section->sectionable?->is_opened ?? false);
-                    $data = [
-                        'id' => $section->id,
-                        'content_id' => $section->sectionable_id,
-                        'title' => $section->title,
-                        'type' => $section->getSectionType(),
-                        'order' => $section->order,
-                        'module_id' => $section->module_id,
-                        'is_preview' => $isPreview,
-                        'is_locked' => !$isPreview,
-                        'lock_reason' => $isPreview ? null : 'course_purchase_required',
-                    ];
-                    if ($isPreview) {
-                        $data['content'] = $this->getBasicSectionContent($section);
-                    }
-
-                    return $data;
-                });
-            }),
-
-            // Modules information
+            // The module graph is the only public course map. Paid reel
+            // content remains absent; explicit previews keep playable data.
             'modules' => $this->whenLoaded('modules', function() use ($coursePublished) {
                 return $this->modules->sortBy([
                     ['order', 'asc'],
@@ -221,37 +209,13 @@ class BaseCourseResource extends JsonResource
                     return [
                         'id' => $module->id,
                         'title' => $module->title,
-                        'attachment_platform' => $module->attachment_platform,
                         'order' => $module->order,
-                        // Buyers receive attachment links from CourseResource.
-                        // Before purchase only the map and counts are public.
-                        'attachments_count' => $module->attachments->count()
-                            + $module->sections->sum(fn ($section) => $section->attachments->count())
-                            + (SafeExternalUrl::sanitize($module->attachments_link) !== null ? 1 : 0),
                         'sections' => $module->sections->sortBy([
                             ['order', 'asc'],
                             ['id', 'asc'],
-                        ])->values()->map(function($section) use ($coursePublished) {
-                        $isPreview = $coursePublished
-                            && $section->getSectionType() === 'lesson'
-                            && $section->relationLoaded('sectionable')
-                            && (bool) ($section->sectionable?->is_opened ?? false);
-                        $data = [
-                            'id' => $section->id,
-                            'content_id' => $section->sectionable_id,
-                            'title' => $section->title,
-                            'type' => $section->getSectionType(),
-                            'order' => $section->order,
-                            'is_preview' => $isPreview,
-                            'is_locked' => !$isPreview,
-                            'lock_reason' => $isPreview ? null : 'course_purchase_required',
-                        ];
-                        if ($isPreview) {
-                            $data['content'] = $this->getBasicSectionContent($section);
-                        }
-
-                        return $data;
-                        })
+                        ])->values()->map(
+                            fn ($section) => $this->publicSectionPayload($section, $coursePublished)
+                        )
                     ];
                 });
             }),
@@ -260,10 +224,8 @@ class BaseCourseResource extends JsonResource
             'metadata' => [
                 'video_count' => $this->when($videoCount > 0, $videoCount),
                 'duration_minutes' => $this->when($durationMinutes > 0, $durationMinutes),
-                'home_work_count' => $this->when((int) ($this->home_work_count ?? 0) > 0, (int) $this->home_work_count),
-                'files_count' => $this->when((int) ($this->files_count ?? 0) > 0, (int) $this->files_count),
                 'students_count' => $this->when($displayStudentsCount !== null, $displayStudentsCount),
-                'sections_count' => $this->when((int) ($this->sections_count ?? 0) > 0, (int) $this->sections_count),
+                'sections_count' => $this->when($sectionsCount > 0, $sectionsCount),
                 'preview_reels_count' => $previewReelsCount,
                 'chat_available' => $this->entitlementChatAvailable
                     ?? $catalogueChatAvailable,
@@ -296,8 +258,8 @@ class BaseCourseResource extends JsonResource
         switch ($section->getSectionType()) {
             case 'lesson':
                 $durationSeconds = $this->lessonDurationSeconds($section->sectionable);
-                $content['priority'] = $section->sectionable->priority ?? null;
-                $content['is_opened'] = $section->sectionable->is_opened ?? true;
+                $content['is_opened'] = (bool) ($section->sectionable->is_opened ?? false)
+                    && $section->sectionable->hasReadyMediaState();
                 $content['duration_minutes'] = $durationSeconds > 0
                     ? (int) ceil($durationSeconds / 60)
                     : max(0, (int) ($section->sectionable->duration_minutes ?? 0));
@@ -306,53 +268,47 @@ class BaseCourseResource extends JsonResource
                 $content['thumbnail_url'] = $section->sectionable->thumbnail_path
                     ? $bunnyService->generateBunnySignedUrl($section->sectionable->thumbnail_path)
                     : null;
-                if($section->sectionable->is_opened ){
+                if ((bool) $section->sectionable->is_opened && $section->sectionable->hasReadyMediaState()) {
                     // Get video data with signed URL for Bunny videos
                     $videoData = $bunnyService->getVideoDataForLesson($section->sectionable);
-                    $fallbackVideo = !empty($videoData['bunny_video_url'])
-                        && $section->sectionable->bunny_video_id
-                        ? $bunnyService->getFallbackVideo((string) $section->sectionable->bunny_video_id)
-                        : null;
 
                     $content['video_source_type'] = $videoData['video_source_type'];
                     $content['video_link'] = $videoData['video_link'];
                     $content['bunny_video_url'] = $videoData['bunny_video_url'];
                     $content['bunny_video_expires_at'] = $videoData['bunny_video_expires_at'];
-                    $content['fallback_video_url'] = $fallbackVideo['url'] ?? null;
-                    $content['priority'] = $section->sectionable->priority ?? null;
                 }
 
                 break;
 
-            case 'question':
-                // The public map advertises the assessment title only. The
-                // question body is served through the enrolled assessment API.
-                $content['priority'] = $section->sectionable->priority ?? null;
-                break;
-
-            case 'link':
-                $content['title_en'] = $section->sectionable->title_en ?? null;
-                $content['description_en'] = $section->sectionable->description_en ?? null;
-                $content['type'] = $section->sectionable->type ?? null;
-                // Note: 'link' is excluded (sensitive data)
-                break;
-
-            case 'quiz':
-                $content['type'] = $section->sectionable->type ?? null;
-                $content['priority'] = $section->sectionable->priority ?? null;
-                $content['is_opened'] = $section->sectionable->is_opened ?? true;
-                $content['time_minutes'] = $section->sectionable->time_minutes ?? null;
-                // Note: 'id' is excluded (sensitive data for quiz)
-                break;
-
-            case 'course':
-                $content['title_en'] = $section->sectionable->name_en ?? null;
-                $content['description_en'] = $section->sectionable->description_en ?? null;
-                $content['image'] = $section->sectionable->image ?? null;
-                break;
         }
 
         return $content;
+    }
+
+    /** Build a public section inside the canonical module graph. */
+    protected function publicSectionPayload($section, bool $coursePublished): array
+    {
+        $isPreview = $coursePublished
+            && $section->getSectionType() === 'lesson'
+            && $section->relationLoaded('sectionable')
+            && (bool) ($section->sectionable?->is_opened ?? false)
+            && $section->sectionable->hasReadyMediaState();
+        $data = [
+            'id' => $section->id,
+            'content_id' => $section->sectionable_id,
+            'title' => $section->title,
+            'type' => $section->getSectionType(),
+            'order' => $section->order,
+            'module_id' => $section->module_id,
+            'is_preview' => $isPreview,
+            'is_locked' => !$isPreview,
+            'lock_reason' => $isPreview ? null : 'course_purchase_required',
+        ];
+        if ($isPreview) {
+            $data['content'] = $this->getBasicSectionContent($section);
+        }
+
+        return $data;
     }
 
     protected function lessonDurationSeconds(\App\Models\Lesson $lesson): int

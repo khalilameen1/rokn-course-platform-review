@@ -1,5 +1,4 @@
-import {useNavigation, useRoute} from '@react-navigation/native';
-import type {RootNavigation, RootRoute} from '../../navigation/types';
+import {useFocusEffect} from '@react-navigation/native';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
@@ -11,7 +10,6 @@ import {
 import {
   applyLocalLearningState,
   loadCourseLearningData,
-  unlockAfterProject,
 } from '../../components/VideoPlayer/courseLearningApi';
 import {CourseLearningData} from '../../components/VideoPlayer/types';
 import {isGrantCourseAccess} from '../../components/VideoPlayer/courseEntitlements';
@@ -19,73 +17,106 @@ import Module from '../../components/view/Module';
 import FullTrackUpgradeSheet from '../../components/FullTrackUpgradeSheet';
 import {rtlRowStyle, textDirection} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
+import {
+  assertAccountSessionBoundary,
+  captureAccountSessionBoundary,
+} from '../../constants/helpers';
 
-export default function Lessons() {
-  const route = useRoute<RootRoute<'CourseDetails'>>();
-  const navigation = useNavigation<RootNavigation>();
-  const courseId = String(route.params?.courseId || '');
-  const [course, setCourse] = useState<CourseLearningData | null>(null);
+type CourseOutlineProps = {
+  courseId: string;
+  identityKey: string;
+  openFullTrackUpgrade: boolean;
+  onFullTrackUpgradeHandled: () => void;
+  onOpenCertificates: () => void;
+};
+
+export default function CourseOutline({
+  courseId,
+  identityKey,
+  openFullTrackUpgrade,
+  onFullTrackUpgradeHandled,
+  onOpenCertificates,
+}: CourseOutlineProps) {
+  const ownerKey = `${identityKey}:${courseId}`;
+  const [loadedCourse, setLoadedCourse] = useState<CourseLearningData | null>(
+    null,
+  );
+  const loadedOwnerRef = useRef('');
+  const courseOwnerMatches = loadedOwnerRef.current === ownerKey;
+  const course = courseOwnerMatches ? loadedCourse : null;
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [fullTrackVisible, setFullTrackVisible] = useState(false);
   const loadGenerationRef = useRef(0);
+  const loadAbortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    loadAbortRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortRef.current = controller;
     const generation = ++loadGenerationRef.current;
+    const hasCurrentCourse = loadedOwnerRef.current === ownerKey;
+    if (!hasCurrentCourse) {
+      loadedOwnerRef.current = ownerKey;
+      setLoadedCourse(null);
+    }
     setLoading(true);
     setLoadError('');
     try {
-      const result = await loadCourseLearningData(courseId || undefined);
+      const boundary = await captureAccountSessionBoundary();
+      const result = await loadCourseLearningData(courseId || undefined, {
+        signal: controller.signal,
+      });
+      assertAccountSessionBoundary(boundary);
       const withLocalState = await applyLocalLearningState(result.course);
-      if (generation !== loadGenerationRef.current) return;
-      setCourse(withLocalState);
+      assertAccountSessionBoundary(boundary);
+      if (
+        generation !== loadGenerationRef.current ||
+        controller.signal.aborted
+      ) {
+        return;
+      }
+      loadedOwnerRef.current = ownerKey;
+      setLoadedCourse(withLocalState);
     } catch {
-      if (generation !== loadGenerationRef.current) return;
+      if (
+        generation !== loadGenerationRef.current ||
+        controller.signal.aborted
+      ) {
+        return;
+      }
       setLoadError('تعذّر تحميل خريطة الكورس الآن\nمكانك محفوظ');
     } finally {
-      if (generation === loadGenerationRef.current) setLoading(false);
+      if (
+        generation === loadGenerationRef.current &&
+        !controller.signal.aborted
+      ) {
+        if (loadAbortRef.current === controller) loadAbortRef.current = null;
+        setLoading(false);
+      }
     }
-  }, [courseId]);
+  }, [courseId, ownerKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+      return () => {
+        loadGenerationRef.current += 1;
+        loadAbortRef.current?.abort();
+        loadAbortRef.current = null;
+      };
+    }, [load]),
+  );
 
   useEffect(() => {
-    void load();
-    return () => {
-      loadGenerationRef.current += 1;
-    };
-  }, [load]);
-
-  useEffect(() => {
-    if (!course || route.params?.openFullTrackUpgrade !== true) return;
+    if (!course || !openFullTrackUpgrade) return;
     if (isGrantCourseAccess(course.accessType)) {
       setFullTrackVisible(true);
     }
-    navigation.setParams({openFullTrackUpgrade: false});
-  }, [course, navigation, route.params?.openFullTrackUpgrade]);
+    onFullTrackUpgradeHandled();
+  }, [course, onFullTrackUpgradeHandled, openFullTrackUpgrade]);
 
-  const refreshAfterProjectPass = useCallback(
-    async (projectId: string) => {
-      const generation = ++loadGenerationRef.current;
-      // Give immediate feedback only after an authoritative pass, then fetch
-      // again so URLs that were withheld while locked arrive from the API.
-      setCourse(current =>
-        current ? unlockAfterProject(current, projectId) : current,
-      );
-      try {
-        const result = await loadCourseLearningData(courseId || undefined, {
-          reconcilePending: false,
-        });
-        const refreshed = await applyLocalLearningState(result.course);
-        if (generation !== loadGenerationRef.current) return;
-        setCourse(refreshed);
-      } catch {
-        // Keep the confirmed local state visible. Opening the course again
-        // retries the authoritative payload without blocking the learner.
-      }
-    },
-    [courseId],
-  );
-
-  if (loading && !course) {
+  if ((loading || !courseOwnerMatches) && !course) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color="#76A9FF" />
@@ -111,30 +142,21 @@ export default function Lessons() {
 
   const grantAccess = isGrantCourseAccess(course.accessType);
   const moduleProjects = (module: (typeof course.modules)[number]) =>
-    module.projects?.length
-      ? module.projects
-      : module.project
-      ? [module.project]
-      : [];
+    module.projects || [];
   const hasProjects = course.modules.some(
     module => moduleProjects(module).length > 0,
-  );
-  const hasAssessments = course.modules.some(
-    module => (module.quizzes || []).length > 0,
   );
   const courseCompleted = course.modules.every(
     module =>
       module.reels.every(reel => reel.isCompleted) &&
-      moduleProjects(module).every(project => project.status === 'passed') &&
-      (module.quizzes || []).every(quiz => quiz.passed),
+      moduleProjects(module).every(project => project.status === 'passed'),
   );
   const certificateReady = course.certificateAvailable === true;
   const firstPendingModuleIndex = course.modules.findIndex(
     module =>
       !module.isLocked &&
       (module.reels.some(reel => !reel.isCompleted) ||
-        moduleProjects(module).some(project => project.status !== 'passed') ||
-        (module.quizzes || []).some(quiz => !quiz.passed)),
+        moduleProjects(module).some(project => project.status !== 'passed')),
   );
   const lastUnlockedModuleIndex = course.modules.reduce(
     (lastIndex, module, index) => (module.isLocked ? lastIndex : index),
@@ -162,7 +184,6 @@ export default function Lessons() {
           courseId={course.id}
           module={module}
           initiallyExpanded={index === expandedModuleIndex}
-          onProjectPassed={projectId => void refreshAfterProjectPass(projectId)}
         />
       ))}
 
@@ -183,7 +204,7 @@ export default function Lessons() {
             setFullTrackVisible(true);
             return;
           }
-          navigation.navigate('Profile', {tab: 'certificates'});
+          onOpenCertificates();
         }}
         style={[
           styles.certificateCard,
@@ -206,14 +227,8 @@ export default function Lessons() {
               ? 'منحتك تفتح محتوى الكورس كاملًا\nأضف Rokn AI والشهادة عند الحاجة'
               : certificateReady
               ? 'ستظهر في بورتفوليوك ويصل رمز QR إلى صفحة المشاركة'
-              : hasProjects || hasAssessments
-              ? `تفتح بعد إكمال الكورس${
-                  hasProjects && hasAssessments
-                    ? ' واجتياز المشروع والاختبارات'
-                    : hasProjects
-                    ? ' واجتياز المشروع'
-                    : ' واجتياز الاختبارات'
-                }`
+              : hasProjects
+              ? 'تفتح بعد إكمال الكورس واجتياز مشروع العبور'
               : 'تفتح بعد إكمال الكورس'}
           </Text>
         </View>

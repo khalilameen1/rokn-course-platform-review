@@ -3,12 +3,9 @@ import path from 'path';
 import renderIntentFilters from '@expo/config-plugins/build/android/IntentFilters';
 import appConfig from '../app.json';
 
-const hosts = [
-  'rokn.app',
-  'www.rokn.app',
-];
+const hosts = ['rokn.app', 'www.rokn.app'];
 const exactPaths = ['/home', '/profile', '/wallet'];
-const routePrefixes = ['/support/', '/course/', '/courses/'];
+const routePrefixes = ['/support/', '/course/'];
 const expectedData = (host: string) => [
   {scheme: 'https'},
   {host},
@@ -19,7 +16,8 @@ const expectedData = (host: string) => [
 const matchesConfiguredPath = (item: any, pathname: string) =>
   typeof item.path === 'string'
     ? pathname === item.path
-    : typeof item.pathPrefix === 'string' && pathname.startsWith(item.pathPrefix);
+    : typeof item.pathPrefix === 'string' &&
+      pathname.startsWith(item.pathPrefix);
 
 describe('native app-link scope', () => {
   it('keeps Expo generation split into one attribute per data tag', () => {
@@ -82,15 +80,18 @@ describe('native app-link scope', () => {
     }
   });
 
-  it.each(['/@student', '/course-evil', '/coursesX', '/homepage'])(
-    'does not claim unrelated website path %s',
-    pathname => {
-      const items = appConfig.expo.android.intentFilters.flatMap(
-        filter => filter.data,
-      );
-      expect(items.some(item => matchesConfiguredPath(item, pathname))).toBe(
-        false,
-      );
-    },
-  );
+  it.each([
+    '/@student',
+    '/course-evil',
+    '/courses/42',
+    '/coursesX',
+    '/homepage',
+  ])('does not claim unrelated website path %s', pathname => {
+    const items = appConfig.expo.android.intentFilters.flatMap(
+      filter => filter.data,
+    );
+    expect(items.some(item => matchesConfiguredPath(item, pathname))).toBe(
+      false,
+    );
+  });
 });

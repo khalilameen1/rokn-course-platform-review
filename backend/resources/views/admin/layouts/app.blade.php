@@ -36,9 +36,9 @@
         @include('admin.includes.header')
         @include('admin.includes.alert')
 
-        <div class="breadcrumbs">
-            @yield('breadcrumbs')
-        </div>
+        @hasSection('breadcrumbs')
+            <div class="breadcrumbs">@yield('breadcrumbs')</div>
+        @endif
         <main class="content mt-3" id="main-content" tabindex="-1">
             <div id="app">
             @yield('content')

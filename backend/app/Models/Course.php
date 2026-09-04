@@ -8,8 +8,6 @@ use App\Traits\ResolvesLocalizedAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
-use Illuminate\Support\Facades\Schema;
 
 
 class Course extends Model
@@ -17,24 +15,14 @@ class Course extends Model
     //
     use HasPhoto, HasFactory, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue, SoftDeletes;
 
-    public static function bootSoftDeletes(): void
-    {
-        if (
-            Schema::hasTable('courses')
-            && Schema::hasColumn('courses', 'deleted_at')
-        ) {
-            static::addGlobalScope(new SoftDeletingScope);
-        }
-    }
     protected $fillable = [
         'name_ar', 'name_en', 'description_ar', 'description_en', 'image', 'grade_id', 'teacher_id', 'store_id',
-        'price', 'price_before_discount', 'currency', 'video_count', 'hours_count', 'questions_count',
-        'exam_count', 'home_work_count', 'files_count', 'students_count', 'course_type','parent_id',
+        'price', 'price_before_discount', 'currency', 'course_type',
         'is_main_course', 'is_coming_soon', 'is_catalog_visible', 'authoring_version', 'authoring_request_id', 'home_sort_order',
         'last_published_authoring_version', 'published_at',
         'catalog_badge_ar', 'catalog_badge_en', 'catalog_badge_tone',
         'search_keywords_ar', 'search_keywords_en', 'search_title_normalized', 'search_terms_normalized',
-        'ai_model_type', 'chat_ai_prompt', 'temperature', 'tokens_number', 'ai_chat_enabled',
+        'ai_chat_enabled',
         'chat_attachments_enabled', 'chat_attachment_max_files',
         'attachment_prompt_enabled', 'attachment_prompt_at_seconds', 'attachment_prompt_frequency', 'attachment_prompt_title',
         'attachment_prompt_body', 'attachment_prompt_button_text',
@@ -43,8 +31,6 @@ class Course extends Model
     ];
     protected $photoModel = 'App\Models\Photo';
     protected $casts = [
-        'temperature' => 'float',
-        'tokens_number' => 'integer',
         'is_main_course' => 'boolean',
         'is_coming_soon' => 'boolean',
         'is_catalog_visible' => 'boolean',
@@ -63,12 +49,6 @@ class Course extends Model
     protected static function booted(): void
     {
         static::saving(function (Course $course): void {
-            if (
-                !\Illuminate\Support\Facades\Schema::hasColumn('courses', 'search_title_normalized')
-                || !\Illuminate\Support\Facades\Schema::hasColumn('courses', 'search_terms_normalized')
-            ) {
-                return;
-            }
             if (!$course->isDirty([
                 'name_ar', 'name_en', 'description_ar', 'description_en',
                 'search_keywords_ar', 'search_keywords_en',
@@ -99,13 +79,6 @@ class Course extends Model
         // learner finish an unlisted course without leaking it to home,
         // search, grades, paths or a guessed public details URL.
         return $query->where('is_catalog_visible', true);
-    }
-
-    public function scopeQuiz($query){
-        return $query->where("type",'quiz');
-    }
-    public function scopeCourse($query){
-        return $query->where("type",'course');
     }
 
     // Computed attributes for backward compatibility
@@ -150,21 +123,10 @@ class Course extends Model
         return $this->hasMany(CourseModule::class)->orderBy('order');
     }
 
-    public function courseSection()
-    {
-        return $this->morphOne(CourseSection::class, 'sectionable');
-    }
-
     public function lessons(){
         return $this->hasMany('App\Models\Lesson','list_id','id');
     }
 
-    public function lesson(){
-        return $this->belongsTo('App\Models\Lesson','id','quiz_id');
-    }
-    public function questions(){
-        return $this->hasMany('App\Models\Question','list_id','id');
-    }
     public function grade(){
         return $this->belongsTo(Grade::class);
     }
@@ -175,14 +137,6 @@ class Course extends Model
 
     public function socialGroups(){
         return $this->hasMany(SocialGroup::class,'list_id');
-    }
-
-    public function courses(){
-        return $this->hasMany(Course::class,'parent_id', 'id');
-    }
-
-    public function parentCourse(){
-        return $this->belongsTo(Course::class, 'parent_id', 'id');
     }
 
     /**
@@ -265,22 +219,6 @@ class Course extends Model
             : $this->sections()->exists();
     }
 
-    /** Child rows belong to a parent learning contract, not the public catalogue. */
-    public function isNestedCourse(): bool
-    {
-        if ($this->parent_id !== null) {
-            return true;
-        }
-
-        if (array_key_exists('course_section_exists', $this->attributes)) {
-            return (bool) $this->attributes['course_section_exists'];
-        }
-
-        return $this->relationLoaded('courseSection')
-            ? $this->courseSection !== null
-            : $this->courseSection()->exists();
-    }
-
     public function enrollments()
     {
         return $this->hasMany(CourseEnrollment::class);
@@ -290,7 +228,7 @@ class Course extends Model
     {
         return $this->enrollments()
             ->whereHas('user', function ($users) {
-                $users->students();
+                $users->whereNull('users.deleted_at')->students();
             })
             ->where('is_active', true)
             ->where(function ($query) {

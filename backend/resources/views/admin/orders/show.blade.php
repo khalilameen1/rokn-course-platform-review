@@ -10,6 +10,8 @@
 
 @section('content')
 <div class="admin-page orders-show-page">
+    @include('admin.payments.partials.navigation')
+
     <div class="mb-3">
         <a href="{{ route('admin.orders.index') }}" class="btn btn-outline-secondary">
             <i class="fa fa-arrow-right"></i> العودة للقائمة

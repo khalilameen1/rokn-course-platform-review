@@ -7,7 +7,6 @@ use App\Services\StudentNotificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class CourseCode extends Model
@@ -163,52 +162,14 @@ class CourseCode extends Model
 
         $normalizedEmail = mb_strtolower(trim((string) $user->email));
 
-        if (Schema::hasTable('course_grant_claims')) {
-            return CourseGrantClaim::query()
-                ->where(function ($query) use ($userId, $normalizedEmail): void {
-                    $query->where('user_id', $userId);
-                    if ($normalizedEmail !== '') {
-                        $query->orWhere(
-                            'normalized_email_hash',
-                            CourseGrantClaim::emailHash($normalizedEmail)
-                        );
-                    }
-                })
-                ->exists();
-        }
-
-        if (
-            !Schema::hasColumn('course_codes', 'is_grant')
-            && !Schema::hasColumn('course_codes', 'allowed_email_domains')
-        ) {
-            return false;
-        }
-
-        return CourseCodeUsage::query()
-            ->whereHas('courseCode', function ($query): void {
-                $query->where(function ($grants): void {
-                    if (Schema::hasColumn('course_codes', 'is_grant')) {
-                        $grants->where('is_grant', true)->orWhere(function ($legacy): void {
-                            $legacy->whereNotNull('allowed_email_domains')
-                                ->where('allowed_email_domains', '!=', '[]');
-                        });
-                        return;
-                    }
-                    if (Schema::hasColumn('course_codes', 'allowed_email_domains')) {
-                        $grants->whereNotNull('allowed_email_domains')
-                            ->where('allowed_email_domains', '!=', '[]');
-                    }
-                });
-            })
+        return CourseGrantClaim::query()
             ->where(function ($query) use ($userId, $normalizedEmail): void {
                 $query->where('user_id', $userId);
                 if ($normalizedEmail !== '') {
-                    // The users table already has a unique email constraint;
-                    // this second condition also protects imported/legacy
-                    // accounts whose email casing was not normalised.
-                    $query->orWhereHas('user', function ($users) use ($normalizedEmail): void {
-                        $users->whereRaw('LOWER(email) = ?', [$normalizedEmail]);
-                    });
+                    $query->orWhere(
+                        'normalized_email_hash',
+                        CourseGrantClaim::emailHash($normalizedEmail)
+                    );
                 }
             })
             ->exists();
@@ -284,7 +245,7 @@ class CourseCode extends Model
                 'user_agent' => PrivacyFingerprint::make(request()->userAgent()),
             ]);
 
-            if ($lockedCode->isInstitutionalGrant() && Schema::hasTable('course_grant_claims')) {
+            if ($lockedCode->isInstitutionalGrant()) {
                 $user = User::query()->findOrFail($userId);
                 CourseGrantClaim::query()->create([
                     'user_id' => $userId,
@@ -403,7 +364,7 @@ class CourseCode extends Model
                     $grant
                         ? 'The complete course and projects are ready whenever you are.'
                         : 'You can start ' . $course->name_en . ' and resume at any time.',
-                    '/courses/' . $course->id,
+                    '/course/' . $course->id,
                     'App\Models\Course',
                     $course->id,
                     'course-enrolled:order:' . $order->id,

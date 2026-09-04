@@ -24,6 +24,7 @@ class StudentNotificationService
     public const TYPE_INSTITUTIONAL_GRANT = 'institutional_grant';
     public const TYPE_WHATSAPP_CONNECTED = 'whatsapp_connected';
     public const TYPE_SUPPORT_CASE_UPDATE = 'support_case_update';
+    public const TYPE_PROJECT_UPDATE = 'project_update';
 
     /**
      * Create a StudentNotification for the user and send FCM push.
@@ -69,6 +70,15 @@ class StudentNotificationService
         if ($copy === null) {
             return null;
         }
+        $snapshot = self::deliverySnapshot(
+            $type,
+            $notifiableType,
+            $notifiableId,
+            $link ?: ($copy['template_link'] ?? null),
+            $imageUrl ?: ($copy['image_url'] ?? null),
+            $copy['action_label_ar'] ?? null,
+            $copy['action_label_en'] ?? null
+        );
         $deliveryKey = self::normalizeDeliveryKey($deliveryKey ?: (string) Str::uuid());
         $identity = [
             'user_id' => $user->id,
@@ -81,8 +91,7 @@ class StudentNotificationService
             $notifiableType,
             $notifiableId,
             $copy,
-            $link,
-            $imageUrl
+            $snapshot
         ): ?StudentNotification {
             // User is the aggregate lock. Account deletion takes the same lock
             // before clearing inbox rows, so a stale callback cannot recreate
@@ -101,10 +110,10 @@ class StudentNotificationService
                     'title_en' => $copy['title_en'],
                     'message_ar' => $copy['message_ar'],
                     'message_en' => $copy['message_en'],
-                    'link' => $link ?: ($copy['template_link'] ?? null),
-                    'image_url' => $imageUrl ?: ($copy['image_url'] ?? null),
-                    'action_label_ar' => $copy['action_label_ar'] ?? null,
-                    'action_label_en' => $copy['action_label_en'] ?? null,
+                    'link' => $snapshot['link'],
+                    'image_url' => $snapshot['image_url'],
+                    'action_label_ar' => $snapshot['action_label_ar'],
+                    'action_label_en' => $snapshot['action_label_en'],
                     'is_read' => false,
                 ]);
             } catch (QueryException $exception) {
@@ -123,7 +132,9 @@ class StudentNotificationService
 
         // Persist first so the in-app inbox is authoritative. Push delivery is
         // an after-commit side effect and can scale independently on workers.
-        self::enqueuePushAfterCommit((int) $notification->id);
+        if ($notification->wasRecentlyCreated) {
+            self::enqueuePushAfterCommit((int) $notification->id);
+        }
 
         return $notification;
     }
@@ -134,7 +145,7 @@ class StudentNotificationService
      * @param User $user
      * @return int Number of coins credited during this call.
      */
-    public static function sendRegistrationBonus(User $user): int
+    public static function sendRegistrationBonus(User $user, ?string $verifiedProvider = null): int
     {
         try {
             if (app(AcquisitionRewardTombstoneService::class)->userHasConsumed(
@@ -149,19 +160,9 @@ class StudentNotificationService
             // Keep the granted amount identical to the login promise. The
             // earning-method row remains the claim/audit record, not a second
             // source of truth for this acquisition offer.
-            $coinsAmount = RewardRule::configuredAmount(
-                'welcome_bonus',
-                (int) (Setting::query()->value('welcome_bonus_coins')
-                    ?? config('social_auth.welcome_bonus_coins', 20))
+            $coinsAmount = self::registrationBonusOffer(
+                $verifiedProvider ?: (string) $user->social_provider
             );
-            $settings = Setting::query()->first();
-            if (
-                $settings
-                && $settings->recommended_social_provider
-                && $user->social_provider === $settings->recommended_social_provider
-            ) {
-                $coinsAmount += max(0, (int) $settings->recommended_provider_bonus_coins);
-            }
             $methodId = $method ? $method->id : null;
 
             if ($coinsAmount <= 0) {
@@ -244,6 +245,29 @@ class StudentNotificationService
         }
     }
 
+    /** The discovery promise and the credited one-time amount share this rule. */
+    public static function registrationBonusOffer(?string $provider = null): int
+    {
+        $settings = Setting::query()->first();
+        $amount = RewardRule::configuredAmount(
+            'welcome_bonus',
+            (int) ($settings?->welcome_bonus_coins
+                ?? config('social_auth.welcome_bonus_coins', 20))
+        );
+        if (
+            $settings?->recommended_social_provider
+            && strtolower(trim((string) $provider)) === strtolower(trim((string) $settings->recommended_social_provider))
+        ) {
+            $amount += max(0, (int) $settings->recommended_provider_bonus_coins);
+        }
+
+        // WalletService treats acquisition offers as indivisible. Advertising
+        // an amount above the reward-wallet ceiling would promise coins that
+        // the canonical ledger must reject in full.
+        $cap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
+        return $amount > 0 && $amount <= $cap ? $amount : 0;
+    }
+
     private static function ensureRegistrationBonusNotification(
         User $user,
         int $coinsAmount,
@@ -266,6 +290,15 @@ class StudentNotificationService
         if ($copy === null) {
             return;
         }
+        $snapshot = self::deliverySnapshot(
+            self::TYPE_COINS_CLAIMED,
+            $methodId ? CoinEarningMethod::class : null,
+            $methodId,
+            $copy['template_link'] ?? null,
+            $copy['image_url'] ?? null,
+            $copy['action_label_ar'] ?? null,
+            $copy['action_label_en'] ?? null
+        );
 
         // The delivery key is the stable identity for this one-time receipt.
         // The surrounding user lock prevents concurrent first-login duplicates.
@@ -282,10 +315,10 @@ class StudentNotificationService
                 'title_en' => $copy['title_en'],
                 'message_ar' => $copy['message_ar'],
                 'message_en' => $copy['message_en'],
-                'link' => $copy['template_link'] ?? null,
-                'image_url' => $copy['image_url'] ?? null,
-                'action_label_ar' => $copy['action_label_ar'] ?? null,
-                'action_label_en' => $copy['action_label_en'] ?? null,
+                'link' => $snapshot['link'],
+                'image_url' => $snapshot['image_url'],
+                'action_label_ar' => $snapshot['action_label_ar'],
+                'action_label_en' => $snapshot['action_label_en'],
                 'is_read' => false,
             ]
         );
@@ -311,6 +344,31 @@ class StudentNotificationService
                 report($exception);
             }
         });
+    }
+
+    /** @return array{link:string,image_url:?string,action_label_ar:string,action_label_en:string} */
+    private static function deliverySnapshot(
+        string $type,
+        ?string $notifiableType,
+        ?int $notifiableId,
+        ?string $link,
+        ?string $imageUrl,
+        ?string $actionLabelAr,
+        ?string $actionLabelEn
+    ): array {
+        $prototype = new StudentNotification([
+            'notification_type' => $type,
+            'notifiable_type' => $notifiableType,
+            'notifiable_id' => $notifiableId,
+            'link' => $link,
+            'image_url' => $imageUrl,
+            'action_label_ar' => $actionLabelAr,
+            'action_label_en' => $actionLabelEn,
+        ]);
+
+        $presentation = app(StudentNotificationPresentationService::class)->for($prototype);
+
+        return $presentation;
     }
 
     private static function arabicDigits(int $value): string

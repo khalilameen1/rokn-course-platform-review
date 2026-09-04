@@ -45,10 +45,10 @@
                                 <i class="fa fa-database"></i>
                                 {{ $users->total() }} طالب
                             </span>
-                            <button type="button" class="btn-create-student" data-toggle="modal" data-target="#broadcastNotificationModal">
+                            <a href="{{ route('admin.notifications.create') }}" class="btn-create-student">
                                 <i class="fa fa-bell"></i>
                                 إرسال إشعار للجميع
-                            </button>
+                            </a>
                         </div>
                     </div>
 
@@ -177,10 +177,17 @@
                                                             </button>
                                                         </form>
                                                         <div class="dropdown-divider"></div>
-                                                        <a class="dropdown-item-modern" href="javascript:void(0)" data-toggle="modal" data-target="#addNoteModal-{{ $user->id }}">
+                                                        <button
+                                                            class="dropdown-item-modern border-0 w-100 text-right bg-transparent"
+                                                            type="button"
+                                                            data-toggle="modal"
+                                                            data-target="#addNoteModal"
+                                                            data-note-action="{{ route('admin.users.notes.store', $user->id) }}"
+                                                            data-student-name="{{ $user->name }}"
+                                                        >
                                                             <i class="fa fa-plus-circle"></i>
                                                             <span>إضافة ملاحظة</span>
-                                                        </a>
+                                                        </button>
                                                     </div>
                                                 </div>
                                             </td>
@@ -211,97 +218,32 @@
         </div>
     </div>
 
-    <!-- Broadcast Notification Modal -->
-    <div class="modal fade" id="broadcastNotificationModal" tabindex="-1" role="dialog" aria-labelledby="broadcastNotificationModalLabel" aria-hidden="true">
+    <div class="modal fade" id="addNoteModal" tabindex="-1" role="dialog" aria-labelledby="addNoteModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" role="document">
             <div class="modal-content modal-content-modern">
-                <form method="POST" action="{{ route('admin.notifications.store') }}">
+                <form method="POST" action="" data-student-note-form>
                     @csrf
-                    <input name="authoring_request_id" type="hidden" value="{{ old('authoring_request_id', (string) \Illuminate\Support\Str::uuid()) }}">
-                    <input name="audience" type="hidden" value="all">
-                    <input name="notification_kind" type="hidden" value="marketing">
+                    <input type="hidden" name="authoring_request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
                     <div class="modal-header modal-header-modern">
-                        <h5 class="modal-title" id="broadcastNotificationModalLabel">
-                            <i class="fa fa-bell"></i> إرسال إشعار لجميع الطلاب
-                        </h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+                        <h5 class="modal-title" id="addNoteModalLabel"><i class="fa fa-sticky-note"></i> إضافة ملاحظة</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="إغلاق"><span aria-hidden="true">&times;</span></button>
                     </div>
                     <div class="modal-body modal-body-modern">
-                        <div class="form-group">
-                            <label class="font-weight-bold">
-                                <i class="fa fa-tag"></i> عنوان الإشعار <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="title" maxlength="80" class="form-control form-control-modern" placeholder="عنوان قصير" required value="{{ old('title') }}">
-                        </div>
-                        <div class="form-group mb-0">
-                            <label class="font-weight-bold">
-                                <i class="fa fa-comment"></i> نص الإشعار <span class="text-danger">*</span>
-                            </label>
-                            <textarea name="message" maxlength="240" class="form-control form-control-modern" rows="4" required placeholder="اكتب المطلوب مباشرة">{{ old('message') }}</textarea>
-                        </div>
+                        <label for="student-note" class="font-weight-bold" data-student-note-label>الملاحظة</label>
+                        <textarea name="note" id="student-note" class="form-control form-control-modern" rows="5" required></textarea>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-modern btn-modern-secondary" data-dismiss="modal">
-                            <i class="fa fa-times"></i> إلغاء
-                        </button>
-                        <button type="submit" class="btn btn-modern btn-modern-primary">
-                            <i class="fa fa-paper-plane"></i> إرسال للجميع
-                        </button>
+                        <button type="button" class="btn btn-modern btn-modern-secondary" data-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-modern btn-modern-primary">حفظ</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-
-    <!-- Add Note Modals -->
-    @foreach($users as $user)
-        <div class="modal fade" id="addNoteModal-{{ $user->id }}" tabindex="-1" role="dialog" aria-labelledby="addNoteModal-{{ $user->id }}-Label" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content modal-content-modern">
-                    <form method="POST" action="{{ route('admin.users.notes.store', $user->id) }}">
-                        @csrf
-                        <input type="hidden" name="authoring_request_id" value="{{ (string) \Illuminate\Support\Str::uuid() }}">
-                        <div class="modal-header modal-header-modern">
-                            <h5 class="modal-title" id="addNoteModal-{{ $user->id }}-Label">
-                                <i class="fa fa-sticky-note"></i> إضافة ملاحظة جديدة
-                            </h5>
-                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                <span aria-hidden="true">&times;</span>
-                            </button>
-                        </div>
-                        <div class="modal-body modal-body-modern">
-                            <div class="form-group">
-                                <label for="note-{{ $user->id }}" class="font-weight-bold">
-                                    <i class="fa fa-pencil"></i> ملاحظة للطالب: {{ $user->name }}
-                                </label>
-                                <textarea name="note" id="note-{{ $user->id }}" class="form-control form-control-modern" rows="5" required
-                                          placeholder="اكتب الملاحظة هنا..."></textarea>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-modern btn-modern-secondary" data-dismiss="modal">
-                                <i class="fa fa-times"></i> إلغاء
-                            </button>
-                            <button type="submit" class="btn btn-modern btn-modern-primary">
-                                <i class="fa fa-save"></i> حفظ الملاحظة
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    @endforeach
 </div>
 
-@section('scripts')
-<script>
-    @if($errors->any())
-        $(document).ready(function () {
-            $('#broadcastNotificationModal').modal('show');
-        });
-    @endif
-</script>
 @endsection
+
+@section('scripts')
+<script src="{{ asset('admin/assets/js/users-index.js') }}"></script>
 @endsection

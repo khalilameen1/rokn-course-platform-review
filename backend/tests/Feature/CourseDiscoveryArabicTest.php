@@ -9,6 +9,7 @@ use App\Http\Middleware\WebsiteVisitorCount;
 use App\Models\Classification;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
+use App\Models\CourseModule;
 use App\Models\Lesson;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,9 +35,22 @@ final class CourseDiscoveryArabicTest extends TestCase
             ->assertJsonPath('data.items.0.course_id', $course->id);
     }
 
-    public function test_retired_course_leaves_discovery_details_and_lesson_preview(): void
+    public function test_search_filters_keep_the_public_catalogue_query_executable(): void
     {
-        [$course, $lesson] = $this->publishedCourse('صناعة المحتوى');
+        [$course] = $this->publishedCourse('تصميم الشعارات');
+        $classificationId = (int) $course->classifications()->value('classifications.id');
+
+        $this->getJson('/api/v1/search/courses?' . http_build_query([
+            'q' => 'تصميم',
+            'classification_id' => $classificationId,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.items.0.course_id', $course->id);
+    }
+
+    public function test_retired_course_leaves_discovery_and_details(): void
+    {
+        [$course] = $this->publishedCourse('صناعة المحتوى');
 
         $this->getJson('/api/v1/search/courses?q=المحتوي')
             ->assertOk()
@@ -48,8 +62,6 @@ final class CourseDiscoveryArabicTest extends TestCase
             ->assertOk()
             ->assertJsonCount(0, 'data.items');
         $this->getJson("/api/v1/courses/{$course->id}/details")
-            ->assertNotFound();
-        $this->getJson("/api/v1/lesson/{$lesson->id}")
             ->assertNotFound();
     }
 
@@ -74,7 +86,7 @@ final class CourseDiscoveryArabicTest extends TestCase
         $this->withoutMiddleware();
         $this->actingAs($admin)
             ->post("/dashboard/courses/{$course->id}/restore")
-            ->assertRedirect(route('admin.courses.edit', $course->id));
+            ->assertRedirect(route('admin.courses.show', $course->id));
 
         $restored = Course::query()->findOrFail($course->id);
         self::assertFalse((bool) $restored->is_catalog_visible);
@@ -130,8 +142,14 @@ final class CourseDiscoveryArabicTest extends TestCase
             'duration_minutes' => 5,
             'is_opened' => true,
         ]);
+        $module = CourseModule::query()->create([
+            'course_id' => $course->id,
+            'title_ar' => 'محتوى الكورس',
+            'order' => 1,
+        ]);
         DB::table('course_sections')->insert([
             'course_id' => $course->id,
+            'module_id' => $module->id,
             'title' => 'المقطع الأول',
             'title_ar' => 'المقطع الأول',
             'section_type' => 'lesson',

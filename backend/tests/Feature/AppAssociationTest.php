@@ -54,7 +54,6 @@ class AppAssociationTest extends TestCase
                             '/wallet',
                             '/support/*',
                             '/course/*',
-                            '/courses/*',
                         ],
                     ],
                     [
@@ -65,7 +64,6 @@ class AppAssociationTest extends TestCase
                             '/wallet',
                             '/support/*',
                             '/course/*',
-                            '/courses/*',
                         ],
                     ],
                 ],

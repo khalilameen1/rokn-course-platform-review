@@ -3,7 +3,7 @@
 @php
     $sidebarData = app(\App\Services\AdminSidebarDataService::class)->forUser(auth()->user());
     $isAdministrator = $sidebarData['is_administrator'];
-    $unreadContacts = $sidebarData['unread_contacts'];
+    $pendingSupportCount = $sidebarData['pending_support_count'];
     $dashboardHome = route('admin.dashboard');
 @endphp
 
@@ -28,31 +28,14 @@
 
         <div id="main-menu" class="main-menu">
             <ul class="modern-nav">
-                <!-- Dashboard Section -->
                 <li class="nav-item{{ isRouteActive('admin.dashboard') ? ' active' : '' }}">
                     <a href="{{ $dashboardHome }}" class="nav-link" @if(isRouteActive('admin.dashboard')) aria-current="page" @endif>
                         <i class="menu-icon fa fa-dashboard"></i>
                         <span class="menu-text">{{ $isAdministrator ? 'الرئيسية' : 'مساحة المحتوى' }}</span>
                     </a>
                 </li>
-                <!--
-                <li class="nav-item{{ isRouteActive('admin.urgent-tasks.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.urgent-tasks.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-exclamation-triangle"></i>
-                        <span class="menu-text">المهام العاجلة</span>
-                    </a>
-                </li>-->
-
-                <!-- Academic Management Section -->
-                <li class="menu-divider"><span>الإدارة الأكاديمية</span></li>
-                <!--
-                <li class="nav-item{{ isRouteActive('admin.grades.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.grades.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-graduation-cap"></i>
-                        <span class="menu-text">المراحل الدراسية</span>
-                    </a>
-                </li>-->
-
+                <li class="menu-divider"><span>{{ $isAdministrator ? 'إدارة المحتوى' : 'صناعة الكورس' }}</span></li>
+                @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.classifications.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.classifications.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-tags"></i>
@@ -66,8 +49,13 @@
                         <span class="menu-text">المستويات</span>
                     </a>
                 </li>
-
-
+                <li class="nav-item{{ isRouteActive('admin.paths.*') ? ' active' : '' }}">
+                    <a href="{{ route('admin.paths.index') }}" class="nav-link">
+                        <i class="menu-icon fa fa-road"></i>
+                        <span class="menu-text">المسارات</span>
+                    </a>
+                </li>
+                @endif
 
                 <li class="nav-item{{ isRouteActive('admin.courses.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.courses.index') }}" class="nav-link" @if(isRouteActive('admin.courses.*')) aria-current="page" @endif>
@@ -92,10 +80,7 @@
                 @endif
 
                 @if($isAdministrator)
-                <!-- Students Section -->
                 <li class="menu-divider"><span>الطلاب والتقييم</span></li>
-
-                @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.users.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.users.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-user-circle"></i>
@@ -103,15 +88,12 @@
                     </a>
                 </li>
 
-                @endif
-
-                <li class="nav-item{{ isRouteActive('admin.student-progress.index') ? ' active' : '' }}">
+                <li class="nav-item{{ isRouteActive('admin.student-progress.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.student-progress.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-bar-chart-o"></i>
                         <span class="menu-text">تقدم الطلاب</span>
                     </a>
                 </li>
-                @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.product-operations.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.product-operations.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-check-square-o"></i>
@@ -126,25 +108,10 @@
                 </li>
                 <li class="nav-item{{ isRouteActive('admin.user-sessions.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.user-sessions.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-laptop"></i>
+                        <i class="menu-icon fa fa-mobile"></i>
                         <span class="menu-text">جلسات الأجهزة</span>
                     </a>
                 </li>
-                <li class="nav-item{{ isRouteActive('admin.feedback.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.feedback.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-commenting-o"></i>
-                        <span class="menu-text">ملاحظات التطبيق</span>
-                    </a>
-                </li>
-                @endif
-
-<!--
-                <li class="nav-item{{ isRouteActive('admin.exam-results.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.exam-results.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-line-chart"></i>
-                        <span class="menu-text">نتائج الامتحانات</span>
-                    </a>
-                </li>-->
                 @endif
 
                 <li class="nav-item{{ isRouteActive('admin.project-submissions.*') ? ' active' : '' }}">
@@ -155,7 +122,6 @@
                 </li>
 
                 @if($isAdministrator)
-                <!-- Financial Section -->
                 <li class="menu-divider"><span>المالية والمبيعات</span></li>
 
                 <li class="nav-item{{ isRouteActive('admin.course-codes.*') ? ' active' : '' }}">
@@ -187,13 +153,6 @@
                 </li>
                 @endif
 
-                <li class="nav-item{{ isRouteActive('admin.paths.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.paths.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-road"></i>
-                        <span class="menu-text">المسارات</span>
-                    </a>
-                </li>
-                
                 @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.coin-earning-methods.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.coin-earning-methods.index') }}" class="nav-link">
@@ -202,17 +161,11 @@
                     </a>
                 </li>
 
-                <li class="nav-item{{ isRouteActive('admin.bills.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.bills.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-file-text"></i>
-                        <span class="menu-text">الفواتير</span>
-                    </a>
-                </li>
 
-                <li class="nav-item{{ isRouteActive('admin.payment-methods.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.payment-methods.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-credit-card"></i>
-                        <span class="menu-text">طرق الدفع</span>
+                <li class="nav-item{{ isRouteActive('admin.operating-costs.*') ? ' active' : '' }}">
+                    <a href="{{ route('admin.operating-costs.index') }}" class="nav-link">
+                        <i class="menu-icon fa fa-calculator"></i>
+                        <span class="menu-text">مراكز التكلفة</span>
                     </a>
                 </li>
 
@@ -253,48 +206,25 @@
                     </a>
                 </li>
 
-                <li class="nav-item{{ isRouteActive('admin.admin_data') ? ' active' : '' }}">
-                    <a href="{{ route('admin.admin_data') }}" class="nav-link">
-                        <i class="menu-icon fa fa-lock"></i>
-                        <span class="menu-text">تغيير كلمة المرور</span>
-                    </a>
-                </li>
                 @endif
-<!--
-                <li class="nav-item{{ isRouteActive('admin.student-platform') ? ' active' : '' }}">
-                    <a href="{{ route('admin.student-platform') }}" class="nav-link">
-                        <i class="menu-icon fa fa-globe"></i>
-                        <span class="menu-text">منصة الطالب</span>
-                    </a>
-                </li>
--->
                 @if($isAdministrator)
-                <!-- Communication Section -->
                 <li class="menu-divider"><span>التواصل</span></li>
 
-                <li class="nav-item{{ isRouteActive('admin.contacts') ? ' active' : '' }}">
-                    <a href="{{ route('admin.contacts.index') }}" class="nav-link">
+                <li class="nav-item{{ isRouteActive('admin.feedback.*') || isRouteActive('admin.contacts.*') ? ' active' : '' }}">
+                    <a href="{{ route('admin.feedback.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-comments"></i>
-                        <span class="menu-text">اتصل بنا</span>
-                        @if($unreadContacts > 0)
-                            <span class="notification-badge">{{ $unreadContacts }}</span>
+                        <span class="menu-text">رسائل الدعم</span>
+                        @if($pendingSupportCount > 0)
+                            <span class="notification-badge">{{ $pendingSupportCount > 99 ? '99+' : $pendingSupportCount }}</span>
                         @endif
                     </a>
                 </li>
-                <li class="nav-item{{ isRouteActive('admin.operating-costs.*') ? ' active' : '' }}">
-                    <a href="{{ route('admin.operating-costs.index') }}" class="nav-link">
-                        <i class="menu-icon fa fa-calculator"></i>
-                        <span class="menu-text">مراكز التكلفة</span>
-                    </a>
-                </li>
-                @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.notifications.*') || isRouteActive('admin.admin_notifications.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.notifications.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-bell"></i>
                         <span class="menu-text">إشعارات الطلاب</span>
                     </a>
                 </li>
-                @endif
                 @endif
 
             </ul>

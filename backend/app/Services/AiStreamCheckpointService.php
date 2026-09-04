@@ -20,10 +20,16 @@ final class AiStreamCheckpointService
         $content = $this->content($content, 12000);
         if ($content === '') return false;
 
-        return CourseChatTurn::query()
-            ->whereKey($turn->id)
-            ->where('status', CourseChatTurn::STREAMING)
-            ->update(['answer' => $content, 'updated_at' => now()]) === 1;
+        try {
+            return CourseChatTurn::query()
+                ->whereKey($turn->id)
+                ->where('status', CourseChatTurn::STREAMING)
+                ->update(['answer' => $content, 'updated_at' => now()]) === 1;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
     }
 
     public function projectMessage(ProjectFeedbackMessage $message, string $content): bool
@@ -31,11 +37,17 @@ final class AiStreamCheckpointService
         $content = $this->content($content, 12000);
         if ($content === '') return false;
 
-        return ProjectFeedbackMessage::query()
-            ->whereKey($message->id)
-            ->where('role', 'assistant')
-            ->where('status', ProjectFeedbackMessage::STREAMING)
-            ->update(['body' => $content, 'updated_at' => now()]) === 1;
+        try {
+            return ProjectFeedbackMessage::query()
+                ->whereKey($message->id)
+                ->where('role', 'assistant')
+                ->where('status', ProjectFeedbackMessage::STREAMING)
+                ->update(['body' => $content, 'updated_at' => now()]) === 1;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return false;
+        }
     }
 
     private function content(string $content, int $limit): string

@@ -1,4 +1,4 @@
-    @if(request()->query())
+    @if(collect($filters)->filter(static fn ($value) => $value !== null && $value !== '')->isNotEmpty())
         <div class="alert alert-info">الأرقام التالية تخص نتائج الفلاتر الحالية</div>
     @endif
     <!-- Statistics Cards -->
@@ -20,7 +20,7 @@
                     <div class="stat-icon-wrapper stat-icon--pending mx-auto">
                         <i class="ti-time text-white"></i>
                     </div>
-                    <div class="stat-title">في الانتظار</div>
+                    <div class="stat-title">مفتوحة محليًا</div>
                     <h3 class="stat-value">{{ number_format($stats['pending']) }}</h3>
                 </div>
             </div>
@@ -31,7 +31,7 @@
                     <div class="stat-icon-wrapper stat-icon--approved mx-auto">
                         <i class="ti-check text-white"></i>
                     </div>
-                    <div class="stat-title">مُعتمد</div>
+                    <div class="stat-title">مسجلة كمدفوعة</div>
                     <h3 class="stat-value">{{ number_format($stats['approved']) }}</h3>
                 </div>
             </div>
@@ -42,7 +42,7 @@
                     <div class="stat-icon-wrapper stat-icon--rejected mx-auto">
                         <i class="ti-close text-white"></i>
                     </div>
-                    <div class="stat-title">مرفوض</div>
+                    <div class="stat-title">فشلت أو رُفضت</div>
                     <h3 class="stat-value">{{ number_format($stats['rejected']) }}</h3>
                 </div>
             </div>
@@ -53,7 +53,7 @@
                     <div class="stat-icon-wrapper stat-icon--cancelled mx-auto">
                         <i class="ti-minus text-dark"></i>
                     </div>
-                    <div class="stat-title">ملغي</div>
+                    <div class="stat-title">مغلقة</div>
                     <h3 class="stat-value">{{ number_format($stats['cancelled']) }}</h3>
                 </div>
             </div>

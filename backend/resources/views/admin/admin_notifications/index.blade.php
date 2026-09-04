@@ -16,11 +16,14 @@
     <div class="notification-template-grid">
         @forelse($admin_notifications as $notification)
             <article class="notification-template-card {{ !$notification->is_active ? 'is-disabled' : '' }}">
-                <div class="notification-template-card__visual">@if($notification->image)<img src="{{ $notification->image }}" alt="">@else<i class="fa fa-bell-o" aria-hidden="true"></i>@endif</div>
+                <div class="notification-template-card__visual">@if($notification->public_image_url)<img src="{{ $notification->public_image_url }}" alt="">@else<i class="fa fa-bell-o" aria-hidden="true"></i>@endif</div>
                 <div class="notification-template-card__copy">
                     <div class="notification-template-card__meta"><span>{{ \App\Models\AdminNotification::SURFACES[$notification->surface] ?? $notification->surface }}</span><span>{{ $notification->is_active ? 'مفعّل' : 'متوقف' }}</span>@if($notification->cooldown_hours)<span>تهدئة {{ $notification->cooldown_hours }}س</span>@endif</div>
                     <h2>{{ $notification->title_ar }}</h2>
                     <p>{{ $notification->description_ar }}</p>
+                    @if($notification->action_label_ar && $notification->link)
+                        <div class="small text-primary">{{ $notification->action_label_ar }}</div>
+                    @endif
                     <small><code>{{ $notification->system_key ?: 'إعلان يدوي' }}</code> · أولوية {{ $notification->priority }}</small>
                 </div>
                 <div class="notification-template-card__actions">
@@ -32,5 +35,6 @@
             <div class="card p-5 text-center text-muted">لا توجد قوالب بعد.</div>
         @endforelse
     </div>
+    <div class="mt-4">{{ $admin_notifications->links() }}</div>
 </div>
 @endsection

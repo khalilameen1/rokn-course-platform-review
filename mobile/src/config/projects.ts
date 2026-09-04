@@ -1,8 +1,10 @@
 import RNFS from 'react-native-fs';
 
-// Must match rokn-backend/config/projects.php (25,600 KiB).
-export const PROJECT_SUBMISSION_MAX_BYTES = 8 * 1024 * 1024;
-export const PROJECT_SUBMISSION_MAX_LABEL = '٨ ميجابايت';
+// Must match backend/config/projects.php (25,600 KiB).
+// The smaller 8 MiB image-inspection ceiling is a server implementation
+// detail; it is not the learner submission limit.
+export const PROJECT_SUBMISSION_MAX_BYTES = 25 * 1024 * 1024;
+export const PROJECT_SUBMISSION_MAX_LABEL = '٢٥ ميجابايت';
 export const PROJECT_SUBMISSION_FORMATS_LABEL = 'صورة أو PDF أو TXT أو DOCX أو PPTX';
 export const PENDING_PROJECT_FILES_MAX_BYTES = 75 * 1024 * 1024;
 

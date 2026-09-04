@@ -99,13 +99,22 @@ final class AccountDeletionService
                     ->pluck('id');
                 ProjectSubmission::query()
                     ->where('user_id', $userId)
-                    ->whereNotNull('submission_file')
                     ->get(['id', 'submission_file', 'submission_metadata'])
                     ->each(function (ProjectSubmission $submission) use (&$storedFiles): void {
-                        foreach ($submission->submissionDiskCandidates() as $disk) {
+                        if (trim((string) $submission->submission_file) !== '') {
+                            foreach ($submission->submissionDiskCandidates() as $disk) {
+                                $storedFiles[] = [
+                                    'disk' => $disk,
+                                    'path' => (string) $submission->submission_file,
+                                ];
+                            }
+                        }
+                        foreach ((array) data_get($submission->submission_metadata, 'files', []) as $file) {
+                            if (!is_array($file) || trim((string) ($file['path'] ?? '')) === '') continue;
                             $storedFiles[] = [
-                                'disk' => $disk,
-                                'path' => (string) $submission->submission_file,
+                                'disk' => trim((string) ($file['storage_disk'] ?? ''))
+                                    ?: $submission->submission_disk,
+                                'path' => (string) $file['path'],
                             ];
                         }
                     });
@@ -117,34 +126,6 @@ final class AccountDeletionService
                     'mime_type' => null,
                     'file_size' => null,
                     'submission_metadata' => null,
-                    'updated_at' => now(),
-                ]);
-                if (
-                    $projectSubmissionIds->isNotEmpty()
-                    && Schema::hasTable('project_submission_review_decisions')
-                ) {
-                    // Keep the immutable decision sequence as academic/audit
-                    // evidence, but remove free-form reviewer text alongside
-                    // the learner submission text during account deletion.
-                    DB::table('project_submission_review_decisions')
-                        ->whereIn('submission_id', $projectSubmissionIds)
-                        ->update(['feedback' => '']);
-                }
-            }
-
-            if (Schema::hasTable('user_project_evaluations')) {
-                $legacyFiles = DB::table('user_project_evaluations')
-                    ->where('user_id', $userId)
-                    ->whereNotNull('submission_file')
-                    ->pluck('submission_file')
-                    ->filter()
-                    ->all();
-                $localFiles = array_merge($localFiles, $legacyFiles);
-                $publicFiles = array_merge($publicFiles, $legacyFiles);
-
-                DB::table('user_project_evaluations')->where('user_id', $userId)->update([
-                    'submission_text' => null,
-                    'submission_file' => null,
                     'updated_at' => now(),
                 ]);
             }
@@ -454,7 +435,6 @@ final class AccountDeletionService
                 'bank_account_name' => null,
                 'bank_account_id' => null,
                 'portfolio_slug' => null,
-                'portfolio_is_public' => false,
                 'portfolio_headline' => null,
                 'portfolio_location' => null,
                 'portfolio_skills' => null,

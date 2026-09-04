@@ -1,7 +1,6 @@
 import {Platform, Share} from 'react-native';
 
 import appConfig from '../../app.json';
-import {LOCAL_DEMO_ENABLED} from '../config/runtime';
 import {
   CAN_START_EXTERNAL_CHECKOUT,
   DISTRIBUTION_CHANNEL,
@@ -62,7 +61,6 @@ export type DebugBundle = {
     distribution_channel: typeof DISTRIBUTION_CHANNEL;
   };
   feature_flags: {
-    local_demo_enabled: boolean;
     external_checkout_enabled: boolean;
     play_distribution: boolean;
     app_store_distribution: boolean;
@@ -262,7 +260,6 @@ export const createDebugBundle = async (
       distribution_channel: DISTRIBUTION_CHANNEL,
     },
     feature_flags: {
-      local_demo_enabled: LOCAL_DEMO_ENABLED,
       external_checkout_enabled: CAN_START_EXTERNAL_CHECKOUT,
       play_distribution: IS_PLAY_DISTRIBUTION,
       app_store_distribution: IS_APP_STORE_DISTRIBUTION,
@@ -279,7 +276,7 @@ export const formatDebugBundle = (bundle: DebugBundle) =>
 export const shareDebugBundle = async () => {
   const bundle = await createDebugBundle();
   await Share.share({
-    title: 'Rokn debug bundle',
+    title: 'معلومات دعم ركن',
     message: formatDebugBundle(bundle),
   });
   return bundle;

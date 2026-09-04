@@ -7,7 +7,9 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Services\ApiResponseService;
 use App\Services\CourseCatalogueQueryService;
+use App\Services\CoursePresentationService;
 use App\Services\CourseSearchService;
+use App\Support\RoknLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -17,6 +19,7 @@ final class CourseSearchController extends Controller
         Request $request,
         CourseSearchService $search,
         CourseCatalogueQueryService $catalogue,
+        CoursePresentationService $presentation,
         ApiResponseService $responses
     ): JsonResponse {
         $validated = $request->validate([
@@ -33,31 +36,28 @@ final class CourseSearchController extends Controller
             'catalogue_revision' => 'nullable|integer|min:1',
         ]);
 
-        $revision = $catalogue->revision();
         $page = max(1, (int) ($validated['page'] ?? 1));
         $expectedRevision = isset($validated['catalogue_revision'])
             ? (int) $validated['catalogue_revision']
             : null;
-        if ($page > 1 && $expectedRevision !== null && $expectedRevision !== $revision) {
+        $snapshot = $catalogue->readStablePage(
+            $page,
+            $expectedRevision,
+            fn () => $search->results($validated)
+        );
+        if ($snapshot['changed']) {
             return $responses->error(
                 "تغيّرت نتائج البحث\nنحدّثها الآن",
                 409,
-                ['catalogue_revision' => $revision],
+                ['catalogue_revision' => $snapshot['revision']],
                 ['code' => 'catalogue_changed']
             );
         }
-
-        $results = $search->results($validated);
-        $finalRevision = $catalogue->revision();
-        if ($finalRevision !== $revision) {
-            return $responses->error(
-                "تغيّرت نتائج البحث\nنحدّثها الآن",
-                409,
-                ['catalogue_revision' => $finalRevision],
-                ['code' => 'catalogue_changed']
-            );
-        }
-        $results['catalogue_revision'] = $revision;
+        $results = $presentation->searchPayload(
+            $snapshot['data'],
+            RoknLocale::fromRequest($request)
+        );
+        $results['catalogue_revision'] = $snapshot['revision'];
 
         return $responses->success(
             $results,

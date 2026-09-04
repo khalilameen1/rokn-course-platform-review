@@ -112,7 +112,7 @@ export const ReelsPreviewGate = ({
             styles.previewGatePrimary,
             pressed && styles.previewGatePrimaryPressed,
           ]}>
-          <Text style={styles.previewGatePrimaryText}>ابدأ التعلّم الآن</Text>
+          <Text style={styles.previewGatePrimaryText}>اختر الفئة المناسبة</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"

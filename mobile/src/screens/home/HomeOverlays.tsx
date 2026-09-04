@@ -10,11 +10,7 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {RoknCoinStack} from '../../components/ui/RoknCoin';
-import {
-  formatArabicDisplayText,
-  formatArabicNumber,
-} from '../../constants/arabicFormatting';
+import {formatArabicDisplayText} from '../../constants/arabicFormatting';
 import {
   Accessibility,
   Palette,
@@ -32,7 +28,6 @@ export type HomeCampaign = {
   description: string;
   courseId?: string;
   image?: ImageSourcePropType;
-  badge: string;
   actionLabel: string;
 };
 
@@ -50,7 +45,6 @@ type Props = {
   rewardPrompt: EngagementMessage | null;
   onDismissRewardPrompt: () => void;
   onOpenRewardPrompt: () => void;
-  welcomeBonus: number | null;
 };
 
 const OverlayFrame = ({children}: {children: React.ReactNode}) => {
@@ -83,12 +77,12 @@ const PromptVisual = ({uri}: {uri?: string}) => {
       accessibilityElementsHidden
       importantForAccessibility="no"
       onError={() => setFailed(true)}
+      progressiveRenderingEnabled
+      resizeMethod="resize"
       source={{uri}}
       style={styles.promptImage}
     />
-  ) : (
-    <RoknCoinStack size={112} />
-  );
+  ) : null;
 };
 
 export const HomeOverlays = ({
@@ -105,7 +99,6 @@ export const HomeOverlays = ({
   rewardPrompt,
   onDismissRewardPrompt,
   onOpenRewardPrompt,
-  welcomeBonus,
 }: Props) => {
   const reducedMotion = useReducedMotion();
   return (
@@ -115,18 +108,15 @@ export const HomeOverlays = ({
         onRequestClose={onDismissWelcome}
         statusBarTranslucent
         transparent
-        visible={welcomeBonus !== null}>
+        visible={welcomeMessage !== null}>
         <OverlayFrame>
           <View accessibilityViewIsModal style={styles.welcomeCard}>
             <PromptVisual uri={welcomeMessage?.imageUrl} />
             <Text accessibilityRole="header" style={styles.welcomeTitle}>
-              {welcomeMessage?.title || 'أضيفت هديتك'}
+              {welcomeMessage?.title}
             </Text>
             <Text style={styles.welcomeText}>
-              {welcomeMessage?.description ||
-                `${formatArabicNumber(
-                  Number(welcomeBonus || 0),
-                )} عملة ركن في محفظتك`}
+              {welcomeMessage?.description}
             </Text>
             <Pressable
               accessibilityRole="button"
@@ -136,7 +126,7 @@ export const HomeOverlays = ({
                 pressed && styles.pressed,
               ]}>
               <Text style={styles.actionButtonText}>
-                {welcomeMessage?.actionLabel || 'افتح المحفظة'}
+                {welcomeMessage?.actionLabel}
               </Text>
             </Pressable>
           </View>
@@ -145,7 +135,9 @@ export const HomeOverlays = ({
 
       <Modal
         animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={onDismissRewardPrompt}
+        onRequestClose={
+          rewardPrompt?.dismissible ? onDismissRewardPrompt : () => undefined
+        }
         statusBarTranslucent
         transparent
         visible={rewardPrompt !== null}>
@@ -164,27 +156,31 @@ export const HomeOverlays = ({
                 pressed && styles.pressed,
               ]}>
               <Text style={styles.actionButtonText}>
-                {rewardPrompt?.actionLabel || 'افتح المهمة'}
+                {rewardPrompt?.actionLabel}
               </Text>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onDismissRewardPrompt}
-              style={({pressed}) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.secondaryButtonText}>
-                {rewardPrompt?.secondaryActionLabel || 'لاحقًا'}
-              </Text>
-            </Pressable>
+            {rewardPrompt?.dismissible && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDismissRewardPrompt}
+                style={({pressed}) => [
+                  styles.secondaryButton,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.secondaryButtonText}>
+                  {rewardPrompt.secondaryActionLabel}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </OverlayFrame>
       </Modal>
 
       <Modal
         animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={onDismissGuestPrompt}
+        onRequestClose={
+          guestPrompt?.dismissible ? onDismissGuestPrompt : () => undefined
+        }
         statusBarTranslucent
         transparent
         visible={guestPrompt !== null}>
@@ -206,17 +202,19 @@ export const HomeOverlays = ({
                 {guestPrompt?.actionLabel}
               </Text>
             </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onDismissGuestPrompt}
-              style={({pressed}) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.secondaryButtonText}>
-                {guestPrompt?.secondaryActionLabel || 'المتابعة كزائر'}
-              </Text>
-            </Pressable>
+            {guestPrompt?.dismissible && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onDismissGuestPrompt}
+                style={({pressed}) => [
+                  styles.secondaryButton,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.secondaryButtonText}>
+                  {guestPrompt.secondaryActionLabel}
+                </Text>
+              </Pressable>
+            )}
           </View>
         </OverlayFrame>
       </Modal>
@@ -229,22 +227,18 @@ export const HomeOverlays = ({
         visible={campaign !== null}>
         <OverlayFrame>
           <View accessibilityViewIsModal style={styles.campaignCard}>
-            <View style={styles.campaignVisual}>
-              {campaign?.image && !campaignImageFailed ? (
+            {campaign?.image && !campaignImageFailed ? (
+              <View style={styles.campaignVisual}>
                 <Image
                   accessibilityIgnoresInvertColors
                   onError={onCampaignImageError}
+                  progressiveRenderingEnabled
+                  resizeMethod="resize"
                   source={campaign.image}
                   style={styles.campaignCourseImage}
                 />
-              ) : (
-                <Image
-                  accessibilityIgnoresInvertColors
-                  source={require('../../assets/images/authLogo.png')}
-                  style={styles.campaignFallbackLogo}
-                />
-              )}
-            </View>
+              </View>
+            ) : null}
             <Pressable
               accessibilityLabel="إغلاق"
               accessibilityRole="button"
@@ -253,7 +247,6 @@ export const HomeOverlays = ({
               style={styles.campaignClose}>
               <Text style={styles.campaignCloseText}>×</Text>
             </Pressable>
-            <Text style={styles.campaignBadge}>{campaign?.badge}</Text>
             <Text accessibilityRole="header" style={styles.campaignTitle}>
               {formatArabicDisplayText(campaign?.title)}
             </Text>
@@ -372,20 +365,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Palette.lineSoft,
     resizeMode: 'cover',
-  },
-  campaignFallbackLogo: {
-    width: 54,
-    height: 54,
-    resizeMode: 'contain',
-  },
-  campaignBadge: {
-    ...Type.caption,
-    color: '#A9C9FF',
-    backgroundColor: Palette.primarySoft,
-    borderRadius: Radius.pill,
-    overflow: 'hidden',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
   },
   campaignTitle: {
     ...Type.title,

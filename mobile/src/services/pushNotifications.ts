@@ -2,10 +2,7 @@ import {Platform} from 'react-native';
 import * as Notifications from 'expo-notifications';
 import {BrandColors} from '../constants/brandTokens';
 import {publicRequest, type RoknRequestConfig} from '../constants/api';
-import {
-  parseRoknDestination,
-  safeRoknRouteId,
-} from '../navigation/deepLinks';
+import {parseRoknDestination, safeRoknRouteId} from '../navigation/deepLinks';
 import {
   navigate,
   openRoknDestination,
@@ -17,6 +14,8 @@ import {
   getItem,
   removeItem,
   saveItem,
+  assertAccountSessionBoundary,
+  type AccountSessionBoundary,
 } from '../constants/helpers';
 import {peekSecureSession} from './secureSession';
 import {
@@ -26,17 +25,13 @@ import {
 import {
   getStoredPushDeviceToken,
   invalidateLocalPushDeviceRegistration,
-  LEGACY_PUSH_UNREGISTER_PENDING_KEY,
   PUSH_TOKEN_KEY,
   pushStorageKey,
   retryPendingNativePushTokenInvalidation,
 } from './pushDeviceState';
 import {normalizeNotificationKind} from './notificationCampaigns';
 import {getInstallationId} from './installationIdentity';
-import {
-  getNotification,
-  markNotificationRead,
-} from './api/notifications';
+import {getNotification, markNotificationRead} from './api/notifications';
 import {
   getBackendPushToken,
   subscribeToBackendPushTokenRefresh,
@@ -168,9 +163,6 @@ const registerTokenForCurrentAccountNow = async (
 
   const accountScope = await getCurrentAccountStorageScope();
   const tokenKey = await pushStorageKey(PUSH_TOKEN_KEY);
-  const legacyPendingKey = await pushStorageKey(
-    LEGACY_PUSH_UNREGISTER_PENDING_KEY,
-  );
   const previousToken = await getItem<string>(tokenKey);
   const installationId = await getInstallationId();
   if (
@@ -219,11 +211,10 @@ const registerTokenForCurrentAccountNow = async (
   // The backend now owns authenticated learning-reminder cadence. Clear any
   // guest timer left on this installation before login so it cannot double it.
   cancelLearningReminders();
-  await removeItem(legacyPendingKey);
-
   if (previousToken && previousToken !== token) {
-    await removeTokenFromCapturedSession(previousToken, sessionToken)
-      .catch(() => undefined);
+    await removeTokenFromCapturedSession(previousToken, sessionToken).catch(
+      () => undefined,
+    );
   }
 
   return true;
@@ -286,10 +277,15 @@ export const unregisterPushDevice = () => {
 };
 
 /** Read the token registered for this installation without making a request. */
-export const getCurrentPushDeviceToken = async () => getStoredPushDeviceToken();
+export const getCurrentPushDeviceToken = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => getStoredPushDeviceToken(ownerBoundary);
 
 /** Invalidate Firebase and clear local registration after a logout attempt. */
-export const clearCurrentPushDeviceRegistration = async () => {
+export const clearCurrentPushDeviceRegistration = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
   // Invalidate async navigation/registration ownership before touching native
   // storage. Keychain access can be slow on a locked or low-end device.
   pushNavigationGeneration += 1;
@@ -298,13 +294,15 @@ export const clearCurrentPushDeviceRegistration = async () => {
   openNotificationByIdFlights.clear();
   responseOpenFlights.clear();
   recentlyOpenedResponses.clear();
-  const pendingKey = await pendingNotificationStorageKey();
+  const pendingKey = await pendingNotificationStorageKey(ownerBoundary);
   const [invalidation] = await Promise.allSettled([
     // Wait out any old registration request after invalidating its generation,
     // then delete native/account state as one ordered mutation. A concurrent
     // account replacement must not let an opt-out flight resolve its storage
     // keys against the next learner.
-    serializePushRegistration(() => invalidateLocalPushDeviceRegistration()),
+    serializePushRegistration(() =>
+      invalidateLocalPushDeviceRegistration(ownerBoundary),
+    ),
     removeItem(pendingKey),
     Notifications.clearLastNotificationResponseAsync(),
     // Delivered notifications belong to the account being closed. Leaving
@@ -314,6 +312,7 @@ export const clearCurrentPushDeviceRegistration = async () => {
     Notifications.setBadgeCountAsync(0),
   ]);
   if (invalidation.status === 'rejected') throw invalidation.reason;
+  if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
   return invalidation.value;
 };
 
@@ -344,9 +343,7 @@ export const subscribeToPushTokenRefresh = () =>
     void registerTokenForCurrentAccount(token).catch(() => undefined);
   });
 
-const navigateToNotificationData = (
-  data: Record<string, unknown>,
-) => {
+const navigateToNotificationData = (data: Record<string, unknown>) => {
   const explicitLink = [data.link, data.deep_link, data.action_url].find(
     value => typeof value === 'string' && value.trim(),
   );
@@ -357,16 +354,15 @@ const navigateToNotificationData = (
       ? parseRoknDestination(explicitLink)
       : null;
   const fallbackLink = courseId
-      ? `rokn://course/${encodeURIComponent(courseId)}${
-          kind === 'continue_course' || kind === 'learning_reminder'
-            ? '/watch'
-            : ''
-        }`
-      : kind === 'coin_offer' || kind === 'coin_reward'
-      ? 'rokn://wallet'
-      : 'rokn://home';
-  const destination =
-    explicitDestination || parseRoknDestination(fallbackLink);
+    ? `rokn://course/${encodeURIComponent(courseId)}${
+        kind === 'continue_course' || kind === 'learning_reminder'
+          ? '/watch'
+          : ''
+      }`
+    : kind === 'coin_offer' || kind === 'coin_reward'
+    ? 'rokn://wallet'
+    : 'rokn://home';
+  const destination = explicitDestination || parseRoknDestination(fallbackLink);
   if (destination) {
     return openRoknDestination(destination);
   }
@@ -381,8 +377,16 @@ const notificationIdFromResponse = (
   return /^\d+$/.test(id) ? id : null;
 };
 
-const pendingNotificationStorageKey = () =>
-  pushStorageKey(PENDING_NOTIFICATION_OPEN_KEY);
+const isLocalReminderResponse = (
+  response: Notifications.NotificationResponse,
+) => {
+  const value = response.notification.request.content.data?.rokn_reminder_id;
+  return /^rokn-local-\d+$/.test(String(value || '').trim());
+};
+
+const pendingNotificationStorageKey = (
+  ownerBoundary?: AccountSessionBoundary,
+) => pushStorageKey(PENDING_NOTIFICATION_OPEN_KEY, ownerBoundary);
 
 const openNotificationByIdFlights = new Map<string, Promise<boolean>>();
 const responseOpenFlights = new Map<string, Promise<boolean>>();
@@ -393,7 +397,9 @@ let pushNavigationGeneration = 0;
 const notificationResponseKey = (
   response: Notifications.NotificationResponse,
 ) => {
-  const identifier = String(response.notification.request.identifier || '').trim();
+  const identifier = String(
+    response.notification.request.identifier || '',
+  ).trim();
   const action = String(response.actionIdentifier || 'default').trim();
   if (identifier) return `${identifier}:${action}`;
   // Defensive compatibility for vendor bridges that omit the native request
@@ -403,7 +409,9 @@ const notificationResponseKey = (
   try {
     payload = JSON.stringify(response.notification.request.content.data || {});
   } catch {
-    payload = String(response.notification.request.content.title || 'notification');
+    payload = String(
+      response.notification.request.content.title || 'notification',
+    );
   }
   return `payload:${payload.slice(0, 1000)}:${action}`;
 };
@@ -422,11 +430,14 @@ const openNotificationById = async (notificationId: string) => {
       ) {
         return false;
       }
-      const opened = navigateToNotificationData({
-        link: notification.link,
-        notification_type: notification.kind,
-        course_id: notification.courseId,
-      });
+      // The fetched inbox row is the immutable delivery snapshot. Do not
+      // reinterpret a missing/invalid admin destination from its broad kind;
+      // that can turn a certificate or support button into Home. The inbox is
+      // the only honest fallback when this exact delivery has no route.
+      const destination = parseRoknDestination(notification.link);
+      const opened = destination
+        ? openRoknDestination(destination)
+        : navigate('Notifications');
       if (opened) {
         void markNotificationRead(notificationId).catch(() => undefined);
       }
@@ -481,13 +492,15 @@ export const openNotificationLink = async (
       return false;
     }
     const notificationId = notificationIdFromResponse(response);
-    const sessionAvailability = notificationId
+    const localReminder = isLocalReminderResponse(response);
+    const requiresInboxOwnership = Boolean(notificationId) || !localReminder;
+    const sessionAvailability = requiresInboxOwnership
       ? await currentSessionAvailability()
       : null;
-    if (notificationId && sessionAvailability?.state === 'pending') {
+    if (requiresInboxOwnership && sessionAvailability?.state === 'pending') {
       return false;
     }
-    if (notificationId && sessionAvailability?.state === 'guest') {
+    if (requiresInboxOwnership && sessionAvailability?.state === 'guest') {
       // A tap can outlive the account that received it. Its durable inbox row
       // must never open under a guest or a later account from the old payload.
       pendingNotificationResponse = null;
@@ -497,12 +510,14 @@ export const openNotificationLink = async (
     }
     const opened = notificationId
       ? await openNotificationById(notificationId)
-      : navigateToNotificationData(
+      : localReminder
+      ? navigateToNotificationData(
           (response.notification.request.content.data || {}) as Record<
             string,
             unknown
           >,
-        );
+        )
+      : navigate('Notifications');
     if (opened) {
       const now = Date.now();
       recentlyOpenedResponses.set(responseKey, now);
@@ -537,14 +552,16 @@ const deliverNotificationResponse = async (
   clearNativeResponse: boolean,
 ) => {
   const notificationId = notificationIdFromResponse(response);
-  const sessionAvailability = notificationId
+  const localReminder = isLocalReminderResponse(response);
+  const requiresInboxOwnership = Boolean(notificationId) || !localReminder;
+  const sessionAvailability = requiresInboxOwnership
     ? await currentSessionAvailability()
     : null;
-  if (notificationId && sessionAvailability?.state === 'pending') {
+  if (requiresInboxOwnership && sessionAvailability?.state === 'pending') {
     pendingNotificationResponse = {response, clearNativeResponse};
     return false;
   }
-  if (notificationId && sessionAvailability?.state === 'guest') {
+  if (requiresInboxOwnership && sessionAvailability?.state === 'guest') {
     pendingNotificationResponse = null;
     await removeItem(await pendingNotificationStorageKey());
     await Notifications.clearLastNotificationResponseAsync();

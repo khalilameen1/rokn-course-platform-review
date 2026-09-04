@@ -2,12 +2,8 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../constants/helpers';
-import {appendPortfolioMedia} from './api/profile';
-import {
-  completePortfolioMediaUpload,
-  discardPortfolioMediaUploads,
-  listPortfolioMediaUploads,
-} from './portfolioMediaOutbox';
+import {deliverPortfolioMedia} from './portfolioMediaDelivery';
+import {listPortfolioMediaUploads} from './portfolioMediaOutbox';
 
 export type PortfolioMediaReplayResult = {
   attempted: number;
@@ -18,13 +14,6 @@ export type PortfolioMediaReplayResult = {
 
 const flights = new Map<string, Promise<PortfolioMediaReplayResult>>();
 const completionRevisions = new Map<string, number>();
-
-const responseStatus = (error: unknown) =>
-  Number(
-    (error as {status?: unknown; response?: {status?: unknown}})?.status ??
-      (error as {response?: {status?: unknown}})?.response?.status ??
-      0,
-  );
 
 /**
  * Replays one account's durable media queue independently from screen data
@@ -39,7 +28,7 @@ export const replayPendingPortfolioMediaUploads = async () => {
 
   const flight = (async (): Promise<PortfolioMediaReplayResult> => {
     assertAccountSessionBoundary(boundary);
-    const pending = await listPortfolioMediaUploads();
+    const pending = await listPortfolioMediaUploads(undefined, boundary);
     const failedProjects = new Set<string>();
     const completedProjects = new Set<string>();
     let attempted = 0;
@@ -49,23 +38,13 @@ export const replayPendingPortfolioMediaUploads = async () => {
       assertAccountSessionBoundary(boundary);
       if (failedProjects.has(entry.projectId)) continue;
       attempted += 1;
-      try {
-        await appendPortfolioMedia(
-          entry.projectId,
-          entry.file,
-          entry.clientRequestId,
-        );
-        assertAccountSessionBoundary(boundary);
-        await completePortfolioMediaUpload(entry, boundary);
+      const result = await deliverPortfolioMedia(entry, boundary);
+      assertAccountSessionBoundary(boundary);
+      if (result.state === 'uploaded') {
         completed += 1;
         completedProjects.add(entry.projectId);
-      } catch (error: unknown) {
+      } else if (result.state !== 'discarded_file') {
         failedProjects.add(entry.projectId);
-        if (responseStatus(error) === 404) {
-          await discardPortfolioMediaUploads(entry.projectId, boundary).catch(
-            () => undefined,
-          );
-        }
       }
     }
 

@@ -41,29 +41,20 @@ class CoursePdf extends Model
     }
 
     /**
-     * Get the course section relationship (polymorphic)
-     */
-    public function courseSection()
-    {
-        return $this->morphOne(CourseSection::class, 'sectionable');
-    }
-
-    /**
      * Get the full storage path for the PDF file.
      */
     public function getFullPathAttribute()
     {
+        if (!$this->hasConfiguredStorage()) {
+            throw new \RuntimeException('Course PDF storage is not configured.');
+        }
+
         return Storage::disk($this->storage_disk)->path($this->file_path);
     }
 
-    /**
-     * Rows created before storage_disk was introduced live on the local disk.
-     * Keeping that fallback here makes the schema deployment backward
-     * compatible while the explicit migration command moves the bytes.
-     */
     public function getStorageDiskAttribute($value): string
     {
-        return filled($value) ? (string) $value : 'local';
+        return trim((string) $value);
     }
 
     /**
@@ -71,6 +62,10 @@ class CoursePdf extends Model
      */
     public function fileExists()
     {
+        if (!$this->hasConfiguredStorage()) {
+            return false;
+        }
+
         return Storage::disk($this->storage_disk)->exists($this->file_path);
     }
 
@@ -100,6 +95,14 @@ class CoursePdf extends Model
             return Storage::disk($this->storage_disk)->delete($this->file_path);
         }
         return false;
+    }
+
+    private function hasConfiguredStorage(): bool
+    {
+        $disk = trim((string) $this->storage_disk);
+        $path = trim((string) $this->file_path);
+
+        return $disk !== '' && $path !== '' && is_array(config("filesystems.disks.{$disk}"));
     }
 
     /**

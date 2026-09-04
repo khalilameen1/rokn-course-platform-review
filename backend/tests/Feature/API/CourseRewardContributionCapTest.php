@@ -9,8 +9,10 @@ use App\Models\Bill;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
+use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\FinancialAnomaly;
+use App\Models\Lesson;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\Setting;
@@ -176,6 +178,16 @@ final class CourseRewardContributionCapTest extends TestCase
             'apple_enabled' => true,
             'google_product_id' => 'rokn.coins.100.google',
             'apple_product_id' => 'rokn.coins.100.apple',
+        ]);
+        Package::query()->create([
+            'name_ar' => 'باقة بلا قناة',
+            'name_en' => 'Package without channel',
+            'price' => 1,
+            'coins' => 31,
+            'is_active' => true,
+            'direct_enabled' => false,
+            'google_enabled' => false,
+            'apple_enabled' => false,
         ]);
         $this->actingAs($user, 'api')
             ->getJson("/api/v1/courses/{$course->id}/full-track-upgrade")
@@ -383,8 +395,6 @@ final class CourseRewardContributionCapTest extends TestCase
 
     private function course(bool $withSection): Course
     {
-        // Historical SQLite migrations retain this legacy column although the
-        // production MySQL cutover migration removes it.
         $course = Course::query()->forceCreate([
             'tenant_id' => 1,
             'name_ar' => 'Reward cap course',
@@ -400,13 +410,24 @@ final class CourseRewardContributionCapTest extends TestCase
         ]);
 
         if ($withSection) {
+            $module = CourseModule::query()->create([
+                'course_id' => $course->id,
+                'title_ar' => 'Test module',
+                'order' => 1,
+            ]);
+            $lesson = Lesson::query()->create([
+                'list_id' => $course->id,
+                'title_ar' => 'Test reel',
+                'duration_minutes' => 1,
+            ]);
             CourseSection::query()->create([
                 'course_id' => $course->id,
+                'module_id' => $module->id,
                 'title_ar' => 'Test section',
                 'title_en' => 'Test section',
                 'section_type' => 'lesson',
-                'sectionable_type' => Course::class,
-                'sectionable_id' => $course->id,
+                'sectionable_type' => Lesson::class,
+                'sectionable_id' => $lesson->id,
                 'order' => 1,
             ]);
         }

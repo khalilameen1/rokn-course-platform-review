@@ -15,7 +15,7 @@ describe('account-scoped storage cleanup', () => {
 
   it('removes every key owned by the logging-out account only', async () => {
     await AsyncStorage.multiSet([
-      ['LANGUAGE', 'ar'],
+      ['@rokn/guest-storage-id/v1', 'guest-device'],
       ['@rokn/course-player/v3:account-alpha', '{}'],
       ['@rokn/catalogue/v1:account-alpha:2', '[]'],
       ['@rokn/course-player/v3:account-beta', '{}'],
@@ -28,7 +28,9 @@ describe('account-scoped storage cleanup', () => {
       '@rokn/catalogue/v1:account-alpha:2',
       '@rokn/course-player/v3:account-alpha',
     ]);
-    expect(await AsyncStorage.getItem('LANGUAGE')).toBe('ar');
+    expect(await AsyncStorage.getItem('@rokn/guest-storage-id/v1')).toBe(
+      'guest-device',
+    );
     expect(
       await AsyncStorage.getItem('@rokn/course-player/v3:account-beta'),
     ).toBe('{}');

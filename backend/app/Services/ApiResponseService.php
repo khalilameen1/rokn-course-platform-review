@@ -6,6 +6,7 @@ namespace App\Services;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
+use App\Support\ApiErrorContract;
 use App\Support\BusinessClock;
 
 final readonly class ApiResponseService
@@ -32,11 +33,18 @@ final readonly class ApiResponseService
         array $additional = [],
         array $headers = []
     ): JsonResponse {
+        $code = (string) ($additional['code'] ?? ApiErrorContract::codeForStatus($httpStatus));
+        $retryable = (bool) ($additional['retryable'] ?? ApiErrorContract::retryable($httpStatus));
+        unset($additional['code'], $additional['retryable']);
+
         return response()->json([
             'status' => $httpStatus,
+            'http_status' => $httpStatus,
             'success' => false,
             'data' => $data,
             'message' => $message,
+            'code' => $code,
+            'retryable' => $retryable,
             'server_time' => BusinessClock::utcNow()->toIso8601String(),
         ] + $additional, $httpStatus, $headers);
     }

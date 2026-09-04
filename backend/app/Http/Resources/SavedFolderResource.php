@@ -20,7 +20,7 @@ class SavedFolderResource extends JsonResource
             'id' => (int)$this->id,
             'name' => (string)$this->name,
             'image' => $this->resolveFolderImage(),
-            'lessons_count' => $this->lessons_count ?? (int)$this->lessons()->count(),
+            'lessons_count' => (int) ($this->lessons_count ?? 0),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
@@ -30,11 +30,11 @@ class SavedFolderResource extends JsonResource
     {
         $firstLesson = $this->relationLoaded('lessons')
             ? $this->lessons->first()
-            : $this->lessons()->with('course')->orderByPivot('created_at')->first();
+            : null;
 
         if ($firstLesson) {
             $thumbnailPath = trim((string) $firstLesson->thumbnail_path);
-            if ($thumbnailPath !== '') {
+            if ($thumbnailPath !== '' && $firstLesson->hasReadyMediaState()) {
                 $signed = app(BunnyService::class)->generateBunnySignedUrl($thumbnailPath);
                 if ($signed) {
                     return $signed;
@@ -50,14 +50,6 @@ class SavedFolderResource extends JsonResource
             }
 
             if ($firstLesson->relationLoaded('course') && $firstLesson->course && $firstLesson->course->image) {
-                return (string)$firstLesson->course->image;
-            }
-
-            if (!$firstLesson->relationLoaded('course')) {
-                $firstLesson->load('course');
-            }
-
-            if ($firstLesson->course && $firstLesson->course->image) {
                 return (string)$firstLesson->course->image;
             }
         }

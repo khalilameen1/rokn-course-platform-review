@@ -12,13 +12,19 @@ jest.mock('../src/constants/api', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
-import {purchaseCourse} from '../src/services/api/access';
+import {purchaseCourse, quoteCoursePurchase} from '../src/services/api/access';
 import {
   getCourseDetails,
   getLearningCourses,
   getPublishedCourses,
 } from '../src/services/api/courses';
-import {getCoinTasks, getWallet} from '../src/services/api/economy';
+import {
+  claimCoinTask,
+  getCoinTasks,
+  getWallet,
+  startCoinTask,
+  type CoinTask,
+} from '../src/services/api/economy';
 
 const mockGet = publicRequest.get as jest.Mock;
 const mockPost = publicRequest.post as jest.Mock;
@@ -30,7 +36,7 @@ describe('commerce API contracts', () => {
 
   it('keeps final-sale language in policy surfaces, not checkout decisions', () => {
     const wallet = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/Wallet.tsx'),
+      path.resolve(__dirname, '../src/screens/wallet/WalletView.tsx'),
       'utf8',
     );
     const courseCheckout = fs.readFileSync(
@@ -55,14 +61,26 @@ describe('commerce API contracts', () => {
       data: {
         data: {
           total_balance: 1500,
-          paid_balance: 900,
+          purchased_balance: 900,
           reward_balance: 600,
           course_spendable_balance: 1200,
           reward_contribution_cap_per_course: 300,
           spend_policy: 'reward_first_then_paid',
           recent_transactions: [
-            {id: 1, amount: 200, direction: 'credit', category: 'purchase'},
-            {id: 2, amount: 75, direction: 'debit', category: 'course'},
+            {
+              id: 1,
+              amount: 200,
+              direction: 'credit',
+              category: 'package_purchase',
+              label_ar: 'شحن رصيد',
+            },
+            {
+              id: 2,
+              amount: 75,
+              direction: 'debit',
+              category: 'course_purchase',
+              label_ar: 'فتح كورس',
+            },
           ],
         },
       },
@@ -76,11 +94,29 @@ describe('commerce API contracts', () => {
       rewardContributionCap: 300,
       spendPolicy: 'reward_first_then_paid',
       transactions: [
-        {id: '1', amount: 200},
-        {id: '2', amount: -75},
+        {id: '1', amount: 200, label: 'شحن رصيد'},
+        {id: '2', amount: -75, label: 'فتح كورس'},
       ],
     });
     expect(mockGet).toHaveBeenCalledWith('wallet');
+  });
+
+  it('rejects legacy wallet aliases instead of inventing a mixed balance', async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        data: {
+          balance: 1500,
+          paid_balance: 900,
+          reward_balance: 600,
+          spendable_balance: 1200,
+          reward_contribution_cap_per_course: 300,
+          spend_policy: 'reward_first_then_paid',
+          recent_transactions: [],
+        },
+      },
+    });
+
+    await expect(getWallet()).rejects.toThrow('WALLET_TOTAL_BALANCE');
   });
 
   it('presents reward goals without exposing the visit-and-claim implementation', async () => {
@@ -90,7 +126,7 @@ describe('commerce API contracts', () => {
           {
             id: 11,
             action_key: 'follow_instagram',
-            title_ar: 'افتح الصفحة ثم عد',
+            title_ar: 'تابع ركن على Instagram',
             coins_amount: 75,
             task_state: 'available',
             action_url: 'https://instagram.com/rokn.app',
@@ -99,10 +135,18 @@ describe('commerce API contracts', () => {
           {
             id: 12,
             action_key: 'link_whatsapp',
-            title_ar: 'أرسل الرسالة الجاهزة',
+            title_ar: 'اربط واتسابك بركن',
             coins_amount: 15,
             task_state: 'available',
             requires_external_visit: true,
+          },
+          {
+            id: 13,
+            action_key: 'notification_permission_retired',
+            title_ar: 'مهمة غير مفعلة',
+            coins_amount: 20,
+            task_state: 'available',
+            requires_external_visit: false,
           },
         ],
       },
@@ -117,12 +161,79 @@ describe('commerce API contracts', () => {
         title: 'اربط واتسابك بركن',
         description: 'تواصل مع ركن من واتساب',
       }),
+      expect.objectContaining({
+        title: 'مهمة غير مفعلة',
+        actionKey: 'notification_permission_retired',
+        description: '',
+      }),
     ]);
   });
 
+  it('single-flights rapid task starts and claims per account', async () => {
+    const task: CoinTask = {
+      id: 'production-11',
+      serverId: '11',
+      title: 'تابع ركن على Instagram',
+      description: '',
+      reward: 75,
+      status: 'available',
+      actionKey: 'follow_instagram',
+      requiresExternalVisit: true,
+    };
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          attempt_id: 'attempt-11',
+          task_state: 'started',
+          action_url: 'https://instagram.com/rokn.app',
+        },
+      },
+    });
+
+    const starts = await Promise.all([
+      startCoinTask(task),
+      startCoinTask(task),
+    ]);
+
+    expect(starts).toEqual([
+      {
+        status: 'started',
+        url: 'https://instagram.com/rokn.app',
+      },
+      {
+        status: 'started',
+        url: 'https://instagram.com/rokn.app',
+      },
+    ]);
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    mockPost.mockClear();
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          task_state: 'claimed',
+          new_balance: 175,
+          earned_amount: 75,
+        },
+      },
+    });
+
+    await expect(
+      Promise.all([claimCoinTask(task), claimCoinTask(task)]),
+    ).resolves.toEqual([
+      {balance: 175, amount: 75},
+      {balance: 175, amount: 75},
+    ]);
+    expect(mockPost).toHaveBeenCalledTimes(1);
+  });
+
   it('renders coin packages as a horizontal rail with another card visible', () => {
-    const wallet = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/Wallet.tsx'),
+    const walletView = fs.readFileSync(
+      path.resolve(__dirname, '../src/screens/wallet/WalletView.tsx'),
+      'utf8',
+    );
+    const packageRail = fs.readFileSync(
+      path.resolve(__dirname, '../src/screens/wallet/WalletPackageRail.tsx'),
       'utf8',
     );
     const coin = fs.readFileSync(
@@ -134,14 +245,49 @@ describe('commerce API contracts', () => {
       'utf8',
     );
 
-    expect(wallet).toContain('width={packageCardWidth}');
-    expect(wallet).toContain('snapToInterval={packageCardWidth + Spacing.sm}');
-    expect(wallet).toContain('const packageCardWidth = Math.floor(railCardWidth)');
-    expect(wallet).not.toContain('packageColumns');
+    expect(packageRail).toContain('width={cardWidth}');
+    expect(packageRail).toContain('title={item.label}');
+    expect(packageRail).toContain('snapToInterval={cardWidth + Spacing.sm}');
+    expect(walletView).toContain(
+      'const packageCardWidth = Math.floor(railCardWidth)',
+    );
+    expect(walletView).not.toContain('packageColumns');
     expect(coin).toContain('id="coinMark"');
     expect(coin).not.toContain('#FFF1A9');
     expect(packageCard).not.toContain('<RoknCoin');
     expect(packageCard.match(/<CoinAmount/g)).toHaveLength(1);
+  });
+
+  it('uses the same package contract in wallet and in-course top-up', () => {
+    const walletRail = fs.readFileSync(
+      path.resolve(__dirname, '../src/screens/wallet/WalletPackageRail.tsx'),
+      'utf8',
+    );
+    const courseTopup = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../src/screens/CourseDetails/details/PurchaseDialogSteps.tsx',
+      ),
+      'utf8',
+    );
+    const walletCheckout = fs.readFileSync(
+      path.resolve(__dirname, '../src/screens/wallet/useWalletCheckout.ts'),
+      'utf8',
+    );
+    const courseCheckout = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../src/screens/CourseDetails/details/useCourseCheckout.ts',
+      ),
+      'utf8',
+    );
+
+    expect(walletRail).toContain("type {CoinPackage}");
+    expect(courseTopup).toContain("type {CoinPackage}");
+    expect(walletRail).toContain('title={item.label}');
+    expect(courseTopup).toContain('formatArabicDisplayText(item.label)');
+    expect(walletCheckout).toContain('openCoinCheckout(item');
+    expect(courseCheckout).toContain('openCoinCheckout(coinPackage');
   });
 
   it('uses mobile-first devices artwork without a desktop stand', () => {
@@ -176,16 +322,17 @@ describe('commerce API contracts', () => {
               title: 'وحدة',
               sections: [
                 {id: 1, content_id: 1, title: 'درس', type: 'lesson'},
-                {id: 2, project_id: 20, title: 'مشروع أول', type: 'project'},
-                {id: 3, project_id: 21, title: 'مشروع ثان', type: 'project'},
+                {id: 2, content_id: 20, title: 'مشروع أول', type: 'project'},
+                {id: 3, content_id: 21, title: 'مشروع ثان', type: 'project'},
               ],
             },
           ],
           access_type: 'scholarship',
+          learning_started: true,
           access_plans: [
             {
               code: 'mentor',
-              name_ar: 'متابعة',
+              name: 'متابعة',
               price_coins: 900,
               minimum_paid_coins: 0,
               chat_enabled: true,
@@ -198,7 +345,7 @@ describe('commerce API contracts', () => {
             },
             {
               code: 'basic',
-              name_ar: 'تعلم',
+              name: 'تعلم',
               price_coins: 300,
               minimum_paid_coins: 0,
               chat_enabled: false,
@@ -210,7 +357,7 @@ describe('commerce API contracts', () => {
             },
             {
               code: 'guided',
-              name_ar: 'إرشاد',
+              name: 'إرشاد',
               price_coins: 600,
               minimum_paid_coins: 0,
               chat_enabled: true,
@@ -237,6 +384,7 @@ describe('commerce API contracts', () => {
       }),
     );
     expect(details.owned).toBe(true);
+    expect(details.started).toBe(true);
     expect(details.modules[0]).toMatchObject({
       projectCount: 2,
       items: expect.arrayContaining([
@@ -287,7 +435,7 @@ describe('commerce API contracts', () => {
           access_plans: [
             {
               code: 'basic',
-              name_ar: 'تعلم',
+              name: 'تعلم',
               price_coins: 300,
               minimum_paid_coins: 0,
               chat_enabled: false,
@@ -299,7 +447,7 @@ describe('commerce API contracts', () => {
             },
             {
               code: 'guided',
-              name_ar: 'إرشاد',
+              name: 'إرشاد',
               price_coins: 600,
               minimum_paid_coins: 0,
               chat_enabled: true,
@@ -312,7 +460,7 @@ describe('commerce API contracts', () => {
             },
             {
               code: 'mentor',
-              name_ar: 'متابعة',
+              name: 'متابعة',
               price_coins: 900,
               minimum_paid_coins: 0,
               chat_enabled: true,
@@ -359,6 +507,7 @@ describe('commerce API contracts', () => {
               progress_percentage: 0,
               completed_sections: 0,
               total_sections: 1,
+              learning_started: false,
               access_type: 'preview',
               chat_available: false,
               certificate_available: false,
@@ -366,6 +515,7 @@ describe('commerce API contracts', () => {
               next_section: null,
             },
           ],
+          pagination: {has_more: false, next_cursor: null},
         },
       },
     });
@@ -376,33 +526,32 @@ describe('commerce API contracts', () => {
   });
 
   it('does not derive catalogue progress from public legacy enrollment fields', async () => {
-    mockGet
-      .mockResolvedValueOnce({
+    mockGet.mockResolvedValueOnce({
+      data: {
         data: {
-          data: {
-            courses: [
-              {
-                id: 65,
-                title: 'Course',
-                is_coming_soon: false,
-                progress_percentage: 80,
-                progress: {progress_percentage: 80},
-                enrollment: {is_completed: true, progress_percentage: 100},
-              },
-            ],
-            pagination: {current_page: 1, last_page: 1, total: 1},
-            catalogue_revision: 1,
-          },
+          courses: [
+            {
+              id: 65,
+              title: 'Course',
+              is_coming_soon: false,
+              progress_percentage: 80,
+              progress: {progress_percentage: 80},
+              enrollment: {is_completed: true, progress_percentage: 100},
+            },
+          ],
+          pagination: {current_page: 1, last_page: 1, total: 1},
+          catalogue_revision: 1,
         },
-      });
+      },
+    });
 
     const catalogue = await getPublishedCourses();
 
     expect(catalogue[0]).toMatchObject({
       id: '65',
       owned: false,
-      progress: undefined,
     });
+    expect(catalogue[0]).not.toHaveProperty('progress');
   });
 
   it('sends the selected plan and preserves insufficient-balance details', async () => {
@@ -482,7 +631,6 @@ describe('commerce API contracts', () => {
           coins: 600,
           price: 49,
           label: 'باقة مناسبة',
-          recommended: false,
           storeProductIds: {
             google: 'rokn.coins.600',
             apple: 'rokn.coins.600',
@@ -490,5 +638,35 @@ describe('commerce API contracts', () => {
         },
       ],
     });
+  });
+
+  it('requires a canonical access plan before starting course commerce', async () => {
+    await expect(quoteCoursePurchase('64', '', '')).rejects.toThrow(
+      'API_CONTRACT_INVALID_ACCESS_PLAN_CODE',
+    );
+    await expect(purchaseCourse('64', '')).rejects.toThrow(
+      'API_CONTRACT_INVALID_ACCESS_PLAN_CODE',
+    );
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it('rejects legacy balance aliases in a purchase response', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          current_coins: 500,
+          remaining_balance: 500,
+          spendable_balance: 450,
+          purchased_balance: 300,
+          reward_balance: 200,
+          original_price: 600,
+          discount_amount: 0,
+        },
+      },
+    });
+
+    await expect(purchaseCourse('64', 'guided')).rejects.toThrow(
+      'API_CONTRACT_INVALID_COURSE_PURCHASE_TOTAL_BALANCE',
+    );
   });
 });

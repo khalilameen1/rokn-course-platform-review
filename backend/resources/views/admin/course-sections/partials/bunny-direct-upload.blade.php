@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const recordVersion = 3;
     const ownerId = @json((string) auth()->id());
     const courseId = String(form.dataset.courseId || '');
-    const sectionId = String(form.dataset.sectionId || 'new');
+    const sectionId = () => String(form.dataset.sectionId || 'new');
     const currentAuthoringVersion = () => {
         const value = Number(form.querySelector('[name="authoring_version"]')?.value || 0);
         if (!Number.isSafeInteger(value) || value < 1) {
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         return value;
     };
-    const legacyStorageKey = `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId}`;
+    const legacyStorageKey = () => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}`;
     const operationId = () => {
         if (window.crypto?.randomUUID) return window.crypto.randomUUID();
         const bytes = new Uint8Array(16);
@@ -107,6 +107,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (busy) form.setAttribute('aria-busy', 'true');
         else form.removeAttribute('aria-busy');
     };
+    const syncVideoRequired = required => {
+        fileInput.dataset.videoRequired = required ? 'true' : 'false';
+        fileInput.toggleAttribute('required', required);
+        if (required) fileInput.setAttribute('data-required', 'true');
+        else fileInput.removeAttribute('data-required');
+    };
 
     const show = (message, percent, retry) => {
         progressBox?.classList.remove('is-hidden');
@@ -144,19 +150,20 @@ document.addEventListener('DOMContentLoaded', function () {
         bytes.forEach(byte => { binary += String.fromCharCode(byte); });
         return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     };
-    const storageKeyFor = file => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId}:${tabId}:${fingerprintKey(file)}`;
+    const storageKeyFor = file => `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tabId}:${fingerprintKey(file)}`;
 
     const readRecord = file => {
         try {
             currentStorageKey = storageKeyFor(file);
             const currentRaw = localStorage.getItem(currentStorageKey);
-            const legacyRaw = currentRaw === null ? localStorage.getItem(legacyStorageKey) : null;
+            const legacyKey = legacyStorageKey();
+            const legacyRaw = currentRaw === null ? localStorage.getItem(legacyKey) : null;
             const saved = JSON.parse(currentRaw || legacyRaw || 'null');
             const matchesContext = saved
                 && Number(saved.version) === recordVersion
                 && String(saved.ownerId) === ownerId
                 && String(saved.courseId) === courseId
-                && String(saved.sectionId) === sectionId
+                && String(saved.sectionId) === sectionId()
                 && Number(saved.authoringVersion) === currentAuthoringVersion()
                 && saved.fingerprint === fingerprint(file);
             const claimExpiresAt = Date.parse(saved?.claimExpiresAt || '') || 0;
@@ -164,7 +171,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 && Number(saved?.savedAt || 0) < Date.now() - (15 * 60 * 1000);
             if (!matchesContext || operationExpired || (saved.claim && claimExpiresAt <= Date.now())) {
                 localStorage.removeItem(currentStorageKey);
-                if (legacyRaw !== null) localStorage.removeItem(legacyStorageKey);
+                if (legacyRaw !== null) localStorage.removeItem(legacyKey);
                 return null;
             }
             // performance.now is process-local. A reloaded page renews the
@@ -173,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function () {
             saved.authorizationDeadline = 0;
             if (legacyRaw !== null) {
                 localStorage.setItem(currentStorageKey, JSON.stringify(saved));
-                localStorage.removeItem(legacyStorageKey);
+                localStorage.removeItem(legacyKey);
             }
             return saved;
         } catch (_) {
@@ -186,7 +193,7 @@ document.addEventListener('DOMContentLoaded', function () {
             version: recordVersion,
             ownerId,
             courseId,
-            sectionId,
+            sectionId: sectionId(),
             authoringVersion: Number(record.authoringVersion || currentAuthoringVersion()),
             savedAt: Date.now(),
         });
@@ -198,15 +205,59 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentStorageKey) {
             localStorage.removeItem(currentStorageKey);
         } else {
-            const prefix = `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId}:${tabId}:`;
+            const prefix = `rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tabId}:`;
             Object.keys(localStorage).filter(key => key.startsWith(prefix))
                 .forEach(key => localStorage.removeItem(key));
         }
+        currentStorageKey = null;
         currentRecord = null;
         claimInput.value = '';
         fileInput.disabled = false;
-        if (fileInput.dataset.videoRequired === 'true') fileInput.setAttribute('data-required', 'true');
+        syncVideoRequired(fileInput.dataset.videoRequired === 'true');
     };
+
+    const resetRuntime = (discardCommittedRecord, nextSectionId = undefined) => {
+        if (uploading || submittingAfterUpload) return false;
+        currentRequest?.abort();
+        currentRequest = null;
+        if (discardCommittedRecord) clearRecord();
+        else {
+            currentStorageKey = null;
+            currentRecord = null;
+            claimInput.value = '';
+            fileInput.disabled = false;
+            syncVideoRequired(fileInput.dataset.videoRequired === 'true');
+        }
+        if (nextSectionId !== undefined) {
+            form.dataset.sectionId = nextSectionId ? String(nextSectionId) : '';
+        }
+        currentFile = null;
+        stopped = false;
+        uploading = false;
+        submittingAfterUpload = false;
+        lastSubmitter = null;
+        reconciliationRequired = false;
+        fileInput.value = '';
+        progressBox?.classList.add('is-hidden');
+        retryButton?.classList.add('is-hidden');
+        if (statusText) statusText.textContent = '';
+        if (progressBar) {
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', '0');
+        }
+        setSubmissionBusy(false);
+        return true;
+    };
+
+    window.RoknCourseVideoUpload = Object.freeze({
+        isBusy: () => uploading || submittingAfterUpload,
+        resetAfterCommit: () => resetRuntime(true),
+        setSectionContext: (nextSectionId, videoRequired = true) => {
+            if (uploading || submittingAfterUpload) return false;
+            syncVideoRequired(Boolean(videoRequired));
+            return resetRuntime(false, nextSectionId);
+        },
+    });
 
     const applyAuthorization = (record, authorization) => {
         const ttlSeconds = Number(authorization.authorization_expires_in_seconds || 0);
@@ -329,7 +380,7 @@ document.addEventListener('DOMContentLoaded', function () {
             throw new Error('صيغة الفيديو غير مدعومة');
         }
         if (file.size < 1 || file.size > maxBytes) throw new Error('حجم الفيديو يجب ألا يتجاوز 5GB');
-        const title = (document.getElementById('lesson_title_ar')?.value || document.getElementById('title_ar')?.value || '').trim();
+        const title = (document.getElementById('title_ar')?.value || '').trim();
         if (!title) throw new Error('أضف عنوان المقطع أولًا');
 
         let record = readRecord(file);
@@ -452,6 +503,11 @@ document.addEventListener('DOMContentLoaded', function () {
         retryButton?.classList.add('is-hidden');
         try {
             await upload(currentFile);
+            uploading = false;
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
             submittingAfterUpload = true;
             setSubmissionBusy(false);
             if (lastSubmitter) form.requestSubmit(lastSubmitter);
@@ -494,7 +550,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     form.addEventListener('submit', function (event) {
         lastSubmitter = event.submitter || lastSubmitter;
-        if (submittingAfterUpload) return;
+        if (submittingAfterUpload) {
+            Promise.resolve().then(() => {
+                if (!event.defaultPrevented) return;
+                submittingAfterUpload = false;
+                setSubmissionBusy(false);
+            });
+            return;
+        }
         if (sectionType?.value !== 'lesson') return;
         if (claimInput.value) {
             fileInput.disabled = true;
@@ -524,7 +587,7 @@ document.addEventListener('DOMContentLoaded', function () {
         fileInput.removeAttribute('data-required');
     }
     window.addEventListener('beforeunload', event => {
-        if (!uploading) return;
+        if (!uploading || submittingAfterUpload) return;
         event.preventDefault();
         event.returnValue = '';
     });

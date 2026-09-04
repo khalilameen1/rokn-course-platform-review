@@ -9,7 +9,6 @@ use App\Http\Resources\CertificateResource;
 use App\Jobs\RecoverPendingCertificate;
 use App\Models\Certificate;
 use App\Models\Course;
-use App\Models\Project;
 use App\Services\CertificateEligibilityService;
 use App\Services\CertificateService;
 use App\Support\DurableJobDispatch;
@@ -41,11 +40,11 @@ final class CertificateController extends Controller
             ], 401);
         }
 
+        // Revoked credentials stay in the owner's contract even though the
+        // app does not render them as usable certificates. Omitting them made
+        // the learning screen mistake a terminal credential for a course that
+        // had never been issued and offer a second, impossible issue action.
         $certificates = Certificate::where('user_id', $user->id)
-            ->where(function ($query): void {
-                $query->whereNull('status')->orWhere('status', 'active');
-            })
-            ->with('course')
             ->orderBy('generated_at', 'desc')
             ->orderByDesc('id')
             ->get();
@@ -74,7 +73,6 @@ final class CertificateController extends Controller
         $certificate = Certificate::query()
             ->where('user_id', $user->id)
             ->where('course_id', $courseId)
-            ->with('course')
             ->first();
         if (!$certificate) {
             return response()->json([
@@ -85,7 +83,7 @@ final class CertificateController extends Controller
                 'data' => null,
             ], 404);
         }
-        if (($certificate->status ?? 'active') !== 'active') {
+        if (!$certificate->isActiveCredential()) {
             return response()->json([
                 'status' => 410,
                 'success' => false,
@@ -93,6 +91,9 @@ final class CertificateController extends Controller
                 'message' => 'هذه الشهادة ملغاة',
                 'data' => null,
             ], 410);
+        }
+        if (!$certificate->hasCompleteCredentialSnapshot()) {
+            return $this->invalidSnapshotResponse();
         }
         if (!$certificate->hasStoredArtifact()) {
             $this->queueGeneration($certificate);
@@ -124,11 +125,10 @@ final class CertificateController extends Controller
 
         $certificate = Certificate::where('user_id', $user->id)
             ->where('course_id', $courseId)
-            ->with('course')
             ->first();
 
         if ($certificate) {
-            if (($certificate->status ?? 'active') !== 'active') {
+            if (!$certificate->isActiveCredential()) {
                 return response()->json([
                     'status' => 410,
                     'success' => false,
@@ -136,6 +136,9 @@ final class CertificateController extends Controller
                     'message' => 'هذه الشهادة ملغاة',
                     'data' => null,
                 ], 410);
+            }
+            if (!$certificate->hasCompleteCredentialSnapshot()) {
+                return $this->invalidSnapshotResponse();
             }
             if (!$certificate->hasStoredArtifact()) {
                 $this->queueGeneration($certificate);
@@ -224,16 +227,9 @@ final class CertificateController extends Controller
             ], 422);
         }
 
-        $graduationProject = Project::where('is_graduation_project', true)
-            ->whereHas('section', function ($q) use ($courseId) {
-                $q->where('course_id', $courseId);
-            })
-            ->first();
-
         $certificate = $this->certificates->generate(
             $user,
             $course,
-            $graduationProject,
             $holderName,
             false
         );
@@ -245,9 +241,13 @@ final class CertificateController extends Controller
             $pending = Certificate::query()
                 ->where('user_id', $user->id)
                 ->where('course_id', $courseId)
-                ->where(function ($query): void {
-                    $query->whereNull('status')->orWhere('status', 'active');
-                })
+                ->where('status', 'active')
+                ->whereNull('revoked_at')
+                ->whereNotNull('public_id')
+                ->whereNotNull('holder_name')
+                ->whereNotNull('course_name')
+                ->whereNotNull('certificate_text_template_key')
+                ->whereNotNull('certificate_text')
                 ->first();
             if ($pending && !$pending->hasStoredArtifact()) {
                 $this->queueGeneration($pending);
@@ -268,8 +268,6 @@ final class CertificateController extends Controller
 
             return $this->pendingResponse($certificate);
         }
-
-        $certificate->load('course');
 
         return response()->json([
             'status'  => 200,
@@ -293,6 +291,17 @@ final class CertificateController extends Controller
         }
     }
 
+    private function invalidSnapshotResponse(): JsonResponse
+    {
+        return response()->json([
+            'status' => 409,
+            'success' => false,
+            'code' => 'certificate_snapshot_invalid',
+            'message' => "تعذّر تحميل الشهادة الآن\nتواصل مع الدعم",
+            'data' => null,
+        ], 409);
+    }
+
     /**
      * A stable non-null contract lets mobile distinguish accepted background
      * work from a failed issue request and poll the read endpoint safely.
@@ -307,7 +316,7 @@ final class CertificateController extends Controller
             'code' => 'certificate_generating',
             'message' => 'نجهّز شهادتك الآن',
             'data' => [
-                'certificate_id' => (string) $certificate->public_id,
+                'public_id' => (string) $certificate->public_id,
                 'course_id' => $courseId,
                 'status' => 'generating',
                 'ready' => false,

@@ -48,6 +48,7 @@ jest.mock('../src/services/secureSession', () => ({
 }));
 
 import {signInWithSocialProvider} from '../src/services/socialAuth';
+import {deletePendingSocialAuthAttempt} from '../src/services/secureSession';
 
 describe('Apple sign-in nonce binding', () => {
   beforeEach(() => {
@@ -62,6 +63,8 @@ describe('Apple sign-in nonce binding', () => {
     });
     mockPost.mockResolvedValue({
       data: {
+        status: 200,
+        success: true,
         data: {
           api_token: 'rokn-session-token',
           user: {
@@ -111,6 +114,44 @@ describe('Apple sign-in nonce binding', () => {
         nonce:
           '6c86c6aac5fb24bcf5d9939cb7d7d5645ce39418f449e03b262dd4fa14b4b92b',
       }),
+    );
+  });
+
+  it('retires the owned attempt when Apple is cancelled', async () => {
+    mockAppleSignIn.mockRejectedValueOnce({code: 'ERR_REQUEST_CANCELED'});
+
+    await expect(
+      signInWithSocialProvider('apple', {
+        providers: ['apple'],
+        authorizationUrls: {},
+        authorizationApiUrl: 'https://rokn.app/api/v1',
+        welcomeBonus: null,
+        recommendedProvider: 'apple',
+        recommendationText: null,
+      }),
+    ).rejects.toThrow('LOGIN_CANCELLED');
+
+    expect(deletePendingSocialAuthAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({provider: 'apple', flow: 'native'}),
+    );
+  });
+
+  it('does not leave a native attempt behind when Apple returns no token', async () => {
+    mockAppleSignIn.mockResolvedValueOnce({identityToken: null});
+
+    await expect(
+      signInWithSocialProvider('apple', {
+        providers: ['apple'],
+        authorizationUrls: {},
+        authorizationApiUrl: 'https://rokn.app/api/v1',
+        welcomeBonus: null,
+        recommendedProvider: 'apple',
+        recommendationText: null,
+      }),
+    ).rejects.toThrow('LOGIN_SESSION_INVALID');
+
+    expect(deletePendingSocialAuthAttempt).toHaveBeenCalledWith(
+      expect.objectContaining({provider: 'apple', flow: 'native'}),
     );
   });
 });

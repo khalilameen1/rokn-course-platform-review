@@ -80,4 +80,58 @@ final class PortfolioVideoUploadLeaseTest extends TestCase
         self::assertSame($renewed->expires_at->timestamp, $renewedClaim['expires_at']);
         self::assertFalse($result['attached']);
     }
+
+    public function test_attaching_the_last_expected_video_does_not_publish_the_item(): void
+    {
+        $user = new User([
+            'name' => 'Learner',
+            'email' => 'portfolio-learner@example.test',
+            'password' => 'unused',
+        ]);
+        $user->forceFill(['role' => 'student', 'active' => true])->save();
+        $item = PortfolioItem::query()->create([
+            'user_id' => $user->id,
+            'title' => 'مشروع',
+            'description' => 'وصف',
+            'expected_media_count' => 1,
+            'is_public' => false,
+        ]);
+        $guid = '22345678-1234-4234-8234-123456789abc';
+        $expiry = now()->addHour();
+        $session = PortfolioVideoUpload::query()->create([
+            'user_id' => $user->id,
+            'portfolio_item_id' => $item->id,
+            'idempotency_key' => '86e07193-d6a9-4b62-9976-b652b4e4f8a7',
+            'request_hash' => str_repeat('c', 64),
+            'content_sha256' => str_repeat('d', 64),
+            'size_bytes' => 1024,
+            'mime_type' => 'video/mp4',
+            'original_name' => 'project.mp4',
+            'video_guid' => $guid,
+            'status' => 'pending',
+            'expires_at' => $expiry,
+        ]);
+        BunnyVideoCleanupCandidate::query()->create([
+            'video_guid' => $guid,
+            'reason' => 'portfolio_direct_upload_pending',
+            'eligible_after' => $expiry,
+            'requires_review' => false,
+            'reviewed_at' => now(),
+        ]);
+        $claim = Crypt::encryptString(json_encode([
+            'v' => 1,
+            'upload_id' => $session->id,
+            'video_id' => $guid,
+            'user_id' => $user->id,
+            'expires_at' => $expiry->timestamp,
+        ], JSON_THROW_ON_ERROR));
+
+        $bunny = Mockery::mock(BunnyService::class);
+        $bunny->shouldReceive('verifyDirectUpload')->once()->with($guid, 1024)->andReturnTrue();
+
+        (new PortfolioVideoUploadService($bunny))->attach($user, $item->id, $claim, null);
+
+        self::assertFalse((bool) $item->fresh()->is_public);
+        self::assertSame(1, $item->mediaFiles()->count());
+    }
 }

@@ -24,7 +24,7 @@ class SavedLessonResource extends JsonResource
             ? $providerSeconds
             : max(0, (int) $this->duration_minutes) * 60;
         $thumbnail = trim((string) $this->thumbnail_path);
-        $image = $thumbnail !== ''
+        $image = $thumbnail !== '' && $this->hasReadyMediaState()
             ? app(BunnyService::class)->generateBunnySignedUrl($thumbnail)
             : null;
         $image ??= $this->publicLessonImage($this->image);

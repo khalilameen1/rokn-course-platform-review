@@ -9,9 +9,11 @@
         <div class="col-md-7 align-self-center text-end">
             <div class="d-flex justify-content-end align-items-center">
             
+                @if(strtolower(trim((string) auth()->user()?->role)) === 'admin')
                 <a href="{{ route('admin.paths.create') }}" class="btn btn-info d-none d-lg-block m-l-15 text-white">
                     <i class="fa fa-plus-circle"></i> إضافة مسار جديد
                 </a>
+                @endif
             </div>
         </div>
     </div>
@@ -40,7 +42,7 @@
                                     <th>العنوان (إنجليزي)</th>
                                     <th>الاهتمامات</th>
                                     <th>عدد الدورات</th>
-                                    <th>العمليات</th>
+                                    @if(strtolower(trim((string) auth()->user()?->role)) === 'admin')<th>العمليات</th>@endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -55,7 +57,7 @@
                                             @endforeach
                                         </td>
                                         <td>{{ $path->courses_count ?? $path->courses()->count() }}</td>
-                                        <td>
+                                        @if(strtolower(trim((string) auth()->user()?->role)) === 'admin')<td>
                                             <a href="{{ route('admin.paths.edit', $path->id) }}" class="btn btn-sm btn-warning text-white">
                                                 <i class="fa fa-edit"></i> تعديل
                                             </a>
@@ -66,11 +68,11 @@
                                                     <i class="fa fa-trash"></i> حذف
                                                 </button>
                                             </form>
-                                        </td>
+                                        </td>@endif
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="6" class="text-center">لا يوجد مسارات حالياً</td>
+                                        <td colspan="{{ strtolower(trim((string) auth()->user()?->role)) === 'admin' ? 6 : 5 }}" class="text-center">لا يوجد مسارات حالياً</td>
                                     </tr>
                                 @endforelse
                             </tbody>

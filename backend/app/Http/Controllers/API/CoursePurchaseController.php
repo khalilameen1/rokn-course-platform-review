@@ -67,14 +67,10 @@ final class CoursePurchaseController extends Controller
 
                 $plan = $planService->selectedPlan(
                     $course,
-                    $request->filled('access_plan_code')
-                        ? strtolower(trim((string) $request->input('access_plan_code')))
-                        : null
+                    strtolower(trim((string) $request->input('access_plan_code')))
                 );
-                $price = $plan
-                    ? max(0, (int) $plan->price_coins)
-                    : max(0, (int) ($course->price ?? 0));
-                $minimumPaid = max(0, (int) ($plan?->minimum_paid_coins ?? 0));
+                $price = max(0, (int) $plan->price_coins);
+                $minimumPaid = max(0, (int) $plan->minimum_paid_coins);
                 $quote = $coupons->quote(
                     (int) $user->id,
                     (int) $course->id,
@@ -97,7 +93,7 @@ final class CoursePurchaseController extends Controller
                 'data' => [
                     'course_id' => (int) $course->id,
                     'course_revision' => $this->publishedRevision($course),
-                    'access_plan_code' => $plan?->code,
+                    'access_plan_code' => $plan->code,
                     'original_price' => $price,
                     'discount_amount' => (int) $quote['discount'],
                     'final_price' => (int) $quote['final'],
@@ -107,6 +103,16 @@ final class CoursePurchaseController extends Controller
                     ] : null,
                 ],
             ]);
+        } catch (ValidationException $exception) {
+            return response()->json([
+                'status' => 422,
+                'success' => false,
+                'code' => 'course_plan_unavailable',
+                'message' => collect($exception->errors())->flatten()->first()
+                    ?: 'راجع الفئة المختارة',
+                'errors' => $exception->errors(),
+                'data' => null,
+            ], 422);
         } catch (\DomainException $exception) {
             $code = $exception->getMessage();
 
@@ -139,9 +145,7 @@ final class CoursePurchaseController extends Controller
     {
         $user = auth('api')->user();
         $course = Course::findOrFail($request->course_id);
-        $requestedPlanCode = $request->filled('access_plan_code')
-            ? strtolower(trim((string) $request->input('access_plan_code')))
-            : null;
+        $requestedPlanCode = strtolower(trim((string) $request->input('access_plan_code')));
         $clientIdempotencyKey = $request->filled('idempotency_key')
             ? (string) $request->input('idempotency_key')
             : null;
@@ -201,7 +205,11 @@ final class CoursePurchaseController extends Controller
                         if (!$existingEnrollment) {
                             throw new \LogicException('Committed course order has no enrollment.');
                         }
-                        if (!$replayedOrder->isFinanciallyEffective()) {
+                        if (
+                            !$replayedOrder->isFinanciallyEffective()
+                            || !$existingEnrollment->isActive()
+                            || $provenance->enrollmentHasActiveHold($existingEnrollment, ['course'])
+                        ) {
                             throw new \DomainException('course_purchase_not_effective');
                         }
 
@@ -220,7 +228,11 @@ final class CoursePurchaseController extends Controller
                 }
 
                 if ($existingEnrollment && $existingEnrollment->isActive()) {
-                    if ($provenance->enrollmentHasActiveHold($existingEnrollment, ['course'])) {
+                    if (
+                        ($existingEnrollment->order
+                            && !$existingEnrollment->order->isFinanciallyEffective())
+                        || $provenance->enrollmentHasActiveHold($existingEnrollment, ['course'])
+                    ) {
                         throw new \DomainException('course_access_under_review');
                     }
                     return [
@@ -243,15 +255,7 @@ final class CoursePurchaseController extends Controller
                 }
 
                 $selectedPlan = $planService->selectedPlan($lockedCourse, $requestedPlanCode);
-                $amount = $selectedPlan
-                    ? max(0, (int) $selectedPlan->price_coins)
-                    : max(0, (int) ($lockedCourse->price ?? 0));
-                if (
-                    !$selectedPlan
-                    && ($lockedCourse->price === null || (float) $lockedCourse->price < 0)
-                ) {
-                    throw new \DomainException('course_not_available');
-                }
+                $amount = max(0, (int) $selectedPlan->price_coins);
 
                 $checkoutKey = $clientIdempotencyKey ?: sprintf(
                     'server:course-purchase:%d:%d:%s',
@@ -263,9 +267,7 @@ final class CoursePurchaseController extends Controller
                     'sha256',
                     $user->id . '|' . $checkoutKey
                 );
-                $planSnapshot = $selectedPlan
-                    ? $planService->snapshot($selectedPlan, now())
-                    : null;
+                $planSnapshot = $planService->snapshot($selectedPlan, now());
                 $minimumPaidCoins = max(0, (int) ($planSnapshot['minimum_paid_coins'] ?? 0));
                 $couponQuote = $coupons->quote(
                     (int) $user->id,
@@ -283,7 +285,7 @@ final class CoursePurchaseController extends Controller
                 $order = Order::create([
                     'user_id' => $user->id,
                     'course_id' => $lockedCourse->id,
-                    'access_plan_id' => $selectedPlan?->id,
+                    'access_plan_id' => $selectedPlan->id,
                     'access_plan_snapshot' => $planSnapshot,
                     'checkout_request_key' => $checkoutKey,
                     'coupon_id' => $couponQuote['coupon']?->id,
@@ -387,7 +389,7 @@ final class CoursePurchaseController extends Controller
                 $enrollment->fill([
                     'order_id' => $order->id,
                     'access_plan_order_id' => $order->id,
-                    'access_plan_id' => $selectedPlan?->id,
+                    'access_plan_id' => $selectedPlan->id,
                     'access_plan_snapshot' => $planSnapshot,
                     'enrolled_at' => $enrollment->enrolled_at ?: now(),
                     'expires_at' => null,
@@ -403,7 +405,6 @@ final class CoursePurchaseController extends Controller
                     'original_amount' => $amount,
                     'discount_amount' => (int) $couponQuote['discount'],
                     'coupon_code' => $couponQuote['code'],
-                    'remaining_balance' => $walletTransaction->balance_after,
                     'paid_coins' => (int) $walletTransaction->paid_amount,
                     'reward_coins' => (int) $walletTransaction->reward_amount,
                     'already_enrolled' => false,
@@ -414,19 +415,28 @@ final class CoursePurchaseController extends Controller
         } catch (InsufficientWalletBalanceException $exception) {
             $deficit = max(0, $exception->required - $exception->balance);
             $freshUser = $user->fresh();
-            $totalBalance = max(0, (int) $freshUser->wallet_coins);
-            $purchasedBalance = min(
-                $totalBalance,
-                max(0, (int) $freshUser->wallet_purchased_coins)
-            );
-            $rewardBalance = $totalBalance - $purchasedBalance;
+            $balances = $walletService->balances($freshUser);
+            $totalBalance = $balances['total'];
+            $purchasedBalance = $balances['paid'];
+            $rewardBalance = $balances['reward'];
             $rewardContribution = $this->rewardContribution(
                 $walletService,
                 (int) $user->id,
                 (int) $course->id
             );
-            $selectedPlan = $planService->selectedPlan($course, $requestedPlanCode);
-            $minimumPaidCoins = max(0, (int) ($selectedPlan?->minimum_paid_coins ?? 0));
+            try {
+                $selectedPlan = $planService->selectedPlan($course, $requestedPlanCode);
+            } catch (ValidationException $validationException) {
+                return response()->json([
+                    'status' => 422,
+                    'success' => false,
+                    'code' => 'course_plan_unavailable',
+                    'message' => collect($validationException->errors())->flatten()->first()
+                        ?: 'هذه الفئة لم تعد متاحة',
+                    'data' => null,
+                ], 422);
+            }
+            $minimumPaidCoins = max(0, (int) $selectedPlan->minimum_paid_coins);
             $paidFloorRemaining = max(
                 0,
                 $minimumPaidCoins - $walletService->coursePaidContribution(
@@ -439,6 +449,7 @@ final class CoursePurchaseController extends Controller
                 ->where('coins', '>=', $deficit)
                 ->where('coins', '>', 0)
                 ->where('price', '>', 0)
+                ->purchasable()
                 ->orderBy('coins')
                 ->limit(3)
                 ->get()
@@ -451,8 +462,6 @@ final class CoursePurchaseController extends Controller
                 'message' => 'رصيدك لا يكفي',
                 'data' => [
                     'required_coins' => $exception->required,
-                    // Legacy clients read the real wallet total from current_coins.
-                    'current_coins' => $totalBalance,
                     'total_balance' => $totalBalance,
                     'purchased_balance' => $purchasedBalance,
                     'reward_balance' => $rewardBalance,
@@ -538,7 +547,7 @@ final class CoursePurchaseController extends Controller
                     'Course unlocked',
                     $course->name_ar . "\nابدأ أول مقطع الآن",
                     'You can now start: ' . $course->name_en,
-                    '/courses/' . $course->id,
+                    '/course/' . $course->id,
                     Course::class,
                     $course->id,
                     'course-enrolled:order:' . ($result['order']?->id ?? $result['enrollment']->id),
@@ -551,12 +560,10 @@ final class CoursePurchaseController extends Controller
         }
 
         $freshUser = $user->fresh();
-        $totalBalance = max(0, (int) $freshUser->wallet_coins);
-        $purchasedBalance = min(
-            $totalBalance,
-            max(0, (int) $freshUser->wallet_purchased_coins)
-        );
-        $rewardBalance = $totalBalance - $purchasedBalance;
+        $balances = $walletService->balances($freshUser);
+        $totalBalance = $balances['total'];
+        $purchasedBalance = $balances['paid'];
+        $rewardBalance = $balances['reward'];
         $rewardContribution = $this->rewardContribution(
             $walletService,
             (int) $user->id,
@@ -585,7 +592,6 @@ final class CoursePurchaseController extends Controller
                 'original_price' => (int) ($result['original_amount'] ?? $result['order']?->amount ?? 0),
                 'discount_amount' => (int) ($result['discount_amount'] ?? $result['order']?->discount_amount ?? 0),
                 'coupon_code' => $result['coupon_code'] ?? $result['order']?->coupon_code,
-                'remaining_balance' => $totalBalance,
                 'total_balance' => $totalBalance,
                 'purchased_balance' => $purchasedBalance,
                 'reward_balance' => $rewardBalance,
@@ -624,8 +630,7 @@ final class CoursePurchaseController extends Controller
 
     private function isAvailableForNewPurchase(Course $course): bool
     {
-        return $course->parent_id === null
-            && (bool) $course->is_catalog_visible
+        return (bool) $course->is_catalog_visible
             && $course->isPublishedForLearning();
     }
 
@@ -639,7 +644,7 @@ final class CoursePurchaseController extends Controller
     private function isSamePurchaseReplay(
         Order $order,
         int $courseId,
-        ?string $requestedPlanCode,
+        string $requestedPlanCode,
         ?string $requestedCouponCode,
         ?int $expectedPrice
     ): bool
@@ -659,8 +664,6 @@ final class CoursePurchaseController extends Controller
         if ($expectedPrice !== null && (int) $order->final_amount !== $expectedPrice) {
             return false;
         }
-
-        if ($requestedPlanCode === null) return true;
 
         return (string) data_get($order->access_plan_snapshot, 'code') === $requestedPlanCode;
     }

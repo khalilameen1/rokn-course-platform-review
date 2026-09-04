@@ -10,6 +10,7 @@ use App\Models\ProfileUpdateReceipt;
 use App\Models\User;
 use App\Services\StoredFileDeletionService;
 use App\Services\PortfolioShareIdentityService;
+use App\Support\UnicodeText;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,25 +20,20 @@ use Illuminate\Validation\ValidationException;
 use Intervention\Image\Facades\Image;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Throwable;
-use App\Support\UnicodeText;
 
 final class ProfileController extends Controller
 {
-    /**
-     * Get user profile with enrolled courses
-     *
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function index(Request $request): JsonResponse
     {
-        $user = auth('api')->user();
+        /** @var User $user */
+        $user = $request->user();
         app(PortfolioShareIdentityService::class)->ensure($user);
         $profile = new StudentProfileResource($user);
 
         // Account/settings screens only consume identity and preferences. Keep
         // the default full snapshot for learning clients, but do not build the
         // enrolled-course graph and aggregate history when it was not asked for.
-        if (!$request->boolean('include_learning', true)) {
+        if (!$request->boolean('include_learning', false)) {
             $request->boolean('include_badges')
                 ? $profile->onlyEarnedBadges()
                 : $profile->withoutLearningSnapshot();
@@ -51,32 +47,16 @@ final class ProfileController extends Controller
         ]);
     }
 
-    /**
-     * Update user profile (phone and email)
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function update(Request $request): JsonResponse
     {
-        $user = auth('api')->user();
+        /** @var User $user */
+        $user = $request->user();
 
         foreach (['name', 'job_title', 'portfolio_headline'] as $field) {
             if ($request->has($field)) {
                 $request->merge([$field => UnicodeText::clean($request->input($field), false)]);
             }
         }
-        if ($request->has('phone')) {
-            $request->merge(['phone' => UnicodeText::identifier($request->input('phone'))]);
-        }
-        if ($request->has('portfolio_slug')) {
-            $request->merge([
-                'portfolio_slug' => Str::slug(
-                    strtolower(UnicodeText::identifier($request->input('portfolio_slug')))
-                ),
-            ]);
-        }
-
         if (!$request->filled('client_request_id')) {
             $candidate = trim((string) $request->header('Idempotency-Key'));
             $request->merge([
@@ -89,13 +69,12 @@ final class ProfileController extends Controller
         $validated = $request->validate([
             'client_request_id' => 'required|uuid',
             'expected_profile_revision' => 'nullable|integer|min:0',
-            'phone' => 'nullable|string|unique:users,phone,' . $user->id,
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            // Login providers own these identities. Editing them here would
+            // desynchronise the account from its linked social credentials.
+            'phone' => 'prohibited',
+            'email' => 'prohibited',
             'name' => 'nullable|string|max:255',
             'job_title' => 'nullable|string|max:255',
-            // Accepted for rolling clients but no longer persisted as a
-            // username; the server owns this unlisted share capability.
-            'portfolio_slug' => ['nullable', 'string', 'max:60'],
             'portfolio_headline' => 'nullable|string|max:160',
             // This controls delivery to the device. The in-app notification
             // history remains available so important account activity is never lost.
@@ -104,15 +83,15 @@ final class ProfileController extends Controller
             'marketing_notifications_enabled' => 'nullable|boolean',
             'preferred_locale' => 'nullable|string|in:ar,en',
             'leaderboard_opt_in' => 'nullable|boolean',
-            'autoplay_next_enabled' => 'nullable|boolean',
+            // Vertical playback always advances using the course sequence.
+            // These retired switches used to create an account preference the
+            // current player neither exposes nor honours.
+            'autoplay_next_enabled' => 'prohibited',
             'video_quality_preference' => 'nullable|string|in:auto,360p,480p,720p,1080p',
-            'video_fit_mode' => 'nullable|string|in:cover,contain',
+            'video_fit_mode' => 'prohibited',
             'playback_speed' => 'nullable|numeric|in:0.5,0.75,1,1.25,1.5,1.75,2',
             'profile_image' => 'nullable|file|min:1|image|mimes:jpeg,png,jpg,webp|mimetypes:image/jpeg,image/png,image/webp|max:2048|dimensions:max_width=6000,max_height=6000',
         ], [
-            'phone.unique' => 'رقم الهاتف مسجل مسبقاً في حساب آخر',
-            'email.unique' => 'البريد الإلكتروني مسجل مسبقاً في حساب آخر',
-            'email.email' => 'البريد الإلكتروني غير صالح',
             'name.max' => 'الاسم يجب ألا يتجاوز 255 حرفاً',
             'job_title.max' => 'مسمى الوظيفة يجب ألا يتجاوز 255 حرفاً',
             'portfolio_headline.max' => 'المسمى المهني طويل جدًا',
@@ -131,20 +110,15 @@ final class ProfileController extends Controller
             ]);
         }
         $requestFingerprint = hash('sha256', json_encode([
-            'phone' => $request->has('phone') ? $request->input('phone') : '__missing__',
-            'email' => $request->has('email') ? Str::lower(trim((string) $request->input('email'))) : '__missing__',
             'name' => $request->has('name') ? trim((string) $request->input('name')) : '__missing__',
             'job_title' => $request->has('job_title') ? trim((string) $request->input('job_title')) : '__missing__',
-            'portfolio_slug' => $request->has('portfolio_slug') ? Str::slug((string) $request->input('portfolio_slug')) : '__missing__',
             'portfolio_headline' => $request->has('portfolio_headline') ? trim((string) $request->input('portfolio_headline')) : '__missing__',
             'notifications_status' => $request->has('notifications_status') ? $request->boolean('notifications_status') : '__missing__',
             'watch_history_enabled' => $request->has('watch_history_enabled') ? $request->boolean('watch_history_enabled') : '__missing__',
             'marketing_notifications_enabled' => $request->has('marketing_notifications_enabled') ? $request->boolean('marketing_notifications_enabled') : '__missing__',
             'preferred_locale' => $request->input('preferred_locale', '__missing__'),
             'leaderboard_opt_in' => $request->has('leaderboard_opt_in') ? $request->boolean('leaderboard_opt_in') : '__missing__',
-            'autoplay_next_enabled' => $request->has('autoplay_next_enabled') ? $request->boolean('autoplay_next_enabled') : '__missing__',
             'video_quality_preference' => $request->input('video_quality_preference', '__missing__'),
-            'video_fit_mode' => $request->input('video_fit_mode', '__missing__'),
             'playback_speed' => $request->input('playback_speed', '__missing__'),
             'profile_image' => $profileImage ? [
                 'sha256' => $profileImageHash,
@@ -159,21 +133,10 @@ final class ProfileController extends Controller
             ->first();
         if ($existingReceipt) {
             abort_unless(hash_equals((string) $existingReceipt->request_fingerprint, $requestFingerprint), 409);
-            return $this->profileUpdateResponse($user->fresh(), false, true);
+            return $this->profileUpdateResponse($user->fresh(), true);
         }
 
         $updateData = [];
-
-        if ($request->has('phone') && $request->phone !== $user->phone) {
-            $updateData['phone'] = $request->phone;
-            // Reset phone verification when phone changes
-            $updateData['phone_verified_at'] = null;
-        }
-
-        if ($request->has('email') && $request->email !== $user->email) {
-            $updateData['email'] = $request->email;
-            $updateData['email_verified_at'] = null;
-        }
 
         if ($request->has('name')) {
             $updateData['name'] = $request->name;
@@ -207,11 +170,7 @@ final class ProfileController extends Controller
             $updateData['leaderboard_opt_in'] = $request->boolean('leaderboard_opt_in');
         }
 
-        if ($request->has('autoplay_next_enabled')) {
-            $updateData['autoplay_next_enabled'] = $request->boolean('autoplay_next_enabled');
-        }
-
-        foreach (['video_quality_preference', 'video_fit_mode'] as $preference) {
+        foreach (['video_quality_preference'] as $preference) {
             if ($request->has($preference)) {
                 $updateData[$preference] = $request->string($preference)->lower()->value();
             }
@@ -225,7 +184,6 @@ final class ProfileController extends Controller
         $oldImagePath = $user->profile_image;
         $applied = false;
         $replayed = false;
-        $phoneChanged = false;
         try {
             if ($request->hasFile('profile_image')) {
                 // Decode and re-encode the raster. This strips metadata and any
@@ -241,8 +199,7 @@ final class ProfileController extends Controller
                 $requestFingerprint,
                 $updateData,
                 &$applied,
-                &$replayed,
-                &$phoneChanged
+                &$replayed
             ): void {
                 $locked = $user->newQuery()->lockForUpdate()->findOrFail($user->id);
                 $receipt = ProfileUpdateReceipt::query()
@@ -262,8 +219,6 @@ final class ProfileController extends Controller
                     ]);
                 }
 
-                $phoneChanged = array_key_exists('phone', $updateData)
-                    && (string) $updateData['phone'] !== (string) $locked->phone;
                 $nextRevision = (int) $locked->profile_revision + 1;
                 $locked->forceFill($updateData + ['profile_revision' => $nextRevision])->save();
                 ProfileUpdateReceipt::query()->create([
@@ -288,10 +243,10 @@ final class ProfileController extends Controller
             app(StoredFileDeletionService::class)->deleteOrQueue('public', $oldImagePath);
         }
 
-        return $this->profileUpdateResponse($user->fresh(), $phoneChanged, $replayed);
+        return $this->profileUpdateResponse($user->fresh(), $replayed);
     }
 
-    private function profileUpdateResponse($user, bool $phoneChanged, bool $replayed = false): JsonResponse
+    private function profileUpdateResponse(User $user, bool $replayed = false): JsonResponse
     {
         // Portfolio URLs are unlisted share capabilities, not discoverable
         // usernames. A legacy/custom alias is rotated before any authenticated
@@ -301,27 +256,20 @@ final class ProfileController extends Controller
         return response()->json([
             'status' => 200,
             'success' => true,
-            'message' => $phoneChanged
-                ? 'تم تعديل البيانات بنجاح. يرجى إعادة تفعيل رقم الهاتف الجديد.'
-                : 'تم تعديل البيانات بنجاح',
+            'message' => 'تم تعديل البيانات بنجاح',
             'data' => (new StudentProfileResource($user->fresh()))->withoutLearningSnapshot(),
-            'requires_verification' => $phoneChanged,
             'replayed' => $replayed,
         ]);
     }
-    /**
-     * Update user interests (classifications)
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+
     public function updateInterests(Request $request): JsonResponse
     {
-        $user = auth('api')->user();
+        /** @var User $user */
+        $user = $request->user();
 
         $request->validate([
             'classification_ids' => 'required|array',
-            'classification_ids.*' => 'exists:classifications,id',
+            'classification_ids.*' => 'integer|min:1|distinct|exists:classifications,id',
         ]);
 
         $user = DB::transaction(function () use ($user, $request): User {
@@ -335,7 +283,7 @@ final class ProfileController extends Controller
             'status' => 200,
             'success' => true,
             'message' => 'تم تحديث الاهتمامات بنجاح',
-            'data' => new StudentProfileResource($user->fresh()),
+            'data' => (new StudentProfileResource($user))->withoutLearningSnapshot(),
         ]);
 
     }
@@ -368,13 +316,10 @@ final class ProfileController extends Controller
         return $path;
     }
 
-    /**
-     * Clear only the learner's viewing history. Course completion and project
-     * progress deliberately live in separate tables and are not touched.
-     */
-    public function clearWatchHistory(): JsonResponse
+    public function clearWatchHistory(Request $request): JsonResponse
     {
-        $user = auth('api')->user();
+        /** @var User $user */
+        $user = $request->user();
         $deleted = DB::table('watching_logs')->where('user_id', $user->id)->delete();
 
         return response()->json([

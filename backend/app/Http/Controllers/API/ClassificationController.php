@@ -6,24 +6,24 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ClassificationResource;
-use App\Models\Classification;
+use App\Services\ApiResponseService;
+use App\Services\CourseCatalogueQueryService;
 use Illuminate\Http\JsonResponse;
 
 final class ClassificationController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(
+        CourseCatalogueQueryService $catalogue,
+        ApiResponseService $responses
+    ): JsonResponse
     {
-        return response()->json([
-            'status' => 200,
-            'success' => true,
-            'message' => 'تم تحميل التصنيفات',
-            'data' => ClassificationResource::collection(
-                Classification::query()
-                    ->orderBy('home_order')
-                    ->orderBy('name_ar')
-                    ->orderBy('id')
-                    ->get()
-            ),
-        ]);
+        $revision = $catalogue->revision();
+
+        return $responses->success(
+            ClassificationResource::collection($catalogue->publicClassifications()),
+            'تم تحميل التصنيفات',
+            200,
+            ['catalogue_revision' => $revision]
+        );
     }
 }

@@ -104,6 +104,17 @@ class Kernel extends ConsoleKernel
             ->everyFifteenMinutes()
             ->withoutOverlapping(30)
             ->onOneServer();
+        $schedule->command('finance:reconcile-entitlement-anomalies --limit=1000')
+            ->everyFiveMinutes()
+            ->withoutOverlapping(10)
+            ->onOneServer();
+        // A queue outage immediately after attaching a draft video must not
+        // strand the course in "processing" forever. Unique probe keys make
+        // this a no-op while the original job is still alive.
+        $schedule->command('media:recover-pending --limit=200 --stale-minutes=2')
+            ->everyMinute()
+            ->withoutOverlapping(5)
+            ->onOneServer();
         // Read-only provider checks plus operational state updates. Findings
         // are quarantined for review; this command never deletes or unpublishes.
         $schedule->command('media:reconcile --limit=1000')

@@ -6,7 +6,6 @@ use App\Models\ApiToken;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserDeviceToken;
-use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 class DeviceLoginService
@@ -35,18 +34,6 @@ class DeviceLoginService
     {
         $policy = $this->configuredPolicy();
         $deviceId = trim((string) $deviceId);
-
-        if (
-            $policy !== self::POLICY_MULTIPLE
-            && !$this->deviceLockStorageAvailable()
-        ) {
-            return [
-                'allowed' => false,
-                'message' => "تعذّر التحقق من الجهاز\nحاول مرة أخرى بعد قليل",
-                'action' => 'deny',
-                'device_id' => $deviceId,
-            ];
-        }
 
         if ($policy !== self::POLICY_MULTIPLE && $deviceId === '') {
             return [
@@ -101,17 +88,6 @@ class DeviceLoginService
         ], true)
             ? $normalized
             : self::SAFE_FALLBACK_POLICY;
-    }
-
-    private function deviceLockStorageAvailable(): bool
-    {
-        try {
-            return Schema::hasColumn('users', 'locked_device_id');
-        } catch (Throwable $exception) {
-            report($exception);
-
-            return false;
-        }
     }
 
     /**
@@ -214,19 +190,21 @@ class DeviceLoginService
     public function applyDeviceAction(User $user, string $action, string $deviceId): void
     {
         switch ($action) {
-            case 'lock_device':
-                // Lock user to this device permanently
-                $user->forceFill(['locked_device_id' => $deviceId])->save();
-                break;
-
             case 'logout_others':
                 $user->purgeApiTokens();
                 $this->retireOtherDevicePushRegistrations($user, $deviceId);
                 $user->forceFill(['locked_device_id' => $deviceId])->save();
                 break;
 
-            case 'allow':
             case 'allow_multiple':
+                if ($deviceId !== '') {
+                    $user->apiTokens()
+                        ->whereHasNotExpired()
+                        ->where('device_id', $deviceId)
+                        ->lockForUpdate()
+                        ->get()
+                        ->each(static fn (ApiToken $token): mixed => $token->revoke());
+                }
                 break;
 
             case 'deny':
@@ -242,9 +220,7 @@ class DeviceLoginService
      */
     public function enforceActiveSessionLimit(User $user, string $currentPlainToken): void
     {
-        $currentStoredToken = (bool) config('multiple-tokens-auth.hash', true)
-            ? hash('sha256', $currentPlainToken)
-            : $currentPlainToken;
+        $currentStoredToken = hash('sha256', $currentPlainToken);
         $retiredDeviceIds = collect();
 
         do {
@@ -266,8 +242,7 @@ class DeviceLoginService
         } while ($overflow->isNotEmpty());
 
         $retiredDeviceIds = $retiredDeviceIds->unique()->values();
-        $tokenTable = (string) config('multiple-tokens-auth.table', 'api_tokens');
-        if ($retiredDeviceIds->isEmpty() || !Schema::hasColumn($tokenTable, 'device_id')) {
+        if ($retiredDeviceIds->isEmpty()) {
             return;
         }
         $stillActiveDeviceIds = $user->apiTokens()
@@ -275,7 +250,7 @@ class DeviceLoginService
             ->whereIn('device_id', $retiredDeviceIds)
             ->pluck('device_id');
         $orphanedDeviceIds = $retiredDeviceIds->diff($stillActiveDeviceIds)->values();
-        if ($orphanedDeviceIds->isNotEmpty() && Schema::hasColumn('user_device_tokens', 'device_id')) {
+        if ($orphanedDeviceIds->isNotEmpty()) {
             UserDeviceToken::query()
                 ->where('user_id', $user->id)
                 ->whereIn('device_id', $orphanedDeviceIds)
@@ -291,11 +266,6 @@ class DeviceLoginService
     private function retireOtherDevicePushRegistrations(User $user, string $deviceId): void
     {
         $tokens = $user->deviceTokens();
-        if (!Schema::hasColumn('user_device_tokens', 'device_id')) {
-            $tokens->delete();
-            return;
-        }
-
         $tokens
             ->where(function ($query) use ($deviceId): void {
                 $query->whereNull('device_id')->orWhere('device_id', '<>', $deviceId);

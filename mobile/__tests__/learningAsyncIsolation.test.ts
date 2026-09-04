@@ -6,52 +6,73 @@ const source = (relativePath: string) =>
 
 describe('learning async ownership contracts', () => {
   it('does not let a previous project operation update the active project', () => {
-    const project = source('src/components/VideoPlayer/ProjectTransition.tsx');
-    expect(project).toContain('projectGenerationRef.current += 1');
-    expect(project).toContain(
-      'if (!ownsProject(projectId, projectGeneration)) return;',
+    const project = source(
+      'src/components/VideoPlayer/projectTransition/useProjectSubmission.ts',
     );
-    expect(project).toContain('setSubmissionSending(false)');
+    expect(project).toContain('generation: identityRef.current.generation + 1');
+    expect(project).toContain('if (!ownsProject(id, generation)) return;');
+    expect(project).toContain('setSending(false)');
   });
 
   it('does not restart a new reel when an old source refresh settles', () => {
-    const player = source('src/components/VideoPlayer/VideoComponent.tsx');
+    const player = source(
+      'src/components/VideoPlayer/video/useVideoController.tsx',
+    );
+    const recovery = source(
+      'src/components/VideoPlayer/video/usePlaybackRecovery.ts',
+    );
     expect(player).toContain('playbackLifecycleGenerationRef.current += 1');
-    expect(player).toContain('reelIdentityRef.current !== reelId');
+    expect(recovery).toContain('reelIdentity.current !== reelId');
+    expect(recovery).toContain('generation !== lifecycleGeneration.current');
     expect(player).toContain('clearTimeout(longBufferTimerRef.current)');
     expect(player).toContain('clearTimeout(recoveryTimerRef.current)');
   });
 
   it('isolates upgrade and notification flights across accounts', () => {
     const chat = source(
-      'src/components/VideoPlayer/courseChat/useCourseChat.ts',
+      'src/components/VideoPlayer/courseChat/useCourseChatTurn.ts',
     );
-    const notifications = source('src/screens/Notifications.tsx');
-    expect(chat).toContain(
-      'upgradeGenerationRef.current !== upgradeGeneration',
+    const chatUpgrade = source(
+      'src/components/VideoPlayer/courseChat/useCourseChatUpgrade.ts',
+    );
+    const chatPolling = source(
+      'src/components/VideoPlayer/courseChat/turnPolling.ts',
+    );
+    const notifications = source(
+      'src/screens/notifications/useNotificationsInbox.ts',
+    );
+    expect(chatUpgrade).toContain('generationRef.current === generation');
+    expect(chatUpgrade).toContain('activeCourseIdRef.current === courseId');
+    expect(chatUpgrade).toContain(
+      '[accountKey, accessType, chatAvailable, courseId]',
     );
     expect(chat).toContain(
-      '[accountEpoch, course.accessType, course.chatAvailable, courseId]',
-    );
-    expect(chat).toContain(
-      'stopConversationGeneration !== conversationGenerationRef.current',
+      'stopConversationGeneration !== conversationGeneration.current',
     );
     expect(chat).toMatch(
       /sendGenerationRef\.current \+= 1;[\s\S]*setSending\(false\);[\s\S]*await cancelCourseAssistantTurn/,
     );
-    expect(chat).toMatch(
-      /await pollCourseAssistantTurn\(clientRequestId\);[\s\S]*sendGeneration !== sendGenerationRef\.current/,
+    const stopBlock = chat.slice(
+      chat.indexOf('const stop = useCallback'),
+      chat.indexOf('runTurnRef.current = runTurn'),
     );
+    expect(stopBlock).not.toContain('sendFlightRef.current = null');
+    expect(chat).toContain('setRecoverySignal(value => value + 1)');
+    expect(chatPolling).toContain(
+      'response = await pollCourseAssistantTurn(clientRequestId)',
+    );
+    expect(chat).toContain('sendGeneration === sendGenerationRef.current');
+    expect(chat).toContain('if (!ownsTurn()) return;');
     expect(chat).toContain(
       '? await pollCourseAssistantTurn(retryClientRequestId)',
     );
     expect(chat).toContain(
-      'courseChatFailureCanStartFreshTurn(response.code)',
+      'courseChatFailureCanStartFreshTurn(response.canRetry)',
     );
     const chatOverlay = source(
-      'src/components/VideoPlayer/CourseChatOverlay.tsx',
+      'src/components/VideoPlayer/courseChat/useCourseChatAttachments.ts',
     );
-    expect(chatOverlay).toContain('attachmentPickerGenerationRef.current += 1');
+    expect(chatOverlay).toContain('pickerGenerationRef.current += 1');
     expect(chatOverlay).toContain('if (!ownsPicker())');
     expect(notifications).toContain('new Map<string, symbol>()');
     expect(notifications).toContain(
@@ -60,75 +81,102 @@ describe('learning async ownership contracts', () => {
   });
 
   it('does not let a completed course transaction mutate the next course route', () => {
-    const details = source('src/screens/CourseDetails/index.tsx');
+    const checkout = source(
+      'src/screens/CourseDetails/details/useCourseCheckout.ts',
+    );
 
-    expect(details).toContain('courseOperationGenerationRef.current += 1;');
-    expect(details).toContain('activeCourseIdRef.current === expectedCourseId');
-    expect(details).toMatch(
-      /const result = await purchaseCourse\([\s\S]*if \(!ownsCourseOperation\(operationCourseId, operationGeneration\)\)/,
+    expect(checkout).toContain('generationRef.current += 1;');
+    expect(checkout).toContain(
+      'activeScopeRef.current.courseId === expectedCourseId',
     );
-    expect(details).toMatch(
-      /const result = await openCoinCheckout\([\s\S]*if \(!ownsCourseOperation\(operationCourseId, operationGeneration\)\)/,
+    expect(checkout).toContain(
+      'activeScopeRef.current.identityKey === expectedIdentity',
     );
-    expect(details).toMatch(
-      /finally \{\s*if \(ownsCourseOperation\(operationCourseId, operationGeneration\)\)/,
+    expect(checkout).toMatch(
+      /const result = await purchaseCourse\([\s\S]*!ownsOperation\([\s\S]{0,180}operationCourseId,[\s\S]{0,180}operationIdentity,[\s\S]{0,180}operationGeneration/,
+    );
+    expect(checkout).toMatch(
+      /const result = await openCoinCheckout\([\s\S]*!ownsOperation\([\s\S]{0,180}operationCourseId,[\s\S]{0,180}operationIdentity,[\s\S]{0,180}operationGeneration/,
     );
   });
 
   it('keeps project and completion writes owned by their starting account', () => {
-    const projects = source(
-      'src/components/VideoPlayer/courseLearning/projects.ts',
-    );
-    const playback = source(
+    const projects =
+      source(
+        'src/components/VideoPlayer/courseLearning/projectSubmissionOutbox.ts',
+      ) +
+      source(
+        'src/components/VideoPlayer/courseLearning/projectSubmissionOwnership.ts',
+      ) +
+      source(
+        'src/components/VideoPlayer/courseLearning/projectSubmissionStore.ts',
+      ) +
+      source(
+        'src/components/VideoPlayer/courseLearning/projectSubmissionTransport.ts',
+      ) +
+      source('src/components/VideoPlayer/courseLearning/projectRemote.ts');
+    const playbackFacade = source(
       'src/components/VideoPlayer/courseLearning/playback.ts',
+    );
+    const playbackProgress = source(
+      'src/components/VideoPlayer/courseLearning/playbackProgress.ts',
+    );
+    const playbackSession = source(
+      'src/components/VideoPlayer/courseLearning/playbackSession.ts',
+    );
+    const sectionCompletion = source(
+      'src/components/VideoPlayer/courseLearning/sectionCompletion.ts',
     );
 
     expect(projects).toContain(
       'const boundary = await captureAccountSessionBoundary();',
     );
-    expect(projects).toContain('assertProjectOwner(generation, boundary);');
+    expect(projects).toContain('assertProjectSubmissionOwner(operation);');
     expect(projects).toContain(
-      'const storageKey = await projectSubmissionKey(projectId, accountScope);',
+      'const storageKey = projectSubmissionKey(projectId, accountScope);',
     );
-    expect(projects).toContain(
-      'await markProjectProvisional(projectId, accountScope, boundary);',
-    );
-    expect(projects).toContain(
-      'projectSubmissionFlights.get(flightKey) === flight',
-    );
+    expect(projects).not.toContain('passedProjects');
+    expect(projects).not.toContain('evaluatingProjects');
+    expect(projects).toContain("submissionStatus: 'draft'");
+    expect(projects).toContain('runForegroundSubmission(');
+    expect(projects).toContain('flights.get(key) === flight');
+    expect(projects).toContain('withProjectSubmissionLock(');
     expect(projects).toContain('boundary.scope,');
-    expect(projects).toMatch(
-      /openProjectInputAttachmentInternal\(input, boundary\)/,
-    );
+    expect(projects).toMatch(/openAttachment\(input, boundary\)/);
 
-    expect(playback).toContain('updatePlayerStateForScope(');
-    expect(playback).toContain('assertCompletionOwner(generation, boundary);');
-    expect(playback).toContain(
-      'const flightKey = `${accountScope}:${boundary.epoch}:${courseId}:${sectionId}`;',
+    expect(playbackFacade).not.toContain('publicRequest.');
+    expect(playbackFacade).not.toContain('AsyncStorage.');
+    expect(playbackProgress).toContain('assertWatchHistoryOwner(');
+    expect(playbackProgress).toContain(
+      'watchHistoryFlights.get(key) === flight',
     );
-    expect(playback).toContain('assertPlaybackRuntime(generation);');
-    expect(playback).toContain(
-      'sectionCompletionFlights.get(flightKey) === flight',
+    expect(sectionCompletion).toContain('updatePlayerStateForScope(');
+    expect(sectionCompletion).toContain('assertOwner(generation, boundary);');
+    expect(sectionCompletion).toContain(
+      'const key = `${boundary.scope}:${boundary.epoch}:${courseId}:${sectionId}`;',
     );
+    expect(sectionCompletion).toContain('flights.get(key) === flight');
+    expect(playbackSession).toContain('`${accountScope}:${playbackSessionId}`');
   });
 
   it('bounds a slow streaming chat without abandoning its immutable turn', () => {
-    const chat = source(
-      'src/components/VideoPlayer/courseChat/useCourseChat.ts',
+    const chat = source('src/components/VideoPlayer/courseChat/turnPolling.ts');
+    const chatController = source(
+      'src/components/VideoPlayer/courseChat/useCourseChatTurn.ts',
     );
 
-    expect(chat).toContain('FOREGROUND_TURN_TOTAL_POLL_ATTEMPTS');
-    expect(chat).toContain(
-      'totalRecoveryAttempts < FOREGROUND_TURN_TOTAL_POLL_ATTEMPTS',
-    );
-    expect(chat).toContain('totalRecoveryAttempts += 1');
-    expect(chat).toContain('resumeInterruptedTurnRef.current = true');
+    expect(chat).toContain('COURSE_CHAT_DEFAULT_POLL_WINDOW_MS');
+    expect(chat).toContain('Number(response.pollWindowSeconds) * 1000');
+    expect(chat).toContain('Date.now() < deadlineAt');
+    expect(chat).toContain('statusProbes < COURSE_CHAT_MAX_STATUS_PROBES');
+    expect(chatController).toContain('resumeInterruptedTurnRef.current = true');
 
-    const project = source('src/components/VideoPlayer/ProjectTransition.tsx');
-    expect(project).toContain('const maximumPollingAttempts = 30');
-    expect(project).toContain(
-      'pollingAttempts < maximumPollingAttempts',
+    const project = source(
+      'src/components/VideoPlayer/projectTransition/useProjectResolution.ts',
     );
+    expect(project).toContain('attempts < 30');
+    expect(project).toContain("resolution.reportStatus !== 'queued'");
+    expect(project).toContain("next.reportStatus === 'queued'");
   });
 
   it('does not apply device or paid-upgrade results after an account switch', () => {
@@ -144,6 +192,8 @@ describe('learning async ownership contracts', () => {
     expect(upgrade).toMatch(
       /boundary = await captureAccountSessionBoundary\(\);[\s\S]*await purchaseFullTrackUpgrade\([\s\S]*assertAccountSessionBoundary\(boundary\)/,
     );
-    expect(upgrade).toContain("requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'");
+    expect(upgrade).toContain(
+      "requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'",
+    );
   });
 });

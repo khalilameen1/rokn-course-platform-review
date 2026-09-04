@@ -14,7 +14,6 @@ class ProjectFactory extends Factory
         return [
             'requirements_text_ar' => $this->faker->paragraph(),
             'requirements_text_en' => $this->faker->paragraph(),
-            'passing_score'        => 60,
             'is_graduation_project' => false,
         ];
     }
@@ -23,7 +22,6 @@ class ProjectFactory extends Factory
     {
         return $this->state([
             'is_graduation_project' => true,
-            'passing_score'         => 60,
         ]);
     }
 }

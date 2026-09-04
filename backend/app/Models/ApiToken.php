@@ -7,7 +7,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Schema;
 
 final class ApiToken extends Model
 {
@@ -57,25 +56,12 @@ final class ApiToken extends Model
 
     public function scopeWhereHasNotExpired(Builder $query): Builder
     {
-        $query->where('expired_at', '>', now());
-
-        if (Schema::hasColumn($this->getTable(), 'revoked_at')) {
-            $query->whereNull('revoked_at');
-        }
-
-        return $query;
+        return $query->where('expired_at', '>', now())->whereNull('revoked_at');
     }
 
     public function revoke(): void
     {
-        if (Schema::hasColumn($this->getTable(), 'revoked_at')) {
-            $this->forceFill(['revoked_at' => now()])->save();
-            return;
-        }
-
-        // Compatibility with installations that have not run the session
-        // metadata migration yet. Revocation must still take effect.
-        $this->delete();
+        $this->forceFill(['revoked_at' => now()])->save();
     }
 
     public function user(): BelongsTo

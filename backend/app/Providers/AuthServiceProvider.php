@@ -27,11 +27,9 @@ class AuthServiceProvider extends ServiceProvider
         $this->registerPolicies();
 
         Auth::extend('rokn-tokens', function ($app, $name, array $config) {
-            return new \App\Auth\TransitioningTokenGuard(
+            return new \App\Auth\ApiTokenGuard(
                 $app['auth']->createUserProvider($config['provider'] ?? 'users'),
-                $app['request'],
-                (bool) config('multiple-tokens-auth.allow_legacy_plaintext', true),
-                (bool) config('multiple-tokens-auth.allow_legacy_transports', false)
+                $app['request']
             );
         });
     }

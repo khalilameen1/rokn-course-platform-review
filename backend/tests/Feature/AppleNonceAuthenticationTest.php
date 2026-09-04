@@ -4,10 +4,6 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
-use App\Exceptions\SocialProviderUnavailableException;
-use App\Services\GoogleService;
-use Exception;
-use Mockery\MockInterface;
 use Tests\TestCase;
 
 final class AppleNonceAuthenticationTest extends TestCase
@@ -21,46 +17,20 @@ final class AppleNonceAuthenticationTest extends TestCase
             ->assertJsonValidationErrors(['nonce']);
     }
 
-    public function test_nonce_remains_optional_for_google_social_login(): void
+    public function test_google_cannot_use_the_native_apple_token_endpoint(): void
     {
         config([
             'social_auth.providers' => ['google'],
             'services.google.client_id' => 'test-client-id',
+            'services.google.client_secret' => 'test-client-secret',
         ]);
-        $this->mock(GoogleService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('verify')
-                ->once()
-                // SignController always forwards the optional expected nonce
-                // hash. A direct Google login has no OAuth attempt, so the
-                // second argument is explicitly null rather than omitted.
-                ->with('google-id-token', null)
-                ->andThrow(new Exception('expected test rejection'));
-        });
 
         $this->postJson('/api/v1/social-login', [
             'provider' => 'google',
             'token' => 'google-id-token',
         ])->assertUnprocessable()
-            ->assertJsonPath('code', 'social_identity_verification_failed')
+            ->assertJsonPath('code', 'social_browser_attempt_required')
             ->assertJsonMissingValidationErrors(['nonce']);
     }
 
-    public function test_provider_outage_is_retryable_and_not_reported_as_a_bad_account(): void
-    {
-        config([
-            'social_auth.providers' => ['google'],
-            'services.google.client_id' => 'test-client-id',
-        ]);
-        $this->mock(GoogleService::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('verify')
-                ->once()
-                ->andThrow(new SocialProviderUnavailableException('provider timeout'));
-        });
-
-        $this->postJson('/api/v1/social-login', [
-            'provider' => 'google',
-            'token' => 'google-id-token',
-        ])->assertServiceUnavailable()
-            ->assertJsonPath('code', 'social_provider_unavailable');
-    }
 }

@@ -52,6 +52,15 @@ final readonly class OrderLifecycleService
 
             if ($locked->status !== Order::STATUS_APPROVED) {
                 if (
+                    $actorId !== null
+                    && !$providerVerified
+                    && $locked->status !== Order::STATUS_PENDING
+                ) {
+                    throw new \DomainException(
+                        'Only a pending manual order can be approved by an administrator.'
+                    );
+                }
+                if (
                     $locked->requiresProviderVerification()
                     && !$providerVerified
                 ) {
@@ -94,7 +103,9 @@ final readonly class OrderLifecycleService
             }
             $this->recordEvent($locked, 'approved', 'approval', $actorId, $notes);
 
-            return $locked->fresh(['bill', 'course', 'package', 'user']);
+            return $locked->fresh($locked->package_id
+                ? ['package', 'user']
+                : ['bill', 'course', 'user']);
         }, 3);
     }
 
@@ -109,9 +120,12 @@ final readonly class OrderLifecycleService
                     'Provider-controlled orders cannot be changed manually.'
                 );
             }
-            if ($locked->status === Order::STATUS_APPROVED) {
+            if ($locked->status === Order::STATUS_REJECTED) {
+                return $this->freshWithReceipt($locked);
+            }
+            if ($locked->status !== Order::STATUS_PENDING) {
                 throw new \DomainException(
-                    'A settled order cannot be rejected. Register a refund or chargeback for finance review.'
+                    'Only a pending order can be rejected.'
                 );
             }
 
@@ -127,7 +141,7 @@ final readonly class OrderLifecycleService
             }
             $this->recordEvent($locked, 'rejected', 'rejection', $actorId, $reason);
 
-            return $locked->fresh(['bill']);
+            return $this->freshWithReceipt($locked);
         }, 3);
     }
 
@@ -141,9 +155,12 @@ final readonly class OrderLifecycleService
                     'Provider-controlled orders cannot be changed manually.'
                 );
             }
-            if ($locked->status === Order::STATUS_APPROVED) {
+            if ($locked->status === Order::STATUS_CANCELLED) {
+                return $this->freshWithReceipt($locked);
+            }
+            if ($locked->status !== Order::STATUS_PENDING) {
                 throw new \DomainException(
-                    'A settled order cannot be cancelled. Register a refund or chargeback for finance review.'
+                    'Only a pending order can be cancelled.'
                 );
             }
             $locked->forceFill([
@@ -156,7 +173,7 @@ final readonly class OrderLifecycleService
             }
             $this->recordEvent($locked, 'cancelled', 'cancellation', $actorId, $reason);
 
-            return $locked->fresh(['bill']);
+            return $this->freshWithReceipt($locked);
         }, 3);
     }
 
@@ -198,13 +215,13 @@ final readonly class OrderLifecycleService
                 ->where('event_key', $eventKey)
                 ->first();
             if ($existing) {
-                return $locked->fresh(['bill']);
+                return $this->freshWithReceipt($locked);
             }
 
             $locked->loadMissing('package');
             $wasFulfilled = $locked->status === Order::STATUS_APPROVED;
             $atRisk = $locked->package_id
-                ? max(0, (int) ($locked->package_coins ?? $locked->package?->coins ?? 0))
+                ? max(0, (int) $locked->package_coins)
                 : max(0, (int) $locked->total_coins);
             $result = !$wasFulfilled
                 ? ['recovered' => 0, 'unrecovered' => 0, 'holds' => 0]
@@ -227,7 +244,9 @@ final readonly class OrderLifecycleService
                 'recovered_coins' => (int) $result['recovered'],
                 'unrecovered_coins' => (int) $result['unrecovered'],
             ])->save();
-            $this->syncBill($locked, Bill::PAYMENT_STATUS_CANCELLED);
+            if ($locked->course_id) {
+                $this->syncBill($locked, Bill::PAYMENT_STATUS_CANCELLED);
+            }
             $this->recordEvent(
                 $locked,
                 $type,
@@ -241,7 +260,7 @@ final readonly class OrderLifecycleService
                 (int) $result['unrecovered']
             );
 
-            return $locked->fresh(['bill']);
+            return $this->freshWithReceipt($locked);
         }, 3);
     }
 
@@ -280,7 +299,7 @@ final readonly class OrderLifecycleService
                 ->where('event_key', $eventKey)
                 ->first();
             if ($existing) {
-                return $locked->fresh(['bill']);
+                return $this->freshWithReceipt($locked);
             }
 
             if (!in_array($locked->financial_status, [
@@ -305,7 +324,7 @@ final readonly class OrderLifecycleService
                 $payload
             );
 
-            return $locked->fresh(['bill']);
+            return $this->freshWithReceipt($locked);
         }, 3);
     }
 
@@ -342,7 +361,7 @@ final readonly class OrderLifecycleService
                     );
                 }
 
-                return $locked->fresh(['bill']);
+                return $this->freshWithReceipt($locked);
             }
             if (
                 !$locked->package_id
@@ -387,7 +406,7 @@ final readonly class OrderLifecycleService
                 $resolution === 'waived' ? (int) $locked->unrecovered_coins : 0
             );
 
-            return $locked->fresh(['bill']);
+            return $this->freshWithReceipt($locked);
         }, 3);
     }
 
@@ -473,6 +492,7 @@ final readonly class OrderLifecycleService
                     'approved_by' => $actorId,
                 ]
             );
+            $this->provenance->recordPaidCompensationCredit($debit, $credit);
             $this->recordEvent(
                 $locked,
                 'course_compensation',
@@ -537,14 +557,18 @@ final readonly class OrderLifecycleService
         }
     }
 
+    private function freshWithReceipt(Order $order): Order
+    {
+        return $order->fresh($order->course_id ? ['bill'] : []);
+    }
+
     private function fulfillPackage(Order $order): void
     {
         $order->loadMissing(['package', 'user']);
-        $coins = max(0, (int) ($order->package_coins ?? $order->package?->coins ?? 0));
+        $coins = max(0, (int) $order->package_coins);
         if (!$order->package || !$order->user || $coins <= 0 || (float) $order->final_amount <= 0) {
             throw new \DomainException('Coin package order is incomplete and cannot be approved.');
         }
-
         $existingCredit = WalletTransaction::query()
             ->where('user_id', $order->user_id)
             ->where('direction', WalletTransaction::DIRECTION_CREDIT)
@@ -567,9 +591,6 @@ final readonly class OrderLifecycleService
             );
         }
         $this->provenance->recordPaidPackageCredit($order, $existingCredit);
-        if ($order->package_coins === null) {
-            $order->forceFill(['package_coins' => $coins])->save();
-        }
 
         DB::table('package_user')->updateOrInsert(
             ['order_id' => $order->id],

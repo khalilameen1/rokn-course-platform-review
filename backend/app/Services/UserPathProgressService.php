@@ -34,8 +34,6 @@ final readonly class UserPathProgressService
                 // while its students continue it; their path and percentage
                 // must not disappear with the public card.
                 $courses->whereNotNull('path_id')
-                    ->whereNull('parent_id')
-                    ->whereDoesntHave('courseSection')
                     ->where('is_coming_soon', false)
                     ->whereHas('sections');
             })

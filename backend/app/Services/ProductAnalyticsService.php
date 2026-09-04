@@ -183,11 +183,9 @@ final class ProductAnalyticsService
         foreach ($completed as $event) {
             $metadata = json_decode((string) ($event->metadata ?? '{}'), true);
             $costSource = $metadata['cost_usage_source'] ?? null;
-            $usageSource = $metadata['usage_source'] ?? null;
             if ($costSource === 'provider') {
                 $provider++;
-            } elseif ($costSource !== 'cache_zero_cost'
-                && ! in_array($usageSource, ['cached_answer', 'cache_zero_cost'], true)) {
+            } else {
                 $estimated++;
             }
         }

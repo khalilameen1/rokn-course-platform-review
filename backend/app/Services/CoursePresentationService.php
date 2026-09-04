@@ -10,7 +10,7 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Setting;
 use App\Models\User;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use App\Support\RoknLocale;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -19,18 +19,13 @@ use Throwable;
 final readonly class CoursePresentationService
 {
     public function __construct(
-        private CourseChatAccessService $chatAccess,
         private CourseSectionSequenceService $sectionSequence,
+        private LearningProgressStateService $progressState,
         private CertificateEligibilityService $certificateEligibility,
-        private CourseRevisionLearnerReadService $revisionReads
+        private CourseRevisionLearnerReadService $revisionReads,
+        private LatestWatchResumeService $latestResume
     )
     {
-    }
-
-    public function catalogueCollection(
-        LengthAwarePaginator $courses
-    ): AnonymousResourceCollection {
-        return BaseCourseResource::collection($courses);
     }
 
     /**
@@ -61,27 +56,65 @@ final readonly class CoursePresentationService
         ];
     }
 
-    public function legacyCourse(Course $course, bool $isEnrolled): BaseCourseResource
+    /** @return array{items:array<int,array<string,mixed>>,pagination:array<string,int>} */
+    public function searchPayload(LengthAwarePaginator $courses, string $locale): array
     {
-        return $isEnrolled
-            ? new CourseResource($course)
-            : new BaseCourseResource($course);
+        $locale = RoknLocale::normalize($locale) ?? RoknLocale::ARABIC;
+        $items = $courses->getCollection()->map(function (Course $course) use ($locale): array {
+            $teacher = $course->teachers->first() ?: $course->teacher;
+            $ratingsCount = (int) $course->ratings_count;
+            $ratingAverage = round((float) ($course->ratings_avg_rating ?? 0), 1);
+
+            return [
+                'course_id' => (int) $course->id,
+                'title' => (string) ($locale === RoknLocale::ARABIC
+                    ? ($course->name_ar ?: $course->name_en)
+                    : ($course->name_en ?: $course->name_ar)),
+                'image' => $course->image ? (string) $course->image : null,
+                'teacher_name' => $teacher ? (string) $teacher->name : null,
+                'badge' => $locale === RoknLocale::ARABIC
+                    ? ($course->catalog_badge_ar ?: $course->catalog_badge_en)
+                    : ($course->catalog_badge_en ?: $course->catalog_badge_ar),
+                'badge_tone' => $course->catalog_badge_tone ?: 'neutral',
+                'is_coming_soon' => (bool) $course->is_coming_soon,
+                'preview_count' => (int) $course->preview_reels_count,
+                'duration_minutes' => max(0, (int) ($course->duration_minutes_computed ?? 0)),
+                'ratings_count' => $ratingsCount,
+                'rating_average' => $ratingAverage,
+                'average_rating' => $ratingsCount > 0 ? $ratingAverage : null,
+                'students_count' => (int) $course->active_enrollments_count,
+            ];
+        })->values()->all();
+
+        return [
+            'items' => $items,
+            'pagination' => [
+                'current_page' => $courses->currentPage(),
+                'last_page' => $courses->lastPage(),
+                'per_page' => $courses->perPage(),
+                'total' => $courses->total(),
+            ],
+        ];
     }
 
     public function detailedCourse(
         Course $course,
         ?User $user,
-        bool $hasAccess,
-        ?array $resolvedEntitlement = null,
+        array $resolvedEntitlement,
         ?CourseEnrollment $resolvedEnrollment = null
     ): BaseCourseResource {
+        $hasAccess = $user !== null
+            && $resolvedEnrollment !== null
+            && (bool) ($resolvedEntitlement['has_learning_access'] ?? false);
+        $courseSections = $this->sectionSequence->fromModules($course->modules);
         $completedSectionIds = collect();
         if ($user && $hasAccess) {
             $completedSectionIds = $this->revisionReads->completedSectionIds(
                 (int) $user->id,
-                $course->sections->pluck('id')
+                $courseSections->pluck('id')
             );
             $resource = (new CourseResource($course))->withLearningContext(
+                $user,
                 $completedSectionIds,
                 $resolvedEntitlement,
                 $resolvedEnrollment
@@ -90,14 +123,7 @@ final readonly class CoursePresentationService
             $resource = new BaseCourseResource($course);
         }
 
-        $entitlement = $user
-            ? ($resolvedEntitlement
-                ?? $this->chatAccess->entitlementFor((int) $user->id, (int) $course->id))
-            : [
-                'access_type' => 'none',
-                'chat_available' => false,
-                'certificate_available' => false,
-            ];
+        $entitlement = $resolvedEntitlement;
         $certificateIncludedByPlan = (bool) $entitlement['certificate_available'];
         // CertificateEligibilityService is the single owner of the earned
         // completion contract. In particular, an already-earned published
@@ -109,12 +135,19 @@ final readonly class CoursePresentationService
             : ['included' => $certificateIncludedByPlan, 'available' => false];
         $certificateIncluded = (bool) $certificateStatus['included'];
         $certificateAvailable = (bool) $certificateStatus['available'];
+        $learningStarted = $hasAccess && (
+            $completedSectionIds->isNotEmpty()
+            || $this->latestResume
+                ->forUser((int) $user->id, [(int) $course->id])
+                ->has((int) $course->id)
+        );
 
-        return $resource->withEntitlement(
+        return $resource->withAccessPlans()->withEntitlement(
             (string) $entitlement['access_type'],
             (bool) $entitlement['chat_available'],
             $certificateIncluded,
-            $certificateAvailable
+            $certificateAvailable,
+            $learningStarted
         );
     }
 
@@ -141,12 +174,13 @@ final readonly class CoursePresentationService
         ];
 
         return (new CourseResource($course))
-            ->withLearningContext(collect(), $entitlement, null)
+            ->withLearningContext($actor, collect(), $entitlement, null)
             ->withDashboardPreviewContext($actor, $planContract)
             ->withEntitlement(
                 $accessType,
                 (bool) $entitlement['chat_available'],
                 (bool) $entitlement['certificate_available'],
+                false,
                 false
             );
     }
@@ -160,16 +194,17 @@ final readonly class CoursePresentationService
         string $accessType,
         int $userId
     ): array {
-        $learningSections = $this->sectionSequence->learning($course->sections);
+        $learningSections = $this->sectionSequence->learning(
+            $this->sectionSequence->fromModules($course->modules)
+        );
         $completedSectionIds = $this->revisionReads->completedSectionIds(
             $userId,
             $learningSections->pluck('id')
         );
-        $totalSections = $learningSections->count();
-        $completedSections = $completedSectionIds->count();
-        $progressPercentage = $totalSections > 0
-            ? round(($completedSections / $totalSections) * 100, 2)
-            : 0;
+        $summary = $this->progressState->summarize(
+            $learningSections,
+            $completedSectionIds
+        );
 
         return [
             'course' => [
@@ -185,12 +220,7 @@ final readonly class CoursePresentationService
                 'is_active' => $enrollment->isActive(),
                 'access_type' => $accessType,
             ],
-            'progress' => [
-                'total_sections' => $totalSections,
-                'completed_sections' => $completedSections,
-                'progress_percentage' => $progressPercentage,
-                'is_completed' => $totalSections > 0 && $completedSections === $totalSections,
-            ],
+            'progress' => $summary,
             'sections' => $this->sectionLockStatus(
                 $learningSections,
                 $completedSectionIds,
@@ -204,15 +234,7 @@ final readonly class CoursePresentationService
         Collection $completedSectionIds,
         ?int $userId = null
     ): Collection {
-        try {
-            $settings = Cache::remember(
-                'learning:sequence-settings:v2',
-                30,
-                fn () => Setting::query()->first()
-            );
-        } catch (Throwable) {
-            $settings = Setting::query()->first();
-        }
+        $settings = $this->sequenceSettings();
         $enforceSectionOrder = $settings
             ? (bool) $settings->enforce_course_section_order
             : true;
@@ -303,29 +325,73 @@ final readonly class CoursePresentationService
         });
     }
 
-    /**
-     * @return array<string, int|float|bool>
-     */
+    private function sequenceSettings(): ?Setting
+    {
+        $key = 'learning:sequence-settings:v2';
+        $load = fn (): Setting|false => Setting::query()->first() ?: false;
+
+        try {
+            $cached = Cache::get($key);
+            if ($cached instanceof Setting || $cached === false) {
+                return $cached ?: null;
+            }
+        } catch (Throwable) {
+            $settings = $load();
+
+            return $settings ?: null;
+        }
+
+        $loadStarted = false;
+        try {
+            $settings = Cache::lock("lock:{$key}", 10)->block(2, function () use (
+                $key,
+                $load,
+                &$loadStarted
+            ): Setting|false {
+                $cached = Cache::get($key);
+                if ($cached instanceof Setting || $cached === false) {
+                    return $cached;
+                }
+
+                $loadStarted = true;
+                $settings = $load();
+                try {
+                    Cache::put($key, $settings, 30);
+                } catch (Throwable) {
+                    // Keep the completed settings read if only Redis failed.
+                }
+
+                return $settings;
+            });
+        } catch (Throwable $exception) {
+            if ($loadStarted) {
+                throw $exception;
+            }
+
+            $settings = $load();
+        }
+
+        return $settings ?: null;
+    }
+
+    /** @return array<string,mixed> */
     public function progressSummary(int $userId, int $courseId): array
     {
         $course = Course::with([
-            'sections' => fn ($sections) => $sections->orderBy('order'),
+            'modules' => fn ($modules) => $modules
+                ->with(['sections' => fn ($sections) => $sections->orderBy('order')])
+                ->orderBy('order'),
         ])->findOrFail($courseId);
-        $learningSections = $this->sectionSequence->learning($course->sections);
+        $learningSections = $this->sectionSequence->learning(
+            $this->sectionSequence->fromModules($course->modules)
+        );
         $completedSectionIds = $this->revisionReads->completedSectionIds(
             $userId,
             $learningSections->pluck('id')
         );
-        $totalSections = $learningSections->count();
-        $completedSections = $completedSectionIds->count();
-
-        return [
-            'total_sections' => $totalSections,
-            'completed_sections' => $completedSections,
-            'progress_percentage' => $totalSections > 0
-                ? round(($completedSections / $totalSections) * 100, 2)
-                : 0,
-            'is_completed' => $totalSections > 0 && $completedSections === $totalSections,
-        ];
+        return $this->progressState->summarize(
+            $learningSections,
+            $completedSectionIds
+        );
     }
 }

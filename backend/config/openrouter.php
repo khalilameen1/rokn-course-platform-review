@@ -3,35 +3,41 @@
 return [
     'api_key' => env('OPENROUTER_API_KEY'),
     'endpoint' => env('OPENROUTER_ENDPOINT', 'https://openrouter.ai/api/v1/chat/completions'),
-    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-5.6-terra'),
+    // The paid coach uses the flagship model. OpenRouter owns failover inside
+    // the same request so an outage never becomes a second billable call.
+    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-5.6-sol'),
+    'project_model' => env('OPENROUTER_PROJECT_MODEL', 'openai/gpt-5.6-sol'),
     'fallback_models' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('OPENROUTER_FALLBACK_MODELS', 'anthropic/claude-sonnet-5'))
+        explode(',', (string) env('OPENROUTER_FALLBACK_MODELS', 'openai/gpt-5.6-sol,openai/gpt-5.6-terra,openai/gpt-5.6-luna'))
     ))),
-    // Course chat is deliberately short and immediate. OpenRouterService
-    // raises this to `minimal` only for model families that require reasoning,
-    // preserving room for learner-visible text in the completion budget.
+    // Course chat is deliberately direct. The prompt controls brevity; this
+    // ceiling only prevents a useful answer from being cut in the middle.
     'reasoning_effort' => env('OPENROUTER_REASONING_EFFORT', 'none'),
-    'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 420),
+    'max_tokens' => (int) env('OPENROUTER_MAX_TOKENS', 800),
     'temperature' => (float) env('OPENROUTER_TEMPERATURE', 0.35),
     'timeout_seconds' => (int) env('OPENROUTER_TIMEOUT_SECONDS', 45),
     'connect_timeout_seconds' => (int) env('OPENROUTER_CONNECT_TIMEOUT_SECONDS', 5),
+    'stream_read_timeout_seconds' => (int) env('OPENROUTER_STREAM_READ_TIMEOUT_SECONDS', 45),
     'provider_sort' => env('OPENROUTER_PROVIDER_SORT', 'latency'),
+    // Do not reduce the live-chat provider pool unless compliance explicitly
+    // requires it. The public policy already describes provider processing;
+    // launch reliability needs OpenRouter's full multi-provider failover.
+    'provider_data_collection' => env('OPENROUTER_PROVIDER_DATA_COLLECTION', 'allow'),
+    'provider_zdr' => filter_var(
+        env('OPENROUTER_PROVIDER_ZDR', false),
+        FILTER_VALIDATE_BOOL
+    ),
     'web_search_enabled' => filter_var(
         env('OPENROUTER_WEB_SEARCH_ENABLED', true),
         FILTER_VALIDATE_BOOL
     ),
     'web_search_max_results' => (int) env('OPENROUTER_WEB_SEARCH_MAX_RESULTS', 3),
     'web_search_max_total_results' => (int) env('OPENROUTER_WEB_SEARCH_MAX_TOTAL_RESULTS', 5),
-    'circuit_failure_threshold' => (int) env('OPENROUTER_CIRCUIT_FAILURE_THRESHOLD', 3),
-    'circuit_open_seconds' => (int) env('OPENROUTER_CIRCUIT_OPEN_SECONDS', 30),
     'billing_circuit_open_seconds' => (int) env('OPENROUTER_BILLING_CIRCUIT_OPEN_SECONDS', 900),
-    'per_minute_limit' => (int) env('OPENROUTER_PER_MINUTE_LIMIT', 8),
-    'daily_user_limit' => (int) env('OPENROUTER_DAILY_USER_LIMIT', 100),
     'global_daily_request_limit' => (int) env('OPENROUTER_GLOBAL_DAILY_REQUEST_LIMIT', 5000),
     'global_daily_token_budget' => (int) env('OPENROUTER_GLOBAL_DAILY_TOKEN_BUDGET', 2100000),
     'global_monthly_token_budget' => (int) env('OPENROUTER_GLOBAL_MONTHLY_TOKEN_BUDGET', 50000000),
-    'answer_cache_minutes' => (int) env('OPENROUTER_ANSWER_CACHE_MINUTES', 360),
     'chat_history_days' => (int) env('OPENROUTER_CHAT_HISTORY_DAYS', 90),
     // OpenRouter PDF parsing is explicit so adding a PDF never silently
     // switches to a paid parser. cloudflare-ai is currently the free parser.
@@ -45,7 +51,10 @@ return [
     // user-visible privacy promise while preserving continuity during a real
     // study session and across lesson swipes.
     'chat_context_session_minutes' => (int) env('OPENROUTER_CHAT_CONTEXT_SESSION_MINUTES', 120),
-    'queue_stale_seconds' => (int) env('OPENROUTER_QUEUE_STALE_SECONDS', 900),
+    // A live-chat request that has not started within a minute is no longer a
+    // useful response. The durable reservation remains a separate, longer
+    // accounting lease and is released by the stalled-turn reconciler.
+    'queue_stale_seconds' => (int) env('OPENROUTER_QUEUE_STALE_SECONDS', 60),
     // A provider response is cached briefly under the same API key. This is a
     // recovery optimization for an identical request, not the correctness
     // boundary: account-level ZDR or edge eviction may disable the cache, so
@@ -54,8 +63,23 @@ return [
         'OPENROUTER_RESPONSE_RECOVERY_CACHE_TTL_SECONDS',
         900
     ),
-    'allowed_models' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', (string) env('OPENROUTER_ALLOWED_MODELS', ''))
-    ))),
+    // An explicit allowlist still wins. Without one, the configured primary,
+    // project and fallback models form the allowlist so a valid production
+    // model cannot be rejected merely because a second env key was omitted.
+    'allowed_models' => (static function (): array {
+        $explicit = trim((string) env('OPENROUTER_ALLOWED_MODELS', ''));
+        $source = $explicit !== '' ? $explicit : implode(',', [
+            (string) env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-5.6-sol'),
+            (string) env('OPENROUTER_PROJECT_MODEL', 'openai/gpt-5.6-sol'),
+            (string) env(
+                'OPENROUTER_FALLBACK_MODELS',
+                'openai/gpt-5.6-sol,openai/gpt-5.6-terra,openai/gpt-5.6-luna'
+            ),
+        ]);
+
+        return array_values(array_unique(array_filter(array_map(
+            'trim',
+            explode(',', $source)
+        ))));
+    })(),
 ];

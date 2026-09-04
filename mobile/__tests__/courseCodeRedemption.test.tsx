@@ -14,10 +14,7 @@ import {
   getDistributionCapabilities,
   type DistributionChannel,
 } from '../src/constants/distribution';
-import {
-  CourseCodeRedemptionDialog,
-  CoursePurchaseDialog,
-} from '../src/screens/CourseDetails/details/PurchaseDialogs';
+import {CoursePurchaseDialog} from '../src/screens/CourseDetails/details/PurchaseDialogs';
 import type {CourseAccessPlan} from '../src/services/roknApi';
 
 const plans: CourseAccessPlan[] = [
@@ -79,94 +76,10 @@ describe('course-code distribution boundary', () => {
 });
 
 describe('course-code redemption UI', () => {
-  it('labels the code input, submit action, progress state, and close action', async () => {
-    const onClose = jest.fn();
-    const onChange = jest.fn();
-    const onRedeem = jest.fn();
-    let renderer: ReactTestRenderer.ReactTestRenderer;
-
-    await ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(
-        <CourseCodeRedemptionDialog
-          bottomInset={0}
-          codeBusy={false}
-          courseCode="GRANT-42"
-          isTablet={false}
-          notice=""
-          onClose={onClose}
-          onCourseCodeChange={onChange}
-          onRedeemCourseCode={onRedeem}
-          visible
-        />,
-      );
-    });
-
-    const input = renderer!.root.find(
-      node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
-    );
-    const submit = renderer!.root.find(
-      node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
-    );
-    const closeActions = renderer!.root.findAll(
-      node =>
-        node.props.accessibilityLabel === 'إغلاق نافذة تفعيل الكود' ||
-        node.props.accessibilityLabel === 'إغلاق نافذة تفعيل كود الكورس',
-    );
-
-    expect(input.props).toMatchObject({
-      editable: true,
-      value: 'GRANT-42',
-    });
-    expect(submit.props).toMatchObject({
-      accessibilityRole: 'button',
-      accessibilityState: {busy: false, disabled: false},
-      disabled: false,
-    });
-    expect(
-      new Set(closeActions.map(node => node.props.accessibilityLabel)),
-    ).toEqual(
-      new Set(['إغلاق نافذة تفعيل الكود', 'إغلاق نافذة تفعيل كود الكورس']),
-    );
-
-    await ReactTestRenderer.act(() => input.props.onChangeText('NEW-CODE'));
-    await ReactTestRenderer.act(() => submit.props.onPress());
-    expect(onChange).toHaveBeenCalledWith('NEW-CODE');
-    expect(onRedeem).toHaveBeenCalledTimes(1);
-
-    await ReactTestRenderer.act(() => {
-      renderer!.update(
-        <CourseCodeRedemptionDialog
-          bottomInset={0}
-          codeBusy
-          courseCode="GRANT-42"
-          isTablet={false}
-          notice="جارٍ التفعيل"
-          onClose={onClose}
-          onCourseCodeChange={onChange}
-          onRedeemCourseCode={onRedeem}
-          visible
-        />,
-      );
-    });
-    expect(
-      renderer!.root.find(
-        node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
-      ).props.editable,
-    ).toBe(false);
-    expect(
-      renderer!.root.find(
-        node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
-      ).props,
-    ).toMatchObject({
-      accessibilityState: {busy: true, disabled: true},
-      disabled: true,
-    });
-    await ReactTestRenderer.act(() => renderer!.unmount());
-  });
-
   it('keeps all three plans and reveals educational code entry inside the purchase dialog', async () => {
     const onSelectPlan = jest.fn();
     const onRedeem = jest.fn();
+    const onCourseCodeChange = jest.fn();
     let renderer: ReactTestRenderer.ReactTestRenderer;
 
     await ReactTestRenderer.act(() => {
@@ -187,7 +100,7 @@ describe('course-code redemption UI', () => {
           onBuyCoins={jest.fn()}
           onClose={jest.fn()}
           onConfirmPurchase={jest.fn()}
-          onCourseCodeChange={jest.fn()}
+          onCourseCodeChange={onCourseCodeChange}
           onRedeemCourseCode={onRedeem}
           onSelectPlan={onSelectPlan}
           onSuccessStart={jest.fn()}
@@ -205,11 +118,58 @@ describe('course-code redemption UI', () => {
     const tree = JSON.stringify(renderer!.toJSON());
     for (const plan of plans) expect(tree).toContain(plan.name);
     expect(tree).toContain('اكتب الكود');
-    expect(
-      renderer!.root.findAll(
-        node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
-      ).length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(tree).not.toContain('كود خصم');
+    const input = renderer!.root.find(
+      node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
+    );
+    const submit = renderer!.root.find(
+      node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
+    );
+    expect(input.props.value).toBe('GRANT-42');
+    await ReactTestRenderer.act(() => input.props.onChangeText('NEW-CODE'));
+    await ReactTestRenderer.act(() => submit.props.onPress());
+    expect(onCourseCodeChange).toHaveBeenCalledWith('NEW-CODE');
+    expect(onRedeem).toHaveBeenCalledTimes(1);
+
+    await ReactTestRenderer.act(() => renderer!.unmount());
+  });
+
+  it('reveals the promo code only after a pricing tier has been selected', async () => {
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+
+    await ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(
+        <CoursePurchaseDialog
+          accessPlans={plans}
+          balance={1000}
+          bottomInset={0}
+          busy={false}
+          courseTitle="كورس الإنتاج"
+          couponCode="SAVE"
+          dialogStep="confirm"
+          grantActivated={false}
+          isTablet={false}
+          notice=""
+          onApplyCoupon={jest.fn()}
+          onBuyCoins={jest.fn()}
+          onClose={jest.fn()}
+          onConfirmPurchase={jest.fn()}
+          onSelectPlan={jest.fn()}
+          onSuccessStart={jest.fn()}
+          packages={[]}
+          purchasePrice={300}
+          rewardContributionLimit={300}
+          rewardContributionPercent={100}
+          selectedPlan={plans[0]}
+          shortfall={0}
+          usableCurrentBalance={300}
+        />,
+      );
+    });
+
+    const tree = JSON.stringify(renderer!.toJSON());
+    expect(tree).toContain('كود خصم');
+    expect(tree).toContain('SAVE');
 
     await ReactTestRenderer.act(() => renderer!.unmount());
   });

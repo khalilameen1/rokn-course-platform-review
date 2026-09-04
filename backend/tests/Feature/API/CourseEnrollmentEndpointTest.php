@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 use App\Http\Controllers\API\CoursePurchaseController;
-use App\Models\PaymentMethod;
+use App\Http\Middleware\RequireProductFeature;
 use Illuminate\Http\Request;
 
 /**
@@ -26,62 +26,59 @@ class CourseEnrollmentEndpointTest extends ApiTestCase
         );
     }
 
-    public function test_can_get_payment_methods(): void
+    public function test_retired_manual_payment_methods_endpoint_is_absent(): void
     {
-        PaymentMethod::query()->create([
-            'name' => 'غير جاهزة',
-            'account_details' => PaymentMethod::DEFAULT_ACCOUNT_DETAILS,
-            'is_active' => true,
-            'is_default' => false,
-        ]);
-        PaymentMethod::query()->create([
-            'name' => 'طريقة جاهزة',
-            'account_details' => 'بيانات دفع صحيحة',
-            'is_active' => true,
-            'is_default' => false,
-        ]);
-
-        $response = $this->actingAs($this->user, 'api')
+        $this->actingAs($this->user, 'api')
             ->getJson('/api/v1/courses/payment-methods')
-            ->assertOk();
-
-        $names = collect($response->json('data'))->pluck('name');
-        self::assertTrue($names->contains('طريقة جاهزة'));
-        self::assertFalse($names->contains('غير جاهزة'));
+            ->assertNotFound();
     }
 
     public function test_can_authorize_course(): void
     {
         $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/courses/authorize', [
             'course_id' => $this->courseId,
-            'payment_method' => 'wallet'
+            'access_plan_code' => 'basic',
         ]);
         $this->assertNotEquals(404, $response->status());
     }
 
-    public function test_can_check_course_access(): void
+    public function test_course_purchase_requires_an_explicit_access_plan(): void
     {
-        $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/courses/check-access', [
-            'course_id' => $this->courseId
-        ]);
-        $this->assertNotEquals(404, $response->status());
+        $this->withoutMiddleware(RequireProductFeature::class)
+            ->actingAs($this->user, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $this->courseId,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['access_plan_code']);
     }
 
-    public function test_can_view_my_enrollments(): void
+    public function test_retired_parallel_course_access_endpoint_is_absent(): void
     {
-        $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/courses/my-enrollments');
-        $this->assertNotEquals(404, $response->status());
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/courses/check-access', ['course_id' => $this->courseId])
+            ->assertNotFound();
     }
 
-    public function test_can_view_my_orders(): void
+    public function test_learning_courses_is_the_canonical_enrollment_read(): void
     {
-        $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/courses/my-orders');
-        $this->assertNotEquals(404, $response->status());
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/learning/courses')
+            ->assertOk()
+            ->assertJsonPath('success', true);
     }
 
-    public function test_can_view_my_bills(): void
+    public function test_retired_parallel_my_orders_endpoint_is_absent(): void
     {
-        $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/courses/my-bills');
-        $this->assertNotEquals(404, $response->status());
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/courses/my-orders')
+            ->assertNotFound();
+    }
+
+    public function test_retired_parallel_my_bills_endpoint_is_absent(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/courses/my-bills')
+            ->assertNotFound();
     }
 }

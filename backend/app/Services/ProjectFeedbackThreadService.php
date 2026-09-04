@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Support\DurableJobDispatch;
-use App\Support\UnicodeText;
-
 use App\Jobs\GenerateProjectFeedbackReply;
+use App\Models\AiInputAttachment;
 use App\Models\AiEntitlementUsage;
+use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Models\Course;
-use App\Models\AiInputAttachment;
+use App\Support\DurableJobDispatch;
+use App\Support\ProjectSubmissionLifecycle;
+use App\Support\UnicodeText;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -28,8 +29,7 @@ final class ProjectFeedbackThreadService
         private CourseAccessPlanService $accessPlans,
         private AiInputAttachmentService $attachments,
         private CourseChatAccessService $courseAccess
-    )
-    {
+    ) {
     }
 
     /** @param array<string,mixed> $terms */
@@ -171,11 +171,8 @@ final class ProjectFeedbackThreadService
         }, 3);
     }
 
-    public function failInitialReport(ProjectSubmission|int $submission, string $code): void
+    public function failInitialReport(int $submissionId, string $code): void
     {
-        $submissionId = $submission instanceof ProjectSubmission
-            ? (int) $submission->id
-            : $submission;
         DB::transaction(function () use ($submissionId, $code): void {
             $thread = ProjectFeedbackThread::query()
                 ->where('submission_id', $submissionId)
@@ -300,14 +297,20 @@ final class ProjectFeedbackThreadService
                 'attachment_count' => count($attachmentIds),
             ]);
             $course = Course::query()->findOrFail($locked->course_id);
-            $this->attachments->claim(
-                $user,
-                $course,
-                $attachmentIds,
-                AiInputAttachment::PURPOSE_PROJECT_FOLLOWUP,
-                AiInputAttachment::OWNER_PROJECT_FEEDBACK_MESSAGE,
-                (int) $message->id
-            );
+            try {
+                $this->attachments->claim(
+                    $user,
+                    $course,
+                    $attachmentIds,
+                    AiInputAttachment::PURPOSE_PROJECT_FOLLOWUP,
+                    AiInputAttachment::OWNER_PROJECT_FEEDBACK_MESSAGE,
+                    (int) $message->id
+                );
+            } catch (\UnexpectedValueException) {
+                throw ValidationException::withMessages([
+                    'attachment_ids' => ['أحد المرفقات غير متاح لهذه الرسالة'],
+                ]);
+            }
             return $message;
         }, 3);
 
@@ -354,7 +357,14 @@ final class ProjectFeedbackThreadService
             ? $this->accessPlans->termsForEnrollment($thread->enrollment)
             : null;
         $contract = $this->accessPlans->publicPayloadFromTerms($terms ?? []);
-        $replyEnabled = $this->activeReplyContract($thread) !== null;
+        $replyIncluded = (bool) $contract['project_thread_reply_enabled'];
+        $canReply = $this->activeReplyContract($thread) !== null;
+        $reportStatus = ProjectSubmissionLifecycle::reportStatus(
+            (bool) $contract['project_report_enabled'],
+            (string) $thread->status,
+            (string) data_get($thread->submission?->submission_metadata, 'ai_feedback.status'),
+            (string) $thread->submission?->review_status
+        );
         $usage = AiEntitlementUsage::query()
             ->where('enrollment_id', $thread->enrollment_id)
             ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP)
@@ -370,11 +380,12 @@ final class ProjectFeedbackThreadService
         $sentTokens = (int) $pendingMessages->where('status', ProjectFeedbackMessage::SENT)->sum('reserved_tokens');
         $reservedTokens = max((int) ($usage?->reserved_tokens ?? 0), $sentTokens);
 
-        $attachmentsByMessage = \App\Models\AiInputAttachment::query()
+        $attachmentsByMessage = AiInputAttachment::query()
             ->where('owner_type', AiInputAttachment::OWNER_PROJECT_FEEDBACK_MESSAGE)
             ->whereIn('owner_id', $recentMessages->pluck('id'))
             ->where('status', AiInputAttachment::READY)
             ->get()->groupBy('owner_id');
+        $failurePolicy = app(AiFailurePolicy::class);
         return [
             'id' => $thread->public_id,
             'thread_kind' => 'project_feedback',
@@ -383,13 +394,14 @@ final class ProjectFeedbackThreadService
             'submission_id' => $thread->submission?->public_id,
             'feedback_level' => $contract['project_feedback_level'],
             'report_enabled' => (bool) $contract['project_report_enabled'],
-            'can_reply' => $replyEnabled,
-            'reply_enabled' => $replyEnabled,
-            'attachments_enabled' => $replyEnabled && (bool) ($contract['project_attachments_enabled'] ?? false),
-            'attachment_max_files' => $replyEnabled
+            'can_reply' => $canReply,
+            'reply_enabled' => $replyIncluded,
+            'attachments_enabled' => $canReply && (bool) ($contract['project_attachments_enabled'] ?? false),
+            'attachment_max_files' => $canReply
                 ? min(5, max(0, (int) ($contract['project_attachment_max_files'] ?? 0)))
                 : 0,
             'status' => $thread->status,
+            'report_status' => $reportStatus,
             'remaining_messages' => max(
                 0,
                 (int) $contract['project_message_limit']
@@ -407,36 +419,52 @@ final class ProjectFeedbackThreadService
                 ->where('thread_id', $thread->id)
                 ->whereNotIn('id', $recentMessages->pluck('id'))
                 ->exists(),
-            'messages' => $recentMessages->map(fn (ProjectFeedbackMessage $message): array => [
-                'id' => $message->public_id,
-                'client_request_id' => $message->client_request_id,
-                'role' => $message->role,
-                'status' => $message->status,
-                'error_code' => $message->error_code,
-                'text' => $message->status === ProjectFeedbackMessage::COMPLETED
-                    || $message->status === ProjectFeedbackMessage::STREAMING
-                    || $message->role === 'user'
-                    ? $message->body
-                    : null,
-                'created_at' => $message->created_at?->toIso8601String(),
-                'attachments' => $attachmentsByMessage->get($message->id, collect())->map(
-                    fn (AiInputAttachment $attachment): array => [
-                        'id' => (string) $attachment->public_id,
-                        'name' => (string) $attachment->original_file_name,
-                        'mime_type' => (string) $attachment->mime_type,
-                        'size_bytes' => (int) $attachment->size_bytes,
-                        'download_url' => URL::temporarySignedRoute(
-                            'api.project-input-attachments.download',
-                            now()->addMinutes(30),
-                            [
-                                'attachment' => $attachment->public_id,
-                                'user' => $attachment->user_id,
-                            ]
-                        ),
-                        'download_url_expires_at' => now()->addMinutes(30)->toIso8601String(),
-                    ]
-                )->values(),
-            ])->values(),
+            'messages' => $recentMessages->map(function (ProjectFeedbackMessage $message) use (
+                $attachmentsByMessage,
+                $failurePolicy
+            ): array {
+                $failure = $message->status === ProjectFeedbackMessage::FAILED
+                    ? $failurePolicy->describe((string) $message->error_code)
+                    : null;
+
+                return [
+                    'id' => $message->public_id,
+                    'client_request_id' => $message->client_request_id,
+                    'role' => $message->role,
+                    'status' => $message->status,
+                    'error_code' => $message->error_code,
+                    'failure_category' => $failure['category'] ?? null,
+                    'can_retry' => $failure['can_retry'] ?? null,
+                    'retry_after_seconds' => $failure['retry_after_seconds'] ?? null,
+                    'text' => $message->status === ProjectFeedbackMessage::COMPLETED
+                        || $message->status === ProjectFeedbackMessage::STREAMING
+                        || $message->role === 'user'
+                        ? $message->body
+                        : null,
+                    'created_at' => $message->created_at?->toIso8601String(),
+                    'attachments' => $attachmentsByMessage->get($message->id, collect())->map(
+                        function (AiInputAttachment $attachment): array {
+                            $expiresAt = now()->addMinutes(30);
+
+                            return [
+                                'id' => (string) $attachment->public_id,
+                                'name' => (string) $attachment->original_file_name,
+                                'mime_type' => (string) $attachment->mime_type,
+                                'size_bytes' => (int) $attachment->size_bytes,
+                                'download_url' => URL::temporarySignedRoute(
+                                    'api.project-input-attachments.download',
+                                    $expiresAt,
+                                    [
+                                        'attachment' => $attachment->public_id,
+                                        'user' => $attachment->user_id,
+                                    ]
+                                ),
+                                'download_url_expires_at' => $expiresAt->toIso8601String(),
+                            ];
+                        }
+                    )->values(),
+                ];
+            })->values(),
         ];
     }
 
@@ -451,6 +479,41 @@ final class ProjectFeedbackThreadService
         $thread->loadMissing('enrollment');
         $enrollment = $thread->enrollment;
         return $enrollment ? $this->replyContractFor($thread, $enrollment) : null;
+    }
+
+    /** @return array{state:string,attachment?:AiInputAttachment} */
+    public function uploadAttachment(
+        User $user,
+        ProjectFeedbackThread $thread,
+        UploadedFile $file,
+        string $clientUploadId
+    ): array {
+        if (!(bool) $user->active || (int) $thread->user_id !== (int) $user->id) {
+            return ['state' => 'not_included'];
+        }
+        $contract = $this->activeReplyContract($thread);
+        if (!$contract || !(bool) ($contract['project_attachments_enabled'] ?? false)) {
+            return ['state' => 'not_included'];
+        }
+
+        $course = Course::query()->findOrFail($thread->course_id);
+        try {
+            $attachment = $this->attachments->store(
+                $user,
+                $course,
+                $file,
+                AiInputAttachment::PURPOSE_PROJECT_FOLLOWUP,
+                $clientUploadId
+            );
+        } catch (\UnexpectedValueException $exception) {
+            return ['state' => match ($exception->getMessage()) {
+                'Unsupported AI attachment type.' => 'unsupported',
+                'AI attachment staging limit reached.' => 'limit_reached',
+                default => 'identity_conflict',
+            }];
+        }
+
+        return ['state' => 'uploaded', 'attachment' => $attachment];
     }
 
     /** @return array<string,mixed>|null */

@@ -1,8 +1,6 @@
 import {
   isCoinNotification,
-  isCourseNotification,
   normalizeNotificationKind,
-  notificationDefaultAction,
   NotificationKind,
   safeNotificationImageUrl,
 } from './notificationCampaigns';
@@ -41,6 +39,15 @@ const courseIdFromItem = (item: Record<string, unknown>) => {
     : undefined;
 };
 
+const courseLinkForKind = (courseId: string, kind: NotificationKind): string =>
+  `rokn://course/${encodeURIComponent(courseId)}${
+    kind === 'continue_course' ||
+    kind === 'learning_reminder' ||
+    kind === 'streak_reminder'
+      ? '/watch'
+      : ''
+  }`;
+
 const normalizedExplicitLink = (
   value: unknown,
   kind: NotificationKind,
@@ -55,9 +62,7 @@ const normalizedExplicitLink = (
       kind === 'learning_reminder' ||
       kind === 'streak_reminder')
   ) {
-    return `rokn://course/${encodeURIComponent(
-      destination.params.courseId,
-    )}/watch`;
+    return courseLinkForKind(destination.params.courseId, kind);
   }
   return link;
 };
@@ -99,15 +104,6 @@ export const mapNotification = (
     kind,
   );
   const courseId = courseIdFromItem(item);
-  const fallbackLink = isCoinNotification(kind)
-    ? 'rokn://wallet'
-    : courseId && isCourseNotification(kind)
-    ? kind === 'continue_course' ||
-      kind === 'learning_reminder' ||
-      kind === 'streak_reminder'
-      ? `rokn://course/${encodeURIComponent(courseId)}/watch`
-      : `rokn://course/${encodeURIComponent(courseId)}`
-    : undefined;
   const imageUrl = safeNotificationImageUrl(
     firstValue(item, [
       'image_url',
@@ -122,28 +118,24 @@ export const mapNotification = (
     campaignId: String(item.campaign_id || '').trim() || undefined,
     type,
     title: formatArabicDisplayText(
-      learnerFacingText(item.title_ar || item.title, 'إشعار من ركن'),
+      learnerFacingText(item.title_ar || item.title),
     ),
     description: formatArabicDisplayText(
-      learnerFacingText(item.message_ar || item.message, 'لديك إشعار جديد'),
+      learnerFacingText(item.message_ar || item.message),
     ),
     createdAt: safeDate(item.created_at),
     read:
       firstBoolean(item.is_read) ??
       (typeof item.read_at === 'string' && item.read_at.trim().length > 0),
-    link: explicitLink || fallbackLink,
+    link: explicitLink,
     courseId,
     imageUrl,
     actionLabel: formatArabicDisplayText(
       learnerFacingText(
         firstValue(item, ['action_label_ar', 'cta_ar', 'action_label']),
-        notificationDefaultAction[kind],
       ),
     ),
     kind,
     tone: notificationTone(kind),
   };
 };
-
-export type ProductionNotification = Notification;
-export const mapProductionNotification = mapNotification;

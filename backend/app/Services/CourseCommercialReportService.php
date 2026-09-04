@@ -9,13 +9,14 @@ use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\WalletDebitAllocation;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Schema;
 
 /** Builds the administrator's auditable learner and cash-attribution report. */
 final class CourseCommercialReportService
 {
-    public function __construct(private readonly CourseCostReportService $costs)
-    {
+    public function __construct(
+        private readonly CourseCostReportService $costs,
+        private readonly CourseFinancialLedgerReportService $ledger
+    ) {
     }
 
     /** @return array<string, mixed> */
@@ -37,6 +38,7 @@ final class CourseCommercialReportService
             ->get();
 
         $allocationsByOrder = $this->allocationsFor($orders);
+        $coinAllocationsByOrder = $this->ledger->allocationsForOrders($orders);
         $ordersByUser = $orders->groupBy(fn (Order $order): int => (int) $order->user_id);
         $costReport = $this->costs->forCourse(
             $course,
@@ -45,11 +47,16 @@ final class CourseCommercialReportService
         $rows = $enrollments->map(function (CourseEnrollment $enrollment) use (
             $ordersByUser,
             $allocationsByOrder,
+            $coinAllocationsByOrder,
             $costReport
         ): array {
             /** @var Collection<int, Order> $learnerOrders */
             $learnerOrders = $ordersByUser->get((int) $enrollment->user_id, collect());
-            $cash = $this->cashForOrders($learnerOrders, $allocationsByOrder);
+            $cash = $this->cashForOrders(
+                $learnerOrders,
+                $allocationsByOrder,
+                $coinAllocationsByOrder
+            );
             $currentOrder = $enrollment->accessPlanOrder ?: $enrollment->order;
             $snapshot = is_array($enrollment->access_plan_snapshot)
                 ? $enrollment->access_plan_snapshot
@@ -64,7 +71,11 @@ final class CourseCommercialReportService
                 fn (Order $order): bool => $order->payment_method === Order::PAYMENT_METHOD_COURSE_CODE
             );
             $hasPaidOrder = $learnerOrders->contains(
-                fn (Order $order): bool => (int) $order->paid_coins > 0
+                fn (Order $order): bool => (int) data_get(
+                    $coinAllocationsByOrder->get((int) $order->id),
+                    'paid_coins',
+                    0
+                ) > 0
             );
             $source = $grantOrder && $hasPaidOrder
                 ? 'grant_plus_purchase'
@@ -123,9 +134,34 @@ final class CourseCommercialReportService
                     ->unique()
                     ->values()
                     ->all(),
-                'total_coins' => (int) $learnerOrders->sum('total_coins'),
-                'paid_coins' => (int) $learnerOrders->sum('paid_coins'),
-                'reward_coins' => (int) $learnerOrders->sum('reward_coins'),
+                'total_coins' => (int) $learnerOrders->sum(
+                    fn (Order $order): int => (int) data_get(
+                        $coinAllocationsByOrder->get((int) $order->id),
+                        'total_coins',
+                        0
+                    )
+                ),
+                'paid_coins' => (int) $learnerOrders->sum(
+                    fn (Order $order): int => (int) data_get(
+                        $coinAllocationsByOrder->get((int) $order->id),
+                        'paid_coins',
+                        0
+                    )
+                ),
+                'reward_coins' => (int) $learnerOrders->sum(
+                    fn (Order $order): int => (int) data_get(
+                        $coinAllocationsByOrder->get((int) $order->id),
+                        'reward_coins',
+                        0
+                    )
+                ),
+                'coin_allocation_complete' => $learnerOrders->every(
+                    fn (Order $order): bool => (bool) data_get(
+                        $coinAllocationsByOrder->get((int) $order->id),
+                        'complete',
+                        false
+                    )
+                ),
                 'orders_count' => $learnerOrders->count(),
                 'purchased_at' => $currentOrder?->approved_at ?: $enrollment->access_granted_at,
             ] + $cash + $cost;
@@ -218,10 +254,13 @@ final class CourseCommercialReportService
             'grant_students' => $rows->filter(fn (array $row): bool => str_starts_with($row['source'], 'grant'))->count(),
             'code_students' => $rows->filter(fn (array $row): bool => str_contains($row['source'], 'code'))->count(),
             'paid_students' => $rows->where('paid_coins', '>', 0)->count(),
-            'total_coins' => (int) $orders->sum('total_coins'),
+            'coin_allocation_complete' => $rows->every(
+                fn (array $row): bool => (bool) $row['coin_allocation_complete']
+            ),
+            'total_coins' => (int) $rows->sum('total_coins'),
             'discount_coins' => (int) $orders->sum('discount_amount'),
-            'paid_coins' => (int) $orders->sum('paid_coins'),
-            'reward_coins' => (int) $orders->sum('reward_coins'),
+            'paid_coins' => (int) $rows->sum('paid_coins'),
+            'reward_coins' => (int) $rows->sum('reward_coins'),
             'cash_gross_egp' => $gross,
             'cash_estimated_gross_egp' => $estimatedGross,
             'cash_gross_complete' => $cashGrossComplete,
@@ -280,10 +319,42 @@ final class CourseCommercialReportService
             fn (array $row): bool => (bool) ($row['ai_measurement_available'] ?? true)
         );
         $aiAttempts = $aiRequests + $aiFailedRequests + $aiUnansweredRequests;
+        $actualCostByService = collect(CourseCostReportService::serviceLabels())
+            ->mapWithKeys(function (string $_label, string $serviceKey) use ($rows): array {
+                $complete = $rows->every(fn (array $row): bool =>
+                    ($row['actual_cost_by_service_egp'][$serviceKey] ?? null) !== null
+                );
+
+                return [$serviceKey => $complete
+                    ? round((float) $rows->sum(fn (array $row): float =>
+                        (float) $row['actual_cost_by_service_egp'][$serviceKey]
+                    ), 4)
+                    : null];
+            })->all();
+        $estimatedCostByService = collect(CourseCostReportService::serviceLabels())
+            ->mapWithKeys(function (string $_label, string $serviceKey) use ($rows): array {
+                $complete = $rows->every(fn (array $row): bool =>
+                    ($row['cost_with_estimates_by_service_egp'][$serviceKey] ?? null) !== null
+                );
+
+                return [$serviceKey => $complete
+                    ? round((float) $rows->sum(fn (array $row): float =>
+                        (float) $row['cost_with_estimates_by_service_egp'][$serviceKey]
+                    ), 4)
+                    : null];
+            })->all();
 
         return [
             'students' => $students,
+            'active_students' => $rows->where('is_active', true)
+                ->map(fn (array $row): int => (int) ($row['enrollment']?->user_id ?? 0))
+                ->filter()
+                ->unique()
+                ->count(),
             'enrollments' => $enrollments,
+            'coin_allocation_complete' => $rows->every(
+                fn (array $row): bool => (bool) ($row['coin_allocation_complete'] ?? false)
+            ),
             'coins' => (int) $rows->sum('total_coins'),
             'discount_coins' => (int) $rows->sum('discount_coins'),
             'gross_egp' => round((float) $rows->sum('cash_gross_egp'), 2),
@@ -304,10 +375,12 @@ final class CourseCommercialReportService
             'playback_minutes' => round((float) $rows->sum('playback_minutes'), 2),
             'playback_gb_estimated' => round((float) $rows->sum('playback_gb_estimated'), 4),
             'service_cost_egp' => $cost,
+            'service_breakdown_actual_egp' => $actualCostByService,
             'margin_egp' => $margin,
             'estimated_cost_egp' => $estimatedComplete
                 ? round((float) $rows->sum('service_cost_with_estimates_egp'), 2)
                 : null,
+            'service_breakdown_with_estimates_egp' => $estimatedCostByService,
             'estimated_margin_egp' => $netComplete && $estimatedComplete
                 ? round((float) $rows->sum('estimated_contribution_margin_egp'), 2)
                 : null,
@@ -342,11 +415,7 @@ final class CourseCommercialReportService
     /** @param Collection<int, Order> $orders */
     private function allocationsFor(Collection $orders): Collection
     {
-        if (
-            $orders->isEmpty()
-            || !Schema::hasTable('wallet_debit_allocations')
-            || !Schema::hasTable('wallet_credit_lots')
-        ) {
+        if ($orders->isEmpty()) {
             return collect();
         }
 
@@ -360,10 +429,14 @@ final class CourseCommercialReportService
     /**
      * @param Collection<int, Order> $orders
      * @param Collection<int, Collection<int, WalletDebitAllocation>> $allocationsByOrder
-     * @return array<string, int|float|bool>
+     * @param Collection<int, array{total_coins:int,paid_coins:int,reward_coins:int,complete:bool}> $coinAllocationsByOrder
+     * @return array<string, mixed>
      */
-    private function cashForOrders(Collection $orders, Collection $allocationsByOrder): array
-    {
+    private function cashForOrders(
+        Collection $orders,
+        Collection $allocationsByOrder,
+        Collection $coinAllocationsByOrder
+    ): array {
         $gross = 0.0;
         $estimatedGross = 0.0;
         $netKnown = 0.0;
@@ -374,13 +447,46 @@ final class CourseCommercialReportService
         $channels = [];
 
         foreach ($orders as $order) {
+            $coinAllocation = $coinAllocationsByOrder->get((int) $order->id, [
+                'paid_coins' => 0,
+                'complete' => false,
+            ]);
+            if (!(bool) $coinAllocation['complete']) {
+                $reconciliationMissing = true;
+            }
             $orderAllocatedCoins = 0;
             foreach ($allocationsByOrder->get($order->id, collect()) as $allocation) {
                 $lot = $allocation->creditLot;
                 $source = $lot?->sourceOrder;
                 $coins = max(0, (int) $allocation->amount);
                 $lotCoins = max(0, (int) $lot?->original_amount);
-                if (!$source || $coins === 0 || $lotCoins === 0) {
+                if ($coins === 0 || $lotCoins === 0) {
+                    continue;
+                }
+
+                if (
+                    !$source
+                    && (string) data_get($lot?->metadata, 'provenance_type')
+                        === 'course_service_compensation'
+                ) {
+                    $orderAllocatedCoins += $coins;
+                    $allocatedCoins += $coins;
+                    $channels['service_compensation'] ??= [
+                        'method' => 'service_compensation',
+                        'label' => 'تعويض خدمة بلا تحصيل جديد',
+                        'paid_coins' => 0,
+                        'gross_egp' => 0.0,
+                        'estimated_gross_egp' => 0.0,
+                        'gross_complete' => true,
+                        'net_known_egp' => 0.0,
+                        'pending_settlement_egp' => 0.0,
+                        'net_complete' => true,
+                        'foreign_currency_amounts' => [],
+                    ];
+                    $channels['service_compensation']['paid_coins'] += $coins;
+                    continue;
+                }
+                if (!$source) {
                     continue;
                 }
 
@@ -390,6 +496,29 @@ final class CourseCommercialReportService
                     $channels['unreconciled'] ??= $this->unreconciledCashChannel();
                     $channels['unreconciled']['paid_coins'] += $coins;
                     $reconciliationMissing = true;
+                    continue;
+                }
+
+                if ($source->gateway_settlement_status === 'test_purchase') {
+                    $testChannel = (string) $source->payment_method . '_test';
+                    $channels[$testChannel] ??= [
+                        'method' => $testChannel,
+                        'label' => match ($source->payment_method) {
+                            Order::PAYMENT_METHOD_KASHIER => 'Kashier — اختبار بلا دخل',
+                            Order::PAYMENT_METHOD_GOOGLE_PLAY => 'Google Play — اختبار بلا دخل',
+                            Order::PAYMENT_METHOD_APP_STORE => 'App Store — اختبار بلا دخل',
+                            default => 'عملية اختبار بلا دخل',
+                        },
+                        'paid_coins' => 0,
+                        'gross_egp' => 0.0,
+                        'estimated_gross_egp' => 0.0,
+                        'gross_complete' => true,
+                        'net_known_egp' => 0.0,
+                        'pending_settlement_egp' => 0.0,
+                        'net_complete' => true,
+                        'foreign_currency_amounts' => [],
+                    ];
+                    $channels[$testChannel]['paid_coins'] += $coins;
                     continue;
                 }
 
@@ -468,7 +597,10 @@ final class CourseCommercialReportService
                 }
             }
 
-            $missingPaidCoins = max(0, (int) $order->paid_coins - $orderAllocatedCoins);
+            $missingPaidCoins = max(
+                0,
+                (int) $coinAllocation['paid_coins'] - $orderAllocatedCoins
+            );
             if ($missingPaidCoins > 0) {
                 $channels['unreconciled'] ??= $this->unreconciledCashChannel();
                 $channels['unreconciled']['paid_coins'] += $missingPaidCoins;

@@ -6,23 +6,22 @@ namespace App\Jobs;
 
 use App\Exceptions\AiPlanLimitReachedException;
 use App\Exceptions\AiProviderUnavailableException;
+use App\Models\AiInputAttachment;
 use App\Models\AiUsageEvent;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectFeedbackThread;
-use App\Models\CourseSection;
-use App\Models\Project;
+use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
-use App\Services\CourseAccessPlanService;
-use App\Services\CourseChatAccessService;
-use App\Services\CourseStagedAuthoringService;
-use App\Services\OpenRouterService;
-use App\Services\PaidAiCallExecutionService;
+use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiPromptPolicy;
 use App\Services\AiStreamCheckpointService;
-use App\Models\AiInputAttachment;
-use App\Models\User;
-use Illuminate\Support\Str;
+use App\Services\CourseAccessPlanService;
+use App\Services\CourseChatAccessService;
+use App\Services\OpenRouterService;
+use App\Services\PaidAiCallExecutionService;
+use App\Support\ProjectSubmissionEvaluationSnapshot;
+use App\Support\UnicodeText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,8 +29,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
-use App\Support\ProjectSubmissionEvaluationSnapshot;
-use App\Support\UnicodeText;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueUntilProcessing
@@ -74,7 +72,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         AiInputAttachmentService $attachments,
         AiStreamCheckpointService $streamCheckpoints,
         AiPromptPolicy $promptPolicy,
-        CourseStagedAuthoringService $stagedAuthoring
+        AiFailurePolicy $failurePolicy
     ): void {
         $message = ProjectFeedbackMessage::query()
             ->with(['thread.enrollment', 'thread.project', 'thread.submission'])
@@ -196,39 +194,14 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         $evaluationSnapshot = $thread->submission
             ? ProjectSubmissionEvaluationSnapshot::fromSubmission($thread->submission)
             : null;
-        // Follow-up replies belong to the submitted work, not to whichever
-        // draft a moderator happens to be editing when the queue runs. New
-        // submissions carry an immutable project policy; current project data
-        // is retained only for rows created before snapshots existed.
-        $publishedSection = null;
         if (!$evaluationSnapshot) {
-            $historicalProjectId = (int) $thread->project_id;
-            $publishedProjectId = $stagedAuthoring->currentLearnerEntityMap(
-                Project::class,
-                [$historicalProjectId]
-            )[$historicalProjectId] ?? $historicalProjectId;
-            $publishedSection = CourseSection::query()
-                ->where('sectionable_type', Project::class)
-                ->where('sectionable_id', $publishedProjectId)
-                ->with(['course', 'sectionable'])
-                ->first();
-            if (!$publishedSection?->sectionable || !$publishedSection?->course) {
-                $this->markFailed($this->messageId, 'project_context_missing');
-                return;
-            }
+            $this->markFailed($this->messageId, 'project_context_missing');
+            return;
         }
-        $legacySnapshot = $evaluationSnapshot ? null : ProjectSubmissionEvaluationSnapshot::capture(
-                $publishedSection->sectionable,
-                $publishedSection,
-                $enrollment,
-                $terms
-            );
-        $projectPolicy = (array) ($evaluationSnapshot['project'] ?? $legacySnapshot['project']);
-        $allowed = array_values(array_filter(config('openrouter.allowed_models', [])));
-        $model = trim((string) config('openrouter.default_model'));
-        if (!in_array($model, $allowed, true)) $model = (string) config('openrouter.default_model');
+        $projectPolicy = (array) $evaluationSnapshot['project'];
+        $model = '';
         $maxTokens = max(80, min(
-            (int) config('openrouter.max_tokens', 500),
+            (int) config('openrouter.max_tokens', 800),
             (int) ($terms['max_output_tokens'] ?? 320)
         ));
         $history = $this->boundedConversationHistory($thread, $terms);
@@ -243,20 +216,14 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         $courseTitle = UnicodeText::limit(UnicodeText::clean((string) (
             data_get($evaluationSnapshot, 'course.title_ar')
             ?: data_get($evaluationSnapshot, 'course.title_en')
-            ?: $publishedSection?->course?->name_ar
-            ?: $publishedSection?->course?->name_en
         )), 240);
         $projectTitle = UnicodeText::limit(UnicodeText::clean((string) (
             ($projectPolicy['title_ar'] ?? null)
             ?: ($projectPolicy['title_en'] ?? null)
             ?: ($projectPolicy['title'] ?? null)
-            ?: $publishedSection?->title
         )), 240);
         $promptVersion = $promptPolicy->version('project-followup', [
-            'snapshot' => (string) (
-                $evaluationSnapshot['fingerprint']
-                ?? $legacySnapshot['fingerprint']
-            ),
+            'snapshot' => (string) $evaluationSnapshot['fingerprint'],
             'requirements' => $requirements,
             'feedback_level' => (string) $contract['project_feedback_level'],
             'course_title' => $courseTitle,
@@ -338,6 +305,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         $reservation = null;
         $providerResultKnown = false;
         try {
+            $model = $openRouter->configuredModel('project_model');
             $requestId = (string) $message->public_id;
             $reservation = $budget->reserve($enrollment, 'project_followup', $estimatedTokens, $model, $requestId);
             if (!$reservation) {
@@ -478,10 +446,13 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             } else {
                 $budget->release($reservation, 'provider_unavailable');
             }
-            $this->markFailedWithReply($message->id, $thread->id, 'provider_unavailable');
-            if ($exception->retrySafe) {
-                throw $exception;
-            }
+            $this->markFailedWithReply(
+                $message->id,
+                $thread->id,
+                $exception->outcomeUnknown
+                    ? 'provider_outcome_unknown'
+                    : $failurePolicy->providerCode($exception)
+            );
         } catch (Throwable $exception) {
             $settledEvent = $reservation?->fresh();
             $acceptedResponse = trim((string) data_get($settledEvent?->metadata, 'accepted_response', ''));
@@ -576,9 +547,9 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         }
         if ($current->isNotEmpty()) $exchanges->push($current);
 
-        $characterBudget = max(6000, min(
-            24000,
-            (int) (($terms['project_followup_token_budget'] ?? 8000) * 2)
+        $characterBudget = max(4000, min(
+            12000,
+            (int) (($terms['project_followup_token_budget'] ?? 8000) * 1.5)
         ));
         $recentBudget = (int) floor($characterBudget * .72);
         $recent = collect();
@@ -746,7 +717,11 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
     public function failed(Throwable $exception): void
     {
         $message = ProjectFeedbackMessage::query()->find($this->messageId);
-        if (!$message || $message->status === ProjectFeedbackMessage::COMPLETED) return;
+        if (!$message || in_array($message->status, [
+            ProjectFeedbackMessage::COMPLETED,
+            ProjectFeedbackMessage::FAILED,
+            ProjectFeedbackMessage::CANCELLED,
+        ], true)) return;
         $event = AiUsageEvent::query()
             ->where('request_id', $message->public_id)
             ->where('feature', 'project_followup')

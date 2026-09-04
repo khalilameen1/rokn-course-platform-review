@@ -16,7 +16,7 @@ class CreateStudentNotificationsTable extends Migration
         Schema::create('student_notifications', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id');
-            $table->string('notification_type'); // e.g., 'new_course_lesson', 'new_quiz', 'course_update'
+            $table->string('notification_type'); // e.g., 'new_course_lesson', 'project_update', 'course_update'
             $table->string('notifiable_type')->nullable(); // polymorphic type (e.g., 'App\Models\Lesson')
             $table->unsignedBigInteger('notifiable_id')->nullable(); // polymorphic id
             $table->string('title_ar');

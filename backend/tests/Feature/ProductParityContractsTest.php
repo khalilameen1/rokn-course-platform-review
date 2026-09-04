@@ -27,27 +27,37 @@ final class ProductParityContractsTest extends TestCase
         $this->withoutMiddleware([AppFrontNameSpace::class, WebsiteVisitorCount::class]);
     }
 
-    public function test_playback_preferences_are_account_scoped_and_returned_by_profile(): void
+    public function test_only_real_playback_preferences_are_account_scoped_and_returned_by_profile(): void
+    {
+        $user = $this->user();
+
+        $this->actingAs($user, 'api')->putJson('/api/v1/user/profile', [
+            'video_quality_preference' => '720p',
+            'playback_speed' => 1.5,
+        ])->assertOk()
+            ->assertJsonPath('data.video_quality_preference', '720p')
+            ->assertJsonPath('data.playback_speed', 1.5)
+            ->assertJsonMissingPath('data.autoplay_next_enabled')
+            ->assertJsonMissingPath('data.video_fit_mode');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'video_quality_preference' => '720p',
+        ]);
+    }
+
+    public function test_retired_playback_switches_cannot_create_hidden_account_settings(): void
     {
         $user = $this->user();
 
         $this->actingAs($user, 'api')->putJson('/api/v1/user/profile', [
             'autoplay_next_enabled' => false,
-            'video_quality_preference' => '720p',
             'video_fit_mode' => 'contain',
-            'playback_speed' => 1.5,
-        ])->assertOk()
-            ->assertJsonPath('data.autoplay_next_enabled', false)
-            ->assertJsonPath('data.video_quality_preference', '720p')
-            ->assertJsonPath('data.video_fit_mode', 'contain')
-            ->assertJsonPath('data.playback_speed', 1.5);
-
-        $this->assertDatabaseHas('users', [
-            'id' => $user->id,
-            'autoplay_next_enabled' => 0,
-            'video_quality_preference' => '720p',
-            'video_fit_mode' => 'contain',
-        ]);
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'autoplay_next_enabled',
+                'video_fit_mode',
+            ]);
     }
 
     public function test_compact_search_uses_keywords_without_exposing_commercial_terms(): void
@@ -66,8 +76,16 @@ final class ProductParityContractsTest extends TestCase
             'title_ar' => 'الخطوة الأولى',
             'is_opened' => true,
         ]);
+        $moduleId = DB::table('course_modules')->insertGetId([
+            'course_id' => $course->id,
+            'title' => 'المحتوى',
+            'order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         DB::table('course_sections')->insert([
             'course_id' => $course->id,
+            'module_id' => $moduleId,
             'title' => 'البداية',
             'section_type' => 'lesson',
             'sectionable_type' => Lesson::class,
@@ -171,6 +189,8 @@ final class ProductParityContractsTest extends TestCase
             // The authored estimate must not override verified Bunny timing.
             'duration_minutes' => 1,
             'is_opened' => true,
+            'video_source_type' => 'bunny',
+            'bunny_video_id' => 'duration-test',
         ]);
         LessonMediaState::create([
             'lesson_id' => $providerLesson->id,
@@ -179,11 +199,22 @@ final class ProductParityContractsTest extends TestCase
             'status' => 'ready',
             'protocol' => 'hls',
             'duration_seconds' => 125,
+            'integrity_status' => 'healthy',
+            'last_reconciled_at' => now(),
+        ]);
+
+        $moduleId = DB::table('course_modules')->insertGetId([
+            'course_id' => $course->id,
+            'title' => 'Duration module',
+            'order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         foreach ([$declaredLesson, $providerLesson] as $index => $lesson) {
             DB::table('course_sections')->insert([
                 'course_id' => $course->id,
+                'module_id' => $moduleId,
                 'title' => 'Lesson '.($index + 1),
                 'section_type' => 'lesson',
                 'sectionable_type' => Lesson::class,
@@ -197,27 +228,13 @@ final class ProductParityContractsTest extends TestCase
         $this->getJson("/api/v1/courses/{$course->id}/details")
             ->assertOk()
             ->assertJsonPath('data.metadata.duration_minutes', 15)
-            ->assertJsonPath('data.sections.1.content.duration_seconds', 125);
-
-        $this->getJson('/api/v1/courses?per_page=50')
-            ->assertOk()
-            ->assertJsonPath('data.0.id', $course->id)
-            ->assertJsonPath('data.0.metadata.duration_minutes', 15);
+            ->assertJsonMissingPath('data.sections')
+            ->assertJsonPath('data.modules.0.sections.1.content.duration_seconds', 125);
 
         $this->getJson('/api/v1/courses/list?per_page=50')
             ->assertOk()
             ->assertJsonPath('data.courses.0.id', $course->id)
             ->assertJsonPath('data.courses.0.metadata.duration_minutes', 15);
-
-        $this->getJson('/api/v1/main')
-            ->assertOk()
-            ->assertJsonPath('data.0.courses.0.id', $course->id)
-            ->assertJsonPath('data.0.courses.0.metadata.duration_minutes', 15);
-
-        $this->getJson('/api/v1/mobile-main-page')
-            ->assertOk()
-            ->assertJsonPath('data.main_courses.0.id', $course->id)
-            ->assertJsonPath('data.main_courses.0.metadata.duration_minutes', 15);
 
         $this->getJson('/api/v1/paths')
             ->assertOk()
@@ -240,8 +257,16 @@ final class ProductParityContractsTest extends TestCase
             'duration_minutes' => 7,
             'is_opened' => true,
         ]);
+        $moduleId = DB::table('course_modules')->insertGetId([
+            'course_id' => $course->id,
+            'title' => 'الوحدة الأولى',
+            'order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         DB::table('course_sections')->insert([
             'course_id' => $course->id,
+            'module_id' => $moduleId,
             'title' => 'مقطع منشور',
             'section_type' => 'lesson',
             'sectionable_type' => Lesson::class,
@@ -253,6 +278,7 @@ final class ProductParityContractsTest extends TestCase
 
         $activeLearners = [$this->user(), $this->user()];
         $inactiveLearner = $this->user();
+        $deletedLearner = $this->user();
         foreach ($activeLearners as $learner) {
             DB::table('course_enrollments')->insert([
                 'tenant_id' => 1,
@@ -273,6 +299,16 @@ final class ProductParityContractsTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        DB::table('course_enrollments')->insert([
+            'tenant_id' => 1,
+            'user_id' => $deletedLearner->id,
+            'course_id' => $course->id,
+            'enrolled_at' => now(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('users')->where('id', $deletedLearner->id)->update(['deleted_at' => now()]);
         (new CourseRating())->forceFill([
             'user_id' => $activeLearners[0]->id,
             'course_id' => $course->id,
@@ -310,8 +346,16 @@ final class ProductParityContractsTest extends TestCase
             'title_ar' => 'الدرس الحالي',
             'is_opened' => false,
         ]);
+        $moduleId = DB::table('course_modules')->insertGetId([
+            'course_id' => $course->id,
+            'title' => 'المحتوى',
+            'order' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $sectionId = DB::table('course_sections')->insertGetId([
             'course_id' => $course->id,
+            'module_id' => $moduleId,
             'title' => 'القسم الحالي',
             'section_type' => 'lesson',
             'sectionable_type' => Lesson::class,
@@ -328,6 +372,7 @@ final class ProductParityContractsTest extends TestCase
         ]);
         $nextSectionId = DB::table('course_sections')->insertGetId([
             'course_id' => $course->id,
+            'module_id' => $moduleId,
             'title' => 'الدرس التالي',
             'title_ar' => 'الدرس التالي',
             'section_type' => 'lesson',
@@ -346,6 +391,12 @@ final class ProductParityContractsTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        $this->actingAs($user, 'api')->getJson('/api/v1/learning/courses')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.learning_started', false)
+            ->assertJsonPath('data.items.0.resume.available', false);
+
         DB::table('watching_logs')->insert([
             'user_id' => $user->id,
             'lesson_id' => $lesson->id,
@@ -369,6 +420,7 @@ final class ProductParityContractsTest extends TestCase
 
         $this->actingAs($user, 'api')->getJson('/api/v1/learning/courses')
             ->assertOk()
+            ->assertJsonPath('data.items.0.learning_started', true)
             ->assertJsonPath('data.items.0.resume.available', true)
             ->assertJsonPath('data.items.0.resume.lesson_id', $lesson->id)
             ->assertJsonPath('data.items.0.resume.position_seconds', 42)

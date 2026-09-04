@@ -31,7 +31,6 @@ class AdminNotification extends Model
         'certificate_ready',
         'project_update',
         'new_course_lesson',
-        'new_quiz',
         'course_update',
         'course_promotion',
         'new_course',

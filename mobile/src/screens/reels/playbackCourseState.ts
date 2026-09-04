@@ -53,6 +53,7 @@ export const disableLessonPlayback = (
   course: CourseLearningData | null,
   courseId: string | undefined,
   lessonId: string,
+  lockReason?: string,
 ): CourseLearningData | null => {
   if (!course || course.id !== courseId) return course;
   return {
@@ -66,6 +67,10 @@ export const disableLessonPlayback = (
               videoUrl: '',
               fallbackVideoUrl: undefined,
               playbackSessionId: undefined,
+              mediaStatus: 'failed',
+              ...(lockReason
+                ? {isLocked: true, lockReason}
+                : {}),
             }
           : existing,
       ),

@@ -1,5 +1,39 @@
 <?php
 
+// One catalogue owns both the dashboard choices and the runtime whitelist.
+// Adding a delivery type therefore cannot expose a format that submission
+// validation or the mobile picker does not understand.
+$submissionTypes = [
+    'text' => [
+        'label' => 'كتابة داخل التطبيق',
+        'mime_types' => [],
+    ],
+    'images' => [
+        'label' => 'صور',
+        'mime_types' => ['image/jpeg', 'image/png', 'image/webp'],
+    ],
+    'pdf' => [
+        'label' => 'PDF',
+        'mime_types' => ['application/pdf'],
+    ],
+    'word' => [
+        'label' => 'Word',
+        'mime_types' => [
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ],
+    ],
+    'presentation' => [
+        'label' => 'PowerPoint',
+        'mime_types' => [
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        ],
+    ],
+    'text_file' => [
+        'label' => 'ملف نصي',
+        'mime_types' => ['text/plain'],
+    ],
+];
+
 return [
     // Keep learner submissions private while allowing every web/worker node to
     // read the same file. Production should point this at a shared private
@@ -13,15 +47,11 @@ return [
     'maximum_file_kilobytes' => (int) env('PROJECT_MAXIMUM_FILE_KILOBYTES', 25600),
     'image_inspection_max_bytes' => (int) env('PROJECT_IMAGE_INSPECTION_MAX_BYTES', 8388608),
     'image_inspection_max_pixels' => (int) env('PROJECT_IMAGE_INSPECTION_MAX_PIXELS', 12000000),
-    'allowed_mime_types' => [
-        'image/jpeg',
-        'image/png',
-        'image/webp',
-        'application/pdf',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        'text/plain',
-    ],
+    'submission_types' => $submissionTypes,
+    'allowed_mime_types' => array_values(array_unique(array_merge(
+        [],
+        ...array_column($submissionTypes, 'mime_types')
+    ))),
     'dark_image_threshold' => (int) env('PROJECT_DARK_IMAGE_THRESHOLD', 12),
     'dark_image_ratio' => (float) env('PROJECT_DARK_IMAGE_RATIO', 0.97),
     'white_image_threshold' => (int) env('PROJECT_WHITE_IMAGE_THRESHOLD', 248),

@@ -145,12 +145,12 @@ class AppVersionPolicyTest extends TestCase
             ->assertJsonPath('data.download_url', 'https://rokn.app/downloads/Rokn.apk');
     }
 
-    public function test_old_android_client_without_channel_prefers_legacy_then_safe_play_fallback(): void
+    public function test_android_client_without_channel_prefers_legacy_then_safe_play_fallback(): void
     {
         $this->insertVersion('android', '3.0.0', 30, null, false, 'play');
         $this->insertVersion('android', '4.0.0', 40, null, true, 'direct');
 
-        $this->postJson('/api/app/check-version', [
+        $this->postJson('/api/v1/app/check-version', [
             'platform' => 'android',
             'version' => 20,
         ])->assertOk()
@@ -160,7 +160,7 @@ class AppVersionPolicyTest extends TestCase
 
         $this->insertVersion('android', '2.5.0', 25, null, false, null);
 
-        $this->postJson('/api/app/check-version', [
+        $this->postJson('/api/v1/app/check-version', [
             'platform' => 'android',
             'version' => 20,
         ])->assertOk()

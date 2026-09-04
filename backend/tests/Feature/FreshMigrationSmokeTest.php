@@ -37,6 +37,26 @@ final class FreshMigrationSmokeTest extends TestCase
             self::assertTrue(Schema::hasTable($table), "Missing release table: {$table}");
         }
 
+        foreach ([
+            'exam_security_logs',
+            'exam_answers',
+            'exams_result_details',
+            'exams_result_detailss',
+            'exams_results',
+            'exam_attempts',
+            'questions',
+            'random_quizzes',
+            'quizzes',
+            'exams',
+            'lists',
+        ] as $table) {
+            self::assertFalse(Schema::hasTable($table), "Retired exam table still exists: {$table}");
+        }
+
+        self::assertFalse(Schema::hasColumn('lessons', 'quiz_id'));
+        self::assertFalse(Schema::hasColumn('courses', 'questions_count'));
+        self::assertFalse(Schema::hasColumn('courses', 'exam_count'));
+
         if (DB::connection()->getDriverName() !== 'sqlite') {
             return;
         }
@@ -46,9 +66,6 @@ final class FreshMigrationSmokeTest extends TestCase
         $this->assertSqliteForeignKey('course_enrollments', 'course_id', 'courses');
         $this->assertSqliteForeignKey('course_modules', 'course_id', 'courses');
         $this->assertSqliteForeignKey('course_sections', 'course_id', 'courses');
-        $this->assertSqliteForeignKey('exam_attempts', 'course_id', 'courses');
-        $this->assertSqliteForeignKey('exam_attempts', 'section_id', 'course_sections');
-        $this->assertSqliteForeignKey('questions', 'list_id', 'lists');
     }
 
     private function assertSqliteForeignKey(string $table, string $column, string $target): void

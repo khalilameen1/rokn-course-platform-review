@@ -6,11 +6,10 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\CourseSection;
 use App\Models\Order;
-use App\Support\DatabaseCapabilities;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use App\Models\FinancialEntitlementHold;
 
 final class CourseChatAccessService
 {
@@ -33,6 +32,91 @@ final class CourseChatAccessService
     public function entitlementFor(int $userId, int $courseId): array
     {
         return $this->resolveEntitlement($userId, $courseId)['entitlement'];
+    }
+
+    /** @param Collection<int,int>|array<int,int> $courseIds @return array<int,array<string,mixed>> */
+    public function entitlementsFor(int $userId, Collection|array $courseIds): array
+    {
+        $courseIds = collect($courseIds)->map(fn ($id) => (int) $id)->filter()->unique()->values();
+        if ($courseIds->isEmpty()) return [];
+
+        $courses = Course::query()->whereIn('id', $courseIds)->withCount('sections')->get()->keyBy('id');
+        $candidates = $this->activeEnrollments($userId, $courseIds->all())
+            ->with($this->enrollmentRelations())->get();
+        $holds = $this->provenance->schemaAvailable()
+            ? FinancialEntitlementHold::query()->where('user_id', $userId)
+                ->whereIn('course_id', $courseIds)->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
+                ->get(['course_id', 'course_order_id', 'entitlement_scope'])
+            : collect();
+        $financial = $this->financialRisk->variableCostDecisions($candidates);
+        $result = [];
+        foreach ($courseIds as $courseId) {
+            $course = $courses->get($courseId);
+            if (!$course || !$course->isPublishedForLearning()) {
+                $result[$courseId] = $this->emptyEntitlement();
+                continue;
+            }
+            $pool = $candidates->where('course_id', $courseId);
+            $eligible = $pool->reject(fn (CourseEnrollment $row) => $this->hasLoadedHold($row, $holds, ['course']));
+            $preferred = $this->preferredEnrollmentLoaded($eligible, $holds, $financial);
+            $result[$courseId] = $preferred
+                ? $this->entitlementPayloadLoaded($preferred, $eligible, $holds, $financial)
+                : $this->emptyEntitlement();
+        }
+        return $result;
+    }
+
+    private function emptyEntitlement(): array
+    {
+        return ['has_learning_access'=>false,'access_type'=>'none','chat_available'=>false,
+            'certificate_available'=>false,'plan_code'=>null,'plan_name'=>null,
+            'project_feedback_level'=>'pass_only'];
+    }
+
+    private function hasLoadedHold(CourseEnrollment $row, Collection $holds, array $scopes): bool
+    {
+        if (!$row->order_id) return false;
+        $planOrderId = (int) ($row->access_plan_order_id ?: $row->order_id);
+        return $holds->contains(function ($hold) use ($row, $scopes, $planOrderId): bool {
+            if ((int) $hold->course_id !== (int) $row->course_id || !in_array($hold->entitlement_scope, $scopes, true)) return false;
+            $expected = $hold->entitlement_scope === 'course' ? (int) $row->order_id : $planOrderId;
+            return (int) $hold->course_order_id === $expected;
+        });
+    }
+
+    private function variableAllowedLoaded(CourseEnrollment $row, Collection $holds, array $financial): bool
+    {
+        $order=$row->order; $planOrder=$row->accessPlanOrder;
+        $paid=$order && $order->isFinanciallyEffective() && $order->payment_method!==Order::PAYMENT_METHOD_COURSE_CODE
+            && ((int)$order->total_coins>0 || (float)$order->final_amount>0);
+        $code=$order && $order->isFinanciallyEffective() && $order->payment_method===Order::PAYMENT_METHOD_COURSE_CODE
+            && $order->courseCode && !$order->courseCode->isInstitutionalGrant();
+        return $row->isActive() && ($paid || $code || $this->isPaidPlanUpgrade($row,$planOrder))
+            && !$this->hasLoadedHold($row,$holds,['course','chat','plan'])
+            && ($financial[(int)$row->id] ?? false);
+    }
+
+    private function preferredEnrollmentLoaded(Collection $rows, Collection $holds, array $financial): ?CourseEnrollment
+    {
+        $variable=$rows->filter(fn($row)=>$this->variableAllowedLoaded($row,$holds,$financial));
+        return ($variable->isNotEmpty()?$variable:$rows)->sortByDesc(fn($row)=>$this->planCapabilityRank($row))->first();
+    }
+
+    private function entitlementPayloadLoaded(CourseEnrollment $row, Collection $eligible, Collection $holds, array $financial): array
+    {
+        $order=$row->order; $planOrder=$row->accessPlanOrder;
+        $isPaid=$order && $order->isFinanciallyEffective() && $order->payment_method!==Order::PAYMENT_METHOD_COURSE_CODE && ((int)$order->total_coins>0 || (float)$order->final_amount>0);
+        $isCode=$order && $order->payment_method===Order::PAYMENT_METHOD_COURSE_CODE;
+        $isGrant=$isCode && (!$order->courseCode || $order->courseCode->isInstitutionalGrant());
+        $full=$isCode && $order->courseCode && !$isGrant; $upgrade=$this->isPaidPlanUpgrade($row,$planOrder);
+        $terms=$this->plans->termsForEnrollment($row); $public=$terms?$this->plans->publicPayloadFromTerms($terms):null;
+        $chat=$eligible->contains(function($candidate) use($holds,$financial){$terms=$this->plans->termsForEnrollment($candidate);$contract=$this->plans->publicPayloadFromTerms($terms??[]);return $terms!==null && (bool)($contract['chat_enabled']??false) && $this->variableAllowedLoaded($candidate,$holds,$financial);});
+        $variable=$this->variableAllowedLoaded($row,$holds,$financial);
+        return ['has_learning_access'=>true,'access_type'=>($isPaid||$upgrade)?'paid':($isGrant?'scholarship':($full?'course_code':'free')),
+            'chat_available'=>$chat,'certificate_available'=>(!$isGrant||$upgrade)&&($terms?(bool)($terms['certificate_enabled']??false):$row->access_plan_id===null),
+            'plan_code'=>$terms['code']??$row->accessPlan?->code,'plan_name'=>$terms['name_ar']??$row->accessPlan?->name_ar,
+            'chat_message_limit'=>$chat&&$variable?(int)($public['chat_message_limit']??0):0,
+            'project_feedback_level'=>$variable?($public['project_feedback_level']??'pass_only'):'pass_only'];
     }
 
     /**
@@ -60,7 +144,7 @@ final class CourseChatAccessService
         // Resolve the candidate enrollment graph once. Previously
         // entitlementFor() loaded it here and hasChatAccess() loaded the same
         // course, parent links, orders and plans again in the same request.
-        $candidates = $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        $candidates = $this->activeEnrollments($userId, [$courseId])
             ->with($this->enrollmentRelations())
             ->get();
         $eligibleCandidates = $candidates->reject(fn (CourseEnrollment $candidate): bool =>
@@ -139,13 +223,7 @@ final class CourseChatAccessService
      */
     public function enrollmentHasCertificateAccess(CourseEnrollment $enrollment): bool
     {
-        $relations = ['order.courseCode'];
-        if (DatabaseCapabilities::hasColumn('course_enrollments', 'access_plan_order_id')) {
-            $relations[] = 'accessPlanOrder';
-        }
-        if (DatabaseCapabilities::hasTable('course_access_plans')) {
-            $relations[] = 'accessPlan';
-        }
+        $relations = ['order.courseCode', 'accessPlanOrder', 'accessPlan'];
         $enrollment->loadMissing($relations);
 
         if ($this->provenance->enrollmentHasActiveHold($enrollment, ['course'])) {
@@ -172,7 +250,7 @@ final class CourseChatAccessService
             return false;
         }
 
-        return $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        return $this->activeEnrollments($userId, [$courseId])
             ->get()
             ->contains(fn (CourseEnrollment $enrollment): bool =>
                 !$this->provenance->enrollmentHasActiveHold($enrollment, ['course'])
@@ -186,7 +264,7 @@ final class CourseChatAccessService
             return false;
         }
 
-        return $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        return $this->activeEnrollments($userId, [$courseId])
             ->with($this->enrollmentRelations())
             ->get()
             ->contains(fn (CourseEnrollment $enrollment): bool =>
@@ -200,7 +278,7 @@ final class CourseChatAccessService
             return null;
         }
 
-        $eligible = $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        $eligible = $this->activeEnrollments($userId, [$courseId])
             ->with($this->enrollmentRelations())
             ->get()
             ->reject(fn (CourseEnrollment $candidate): bool =>
@@ -217,7 +295,7 @@ final class CourseChatAccessService
             return null;
         }
 
-        return $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        return $this->activeEnrollments($userId, [$courseId])
             ->with($this->enrollmentRelations())
             ->get()
             ->filter(fn (CourseEnrollment $candidate): bool =>
@@ -239,7 +317,7 @@ final class CourseChatAccessService
             return null;
         }
 
-        $candidates = $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        $candidates = $this->activeEnrollments($userId, [$courseId])
             ->with($this->enrollmentRelations())
             ->get()
             ->reject(fn (CourseEnrollment $candidate): bool =>
@@ -261,16 +339,12 @@ final class CourseChatAccessService
             ?? $candidates->first();
     }
 
-    /** A parent-course enrollment may legitimately fund one of its subcourses. */
+    /** The captured entitlement must belong to this exact course. */
     public function enrollmentGrantsCourse(
         CourseEnrollment $enrollment,
         int $courseId
     ): bool {
-        return in_array(
-            (int) $enrollment->course_id,
-            $this->accessCourseIds($courseId),
-            true
-        );
+        return (int) $enrollment->course_id === $courseId;
     }
 
     /**
@@ -284,7 +358,7 @@ final class CourseChatAccessService
         int $courseId,
         int $enrollmentId
     ): ?CourseEnrollment {
-        $enrollment = $this->activeEnrollments($userId, $this->accessCourseIds($courseId))
+        $enrollment = $this->activeEnrollments($userId, [$courseId])
             ->whereKey($enrollmentId)
             ->with($this->enrollmentRelations())
             ->first();
@@ -322,7 +396,7 @@ final class CourseChatAccessService
                 $enrollment,
                 ['course', 'chat', 'plan']
             )
-            && $this->financialRisk->allowsVariableCostFeatures($enrollment);
+            && $this->financialRisk->allowsVariableCostFeaturesReadOnly($enrollment);
     }
 
     private function activeEnrollments(int $userId, array $courseIds): Builder
@@ -341,19 +415,6 @@ final class CourseChatAccessService
         $course = Course::query()->withCount('sections')->find($courseId);
 
         return $course !== null && $course->isPublishedForLearning();
-    }
-
-    /** @return list<int> */
-    private function accessCourseIds(int $courseId): array
-    {
-        $parentIds = CourseSection::query()
-            ->where('sectionable_type', Course::class)
-            ->where('sectionable_id', $courseId)
-            ->pluck('course_id')
-            ->map(static fn ($id): int => (int) $id)
-            ->all();
-
-        return array_values(array_unique([$courseId, ...$parentIds]));
     }
 
     private function isPaidPlanUpgrade(
@@ -412,14 +473,6 @@ final class CourseChatAccessService
     /** @return list<string> */
     private function enrollmentRelations(): array
     {
-        $relations = ['order.courseCode'];
-        if (DatabaseCapabilities::hasColumn('course_enrollments', 'access_plan_order_id')) {
-            $relations[] = 'accessPlanOrder';
-        }
-        if (DatabaseCapabilities::hasTable('course_access_plans')) {
-            $relations[] = 'accessPlan';
-        }
-
-        return $relations;
+        return ['order.courseCode', 'accessPlanOrder', 'accessPlan'];
     }
 }

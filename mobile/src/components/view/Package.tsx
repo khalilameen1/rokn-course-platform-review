@@ -21,7 +21,6 @@ interface PackageProps {
   rPrice: string;
   buttonTitle?: string;
   onPress?: () => void;
-  mostSold?: boolean;
   disabled?: boolean;
   width?: number;
   displayPrice?: string;
@@ -97,7 +96,7 @@ const styles = StyleSheet.create({
     borderColor: Palette.lineSoft,
     backgroundColor: Palette.surface,
   },
-  title: {...Type.caption, ...textDirection, color: Palette.textMuted, marginTop: Spacing.md, flexShrink: 1},
+  title: {...Type.caption, ...textDirection, color: Palette.textMuted, flexShrink: 1},
   coins: {marginTop: Spacing.xxs},
   coinsText: {...Type.title, color: Palette.text},
   price: {...Type.caption, ...textDirection, color: '#E9C66F', marginTop: Spacing.xxs},

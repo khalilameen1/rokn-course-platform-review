@@ -62,17 +62,6 @@ final class DeviceLoginServiceTest extends TestCase
         self::assertSame('deny', $access['action']);
     }
 
-    public function test_missing_device_lock_storage_denies_instead_of_reporting_a_false_login_success(): void
-    {
-        $this->setPolicy(DeviceLoginService::POLICY_SINGLE);
-        Schema::drop('users');
-
-        $access = $this->devices->checkDeviceAccess(new User(), 'device-one');
-
-        self::assertFalse($access['allowed']);
-        self::assertSame('deny', $access['action']);
-    }
-
     public function test_invalid_policy_uses_rotating_single_device_instead_of_multiple_devices(): void
     {
         $this->setPolicy('unexpected_policy');

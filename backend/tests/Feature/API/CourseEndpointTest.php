@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature\API;
 
 use App\Models\CourseSection;
-use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Feature tests covering Course API endpoints:
@@ -22,6 +20,7 @@ class CourseEndpointTest extends ApiTestCase
             ->assertOk()
             ->assertJsonPath('status', 200)
             ->assertJsonPath('success', true)
+            ->assertJsonMissingPath('data.courses.0.access_plans')
             ->assertJsonStructure([
                 'data' => [
                     'courses',
@@ -36,10 +35,24 @@ class CourseEndpointTest extends ApiTestCase
                 ],
             ]);
 
-        $this->getJson('/api/v1/courses')
+        // The first release has one catalogue contract. Keep the retired
+        // unversioned-style alias closed instead of maintaining two payloads.
+        $this->getJson('/api/v1/courses')->assertNotFound();
+    }
+
+    public function test_catalogue_cards_do_not_mix_account_state_into_public_discovery(): void
+    {
+        $guestCourses = $this->getJson('/api/v1/courses/list')
             ->assertOk()
-            ->assertJsonPath('status', 200)
-            ->assertJsonPath('success', true);
+            ->json('data.courses');
+        $accountCourses = $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/courses/list')
+            ->assertOk()
+            ->assertJsonMissingPath('data.courses.0.access_type')
+            ->assertJsonMissingPath('data.courses.0.learning_started')
+            ->json('data.courses');
+
+        self::assertSame($guestCourses, $accountCourses);
     }
 
     public function test_legacy_published_course_without_new_catalogue_relations_stays_discoverable(): void
@@ -90,6 +103,7 @@ class CourseEndpointTest extends ApiTestCase
         CourseSection::create([
             'course_id' => $this->courseId,
             'title' => 'Second section',
+            'section_type' => 'lesson',
             'sectionable_type' => null,
             'sectionable_id' => null,
             'order' => 2,
@@ -126,30 +140,16 @@ class CourseEndpointTest extends ApiTestCase
 
     public function test_can_view_course_details(): void
     {
-        Schema::create('course_modules', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('course_id');
-            $table->unsignedInteger('order')->default(1);
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        $this->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('status', 200)
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.id', $this->courseId)
+            ->assertJsonPath('data.access_plans.0.code', 'basic')
+            ->assertJsonPath('data.access_plans.1.code', 'guided');
 
-        try {
-            $this->getJson("/api/v1/courses/{$this->courseId}/details")
-                ->assertOk()
-                ->assertJsonPath('status', 200)
-                ->assertJsonPath('success', true)
-                ->assertJsonPath('data.id', $this->courseId);
-
-            $this->getJson("/api/v1/course/{$this->courseId}")
-                ->assertOk()
-                ->assertJsonPath('status', 200)
-                ->assertJsonPath('success', true)
-                ->assertJsonPath('message', 'تم تحميل الكورس')
-                ->assertJsonPath('data.id', $this->courseId);
-        } finally {
-            Schema::dropIfExists('course_modules');
-        }
+        $this->getJson("/api/v1/course/{$this->courseId}")
+            ->assertNotFound();
     }
 
     public function test_catalog_visible_coming_soon_course_has_a_guest_details_page(): void
@@ -184,37 +184,16 @@ class CourseEndpointTest extends ApiTestCase
             'course_id' => $courseId,
         ]);
 
-        Schema::create('course_modules', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('course_id');
-            $table->unsignedInteger('order')->default(1);
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        try {
-            $this->getJson("/api/v1/courses/{$courseId}/details")
-                ->assertOk()
-                ->assertJsonPath('data.id', $courseId)
-                ->assertJsonPath('data.is_coming_soon', true);
-        } finally {
-            Schema::dropIfExists('course_modules');
-        }
+        $this->getJson("/api/v1/courses/{$courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.id', $courseId)
+            ->assertJsonPath('data.is_coming_soon', true);
     }
 
-    public function test_every_legacy_lesson_shape_exposes_the_same_duration(): void
+    public function test_legacy_lesson_route_is_absent(): void
     {
         $this->getJson('/api/v1/lesson/10')
-            ->assertOk()
-            ->assertJsonPath('data.duration_minutes', 15);
-
-        DB::table('lessons')->where('id', 10)->update(['is_opened' => false]);
-
-        $this->getJson('/api/v1/lesson/10')
-            ->assertOk()
-            ->assertJsonPath('message', 'تم تحميل العينة المجانية')
-            ->assertJsonPath('data.duration_minutes', 15)
-            ->assertJsonMissingPath('data.video_link');
+            ->assertNotFound();
     }
 
     public function test_authenticated_user_can_view_course_progress(): void
@@ -249,23 +228,11 @@ class CourseEndpointTest extends ApiTestCase
             'description_en' => '',
         ]);
 
-        Schema::create('course_modules', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('course_id');
-            $table->unsignedInteger('order')->default(1);
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        try {
-            $this->withHeader('Accept-Language', 'en')
-                ->getJson("/api/v1/courses/{$this->courseId}/details")
-                ->assertOk()
-                ->assertJsonPath('data.title', 'عنوان عربي موجود')
-                ->assertJsonPath('data.description', 'وصف عربي موجود');
-        } finally {
-            Schema::dropIfExists('course_modules');
-        }
+        $this->withHeader('Accept-Language', 'en')
+            ->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.title', 'عنوان عربي موجود')
+            ->assertJsonPath('data.description', 'وصف عربي موجود');
     }
 
     public function test_user_without_active_course_access_cannot_rate_course(): void
@@ -287,20 +254,11 @@ class CourseEndpointTest extends ApiTestCase
 
     public function test_course_details_return_the_current_students_rating(): void
     {
-        Schema::create('course_modules', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('course_id');
-            $table->unsignedInteger('order')->default(1);
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/course-codes/redeem', ['code' => 'TESTCODE'])
+            ->assertOk();
 
-        try {
-            $this->actingAs($this->user, 'api')
-                ->postJson('/api/v1/course-codes/redeem', ['code' => 'TESTCODE'])
-                ->assertOk();
-
-            DB::table('lesson_watch_evidence')->insert([
+        DB::table('lesson_watch_evidence')->insert([
                 'user_id' => $this->user->id,
                 'lesson_id' => 10,
                 'course_section_id' => $this->sectionId,
@@ -311,31 +269,28 @@ class CourseEndpointTest extends ApiTestCase
                 'completed_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
+        ]);
 
-            $this->actingAs($this->user, 'api')
-                ->postJson("/api/v1/courses/{$this->courseId}/rate", [
-                    'rating' => 4,
-                    'version' => 0,
-                ])
-                ->assertOk()
-                ->assertJsonPath('data.rating', 4);
+        $this->actingAs($this->user, 'api')
+            ->postJson("/api/v1/courses/{$this->courseId}/rate", [
+                'rating' => 4,
+                'version' => 0,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.rating', 4);
 
-            $this->actingAs($this->user, 'api')
-                ->getJson("/api/v1/courses/{$this->courseId}/details")
-                ->assertOk()
-                ->assertJsonPath('data.user_rating.rating', 4)
-                ->assertJsonPath('data.ratings_count', 1)
-                ->assertJsonPath('data.average_rating', 4);
-        } finally {
-            Schema::dropIfExists('course_modules');
-        }
+        $this->actingAs($this->user, 'api')
+            ->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.user_rating.rating', 4)
+            ->assertJsonPath('data.ratings_count', 1)
+            ->assertJsonPath('data.average_rating', 4);
     }
 
-    public function test_authenticated_user_can_view_project_evaluations(): void
+    public function test_retired_project_evaluations_endpoint_is_absent(): void
     {
-        $response = $this->actingAs($this->user, 'api')
-            ->getJson("/api/v1/courses/{$this->courseId}/project-evaluations");
-        $this->assertNotEquals(404, $response->status());
+        $this->actingAs($this->user, 'api')
+            ->getJson("/api/v1/courses/{$this->courseId}/project-evaluations")
+            ->assertNotFound();
     }
 }

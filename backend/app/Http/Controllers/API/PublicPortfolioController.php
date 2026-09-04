@@ -18,10 +18,16 @@ final class PublicPortfolioController extends Controller
         PublicPortfolioService $service,
         ApiResponseService $responses
     ): JsonResponse {
-        $highlight = $request->query('certificate');
-        $portfolio = is_string($highlight) && $highlight !== ''
-            ? $service->findCredential($highlight)
-            : $service->find($slug);
+        $validated = $request->validate([
+            'page' => 'nullable|integer|min:1',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+        $paginated = $request->filled('page') || $request->filled('per_page');
+        $portfolio = $service->find(
+            $slug,
+            $paginated ? (int) ($validated['page'] ?? 1) : null,
+            $paginated ? (int) ($validated['per_page'] ?? 24) : null
+        );
         if (!$portfolio) {
             return $responses->error('المعرض غير متاح', 404);
         }

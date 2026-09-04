@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\ApiErrorContract;
+use App\Support\BusinessClock;
 use Illuminate\Http\JsonResponse;
 
 final class PaymentApiResponseService
@@ -26,12 +28,17 @@ final class PaymentApiResponseService
     ): JsonResponse {
         $payload = [
             'status' => $httpStatus,
+            'http_status' => $httpStatus,
             'success' => $success,
             'data' => $data === [] ? null : $data,
             'message' => $message,
+            'server_time' => BusinessClock::utcNow()->toIso8601String(),
         ];
 
-        if ($code !== null) {
+        if (!$success) {
+            $payload['code'] = $code ?? ApiErrorContract::codeForStatus($httpStatus);
+            $payload['retryable'] = ApiErrorContract::retryable($httpStatus);
+        } elseif ($code !== null) {
             $payload['code'] = $code;
         }
         if ($errors !== null) {

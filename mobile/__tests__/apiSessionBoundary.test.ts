@@ -2,10 +2,13 @@ import {AxiosHeaders} from 'axios';
 
 const mockGetItem = jest.fn();
 const mockPeekSession = jest.fn();
+const mockSecureRandomUuid = jest.fn(
+  () => '11111111-1111-4111-8111-111111111111',
+);
 
 jest.mock('react-native', () => ({Platform: {OS: 'android'}}));
 jest.mock('../src/constants/helpers', () => ({
-  AsyncKeys: {LANGUAGE: 'LANGUAGE', USER_DATA: 'USER_DATA', IS_LOGIN: 'IS_LOGIN'},
+  AsyncKeys: {USER_DATA: 'USER_DATA'},
   extractApiToken: (value: unknown) =>
     typeof value === 'object' && value !== null && 'api_token' in value
       ? String((value as {api_token: unknown}).api_token)
@@ -16,6 +19,8 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 jest.mock('../src/services/secureSession', () => ({
   peekSecureSession: (...args: unknown[]) => mockPeekSession(...args),
+  loadSecureSession: (...args: unknown[]) => mockGetItem(...args),
+  deleteSecureSessionIfToken: jest.fn(),
 }));
 jest.mock('../src/navigation/RootNavigationHelper', () => ({
   getLoginReturnToSnapshot: jest.fn(),
@@ -35,25 +40,29 @@ jest.mock('../src/services/pushDeviceState', () => ({
 }));
 jest.mock('../src/utils/serverClock', () => ({observeServerTime: jest.fn()}));
 jest.mock('../src/utils/secureRandom', () => ({
-  secureRandomUuid: jest.fn(() => '11111111-1111-4111-8111-111111111111'),
+  secureRandomUuid: () => mockSecureRandomUuid(),
 }));
 jest.mock('../src/services/installationIdentity', () => ({
   getInstallationId: jest.fn(async () => null),
 }));
 
 import {
+  DEFAULT_READ_RECOVERY_BUDGET_MS,
   onFulfilledRequest,
   onRejectedResponse,
+  publicRequest,
   responseConfig,
+  type RoknRequestConfig,
 } from '../src/constants/api';
 
 describe('public request session boundary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetItem.mockImplementation(async (key: string) =>
-      key === 'LANGUAGE' ? 'ar' : null,
-    );
+    mockGetItem.mockResolvedValue(null);
     mockPeekSession.mockReturnValue({ready: false, session: null, epoch: 1});
+    mockSecureRandomUuid.mockReturnValue(
+      '11111111-1111-4111-8111-111111111111',
+    );
   });
 
   it('does not wait for secure session storage on a public request', async () => {
@@ -66,9 +75,23 @@ describe('public request session boundary', () => {
 
     await responseConfig(config);
 
-    expect(mockGetItem).toHaveBeenCalledWith('LANGUAGE');
-    expect(mockGetItem).not.toHaveBeenCalledWith('USER_DATA');
+    expect(mockGetItem).not.toHaveBeenCalled();
     expect(config.headers.has('Authorization')).toBe(false);
+  });
+
+  it('lets the server assign tracing identity when native UUID generation is unavailable', async () => {
+    mockSecureRandomUuid.mockImplementationOnce(() => {
+      throw new Error('SECURE_RANDOM_UUID_UNAVAILABLE');
+    });
+    const config = {
+      method: 'get',
+      url: 'courses/list',
+      headers: new AxiosHeaders(),
+      optionalAuthorization: true,
+    } as Parameters<typeof responseConfig>[0];
+
+    await expect(responseConfig(config)).resolves.toBe(config);
+    expect(config.headers.has('X-Request-Id')).toBe(false);
   });
 
   it('gives ordinary reads one bounded logical deadline across retries', async () => {
@@ -84,8 +107,8 @@ describe('public request session boundary', () => {
     expect(
       (config as typeof config & {roknNetworkRetryDeadlineAt: number})
         .roknNetworkRetryDeadlineAt,
-    ).toBe(1_020_000);
-    expect(config.timeout).toBe(20_000);
+    ).toBe(1_012_000);
+    expect(config.timeout).toBe(DEFAULT_READ_RECOVERY_BUDGET_MS);
     now.mockRestore();
   });
 
@@ -140,27 +163,38 @@ describe('public request session boundary', () => {
   });
 
   it.each([
-    ['guest to user', {ready: false, session: null, epoch: 10}, {ready: true, session: {api_token: 'user-one'}, epoch: 11}],
-    ['user to user', {ready: true, session: {api_token: 'user-one'}, epoch: 20}, {ready: true, session: {api_token: 'user-two'}, epoch: 21}],
-  ])('rejects a %s response captured before the session epoch changed', async (_label, before, after) => {
-    mockPeekSession.mockReturnValue(before);
-    const config = {
-      method: 'get',
-      url: 'courses/list',
-      headers: new AxiosHeaders(),
-      optionalAuthorization: true,
-    } as Parameters<typeof responseConfig>[0];
-    await responseConfig(config);
+    [
+      'guest to user',
+      {ready: false, session: null, epoch: 10},
+      {ready: true, session: {api_token: 'user-one'}, epoch: 11},
+    ],
+    [
+      'user to user',
+      {ready: true, session: {api_token: 'user-one'}, epoch: 20},
+      {ready: true, session: {api_token: 'user-two'}, epoch: 21},
+    ],
+  ])(
+    'rejects a %s response captured before the session epoch changed',
+    async (_label, before, after) => {
+      mockPeekSession.mockReturnValue(before);
+      const config = {
+        method: 'get',
+        url: 'courses/list',
+        headers: new AxiosHeaders(),
+        optionalAuthorization: true,
+      } as Parameters<typeof responseConfig>[0];
+      await responseConfig(config);
 
-    mockPeekSession.mockReturnValue(after);
-    await expect(
-      onFulfilledRequest({
-        config,
-        data: {},
-        headers: {},
-      } as never),
-    ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
-  });
+      mockPeekSession.mockReturnValue(after);
+      await expect(
+        onFulfilledRequest({
+          config,
+          data: {},
+          headers: {},
+        } as never),
+      ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
+    },
+  );
 
   it('keeps a public guest response when slow storage settles to the same guest', async () => {
     mockPeekSession.mockReturnValue({ready: false, session: null, epoch: 10});
@@ -178,15 +212,34 @@ describe('public request session boundary', () => {
     ).resolves.toBeDefined();
   });
 
+  it('keeps an account-neutral catalogue response when login commits in flight', async () => {
+    mockPeekSession.mockReturnValue({ready: false, session: null, epoch: 10});
+    const config = {
+      method: 'get',
+      url: 'courses/list',
+      headers: new AxiosHeaders(),
+      skipAuthorization: true,
+    } as Parameters<typeof responseConfig>[0];
+    await responseConfig(config);
+
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'new-session'},
+      epoch: 11,
+    });
+    await expect(
+      onFulfilledRequest({config, data: {}, headers: {}} as never),
+    ).resolves.toBeDefined();
+    expect(config.headers.has('Authorization')).toBe(false);
+  });
+
   it('does not resend a read-only network retry after the account epoch changes', async () => {
     mockPeekSession.mockReturnValue({
       ready: true,
       session: {api_token: 'user-one'},
       epoch: 30,
     });
-    mockGetItem.mockImplementation(async (key: string) =>
-      key === 'LANGUAGE' ? 'ar' : {api_token: 'user-one'},
-    );
+    mockGetItem.mockResolvedValue({api_token: 'user-one'});
     const config = {
       method: 'get',
       url: 'profile',
@@ -195,16 +248,15 @@ describe('public request session boundary', () => {
     await responseConfig(config);
     expect(config.headers.get('Authorization')).toBe('Bearer user-one');
 
-    (config as typeof config & {roknNetworkRetryCount: number})
-      .roknNetworkRetryCount = 1;
+    (
+      config as typeof config & {roknNetworkRetryCount: number}
+    ).roknNetworkRetryCount = 1;
     mockPeekSession.mockReturnValue({
       ready: true,
       session: {api_token: 'user-two'},
       epoch: 31,
     });
-    mockGetItem.mockImplementation(async (key: string) =>
-      key === 'LANGUAGE' ? 'ar' : {api_token: 'user-two'},
-    );
+    mockGetItem.mockResolvedValue({api_token: 'user-two'});
 
     await expect(responseConfig(config)).rejects.toThrow(
       'ACCOUNT_CHANGED_DURING_REQUEST',
@@ -218,9 +270,7 @@ describe('public request session boundary', () => {
       session: {api_token: 'user-one'},
       epoch: 40,
     });
-    mockGetItem.mockImplementation(async (key: string) =>
-      key === 'LANGUAGE' ? 'ar' : {api_token: 'user-one'},
-    );
+    mockGetItem.mockResolvedValue({api_token: 'user-one'});
     const config = {
       method: 'get',
       url: 'profile',
@@ -229,16 +279,221 @@ describe('public request session boundary', () => {
     await responseConfig(config);
     mockGetItem.mockClear();
 
-    (config as typeof config & {roknNetworkRetryCount: number})
-      .roknNetworkRetryCount = 1;
+    (
+      config as typeof config & {roknNetworkRetryCount: number}
+    ).roknNetworkRetryCount = 1;
     await responseConfig(config);
 
     expect(config.headers.get('Authorization')).toBe('Bearer user-one');
-    expect(mockGetItem).toHaveBeenCalledWith('LANGUAGE');
-    // The ownership assertion reads the captured owner's durable token. The
-    // retry must not perform a second auth lookup that could replace it.
+    // The in-memory secure-session snapshot owns this process. A retry must
+    // not perform another native auth read that could stall or replace it.
     expect(
       mockGetItem.mock.calls.filter(([key]) => key === 'USER_DATA'),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
+  });
+
+  it('rejects an account write when the account changes before Axios intercepts it', async () => {
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'user-one'},
+      epoch: 50,
+    });
+    const adapter = jest.fn(async config => ({
+      config,
+      data: {ok: true},
+      headers: {},
+      status: 200,
+      statusText: 'OK',
+    }));
+
+    const pending = publicRequest.post(
+      'claim-coins',
+      {task: 'daily'},
+      {adapter},
+    );
+    // Axios request interceptors run in a later microtask. The API boundary
+    // must already own user-one before this synchronous account replacement.
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'user-two'},
+      epoch: 51,
+    });
+
+    await expect(pending).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
+    expect(adapter).not.toHaveBeenCalled();
+  });
+
+  it('dispatches a same-owner write with the bearer captured at invocation', async () => {
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'user-one'},
+      epoch: 60,
+    });
+    const adapter = jest.fn(async config => ({
+      config,
+      data: {ok: true},
+      headers: {},
+      status: 200,
+      statusText: 'OK',
+    }));
+
+    await publicRequest.put('user/profile', {name: 'Rokn'}, {adapter});
+
+    expect(adapter).toHaveBeenCalledTimes(1);
+    expect(adapter.mock.calls[0][0].headers.get('Authorization')).toBe(
+      'Bearer user-one',
+    );
+  });
+
+  it('does not defer a write until an unknown cold-start session appears', async () => {
+    mockPeekSession.mockReturnValue({ready: false, session: null, epoch: 70});
+    const adapter = jest.fn();
+
+    await expect(
+      publicRequest.delete('saved-folders/12', {adapter}),
+    ).rejects.toThrow('SESSION_NOT_READY_FOR_ACCOUNT_WRITE');
+    expect(adapter).not.toHaveBeenCalled();
+    expect(mockGetItem).not.toHaveBeenCalled();
+  });
+
+  it('keeps an explicitly public OAuth write account-neutral during bootstrap', async () => {
+    mockPeekSession.mockReturnValue({ready: false, session: null, epoch: 75});
+    const adapter = jest.fn(async config => ({
+      config,
+      data: {ok: true},
+      headers: {},
+      status: 200,
+      statusText: 'OK',
+    }));
+
+    await publicRequest.post('social-auth/complete', {code: 'provider-code'}, {
+      adapter,
+      skipAuthorization: true,
+    } as RoknRequestConfig);
+
+    expect(adapter).toHaveBeenCalledTimes(1);
+    expect(adapter.mock.calls[0][0].headers.has('Authorization')).toBe(false);
+    expect(mockGetItem).not.toHaveBeenCalled();
+  });
+
+  it('binds direct axios mutations through the same request policy', async () => {
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'user-one'},
+      epoch: 80,
+    });
+    const adapter = jest.fn(async config => ({
+      config,
+      data: {ok: true},
+      headers: {},
+      status: 200,
+      statusText: 'OK',
+    }));
+    await publicRequest.request({
+      method: 'post',
+      url: 'claim-coins',
+      adapter,
+    });
+
+    expect(adapter).toHaveBeenCalledTimes(1);
+    expect(adapter.mock.calls[0][0].headers.get('Authorization')).toBe(
+      'Bearer user-one',
+    );
+  });
+
+  it('retries a transient read once through the captured request policy', async () => {
+    const requestResult = {data: {ok: true}};
+    const request = jest
+      .spyOn(publicRequest, 'request')
+      .mockResolvedValueOnce(requestResult);
+    const config = {
+      method: 'get',
+      url: 'wallet',
+      headers: new AxiosHeaders(),
+      roknSessionEpoch: 1,
+      roknNetworkRetryDeadlineAt: Date.now() + 5_000,
+    };
+
+    await expect(
+      onRejectedResponse({
+        code: 'ERR_NETWORK',
+        message: 'Network Error',
+        config,
+      }),
+    ).resolves.toBe(requestResult);
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request.mock.calls[0][0]).toEqual(
+      expect.objectContaining({roknNetworkRetryCount: 1}),
+    );
+    request.mockRestore();
+  });
+
+  it('never replays a write after an ambiguous transport failure', async () => {
+    const request = jest.spyOn(publicRequest, 'request');
+    const failure = {
+      code: 'ERR_NETWORK',
+      message: 'Network Error',
+      config: {
+        method: 'post',
+        url: 'claim-coins',
+        headers: new AxiosHeaders(),
+        roknSessionEpoch: 1,
+      },
+    };
+
+    await expect(onRejectedResponse(failure)).rejects.toBe(failure);
+    expect(request).not.toHaveBeenCalled();
+    request.mockRestore();
+  });
+
+  it('never invents a GET when an interceptor error has no request config', async () => {
+    const request = jest.spyOn(publicRequest, 'request');
+    const failure = {code: 'ERR_NETWORK', message: 'Network Error'};
+
+    await expect(onRejectedResponse(failure)).rejects.toBe(failure);
+    expect(request).not.toHaveBeenCalled();
+    request.mockRestore();
+  });
+
+  it('does not start a second retry ladder after the shared ladder is spent', async () => {
+    const request = jest.spyOn(publicRequest, 'request');
+    const failure = {
+      code: 'ERR_NETWORK',
+      message: 'Network Error',
+      config: {
+        method: 'get',
+        url: 'wallet',
+        headers: new AxiosHeaders(),
+        roknSessionEpoch: 1,
+        roknNetworkRetryCount: 3,
+        roknNetworkRetryDeadlineAt: Date.now() + 5_000,
+      },
+    };
+
+    await expect(onRejectedResponse(failure)).rejects.toBe(failure);
+    expect(request).not.toHaveBeenCalled();
+    request.mockRestore();
+  });
+
+  it('cancels a scheduled read retry as soon as its screen aborts', async () => {
+    const controller = new AbortController();
+    const request = jest.spyOn(publicRequest, 'request');
+    const retry = onRejectedResponse({
+      code: 'ERR_NETWORK',
+      message: 'Network Error',
+      config: {
+        method: 'get',
+        url: 'notifications',
+        headers: new AxiosHeaders(),
+        signal: controller.signal,
+        roknSessionEpoch: 1,
+        roknNetworkRetryDeadlineAt: Date.now() + 5_000,
+      },
+    });
+    controller.abort();
+
+    await expect(retry).rejects.toMatchObject({code: 'ERR_CANCELED'});
+    expect(request).not.toHaveBeenCalled();
+    request.mockRestore();
   });
 });

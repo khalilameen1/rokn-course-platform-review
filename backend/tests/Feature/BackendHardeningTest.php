@@ -20,7 +20,6 @@ use App\Models\Contact;
 use App\Models\Order;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
-use App\Models\ProjectSubmissionReviewDecision;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\ProjectSubmissionService;
@@ -53,12 +52,13 @@ final class BackendHardeningTest extends TestCase
 {
     /** @var list<string> */
     private array $tables = [
-        'internal_signals', 'ai_input_attachments', 'account_file_deletions',
+        'course_authoring_revision_entities', 'course_authoring_revisions',
+        'student_section_progress', 'internal_signals', 'ai_input_attachments', 'account_file_deletions',
         'social_oauth_attempts',
         'product_feature_flags',
         'contacts', 'user_level', 'levels', 'user_project_evaluations',
         'project_submission_review_decisions', 'project_submissions',
-        'course_code_usages', 'course_codes',
+        'course_grant_claims', 'course_code_usages', 'course_codes',
         'projects', 'wallet_transactions', 'ai_usage_events', 'ai_entitlement_usages',
         'course_enrollments', 'orders', 'course_access_plans',
         'classification_course', 'classifications', 'course_teacher', 'photos',
@@ -114,7 +114,7 @@ final class BackendHardeningTest extends TestCase
         );
 
         self::assertSame($credit->id, $replay->id);
-        self::assertSame(1, WalletTransaction::query()->count());
+        self::assertSame(2, WalletTransaction::query()->count());
 
         $this->expectException(\UnexpectedValueException::class);
         $wallet->credit(
@@ -147,6 +147,49 @@ final class BackendHardeningTest extends TestCase
         self::assertSame(80, $transaction->balance_after);
         self::assertSame(20, $transaction->paid_balance_after);
         self::assertSame(60, $transaction->reward_balance_after);
+    }
+
+    public function test_wallet_rejects_a_projection_that_disagrees_with_its_ledger_tail(): void
+    {
+        $user = $this->user([
+            'wallet_coins' => 100,
+            'wallet_purchased_coins' => 40,
+            'wallet_reward_coins' => 60,
+        ]);
+        $wallet = app(WalletService::class);
+        $wallet->debit($user->id, 10, 'course_purchase', 'wallet-ledger-tail');
+
+        $user->forceFill([
+            'wallet_coins' => 95,
+            'wallet_reward_coins' => 55,
+        ])->save();
+
+        $this->expectException(\LogicException::class);
+        $wallet->credit(
+            $user->id,
+            1,
+            'test_credit',
+            'wallet-ledger-tail-next',
+            null,
+            [],
+            WalletTransaction::BUCKET_REWARD
+        );
+    }
+
+    public function test_wallet_requires_a_non_empty_idempotency_key(): void
+    {
+        $user = $this->user();
+
+        $this->expectException(\InvalidArgumentException::class);
+        app(WalletService::class)->credit(
+            $user->id,
+            1,
+            'test_credit',
+            '   ',
+            null,
+            [],
+            WalletTransaction::BUCKET_REWARD
+        );
     }
 
     public function test_wallet_refund_replay_returns_the_original_credit_after_allocation_is_consumed(): void
@@ -183,7 +226,7 @@ final class BackendHardeningTest extends TestCase
         self::assertSame(60, (int) $refund->reward_amount);
         self::assertSame(40, (int) $refund->paid_amount);
         self::assertSame(100, (int) $user->fresh()->wallet_coins);
-        self::assertSame(2, WalletTransaction::query()->count());
+        self::assertSame(3, WalletTransaction::query()->count());
     }
 
     public function test_wallet_refund_cannot_exceed_the_unrefunded_debit_allocation(): void
@@ -256,6 +299,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($user, $project);
         $service = app(ProjectSubmissionService::class);
 
         $submission = $service->submit(
@@ -275,10 +319,9 @@ final class BackendHardeningTest extends TestCase
 
         self::assertSame(ProjectSubmission::STATUS_PENDING, $submission->review_status);
         self::assertSame($submission->id, $replay->id);
-        $this->assertDatabaseHas('user_project_evaluations', [
+        $this->assertDatabaseMissing('user_project_evaluations', [
             'user_id' => $user->id,
             'project_id' => $project->id,
-            'passed' => false,
         ]);
 
         $this->expectException(\UnexpectedValueException::class);
@@ -304,6 +347,7 @@ final class BackendHardeningTest extends TestCase
             'fallback_review_delay_seconds' => 30,
             'is_graduation_project' => false,
         ]);
+        $this->grantProjectAccess($user, $project);
         $submission = app(ProjectSubmissionService::class)->submit(
             $user,
             $project,
@@ -352,7 +396,7 @@ final class BackendHardeningTest extends TestCase
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ));
         $submission->forceFill(['evaluation_snapshot' => $legacySnapshot]);
-        self::assertNotNull(ProjectSubmissionEvaluationSnapshot::fromSubmission($submission));
+        self::assertNull(ProjectSubmissionEvaluationSnapshot::fromSubmission($submission));
     }
 
     public function test_project_submission_service_rechecks_course_access_inside_its_transaction(): void
@@ -390,7 +434,7 @@ final class BackendHardeningTest extends TestCase
         }
     }
 
-    public function test_effort_guard_decision_is_append_only_and_drives_the_current_summary(): void
+    public function test_effort_guard_writes_the_only_project_result(): void
     {
         $user = $this->user();
         $project = Project::query()->create([
@@ -399,6 +443,7 @@ final class BackendHardeningTest extends TestCase
             'fallback_review_delay_seconds' => 30,
             'is_graduation_project' => false,
         ]);
+        $this->grantProjectAccess($user, $project);
         $submission = app(ProjectSubmissionService::class)->submit(
             $user,
             $project,
@@ -406,14 +451,11 @@ final class BackendHardeningTest extends TestCase
             null,
             'effort-guard-audit'
         );
-        $decision = $submission->reviewDecisions()->sole();
-
-        self::assertSame(ProjectSubmission::STATUS_NEEDS_RESUBMISSION, $decision->status);
-        self::assertSame('effort_guard', $decision->source);
-        self::assertSame($decision->status, $submission->review_status);
-        self::assertSame($decision->score, $submission->score);
-        self::assertSame($decision->feedback, $submission->feedback);
-        self::assertTrue($decision->decided_at->equalTo($submission->reviewed_at));
+        self::assertSame(ProjectSubmission::STATUS_NEEDS_RESUBMISSION, $submission->review_status);
+        self::assertSame('effort_guard', $submission->review_source);
+        self::assertSame(0, $submission->score);
+        self::assertNotSame('', trim((string) $submission->feedback));
+        self::assertNotNull($submission->reviewed_at);
     }
 
     public function test_submission_copies_the_access_plan_receipt_instead_of_following_later_changes(): void
@@ -508,7 +550,7 @@ final class BackendHardeningTest extends TestCase
         ));
     }
 
-    public function test_admin_can_pass_project_submission_with_a_complete_audit_record(): void
+    public function test_admin_can_pass_project_submission_on_its_canonical_row(): void
     {
         $student = $this->user();
         $admin = $this->user(['role' => 'admin']);
@@ -521,6 +563,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($student, $project);
         $submission = app(ProjectSubmissionService::class)->submit(
             $student,
             $project,
@@ -542,24 +585,10 @@ final class BackendHardeningTest extends TestCase
         self::assertSame($admin->id, $submission->reviewed_by);
         self::assertNotNull($submission->reviewed_at);
         self::assertSame('تنفيذ واضح ومستوفٍ للمتطلبات.', $submission->feedback);
-        self::assertSame(
-            $admin->id,
-            data_get($submission->submission_metadata, 'review_history.0.reviewer_id')
-        );
-        $decision = ProjectSubmissionReviewDecision::query()
-            ->where('submission_id', $submission->id)
-            ->sole();
-        self::assertSame(1, $decision->sequence);
-        self::assertSame('admin_manual', $decision->source);
-        self::assertSame(100, $decision->score);
-        self::assertSame('تنفيذ واضح ومستوفٍ للمتطلبات.', $decision->feedback);
-        self::assertSame($admin->id, $decision->reviewer_id);
-        self::assertNotNull($decision->decided_at);
-        $this->assertDatabaseHas('user_project_evaluations', [
+        self::assertTrue((bool) data_get($submission->submission_metadata, 'skill_verified'));
+        $this->assertDatabaseMissing('user_project_evaluations', [
             'user_id' => $student->id,
             'project_id' => $project->id,
-            'score' => 100,
-            'passed' => true,
         ]);
     }
 
@@ -577,6 +606,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($student, $project);
         $service = app(ProjectSubmissionService::class);
         $submission = $service->submit(
             $student,
@@ -596,14 +626,12 @@ final class BackendHardeningTest extends TestCase
         self::assertFalse((bool) data_get($submission->submission_metadata, 'skill_verified'));
         self::assertNull(data_get($submission->submission_metadata, 'ai_feedback'));
         Bus::assertNotDispatched(GenerateProjectFeedback::class);
-        $this->assertDatabaseHas('user_project_evaluations', [
+        $this->assertDatabaseMissing('user_project_evaluations', [
             'user_id' => $student->id,
             'project_id' => $project->id,
-            'score' => 0,
-            'passed' => true,
         ]);
 
-        $submission = $service->reviewByAdmin(
+        $submission = $service->reviewByStaff(
             $submission,
             $admin,
             true,
@@ -612,19 +640,7 @@ final class BackendHardeningTest extends TestCase
         self::assertSame('admin_manual', $submission->review_source);
         self::assertSame(100, $submission->score);
         self::assertTrue((bool) data_get($submission->submission_metadata, 'skill_verified'));
-        $decisions = ProjectSubmissionReviewDecision::query()
-            ->where('submission_id', $submission->id)
-            ->orderBy('sequence')
-            ->get();
-        self::assertCount(2, $decisions);
-        self::assertSame('graceful_fallback', $decisions[0]->source);
-        self::assertNull($decisions[0]->score);
-        self::assertSame('admin_manual', $decisions[1]->source);
-        self::assertSame(100, $decisions[1]->score);
-        self::assertNotSame($decisions[0]->decision_id, $decisions[1]->decision_id);
-
-        $this->expectException(\LogicException::class);
-        $decisions[0]->forceFill(['feedback' => 'محاولة محو القرار القديم'])->save();
+        self::assertSame('راجعها الفريق واعتمد جودة التنفيذ.', $submission->feedback);
     }
 
     public function test_client_duration_cannot_create_or_lower_the_completion_threshold(): void
@@ -637,6 +653,11 @@ final class BackendHardeningTest extends TestCase
         self::assertNull($service->requiredSeconds($lesson, 1));
 
         $lesson->duration_minutes = 1;
+        $mediaState = new \App\Models\LessonMediaState([
+            'duration_seconds' => 60,
+        ]);
+        $mediaState->exists = true;
+        $lesson->setRelation('mediaState', $mediaState);
         self::assertSame(48, $service->requiredSeconds($lesson, 1));
         self::assertSame(48, $service->requiredSeconds($lesson, 3600));
     }
@@ -654,6 +675,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($student, $project);
         $service = app(ProjectSubmissionService::class);
         $submission = $service->submit(
             $student,
@@ -675,10 +697,10 @@ final class BackendHardeningTest extends TestCase
         self::assertSame($admin->id, $submission->reviewed_by);
 
         $this->expectException(ValidationException::class);
-        $service->reviewByAdmin($submission, $admin, true, 'محاولة تغيير القرار');
+        $service->reviewByStaff($submission, $admin, true, 'محاولة تغيير القرار');
     }
 
-    public function test_project_review_service_rejects_non_admin_reviewer(): void
+    public function test_project_review_service_rejects_non_staff_reviewer(): void
     {
         $student = $this->user();
         $projectId = DB::table('projects')->insertGetId([
@@ -690,6 +712,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($student, $project);
         $service = app(ProjectSubmissionService::class);
         $submission = $service->submit(
             $student,
@@ -700,7 +723,7 @@ final class BackendHardeningTest extends TestCase
         );
 
         try {
-            $service->reviewByAdmin($submission, $student, true);
+            $service->reviewByStaff($submission, $student, true);
             self::fail('A client was allowed to review a project submission.');
         } catch (AuthorizationException $exception) {
             self::assertSame(ProjectSubmission::STATUS_PENDING, $submission->fresh()->review_status);
@@ -754,6 +777,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($student, $project);
         $submission = app(ProjectSubmissionService::class)->submit(
             $student,
             $project,
@@ -804,24 +828,28 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
         $project = Project::query()->findOrFail($projectId);
+        $this->grantProjectAccess($student, $project);
         $file = UploadedFile::fake()->createWithContent(
             'answer.pdf',
-            "%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF"
+            "%PDF-1.4\n1 0 obj\n<< /Type /Page >>\nendobj\n"
+                . str_repeat("% learner project evidence\n", 32)
+                . "%%EOF"
         );
 
         $submission = app(ProjectSubmissionService::class)->submit(
             $student,
             $project,
             null,
-            $file,
+            [$file],
             'shared-storage-submission'
         );
 
-        self::assertSame('project-shared', $submission->submission_disk);
         self::assertSame(
             'project-shared',
             data_get($submission->submission_metadata, 'storage_disk')
         );
+        self::assertIsArray(config('filesystems.disks.project-shared'));
+        self::assertSame('project-shared', $submission->submission_disk);
         Storage::disk('project-shared')->assertExists($submission->submission_file);
 
         // A later process can have a different default and must still read the
@@ -842,6 +870,7 @@ final class BackendHardeningTest extends TestCase
             'name_ar' => 'كورس شارات',
             'awards_badge' => 1,
             'badge_track' => 'professional',
+            'certificate_text_template_key' => 'completion',
         ], $rules);
         self::assertTrue($missing->errors()->has('level_id'));
 
@@ -850,6 +879,7 @@ final class BackendHardeningTest extends TestCase
             'awards_badge' => 1,
             'badge_track' => 'professional',
             'level_id' => 999999,
+            'certificate_text_template_key' => 'completion',
         ], $rules);
         self::assertTrue($invalid->errors()->has('level_id'));
 
@@ -865,6 +895,7 @@ final class BackendHardeningTest extends TestCase
             'awards_badge' => 1,
             'badge_track' => 'professional',
             'level_id' => $levelId,
+            'certificate_text_template_key' => 'completion',
         ], $rules);
         self::assertFalse($valid->fails());
     }
@@ -1167,7 +1198,7 @@ final class BackendHardeningTest extends TestCase
         CourseAccessPlanSnapshot::assertValidForPlan((int) $plan->id, $snapshot);
     }
 
-    public function test_course_chat_daily_cost_limit_is_enforced_before_second_provider_call(): void
+    public function test_course_chat_capacity_is_scoped_to_the_purchased_plan(): void
     {
         $user = $this->user();
         $course = $this->course();
@@ -1187,8 +1218,6 @@ final class BackendHardeningTest extends TestCase
         config()->set('openrouter.api_key', 'test-key');
         config()->set('openrouter.default_model', 'test/model');
         config()->set('openrouter.allowed_models', ['test/model']);
-        config()->set('openrouter.daily_user_limit', 1);
-        config()->set('openrouter.per_minute_limit', 8);
         Http::fake([
             '*' => Http::response(['choices' => [['message' => ['content' => 'رد']]]], 200),
         ]);
@@ -1214,8 +1243,9 @@ final class BackendHardeningTest extends TestCase
                 'client_request_id' => (string) Str::uuid(),
             ])
             ->assertOk()
-            ->assertJsonPath('code', 'chat_daily_limit_reached');
-        Http::assertSentCount(1);
+            ->assertJsonPath('code', 'chat_answer_in_progress')
+            ->assertJsonPath('data.poll_window_seconds', 95);
+        Http::assertSentCount(2);
     }
 
     public function test_course_chat_context_is_server_owned_and_scoped(): void
@@ -1266,6 +1296,73 @@ final class BackendHardeningTest extends TestCase
         ));
     }
 
+    public function test_course_chat_replay_presents_a_settled_answer_without_a_second_provider_call(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
+        $plan = $this->paidPlanTerms($course);
+        $enrollmentId = DB::table('course_enrollments')->insertGetId([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'order_id' => $order->id,
+            'access_plan_id' => $plan['id'],
+            'access_plan_snapshot' => json_encode($plan['snapshot'], JSON_THROW_ON_ERROR),
+            'is_active' => true,
+            'access_granted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $requestId = '4e52629a-8452-4636-8e8f-84d3ed611cf4';
+        $question = 'أعد لي النتيجة المحفوظة';
+        $promptVersion = app(\App\Services\CourseChatPromptContextService::class)
+            ->version($course);
+        $turn = app(CourseChatTurnService::class)->begin(
+            $user->id,
+            $course->id,
+            $enrollmentId,
+            null,
+            $requestId,
+            $question,
+            'ar',
+            $promptVersion
+        );
+        $usage = AiUsageEvent::query()->create([
+            'request_id' => $requestId,
+            'enrollment_id' => $enrollmentId,
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'feature' => 'course_chat',
+            'status' => 'completed',
+            'metadata' => [
+                'accepted_response' => 'هذه هي الإجابة المحفوظة',
+                'request_context' => [
+                    'question_hash' => hash('sha256', $question.'|'),
+                    'lesson_id' => null,
+                    'language' => 'ar',
+                    'prompt_version' => $promptVersion,
+                ],
+            ],
+            'completed_at' => now(),
+        ]);
+        Http::fake();
+
+        $this->withHeader('Accept-Language', 'ar')
+            ->actingAs($user, 'api')
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
+                'message' => $question,
+                'client_request_id' => $requestId,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.message', 'هذه هي الإجابة المحفوظة')
+            ->assertJsonPath('data.turn_status', CourseChatTurn::COMPLETED);
+
+        self::assertSame(CourseChatTurn::COMPLETED, $turn->fresh()->status);
+        self::assertNull(data_get($usage->fresh()->metadata, 'accepted_response'));
+        self::assertNotNull(data_get($usage->fresh()->metadata, 'presentation_completed_at'));
+        Http::assertNothingSent();
+    }
+
     public function test_stalled_course_chat_turns_are_closed_without_touching_live_turns(): void
     {
         $user = $this->user();
@@ -1304,6 +1401,35 @@ final class BackendHardeningTest extends TestCase
         self::assertSame('failed', $stalled->fresh()->status);
         self::assertSame('chat_request_abandoned', $stalled->fresh()->error_code);
         self::assertSame('queued', $live->fresh()->status);
+    }
+
+    public function test_course_chat_polling_does_not_claim_or_refresh_the_worker_lease(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $requestId = 'c367557e-8cc7-428e-8735-60ada7d5d54d';
+        $turn = app(CourseChatTurnService::class)->begin(
+            $user->id,
+            $course->id,
+            null,
+            null,
+            $requestId,
+            'هل بدأ العامل؟',
+            'ar',
+            'prompt-v1'
+        );
+        $turn->forceFill(['updated_at' => now()->subSeconds(10)])->save();
+        $observedAt = $turn->fresh()->updated_at;
+
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('code', 'chat_answer_in_progress')
+            ->assertJsonPath('data.turn_status', CourseChatTurn::QUEUED);
+
+        $turn->refresh();
+        self::assertSame(CourseChatTurn::QUEUED, $turn->status);
+        self::assertTrue($observedAt->equalTo($turn->updated_at));
     }
 
     public function test_stalled_course_chat_recovers_an_already_settled_answer(): void
@@ -1408,6 +1534,10 @@ final class BackendHardeningTest extends TestCase
             'course_id' => $course->id,
             'feature' => 'course_chat',
             'status' => 'reserved',
+            'metadata' => json_encode([
+                'provider_call_state' => 'started',
+                'provider_call_started_at' => now()->toIso8601String(),
+            ], JSON_THROW_ON_ERROR),
             'reservation_expires_at' => now()->addMinute(),
             'created_at' => now()->subMinutes(10),
             'updated_at' => now()->subMinutes(10),
@@ -1416,6 +1546,65 @@ final class BackendHardeningTest extends TestCase
 
         self::assertSame(0, $turns->failStalled());
         self::assertSame('streaming', $turn->fresh()->status);
+    }
+
+    public function test_cancelled_course_chat_status_remains_a_clean_terminal_result(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $requestId = '0d2210e7-13fa-4f03-893d-adca70606274';
+        $turns = app(CourseChatTurnService::class);
+        $turn = $turns->begin(
+            $user->id,
+            $course->id,
+            null,
+            null,
+            $requestId,
+            'أوقف هذا الرد',
+            'ar',
+            'prompt-v1'
+        );
+
+        $this->actingAs($user, 'api')
+            ->deleteJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('code', 'chat_turn_cancelled');
+
+        self::assertFalse($turns->markStreaming($turn->fresh()));
+        self::assertFalse($turns->complete($turn->fresh(), 'رد وصل بعد الإلغاء'));
+        $turns->fail($turn->fresh(), 'late_worker_failure');
+
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('data.turn_status', CourseChatTurn::CANCELLED)
+            ->assertJsonPath('data.message', 'تم إيقاف الرد')
+            ->assertJsonPath('data.can_retry', false);
+    }
+
+    public function test_failed_course_chat_turn_cannot_be_reopened_or_rewritten_as_cancelled(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $requestId = '54989560-b545-4eb2-a8ea-a2f2fdc6a095';
+        $turns = app(CourseChatTurnService::class);
+        $turn = $turns->begin(
+            $user->id,
+            $course->id,
+            null,
+            null,
+            $requestId,
+            'محاولة انتهت قبل وصول العامل',
+            'ar',
+            'prompt-v1'
+        );
+        $turns->failBeforeDispatch($turn, 'chat_dispatch_failed');
+
+        self::assertFalse($turns->markStreaming($turn->fresh()));
+        self::assertFalse($turns->complete($turn->fresh(), 'رد متأخر'));
+        self::assertSame('terminal', $turns->cancelForUser($user->id, $requestId));
+        self::assertSame(CourseChatTurn::FAILED, $turn->fresh()->status);
+        self::assertSame('chat_dispatch_failed', $turn->fresh()->error_code);
     }
 
     public function test_course_chat_poll_repairs_a_terminal_provider_event_immediately(): void
@@ -1565,7 +1754,7 @@ final class BackendHardeningTest extends TestCase
         $this->assertDatabaseHas('user_level', ['user_id' => $user->id, 'course_id' => $second->id]);
     }
 
-    public function test_guest_catalogue_is_real_and_bounded_to_fifteen_courses_per_row(): void
+    public function test_guest_catalogue_is_real_and_bounded(): void
     {
         $classificationId = DB::table('classifications')->insertGetId([
             'name_ar' => 'الأكثر مشاهدة',
@@ -1591,29 +1780,12 @@ final class BackendHardeningTest extends TestCase
             ]);
         }
 
-        $childHero = $this->course([
-            'parent_id' => 1,
-            'is_main_course' => true,
-        ]);
-        DB::table('course_sections')->insert([
-            'course_id' => $childHero->id,
-            'sectionable_type' => null,
-            'sectionable_id' => null,
-            'section_type' => 'project',
-            'title_ar' => 'مشروع فرعي',
-            'order' => 1,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
         $response = $this->withHeader('Accept-Language', 'ar')
-            ->getJson('/api/v1/mobile-main-page')
+            ->getJson('/api/v1/courses/list?per_page=15')
             ->assertOk()
             ->assertJsonPath('success', true);
 
-        self::assertCount(15, $response->json('data.courses.الأكثر مشاهدة'));
-        self::assertCount(1, $response->json('data.main_courses'));
-        self::assertNotSame($childHero->id, (int) $response->json('data.main_courses.0.id'));
+        self::assertCount(15, $response->json('data.courses'));
     }
 
     public function test_public_course_list_includes_published_and_announced_coming_soon_only(): void
@@ -1670,6 +1842,17 @@ final class BackendHardeningTest extends TestCase
             'course_code_id' => $first->id,
             'user_id' => $user->id,
             'used_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('course_grant_claims')->insert([
+            'user_id' => $user->id,
+            'normalized_email_hash' => \App\Models\CourseGrantClaim::emailHash($user->email),
+            'email_hint' => \App\Models\CourseGrantClaim::emailHint($user->email),
+            'course_code_id' => $first->id,
+            'course_id' => 1,
+            'status' => \App\Models\CourseGrantClaim::STATUS_ACTIVE,
+            'claimed_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -1811,7 +1994,34 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ], $overrides));
 
-        return User::query()->findOrFail($id);
+        $user = User::query()->findOrFail($id);
+        $total = (int) $user->wallet_coins;
+        $paid = (int) $user->wallet_purchased_coins;
+        $reward = (int) $user->wallet_reward_coins;
+        if ($total > 0) {
+            DB::table('wallet_transactions')->insert([
+                'public_id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'direction' => WalletTransaction::DIRECTION_CREDIT,
+                'category' => 'test_opening_balance',
+                'bucket' => WalletTransaction::BUCKET_MIXED,
+                'amount' => $total,
+                'paid_amount' => $paid,
+                'reward_amount' => $reward,
+                'balance_after' => $total,
+                'paid_balance_after' => $paid,
+                'reward_balance_after' => $reward,
+                'source_type' => null,
+                'source_id' => null,
+                'idempotency_key' => "test-opening:{$user->id}",
+                'metadata' => json_encode(['fixture' => true], JSON_THROW_ON_ERROR),
+                'occurred_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return $user;
     }
 
     private function contactEditorVersion(Contact $contact): string
@@ -1834,7 +2044,6 @@ final class BackendHardeningTest extends TestCase
             'description_ar' => 'وصف',
             'description_en' => 'Description',
             'price' => 4000,
-            'parent_id' => null,
             'teacher_id' => $teacher->id,
             'is_main_course' => false,
             'is_coming_soon' => false,
@@ -1929,6 +2138,32 @@ final class BackendHardeningTest extends TestCase
         ];
     }
 
+    private function grantProjectAccess(User $user, Project $project): Course
+    {
+        $course = $this->course();
+        $plan = $this->paidPlanTerms($course);
+        \App\Models\CourseEnrollment::query()->create([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'access_plan_id' => $plan['id'],
+            'access_plan_snapshot' => $plan['snapshot'],
+            'is_active' => true,
+            'enrolled_at' => now(),
+        ]);
+        DB::table('course_sections')->insert([
+            'course_id' => $course->id,
+            'sectionable_type' => Project::class,
+            'sectionable_id' => $project->id,
+            'section_type' => 'project',
+            'title_ar' => 'مشروع التطبيق',
+            'order' => 2,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $course;
+    }
+
     private function order(User $user, Course $course, string $method, int $amount, int $coins): Order
     {
         $id = DB::table('orders')->insertGetId([
@@ -1974,6 +2209,7 @@ final class BackendHardeningTest extends TestCase
             $table->timestamp('state_consumed_at')->nullable();
             $table->timestamp('completion_expires_at')->nullable();
             $table->timestamp('completion_processing_at')->nullable();
+            $table->uuid('completion_claim_id')->nullable();
             $table->timestamp('completion_consumed_at')->nullable();
             $table->timestamps();
         });
@@ -2016,6 +2252,7 @@ final class BackendHardeningTest extends TestCase
             $table->string('language', 12)->default('ar');
             $table->string('status', 16)->default('queued');
             $table->string('error_code', 64)->nullable();
+            $table->unsignedTinyInteger('attachment_count')->default(0);
             $table->text('question');
             $table->text('answer')->nullable();
             $table->timestamp('completed_at')->nullable();
@@ -2046,7 +2283,6 @@ final class BackendHardeningTest extends TestCase
             $table->unsignedBigInteger('teacher_id')->nullable();
             $table->decimal('price', 10, 2)->nullable();
             $table->decimal('price_before_discount', 10, 2)->nullable();
-            $table->unsignedBigInteger('parent_id')->nullable();
             $table->unsignedBigInteger('path_id')->nullable();
             $table->unsignedBigInteger('grade_id')->nullable();
             $table->string('type')->default('course');
@@ -2069,6 +2305,38 @@ final class BackendHardeningTest extends TestCase
             $table->unsignedInteger('home_work_count')->default(0);
             $table->unsignedInteger('files_count')->default(0);
             $table->timestamps();
+            $table->softDeletes();
+        });
+        Schema::create('course_authoring_revisions', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('canonical_course_id');
+            $table->unsignedBigInteger('revision_course_id')->unique();
+            $table->unsignedBigInteger('base_authoring_version');
+            $table->unsignedBigInteger('published_authoring_version')->nullable();
+            $table->string('status', 16)->default('draft');
+            $table->string('active_slot', 80)->nullable()->unique();
+            $table->uuid('clone_key')->unique();
+            $table->timestamp('published_at')->nullable();
+            $table->timestamp('retain_until')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('course_authoring_revision_entities', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('course_authoring_revision_id');
+            $table->string('entity_type', 120);
+            $table->unsignedBigInteger('source_entity_id');
+            $table->unsignedBigInteger('revision_entity_id');
+            $table->boolean('survives_publish')->default(false);
+            $table->boolean('carries_learner_state')->default(false);
+            $table->unsignedBigInteger('learner_root_entity_id')->nullable();
+            $table->unique(
+                ['course_authoring_revision_id', 'entity_type', 'source_entity_id'],
+                'course_revision_source_entity_unique'
+            );
+            $table->unique(
+                ['course_authoring_revision_id', 'entity_type', 'revision_entity_id'],
+                'course_revision_working_entity_unique'
+            );
         });
         Schema::create('course_modules', function (Blueprint $table): void {
             $table->id();
@@ -2095,6 +2363,15 @@ final class BackendHardeningTest extends TestCase
             $table->unsignedInteger('order')->default(1);
             $table->timestamps();
             $table->softDeletes();
+        });
+        Schema::create('student_section_progress', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->unsignedBigInteger('course_section_id');
+            $table->boolean('is_completed')->default(false);
+            $table->timestamp('completed_at')->nullable();
+            $table->timestamps();
+            $table->unique(['user_id', 'course_section_id']);
         });
         Schema::create('course_ratings', function (Blueprint $table): void {
             $table->id();
@@ -2132,10 +2409,26 @@ final class BackendHardeningTest extends TestCase
             $table->timestamps();
             $table->unique(['course_code_id', 'user_id']);
         });
+        Schema::create('course_grant_claims', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id')->unique();
+            $table->char('normalized_email_hash', 64)->unique();
+            $table->string('email_hint')->nullable();
+            $table->unsignedBigInteger('course_code_id');
+            $table->unsignedBigInteger('course_code_usage_id')->nullable();
+            $table->unsignedBigInteger('course_id');
+            $table->string('status')->default('active');
+            $table->timestamp('claimed_at');
+            $table->timestamp('reassigned_at')->nullable();
+            $table->unsignedBigInteger('reassigned_by')->nullable();
+            $table->text('support_note')->nullable();
+            $table->timestamps();
+        });
         Schema::create('lessons', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('list_id')->nullable();
             $table->string('title')->nullable();
+            $table->string('bunny_video_id')->nullable();
             $table->boolean('is_opened')->default(false);
             $table->timestamps();
         });
@@ -2150,6 +2443,8 @@ final class BackendHardeningTest extends TestCase
             $table->json('available_qualities')->nullable();
             $table->json('manifest')->nullable();
             $table->timestamp('last_probe_at')->nullable();
+            $table->timestamp('last_reconciled_at')->nullable();
+            $table->string('integrity_status', 24)->default('unknown');
             $table->string('last_error_code', 64)->nullable();
             $table->text('last_error_message')->nullable();
             $table->unsignedSmallInteger('retry_count')->default(0);
@@ -2392,7 +2687,6 @@ final class BackendHardeningTest extends TestCase
         });
 
         (require database_path('migrations/2026_08_07_000022_create_account_file_deletions_table.php'))->up();
-        (require database_path('migrations/2026_09_01_000063_track_course_chat_admission_quota.php'))->up();
         (require database_path('migrations/2026_09_01_000066_create_ai_input_attachments.php'))->up();
         (require database_path('migrations/2026_09_01_000078_create_internal_signals_table.php'))->up();
         (require database_path('migrations/2026_09_02_000001_snapshot_project_reviews.php'))->up();

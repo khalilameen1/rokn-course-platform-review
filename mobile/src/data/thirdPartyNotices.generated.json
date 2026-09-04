@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 735,
-  "packagePathCount": 818,
-  "inventoryHash": "7c58b479403c770b91a4fb021fc099d42528001b4fd64cd2ffe0cee25e064fb3",
+  "packageCount": 734,
+  "packagePathCount": 817,
+  "inventoryHash": "460d48c71df23c21af070a8b69428003fad923f5ade22678b71f72d60c7277a2",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -6221,16 +6221,6 @@
       "license": "MIT",
       "declaredLicense": "MIT",
       "sourceUrl": "https://www.npmjs.com/package/react/v/19.2.0",
-      "legalSource": "package-root",
-      "legalFileCount": 1,
-      "apacheNotice": null
-    },
-    {
-      "name": "redux-persist",
-      "version": "6.0.0",
-      "license": "MIT",
-      "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/redux-persist/v/6.0.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null

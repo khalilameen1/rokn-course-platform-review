@@ -39,6 +39,8 @@ final class ProductionCapabilityTest extends TestCase
         Schema::create('settings', function (Blueprint $table): void {
             $table->id();
             $table->boolean('bunny_enabled')->default(false);
+            $table->json('ai_plan_policy')->nullable();
+            $table->decimal('direct_checkout_discount_percent', 5, 2)->default(0);
             $table->timestamps();
         });
         Schema::create('packages', function (Blueprint $table): void {
@@ -52,7 +54,7 @@ final class ProductionCapabilityTest extends TestCase
         foreach ([
             'users', 'courses', 'course_modules', 'course_sections', 'lessons',
             'course_enrollments', 'course_access_plans', 'orders',
-            'wallet_transactions', 'project_submissions', 'exam_attempts',
+            'wallet_transactions', 'project_submissions',
             'student_notifications', 'lesson_media_states', 'playback_sessions',
             'social_oauth_attempts', 'store_purchases',
         ] as $criticalTable) {
@@ -60,6 +62,33 @@ final class ProductionCapabilityTest extends TestCase
                 $table->id();
                 if ($criticalTable === 'users') {
                     $table->unsignedBigInteger('profile_revision')->default(1);
+                    $table->bigInteger('wallet_coins')->default(0);
+                    $table->bigInteger('wallet_purchased_coins')->default(0);
+                    $table->bigInteger('wallet_reward_coins')->default(0);
+                }
+                if ($criticalTable === 'course_enrollments') {
+                    $table->unsignedBigInteger('access_plan_id')->nullable();
+                    $table->unsignedBigInteger('access_plan_order_id')->nullable();
+                    $table->json('access_plan_snapshot')->nullable();
+                }
+                if ($criticalTable === 'orders') {
+                    $table->decimal('gateway_gross_amount', 12, 2)->nullable();
+                    $table->decimal('gateway_fee_amount', 12, 2)->nullable();
+                    $table->decimal('gateway_net_amount', 12, 2)->nullable();
+                }
+                if ($criticalTable === 'wallet_transactions') {
+                    $table->uuid('public_id')->nullable();
+                    $table->string('direction')->nullable();
+                    $table->string('category')->nullable();
+                    $table->string('bucket')->nullable();
+                    $table->bigInteger('amount')->default(0);
+                    $table->bigInteger('paid_amount')->default(0);
+                    $table->bigInteger('reward_amount')->default(0);
+                    $table->bigInteger('balance_after')->default(0);
+                    $table->bigInteger('paid_balance_after')->default(0);
+                    $table->bigInteger('reward_balance_after')->default(0);
+                    $table->string('idempotency_key')->nullable();
+                    $table->timestamp('occurred_at')->nullable();
                 }
                 if ($criticalTable === 'course_access_plans') {
                     $table->unsignedInteger('project_followup_message_limit')->default(0);
@@ -71,8 +100,11 @@ final class ProductionCapabilityTest extends TestCase
                     $table->string('state_hash')->nullable();
                     $table->string('completion_hash')->nullable();
                     $table->string('code_challenge')->nullable();
+                    $table->string('nonce_hash')->nullable();
+                    $table->text('encrypted_completion_code')->nullable();
                     $table->text('encrypted_session_response')->nullable();
                     $table->timestamp('completion_processing_at')->nullable();
+                    $table->uuid('completion_claim_id')->nullable();
                 }
             });
         }
@@ -80,7 +112,18 @@ final class ProductionCapabilityTest extends TestCase
             $table->id();
             $table->string('token');
             $table->unsignedBigInteger('user_id');
+            $table->timestamp('issued_at')->nullable();
             $table->timestamp('expired_at')->nullable();
+            $table->string('session_id')->nullable();
+            $table->string('device_id')->nullable();
+            $table->string('platform')->nullable();
+            $table->string('device_class')->nullable();
+            $table->string('app_version')->nullable();
+            $table->string('app_build')->nullable();
+            $table->string('auth_provider')->nullable();
+            $table->string('auth_provider_user_id')->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('revoked_at')->nullable();
         });
         Schema::create('social_accounts', function (Blueprint $table): void {
             $table->id();
@@ -108,8 +151,18 @@ final class ProductionCapabilityTest extends TestCase
             'admin_audit_logs', 'operational_incidents', 'course_authoring_revisions',
             'course_authoring_revision_entities',
         ] as $launchTable) {
-            Schema::create($launchTable, fn (Blueprint $table) => $table->id());
+            Schema::create($launchTable, function (Blueprint $table) use ($launchTable): void {
+                $table->id();
+                if ($launchTable === 'ai_usage_events') {
+                    $table->timestamp('reservation_expires_at')->nullable();
+                }
+            });
         }
+        Schema::create('user_device_tokens', function (Blueprint $table): void {
+            $table->id();
+            $table->string('device_os')->nullable();
+            $table->string('device_id')->nullable();
+        });
         Schema::create('app_versions', function (Blueprint $table): void {
             $table->id();
             $table->string('platform');
@@ -206,14 +259,13 @@ final class ProductionCapabilityTest extends TestCase
             'services.google.client_secret' => 'google-secret',
             'services.facebook.client_id' => 'facebook-client',
             'services.facebook.client_secret' => 'facebook-secret',
-            'services.facebook.graph_version' => 'v999.0',
+            'services.facebook.graph_version' => 'v26.0',
             'services.tiktok.client_key' => 'tiktok-client',
             'services.tiktok.client_secret' => 'tiktok-secret',
             'services.apple.client_id' => 'com.rokn',
             'social_auth.providers' => ['google', 'facebook', 'tiktok', 'apple'],
             'social_auth.public_api_url' => 'https://api.rokn.test/api/v1',
             'social_auth.return_urls' => ['rokn://auth'],
-            'social_auth.allow_legacy_pkce' => false,
             'app_links.android_package' => 'com.rokn',
             'app_links.android_sha256_fingerprints' => [$androidFingerprint],
             'app_links.apple_app_ids' => ['ABCDE12345.com.rokn'],
@@ -256,9 +308,9 @@ final class ProductionCapabilityTest extends TestCase
             'financial_entitlement_holds', 'wallet_debit_allocations', 'wallet_credit_lots',
             'notification_campaigns', 'course_chat_turns', 'project_feedback_messages',
             'project_feedback_threads', 'ai_usage_events', 'ai_entitlement_usages',
-            'student_section_progress', 'watching_logs', 'social_accounts', 'api_tokens',
+            'student_section_progress', 'watching_logs', 'user_device_tokens', 'social_accounts', 'api_tokens',
             'store_purchases', 'social_oauth_attempts', 'playback_sessions',
-            'lesson_media_states', 'student_notifications', 'exam_attempts',
+            'lesson_media_states', 'student_notifications',
             'project_submissions', 'wallet_transactions', 'orders',
             'course_access_plans', 'course_enrollments', 'lessons',
             'course_sections', 'course_modules', 'courses', 'users',

@@ -21,8 +21,10 @@ const seenKey = async (
 export const hasSeenAttachmentPrompt = async (
   courseId: string,
   moduleId: string,
+  ownerBoundary?: AccountSessionBoundary,
 ) => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const seen =
     (await AsyncStorage.getItem(
       await seenKey(courseId, moduleId, boundary),
@@ -34,8 +36,9 @@ export const hasSeenAttachmentPrompt = async (
 export const markAttachmentPromptSeen = async (
   courseId: string,
   moduleId: string,
+  ownerBoundary?: AccountSessionBoundary,
 ) => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
   await AsyncStorage.setItem(await seenKey(courseId, moduleId, boundary), '1');
   assertAccountSessionBoundary(boundary);

@@ -14,7 +14,6 @@ class AdminIdentityViewsTest extends TestCase
     private const VIEW_FAMILIES = [
         'users',
         'design-settings',
-        'exam-results',
         'grades',
         'app-versions',
     ];
@@ -44,9 +43,6 @@ class AdminIdentityViewsTest extends TestCase
             'users/index.blade.php' => ['users-theme.css', 'users-index.css', 'admin-page'],
             'users/show.blade.php' => ['users-theme.css', 'users-show.css', 'admin-page'],
             'design-settings/index.blade.php' => ['design-settings.css', 'admin-page'],
-            'exam-results/index.blade.php' => ['exam-results-theme.css', 'exam-results-index.css', 'admin-page'],
-            'exam-results/student-results.blade.php' => ['exam-results-theme.css', 'exam-results-student-results.css', 'admin-page'],
-            'exam-results/show.blade.php' => ['exam-results-theme.css', 'admin-page'],
             'grades/create.blade.php' => ['grades-theme.css', 'grades-create.css', 'grades-form.css', 'admin-page'],
             'grades/edit.blade.php' => ['grades-theme.css', 'grades-edit.css', 'grades-form.css', 'admin-page'],
             'grades/index.blade.php' => ['grades-theme.css', 'grades-index.css', 'admin-page'],
@@ -83,14 +79,10 @@ class AdminIdentityViewsTest extends TestCase
             'admin.users.update',
             'admin.users.deactive',
             'admin.users.reset-device',
-            'admin.users.send_notification',
+            'admin.notifications.create',
             'admin.users.notes.store',
             'admin.users.notes.delete',
             'admin.design-settings.store',
-            'admin.exam-results.index',
-            'admin.exam-results.show',
-            'admin.exam-results.stats',
-            'admin.exam-results.export',
             'admin.grades.store',
             'admin.grades.update',
             'admin.grades.destroy',
@@ -127,7 +119,6 @@ class AdminIdentityViewsTest extends TestCase
         foreach ([
             'function toggleAccordion',
             'function updateDemoColors',
-            'function getStats',
             'function confirmDelete',
             'function highlightSearchResults',
             'function viewStudents',
@@ -142,7 +133,7 @@ class AdminIdentityViewsTest extends TestCase
 
     public function test_identity_stylesheets_use_admin_tokens_and_scoped_entry_points(): void
     {
-        $stylesheets = glob($this->projectRoot().'/public/admin/assets/css/{users-,grades-,exam-results-}*.css', GLOB_BRACE);
+        $stylesheets = glob($this->projectRoot().'/public/admin/assets/css/{users-,grades-}*.css', GLOB_BRACE);
         self::assertIsArray($stylesheets);
         $stylesheets[] = $this->projectRoot().'/public/admin/assets/css/design-settings.css';
         $stylesheets[] = $this->projectRoot().'/public/admin/assets/css/app-versions.css';
@@ -161,13 +152,12 @@ class AdminIdentityViewsTest extends TestCase
         self::assertStringContainsString('.app-versions-page', $source);
         self::assertStringContainsString('.grades-module', $source);
         self::assertStringContainsString('.users-page', $source);
-        self::assertStringContainsString('.exam-results-page', $source);
         self::assertStringContainsString('.design-settings-wrapper', $source);
     }
 
     public function test_identity_families_share_one_theme_runtime(): void
     {
-        foreach (['users', 'grades', 'exam-results'] as $family) {
+        foreach (['users', 'grades'] as $family) {
             $partial = (string) file_get_contents(
                 $this->projectRoot().'/resources/views/admin/'.$family.'/partials/_dynamic_styles.blade.php'
             );
@@ -223,10 +213,6 @@ class AdminIdentityViewsTest extends TestCase
         } elseif (str_starts_with($view, 'grades/')) {
             $source .= (string) file_get_contents(
                 $this->projectRoot().'/resources/views/admin/grades/partials/_dynamic_styles.blade.php'
-            );
-        } elseif (str_starts_with($view, 'exam-results/')) {
-            $source .= (string) file_get_contents(
-                $this->projectRoot().'/resources/views/admin/exam-results/partials/_dynamic_styles.blade.php'
             );
         }
 

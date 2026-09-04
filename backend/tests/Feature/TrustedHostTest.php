@@ -45,6 +45,29 @@ final class TrustedHostTest extends TestCase
         self::assertSame(400, $this->statusForHost('preview.localhost', '/_trusted-host-fallback-test'));
     }
 
+    public function test_app_url_and_configured_mobile_origin_are_both_exactly_trusted(): void
+    {
+        config([
+            'app.url' => 'https://rokn.app',
+            'trusted_hosts.hosts' => [
+                'rokn.app',
+                'rokn-course-platform-review-production-b7gpy1.laravel.cloud',
+            ],
+        ]);
+        Request::setTrustedHosts(app(TrustHosts::class)->hosts());
+        Route::get('/_trusted-mobile-origin-test', static fn () => response('ok'));
+
+        self::assertSame(200, $this->statusForHost('rokn.app', '/_trusted-mobile-origin-test'));
+        self::assertSame(200, $this->statusForHost(
+            'rokn-course-platform-review-production-b7gpy1.laravel.cloud',
+            '/_trusted-mobile-origin-test'
+        ));
+        self::assertSame(400, $this->statusForHost(
+            'preview.rokn-course-platform-review-production-b7gpy1.laravel.cloud',
+            '/_trusted-mobile-origin-test'
+        ));
+    }
+
     private function statusForHost(string $host, string $path): int
     {
         $kernel = app(HttpKernel::class);

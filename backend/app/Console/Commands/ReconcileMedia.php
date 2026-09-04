@@ -21,7 +21,7 @@ final class ReconcileMedia extends Command
         {--batch= : Courses loaded per batch}
         {--skip-manifest-fetch : Verify manifest issuance only, without fetching the HLS document}';
 
-    protected $description = 'Reconcile published Bunny videos, thumbnails and attachments without deleting content';
+    protected $description = 'Reconcile published Bunny videos and thumbnails without deleting content';
 
     public function handle(MediaReconciliationService $reconciler): int
     {
@@ -62,9 +62,6 @@ final class ReconcileMedia extends Command
             $query = Course::query()
                 ->where('is_coming_soon', false)
                 ->orderBy('id');
-            if (Schema::hasColumn('courses', 'parent_id')) {
-                $query->whereNull('parent_id');
-            }
             if ($this->option('course') !== null) {
                 $courseId = filter_var($this->option('course'), FILTER_VALIDATE_INT, [
                     'options' => ['min_range' => 1],
@@ -183,7 +180,7 @@ final class ReconcileMedia extends Command
     {
         foreach ([
             'courses', 'lessons', 'lesson_media_states', 'photos',
-            'course_modules', 'course_sections', 'attachments',
+            'course_modules', 'course_sections',
         ] as $table) {
             if (!Schema::hasTable($table)) {
                 return false;

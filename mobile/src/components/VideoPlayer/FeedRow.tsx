@@ -1,12 +1,18 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {ActivityIndicator, Image, StyleSheet, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {CourseLearningData, CourseFeedItem, VideoQuality} from './types';
 import VideoComponent from './VideoComponent';
 import FeedFooter from './FeedFooter';
 import FeedHeader from './FeedHeader';
 import FeedSideBar from './FeedSideBar';
 import ProjectTransition from './ProjectTransition';
-import QuizTransition from './QuizTransition';
 import type {
   ProjectSubmissionOutcome,
   SavedFolderOption,
@@ -15,6 +21,9 @@ import type {
   PlaybackPlayerEvent,
   PlaybackRuntimeMetrics,
 } from './playbackTelemetry';
+import {Fonts} from '../../constants/styleConstants';
+
+export const SOURCE_PENDING_RETRY_DELAY_MS = 9_000;
 
 interface FeedRowProps {
   item: CourseFeedItem;
@@ -49,8 +58,6 @@ interface FeedRowProps {
     note?: string,
   ) => Promise<ProjectSubmissionOutcome>;
   onContinueAfterProject?: () => void;
-  onQuizPassed: () => Promise<void> | void;
-  onContinueAfterQuiz?: () => void;
 }
 
 const FeedRow = ({
@@ -83,14 +90,58 @@ const FeedRow = ({
   onPlaybackMetrics,
   onSubmitProject,
   onContinueAfterProject,
-  onQuizPassed,
-  onContinueAfterQuiz,
 }: FeedRowProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const attachmentClockRef = useRef(0);
   const [headerOverlayVisible, setHeaderOverlayVisible] = useState(false);
   const [sidebarOverlayVisible, setSidebarOverlayVisible] = useState(false);
+  const [sourceWaitExpired, setSourceWaitExpired] = useState(false);
+  const [sourceAttempt, setSourceAttempt] = useState(0);
+  const sourceRefreshFlightRef = useRef<Promise<void> | null>(null);
+  const sourceRefreshGenerationRef = useRef(0);
+  const [sourceRetrying, setSourceRetrying] = useState(false);
   const localOverlayVisible = headerOverlayVisible || sidebarOverlayVisible;
+  const awaitingVisibleSource =
+    item.type === 'reel' &&
+    isVisible &&
+    !item.reel.isLocked &&
+    (!item.reel.videoUrl.trim() || !shouldMountVideo);
+
+  useEffect(() => {
+    setSourceWaitExpired(false);
+    if (!awaitingVisibleSource || sourceRetrying) return;
+    const timer = setTimeout(
+      () => setSourceWaitExpired(true),
+      SOURCE_PENDING_RETRY_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [awaitingVisibleSource, item.key, sourceAttempt, sourceRetrying]);
+
+  useEffect(() => {
+    // A manifest arriving through either the foreground request or an
+    // adjacent preload owns the result. Clear the row-level retry state as
+    // soon as this exact reel has a playable source.
+    if (!item.type || item.type !== 'reel' || !item.reel.videoUrl.trim())
+      return;
+    sourceRefreshFlightRef.current = null;
+    setSourceRetrying(false);
+    setSourceWaitExpired(false);
+  }, [item]);
+
+  useEffect(() => {
+    // Virtualized rows may be reused. A refresh flight and its visual state
+    // belong to one feed item, not to the component instance that happens to
+    // render it after a fast swipe or course revision.
+    sourceRefreshGenerationRef.current += 1;
+    sourceRefreshFlightRef.current = null;
+    setSourceAttempt(0);
+    setSourceRetrying(false);
+    setSourceWaitExpired(false);
+    return () => {
+      sourceRefreshGenerationRef.current += 1;
+      sourceRefreshFlightRef.current = null;
+    };
+  }, [item.key]);
 
   useEffect(() => {
     onOverlayVisibilityChange?.(item.key, isVisible && localOverlayVisible);
@@ -109,7 +160,10 @@ const FeedRow = ({
         attachmentPromptAt !== null &&
         attachmentClockRef.current <= attachmentPromptAt
       ) {
-        const next = Math.min(attachmentPromptAt, Math.max(0, Math.floor(time)));
+        const next = Math.min(
+          attachmentPromptAt,
+          Math.max(0, Math.floor(time)),
+        );
         if (next !== attachmentClockRef.current) {
           attachmentClockRef.current = next;
           setCurrentTime(next);
@@ -119,12 +173,34 @@ const FeedRow = ({
     },
     [attachmentPromptAt, onProgress],
   );
+  const retryMissingSource = useCallback(() => {
+    if (sourceRefreshFlightRef.current) return;
+    setSourceAttempt(value => value + 1);
+    setSourceWaitExpired(false);
+    setSourceRetrying(true);
+    const generation = sourceRefreshGenerationRef.current;
+    const flight = Promise.resolve(onRefreshVideo())
+      .catch(() => undefined)
+      .then(() => undefined)
+      .finally(() => {
+        if (
+          sourceRefreshGenerationRef.current !== generation ||
+          sourceRefreshFlightRef.current !== flight
+        ) {
+          return;
+        }
+        sourceRefreshFlightRef.current = null;
+        setSourceRetrying(false);
+      });
+    sourceRefreshFlightRef.current = flight;
+  }, [onRefreshVideo]);
 
   if (item.type === 'project') {
     const module = course.modules.find(entry => entry.id === item.moduleId);
     return (
       <View style={[styles.page, {width: pageWidth, height: pageHeight}]}>
         <ProjectTransition
+          key={item.project.id}
           active={isVisible}
           project={item.project}
           moduleTitle={module?.title || ''}
@@ -134,27 +210,6 @@ const FeedRow = ({
           bottomInset={bottomInset}
           onSubmit={onSubmitProject}
           onContinue={onContinueAfterProject}
-        />
-      </View>
-    );
-  }
-
-  if (item.type === 'quiz') {
-    const module = course.modules.find(entry => entry.id === item.moduleId);
-    return (
-      <View style={[styles.page, {width: pageWidth, height: pageHeight}]}>
-        <QuizTransition
-          courseId={course.id}
-          quiz={item.quiz}
-          moduleTitle={module?.title || ''}
-          width={pageWidth}
-          height={pageHeight}
-          topInset={topInset}
-          bottomInset={bottomInset}
-          onPassed={async () => {
-            await onQuizPassed();
-            onContinueAfterQuiz?.();
-          }}
         />
       </View>
     );
@@ -200,9 +255,35 @@ const FeedRow = ({
                 style={StyleSheet.absoluteFill}
               />
             )}
-            {isVisible && !item.reel.isLocked && (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            )}
+            {awaitingVisibleSource &&
+              (sourceWaitExpired ? (
+                <View
+                  accessibilityLiveRegion="assertive"
+                  style={styles.sourceRetry}>
+                  <Text style={styles.sourceRetryTitle}>
+                    تعذّر تجهيز الفيديو
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="إعادة محاولة تشغيل الفيديو"
+                    onPress={retryMissingSource}
+                    style={styles.sourceRetryButton}>
+                    <Text style={styles.sourceRetryButtonText}>
+                      إعادة المحاولة
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <View
+                  accessibilityLiveRegion="polite"
+                  accessibilityLabel="جارٍ تجهيز الفيديو"
+                  style={styles.sourceLoader}>
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <Text style={styles.sourceLoaderText}>
+                    جارٍ تجهيز الفيديو
+                  </Text>
+                </View>
+              ))}
           </View>
         )}
         {isVisible && (
@@ -254,5 +335,38 @@ const styles = StyleSheet.create({
   sourcePending: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  sourceLoader: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  sourceLoaderText: {
+    color: 'rgba(255,255,255,.75)',
+    fontFamily: Fonts.medium,
+    fontSize: 12,
+  },
+  sourceRetry: {
+    alignItems: 'center',
+    padding: 16,
+  },
+  sourceRetryTitle: {
+    color: '#FFFFFF',
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+  },
+  sourceRetryButton: {
+    minHeight: 48,
+    minWidth: 150,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    backgroundColor: '#236FE8',
+    marginTop: 12,
+  },
+  sourceRetryButtonText: {
+    color: '#FFFFFF',
+    fontFamily: Fonts.semiBold,
+    fontSize: 13,
   },
 });

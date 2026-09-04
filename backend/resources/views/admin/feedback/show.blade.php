@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('page.title', 'حالة دعم')
+@section('page.title', 'رسالة دعم')
 
 @section('content')
 @php
@@ -21,7 +21,7 @@
         'pageDescription' => $categories[$feedback->category] ?? 'دعم',
         'pageIcon' => 'fa-life-ring',
         'pageActionUrl' => route('admin.feedback.index'),
-        'pageActionLabel' => 'العودة للحالات',
+        'pageActionLabel' => 'العودة إلى رسائل الدعم',
         'pageActionIcon' => 'fa-arrow-right',
         'pageActionClass' => 'btn-light',
     ])

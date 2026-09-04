@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\PaymentReconciliationCheckpoint;
 use App\Models\PaymentReconciliationFinding;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -17,8 +16,10 @@ final readonly class KashierReconciliationService
 {
     private const PROVIDER = 'kashier';
 
-    public function __construct(private KashierPaymentService $payments)
-    {
+    public function __construct(
+        private KashierPaymentService $payments,
+        private OrderLifecycleService $orders
+    ) {
     }
 
     /**
@@ -130,7 +131,7 @@ final readonly class KashierReconciliationService
             return 'unavailable';
         }
 
-        $providerStatus = $this->providerStatus($response);
+        $providerStatus = $this->payments->providerOrderStatus($response);
         $transactionId = $this->payments->extractTransactionId($response);
         $evidence = $this->safeEvidence($response, $providerStatus, $transactionId);
         if ($providerStatus === null) {
@@ -149,7 +150,7 @@ final readonly class KashierReconciliationService
             try {
                 $this->payments->assertGatewayPaymentMatchesOrder($order, $response);
             } catch (Throwable $exception) {
-                $this->markForReview($order);
+                $this->markForReview($order, 'captured_evidence_mismatch');
                 $this->recordFinding(
                     $order,
                     'captured_evidence_mismatch',
@@ -203,6 +204,18 @@ final readonly class KashierReconciliationService
         }
 
         if ($providerStatus === 'NOT_FOUND' && $order->status === Order::STATUS_PENDING) {
+            if ($order->financial_status === Order::FINANCIAL_REVIEW_REQUIRED) {
+                $this->recordFinding(
+                    $order,
+                    'provider_missing_local_review_required',
+                    $providerStatus,
+                    $transactionId,
+                    $evidence
+                );
+
+                return 'findings';
+            }
+
             // The provider-side order can be absent until the learner opens
             // the HPP. Only local expiry proves that this particular checkout
             // may be closed; otherwise a periodic scan would cancel a fresh
@@ -213,6 +226,27 @@ final readonly class KashierReconciliationService
             $this->resolveOpenFindings($order->fresh());
 
             return 'consistent';
+        }
+
+        if ($providerStatus === 'NOT_FOUND') {
+            if (in_array($order->status, [Order::STATUS_CANCELLED, Order::STATUS_REJECTED], true)) {
+                $this->resolveOpenFindings($order);
+
+                return 'consistent';
+            }
+
+            // Provider retention is not guaranteed to match the application's
+            // financial history. Absence is a finding, not evidence that can
+            // undo or quarantine an otherwise settled local order.
+            $this->recordFinding(
+                $order,
+                'provider_missing_local_order',
+                $providerStatus,
+                $transactionId,
+                $evidence
+            );
+
+            return 'findings';
         }
 
         $reversalType = $this->payments->financialReversalType($providerStatus);
@@ -245,10 +279,21 @@ final readonly class KashierReconciliationService
             return 'reversed';
         }
 
-        if ($this->isProviderFailure($providerStatus)) {
+        if ($providerStatus !== 'NOT_FOUND' && $this->payments->isProviderFailureStatus($providerStatus)) {
             if ($order->status === Order::STATUS_PENDING) {
-                $this->payments->cancelPendingOrder($order, $evidence);
-                $this->resolveOpenFindings($order->fresh());
+                $reconciled = $this->payments->cancelPendingOrder($order, $evidence);
+                if ($reconciled->financial_status === Order::FINANCIAL_REVIEW_REQUIRED) {
+                    $this->recordFinding(
+                        $reconciled,
+                        'provider_failed_local_review_required',
+                        $providerStatus,
+                        $transactionId,
+                        $evidence
+                    );
+
+                    return 'findings';
+                }
+                $this->resolveOpenFindings($reconciled);
 
                 return 'consistent';
             }
@@ -258,7 +303,7 @@ final readonly class KashierReconciliationService
                 return 'consistent';
             }
 
-            $this->markForReview($order);
+            $this->markForReview($order, 'provider_failed_local_settled');
             $this->recordFinding(
                 $order,
                 'provider_failed_local_settled',
@@ -270,7 +315,19 @@ final readonly class KashierReconciliationService
             return 'findings';
         }
 
-        if ($this->isProviderPending($providerStatus) && $order->status === Order::STATUS_PENDING) {
+        if ($this->payments->isProviderPendingStatus($providerStatus)
+            && $order->status === Order::STATUS_PENDING) {
+            if ($order->financial_status === Order::FINANCIAL_REVIEW_REQUIRED) {
+                $this->recordFinding(
+                    $order,
+                    'provider_pending_local_review_required',
+                    $providerStatus,
+                    $transactionId,
+                    $evidence
+                );
+
+                return 'findings';
+            }
             if ($order->isCheckoutExpired()) {
                 $this->recordFinding(
                     $order,
@@ -287,7 +344,7 @@ final readonly class KashierReconciliationService
             return 'consistent';
         }
 
-        $this->markForReview($order);
+        $this->markForReview($order, 'provider_local_status_mismatch');
         $this->recordFinding(
             $order,
             'provider_local_status_mismatch',
@@ -297,23 +354,6 @@ final readonly class KashierReconciliationService
         );
 
         return 'findings';
-    }
-
-    private function providerStatus(array $response): ?string
-    {
-        return $this->payments->providerOrderStatus($response);
-    }
-
-    private function isProviderFailure(string $status): bool
-    {
-        return in_array($status, [
-            'UNPAID', 'FAILED', 'DECLINED', 'CANCELLED', 'CANCELED', 'VOIDED', 'EXPIRED',
-        ], true);
-    }
-
-    private function isProviderPending(string $status): bool
-    {
-        return in_array($status, ['PENDING', 'INITIATED', 'AUTHORIZED', 'PROCESSING'], true);
     }
 
     /** @return array<string, mixed> */
@@ -436,19 +476,17 @@ final readonly class KashierReconciliationService
             ]);
     }
 
-    private function markForReview(Order $order): void
+    private function markForReview(Order $order, string $reason): void
     {
-        DB::transaction(function () use ($order): void {
-            User::withTrashed()->lockForUpdate()->findOrFail((int) $order->user_id);
-            $locked = Order::query()->lockForUpdate()->findOrFail($order->id);
-            if (! in_array($locked->financial_status, [
-                Order::FINANCIAL_REFUNDED,
-                Order::FINANCIAL_CHARGEBACK,
-                Order::FINANCIAL_REVERSED,
-                Order::FINANCIAL_PARTIALLY_RECOVERED,
-            ], true)) {
-                $locked->update(['financial_status' => Order::FINANCIAL_REVIEW_REQUIRED]);
-            }
-        });
+        $this->orders->flagExternalFinancialReview(
+            $order,
+            $reason,
+            'Kashier reconciliation requires financial review.',
+            'kashier:reconcile-review:' . hash('sha256', implode('|', [
+                (string) $order->id,
+                $reason,
+            ])),
+            'kashier'
+        );
     }
 }

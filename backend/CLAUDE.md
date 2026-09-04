@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Rokn is a **single-tenant** e-learning mobile app backend (dashboard + APIs) built with Laravel 12 and the PHP 8.4 release line (8.4.24 minimum). It provides course access, learning progress, projects, exams, certificates, payments, notifications and administration functionality.
+Rokn is a **single-tenant** e-learning mobile app backend (dashboard + APIs) built with Laravel 12 and the PHP 8.4 release line (8.4.24 minimum). It provides course access, learning progress, projects, certificates, payments, notifications and administration functionality.
 
 **Important context:** The codebase was forked from an older multi-tenant SaaS app. It is being incrementally cleaned up to remove all multi-tenancy code (tenant_id columns, subdomain routing, tenant middleware) and legacy modules that don't belong to Rokn (e-commerce: orders, products, stores, merchant portal, etc.). This cleanup is ongoing — expect to encounter leftover multi-tenant patterns and unused modules that should be removed when touched.
 
@@ -71,9 +71,8 @@ All API endpoints return:
 
 ### Authentication
 API routes use the `auth:api` guard backed by hashed, revocable API-token rows.
-`TransitioningTokenGuard` supports controlled migration from legacy token storage;
-plaintext and legacy transports stay disabled unless an explicit cutover requires
-them. Social OAuth uses server-created state and PKCE.
+API sessions accept hashed bearer tokens only. Social OAuth uses server-created
+state and requires PKCE S256.
 
 ### Key Integrations
 - **Firebase**: Realtime database + cloud storage + FCM push notifications (config in `config/firebase.php`)

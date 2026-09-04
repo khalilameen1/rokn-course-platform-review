@@ -24,6 +24,7 @@ use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Upgrades an existing enrolment to its next paid service plan. The legacy
@@ -256,6 +257,15 @@ final class CourseChatUpgradeController extends Controller
                         )) {
                             throw new \DomainException('checkout_idempotency_conflict');
                         }
+                        if (
+                            !$replayedOrder->isFinanciallyEffective()
+                            || $provenance->enrollmentHasActiveHold(
+                                $enrollment,
+                                ['course', 'chat', 'plan']
+                            )
+                        ) {
+                            throw new \DomainException('course_access_under_review');
+                        }
 
                         return [
                             'already_upgraded' => true,
@@ -309,10 +319,15 @@ final class CourseChatUpgradeController extends Controller
 
                 $targetCode = (string) $targetPlan->code;
                 $checkoutKey = $clientIdempotencyKey
-                    ?: sprintf('system:course-plan-upgrade:%d:%s', $enrollment->id, $targetCode);
+                    ?: sprintf(
+                        'system:course-plan-upgrade:%d:%s:%s',
+                        $enrollment->id,
+                        $targetCode,
+                        Str::orderedUuid()->toString()
+                    );
                 $idempotencyKey = 'course-plan-upgrade:' . hash(
                     'sha256',
-                    $user->id . '|' . $enrollment->id . '|' . $targetCode
+                    $user->id . '|' . $checkoutKey
                 );
                 $replayedOrder = Order::query()
                     ->where('user_id', $user->id)
@@ -327,6 +342,15 @@ final class CourseChatUpgradeController extends Controller
                         $expectedPrice
                     )) {
                         throw new \DomainException('checkout_idempotency_conflict');
+                    }
+                    if (
+                        !$replayedOrder->isFinanciallyEffective()
+                        || $provenance->enrollmentHasActiveHold(
+                            $enrollment,
+                            ['course', 'chat', 'plan']
+                        )
+                    ) {
+                        throw new \DomainException('course_access_under_review');
                     }
 
                     return [
@@ -475,6 +499,8 @@ final class CourseChatUpgradeController extends Controller
                 match ($code) {
                     'course_price_changed' => "تغيّر السعر\nراجع الإجمالي قبل الشراء",
                     'course_terms_changed' => "تغيّرت تفاصيل الفئة\nراجعها قبل الترقية",
+                    'course_access_under_review' =>
+                        "هذه العملية قيد المراجعة\nلم يُخصم رصيد جديد",
                     default => 'الترقية غير متاحة لهذه الفئة',
                 },
                 $code === 'course_access_required' ? 403 : 409
@@ -595,9 +621,10 @@ final class CourseChatUpgradeController extends Controller
         ?CourseAccessPlan $targetPlan = null
     ): array
     {
-        $total = max(0, (int) $user->wallet_coins);
-        $paid = min($total, max(0, (int) $user->wallet_purchased_coins));
-        $reward = $total - $paid;
+        $balances = $wallet->balances($user);
+        $total = $balances['total'];
+        $paid = $balances['paid'];
+        $reward = $balances['reward'];
         $rewardPolicy = $this->rewardContribution(
             $wallet,
             (int) $user->id,
@@ -652,6 +679,7 @@ final class CourseChatUpgradeController extends Controller
                     ->where('coins', '>=', $deficit)
                     ->where('coins', '>', 0)
                     ->where('price', '>', 0)
+                    ->purchasable()
                     ->orderBy('coins')
                     ->limit(3)
                     ->get()

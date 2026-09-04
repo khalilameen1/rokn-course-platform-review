@@ -16,7 +16,27 @@ use Throwable;
 final class OpenRouterService
 {
     public const CIRCUIT_KEY = 'openrouter:circuit-open';
-    private const FAILURE_KEY = 'openrouter:circuit-failures';
+
+    public function configuredModel(string $preferredKey = 'default_model'): string
+    {
+        $allowed = array_values(array_filter((array) config('openrouter.allowed_models', [])));
+        $candidates = array_values(array_unique(array_filter([
+            trim((string) config("openrouter.{$preferredKey}")),
+            trim((string) config('openrouter.default_model')),
+            ...array_map('trim', (array) config('openrouter.fallback_models', [])),
+        ])));
+        foreach ($candidates as $candidate) {
+            if (in_array($candidate, $allowed, true)) {
+                return $candidate;
+            }
+        }
+
+        throw new AiProviderUnavailableException(
+            false,
+            'No configured AI model is permitted by the production allowlist.',
+            providerCode: 'model_not_allowed'
+        );
+    }
 
     public function chat(
         string $model,
@@ -32,7 +52,8 @@ final class OpenRouterService
         if ($apiKey === '' || $model === '') {
             throw new AiProviderUnavailableException(
                 false,
-                'AI service is not configured.'
+                'AI service is not configured.',
+                providerCode: 'not_configured'
             );
         }
 
@@ -40,14 +61,19 @@ final class OpenRouterService
         if ($allowed === [] || !in_array($model, $allowed, true)) {
             throw new AiProviderUnavailableException(
                 false,
-                'AI model is not in the production allowlist.'
+                'AI model is not in the production allowlist.',
+                providerCode: 'model_not_allowed'
             );
         }
 
         if ($this->circuitIsOpen()) {
-            throw new AiProviderUnavailableException(true);
+            throw new AiProviderUnavailableException(
+                false,
+                providerCode: 'configuration_circuit_open'
+            );
         }
 
+        $reasoningEffort = $this->reasoningEffort($model);
         $models = array_values(array_unique(array_filter([
             $model,
             ...array_values(array_filter(
@@ -56,16 +82,28 @@ final class OpenRouterService
                     && in_array($fallback, $allowed, true)
             )),
         ])));
+        if ($reasoningEffort === 'none') {
+            // A model fallback receives the same request body as the primary.
+            // Do not advertise a fallback whose reasoning contract rejects
+            // the explicit no-reasoning mode used by the real-time chat.
+            $models = array_values(array_filter(
+                $models,
+                fn (string $candidate): bool => $this->supportsNoReasoning($candidate)
+            ));
+        }
         $payload = [
             'messages' => $messages,
             'max_completion_tokens' => max(
                 80,
-                min((int) config('openrouter.max_tokens', 500), $maxTokens)
+                min((int) config('openrouter.max_tokens', 800), $maxTokens)
             ),
             'provider' => [
                 'require_parameters' => true,
-                'data_collection' => 'deny',
-                'zdr' => true,
+                'data_collection' => in_array(
+                    config('openrouter.provider_data_collection'),
+                    ['allow', 'deny'],
+                    true
+                ) ? config('openrouter.provider_data_collection') : 'allow',
                 'sort' => in_array(
                     config('openrouter.provider_sort'),
                     ['latency', 'throughput', 'price'],
@@ -73,6 +111,9 @@ final class OpenRouterService
                 ) ? config('openrouter.provider_sort') : 'latency',
             ],
         ];
+        if ((bool) config('openrouter.provider_zdr', false)) {
+            $payload['provider']['zdr'] = true;
+        }
         if (count($models) > 1) {
             // OpenRouter owns failover inside one billable request. Retrying a
             // second model from our queue after an uncertain response could
@@ -81,7 +122,6 @@ final class OpenRouterService
         } else {
             $payload['model'] = $model;
         }
-        $reasoningEffort = $this->reasoningEffort($model);
         if ($reasoningEffort !== null) {
             $payload['reasoning'] = [
                 'effort' => $reasoningEffort,
@@ -166,11 +206,16 @@ final class OpenRouterService
                 // Guzzle returns after the response headers and exposes the
                 // provider body as a PSR stream. The API key never crosses the
                 // backend boundary and the job keeps one paid request open.
-                $request = $request->withOptions(['stream' => true]);
+                $request = $request->withOptions([
+                    'stream' => true,
+                    'read_timeout' => max(5, min(
+                        50,
+                        (int) config('openrouter.stream_read_timeout_seconds', 45)
+                    )),
+                ]);
             }
             $response = $request->post((string) config('openrouter.endpoint'), $payload);
         } catch (ConnectionException $exception) {
-            $this->recordTransientFailure('connection');
             // A timeout may happen after the provider accepted and billed the
             // request. Do not issue a blind second paid call.
             throw new AiProviderUnavailableException(
@@ -202,19 +247,18 @@ final class OpenRouterService
                     'authentication',
                     max(60, (int) config('openrouter.billing_circuit_open_seconds', 900))
                 );
-            } elseif ($response->status() === 429 || $response->serverError()) {
-                $this->recordTransientFailure('http_' . $response->status());
             }
             throw new AiProviderUnavailableException(
-                $response->status() === 429,
+                in_array($response->status(), [408, 429], true) || $response->serverError(),
                 fileAnnotations: $failureAnnotations,
-                outcomeUnknown: $response->serverError(),
+                // A complete non-2xx response is a known rejected request.
+                // Only a connection/stream interruption after acceptance has
+                // an unknown billable outcome and must not be replayed.
+                outcomeUnknown: false,
                 providerStatus: $response->status(),
                 providerCode: $providerCode
             );
         }
-
-        $this->recordSuccess();
 
         $isEventStream = str_contains(
             strtolower((string) $response->header('Content-Type')),
@@ -261,6 +305,8 @@ final class OpenRouterService
                 outcomeUnknown: true
             );
         }
+
+        $this->recordSuccess();
 
         $providerCost = data_get($body, 'usage.cost');
         $annotations = data_get($body, 'choices.0.message.annotations');
@@ -487,12 +533,20 @@ final class OpenRouterService
             return false;
         }
         if (isset($frame['error'])) {
+            $rawCode = trim((string) data_get($frame, 'error.code', ''));
+            $providerStatus = ctype_digit($rawCode) ? (int) $rawCode : null;
+            $outcomeUnknown = $content !== '';
             throw new AiProviderUnavailableException(
-                false,
+                !$outcomeUnknown && (
+                    in_array($providerStatus, [408, 429], true)
+                    || ($providerStatus !== null && $providerStatus >= 500)
+                ),
                 'AI provider stream returned an error.',
                 fileAnnotations: is_array(data_get($frame, 'error.metadata.file_annotations'))
                     ? data_get($frame, 'error.metadata.file_annotations') : [],
-                outcomeUnknown: $content !== ''
+                outcomeUnknown: $outcomeUnknown,
+                providerStatus: $providerStatus,
+                providerCode: $rawCode !== '' ? substr($rawCode, 0, 80) : null
             );
         }
 
@@ -657,6 +711,20 @@ final class OpenRouterService
             true
         ) ? $effort : 'none';
 
+        // GPT-5.6 enables medium reasoning by default. That can consume half
+        // a short learner-answer budget before any visible text is produced.
+        // Its current production variants support disabling reasoning, which
+        // keeps first-token latency and billed output predictable.
+        if (
+            $effort === 'none'
+            && preg_match(
+                '/^openai\/gpt-5\.6-(?:luna|terra|sol)(?:-pro)?(?:-\d{8})?$/',
+                strtolower(trim($model))
+            )
+        ) {
+            return 'none';
+        }
+
         // The original GPT-5 family requires reasoning and advertises
         // minimal/low/medium/high only. OpenRouter may map an unsupported
         // "none" to a larger default effort, consuming the small course-chat
@@ -675,6 +743,14 @@ final class OpenRouterService
         // parameter. Omitting it lets ordinary chat models remain eligible
         // when strict parameter support is enabled.
         return $effort === 'none' ? null : $effort;
+    }
+
+    private function supportsNoReasoning(string $model): bool
+    {
+        return preg_match(
+            '/^openai\/gpt-5\.6-(?:luna|terra|sol)(?:-pro)?(?:-\d{8})?$/',
+            strtolower(trim($model))
+        ) === 1;
     }
 
     private function supportsTemperature(string $model): bool
@@ -696,32 +772,13 @@ final class OpenRouterService
         }
     }
 
-    private function recordTransientFailure(string $reason): void
-    {
-        try {
-            Cache::add(self::FAILURE_KEY, 0, now()->addMinute());
-            $failures = (int) Cache::increment(self::FAILURE_KEY);
-            if ($failures >= max(2, (int) config('openrouter.circuit_failure_threshold', 3))) {
-                $this->openCircuit($reason);
-            }
-        } catch (\Throwable $exception) {
-            Log::warning('OpenRouter circuit state could not be recorded.', [
-                'reason' => $reason,
-                'exception' => $exception::class,
-            ]);
-        }
-    }
-
-    private function openCircuit(string $reason, ?int $seconds = null): void
+    private function openCircuit(string $reason, int $seconds): void
     {
         try {
             Cache::put(
                 self::CIRCUIT_KEY,
                 ['reason' => $reason, 'opened_at' => now()->toIso8601String()],
-                now()->addSeconds($seconds ?? max(
-                    10,
-                    (int) config('openrouter.circuit_open_seconds', 30)
-                ))
+                now()->addSeconds(max(60, $seconds))
             );
         } catch (\Throwable $exception) {
             Log::warning('OpenRouter circuit could not be opened.', [
@@ -734,7 +791,6 @@ final class OpenRouterService
     private function recordSuccess(): void
     {
         try {
-            Cache::forget(self::FAILURE_KEY);
             Cache::forget(self::CIRCUIT_KEY);
         } catch (\Throwable) {
             // Successful student output is never failed by monitoring state.

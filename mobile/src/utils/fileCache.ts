@@ -5,8 +5,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Chat attachments are working files, not learner documents. Keeping them in
 // the OS cache lets low-storage phones reclaim the space automatically.
 const getCacheDir = (): string => `${RNFS.CachesDirectoryPath}/rokn_chat`;
-const getLegacyCacheDir = (): string =>
-  `${RNFS.DocumentDirectoryPath}/chat_cache`;
 
 const CACHE_METADATA_KEY = '@chat_file_cache_metadata';
 const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000;
@@ -391,10 +389,7 @@ export const cleanupOldFiles = async (): Promise<void> => {
   }
 };
 
-/**
- * Rokn AI is session-only. Remove attachment leftovers from both the current
- * cache and the document directory used by older test builds.
- */
+/** Rokn AI is session-only. Remove every transient attachment at logout. */
 export const clearTransientChatCache = async (
   options: {accountBoundary?: boolean} = {},
 ): Promise<void> => {
@@ -416,37 +411,12 @@ export const clearTransientChatCache = async (
   if (options.accountBoundary && activeCacheWrites.size) {
     await Promise.allSettled([...activeCacheWrites]);
   }
-  const legacyStorageKeys = (await AsyncStorage.getAllKeys().catch(() => []))
-    .filter(
-      key => key === 'persist:chat' || key.includes('@rokn/course-chat/'),
-    );
-  if (legacyStorageKeys.length) {
-    await AsyncStorage.multiRemove(legacyStorageKeys).catch(() => undefined);
-  }
-  await Promise.all(
-    [getCacheDir(), getLegacyCacheDir()].map(async directory => {
-      try {
-        if (await RNFS.exists(directory)) {
-          await RNFS.unlink(directory);
-        }
-      } catch {
-        // Cleanup failure does not block application startup.
-      }
-    }),
-  );
   try {
-    const documentFiles = await RNFS.readDir(RNFS.DocumentDirectoryPath);
-    await Promise.all(
-      documentFiles
-        .filter(file => /^(voice-note|voice-\d+)\.(m4a|mp3)$/i.test(file.name))
-        .map(file => RNFS.unlink(file.path).catch(() => undefined)),
-    );
+    const directory = getCacheDir();
+    if (await RNFS.exists(directory)) await RNFS.unlink(directory);
   } catch {
-    // These files existed only in retired voice-chat test builds.
+    // Cleanup failure does not block logout or account replacement.
   }
-  await RNFS.unlink(`${RNFS.CachesDirectoryPath}/voice-note.mp3`).catch(
-    () => undefined,
-  );
   await withMetadataLock(() =>
     AsyncStorage.removeItem(CACHE_METADATA_KEY),
   ).catch(() => undefined);

@@ -28,7 +28,7 @@ function classification(path) {
     if (thirdParty.has(path)) return { classification: 'third_party', family: thirdParty.get(path) };
     if (generated.has(path)) return { classification: 'generated' };
     if (deployment.has(path)) return { classification: 'deployment' };
-    if (/^public\/(?:admin\/assets\/css\/|admin\/assets\/js\/(?:main|admin-identity-theme|request)\.js$|assets\/img\/badges\/|css\/landing\.css$|favicon\.ico$|images\/)/.test(path)) {
+    if (/^public\/(?:admin\/assets\/css\/|admin\/assets\/js\/(?:main|admin-identity-theme|request|users-index|course-studio(?:-[a-z-]+)?)\.js$|assets\/img\/badges\/|css\/landing\.css$|favicon\.ico$|images\/)/.test(path)) {
         return { classification: 'first_party' };
     }
     throw new Error(`No explicit initialization rule for public asset: ${path}`);

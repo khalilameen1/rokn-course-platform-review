@@ -10,7 +10,6 @@ use App\Models\NotificationPushDelivery;
 use App\Services\NotificationDeliveryPolicy;
 use App\Support\DurableJobDispatch;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Schema;
 
 final class RetryStalledNotificationPushes extends Command
 {
@@ -20,96 +19,30 @@ final class RetryStalledNotificationPushes extends Command
     public function handle(): int
     {
         $remaining = max(1, min(5000, (int) $this->option('limit')));
-        $queued = 0;
-        $dispatchFailures = 0;
-
-        if (Schema::hasTable('notification_push_deliveries')) {
-            return $this->handlePerDevice($remaining);
-        }
-
-        $staleClaimed = StudentNotification::query()
-            ->whereNull('push_sent_at')
-            ->whereNull('push_failed_at')
-            ->whereNotNull('push_attempted_at')
-            ->where('push_attempted_at', '<=', now()->subMinutes(15))
-            ->where('created_at', '>=', now()->subDays(7))
-            ->update([
-                // A worker may have stopped after FCM accepted the push. A
-                // blind replay creates duplicate notifications, so preserve
-                // the inbox item and expose the uncertain push to operations.
-                'push_failed_at' => now(),
-                'push_failure_code' => 'delivery_unknown_after_worker_loss',
-                'updated_at' => now(),
-            ]);
-
-        StudentNotification::query()
-            ->whereNull('push_sent_at')
-            ->whereNull('push_failed_at')
-            ->whereNull('push_attempted_at')
-            ->where('created_at', '<=', now()->subMinutes(2))
-            ->where('created_at', '>=', now()->subDays(7))
-            ->whereHas('user', fn ($users) => $users
-                ->where('active', true)
-                ->where('role', 'client')
-                ->where('notifications_status', true)
-                ->whereHas('deviceTokens'))
-            ->where(function ($policy): void {
-                $policy->whereNotIn(
-                    'notification_type',
-                    NotificationDeliveryPolicy::marketingTypes()
-                )->orWhereHas('user', fn ($users) => $users
-                    ->where('marketing_notifications_enabled', true));
-            })
-            ->select('id')
-            ->orderBy('id')
-            ->chunkById(100, function ($notifications) use (&$remaining, &$queued, &$dispatchFailures): bool {
-                foreach ($notifications as $notification) {
-                    if ($remaining-- <= 0) {
-                        return false;
-                    }
-
-                    try {
-                        DurableJobDispatch::now(
-                            new SendUserPushNotification((int) $notification->id)
-                        );
-                        $queued++;
-                    } catch (\Throwable $exception) {
-                        $dispatchFailures++;
-                        report($exception);
-                    }
-                }
-
-                return $remaining > 0;
-            });
-
-        $this->info("Queued {$queued} untouched push job(s); {$dispatchFailures} queue write(s) failed; quarantined {$staleClaimed} uncertain delivery claim(s).");
-
-        return self::SUCCESS;
+        return $this->handlePerDevice($remaining);
     }
 
     private function handlePerDevice(int $remaining): int
     {
-        $retiredUntouched = $this->retireUntouchedParents();
-        $legacyClaims = StudentNotification::query()
+        // Rows claimed before the per-device ledger existed have no token-level
+        // evidence to reconcile. A worker may have reached FCM, so retrying
+        // could notify twice; quarantine the parent and keep the inbox copy.
+        $legacyClaimIds = StudentNotification::query()
             ->whereDoesntHave('pushDeliveries')
+            ->whereNotNull('push_attempted_at')
             ->whereNull('push_sent_at')
             ->whereNull('push_failed_at')
-            ->whereNotNull('push_attempted_at')
             ->where('push_attempted_at', '<=', now()->subMinutes(15))
             ->limit(5000)
             ->pluck('id');
-        $quarantinedLegacyClaims = StudentNotification::query()
-            ->whereIn('id', $legacyClaims)
-            ->whereNull('push_sent_at')
-            ->whereNull('push_failed_at')
+        $legacyClaimed = StudentNotification::query()
+            ->whereIn('id', $legacyClaimIds)
             ->update([
-                // This provider call predates the per-device ledger. Its
-                // outcome cannot be reconstructed or retried without risking
-                // a duplicate wake-up, so make the uncertainty explicit.
                 'push_failed_at' => now(),
                 'push_failure_code' => 'delivery_unknown_after_worker_loss',
                 'updated_at' => now(),
             ]);
+        $retiredUntouched = $this->retireUntouchedParents();
         $unboundDeliveryIds = NotificationPushDelivery::query()
             ->from('notification_push_deliveries as delivery')
             ->join('student_notifications as notification', 'notification.id', '=', 'delivery.student_notification_id')
@@ -147,7 +80,7 @@ final class RetryStalledNotificationPushes extends Command
             ])
             ->where(function ($query): void {
                 $query->where('owner.active', false)
-                    ->orWhere('owner.role', '<>', 'client')
+                    ->orWhereRaw('LOWER(owner.role) <> ?', ['client'])
                     ->orWhere('owner.notifications_status', false)
                     ->orWhere(function ($marketing): void {
                         $marketing->whereIn(
@@ -191,7 +124,7 @@ final class RetryStalledNotificationPushes extends Command
             ->where('created_at', '>=', now()->subDays(7))
             ->whereHas('user', fn ($users) => $users
                 ->where('active', true)
-                ->where('role', 'client')
+                ->students()
                 ->where('notifications_status', true)
                 ->whereHas('deviceTokens'))
             ->where(function ($policy): void {
@@ -202,8 +135,8 @@ final class RetryStalledNotificationPushes extends Command
                     ->where('marketing_notifications_enabled', true));
             })
             ->where(function ($query): void {
-                $query->where(function ($legacyUntouched): void {
-                    $legacyUntouched->whereDoesntHave('pushDeliveries')
+                $query->where(function ($untouched): void {
+                    $untouched->whereDoesntHave('pushDeliveries')
                         ->whereNull('push_attempted_at')
                         ->whereNull('push_sent_at')
                         ->whereNull('push_failed_at');
@@ -264,7 +197,7 @@ SQL);
                 ->unique()
         );
 
-        $this->info("Queued {$queued} push job(s); {$dispatchFailures} queue write(s) failed; retired {$retiredUntouched} untouched parent(s), {$unboundDeliveryIds->count()} unbound and {$ineligibleDeliveryIds->count()} ineligible device claim(s); quarantined {$staleClaimed} device and {$quarantinedLegacyClaims} legacy uncertain claim(s).");
+        $this->info("Queued {$queued} push job(s); {$dispatchFailures} queue write(s) failed; retired {$retiredUntouched} untouched parent(s), {$unboundDeliveryIds->count()} unbound and {$ineligibleDeliveryIds->count()} ineligible device claim(s); quarantined {$staleClaimed} uncertain device claim(s) and {$legacyClaimed} legacy claim(s).");
         return self::SUCCESS;
     }
 
@@ -290,14 +223,14 @@ SQL);
 
         $settle(
             $this->untouchedParents()->whereDoesntHave('user', fn ($users) => $users
-                ->where('active', true)->where('role', 'client')),
+                ->where('active', true)->students()),
             'account_inactive'
         );
         $settle(
             $this->untouchedParents()->where(function ($ineligible): void {
                 $ineligible->whereHas('user', fn ($users) => $users
                     ->where('active', true)
-                    ->where('role', 'client')
+                    ->students()
                     ->where('notifications_status', false))
                     ->orWhere(function ($marketing): void {
                         $marketing->whereIn(
@@ -305,7 +238,7 @@ SQL);
                             NotificationDeliveryPolicy::marketingTypes()
                         )->whereHas('user', fn ($users) => $users
                             ->where('active', true)
-                            ->where('role', 'client')
+                            ->students()
                             ->where('marketing_notifications_enabled', false));
                     });
             }),
@@ -315,7 +248,7 @@ SQL);
             $this->untouchedParents()
                 ->whereHas('user', fn ($users) => $users
                     ->where('active', true)
-                    ->where('role', 'client')
+                    ->students()
                     ->where('notifications_status', true))
                 ->where(function ($policy): void {
                     $policy->whereNotIn(

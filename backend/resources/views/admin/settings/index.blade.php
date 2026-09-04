@@ -372,27 +372,6 @@
                         <a href="{{ route('admin.app-versions.index') }}">إصدارات التطبيق</a>
                     </div>
 
-                    <div class="form-row">
-                        <div class="form-group-modern settings-grid-full">
-                            <label for="about_us_url">
-                                <i class="fa fa-info-circle"></i> رابط صفحة من نحن
-                            </label>
-                            {!! Form::url('about_us_url', null, ['class' => 'form-control-modern', 'id' => 'about_us_url', 'placeholder' => route('about')]) !!}
-                            <small class="text-muted">اتركه فارغًا لاستخدام الصفحة الرسمية داخل ركن</small>
-                            @error('about_us_url')<small class="text-danger">{{ $message }}</small>@enderror
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group-modern settings-grid-full">
-                            <label for="privacy_policy_url">
-                                <i class="fa fa-shield-alt"></i> رابط سياسة الخصوصية
-                            </label>
-                            {!! Form::url('privacy_policy_url', null, ['class' => 'form-control-modern', 'id' => 'privacy_policy_url', 'placeholder' => route('privacy')]) !!}
-                            <small class="text-muted">اتركه فارغًا لاستخدام الصفحة الرسمية داخل ركن</small>
-                            @error('privacy_policy_url')<small class="text-danger">{{ $message }}</small>@enderror
-                        </div>
-                    </div>
                 </div>
 
                 <div class="tab-pane" id="wallet-support">
@@ -447,7 +426,7 @@
                                 <i class="fa fa-whatsapp"></i> رقم أو رابط واتساب الدعم
                             </label>
                             {!! Form::text('support_whatsapp_url', null, ['class' => 'form-control-modern', 'id' => 'support_whatsapp_url', 'placeholder' => '+201001234567 أو https://wa.me/201001234567']) !!}
-                            <small class="text-muted">يُحفظ ويُرسل للتطبيق كرابط https://wa.me آمن فقط.</small>
+                            <small class="text-muted">يفتح هذا الرقم عند ضغط المستخدم على الدعم</small>
                             @error('support_whatsapp_url')<small class="text-danger">{{ $message }}</small>@enderror
                         </div>
                     </div>
@@ -479,10 +458,11 @@
 
                 <div class="tab-pane" id="rokn-ai">
                     @php
+                        $aiTierDefaults = (array) config('course_plans.ai_tiers');
                         $aiPlanPolicy = old('ai_plan_policy', $settings->ai_plan_policy ?: [
                             'basic' => ['chat_enabled' => false, 'chat_message_limit' => 0, 'chat_attachments_enabled' => false, 'project_feedback_level' => 'pass_only', 'project_followup_message_limit' => 0],
-                            'guided' => ['chat_enabled' => true, 'chat_message_limit' => 25, 'chat_attachments_enabled' => true, 'project_feedback_level' => 'report', 'project_followup_message_limit' => 0],
-                            'mentor' => ['chat_enabled' => true, 'chat_message_limit' => 80, 'chat_attachments_enabled' => true, 'project_feedback_level' => 'enhanced', 'project_followup_message_limit' => 20],
+                            'guided' => ['chat_enabled' => true, 'chat_message_limit' => (int) data_get($aiTierDefaults, 'guided.chat_message_limit', 50), 'chat_attachments_enabled' => true, 'project_feedback_level' => 'report', 'project_followup_message_limit' => 0],
+                            'mentor' => ['chat_enabled' => true, 'chat_message_limit' => (int) data_get($aiTierDefaults, 'mentor.chat_message_limit', 150), 'chat_attachments_enabled' => true, 'project_feedback_level' => 'enhanced', 'project_followup_message_limit' => (int) data_get($aiTierDefaults, 'mentor.project_followup_message_limit', 50)],
                         ]);
                     @endphp
                     <h2 class="section-title">
@@ -503,11 +483,9 @@
 
                     <div class="form-row">
                         @foreach([
-                            'ai_daily_user_limit' => ['حد أمان يومي لكل طالب وفئة', config('openrouter.daily_user_limit', 100), 1],
                             'ai_global_daily_request_limit' => ['تنبيه عند عدد طلبات يومي', config('openrouter.global_daily_request_limit', 5000), 1],
                             'ai_global_daily_token_budget' => ['تنبيه عند توكنز يومية', config('openrouter.global_daily_token_budget', 2100000), 1000],
                             'ai_global_monthly_token_budget' => ['تنبيه عند توكنز شهرية', config('openrouter.global_monthly_token_budget', 50000000), 1000],
-                            'ai_answer_cache_minutes' => ['مدة إعادة استخدام الإجابة المتطابقة بالدقائق', config('openrouter.answer_cache_minutes', 360), 5],
                         ] as $field => [$label, $fallback, $minimum])
                             <div class="form-group-modern">
                                 <label for="{{ $field }}">{{ $label }}</label>
@@ -533,7 +511,11 @@
                     </div>
                     <div class="form-row">
                         @foreach(['basic' => 'التعلّم', 'guided' => 'التعلّم بإرشاد', 'mentor' => 'التعلّم بمتابعة'] as $code => $label)
-                            @php $tier = (array) ($aiPlanPolicy[$code] ?? []); @endphp
+                            @php
+                                $tier = (array) ($aiPlanPolicy[$code] ?? []);
+                                $tierChatCeiling = (int) data_get($aiTierDefaults, $code . '.chat_message_limit', 0);
+                                $tierFollowupCeiling = (int) data_get($aiTierDefaults, $code . '.project_followup_message_limit', 0);
+                            @endphp
                             <div class="form-group-modern">
                                 <h3>{{ $label }}</h3>
                                 @if($code === 'basic')
@@ -547,7 +529,7 @@
                                 <input type="hidden" name="ai_plan_policy[{{ $code }}][chat_enabled]" value="0">
                                 <label><input type="checkbox" name="ai_plan_policy[{{ $code }}][chat_enabled]" value="1" @checked(!empty($tier['chat_enabled']))> شات ركن</label>
                                 <label>عدد الرسائل</label>
-                                <input class="form-control-modern" type="number" min="0" name="ai_plan_policy[{{ $code }}][chat_message_limit]" value="{{ (int) ($tier['chat_message_limit'] ?? 0) }}">
+                                <input class="form-control-modern" type="number" min="0" max="{{ $tierChatCeiling }}" name="ai_plan_policy[{{ $code }}][chat_message_limit]" value="{{ (int) ($tier['chat_message_limit'] ?? 0) }}">
                                 <input type="hidden" name="ai_plan_policy[{{ $code }}][chat_attachments_enabled]" value="0">
                                 <label><input type="checkbox" name="ai_plan_policy[{{ $code }}][chat_attachments_enabled]" value="1" @checked(!empty($tier['chat_attachments_enabled']))> مرفقات الشات</label>
                                 <label>تقييم المشروع</label>
@@ -560,7 +542,7 @@
                                 </select>
                                 @if($code === 'mentor')
                                 <label>رسائل متابعة المشروع</label>
-                                <input class="form-control-modern" type="number" min="0" name="ai_plan_policy[{{ $code }}][project_followup_message_limit]" value="{{ (int) ($tier['project_followup_message_limit'] ?? 0) }}">
+                                <input class="form-control-modern" type="number" min="0" max="{{ $tierFollowupCeiling }}" name="ai_plan_policy[{{ $code }}][project_followup_message_limit]" value="{{ (int) ($tier['project_followup_message_limit'] ?? 0) }}">
                                 @else
                                     <input type="hidden" name="ai_plan_policy[guided][project_followup_message_limit]" value="0">
                                 @endif

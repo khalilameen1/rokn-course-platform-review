@@ -1,13 +1,9 @@
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import type {RootNavigation} from '../../navigation/types';
-import {openGuestLogin} from '../../navigation/journeyNavigation';
-import React, {useCallback, useRef, useState} from 'react';
+import {useNavigation} from '@react-navigation/native';
+import React from 'react';
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   View,
@@ -20,420 +16,47 @@ import {
   formatArabicNumber,
   toArabicDigits,
 } from '../../constants/arabicFormatting';
-import {
-  Accessibility,
-  Palette,
-  Radius,
-  Spacing,
-  Type,
-  rtlRowStyle,
-  textDirection,
-} from '../../constants/designSystem';
-import {
-  getSavedFolderOptions,
-  getLocalLearningState,
-  createSavedFolderOption,
-  deleteSavedFolderOption,
-  removeLessonFromSavedFolder,
-  type SavedFolderOption,
-  toggleWatchLater,
-} from '../../components/VideoPlayer/courseLearningApi';
-import {createDemoCourse} from '../../components/VideoPlayer/demoCourse';
-import {
-  getSavedLessonsPage,
-  hasSession,
-  type SavedLesson,
-} from '../../services/roknApi';
-import {LOCAL_DEMO_ENABLED} from '../../config/runtime';
-import {friendlyNetworkMessage} from '../../services/networkExperience';
-
-type SavedReel = {
-  id: string;
-  courseId: string;
-  reelId: string;
-  title: string;
-  courseTitle: string;
-  duration: string;
-  folderId?: string;
-  folderName: string;
-  imageUrl?: string;
-  remote: boolean;
-};
-
-const remoteLessonsToRows = (lessons: SavedLesson[]): SavedReel[] =>
-  lessons.map(lesson => ({
-    id: lesson.id,
-    folderId: lesson.folderId,
-    folderName: lesson.folderName,
-    courseId: lesson.courseId,
-    reelId: lesson.id,
-    title: lesson.title,
-    courseTitle: lesson.courseTitle,
-    duration: lesson.duration,
-    imageUrl: lesson.imageUrl,
-    remote: true,
-  }));
+import {Palette} from '../../constants/designSystem';
+import {openGuestLogin} from '../../navigation/journeyNavigation';
+import type {RootNavigation} from '../../navigation/types';
+import {savedLibraryStyles as styles} from './saved/styles';
+import {useSavedLibrary} from './saved/useSavedLibrary';
 
 export default function SavedVideos() {
   const navigation = useNavigation<RootNavigation>();
-  const [saved, setSaved] = useState<SavedReel[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [reload, setReload] = useState(0);
-  const [nextPage, setNextPage] = useState<number | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [loadMoreError, setLoadMoreError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [removingSaved, setRemovingSaved] = useState<Set<string>>(new Set());
-  const [folders, setFolders] = useState<SavedFolderOption[]>([]);
-  const [activeFolderId, setActiveFolderId] = useState('all');
-  const [showCreateFolder, setShowCreateFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
-  const [creatingFolder, setCreatingFolder] = useState(false);
-  const [deletingFolder, setDeletingFolder] = useState(false);
-  const [folderError, setFolderError] = useState('');
-  const [folderLoadError, setFolderLoadError] = useState('');
-  const [serverSession, setServerSession] = useState<boolean | null>(null);
-  const loadGenerationRef = useRef(0);
-  const loadingMoreRef = useRef(false);
-  const screenActiveRef = useRef(false);
-  const createFolderFlightRef = useRef(false);
-  const deleteFolderFlightRef = useRef(false);
-  const removeFlightsRef = useRef(new Set<string>());
+  const {
+    actionError,
+    activeFolderId,
+    createFolder,
+    creatingFolder,
+    deleteActiveFolder,
+    deletingFolder,
+    error,
+    folderCounts,
+    folderError,
+    folderLoadError,
+    folderOptions,
+    groupedSaved,
+    identityOwned,
+    loadMore,
+    loading,
+    loadingMore,
+    loadMoreError,
+    newFolderName,
+    nextPage,
+    removeSaved,
+    removingSaved,
+    retry,
+    saved,
+    selectFolder,
+    serverSession,
+    setNewFolderName,
+    showCreateFolder,
+    toggleCreateFolder,
+    visibleSaved,
+  } = useSavedLibrary();
 
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      screenActiveRef.current = true;
-      if (!createFolderFlightRef.current) setCreatingFolder(false);
-      if (!deleteFolderFlightRef.current) setDeletingFolder(false);
-      if (!removeFlightsRef.current.size) setRemovingSaved(new Set());
-      const generation = ++loadGenerationRef.current;
-      loadingMoreRef.current = false;
-      setLoading(true);
-      setNextPage(null);
-      setLoadMoreError('');
-      if (reload > 0) setError('');
-      void (async () => {
-        try {
-          const sessionAvailable = await hasSession();
-          if (active) setServerSession(sessionAvailable);
-          if (sessionAvailable) {
-            const [result, folderOptionsResult] = await Promise.all([
-              getSavedLessonsPage(1),
-              getSavedFolderOptions().then(
-                value => ({ok: true as const, value}),
-                () => ({ok: false as const}),
-              ),
-            ]);
-            if (!active || generation !== loadGenerationRef.current) return;
-            setSaved(remoteLessonsToRows(result.lessons));
-            if (folderOptionsResult.ok) {
-              setFolders(folderOptionsResult.value);
-              setFolderLoadError('');
-            } else {
-              // Keep the last known folder list. Replacing it with [] hides
-              // valid empty folders and makes a partial outage look like data
-              // the learner deleted.
-              setFolderLoadError(
-                'تعذّر تحديث القوائم\nالمحفوظات ما زالت موجودة',
-              );
-            }
-            setNextPage(result.hasMore ? result.page + 1 : null);
-            setError(
-              result.fromCache
-                ? 'نعرض آخر محفوظات متاحة\nأعد المحاولة عند عودة الاتصال'
-                : '',
-            );
-            return;
-          }
-          if (!LOCAL_DEMO_ENABLED) {
-            if (active) {
-              setSaved([]);
-              setFolders([]);
-              setFolderLoadError('');
-              setError('');
-            }
-            return;
-          }
-          const [state, folderOptions] = await Promise.all([
-            getLocalLearningState(),
-            getSavedFolderOptions(),
-          ]);
-          if (!active || generation !== loadGenerationRef.current) return;
-          const savedIds = new Set(state.savedLessons);
-          const folderNames = new Map(
-            folderOptions.map(folder => [folder.id, folder.name]),
-          );
-          setFolders(folderOptions);
-          setFolderLoadError('');
-          const course = createDemoCourse();
-          const reels = course.modules.flatMap(module => module.reels);
-          setSaved(
-            reels
-              .filter(reel => savedIds.has(reel.lessonId))
-              .flatMap(reel => {
-                const memberships = Object.entries(
-                  state.savedFolderLessons || {},
-                )
-                  .filter(([, lessonIds]) => lessonIds.includes(reel.lessonId))
-                  .map(([folderId]) => folderId);
-                const targetFolders = memberships.length
-                  ? memberships
-                  : ['local-watch-later'];
-                return targetFolders.map(folderId => ({
-                  id: reel.lessonId,
-                  folderId,
-                  folderName: folderNames.get(folderId) || 'المشاهدة لاحقًا',
-                  courseId: course.id,
-                  reelId: reel.id,
-                  title: reel.title,
-                  courseTitle: course.title,
-                  duration: `${String(
-                    Math.floor((reel.durationSeconds || 0) / 60),
-                  ).padStart(2, '0')}:${String(
-                    (reel.durationSeconds || 0) % 60,
-                  ).padStart(2, '0')}`,
-                  remote: false,
-                }));
-              }),
-          );
-          setError('');
-        } catch (requestError) {
-          if (active)
-            setError(
-              `${friendlyNetworkMessage(
-                requestError,
-                'المحفوظات',
-              )}\nمكانك وكل ما حفظته موجود`,
-            );
-        }
-      })().finally(() => active && setLoading(false));
-      return () => {
-        active = false;
-        screenActiveRef.current = false;
-        loadGenerationRef.current += 1;
-        loadingMoreRef.current = false;
-      };
-    }, [reload]),
-  );
-
-  const loadMore = useCallback(async () => {
-    if (
-      !nextPage ||
-      loadingMore ||
-      loadingMoreRef.current ||
-      serverSession !== true
-    )
-      return;
-    loadingMoreRef.current = true;
-    const generation = loadGenerationRef.current;
-    setLoadingMore(true);
-    setLoadMoreError('');
-    try {
-      const result = await getSavedLessonsPage(nextPage);
-      if (generation !== loadGenerationRef.current) return;
-      const rows = remoteLessonsToRows(result.lessons);
-      setSaved(current => {
-        const existing = new Set(
-          current.map(item => `${item.folderId || ''}:${item.id}`),
-        );
-        return [
-          ...current,
-          ...rows.filter(
-            item => !existing.has(`${item.folderId || ''}:${item.id}`),
-          ),
-        ];
-      });
-      setNextPage(result.hasMore ? result.page + 1 : null);
-    } catch {
-      if (generation === loadGenerationRef.current) {
-        setLoadMoreError('تعذّر تحميل باقي المحفوظات');
-      }
-    } finally {
-      if (generation === loadGenerationRef.current) {
-        loadingMoreRef.current = false;
-        setLoadingMore(false);
-      }
-    }
-  }, [loadingMore, nextPage, serverSession]);
-
-  const createFolder = useCallback(async () => {
-    const name = newFolderName.trim();
-    if (!name || creatingFolder || createFolderFlightRef.current) return;
-    const existing = folders.find(
-      folder =>
-        folder.name.trim().toLocaleLowerCase('ar') ===
-        name.toLocaleLowerCase('ar'),
-    );
-    if (existing) {
-      setActiveFolderId(existing.id);
-      setNewFolderName('');
-      setShowCreateFolder(false);
-      return;
-    }
-    const generation = loadGenerationRef.current;
-    createFolderFlightRef.current = true;
-    setCreatingFolder(true);
-    setFolderError('');
-    try {
-      const created = await createSavedFolderOption(name);
-      if (!screenActiveRef.current || generation !== loadGenerationRef.current)
-        return;
-      setFolders(current => [
-        ...current.filter(folder => folder.id !== created.id),
-        created,
-      ]);
-      setActiveFolderId(created.id);
-      setNewFolderName('');
-      setShowCreateFolder(false);
-    } catch {
-      if (screenActiveRef.current && generation === loadGenerationRef.current) {
-        setFolderError('تعذّر إنشاء القائمة\nتحقق من الاتصال ثم حاول مرة أخرى');
-      }
-    } finally {
-      createFolderFlightRef.current = false;
-      if (screenActiveRef.current && generation === loadGenerationRef.current) {
-        setCreatingFolder(false);
-      }
-    }
-  }, [creatingFolder, folders, newFolderName]);
-
-  const removeSaved = useCallback(
-    async (item: SavedReel) => {
-      const key = `${item.folderId || ''}:${item.id}`;
-      if (removingSaved.has(key) || removeFlightsRef.current.has(key)) return;
-      const generation = loadGenerationRef.current;
-      removeFlightsRef.current.add(key);
-      setActionError('');
-      setRemovingSaved(current => new Set(current).add(key));
-      try {
-        if (item.folderId) {
-          await removeLessonFromSavedFolder(item.id, item.folderId);
-        } else {
-          await toggleWatchLater(item.id, true);
-        }
-        if (
-          !screenActiveRef.current ||
-          generation !== loadGenerationRef.current
-        )
-          return;
-        setSaved(current =>
-          current.filter(
-            video =>
-              !(video.id === item.id && video.folderId === item.folderId),
-          ),
-        );
-      } catch {
-        if (
-          screenActiveRef.current &&
-          generation === loadGenerationRef.current
-        ) {
-          setActionError('تعذّرت إزالة المقطع\nحاول مرة أخرى');
-        }
-      } finally {
-        removeFlightsRef.current.delete(key);
-        if (
-          screenActiveRef.current &&
-          generation === loadGenerationRef.current
-        ) {
-          setRemovingSaved(current => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
-        }
-      }
-    },
-    [removingSaved],
-  );
-
-  const deleteActiveFolder = useCallback(() => {
-    const folder = folders.find(item => item.id === activeFolderId);
-    if (!folder || deletingFolder || deleteFolderFlightRef.current) return;
-    Alert.alert(
-      'حذف القائمة',
-      `سنحذف ${folder.name}\nوتبقى المحفوظات في القوائم الأخرى`,
-      [
-        {text: 'إلغاء', style: 'cancel'},
-        {
-          text: 'حذف',
-          style: 'destructive',
-          onPress: () => {
-            if (deleteFolderFlightRef.current) return;
-            const generation = loadGenerationRef.current;
-            deleteFolderFlightRef.current = true;
-            setDeletingFolder(true);
-            setFolderError('');
-            void deleteSavedFolderOption(folder.id)
-              .then(() => {
-                if (
-                  !screenActiveRef.current ||
-                  generation !== loadGenerationRef.current
-                )
-                  return;
-                setFolders(current =>
-                  current.filter(item => item.id !== folder.id),
-                );
-                setSaved(current =>
-                  current.filter(item => item.folderId !== folder.id),
-                );
-                setActiveFolderId('all');
-              })
-              .catch(() => {
-                if (
-                  screenActiveRef.current &&
-                  generation === loadGenerationRef.current
-                ) {
-                  setFolderError(
-                    'تعذّر حذف القائمة\nتحقق من الاتصال وحاول مرة أخرى',
-                  );
-                }
-              })
-              .finally(() => {
-                deleteFolderFlightRef.current = false;
-                if (
-                  screenActiveRef.current &&
-                  generation === loadGenerationRef.current
-                ) {
-                  setDeletingFolder(false);
-                }
-              });
-          },
-        },
-      ],
-    );
-  }, [activeFolderId, deletingFolder, folders]);
-
-  const folderMap = new Map<string, SavedFolderOption>();
-  folders.forEach(folder => folderMap.set(folder.id, folder));
-  saved.forEach(item => {
-    const id = item.folderId || 'watch-later';
-    if (!folderMap.has(id)) {
-      folderMap.set(id, {id, name: item.folderName});
-    }
-  });
-  const folderOptions = Array.from(folderMap.values());
-  const visibleSaved =
-    activeFolderId === 'all'
-      ? saved
-      : saved.filter(
-          item => (item.folderId || 'watch-later') === activeFolderId,
-        );
-  const groupedSaved = Array.from(
-    visibleSaved.reduce((groups, item) => {
-      const key = item.folderId || 'watch-later';
-      const group = groups.get(key) || {
-        name: item.folderName,
-        items: [] as SavedReel[],
-      };
-      group.items.push(item);
-      groups.set(key, group);
-      return groups;
-    }, new Map<string, {name: string; items: SavedReel[]}>()),
-  );
-
-  if (loading && !saved.length) {
+  if (!identityOwned || (loading && !saved.length)) {
     return <SavedLibrarySkeleton />;
   }
 
@@ -442,14 +65,14 @@ export default function SavedVideos() {
       <StatusView
         actionLabel="إعادة المحاولة"
         description={error}
-        onAction={() => setReload(value => value + 1)}
+        onAction={() => retry()}
         state="error"
         title="تعذّر تحميل المحفوظات"
       />
     );
   }
 
-  if (serverSession === false && !LOCAL_DEMO_ENABLED) {
+  if (serverSession === false) {
     return (
       <StatusView
         actionLabel="تسجيل الدخول"
@@ -470,16 +93,13 @@ export default function SavedVideos() {
     <View style={styles.container}>
       <SectionHeading
         actionLabel={showCreateFolder ? 'إلغاء' : 'قائمة جديدة'}
-        onAction={() => {
-          setShowCreateFolder(value => !value);
-          setFolderError('');
-        }}
+        onAction={toggleCreateFolder}
         title="محفوظاتك"
       />
       {!!error && saved.length ? (
         <Pressable
           accessibilityRole="button"
-          onPress={() => setReload(value => value + 1)}
+          onPress={() => retry()}
           style={({pressed}) => [
             styles.retryNotice,
             pressed && styles.pressed,
@@ -540,7 +160,7 @@ export default function SavedVideos() {
         <Pressable
           accessibilityRole="button"
           accessibilityState={{selected: activeFolderId === 'all'}}
-          onPress={() => setActiveFolderId('all')}
+          onPress={() => selectFolder('all')}
           style={[
             styles.folderChip,
             activeFolderId === 'all' && styles.folderChipActive,
@@ -554,15 +174,13 @@ export default function SavedVideos() {
           </Text>
         </Pressable>
         {folderOptions.map(folder => {
-          const count = saved.filter(
-            item => (item.folderId || 'watch-later') === folder.id,
-          ).length;
+          const count = folderCounts.get(folder.id) ?? 0;
           return (
             <Pressable
               accessibilityRole="button"
               accessibilityState={{selected: activeFolderId === folder.id}}
               key={folder.id}
-              onPress={() => setActiveFolderId(folder.id)}
+              onPress={() => selectFolder(folder.id)}
               style={[
                 styles.folderChip,
                 activeFolderId === folder.id && styles.folderChipActive,
@@ -632,7 +250,7 @@ export default function SavedVideos() {
           ) : null}
           <View style={styles.list}>
             {group.items.map((item, index) => {
-              const removalKey = `${item.folderId || ''}:${item.id}`;
+              const removalKey = `${item.folderId}:${item.id}`;
               const removalPending = removingSaved.has(removalKey);
               return (
                 <View key={`${item.folderId}:${item.id}`}>
@@ -658,9 +276,7 @@ export default function SavedVideos() {
                       onPress={() =>
                         navigation.navigate('Reels', {
                           courseId: item.courseId,
-                          ...(item.remote
-                            ? {lessonId: item.id}
-                            : {reelId: item.reelId}),
+                          lessonId: item.id,
                         })
                       }
                       style={({pressed}) => [
@@ -669,12 +285,12 @@ export default function SavedVideos() {
                       ]}>
                       <View style={styles.thumbWrap}>
                         <Image
+                          progressiveRenderingEnabled
+                          resizeMethod="resize"
                           source={
                             item.imageUrl
                               ? {uri: item.imageUrl}
-                              : item.remote
-                              ? require('../../assets/images/courseSliderBackground.jpg')
-                              : require('../../assets/images/demo-course/ui-freelance-cover.jpg')
+                              : require('../../assets/images/courseSliderBackground.jpg')
                           }
                           style={styles.thumb}
                         />
@@ -754,206 +370,3 @@ export default function SavedVideos() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {paddingBottom: Spacing.xl},
-  createFolderCard: {
-    marginTop: Spacing.sm,
-    padding: Spacing.md,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    backgroundColor: Palette.surface,
-  },
-  createFolderTitle: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-    marginBottom: Spacing.sm,
-  },
-  createFolderRow: {...rtlRowStyle, alignItems: 'center', gap: Spacing.sm},
-  folderInput: {
-    ...Type.body,
-    ...textDirection,
-    flex: 1,
-    minWidth: 0,
-    minHeight: Accessibility.minTouchTarget,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 0,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    backgroundColor: Palette.surfaceRaised,
-    color: Palette.text,
-  },
-  createButton: {
-    minWidth: 82,
-    minHeight: Accessibility.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.md,
-    backgroundColor: Palette.primary,
-  },
-  createButtonDisabled: {opacity: 0.45},
-  createButtonText: {...Type.bodyStrong, color: '#FFFFFF'},
-  inlineError: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.danger,
-    marginTop: Spacing.sm,
-  },
-  folderChips: {
-    ...rtlRowStyle,
-    gap: Spacing.xs,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xxs,
-  },
-  folderChip: {
-    maxWidth: 230,
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    backgroundColor: Palette.surface,
-  },
-  folderChipActive: {
-    borderColor: 'rgba(75,142,247,0.55)',
-    backgroundColor: Palette.primarySoft,
-  },
-  folderChipText: {...Type.caption, ...textDirection, color: Palette.textMuted},
-  folderChipTextActive: {color: '#A9C9FF'},
-  deleteFolderButton: {
-    alignSelf: 'flex-end',
-    minHeight: Accessibility.minTouchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.xs,
-  },
-  deleteFolderText: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.danger,
-  },
-  actionError: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.danger,
-    marginBottom: Spacing.sm,
-  },
-  retryNotice: {
-    ...rtlRowStyle,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: Spacing.sm,
-    marginBottom: Spacing.sm,
-    padding: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    backgroundColor: Palette.surface,
-  },
-  retryNoticeText: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-    flex: 1,
-  },
-  retryNoticeAction: {
-    ...Type.caption,
-    color: Palette.primary,
-  },
-  folder: {marginTop: Spacing.md},
-  folderTitle: {
-    ...Type.bodyStrong,
-    ...textDirection,
-    color: Palette.text,
-    paddingHorizontal: Spacing.xs,
-    marginBottom: Spacing.xs,
-  },
-  list: {
-    backgroundColor: Palette.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    overflow: 'hidden',
-    paddingHorizontal: Spacing.md,
-  },
-  row: {
-    ...rtlRowStyle,
-    alignItems: 'center',
-    minHeight: 96,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Palette.surface,
-  },
-  thumbWrap: {
-    width: 94,
-    aspectRatio: 1.5,
-    borderRadius: Radius.md,
-    overflow: 'hidden',
-    backgroundColor: Palette.surfaceRaised,
-  },
-  thumb: {width: '100%', height: '100%', resizeMode: 'cover'},
-  playMark: {
-    position: 'absolute',
-    inset: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)',
-  },
-  playText: {color: Palette.text, fontSize: 14},
-  copy: {flex: 1, marginHorizontal: Spacing.md},
-  title: {...Type.bodyStrong, ...textDirection, color: Palette.text},
-  course: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-    marginTop: 2,
-  },
-  duration: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textFaint,
-    marginTop: 2,
-  },
-  removeButton: {
-    width: Accessibility.minTouchTarget,
-    height: Accessibility.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeText: {fontSize: 24, color: Palette.textMuted},
-  swipeDelete: {
-    width: 88,
-    minHeight: 96,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.danger,
-  },
-  swipeDeleteText: {...Type.bodyStrong, color: '#FFFFFF'},
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Palette.lineSoft,
-  },
-  moreWrap: {alignItems: 'center', marginTop: Spacing.lg},
-  moreError: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.danger,
-    marginBottom: Spacing.sm,
-  },
-  moreButton: {
-    minWidth: 180,
-    minHeight: Accessibility.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.pill,
-    borderWidth: 1,
-    borderColor: Palette.primary,
-    paddingHorizontal: Spacing.lg,
-  },
-  moreButtonDisabled: {opacity: 0.56},
-  moreButtonText: {...Type.bodyStrong, color: Palette.primary},
-  pressed: {opacity: 0.72},
-});

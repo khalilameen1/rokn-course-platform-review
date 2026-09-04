@@ -8,12 +8,14 @@ export default function QRCode({
   size = 156,
   color = '#07101D',
   backgroundColor = '#FFFFFF',
+  accessibilityLabel = 'رمز QR للتحقق من الشهادة',
   style,
 }: {
   value: string;
   size?: number;
   color?: string;
   backgroundColor?: string;
+  accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
 }) {
   const matrix = useMemo(() => toQR(value, 2), [value]);
@@ -33,7 +35,7 @@ export default function QRCode({
 
   return (
     <Svg
-      accessibilityLabel="رمز QR للتحقق من الشهادة"
+      accessibilityLabel={accessibilityLabel}
       accessibilityRole="image"
       height={size}
       style={style}

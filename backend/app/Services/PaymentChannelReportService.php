@@ -9,7 +9,6 @@ use Carbon\CarbonInterface;
 use App\Support\BusinessClock;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 final class PaymentChannelReportService
 {
@@ -27,6 +26,29 @@ final class PaymentChannelReportService
     public function methods(): array
     {
         return array_keys($this->labels());
+    }
+
+    /** @return array{count:int,egp_amount:float} */
+    public function pendingCheckoutSummary(?Builder $scope = null): array
+    {
+        $query = $scope ? clone $scope : Order::query();
+        $query->withoutEagerLoads()->reorder()
+            ->whereIn('payment_method', $this->methods())
+            ->whereNotNull('package_id')
+            ->where('status', Order::STATUS_PENDING);
+
+        $count = (clone $query)->count();
+        $egpAmount = (float) (clone $query)
+            ->where(function ($currency): void {
+                $currency->whereRaw("UPPER(gateway_currency) = 'EGP'")
+                    ->orWhere(function ($legacyKashier): void {
+                        $legacyKashier->whereNull('gateway_currency')
+                            ->where('payment_method', Order::PAYMENT_METHOD_KASHIER);
+                    });
+            })
+            ->sum('final_amount');
+
+        return ['count' => $count, 'egp_amount' => $egpAmount];
     }
 
     /**
@@ -65,9 +87,9 @@ final class PaymentChannelReportService
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' AND (gateway_gross_amount IS NULL OR gateway_settlement_status = 'catalog_estimate') THEN COALESCE(final_amount, 0) ELSE 0 END) as catalog_estimated_gross_amount")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') AND gateway_gross_amount IS NOT NULL THEN 1 ELSE 0 END) as confirmed_gross_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' AND (gateway_gross_amount IS NULL OR gateway_settlement_status = 'catalog_estimate') THEN 1 ELSE 0 END) as catalog_estimated_gross_count")
-            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' THEN COALESCE(gateway_fee_amount, 0) ELSE 0 END) as confirmed_fee_amount")
-            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' THEN COALESCE(gateway_net_amount, 0) ELSE 0 END) as confirmed_net_amount")
-            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' AND gateway_net_amount IS NOT NULL THEN 1 ELSE 0 END) as confirmed_net_count")
+            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') THEN COALESCE(gateway_fee_amount, 0) ELSE 0 END) as confirmed_fee_amount")
+            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') THEN COALESCE(gateway_net_amount, 0) ELSE 0 END) as confirmed_net_amount")
+            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') AND gateway_net_amount IS NOT NULL THEN 1 ELSE 0 END) as confirmed_net_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' AND gateway_net_amount IS NULL THEN 1 ELSE 0 END) as pending_settlement_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' THEN COALESCE(gateway_net_amount, COALESCE(gateway_gross_amount, final_amount, 0) - COALESCE(gateway_fee_amount, 0)) ELSE 0 END) as estimated_net_amount")
             ->groupBy('payment_method', 'report_currency')

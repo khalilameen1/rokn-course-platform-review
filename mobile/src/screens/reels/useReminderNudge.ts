@@ -32,7 +32,7 @@ export const useReminderNudge = ({
     void captureAccountSessionBoundary()
       .then(async boundary => {
         const [enabled, seen] = await Promise.all([
-          getSmartRemindersEnabled(),
+          getSmartRemindersEnabled(boundary),
           accountScopedStorageKey(
             '@rokn/reminders/nudge-seen/v1',
             boundary,
@@ -68,18 +68,41 @@ export const useReminderNudge = ({
       const granted = await enableSmartReminders();
       assertAccountSessionBoundary(boundary);
       if (!granted) return false;
-      await setSmartRemindersEnabled(true);
+      await setSmartRemindersEnabled(true, boundary);
       assertAccountSessionBoundary(boundary);
       if (await hasSession()) {
         assertAccountSessionBoundary(boundary);
-        await updateNotificationStatus(true).catch(() => undefined);
+        try {
+          const remoteEnabled = await updateNotificationStatus(true, boundary);
+          if (remoteEnabled !== true) {
+            throw new Error('NOTIFICATION_PREFERENCE_NOT_CONFIRMED');
+          }
+        } catch (error) {
+          // Do not leave a switch that looks enabled while the backend still
+          // excludes this account from every push campaign. An unknown write
+          // outcome is explicitly rolled back on both sides and can be retried.
+          await Promise.allSettled([
+            setSmartRemindersEnabled(false, boundary),
+            updateNotificationStatus(false, boundary),
+          ]);
+          assertAccountSessionBoundary(boundary);
+          throw error;
+        }
         assertAccountSessionBoundary(boundary);
-        await registerPushDeviceIfEligible({requestPermission: false}).catch(
-          () => false,
-        );
+        const registered = await registerPushDeviceIfEligible({
+          requestPermission: false,
+        }).catch(() => false);
         assertAccountSessionBoundary(boundary);
+        if (!registered) {
+          await Promise.allSettled([
+            setSmartRemindersEnabled(false, boundary),
+            updateNotificationStatus(false, boundary),
+          ]);
+          assertAccountSessionBoundary(boundary);
+          throw new Error('PUSH_DEVICE_REGISTRATION_FAILED');
+        }
       }
-      await scheduleNextLearningReminder({courseId, courseTitle});
+      await scheduleNextLearningReminder({courseId, courseTitle}, boundary);
       assertAccountSessionBoundary(boundary);
       return true;
     } finally {

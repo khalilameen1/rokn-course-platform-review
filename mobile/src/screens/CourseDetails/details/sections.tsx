@@ -11,7 +11,6 @@ import LinearGradient from 'react-native-linear-gradient';
 import {CourseDetailsSkeleton} from '../../../components/ui/Skeleton';
 import {StatusView} from '../../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../../components/ui/CourseArtwork';
-import {CAN_START_COIN_CHECKOUT} from '../../../constants/distribution';
 import {Palette, useResponsiveLayout} from '../../../constants/designSystem';
 import {
   formatArabicDisplayText,
@@ -20,31 +19,16 @@ import {
   formatArabicRatings,
   formatArabicStudents,
 } from '../../../constants/arabicFormatting';
-import {createDemoCourse} from '../../../components/VideoPlayer/demoCourse';
 import type {CourseDetails as CourseDetailsDto} from '../../../services/roknApi';
 import Lessons from '../Lessons';
 import styles from './styles';
 
 export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
   const {isTablet} = useResponsiveLayout();
-  const isLocalDemo = !details;
-  const title = details
-    ? details.title
-    : 'نظام عملي لتحويل مهارتك إلى خدمة يشتريها عميل حقيقي';
-  const description = details
-    ? details.description
-    : 'ثلاثون مقطعًا قصيرًا من تحديد خدمتك إلى إدارة المشروع والتسليم\nتنتهي كل وحدة بمشروع عبور عند الحاجة';
-  const instructorName = details ? details.instructor : 'كريم منصور';
-  const instructorBio = details
-    ? details.instructorBio
-    : 'مصمم منتجات مستقل\nيركز على تقديم العمل وإدارة العميل وبناء مشروع يمكن عرضه';
-  const outcomes = details
-    ? []
-    : [
-        'عرض خدمة واضح يمكن إرساله للعميل',
-        'قالب نطاق عمل وخطة تسليم تقلل التعديلات',
-        'مشروع تخرج يظهر تلقائيًا في بورتفوليو ركن',
-      ];
+  const title = details?.title || '';
+  const description = details?.description || '';
+  const instructorName = details?.instructor || '';
+  const instructorBio = details?.instructorBio || '';
   return (
     <View style={styles.aboutWrap}>
       <View style={[styles.aboutGrid, isTablet && styles.aboutGridTablet]}>
@@ -60,31 +44,15 @@ export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
               {formatArabicDisplayText(description)}
             </Text>
           )}
-          <View style={styles.outcomes}>
-            {outcomes.map((item, index) => (
-              <View key={item} style={styles.outcomeRow}>
-                <View style={styles.outcomeNumber}>
-                  <Text style={styles.outcomeNumberText}>
-                    {formatArabicNumber(index + 1)}
-                  </Text>
-                </View>
-                <Text style={styles.outcomeText}>
-                  {formatArabicDisplayText(item)}
-                </Text>
-              </View>
-            ))}
-          </View>
         </View>
 
-        {(isLocalDemo || !!instructorName) && (
+        {!!instructorName && (
           <View style={styles.instructorCard}>
             <Image
               source={
                 details?.instructorImage
                   ? {uri: details.instructorImage}
-                  : details
-                  ? require('../../../assets/images/default-avatar.png')
-                  : require('../../../assets/images/demo-course/instructor-karim.jpg')
+                  : require('../../../assets/images/default-avatar.png')
               }
               style={styles.instructorImage}
             />
@@ -93,7 +61,7 @@ export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
               <Text style={styles.instructorName}>
                 {formatArabicDisplayText(instructorName)}
               </Text>
-              {(isLocalDemo || !!instructorBio) && (
+              {!!instructorBio && (
                 <Text style={styles.instructorBio}>
                   {formatArabicDisplayText(instructorBio)}
                 </Text>
@@ -114,42 +82,11 @@ export const LockedOutline = ({
   onPreviewSelect: (reelId: string) => void;
 }) => {
   const [expandedModuleId, setExpandedModuleId] = useState<string | null>(null);
-  const modules = useMemo(() => {
-    if (details) return details.modules;
-    return createDemoCourse().modules.map(module => ({
-      id: module.id,
-      title: module.title,
-      reelCount: module.reels.length,
-      projectCount: module.projects?.length || (module.project ? 1 : 0),
-      previewReelCount: module.reels.filter(reel => reel.isPreview).length,
-      items: [
-        ...module.reels.map(reel => ({
-          id: reel.id,
-          title: reel.title,
-          type: 'reel' as const,
-          isPreview: reel.isPreview,
-          reelNumber: reel.reelNumber,
-          reelId: reel.id,
-        })),
-        ...(module.projects?.length || module.project
-          ? (module.projects?.length ? module.projects : [module.project!]).map(project =>
-              ({
-                id: project.id,
-                title: project.title,
-                type: 'project' as const,
-                isPreview: false,
-              }),
-            )
-          : []),
-      ],
-    }));
-  }, [details]);
+  const modules = useMemo(() => details?.modules || [], [details]);
   return (
     <View style={styles.lockedOutline}>
       <Text style={styles.sectionEyebrow}>خريطة الكورس</Text>
-      <Text style={styles.sectionTitle}>
-        الوحدات والمقاطع
-      </Text>
+      <Text style={styles.sectionTitle}>الوحدات والمقاطع</Text>
       {details && !modules.length && (
         <Text style={styles.lockedNote}>لم تُنشر خريطة هذا الكورس بعد</Text>
       )}
@@ -216,8 +153,6 @@ export const LockedOutline = ({
                         <Text style={styles.outlineItemMeta}>
                           {item.type === 'project'
                             ? 'مشروع عبور · يُفتح بعد إكمال الوحدة'
-                            : item.type === 'quiz'
-                            ? 'اختبار قصير · يُفتح بعد إكمال المقاطع'
                             : canPreview
                             ? 'مفتوح للمشاهدة الآن'
                             : 'يُفتح مع الكورس'}
@@ -235,8 +170,6 @@ export const LockedOutline = ({
                           ]}>
                           {item.type === 'project'
                             ? 'مشروع'
-                            : item.type === 'quiz'
-                            ? 'اختبار'
                             : canPreview
                             ? 'شاهد'
                             : 'مغلق'}
@@ -262,7 +195,6 @@ type CourseHeroProps = {
   courseTitle: string;
   gutter: number;
   heroHeight: number;
-  isDemoCourse: boolean;
   maxContentWidth: number;
   onBack: () => void;
   remoteCourse: CourseDetailsDto | null;
@@ -273,7 +205,6 @@ export const CourseHero = ({
   courseTitle,
   gutter,
   heroHeight,
-  isDemoCourse,
   maxContentWidth,
   onBack,
   remoteCourse,
@@ -281,16 +212,8 @@ export const CourseHero = ({
 }: CourseHeroProps) => (
   <View style={[styles.hero, {height: heroHeight}]}>
     <CourseArtwork
-      fallback={
-        isDemoCourse
-          ? require('../../../assets/images/demo-course/ui-freelance-cover.jpg')
-          : require('../../../assets/images/courseSliderBackground.jpg')
-      }
-      source={
-        !isDemoCourse && remoteCourse?.imageUrl
-          ? {uri: remoteCourse.imageUrl}
-          : undefined
-      }
+      fallback={require('../../../assets/images/courseSliderBackground.jpg')}
+      source={remoteCourse?.imageUrl ? {uri: remoteCourse.imageUrl} : undefined}
       style={styles.heroImage}
     />
     <LinearGradient
@@ -329,30 +252,30 @@ export const CourseHero = ({
 type CourseIntroProps = {
   courseDescription: string;
   durationMinutes: number | null;
-  hasPreview: boolean;
   onPrimaryAction: () => void;
   onPreview: () => void;
-  owned: boolean;
   pageReady: boolean;
   primaryActionLabel: string;
+  primaryActionDisabled: boolean;
   ratingAverage: number | null;
   ratingsCount: number;
   remoteError: string;
+  showSecondaryPreview: boolean;
   studentsCount: number;
 };
 
 export const CourseIntro = ({
   courseDescription,
   durationMinutes,
-  hasPreview,
   onPrimaryAction: handlePrimaryAction,
   onPreview,
-  owned,
   pageReady,
   primaryActionLabel,
+  primaryActionDisabled,
   ratingAverage,
   ratingsCount,
   remoteError,
+  showSecondaryPreview,
   studentsCount,
 }: CourseIntroProps) => (
   <View style={styles.courseIntro}>
@@ -393,20 +316,24 @@ export const CourseIntro = ({
       <View style={styles.priceAndAction}>
         <Pressable
           accessibilityRole="button"
-          disabled={!pageReady}
+          accessibilityState={{
+            busy: !pageReady || primaryActionDisabled,
+            disabled: !pageReady || primaryActionDisabled,
+          }}
+          disabled={!pageReady || primaryActionDisabled}
           onPress={handlePrimaryAction}
           style={({pressed}) => [
             styles.primaryButton,
             pressed && styles.primaryButtonPressed,
-            !pageReady && styles.disabled,
+            (!pageReady || primaryActionDisabled) && styles.disabled,
           ]}>
-          {!pageReady ? (
+          {!pageReady || primaryActionDisabled ? (
             <ActivityIndicator color={Palette.text} />
           ) : (
             <Text style={styles.primaryButtonText}>{primaryActionLabel}</Text>
           )}
         </Pressable>
-        {!owned && hasPreview && pageReady && CAN_START_COIN_CHECKOUT && (
+        {showSecondaryPreview && (
           <Pressable
             accessibilityLabel="شاهد مجانًا"
             accessibilityRole="button"
@@ -493,10 +420,14 @@ export const CourseRatingAction = ({
 
 type CourseBodyProps = {
   activeTab: 'about' | 'outline';
-  isDemoCourse: boolean;
+  courseId: string;
+  identityKey: string;
+  onFullTrackUpgradeHandled: () => void;
+  onOpenCertificates: () => void;
   onPreviewSelect: (reelId?: string) => void;
   onRetry: () => void;
   onTabChange: (tab: 'about' | 'outline') => void;
+  openFullTrackUpgrade: boolean;
   owned: boolean;
   remoteCourse: CourseDetailsDto | null;
   remoteError: string;
@@ -505,19 +436,23 @@ type CourseBodyProps = {
 
 export const CourseBody = ({
   activeTab,
-  isDemoCourse,
+  courseId,
+  identityKey,
+  onFullTrackUpgradeHandled,
+  onOpenCertificates,
   onPreviewSelect: startPreview,
   onRetry,
   onTabChange,
+  openFullTrackUpgrade,
   owned,
   remoteCourse,
   remoteError,
   remoteLoading,
 }: CourseBodyProps) => (
   <>
-    {!isDemoCourse && remoteLoading ? (
+    {remoteLoading ? (
       <CourseDetailsSkeleton />
-    ) : !isDemoCourse && remoteError ? (
+    ) : remoteError ? (
       <StatusView
         actionLabel="إعادة المحاولة"
         description={remoteError}
@@ -556,12 +491,18 @@ export const CourseBody = ({
           </Pressable>
         </View>
         {activeTab === 'about' ? (
-          <CourseAbout details={isDemoCourse ? null : remoteCourse} />
+          <CourseAbout details={remoteCourse} />
         ) : owned ? (
-          <Lessons />
+          <Lessons
+            courseId={courseId}
+            identityKey={identityKey}
+            onFullTrackUpgradeHandled={onFullTrackUpgradeHandled}
+            onOpenCertificates={onOpenCertificates}
+            openFullTrackUpgrade={openFullTrackUpgrade}
+          />
         ) : (
           <LockedOutline
-            details={isDemoCourse ? null : remoteCourse}
+            details={remoteCourse}
             onPreviewSelect={startPreview}
           />
         )}
@@ -569,33 +510,3 @@ export const CourseBody = ({
     )}
   </>
 );
-
-type StickyCourseActionProps = {
-  bottomInset: number;
-  label: string;
-  onPress: () => void;
-  visible: boolean;
-};
-
-export const StickyCourseAction = ({
-  bottomInset,
-  label: primaryActionLabel,
-  onPress: handlePrimaryAction,
-  visible,
-}: StickyCourseActionProps) => {
-  if (!visible) return null;
-  return (
-    <View
-      style={[styles.stickyAction, {paddingBottom: Math.max(bottomInset, 10)}]}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={handlePrimaryAction}
-        style={({pressed}) => [
-          styles.stickyButton,
-          pressed && styles.primaryButtonPressed,
-        ]}>
-        <Text style={styles.primaryButtonText}>{primaryActionLabel}</Text>
-      </Pressable>
-    </View>
-  );
-};

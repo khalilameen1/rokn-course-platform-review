@@ -2,17 +2,17 @@
     $selectedTemplateKey = old(
         'certificate_text_template_key',
         $course?->certificate_text_template_key
-            ?? config('certificate.default_text_template_key', array_key_first($certificateTextTemplates))
     );
     $previewCourseName = trim((string) old('name_ar', $course?->name_ar ?? '')) ?: 'اسم الكورس';
 @endphp
 
-<div class="form-group-modern" data-certificate-template-picker>
+<div class="form-group-modern" id="course-certificate-template" data-certificate-template-picker>
+    @include('admin.courses.partials.publishing-area-issues', ['area' => 'certificate'])
     <label class="form-label-modern">
         <i class="fa fa-certificate label-icon"></i>
         نص الشهادة
     </label>
-    <div class="form-help mb-3">اختر الصياغة الأنسب لطبيعة هذا الكورس</div>
+    <div class="form-help mb-3">اختر الصياغة الأنسب لطبيعة هذا الكورس قبل حفظه</div>
 
     @foreach($certificateTextTemplates as $key => $template)
         @php

@@ -3,7 +3,6 @@ export type CourseAssistantEntitlement = {
   chatAvailable?: boolean;
   certificateAvailable?: boolean;
   certificateIncluded?: boolean;
-  isDemo?: boolean;
 };
 
 const GRANT_ACCESS_TYPES = new Set([
@@ -14,7 +13,9 @@ const GRANT_ACCESS_TYPES = new Set([
 ]);
 
 export const normalizeCourseAccessType = (value: unknown) =>
-  String(value || '').trim().toLowerCase();
+  String(value || '')
+    .trim()
+    .toLowerCase();
 
 export const isGrantCourseAccess = (value: unknown) =>
   GRANT_ACCESS_TYPES.has(normalizeCourseAccessType(value));
@@ -27,17 +28,13 @@ export const isGrantCourseAccess = (value: unknown) =>
 export const includesCourseAssistant = ({
   accessType,
   chatAvailable,
-  isDemo,
 }: CourseAssistantEntitlement) =>
-  isDemo === true ||
-  (chatAvailable === true && !isGrantCourseAccess(accessType));
+  chatAvailable === true && !isGrantCourseAccess(accessType);
 
 export const includesCourseCertificate = ({
   accessType,
   certificateAvailable,
   certificateIncluded,
-  isDemo,
 }: CourseAssistantEntitlement) =>
-  isDemo === true ||
-  ((certificateIncluded ?? certificateAvailable) === true &&
-    !isGrantCourseAccess(accessType));
+  (certificateIncluded ?? certificateAvailable) === true &&
+  !isGrantCourseAccess(accessType);

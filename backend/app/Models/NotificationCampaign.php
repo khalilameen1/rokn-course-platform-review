@@ -77,4 +77,15 @@ final class NotificationCampaign extends Model
     {
         return $this->hasMany(NotificationCampaignRecipient::class);
     }
+
+    /**
+     * Enrolled and explicitly selected learners may still open a published
+     * course which is hidden from catalogue discovery. Public promotion may
+     * not target that course.
+     */
+    public function canDeliverHiddenCourse(): bool
+    {
+        return $this->audience === 'enrolled'
+            || count((array) $this->user_ids) > 0;
+    }
 }

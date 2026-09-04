@@ -21,7 +21,7 @@ final class CourseHeroSelectionService
     ): void {
         DB::transaction(function () use ($course, $expectedAuthoringVersion, $requestedMain): void {
             /** @var Collection<int, Course> $rootCourses */
-            $rootQuery = Course::query()->whereNull('parent_id');
+            $rootQuery = Course::query();
             if (DatabaseCapabilities::hasTable('course_authoring_revisions')) {
                 // Drafts and retained archives are implementation copies, not
                 // public hero candidates. Touching one here would silently
@@ -36,7 +36,6 @@ final class CourseHeroSelectionService
                 ->lockForUpdate()
                 ->get([
                     'id',
-                    'parent_id',
                     'is_main_course',
                     'is_coming_soon',
                     'is_catalog_visible',

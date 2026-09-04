@@ -52,6 +52,7 @@ describe('social auth cold-start recovery', () => {
       '1111111111114111811111111111111111111111111141118111111111111111',
     challenge: 'P'.repeat(43),
     flow: 'browser' as const,
+    authorizationApiUrl: 'https://identity.rokn.app/api/v1',
     startedAt: new Date().toISOString(),
   };
 
@@ -70,6 +71,8 @@ describe('social auth cold-start recovery', () => {
   it('completes the initial deep link with the durable PKCE verifier', async () => {
     mockPost.mockResolvedValue({
       data: {
+        status: 200,
+        success: true,
         data: {
           api_token: 'session-token',
           user: {
@@ -106,7 +109,11 @@ describe('social auth cold-start recovery', () => {
         device_os: 'android',
         device_type: 'android',
       },
-      {timeout: 10_000, skipAuthorization: true},
+      {
+        timeout: 8_000,
+        skipAuthorization: true,
+        baseURL: 'https://identity.rokn.app/api/v1/',
+      },
     );
     expect(mockDelete).toHaveBeenCalledTimes(1);
   });
@@ -114,6 +121,8 @@ describe('social auth cold-start recovery', () => {
   it('does not report a durable login as failed when the welcome receipt cannot be cached', async () => {
     mockPost.mockResolvedValue({
       data: {
+        status: 200,
+        success: true,
         data: {
           api_token: 'durable-session-token',
           welcome_bonus_granted: 20,

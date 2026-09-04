@@ -22,16 +22,11 @@
                     <i class="fa fa-user-circle-o"></i>
                 </div>
                 <h2>تعديل بيانات الدخول</h2>
-                <p>تحديث معلومات حسابك الإداري</p>
+                <p>تحديث حسابك في لوحة التحكم</p>
             </div>
 
             <div class="card-body-modern">
-                <div class="security-badge">
-                    <i class="fa fa-shield"></i>
-                    <span>تأمين عالي المستوى</span>
-                </div>
-
-                {!! Form::open(['method' => 'POST','files' => true, 'route' => ['admin.update_admin_data'], 'id' => 'adminDataForm']) !!}
+                {!! Form::open(['method' => 'POST', 'route' => ['admin.update_admin_data'], 'id' => 'adminDataForm']) !!}
 
                 <div class="form-group-styled">
                     <label for="email">

@@ -11,25 +11,18 @@
     $modules = collect($previewPayload['modules'] ?? []);
     $allSections = collect($previewPayload['sections'] ?? []);
     $metadata = is_array($previewPayload['metadata'] ?? null) ? $previewPayload['metadata'] : [];
-    $moduleSectionIds = $modules->flatMap(fn ($module) => collect($module['sections'] ?? [])->pluck('id'));
-    $ungrouped = $allSections->reject(fn ($section) => $moduleSectionIds->contains($section['id'] ?? null));
     $attachmentCount = $modules->flatMap(function ($module) {
-        $moduleId = (string) ($module['id'] ?? '');
         $moduleAttachments = collect($module['attachments'] ?? [])
             ->map(fn ($attachment) => 'file:'.(string) ($attachment['id'] ?? ''));
         $sectionAttachments = collect($module['sections'] ?? [])->flatMap(
             fn ($section) => collect($section['attachments'] ?? [])
                 ->map(fn ($attachment) => 'file:'.(string) ($attachment['id'] ?? ''))
         );
-        if (!empty($module['attachments_link'])) {
-            $moduleAttachments->push('link:'.$moduleId);
-        }
-
         return $moduleAttachments->concat($sectionAttachments);
     })->filter(fn ($key) => $key !== 'file:')->unique()->count();
-    $published = $previewCourse->isPublishedForLearning();
-    $typeLabels = ['lesson' => 'مقطع', 'project' => 'مشروع عبور', 'quiz' => 'اختبار', 'question' => 'سؤال', 'link' => 'رابط', 'course' => 'كورس'];
-    $typeIcons = ['lesson' => 'fa-play', 'project' => 'fa-briefcase', 'quiz' => 'fa-check-square-o', 'question' => 'fa-question', 'link' => 'fa-link', 'course' => 'fa-book'];
+    $hasPublishedDeviceVersion = $publishedDeviceCourseId !== null;
+    $typeLabels = ['lesson' => 'مقطع', 'project' => 'مشروع عبور'];
+    $typeIcons = ['lesson' => 'fa-play', 'project' => 'fa-briefcase'];
     $renderSection = function (array $section) use ($typeLabels, $typeIcons) {
         $type = (string) ($section['type'] ?? 'lesson');
         $content = is_array($section['content'] ?? null) ? $section['content'] : [];
@@ -44,13 +37,21 @@
         <div><h1>معاينة الطالب</h1><p>طالب جديد · فئة {{ $selectedPlan['name'] }}</p></div>
         <div class="learner-preview__bar-actions">
             <a class="learner-preview__back" href="{{ route('admin.courses.show', $previewCourse) }}"><i class="fa fa-arrow-right"></i> الاستوديو</a>
-            <a class="learner-preview__device {{ $published ? '' : 'is-disabled' }}" href="{{ $published ? 'rokn://course/'.$previewCourse->id : '#' }}"><i class="fa fa-mobile"></i> فتح على جهاز الاختبار</a>
+            <a class="learner-preview__device {{ $hasPublishedDeviceVersion ? '' : 'is-disabled' }}" href="{{ $hasPublishedDeviceVersion ? 'rokn://course/'.$publishedDeviceCourseId : '#' }}"><i class="fa fa-mobile"></i> فتح النسخة المنشورة</a>
         </div>
     </header>
 
-    <div class="learner-preview__notice {{ $published ? '' : 'is-draft' }}">
-        <i class="fa {{ $published ? 'fa-check-circle' : 'fa-eye-slash' }}"></i>
-        <span>{{ $published ? 'هذه معاينة خاصة من نفس عقد التطبيق · رابط الجهاز يفتح النسخة المنشورة الحالية' : 'المسودة ظاهرة هنا للمودريتور فقط · لن يصل إليها أي طالب ولن يعمل رابط الجهاز قبل النشر' }}</span>
+    <div class="learner-preview__notice {{ $isWorkingDraftPreview ? 'is-draft' : '' }}">
+        <i class="fa {{ $isWorkingDraftPreview ? 'fa-eye-slash' : 'fa-check-circle' }}"></i>
+        <span>
+            @if($isWorkingDraftPreview && $hasPublishedDeviceVersion)
+                هذه معاينة للمسودة فقط · رابط الجهاز يفتح النسخة المنشورة الحالية
+            @elseif($isWorkingDraftPreview)
+                هذه معاينة للمسودة فقط · لن يصل إليها الطالب قبل النشر
+            @else
+                هذه هي النسخة المنشورة الحالية
+            @endif
+        </span>
     </div>
 
     <nav class="learner-preview__plans" aria-label="اختر فئة الطالب">
@@ -107,22 +108,8 @@
                             @endforeach
                         </article>
                     @empty
-                        @if($ungrouped->isEmpty())<div class="learner-preview__empty">لا يوجد محتوى بعد</div>@endif
+                        <div class="learner-preview__empty">لا يوجد محتوى بعد</div>
                     @endforelse
-
-                    @if($ungrouped->isNotEmpty())
-                        <article class="learner-preview__module">
-                            <header class="learner-preview__module-head"><h3>محتوى الكورس</h3><span>{{ number_format($ungrouped->count()) }} عناصر</span></header>
-                            @foreach($ungrouped as $section)
-                                @php(extract($renderSection($section)))
-                                <div class="learner-preview__step {{ $locked ? 'is-locked' : '' }}">
-                                    <div class="learner-preview__step-icon"><i class="fa {{ $locked ? 'fa-lock' : ($typeIcons[$type] ?? 'fa-circle-o') }}"></i></div>
-                                    <div><h4>{{ $section['title'] }}</h4><p>{{ $typeLabels[$type] ?? $type }}@if($duration) · {{ $duration }} دقيقة@endif</p></div>
-                                    <span class="learner-preview__step-state">{{ $locked ? 'مغلق' : 'متاح' }}</span>
-                                </div>
-                            @endforeach
-                        </article>
-                    @endif
                 </div>
             </div>
         </section>

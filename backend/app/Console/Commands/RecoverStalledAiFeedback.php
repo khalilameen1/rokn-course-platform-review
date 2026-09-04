@@ -36,7 +36,7 @@ final class RecoverStalledAiFeedback extends Command
                         ->whereDoesntHave('feedbackThread');
                 });
             })
-            ->where('updated_at', '<=', now()->subMinutes(2))
+            ->where('updated_at', '<=', now()->subSeconds(90))
             ->orderBy('id')
             ->limit($limit)
             ->pluck('id');
@@ -55,7 +55,7 @@ final class RecoverStalledAiFeedback extends Command
         $queuedMessages = ProjectFeedbackMessage::query()
             ->where('role', 'user')
             ->where('status', ProjectFeedbackMessage::QUEUED)
-            ->where('updated_at', '<=', now()->subMinutes(2))
+            ->where('updated_at', '<=', now()->subSeconds(60))
             ->orderBy('id')
             ->limit($limit)
             ->get(['id', 'updated_at']);
@@ -80,10 +80,7 @@ final class RecoverStalledAiFeedback extends Command
             }
         }
 
-        $sentStaleBefore = now()->subSeconds(max(
-            180,
-            (int) config('course_plans.ai_reservation_ttl_seconds', 120) + 60
-        ));
+        $sentStaleBefore = now()->subSeconds(90);
         $staleSent = ProjectFeedbackMessage::query()
             ->where('role', 'user')
             ->where('status', ProjectFeedbackMessage::SENT)

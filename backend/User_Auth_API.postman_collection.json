@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "rokn-full-api-collection",
     "name": "Rokn API - Full Collection",
-    "description": "Complete API endpoints for the Rokn educational platform: authentication, courses, certificates, levels, grades, paths, exams, notifications, and more.",
+    "description": "Complete API endpoints for the Rokn educational platform: authentication, courses, certificates, levels, grades, paths, notifications, and more.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -123,26 +123,16 @@
       ]
     },
     {
-      "name": "Main Page",
-      "description": "Home/main page endpoints for landing page and mobile app main screen.",
+      "name": "Course Discovery",
+      "description": "Public course catalogue and app settings.",
       "item": [
         {
-          "name": "Mobile Main Page",
+          "name": "Course List",
           "request": {
             "method": "GET",
             "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/mobile-main-page", "host": ["{{base_url}}"], "path": ["mobile-main-page"] },
-            "description": "Returns main_courses (is_main_course=true), coming soon courses (is_coming_soon=true), and courses grouped by classification. Used for the mobile app home screen."
-          },
-          "response": []
-        },
-        {
-          "name": "Main Page (Legacy)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/main", "host": ["{{base_url}}"], "path": ["main"] },
-            "description": "Returns all courses and grades. Legacy endpoint."
+            "url": { "raw": "{{base_url}}/courses/list", "host": ["{{base_url}}"], "path": ["courses", "list"] },
+            "description": "Returns the paginated public course catalogue used by the app home screen."
           },
           "response": []
         },
@@ -452,166 +442,6 @@
             "header": [{ "key": "Accept", "value": "application/pdf" }],
             "url": { "raw": "{{base_url}}/courses/{{course_id}}/pdfs/1/stream", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}", "pdfs", "1", "stream"] },
             "description": "Stream/download a PDF securely. Requires enrollment. No direct file URL exposed."
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "Exams & Quizzes",
-      "description": "Exam data retrieval, submission flow, results, and history.",
-      "item": [
-        {
-          "name": "List All Quizzes (Public)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/quizzes", "host": ["{{base_url}}"], "path": ["quizzes"] },
-            "description": "Get all available quizzes (public)."
-          },
-          "response": []
-        },
-        {
-          "name": "List All Exams (Public)",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/exams", "host": ["{{base_url}}"], "path": ["exams"] },
-            "description": "Get all available exams (public)."
-          },
-          "response": []
-        },
-        {
-          "name": "List Random Quizzes",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/random-quizzes", "host": ["{{base_url}}"], "path": ["random-quizzes"] },
-            "description": "Get all random quizzes."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Random Quiz",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/random-quizzes/1", "host": ["{{base_url}}"], "path": ["random-quizzes", "1"] },
-            "description": "Get a specific random quiz by ID."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Exam Data by Quiz ID",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/exams/1/data", "host": ["{{base_url}}"], "path": ["exams", "1", "data"] },
-            "description": "Get exam questions (without correct answers). Choices are randomized. Requires course enrollment."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Exam Data by Section",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/courses/{{course_id}}/sections/{{section_id}}/exam", "host": ["{{base_url}}"], "path": ["courses", "{{course_id}}", "sections", "{{section_id}}", "exam"] },
-            "description": "Get exam data for a specific course section. Requires enrollment."
-          },
-          "response": []
-        },
-        {
-          "name": "Start Exam",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "POST",
-            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n    \"quiz_id\": 1\n}" },
-            "url": { "raw": "{{base_url}}/exams/start", "host": ["{{base_url}}"], "path": ["exams", "start"] },
-            "description": "Start an exam attempt. Returns exam_attempt_id used for subsequent answer submission."
-          },
-          "response": []
-        },
-        {
-          "name": "Submit Answer",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "POST",
-            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n    \"exam_attempt_id\": 1,\n    \"question_id\": 1,\n    \"answer\": 2\n}" },
-            "url": { "raw": "{{base_url}}/exams/submit-answer", "host": ["{{base_url}}"], "path": ["exams", "submit-answer"] },
-            "description": "Submit a single answer during an ongoing exam attempt. answer is the choice ID."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Exam Progress",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/exams/1/progress", "host": ["{{base_url}}"], "path": ["exams", "1", "progress"] },
-            "description": "Get progress of an ongoing exam attempt. Replace 1 with the exam_attempt_id."
-          },
-          "response": []
-        },
-        {
-          "name": "End Exam",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "POST",
-            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n    \"exam_attempt_id\": 1\n}" },
-            "url": { "raw": "{{base_url}}/exams/end", "host": ["{{base_url}}"], "path": ["exams", "end"] },
-            "description": "End an exam attempt and calculate results. Returns score and passed status."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Exam Results",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/exams/1/results", "host": ["{{base_url}}"], "path": ["exams", "1", "results"] },
-            "description": "Get results for a specific exam attempt. Replace 1 with exam_attempt_id."
-          },
-          "response": []
-        },
-        {
-          "name": "Get All My Exam Results",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/exams/results/", "host": ["{{base_url}}"], "path": ["exams", "results", ""] },
-            "description": "Get all exam results for the current user."
-          },
-          "response": []
-        },
-        {
-          "name": "Get Exam History",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "GET",
-            "header": [{ "key": "Accept", "value": "application/json" }],
-            "url": { "raw": "{{base_url}}/exams/history", "host": ["{{base_url}}"], "path": ["exams", "history"] },
-            "description": "Get exam attempt history for the current user."
-          },
-          "response": []
-        },
-        {
-          "name": "Log Security Event",
-          "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{api_token}}", "type": "string" }] },
-            "method": "POST",
-            "header": [{ "key": "Accept", "value": "application/json" }, { "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n    \"exam_attempt_id\": 1,\n    \"event_type\": \"tab_switch\",\n    \"details\": \"User switched tabs during exam\"\n}" },
-            "url": { "raw": "{{base_url}}/exams/security-log", "host": ["{{base_url}}"], "path": ["exams", "security-log"] },
-            "description": "Log a security event during an exam (e.g., tab_switch, copy_paste, window_blur)."
           },
           "response": []
         }

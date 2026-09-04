@@ -5,10 +5,10 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   extractApiToken,
-  extractUserProfile,
   getItem,
   removeItem,
   saveItem,
+  sessionIdentityKey,
 } from '../../constants/helpers';
 import {
   cancelLearningReminders,
@@ -64,12 +64,7 @@ const withSettingsScopeWrite = <T>(
 };
 
 const normalizeStoredQuality = (value: unknown) => {
-  const legacyAliases: Record<string, string> = {
-    تلقائي: 'auto',
-    'توفير البيانات': 'data_saver',
-  };
-  const candidate =
-    typeof value === 'string' ? legacyAliases[value] || value : '';
+  const candidate = typeof value === 'string' ? value : '';
   return ['auto', 'data_saver', '1080p', '720p', '480p', '360p'].includes(
     candidate,
   )
@@ -94,10 +89,7 @@ export const useSettingsPreferences = ({
   const {dirtyKeys: privacyDirtyKeys, queue: queuePrivacyPreferenceSync} =
     usePrivacyPreferenceSync();
   const preferenceRevisionRef = useRef<Record<string, number>>({});
-  const profile = extractUserProfile(userData);
-  const accountIdentity = hasAuthenticatedAccount
-    ? String(profile.id ?? profile.user_id ?? 'authenticated')
-    : 'guest';
+  const accountIdentity = sessionIdentityKey(userData);
 
   const markPreferenceMutation = (key: string) => {
     const revision = (preferenceRevisionRef.current[key] || 0) + 1;
@@ -159,9 +151,9 @@ export const useSettingsPreferences = ({
         savedWatchHistory,
         savedMarketingNotifications,
       ] = await Promise.all([
-        getSmartRemindersEnabled(),
+        getSmartRemindersEnabled(boundary),
         scopedKey('VIDEO_QUALITY').then(getItem),
-        getSmartReminderHour(),
+        getSmartReminderHour(boundary),
         scopedKey(WATCH_HISTORY_ENABLED_KEY).then(getItem),
         scopedKey(MARKETING_NOTIFICATIONS_KEY).then(getItem),
       ]);
@@ -195,7 +187,10 @@ export const useSettingsPreferences = ({
         setReminderHour(Number(savedReminderHour));
       }
       if (hasAuthenticatedAccount) {
-        const pending = await readPendingPrivacyPreferences();
+        const pending = await readPendingPrivacyPreferences(
+          undefined,
+          boundary,
+        );
         if (!active) return;
         await withSettingsScopeWrite(boundary, async () => {
           assertAccountSessionBoundary(boundary);
@@ -227,12 +222,12 @@ export const useSettingsPreferences = ({
         });
         if (Object.keys(pending).length) {
           assertAccountSessionBoundary(boundary);
-          await queuePrivacyPreferenceSync();
+          await queuePrivacyPreferenceSync({}, boundary);
           assertAccountSessionBoundary(boundary);
           if (!active) return;
         }
         try {
-          const remoteProfile = await getProfile();
+          const remoteProfile = await getProfile(boundary);
           assertAccountSessionBoundary(boundary);
           if (!active) return;
           const profileQuality = normalizeStoredQuality(
@@ -256,7 +251,9 @@ export const useSettingsPreferences = ({
               !privacyDirtyKeys.has(MARKETING_NOTIFICATIONS_KEY) &&
               isUnchanged(MARKETING_NOTIFICATIONS_KEY)
             ) {
-              setMarketingNotifications(remoteProfile.marketingNotificationsEnabled);
+              setMarketingNotifications(
+                remoteProfile.marketingNotificationsEnabled,
+              );
               await saveItem(
                 await scopedKey(MARKETING_NOTIFICATIONS_KEY),
                 remoteProfile.marketingNotificationsEnabled,
@@ -299,7 +296,7 @@ export const useSettingsPreferences = ({
         );
         if (!(await getItem(key))) return;
         assertAccountSessionBoundary(boundary);
-        await clearWatchHistory();
+        await clearWatchHistory(boundary);
         assertAccountSessionBoundary(boundary);
         await removeItem(key);
         assertAccountSessionBoundary(boundary);
@@ -329,7 +326,7 @@ export const useSettingsPreferences = ({
 
     return enqueuePreferenceWrite(async boundary => {
       if (key === REMINDER_ENABLED_KEY) {
-        const stored = await setSmartRemindersEnabled(value);
+        const stored = await setSmartRemindersEnabled(value, boundary);
         if (!stored) throw new Error('SETTINGS_STORAGE_WRITE_FAILED');
       } else if (
         key === WATCH_HISTORY_ENABLED_KEY ||
@@ -350,7 +347,7 @@ export const useSettingsPreferences = ({
       assertAccountSessionBoundary(boundary);
       if (key === REMINDER_ENABLED_KEY && extractApiToken(userData)) {
         try {
-          const remoteValue = await updateNotificationStatus(value);
+          const remoteValue = await updateNotificationStatus(value, boundary);
           if (remoteValue !== value) {
             throw new Error('SETTINGS_REMOTE_WRITE_FAILED');
           }
@@ -360,7 +357,7 @@ export const useSettingsPreferences = ({
           // Keep disabling available offline: unregistering the device below
           // is sufficient to stop delivery and the server can catch up later.
           if (value) {
-            await setSmartRemindersEnabled(previousValue).catch(
+            await setSmartRemindersEnabled(previousValue, boundary).catch(
               () => undefined,
             );
             throw error instanceof Error
@@ -371,13 +368,17 @@ export const useSettingsPreferences = ({
         assertAccountSessionBoundary(boundary);
       }
       if (hasAuthenticatedAccount && key === WATCH_HISTORY_ENABLED_KEY) {
-        await queuePrivacyPreferenceSync({watchHistoryEnabled: value});
+        await queuePrivacyPreferenceSync(
+          {watchHistoryEnabled: value},
+          boundary,
+        );
         assertAccountSessionBoundary(boundary);
       }
       if (hasAuthenticatedAccount && key === MARKETING_NOTIFICATIONS_KEY) {
-        await queuePrivacyPreferenceSync({
-          marketingNotificationsEnabled: value,
-        });
+        await queuePrivacyPreferenceSync(
+          {marketingNotificationsEnabled: value},
+          boundary,
+        );
         assertAccountSessionBoundary(boundary);
       }
     })
@@ -434,10 +435,19 @@ export const useSettingsPreferences = ({
     const saved = await updatePreference(REMINDER_ENABLED_KEY, true);
     if (!saved) return false;
     assertAccountSessionBoundary(boundary);
-    await registerPushDeviceIfEligible({requestPermission: false}).catch(
-      () => false,
-    );
+    // Guests own local learning reminders only. A backend push token belongs
+    // to an authenticated inbox, so requiring one here made a valid guest
+    // opt-in flip back to off after the OS had already granted permission.
+    if (!hasAuthenticatedAccount) return true;
+    const registered = await registerPushDeviceIfEligible({
+      requestPermission: false,
+    }).catch(() => false);
     assertAccountSessionBoundary(boundary);
+    if (!registered) {
+      await updatePreference(REMINDER_ENABLED_KEY, false);
+      assertAccountSessionBoundary(boundary);
+      throw new Error('PUSH_DEVICE_REGISTRATION_FAILED');
+    }
     return true;
   };
 
@@ -446,8 +456,8 @@ export const useSettingsPreferences = ({
     const previousHour = reminderHour;
     setReminderHour(hour);
     setChoiceModal(null);
-    return enqueuePreferenceWrite(async () => {
-      const stored = await setSmartReminderHour(hour);
+    return enqueuePreferenceWrite(async boundary => {
+      const stored = await setSmartReminderHour(hour, boundary);
       if (!stored) throw new Error('SETTINGS_STORAGE_WRITE_FAILED');
     }).catch(error => {
       if (preferenceRevisionRef.current.REMINDER_HOUR === revision) {
@@ -459,10 +469,7 @@ export const useSettingsPreferences = ({
           error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
         )
       ) {
-        Alert.alert(
-          'لم يُحفظ التغيير',
-          'تعذّر حفظ وقت التذكير\nحاول مرة أخرى',
-        );
+        Alert.alert('لم يُحفظ التغيير', 'تعذّر حفظ وقت التذكير\nحاول مرة أخرى');
       }
     });
   };
@@ -484,9 +491,10 @@ export const useSettingsPreferences = ({
       if (!stored) throw new Error('SETTINGS_STORAGE_WRITE_FAILED');
       assertAccountSessionBoundary(boundary);
       if (hasAuthenticatedAccount) {
-        await updatePlaybackPreferences({
-          videoQualityPreference: normalizedQuality,
-        });
+        await updatePlaybackPreferences(
+          {videoQualityPreference: normalizedQuality},
+          boundary,
+        );
         assertAccountSessionBoundary(boundary);
       }
     }).catch(error => {
@@ -520,7 +528,7 @@ export const useSettingsPreferences = ({
           style: 'destructive',
           onPress: async () => {
             const boundary = await captureAccountSessionBoundary();
-            await clearLocalWatchHistory();
+            await clearLocalWatchHistory(boundary);
             assertAccountSessionBoundary(boundary);
             let serverSynced = true;
             if (extractApiToken(userData)) {
@@ -529,7 +537,7 @@ export const useSettingsPreferences = ({
                 boundary,
               );
               try {
-                await clearWatchHistory();
+                await clearWatchHistory(boundary);
                 assertAccountSessionBoundary(boundary);
                 await removeItem(pendingKey);
                 assertAccountSessionBoundary(boundary);

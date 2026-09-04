@@ -55,8 +55,6 @@ final class RepositorySecretScanner
 
     /** @var list<string> */
     private const AUDITED_NONSECRET_NAMES = [
-        'API_TOKEN_ALLOW_LEGACY_PLAINTEXT',
-        'API_TOKEN_ALLOW_LEGACY_TRANSPORTS',
         'OPENROUTER_GLOBAL_DAILY_TOKEN_BUDGET',
         'OPENROUTER_GLOBAL_MONTHLY_TOKEN_BUDGET',
         'WHATSAPP_LINK_TOKEN_MINUTES',

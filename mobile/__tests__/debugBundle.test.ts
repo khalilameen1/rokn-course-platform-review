@@ -32,16 +32,16 @@ const {Share} = jest.requireMock('react-native') as {
   };
 };
 const mockShare = Share.share;
-const {getOperationalDiagnosticsSnapshot: mockGetOperationalDiagnosticsSnapshot} =
-  jest.requireMock('../src/services/operationalTelemetry') as {
-    getOperationalDiagnosticsSnapshot: jest.Mock<
-      Promise<DiagnosticsSnapshot>,
-      []
-    >;
-  };
-const {createDebugBundle, formatDebugBundle, shareDebugBundle} = require(
-  '../src/services/debugBundle'
-) as typeof import('../src/services/debugBundle');
+const {
+  getOperationalDiagnosticsSnapshot: mockGetOperationalDiagnosticsSnapshot,
+} = jest.requireMock('../src/services/operationalTelemetry') as {
+  getOperationalDiagnosticsSnapshot: jest.Mock<
+    Promise<DiagnosticsSnapshot>,
+    []
+  >;
+};
+const {createDebugBundle, formatDebugBundle, shareDebugBundle} =
+  require('../src/services/debugBundle') as typeof import('../src/services/debugBundle');
 
 describe('debug bundle privacy boundary', () => {
   beforeEach(() => {
@@ -98,7 +98,6 @@ describe('debug bundle privacy boundary', () => {
         distribution_channel: expect.stringMatching(/^(direct|play|appstore)$/),
       },
       feature_flags: {
-        local_demo_enabled: expect.any(Boolean),
         external_checkout_enabled: expect.any(Boolean),
         play_distribution: expect.any(Boolean),
         app_store_distribution: expect.any(Boolean),
@@ -134,8 +133,12 @@ describe('debug bundle privacy boundary', () => {
     });
 
     const serialized = formatDebugBundle(bundle).toLowerCase();
-    expect(serialized).not.toMatch(/learner@example\.com|very-secret|private\.example/);
-    expect(serialized).not.toMatch(/"(?:token|email|url|stack|message|fingerprint)"/);
+    expect(serialized).not.toMatch(
+      /learner@example\.com|very-secret|private\.example/,
+    );
+    expect(serialized).not.toMatch(
+      /"(?:token|email|url|stack|message|fingerprint)"/,
+    );
   });
 
   it('falls back to no events when diagnostics cannot be read', async () => {
@@ -163,6 +166,7 @@ describe('debug bundle privacy boundary', () => {
     await shareDebugBundle();
 
     expect(mockShare).toHaveBeenCalledTimes(1);
+    expect(mockShare.mock.calls[0][0].title).toBe('معلومات دعم ركن');
     const message = mockShare.mock.calls[0][0].message.toLowerCase();
     expect(message).toContain('authentication_error');
     expect(message).not.toMatch(/learner@example\.com|secret|https?:\/\//);

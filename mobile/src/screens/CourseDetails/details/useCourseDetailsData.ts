@@ -1,13 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import type {Dispatch, SetStateAction} from 'react';
-import {
-  getDemoExperience,
-  subscribeDemoExperience,
-} from '../../../services/demoExperience';
-import type {
-  DemoCoinPackage,
-  DemoExperienceState,
-} from '../../../services/demoExperience';
+import type {CoinPackage} from '../../../services/api/coinPackageMapper';
 import {
   getCoinPackages,
   getCourseDetails,
@@ -30,37 +22,43 @@ import {
 type UseCourseDetailsDataParams = {
   courseId: string;
   identityKey: string;
-  isDemoCourse: boolean;
-  setNotice: Dispatch<SetStateAction<string>>;
+};
+
+type CourseWalletState = {
+  balance: number;
+  paidBalance: number;
+  rewardBalance: number;
+  rewardContributionCap: number;
+  spendableBalance: number;
+};
+
+export type CourseWalletUpdate = Omit<
+  CourseWalletState,
+  'rewardContributionCap'
+> & {
+  rewardContributionCap?: number;
 };
 
 export const useCourseDetailsData = ({
   courseId,
   identityKey,
-  isDemoCourse,
-  setNotice,
 }: UseCourseDetailsDataParams) => {
-  const [experience, setExperience] = useState<DemoExperienceState | null>(
+  const [remoteWallet, setRemoteWallet] = useState<CourseWalletState | null>(
     null,
   );
-  const [remoteBalance, setRemoteBalance] = useState<number | null>(null);
-  const [remoteSpendableBalance, setRemoteSpendableBalance] = useState<
-    number | null
-  >(null);
-  const [remotePaidBalance, setRemotePaidBalance] = useState<number | null>(null);
-  const [remoteRewardBalance, setRemoteRewardBalance] = useState<number | null>(null);
-  const [remoteRewardContributionCap, setRemoteRewardContributionCap] =
-    useState<number | null>(null);
-  const [remoteOwned, setRemoteOwned] = useState(false);
-  const [remotePackages, setRemotePackages] = useState<DemoCoinPackage[]>([]);
+  const [remotePackages, setRemotePackages] = useState<CoinPackage[]>([]);
   const [remoteSession, setRemoteSession] = useState<boolean | null>(null);
-  const [remoteCourse, setRemoteCourse] =
-    useState<CourseDetailsDto | null>(null);
+  const [remoteCourse, setRemoteCourse] = useState<CourseDetailsDto | null>(
+    null,
+  );
+  const [remoteCommerceLoading, setRemoteCommerceLoading] = useState(false);
   const loadedCourseRef = useRef<CourseDetailsDto | null>(null);
+  const ownershipWriteEpochRef = useRef(0);
   const loadedOwnerRef = useRef(identityKey);
   const displayScopeRef = useRef({courseId, identityKey});
-  const [remoteLoading, setRemoteLoading] = useState(!isDemoCourse);
+  const [remoteLoading, setRemoteLoading] = useState(true);
   const [remoteError, setRemoteError] = useState('');
+  const [remoteNotice, setRemoteNotice] = useState('');
   const [remoteReload, setRemoteReload] = useState(0);
   const reloadRemote = useCallback(
     () => setRemoteReload(value => value + 1),
@@ -68,33 +66,21 @@ export const useCourseDetailsData = ({
   );
 
   useEffect(() => {
-    if (!isDemoCourse) return undefined;
-    void getDemoExperience().then(setExperience);
-    return subscribeDemoExperience(setExperience);
-  }, [isDemoCourse]);
-
-  useEffect(() => {
     let active = true;
     const controller = new AbortController();
-    if (isDemoCourse)
-      return () => {
-        active = false;
-        controller.abort();
-      };
     if (
       displayScopeRef.current.courseId !== courseId ||
       displayScopeRef.current.identityKey !== identityKey
     ) {
       displayScopeRef.current = {courseId, identityKey};
       setRemoteCourse(null);
-      setRemoteBalance(null);
-      setRemoteSpendableBalance(null);
-      setRemotePaidBalance(null);
-      setRemoteRewardBalance(null);
-      setRemoteRewardContributionCap(null);
+      setRemoteWallet(null);
       setRemotePackages([]);
-      setRemoteOwned(false);
+      setRemoteCommerceLoading(false);
+      setRemoteSession(null);
+      ownershipWriteEpochRef.current += 1;
       setRemoteError('');
+      setRemoteNotice('');
       setRemoteLoading(true);
     }
     if (!courseId) {
@@ -131,7 +117,7 @@ export const useCourseDetailsData = ({
         loadedOwnerRef.current === identityKey;
       setRemoteLoading(!hasCurrentDetails);
       setRemoteError('');
-      setNotice('');
+      setRemoteNotice('');
       if (
         loadedCourseRef.current?.id !== courseId ||
         loadedOwnerRef.current !== identityKey
@@ -139,32 +125,47 @@ export const useCourseDetailsData = ({
         loadedCourseRef.current = null;
         loadedOwnerRef.current = identityKey;
         setRemoteCourse(null);
-        setRemoteBalance(null);
-        setRemoteSpendableBalance(null);
-        setRemotePaidBalance(null);
-        setRemoteRewardBalance(null);
-        setRemoteRewardContributionCap(null);
+        setRemoteWallet(null);
         setRemotePackages([]);
-        setRemoteOwned(false);
+        setRemoteCommerceLoading(false);
       }
-      const sessionAvailable = await hasSession();
-      if (!stillOwned()) return;
-      setRemoteSession(sessionAvailable);
+      // The public definition is independent from keychain/session and wallet
+      // reads. Start both clocks together so a guest can see the course even
+      // if secure storage is slow or locked.
+      const sessionFlight = hasSession().catch(() => false);
       let detailsLoaded =
         loadedCourseRef.current?.id === courseId &&
         loadedOwnerRef.current === identityKey;
+      let resolvedDetails = detailsLoaded ? loadedCourseRef.current : null;
+      const ownershipWriteEpoch = ownershipWriteEpochRef.current;
       try {
         const details = await getCourseDetails(courseId, {
           signal: controller.signal,
         });
         detailsLoaded = true;
+        resolvedDetails = details;
         if (stillOwned()) {
-          loadedCourseRef.current = details;
           loadedOwnerRef.current = identityKey;
-          setRemoteCourse(details);
-          setRemoteOwned(details.owned);
+          setRemoteCourse(current => {
+            const ownershipChangedWhileReading =
+              ownershipWriteEpochRef.current !== ownershipWriteEpoch;
+            const next = {
+              ...details,
+              // Preserve a purchase that completed while this particular read
+              // was in flight. Every later read is authoritative again, so a
+              // refunded, held, or revoked enrollment cannot stay unlocked
+              // merely because this screen once observed `owned: true`.
+              owned: ownershipChangedWhileReading
+                ? current?.owned ?? details.owned
+                : details.owned,
+            };
+            loadedCourseRef.current = next;
+            return next;
+          });
           if (details.fromCache) {
-            setNotice('نعرض آخر تفاصيل محفوظة\nسنحدّثها عند عودة الاتصال');
+            setRemoteNotice(
+              'نعرض آخر تفاصيل محفوظة\nسنحدّثها عند عودة الاتصال',
+            );
           }
         }
       } catch (error) {
@@ -173,13 +174,14 @@ export const useCourseDetailsData = ({
           if (isCourseUnavailableError(error)) {
             loadedCourseRef.current = null;
             setRemoteCourse(null);
-            setRemoteOwned(false);
             detailsLoaded = false;
-            setRemoteError('هذا الكورس غير متاح الآن\nعد إلى الرئيسية واختر كورسًا آخر');
+            setRemoteError(
+              'هذا الكورس غير متاح الآن\nعد إلى الرئيسية واختر كورسًا آخر',
+            );
           }
           if (!isCourseUnavailableError(error)) {
             const message = friendlyNetworkMessage(error, 'تفاصيل الكورس');
-            if (detailsLoaded) setNotice(message);
+            if (detailsLoaded) setRemoteNotice(message);
             else setRemoteError(message);
           }
         }
@@ -188,20 +190,26 @@ export const useCourseDetailsData = ({
         if (stillOwned()) setRemoteLoading(false);
         return;
       }
-      if (sessionAvailable) {
+      if (stillOwned()) setRemoteLoading(false);
+      const sessionAvailable = await sessionFlight;
+      if (!stillOwned()) return;
+      setRemoteSession(sessionAvailable);
+      const needsCommerce = Boolean(
+        sessionAvailable &&
+          resolvedDetails &&
+          !resolvedDetails.owned &&
+          (Number(resolvedDetails.price || 0) > 0 ||
+            resolvedDetails.accessPlans.some(plan => plan.priceCoins > 0)),
+      );
+      if (needsCommerce) {
+        setRemoteCommerceLoading(true);
         const [walletResult, packagesResult] = await Promise.allSettled([
           getWallet(),
           getCoinPackages(),
         ]);
         if (!stillOwned()) return;
         if (walletResult.status === 'fulfilled') {
-          setRemoteBalance(walletResult.value.balance);
-          setRemoteSpendableBalance(walletResult.value.spendableBalance);
-          setRemotePaidBalance(walletResult.value.paidBalance);
-          setRemoteRewardBalance(walletResult.value.rewardBalance);
-          setRemoteRewardContributionCap(
-            walletResult.value.rewardContributionCap,
-          );
+          setRemoteWallet(walletResult.value);
         }
         if (packagesResult.status === 'fulfilled') {
           setRemotePackages(packagesResult.value);
@@ -210,19 +218,20 @@ export const useCourseDetailsData = ({
           walletResult.status === 'rejected' ||
           packagesResult.status === 'rejected'
         ) {
-          setNotice('تعذّر تحديث بعض بيانات المحفظة\nحدّث الصفحة لعرض أحدثها');
+          setRemoteNotice(
+            'تعذّر تحديث بعض بيانات المحفظة\nحدّث الصفحة لعرض أحدثها',
+          );
         }
       }
-      if (stillOwned()) setRemoteLoading(false);
+      if (stillOwned()) setRemoteCommerceLoading(false);
     })();
     return () => {
       active = false;
       controller.abort();
     };
-  }, [courseId, identityKey, isDemoCourse, remoteReload, setNotice]);
+  }, [courseId, identityKey, remoteReload]);
 
   useEffect(() => {
-    if (isDemoCourse) return undefined;
     let active = true;
     let unsubscribe: () => void = () => undefined;
     const reloadAfterCredit = () => setRemoteReload(value => value + 1);
@@ -230,7 +239,8 @@ export const useCourseDetailsData = ({
     if (CAN_START_NATIVE_CHECKOUT) {
       void import('../../../services/nativeStoreBilling').then(storeBilling => {
         if (!active) return;
-        unsubscribe = storeBilling.subscribeNativeStoreCredits(reloadAfterCredit);
+        unsubscribe =
+          storeBilling.subscribeNativeStoreCredits(reloadAfterCredit);
       });
     }
     return () => {
@@ -238,35 +248,60 @@ export const useCourseDetailsData = ({
       unsubscribe();
       unsubscribeExternal();
     };
-  }, [isDemoCourse]);
+  }, []);
 
   const ownerMatches =
     displayScopeRef.current.identityKey === identityKey &&
     displayScopeRef.current.courseId === courseId;
 
+  const setRemoteOwned = useCallback((owned: boolean) => {
+    ownershipWriteEpochRef.current += 1;
+    setRemoteCourse(current => {
+      if (!current) return current;
+      const next = {...current, owned};
+      loadedCourseRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const updateRemoteWallet = useCallback((next: CourseWalletUpdate) => {
+    setRemoteWallet(current => ({
+      balance: next.balance,
+      paidBalance: next.paidBalance,
+      rewardBalance: next.rewardBalance,
+      rewardContributionCap:
+        next.rewardContributionCap ?? current?.rewardContributionCap ?? 0,
+      spendableBalance: next.spendableBalance,
+    }));
+  }, []);
+
   return {
-    experience,
-    reloadRemote,
-    remoteBalance: ownerMatches ? remoteBalance : null,
-    remoteCourse: ownerMatches ? remoteCourse : null,
-    remoteError: ownerMatches ? remoteError : '',
-    remoteLoading: remoteLoading || !ownerMatches,
-    remoteOwned: ownerMatches ? remoteOwned : false,
-    remotePaidBalance: ownerMatches ? remotePaidBalance : null,
-    remotePackages: ownerMatches ? remotePackages : [],
-    remoteSession: ownerMatches ? remoteSession : null,
-    remoteRewardBalance: ownerMatches ? remoteRewardBalance : null,
-    remoteRewardContributionCap: ownerMatches
-      ? remoteRewardContributionCap
-      : null,
-    remoteSpendableBalance: ownerMatches ? remoteSpendableBalance : null,
-    setExperience,
-    setRemoteBalance,
-    setRemoteCourse,
-    setRemoteOwned,
-    setRemotePaidBalance,
-    setRemotePackages,
-    setRemoteSpendableBalance,
-    setRemoteRewardBalance,
+    course: {
+      error: ownerMatches ? remoteError : '',
+      loading: remoteLoading || !ownerMatches,
+      notice: ownerMatches ? remoteNotice : '',
+      reload: reloadRemote,
+      session: ownerMatches ? remoteSession : null,
+      setOwned: setRemoteOwned,
+      setValue: setRemoteCourse,
+      value: ownerMatches ? remoteCourse : null,
+    },
+    commerce: {
+      balance: ownerMatches ? remoteWallet?.balance ?? null : null,
+      loading: ownerMatches ? remoteCommerceLoading : false,
+      packages: ownerMatches ? remotePackages : [],
+      paidBalance: ownerMatches ? remoteWallet?.paidBalance ?? null : null,
+      rewardBalance: ownerMatches ? remoteWallet?.rewardBalance ?? null : null,
+      rewardContributionCap: ownerMatches
+        ? remoteWallet?.rewardContributionCap ?? null
+        : null,
+      setPackages: setRemotePackages,
+      spendableBalance: ownerMatches
+        ? remoteWallet?.spendableBalance ?? null
+        : null,
+      updateWallet: updateRemoteWallet,
+    },
   };
 };
+
+export type CourseDetailsData = ReturnType<typeof useCourseDetailsData>;

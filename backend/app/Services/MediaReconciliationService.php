@@ -4,14 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Attachment;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 /**
@@ -39,8 +37,6 @@ final class MediaReconciliationService
         $course->loadMissing([
             'photo',
             'lessons.mediaState',
-            'modules.attachments',
-            'sections.attachments',
         ]);
 
         $courseIssues = $this->courseIssues($course);
@@ -87,7 +83,7 @@ final class MediaReconciliationService
         bool $persist = true,
         bool $fetchManifest = true
     ): array {
-        $lesson->loadMissing(['course.photo', 'course.modules.attachments', 'course.sections.attachments', 'mediaState']);
+        $lesson->loadMissing(['course.photo', 'mediaState']);
         $course = $lesson->course;
         if (!$course) {
             return [
@@ -212,18 +208,6 @@ final class MediaReconciliationService
                     'lesson',
                     (int) $lesson->id
                 );
-            }
-            $fallback = $this->bunny->getFallbackVideo((string) $lesson->bunny_video_id);
-            if ($fallback) {
-                $fallbackResult = $this->manifestIsReadable((string) ($fallback['url'] ?? ''));
-                if (!$fallbackResult['ready']) {
-                    $issues[] = $this->issue(
-                        'fallback_' . $fallbackResult['code'],
-                        'attention',
-                        'lesson',
-                        (int) $lesson->id
-                    );
-                }
             }
         }
 
@@ -388,46 +372,10 @@ final class MediaReconciliationService
             $issues[] = $this->issue('course_cover_missing', 'attention', 'course', (int) $course->id);
         }
 
-        foreach ($course->modules as $module) {
-            foreach ($module->attachments as $attachment) {
-                if (!$this->attachmentExists($attachment)) {
-                    $issues[] = $this->issue('attachment_missing', 'attention', 'module', (int) $module->id);
-                }
-            }
-            $external = trim((string) $module->attachments_link);
-            if ($external !== '' && SafeExternalUrl::sanitize($external) === null) {
-                $issues[] = $this->issue('external_attachment_url_invalid', 'attention', 'module', (int) $module->id);
-            }
-        }
-
-        foreach ($course->sections as $section) {
-            foreach ($section->attachments as $attachment) {
-                if (!$this->attachmentExists($attachment)) {
-                    $issues[] = $this->issue('attachment_missing', 'attention', 'section', (int) $section->id);
-                }
-            }
-        }
-
         return collect($issues)
             ->unique(fn (array $issue) => implode(':', [$issue['code'], $issue['scope'], $issue['reference']]))
             ->values()
             ->all();
-    }
-
-    private function attachmentExists(Attachment $attachment): bool
-    {
-        $path = trim((string) $attachment->file_path);
-        $disk = trim((string) $attachment->storage_disk);
-        if ($path === '' || $disk === '' || !config("filesystems.disks.{$disk}")) {
-            return false;
-        }
-
-        try {
-            return Storage::disk($disk)->exists($path);
-        } catch (Throwable $exception) {
-            report($exception);
-            return false;
-        }
     }
 
     private function integritySchemaReady(): bool

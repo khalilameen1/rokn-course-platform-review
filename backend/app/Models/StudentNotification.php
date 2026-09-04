@@ -124,10 +124,33 @@ class StudentNotification extends Model
      */
     public function markAsRead()
     {
-        return $this->update([
-            'is_read' => true,
-            'read_at' => now(),
-        ]);
+        if ($this->is_read) {
+            return true;
+        }
+
+        $readAt = now();
+        $updated = static::query()
+            ->whereKey($this->getKey())
+            ->where('is_read', false)
+            ->update([
+                'is_read' => true,
+                'read_at' => $readAt,
+            ]);
+        if ($updated === 1) {
+            $this->forceFill(['is_read' => true, 'read_at' => $readAt]);
+
+            return true;
+        }
+
+        // A concurrent tap may have won the conditional update. Reflect its
+        // first-read timestamp instead of overwriting it with this request.
+        $current = $this->fresh();
+        if (!$current) {
+            return false;
+        }
+        $this->setRawAttributes($current->getAttributes(), true);
+
+        return (bool) $this->is_read;
     }
 
     /**

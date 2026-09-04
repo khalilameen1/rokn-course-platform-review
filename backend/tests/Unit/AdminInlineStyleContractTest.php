@@ -15,8 +15,6 @@ final class AdminInlineStyleContractTest extends TestCase
     private const STYLE_BLOCK_ALLOW_LIST = [
         'course-codes/pdf.blade.php',
         'course-codes/partials/_dynamic_styles.blade.php',
-        'course-pdfs/partials/_dynamic_styles.blade.php',
-        'course-sections/partials/_dynamic_styles.blade.php',
         'courses/partials/_dynamic_styles.blade.php',
         'home/partials/_dynamic_styles.blade.php',
         'orders/partials/_dynamic_styles.blade.php',
@@ -59,12 +57,23 @@ final class AdminInlineStyleContractTest extends TestCase
         array $contracts
     ): void {
         $source = $this->viewSource($view);
-
         self::assertStringContainsString($asset, $source);
         self::assertStringContainsString('admin-page', $source);
         foreach ($contracts as $contract) {
             self::assertStringContainsString($contract, $source);
         }
+    }
+
+    public function test_course_attachments_are_edited_inside_the_course_studio(): void
+    {
+        $show = $this->viewSource('courses/show.blade.php');
+        $panel = $this->viewSource('courses/partials/show/course-attachments-panel.blade.php');
+
+        self::assertStringContainsString('course-attachments-panel', $show);
+        self::assertStringContainsString('id="studioCourseAttachments"', $panel);
+        self::assertStringContainsString('$coursePdfStoreUrl', $panel);
+        self::assertStringContainsString('$coursePdfReorderUrl', $panel);
+        self::assertStringContainsString("admin.course-pdfs.partials.form", $panel);
     }
 
     public function test_shared_shell_styles_load_after_page_styles(): void
@@ -113,30 +122,10 @@ final class AdminInlineStyleContractTest extends TestCase
     public static function extractedScreens(): array
     {
         return [
-            'student platform' => [
-                'settings/student-platform.blade.php',
-                'admin/assets/css/settings-student-platform.css',
-                ['platformUrl', 'id="copyBtn"', 'function copyToClipboard'],
-            ],
             'admin account settings' => [
                 'settings/admin_data.blade.php',
                 'admin/assets/css/settings-admin-data.css',
                 ['admin.update_admin_data', "Form::text('email'", 'name="password"'],
-            ],
-            'course pdf list' => [
-                'course-pdfs/index.blade.php',
-                'admin/assets/css/course-pdfs-index.css',
-                ['admin.courses.pdfs.create', 'admin.courses.pdfs.destroy', 'function toggleStatus'],
-            ],
-            'course pdf create' => [
-                'course-pdfs/create.blade.php',
-                'admin/assets/css/course-pdfs-create.css',
-                ['admin.courses.pdfs.store', 'name="pdf_file"', 'زر مرفقات الكورس'],
-            ],
-            'course pdf edit' => [
-                'course-pdfs/edit.blade.php',
-                'admin/assets/css/course-pdfs-edit.css',
-                ['admin.courses.pdfs.update', 'name="pdf_file"', 'name="is_active"'],
             ],
         ];
     }

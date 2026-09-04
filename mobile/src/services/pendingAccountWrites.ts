@@ -48,9 +48,12 @@ const privacyKey = (boundary?: AccountSessionBoundary) =>
 const watchClearKey = (boundary?: AccountSessionBoundary) =>
   accountScopedStorageKey(PENDING_WATCH_HISTORY_CLEAR_KEY, boundary);
 
-export const readPendingPrivacyPreferences = async (storageKey?: string) =>
+export const readPendingPrivacyPreferences = async (
+  storageKey?: string,
+  ownerBoundary?: AccountSessionBoundary,
+) =>
   (await getItem<PendingPrivacyPreferences>(
-    storageKey || (await privacyKey()),
+    storageKey || (await privacyKey(ownerBoundary)),
   )) || {};
 
 const flushWithinBoundary = async (boundary: AccountSessionBoundary) => {
@@ -71,7 +74,7 @@ const flushWithinBoundary = async (boundary: AccountSessionBoundary) => {
 
   if (Object.keys(preferences).length) {
     try {
-      await updatePrivacyPreferences(preferences);
+      await updatePrivacyPreferences(preferences, boundary);
       assertAccountSessionBoundary(boundary);
       await removeItem(pendingKey);
     } catch {
@@ -82,7 +85,7 @@ const flushWithinBoundary = async (boundary: AccountSessionBoundary) => {
   if (clearHistoryPending) {
     try {
       assertAccountSessionBoundary(boundary);
-      await clearWatchHistory();
+      await clearWatchHistory(boundary);
       assertAccountSessionBoundary(boundary);
       await removeItem(historyKey);
     } catch {
@@ -99,8 +102,9 @@ export const flushPendingAccountWrites = async (): Promise<void> => {
 
 export const queuePendingPrivacyPreferences = async (
   patch: PendingPrivacyPreferences,
+  ownerBoundary?: AccountSessionBoundary,
 ): Promise<void> => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   return withScopeWrite(boundary, async () => {
     assertAccountSessionBoundary(boundary);
     const key = await privacyKey(boundary);

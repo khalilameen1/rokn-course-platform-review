@@ -36,7 +36,7 @@ final class AdminAuthoringCreateIntentService
 
             $samePayload = hash_equals((string) $existing->request_fingerprint, $fingerprint);
             if ((string) $existing->status === 'completed') {
-                if (!$samePayload) return $this->changedPayloadResponse();
+                if (!$samePayload) return $this->changedPayloadResponse($request);
                 return $this->replay($request, $existing);
             }
 
@@ -45,7 +45,7 @@ final class AdminAuthoringCreateIntentService
             // intent while the editor corrects its fields.
             if ((string) $existing->status === 'failed') {
                 if (!$samePayload && !empty($existing->resource_id)) {
-                    return $this->changedPayloadResponse();
+                    return $this->changedPayloadResponse($request);
                 }
                 $reclaimed = DB::table(self::TABLE)
                     ->where($identity)
@@ -54,7 +54,7 @@ final class AdminAuthoringCreateIntentService
                 if ($reclaimed === 1) return $identity + ['request_fingerprint' => $fingerprint];
             }
 
-            if (!$samePayload) return $this->changedPayloadResponse();
+            if (!$samePayload) return $this->changedPayloadResponse($request);
 
             // Integrated create controllers commit the domain rows and the
             // completed receipt in one transaction. A stale processing row
@@ -75,18 +75,22 @@ final class AdminAuthoringCreateIntentService
                 if ($reclaimed === 1) return $identity + ['request_fingerprint' => $fingerprint];
             }
 
-            return redirect()->back()->with(
-                'error',
-                "الحفظ ما زال قيد التنفيذ\nانتظر قليلًا ثم أعد المحاولة"
+            return $this->rejectedResponse(
+                $request,
+                "الحفظ ما زال قيد التنفيذ\nانتظر قليلًا ثم أعد المحاولة",
+                'authoring_in_progress',
+                409
             );
         } catch (\Throwable $exception) {
             report($exception);
             // Once the ledger exists, executing without a claim is less safe
             // than asking the editor to retry: the same click could otherwise
             // allocate two resources while the database is degraded.
-            return redirect()->back()->withInput()->with(
-                'error',
-                "تعذر بدء الحفظ الآن\nحاول مرة أخرى"
+            return $this->rejectedResponse(
+                $request,
+                "تعذر بدء الحفظ الآن\nحاول مرة أخرى",
+                'authoring_unavailable',
+                503
             );
         }
     }
@@ -273,6 +277,14 @@ final class AdminAuthoringCreateIntentService
                 ->with('success', 'تم الحفظ بالفعل');
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'code' => 'authoring_receipt_incomplete',
+                'message' => "تعذر استعادة نتيجة الحفظ\nحدّث الاستوديو ثم حاول مرة أخرى",
+            ], 409);
+        }
+
         // Compatibility for a receipt written by the previous deployment,
         // which marked JSON success without storing a body or Location.
         $routeName = (string) ($request->route()?->getName() ?: '');
@@ -367,12 +379,31 @@ final class AdminAuthoringCreateIntentService
         ];
     }
 
-    private function changedPayloadResponse(): Response
+    private function changedPayloadResponse(Request $request): Response
     {
-        return redirect()->back()->withInput()->with(
-            'error',
-            "تغيّرت بيانات عملية الحفظ\nأعد المحاولة من النموذج الحالي"
+        return $this->rejectedResponse(
+            $request,
+            "تغيّرت بيانات عملية الحفظ\nأعد المحاولة من النموذج الحالي",
+            'authoring_payload_changed',
+            409
         );
+    }
+
+    private function rejectedResponse(
+        Request $request,
+        string $message,
+        string $code,
+        int $status
+    ): Response {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'code' => $code,
+                'message' => $message,
+            ], $status);
+        }
+
+        return redirect()->back()->withInput()->with('error', $message);
     }
 
     private function supportsReplayColumns(): bool

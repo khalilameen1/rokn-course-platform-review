@@ -29,7 +29,7 @@ final class CategoryController extends Controller
             200,
             [
                 'deprecated' => true,
-                'scope' => 'legacy_item_lists',
+                'scope' => 'legacy_categories',
                 'course_classifications_endpoint' => '/api/classifications',
             ]
         );

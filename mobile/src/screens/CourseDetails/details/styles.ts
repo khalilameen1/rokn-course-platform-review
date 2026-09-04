@@ -98,27 +98,6 @@ const styles = StyleSheet.create({
     transform: [{scale: 0.985}],
   },
   primaryButtonText: {...Type.button, color: '#FFFFFF', fontSize: 17},
-  stickyAction: {
-    position: 'absolute',
-    start: 0,
-    end: 0,
-    bottom: 0,
-    paddingTop: 10,
-    paddingHorizontal: 18,
-    backgroundColor: 'rgba(7,10,16,0.96)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Palette.lineSoft,
-  },
-  stickyButton: {
-    width: '100%',
-    maxWidth: 620,
-    minHeight: 54,
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Radius.md,
-    backgroundColor: Palette.primary,
-  },
   previewButton: {
     minHeight: 50,
     minWidth: 150,
@@ -154,7 +133,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Palette.lineSoft,
   },
-  ratingActionTitle: {...Type.bodyStrong, ...textDirection, color: Palette.text},
+  ratingActionTitle: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    color: Palette.text,
+  },
   ratingStars: {...rtlRowStyle, alignItems: 'center', gap: 2},
   ratingStarButton: {
     width: Accessibility.minTouchTarget,
@@ -371,7 +354,6 @@ const styles = StyleSheet.create({
   },
   sheetContent: {paddingBottom: 4},
   sheetScroll: {flexShrink: 1},
-  codeDialogSheet: {maxHeight: '72%'},
   retentionSheet: {maxHeight: '72%'},
   retentionContent: {alignItems: 'stretch', paddingBottom: 4},
   retentionMark: {
@@ -519,13 +501,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   codeButtonText: {...Type.button, color: Palette.text},
-  codeDialogClose: {
-    minHeight: Accessibility.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  codeDialogCloseText: {...Type.bodyStrong, color: Palette.textMuted},
   reviewCode: {
     ...Type.caption,
     ...textDirection,
@@ -547,7 +522,24 @@ const styles = StyleSheet.create({
     borderColor: Palette.lineSoft,
   },
   packageCardSufficient: {borderColor: 'rgba(52,120,246,0.46)'},
-  packageCopy: {flexGrow: 1, flexShrink: 1, minWidth: 0, alignItems: 'flex-start'},
+  packageCopy: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
+  },
+  packageLabel: {
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
+    marginBottom: 3,
+  },
+  packageRemainder: {
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
+    marginTop: 4,
+  },
   packageCoins: {...Type.bodyStrong, color: '#F0CB78'},
   packagePrice: {...Type.bodyStrong, color: Palette.text},
   purchaseSummary: {

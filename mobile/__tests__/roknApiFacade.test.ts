@@ -6,9 +6,11 @@ import * as engagement from '../src/services/api/engagement';
 import * as learning from '../src/services/api/learning';
 import * as notifications from '../src/services/api/notifications';
 import * as profile from '../src/services/api/profile';
+import * as savedLessons from '../src/services/api/savedLessons';
+import * as watchHistory from '../src/services/api/watchHistory';
 import * as roknApi from '../src/services/roknApi';
 
-describe('roknApi compatibility facade', () => {
+describe('roknApi facade', () => {
   it('re-exports every domain function without wrapping it', () => {
     const domainExports = Object.assign(
       {},
@@ -20,6 +22,8 @@ describe('roknApi compatibility facade', () => {
       learning,
       notifications,
       profile,
+      savedLessons,
+      watchHistory,
     );
 
     expect(Object.keys(roknApi).sort()).toEqual(
@@ -28,50 +32,5 @@ describe('roknApi compatibility facade', () => {
     Object.entries(domainExports).forEach(([name, implementation]) => {
       expect(roknApi[name as keyof typeof roknApi]).toBe(implementation);
     });
-  });
-
-  it.each([
-    ['purchaseProductionCourse', 'purchaseCourse'],
-    ['redeemProductionCourseCode', 'redeemCourseCode'],
-    ['getProductionCourseChatUpgradeQuote', 'getCourseChatUpgradeQuote'],
-    ['purchaseProductionCourseChatUpgrade', 'purchaseCourseChatUpgrade'],
-    ['getProductionFullTrackUpgradeQuote', 'getFullTrackUpgradeQuote'],
-    ['purchaseProductionFullTrackUpgrade', 'purchaseFullTrackUpgrade'],
-    ['getProductionCertificates', 'getCertificates'],
-    ['issueProductionCertificate', 'issueCertificate'],
-    ['getProductionLearningCourses', 'getLearningCourses'],
-    ['getProductionCourseDetails', 'getCourseDetails'],
-    ['hasProductionSession', 'hasSession'],
-    ['getProductionOwnedCourseIds', 'getOwnedCourseIds'],
-    ['claimProductionDailyReward', 'claimDailyReward'],
-    ['getProductionWallet', 'getWallet'],
-    ['getProductionCoinPackages', 'getCoinPackages'],
-    ['getProductionCoinTasks', 'getCoinTasks'],
-    ['startProductionCoinTask', 'startCoinTask'],
-    ['claimProductionCoinTask', 'claimCoinTask'],
-    ['getCachedProductionLearningDashboard', 'getCachedLearningDashboard'],
-    ['getProductionLearningDashboard', 'getLearningDashboard'],
-    ['getProductionSavedLessonsPage', 'getSavedLessonsPage'],
-    ['getProductionSavedLessons', 'getSavedLessons'],
-    ['deleteProductionSavedLesson', 'deleteSavedLesson'],
-    ['getProductionNotificationsPage', 'getNotificationsPage'],
-    ['getProductionNotifications', 'getNotifications'],
-    ['markProductionNotificationRead', 'markNotificationRead'],
-    ['markAllProductionNotificationsRead', 'markAllNotificationsRead'],
-    ['getProductionProfile', 'getProfile'],
-    ['getProductionPortfolioProfile', 'getPortfolioProfile'],
-    ['updateProductionProfile', 'updateProfile'],
-    ['updateProductionNotificationStatus', 'updateNotificationStatus'],
-    ['updateProductionPrivacyPreferences', 'updatePrivacyPreferences'],
-    ['updateProductionPlaybackPreferences', 'updatePlaybackPreferences'],
-    ['clearProductionWatchHistory', 'clearWatchHistory'],
-    ['getProductionWatchHistory', 'getWatchHistory'],
-    ['updateProductionPortfolioProfile', 'updatePortfolioProfile'],
-    ['getProductionPortfolio', 'getPortfolio'],
-    ['createProductionPortfolioItem', 'createPortfolioItem'],
-    ['getProductionEligibleProjects', 'getEligibleProjects'],
-    ['deleteProductionPortfolioItem', 'deletePortfolioItem'],
-  ] as const)('%s aliases %s', (legacyName, canonicalName) => {
-    expect(roknApi[legacyName]).toBe(roknApi[canonicalName]);
   });
 });

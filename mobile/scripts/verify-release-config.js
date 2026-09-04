@@ -75,7 +75,6 @@ const iosEntitlements = read('ios/Rokn/Rokn.entitlements');
 const iosInfoPlist = read('ios/Rokn/Info.plist');
 const iosPrivacyManifest = read('ios/Rokn/PrivacyInfo.xcprivacy');
 const iosPodfile = read('ios/Podfile');
-const runtimeConfig = read('src/config/runtime.ts');
 const androidCheckoutActivity = read(
   'android/app/src/main/java/com/rokn/checkout/CheckoutActivity.kt',
 );
@@ -568,12 +567,6 @@ assert(
   'The Android debug client cannot reach a local HTTP Metro/API server.',
 );
 assert(
-  runtimeConfig.includes('__DEV__') &&
-    runtimeConfig.includes("buildProfile === 'test'") &&
-    !runtimeConfig.includes("buildProfile !== 'production'"),
-  'The local demo is not restricted to a debug-only explicit test profile.',
-);
-assert(
   !/(?:rokn-demo|DEMO_SCHEME|loadDemoCheckoutPage|creditDemoCoins)/.test(
     androidCheckoutActivity,
   ),
@@ -658,7 +651,6 @@ assert(
   previewProfile?.env?.EXPO_PUBLIC_API_URL === productionApiBase &&
     previewProfile?.env?.EXPO_PUBLIC_BUILD_PROFILE === 'test' &&
     previewProfile?.env?.EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS === '1' &&
-    previewProfile?.env?.EXPO_PUBLIC_ENABLE_LOCAL_DEMO === '0' &&
     previewProfile?.env?.ORG_GRADLE_PROJECT_reactNativeArchitectures ===
       'armeabi-v7a,arm64-v8a,x86_64' &&
     previewProfile?.android?.buildType === 'apk' &&
@@ -666,10 +658,9 @@ assert(
   'The distributed preview must exercise the live API and remote feature flags without synthetic content.',
 );
 assert(
-  androidReleaseScript.includes("$env:EXPO_PUBLIC_ENABLE_LOCAL_DEMO = '0'") &&
-    androidReleaseScript.includes(
-      "$env:EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS = '1'",
-    ),
+  androidReleaseScript.includes(
+    "$env:EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS = '1'",
+  ),
   'The local APK builder must preserve the same live-test contract as EAS preview.',
 );
 const directProductionProfile = eas.build?.['production-direct'];

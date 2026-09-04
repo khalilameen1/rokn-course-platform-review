@@ -26,7 +26,9 @@ describe('learner draft persistence', () => {
   });
 
   it('does not resurrect a project draft when a slow save finishes after clear starts', async () => {
-    const originalSetItem = (AsyncStorage.setItem as jest.Mock).getMockImplementation();
+    const originalSetItem = (
+      AsyncStorage.setItem as jest.Mock
+    ).getMockImplementation();
     expect(originalSetItem).toBeDefined();
     let releaseSlowWrite: (() => void) | undefined;
     const slowWrite = new Promise<void>(resolve => {
@@ -34,13 +36,15 @@ describe('learner draft persistence', () => {
     });
     let delayed = false;
 
-    jest.spyOn(AsyncStorage, 'setItem').mockImplementation(async (key, value) => {
-      if (key.includes('@rokn/project-editor-draft/v1') && !delayed) {
-        delayed = true;
-        await slowWrite;
-      }
-      await originalSetItem?.(key, value);
-    });
+    jest
+      .spyOn(AsyncStorage, 'setItem')
+      .mockImplementation(async (key, value) => {
+        if (key.includes('@rokn/project-editor-draft/v1') && !delayed) {
+          delayed = true;
+          await slowWrite;
+        }
+        await originalSetItem?.(key, value);
+      });
 
     const save = saveProjectSubmissionDraft('77', {
       note: 'مسودة مهمة',

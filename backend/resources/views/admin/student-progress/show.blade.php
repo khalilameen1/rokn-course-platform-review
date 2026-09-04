@@ -110,18 +110,12 @@
             <div class="type-breakdown">
                 @php
                     $typeLabels = [
-                        'lesson' => '📖 دروس',
-                        'quiz' => '📝 اختبارات',
-                        'question' => '❓ أسئلة',
-                        'link' => '🔗 روابط',
-                        'course' => '📚 دورات'
+                        'lesson' => 'مقاطع',
+                        'project' => 'مشروعات عبور',
                     ];
                     $typeBadgeClasses = [
                         'lesson' => 'type-badge-lesson',
-                        'quiz' => 'type-badge-quiz',
-                        'question' => 'type-badge-question',
-                        'link' => 'type-badge-link',
-                        'course' => 'type-badge-course'
+                        'project' => 'type-badge-project',
                     ];
                 @endphp
                 @foreach($courseProgress['progress']['sections_by_type'] as $type => $count)
@@ -144,17 +138,11 @@
                         @php
                             $iconClasses = [
                                 'lesson' => 'icon-lesson',
-                                'quiz' => 'icon-quiz',
-                                'question' => 'icon-question',
-                                'link' => 'icon-link',
-                                'course' => 'icon-course'
+                                'project' => 'icon-project',
                             ];
                             $icons = [
-                                'lesson' => '📖',
-                                'quiz' => '📝',
-                                'question' => '❓',
-                                'link' => '🔗',
-                                'course' => '📚'
+                                'lesson' => '▶',
+                                'project' => '◆',
                             ];
                         @endphp
                         <div class="section-icon {{ $iconClasses[$section['type']] ?? 'icon-lesson' }}">

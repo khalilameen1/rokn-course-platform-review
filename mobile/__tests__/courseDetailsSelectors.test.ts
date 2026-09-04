@@ -1,7 +1,7 @@
 import {
-  canChooseCourseAccess,
   selectCourseDetailsPresentation,
   selectCourseHeroHeight,
+  selectCoursePurchaseEntryStep,
 } from '../src/screens/CourseDetails/details/selectors';
 import type {CourseAccessPlan, CourseDetails} from '../src/services/roknApi';
 
@@ -26,6 +26,7 @@ const course: CourseDetails = {
   instructor: 'مدرب ركن',
   instructorBio: '',
   owned: false,
+  started: false,
   modules: [],
   reelCount: 18,
   projectCount: 2,
@@ -44,14 +45,11 @@ const presentation = (
   > = {},
 ) =>
   selectCourseDetailsPresentation({
-    courseId: course.id,
-    experience: null,
-    isDemoCourse: false,
     remoteBalance: 650,
+    remoteCommerceLoading: false,
     remoteCourse: course,
     remoteError: '',
     remoteLoading: false,
-    remoteOwned: false,
     remotePackages: [
       {id: 'large', coins: 1000, price: 500, label: 'كبيرة'},
       {id: 'small', coins: 250, price: 150, label: 'صغيرة'},
@@ -84,30 +82,110 @@ describe('course details presentation contract', () => {
     expect(result.selectedPlan?.code).toBe('mentor');
   });
 
-  it('keeps authentication and ownership ahead of checkout labels', () => {
-    expect(presentation({remoteSession: false}).primaryActionLabel).toContain(
-      'سجّل الدخول',
-    );
-    expect(presentation({remoteOwned: true}).primaryActionLabel).toBe(
-      'استكمل الكورس',
-    );
+  it('keeps the free sample available to guests without exposing purchase', () => {
+    const guestSample = presentation({remoteSession: false});
+    expect(guestSample.primaryActionLabel).toBe('شاهد مجانًا');
+    expect(guestSample.primaryAction.kind).toBe('preview');
+    expect(guestSample.showSecondaryPreview).toBe(false);
+    expect(presentation({remoteSession: true}).showSecondaryPreview).toBe(true);
+    expect(
+      presentation({
+        remoteCourse: {...course, previewReelCount: 0},
+        remoteSession: false,
+      }).primaryAction.kind,
+    ).toBe('login');
+    expect(
+      presentation({
+        remoteCourse: {...course, previewReelCount: 0},
+        remoteSession: false,
+      }).primaryActionLabel,
+    ).toContain('سجّل الدخول');
+    expect(
+      presentation({
+        remoteCourse: {...course, owned: true, started: true},
+      }).primaryActionLabel,
+    ).toBe('استكمل الكورس');
+    expect(
+      presentation({
+        remoteCourse: {...course, owned: true, started: false},
+      }).primaryAction,
+    ).toEqual({kind: 'start', label: 'ابدأ الكورس'});
     expect(presentation().primaryActionLabel).toBe('اختر الفئة المناسبة لك');
   });
 
-  it('never exposes pricing tiers or educational access codes to a guest', () => {
-    const base = {
-      isDemoCourse: false,
-      owned: false,
-      pageReady: true,
-      remoteError: '',
-    };
+  it('derives ownership only from the course entitlement snapshot', () => {
+    expect(presentation({remoteCourse: {...course, owned: true}}).owned).toBe(
+      true,
+    );
+    expect(presentation({remoteCourse: {...course, owned: false}}).owned).toBe(
+      false,
+    );
+  });
 
-    expect(canChooseCourseAccess({...base, remoteSession: false})).toBe(false);
-    expect(canChooseCourseAccess({...base, remoteSession: null})).toBe(false);
-    expect(canChooseCourseAccess({...base, remoteSession: true})).toBe(true);
+  it('uses one entry decision for plan selection, top-up and confirmation', () => {
     expect(
-      canChooseCourseAccess({...base, owned: true, remoteSession: true}),
+      selectCoursePurchaseEntryStep({
+        forcePlanSelection: true,
+        purchasePrice: 300,
+        spendableBalance: 500,
+      }),
+    ).toBe('plans');
+    expect(
+      selectCoursePurchaseEntryStep({
+        forcePlanSelection: false,
+        purchasePrice: 300,
+        spendableBalance: 299,
+      }),
+    ).toBe('topup');
+    expect(
+      selectCoursePurchaseEntryStep({
+        forcePlanSelection: false,
+        purchasePrice: 300,
+        spendableBalance: 300,
+      }),
+    ).toBe('confirm');
+  });
+
+  it('never exposes pricing tiers or educational access codes to a guest', () => {
+    expect(presentation({remoteSession: false}).canChooseAccess).toBe(false);
+    expect(presentation({remoteSession: null}).canChooseAccess).toBe(false);
+    expect(presentation({remoteSession: true}).canChooseAccess).toBe(true);
+    expect(
+      presentation({remoteCourse: {...course, owned: true}}).canChooseAccess,
     ).toBe(false);
+  });
+
+  it('uses one decision for the CTA label and behavior when plans include a free tier', () => {
+    const result = presentation({
+      remoteCourse: {
+        ...course,
+        price: 0,
+        accessPlans: [plan('basic', 0), plan('mentor', 700)],
+      },
+      selectedPlanCode: 'basic',
+    });
+
+    expect(result.primaryAction).toEqual({
+      kind: 'choose_plan',
+      label: 'اختر الفئة المناسبة لك',
+    });
+  });
+
+  it('does not present a purchasable action while wallet ownership is unknown', () => {
+    expect(presentation({remoteBalance: null}).primaryAction.kind).toBe(
+      'wallet_unavailable',
+    );
+  });
+
+  it('keeps the definition visible but disables its single CTA while commerce is loading', () => {
+    const result = presentation({remoteCommerceLoading: true});
+
+    expect(result.pageReady).toBe(true);
+    expect(result.primaryAction).toEqual({
+      kind: 'disabled',
+      label: 'جارٍ تجهيز الشراء',
+    });
+    expect(result.primaryActionDisabled).toBe(true);
   });
 
   it('sorts package choices without mutating API data', () => {
@@ -147,9 +225,7 @@ describe('course details presentation contract', () => {
       remoteCourse: {
         ...course,
         accessPlans: course.accessPlans.map(item =>
-          item.code === 'mentor'
-            ? {...item, minimumPaidCoins: 400}
-            : item,
+          item.code === 'mentor' ? {...item, minimumPaidCoins: 400} : item,
         ),
       },
     });

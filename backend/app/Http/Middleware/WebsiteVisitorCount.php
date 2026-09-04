@@ -25,13 +25,11 @@ final class WebsiteVisitorCount
      */
     public function handle(Request $request, Closure $next): mixed
     {
-        // This middleware historically wrapped every API route, turning every
-        // reel/progress/poll request into a visitor-table read. An app visit is
-        // represented by opening either home endpoint; everything else skips
-        // analytics entirely.
+        // The app opens the canonical course catalogue as its home journey.
+        // The daily cache key below keeps pagination and refreshes idempotent.
         if (
             $request->isMethod('GET')
-            && $request->is('api/v1/main', 'api/v1/mobile-main-page')
+            && $request->is('api/v1/courses/list')
         ) {
             $this->recordVisitor($request);
         }

@@ -84,26 +84,7 @@ const sessionKeyForQueue = (storageKey: string) => {
   }
   return created;
 };
-let legacyMigration: Promise<void> | null = null;
 const scheduledFlushes = new Map<string, ReturnType<typeof setTimeout>>();
-
-const migrateLegacyQueue = (targetKey: string) => {
-  if (legacyMigration) return legacyMigration;
-  legacyMigration = (async () => {
-    try {
-      // The retired global queue has no trustworthy account owner. Importing
-      // it after an account switch would attribute another learner's actions
-      // to the current account, so discard it instead of guessing ownership.
-      void targetKey;
-      await AsyncStorage.removeItem(QUEUE_KEY);
-    } catch {
-      // A malformed legacy queue is non-critical and remains for a later retry.
-    }
-  })().finally(() => {
-    legacyMigration = null;
-  });
-  return legacyMigration;
-};
 
 const deliver = async (
   event: QueuedEvent,
@@ -164,7 +145,6 @@ export const flushProductEvents = async (): Promise<void> => {
   const scheduled = scheduledFlushes.get(storageKey);
   if (scheduled) clearTimeout(scheduled);
   scheduledFlushes.delete(storageKey);
-  await migrateLegacyQueue(storageKey);
   assertAccountSessionBoundary(boundary);
   await flushQueue(storageKey);
   assertAccountSessionBoundary(boundary);
@@ -182,7 +162,6 @@ export const trackProductEvent = async (event: ProductEvent): Promise<void> => {
       occurred_at: new Date().toISOString(),
     };
 
-    await migrateLegacyQueue(storageKey);
     assertAccountSessionBoundary(boundary);
     await enqueueDurableOutbox({
       storageKey,

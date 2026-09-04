@@ -8,8 +8,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Feature tests covering Main Page API endpoints:
- * mobile-main-page, main, settings, and app version checking.
+ * Feature tests covering settings, public content and app version checking.
  */
 class HomeEndpointTest extends ApiTestCase
 {
@@ -53,18 +52,6 @@ class HomeEndpointTest extends ApiTestCase
         parent::tearDown();
     }
 
-    public function test_can_get_mobile_main_page(): void
-    {
-        $response = $this->getJson('/api/v1/mobile-main-page');
-        $this->assertNotEquals(404, $response->status());
-    }
-
-    public function test_can_get_web_main_page(): void
-    {
-        $response = $this->getJson('/api/v1/main');
-        $this->assertNotEquals(404, $response->status());
-    }
-
     public function test_can_get_app_settings(): void
     {
         $this->getJson('/api/v1/settings')
@@ -75,8 +62,9 @@ class HomeEndpointTest extends ApiTestCase
             ->assertJsonPath('data.0.terms_url', url('/terms'))
             ->assertJsonPath('data.0.returns_policy_url', url('/returns-policy'))
             ->assertJsonPath('data.0.account_deletion_url', url('/account-deletion'))
-            ->assertJsonPath('data.0.about_us_url', url('/about'))
-            ->assertJsonPath('data.0.privacy_policy_url', url('/privacy-policy'));
+            ->assertJsonMissingPath('data.0.about_us_url')
+            ->assertJsonMissingPath('data.0.privacy_policy_url')
+            ->assertJsonMissingPath('data.0.policy_content');
     }
 
     public function test_can_get_independent_public_content_pages_as_structured_json(): void

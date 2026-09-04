@@ -1,18 +1,5 @@
-import axios, {
-  type AxiosRequestConfig,
-  type AxiosResponse,
-  type InternalAxiosRequestConfig,
-} from 'axios';
-import {useEffect} from 'react';
-import {Platform} from 'react-native';
-import appConfig from '../../app.json';
-import {
-  AsyncKeys,
-  extractApiToken,
-  getItem,
-  removeItem,
-  rotateGuestStorageScope,
-} from './helpers';
+import axios, {type AxiosInstance, type AxiosResponse} from 'axios';
+import {extractApiToken, rotateGuestStorageScope} from './helpers';
 import {
   getLoginReturnToSnapshot,
   navigate,
@@ -27,13 +14,18 @@ import {
 } from '../services/smartReminders';
 import {invalidateLocalPushDeviceRegistration} from '../services/pushDeviceState';
 import {roknApiUrl} from './apiBaseUrl';
-import {secureRandomUuid} from '../utils/secureRandom';
 import {observeServerTime} from '../utils/serverClock';
-import {getInstallationId} from '../services/installationIdentity';
 import {
   deleteSecureSessionIfToken,
   peekSecureSession,
 } from '../services/secureSession';
+import {retryableReadTransportFailure} from '../services/networkExperience';
+import {
+  assertResponseStillBelongsToSession,
+  captureSessionAtApiCall,
+  type RoknRequestConfig,
+} from './apiSessionBoundary';
+import {responseConfig, responseError} from './apiRequestPolicy';
 // Expo inlines EXPO_PUBLIC_* values at build time; each release channel uses
 // its configured Rokn host and has no hidden fallback origin.
 export const mainUrl = roknApiUrl;
@@ -43,76 +35,18 @@ export const headers = {
   Pragma: 'no-cache',
   Expires: '0',
 };
-export enum APIStatus {
-  IDLE,
-  PENDING,
-  REJECTED,
-  FULFILLED,
-}
+export {getExceptionPayload, InternalError} from './apiErrors';
+export type {APIError} from './apiErrors';
 
-export type APIError = {
-  message: string;
-  code: number;
-  errors: object;
-  diagnostic_code?: string;
-  need_activation?: unknown;
-};
-export type APIData<DataType = unknown> = {
-  status: APIStatus;
-  error?: APIError;
-  data?: DataType;
-};
-
-export type RoknRequestConfig = AxiosRequestConfig & {
-  skipPersistedSessionInvalidation?: boolean;
-  skipAuthorization?: boolean;
-  /** Attach a bearer only when bootstrap has already restored it in memory. */
-  optionalAuthorization?: boolean;
-  /** Internal guard for bounded read recovery after transport/origin wake-up. */
-  roknNetworkRetryCount?: number;
-  /** Absolute device time after which this read must stop retrying. */
-  roknNetworkRetryDeadlineAt?: number;
-  /** Bearer captured when this request crossed the account boundary. */
-  roknSessionToken?: string;
-  /** Covers guest and authenticated responses, including account switches. */
-  roknSessionEpoch?: number;
-};
+export type {RoknRequestConfig} from './apiSessionBoundary';
+export {
+  DEFAULT_READ_RECOVERY_BUDGET_MS,
+  responseConfig,
+  responseError,
+} from './apiRequestPolicy';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
-
-export const InternalError = {
-  message: 'تعذّر إكمال الطلب\nحاول مرة أخرى',
-  errors: {},
-  code: -500,
-  diagnostic_code: 'INTERNAL_REQUEST_ERROR',
-};
-const assertResponseStillBelongsToSession = async (
-  config?: Record<string, unknown>,
-) => {
-  const requestEpoch = Number(config?.roknSessionEpoch);
-  const requestToken =
-    typeof config?.roknSessionToken === 'string'
-      ? config.roknSessionToken.trim()
-      : '';
-  const activeSnapshot = peekSecureSession();
-  const guestRestoreSettledWithoutAnAccount =
-    !requestToken &&
-    activeSnapshot.ready &&
-    !extractApiToken(activeSnapshot.session);
-  if (
-    Number.isSafeInteger(requestEpoch) &&
-    activeSnapshot.epoch !== requestEpoch &&
-    !guestRestoreSettledWithoutAnAccount
-  ) {
-    throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
-  }
-  if (!requestToken) return;
-  const activeToken = extractApiToken(await getItem(AsyncKeys.USER_DATA));
-  if (activeToken !== requestToken) {
-    throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
-  }
-};
 
 export const onFulfilledRequest = async (response: AxiosResponse) => {
   const body = isRecord(response.data) ? response.data : undefined;
@@ -135,31 +69,39 @@ let handledExpiredToken: string | null = null;
 // has already failed. Three short attempts cover a radio hand-off or gateway
 // wake; the screen-owned background refresh handles longer outages.
 export const READ_RECOVERY_DELAYS_MS = [300, 700, 1_500] as const;
-// Axios' timeout is per attempt. Without a journey-wide deadline, an ordinary
-// GET which owns no screen-specific budget can spend 15 seconds four times
-// before the small retry delays above are even counted. Keep public bootstrap,
-// wallet and settings reads within one human-scale wait while still allowing
-// immediate 502/503 origin-wake responses to use the complete retry ladder.
-export const DEFAULT_READ_RECOVERY_BUDGET_MS = 20_000;
+const cancelledReadError = (config?: RoknRequestConfig) =>
+  Object.assign(new Error('canceled'), {
+    code: 'ERR_CANCELED',
+    config,
+  });
 
-const transientReadFailure = ({
-  errorCode,
-  errorMessage,
-  responseStatus,
-}: {
-  errorCode: string;
-  errorMessage: string;
-  responseStatus: number;
-}) =>
-  (!responseStatus &&
-    (errorCode === 'ERR_NETWORK' ||
-      errorCode === 'ENETUNREACH' ||
-      errorCode === 'ECONNRESET' ||
-      errorCode === 'ECONNABORTED' ||
-      errorCode === 'ETIMEDOUT' ||
-      errorMessage.includes('network error') ||
-      errorMessage.includes('timeout'))) ||
-  [408, 425, 502, 503, 504].includes(responseStatus);
+const waitForReadRetry = (
+  delayMs: number,
+  config?: RoknRequestConfig,
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const signal = config?.signal;
+    if (signal?.aborted) {
+      reject(cancelledReadError(config));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      if (typeof signal?.removeEventListener === 'function') {
+        signal.removeEventListener('abort', onAbort);
+      }
+      reject(cancelledReadError(config));
+    };
+    const timer = setTimeout(() => {
+      if (typeof signal?.removeEventListener === 'function') {
+        signal.removeEventListener('abort', onAbort);
+      }
+      resolve();
+    }, delayMs);
+    if (typeof signal?.addEventListener === 'function') {
+      signal.addEventListener('abort', onAbort, {once: true});
+    }
+  });
 
 const bearerTokenUsedByRequest = (
   config?: Record<string, unknown>,
@@ -191,23 +133,23 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
   observeServerTime(responseBody?.server_time ?? responseHeaders?.date);
   const config = isRecord(errorRecord.config) ? errorRecord.config : undefined;
   await assertResponseStillBelongsToSession(config);
-  const method = String(config?.method || 'get').toLowerCase();
-  const errorCode = String(errorRecord.code || '').toUpperCase();
-  const errorMessage = String(errorRecord.message || '').toLowerCase();
-  const retryCount = Number(config?.roknNetworkRetryCount || 0);
+  const method =
+    typeof config?.method === 'string' ? config.method.toLowerCase() : '';
+  const rawRetryCount = Number(config?.roknNetworkRetryCount || 0);
+  const retryCount =
+    Number.isSafeInteger(rawRetryCount) && rawRetryCount >= 0
+      ? rawRetryCount
+      : 0;
   const retryDeadlineAt = Number(config?.roknNetworkRetryDeadlineAt || 0);
   const responseStatus = Number(response?.status || 0);
-  const safeTransientReadFailure = transientReadFailure({
-    errorCode,
-    errorMessage,
-    responseStatus,
-  });
+  const safeTransientReadFailure = retryableReadTransportFailure(error);
 
   // Cover both a socket lost during Wi-Fi/mobile-data hand-off and the brief
   // gateway responses returned while the origin wakes. Keep the retry budget
   // finite and never replay a mutation whose server result may be unknown.
   if (
     safeTransientReadFailure &&
+    Boolean(config) &&
     retryCount < READ_RECOVERY_DELAYS_MS.length &&
     (method === 'get' || method === 'head')
   ) {
@@ -216,7 +158,7 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       ? retryDeadlineAt - Date.now() - retryDelay
       : Number.POSITIVE_INFINITY;
     // A timeout applies to each Axios attempt, not to the logical read. The
-    // catalogue supplies one journey-wide deadline so a weak connection cannot
+    // request policy supplies one journey-wide deadline so a weak connection cannot
     // multiply 15 seconds by every origin-wake retry and strand first launch.
     if (remainingRetryBudget <= 0) {
       return Promise.reject(response ?? error);
@@ -238,7 +180,7 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
           }
         : {}),
     };
-    await new Promise(resolve => setTimeout(resolve, retryDelay));
+    await waitForReadRetry(retryDelay, config as RoknRequestConfig | undefined);
     if (retryDeadlineAt && Date.now() >= retryDeadlineAt) {
       return Promise.reject(response ?? error);
     }
@@ -256,8 +198,7 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
     // A public guest request has no session to invalidate. Do not turn an
     // unexpected gateway 401 into a keychain read or Login navigation.
     if (!rejectedToken) return Promise.reject(response ?? error);
-    const session = await getItem(AsyncKeys.USER_DATA);
-    const expiredToken = extractApiToken(session);
+    const expiredToken = extractApiToken(peekSecureSession().session);
     // Several requests can fail together. Handle this bearer once so the
     // learner gets one Login screen instead of a stack of duplicates. A late
     // 401 from a request sent before reauthentication must never erase the
@@ -293,7 +234,13 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       // native storage or runtime quiescence (for example a late provider
       // callback/deep link). Never let that old response erase the newer
       // durable session or navigate its owner back to Login.
-      const invalidated = await deleteSecureSessionIfToken(expiredToken);
+      let invalidated = false;
+      try {
+        invalidated = await deleteSecureSessionIfToken(expiredToken);
+      } catch (storageError) {
+        if (handledExpiredToken === expiredToken) handledExpiredToken = null;
+        throw storageError;
+      }
       if (!invalidated) {
         if (handledExpiredToken === expiredToken) handledExpiredToken = null;
         return Promise.reject(response ?? error);
@@ -302,7 +249,6 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       // owner's scoped progress, pending submissions and editor drafts. If a
       // different person signs in next, secureSession clears the previous
       // scope before committing the replacement profile.
-      await removeItem(AsyncKeys.IS_LOGIN);
       await rotateGuestStorageScope().catch(() => undefined);
       // All awaited cleanup belongs to the expired bearer. If a provider
       // callback committed another session meanwhile, its synchronous Redux
@@ -324,7 +270,9 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       error instanceof Error
         ? error
         : Object.assign(
-            new Error(responseStatus ? `HTTP_${responseStatus}` : 'NETWORK_ERROR'),
+            new Error(
+              responseStatus ? `HTTP_${responseStatus}` : 'NETWORK_ERROR',
+            ),
             errorRecord,
           );
     void import('../services/operationalTelemetry')
@@ -334,222 +282,79 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
       .catch(() => undefined);
   }
 
-  //   return Promise.reject(InternalError);
   return Promise.reject(response ?? error);
 };
-export const getExceptionPayload = (ex: unknown): APIError => {
-  if (!isRecord(ex)) return InternalError;
-  const response = isRecord(ex.response) ? ex.response : undefined;
-  const data = response?.data ?? ex.data;
-  if (!isRecord(data)) {
-    return InternalError;
-  }
-  if (
-    Object.prototype.hasOwnProperty.call(data, 'message') &&
-    typeof data.message === 'string' &&
-    Object.prototype.hasOwnProperty.call(data, 'status') &&
-    typeof data.status === 'number'
-  ) {
-    const learnerMessage = /[\u0600-\u06ff]/u.test(data.message)
-      ? data.message
-      : 'تعذّر إكمال الطلب\nحاول مرة أخرى';
-    return {
-      message: learnerMessage,
-      errors: isRecord(data.errors) ? data.errors : {},
-      code: data.status,
-      diagnostic_code:
-        typeof data.code === 'string' && data.code.trim()
-          ? data.code.trim()
-          : 'API_REQUEST_REJECTED',
-      need_activation: data.need_activation,
-    };
-  }
-  return InternalError;
-};
-export const UnhandledError = {
-  message: 'تعذّر قراءة الرد\nحاول مرة أخرى',
-  errors: {},
-  code: -400,
-  diagnostic_code: 'UNHANDLED_RESPONSE_ERROR',
-};
-export const useAPIData = <DataType>(
-  response: APIData<DataType>,
-  handlers: {
-    onFulfilled?: (data: DataType) => void;
-    onRejected?: (error: APIError) => void;
-    onPending?: () => void;
-  },
-) => {
-  const {onFulfilled, onRejected, onPending} = handlers;
-
-  useEffect(() => {
-    if (response.status === APIStatus.REJECTED && onRejected) {
-      onRejected(response.error || UnhandledError);
-    }
-  }, [response.status, response.error, onRejected]);
-  useEffect(() => {
-    if (response.status === APIStatus.FULFILLED && onFulfilled) {
-      onFulfilled(response.data!);
-    }
-  }, [response.status, response.data, onFulfilled]);
-  useEffect(() => {
-    if (response.status === APIStatus.PENDING && onPending) {
-      onPending();
-    }
-  }, [response.status, onPending]);
-};
-
-const clampTimeoutToReadDeadline = (
-  config: InternalAxiosRequestConfig & RoknRequestConfig,
-) => {
-  const deadlineAt = Number(config.roknNetworkRetryDeadlineAt || 0);
-  if (!Number.isFinite(deadlineAt) || deadlineAt <= 0) return;
-  const remaining = deadlineAt - Date.now();
-  if (remaining <= 0) {
-    throw Object.assign(new Error('timeout'), {
-      code: 'ETIMEDOUT',
-      config,
-    });
-  }
-  const configuredTimeout = Number(config.timeout || 0);
-  config.timeout = Math.max(
-    1,
-    Math.floor(
-      configuredTimeout > 0 ? Math.min(configuredTimeout, remaining) : remaining,
-    ),
-  );
-};
-
-export const responseConfig = async (config: InternalAxiosRequestConfig) => {
-  const requestConfig = config as InternalAxiosRequestConfig & RoknRequestConfig;
-  const method = String(requestConfig.method || 'get').toLowerCase();
-  if (
-    (method === 'get' || method === 'head') &&
-    !Number(requestConfig.roknNetworkRetryDeadlineAt || 0)
-  ) {
-    requestConfig.roknNetworkRetryDeadlineAt =
-      Date.now() + DEFAULT_READ_RECOVERY_BUDGET_MS;
-  }
-  // Enforce the logical read's deadline before doing native storage work and
-  // again immediately before dispatch. This also covers explicit outer retries
-  // such as a course-revision refresh, not only interceptor-owned retries.
-  clampTimeoutToReadDeadline(requestConfig);
-  const language = await getItem<string>(AsyncKeys.LANGUAGE);
-  const isNetworkRetry = Number(requestConfig.roknNetworkRetryCount || 0) > 0;
-  if (isNetworkRetry) {
-    // Axios runs request interceptors again for the one read-only network
-    // retry. Keep that retry attached to the session which started the
-    // request: otherwise a Wi-Fi/mobile hand-off followed by logout/login can
-    // silently resend the old screen's request with the next account's bearer
-    // and accept its response as if it belonged to the original journey.
-    await assertResponseStillBelongsToSession(
-      requestConfig as unknown as Record<string, unknown>,
-    );
-  } else {
-    requestConfig.roknSessionEpoch = peekSecureSession().epoch;
-  }
-  let userData: unknown = '';
-  if (!isNetworkRetry && requestConfig.skipAuthorization !== true) {
-    if (requestConfig.optionalAuthorization === true) {
-      const snapshot = peekSecureSession();
-      userData = snapshot.ready ? snapshot.session : '';
-    } else {
-      userData = (await getItem(AsyncKeys.USER_DATA)) || '';
-    }
-  }
-
-  if (config?.method === 'post') {
-    if (!config?.data) {
-      config.data = {};
-    }
-  } else if (config?.method === 'get') {
-    if (!config?.params) {
-      config.params = {};
-    }
-  }
-
-  const languageTag =
-    typeof language === 'string' &&
-    language.trim().toLowerCase().replace('_', '-').startsWith('en')
-      ? 'en'
-      : 'ar';
-  config.headers.set('Accept-Language', languageTag);
-  if (!config.headers.has('X-Request-Id')) {
-    config.headers.set('X-Request-Id', secureRandomUuid());
-  }
-  config.headers.set('X-Rokn-Platform', Platform.OS);
-  const installationId = await getInstallationId();
-  if (installationId) {
-    config.headers.set('X-Rokn-Installation', installationId);
-  }
-  config.headers.set('X-Rokn-App-Version', appConfig.expo.version);
-  config.headers.set(
-    'X-Rokn-App-Build',
-    String(
-      Platform.OS === 'ios'
-        ? appConfig.expo.ios.buildNumber
-        : appConfig.expo.android.versionCode,
-    ),
-  );
-
-  const apiToken = extractApiToken(userData);
-  if (
-    apiToken &&
-    requestConfig.skipAuthorization !== true &&
-    !config.headers.has('Authorization')
-  ) {
-    config.headers.set('Authorization', `Bearer ${apiToken}`);
-    requestConfig.roknSessionToken = apiToken;
-  }
-
-  clampTimeoutToReadDeadline(requestConfig);
-  return config;
-};
-export const responseError = (error: unknown) => Promise.reject(error);
-
-export const publicRequest = axios.create({
+const axiosClient = axios.create({
   headers: headers,
   baseURL: mainUrl,
 });
-publicRequest.defaults.timeout = 15000;
-publicRequest.defaults.timeoutErrorMessage = 'timeout';
-publicRequest.defaults.maxRedirects = 0;
+axiosClient.defaults.timeout = 15000;
+axiosClient.defaults.timeoutErrorMessage = 'timeout';
+axiosClient.defaults.maxRedirects = 0;
+
+const withCapturedSession = <T>(
+  config: RoknRequestConfig | undefined,
+  method: string,
+  send: (bound: RoknRequestConfig) => Promise<T>,
+) => Promise.resolve(captureSessionAtApiCall(config, method)).then(send);
+
+const request = ((
+  configOrUrl: RoknRequestConfig | string,
+  optionalConfig?: RoknRequestConfig,
+) => {
+  const urlFirst = typeof configOrUrl === 'string';
+  const config = urlFirst ? optionalConfig : configOrUrl;
+  const method = String(config?.method || 'get');
+  return withCapturedSession(config, method, bound =>
+    urlFirst
+      ? axiosClient.request({...bound, url: configOrUrl})
+      : axiosClient.request(bound),
+  );
+}) as AxiosInstance['request'];
+
+const get = ((url: string, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'get', bound =>
+    axiosClient.get(url, bound),
+  )) as AxiosInstance['get'];
+const remove = ((url: string, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'delete', bound =>
+    axiosClient.delete(url, bound),
+  )) as AxiosInstance['delete'];
+const head = ((url: string, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'head', bound =>
+    axiosClient.head(url, bound),
+  )) as AxiosInstance['head'];
+const options = ((url: string, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'options', bound =>
+    axiosClient.options(url, bound),
+  )) as AxiosInstance['options'];
+const post = ((url: string, data?: unknown, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'post', bound =>
+    axiosClient.post(url, data, bound),
+  )) as AxiosInstance['post'];
+const put = ((url: string, data?: unknown, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'put', bound =>
+    axiosClient.put(url, data, bound),
+  )) as AxiosInstance['put'];
+const patch = ((url: string, data?: unknown, config?: RoknRequestConfig) =>
+  withCapturedSession(config, 'patch', bound =>
+    axiosClient.patch(url, data, bound),
+  )) as AxiosInstance['patch'];
+
+export const publicRequest: Pick<
+  AxiosInstance,
+  'delete' | 'get' | 'head' | 'options' | 'patch' | 'post' | 'put' | 'request'
+> = {
+  delete: remove,
+  get,
+  head,
+  options,
+  patch,
+  post,
+  put,
+  request,
+};
+
 // interceptors
-publicRequest.interceptors.request.use(responseConfig, responseError);
-publicRequest.interceptors.response.use(onFulfilledRequest, onRejectedResponse);
-
-const fieldErrorValue = (value: unknown, keyName: string) => {
-  if (
-    !isRecord(value) ||
-    value.key !== keyName ||
-    !Array.isArray(value.value)
-  ) {
-    return undefined;
-  }
-  return value.value[0];
-};
-
-export const renderObjctError = (errors: unknown, keyName: string) => {
-  if (!isRecord(errors)) return undefined;
-  for (const element of Object.values(errors)) {
-    const value = fieldErrorValue(element, keyName);
-    if (value !== undefined) return value;
-  }
-  return undefined;
-};
-/**
- * show input erorr message
- * @param data Array of errors
- * @param key input name to return error message
- * @returns string or boolean
- */
-export const renderArrayError = (
-  data: unknown,
-  key: string,
-): string | boolean => {
-  if (!Array.isArray(data)) return false;
-  const value = data
-    .map(item => fieldErrorValue(item, key))
-    .find(item => item !== undefined);
-  return typeof value === 'string' ? value : false;
-};
+axiosClient.interceptors.request.use(responseConfig, responseError);
+axiosClient.interceptors.response.use(onFulfilledRequest, onRejectedResponse);

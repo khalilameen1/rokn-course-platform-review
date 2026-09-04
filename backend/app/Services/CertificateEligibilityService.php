@@ -7,14 +7,11 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
-use App\Models\ExamAttempt;
 use App\Models\Lesson;
-use App\Models\LessonWatchEvidence;
 use App\Models\Order;
 use App\Models\Project;
-use App\Models\StudentSectionProgress;
 use App\Models\User;
-use App\Models\UserProjectEvaluation;
+use Illuminate\Support\Collection;
 
 final readonly class CertificateEligibilityService
 {
@@ -23,9 +20,218 @@ final readonly class CertificateEligibilityService
         private CourseSectionSequenceService $sectionSequence,
         private LearningEvidenceService $learningEvidence,
         private CurriculumCompletionService $curriculumCompletion,
-        private CourseStagedAuthoringService $stagedAuthoring,
         private CourseRevisionLearnerReadService $revisionReads
     ) {
+    }
+
+    /**
+     * Batch eligibility for the learning dashboard. All revision-aware learner
+     * evidence is fetched once; decisions retain the scalar rule order.
+     *
+     * @param Collection<int,Course> $courses
+     * @param Collection<int,CourseEnrollment> $enrollments
+     * @param array<int,array<string,mixed>> $entitlements
+     * @return array<int,array{included:bool,available:bool,reason:string}>
+     */
+    public function forCourses(
+        User $user,
+        Collection $courses,
+        Collection $enrollments,
+        array $entitlements
+    ): array {
+        $courses = $courses->keyBy('id');
+        $enrollments = $enrollments->keyBy('course_id');
+        $earnedRevisions = $this->curriculumCompletion->earnedRevisions(
+            $enrollments->values()
+        );
+        $financialReviewOrderIds = Order::query()
+            ->whereIn('id', $enrollments->pluck('order_id')->filter()->unique())
+            ->where('user_id', $user->id)
+            ->whereIn('financial_status', [
+                Order::FINANCIAL_PARTIALLY_RECOVERED,
+                Order::FINANCIAL_REVIEW_REQUIRED,
+            ])
+            ->where('unrecovered_coins', '>', 0)
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->flip();
+
+        $result = [];
+        $coursesRequiringEvidence = collect();
+        foreach ($courses as $courseId => $course) {
+            $courseId = (int) $courseId;
+            $enrollment = $enrollments->get($courseId);
+            $included = (bool) ($entitlements[$courseId]['certificate_available'] ?? false);
+            if (!$enrollment || !$included) {
+                $result[$courseId] = [
+                    'included' => false,
+                    'available' => false,
+                    'reason' => 'upgrade_required',
+                ];
+                continue;
+            }
+
+            $earnedRevision = $earnedRevisions->get((int) $enrollment->id);
+            if ($earnedRevision === null && !$enrollment->isActive()) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => false,
+                    'reason' => 'entitlement_inactive',
+                ];
+                continue;
+            }
+            if (
+                $enrollment->order_id
+                && $financialReviewOrderIds->has((int) $enrollment->order_id)
+            ) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => false,
+                    'reason' => 'financial_review',
+                ];
+                continue;
+            }
+            if ($earnedRevision !== null) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => true,
+                    'reason' => 'ready',
+                ];
+                continue;
+            }
+            if (!$course->isPublishedForLearning()) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => false,
+                    'reason' => 'course_unavailable',
+                ];
+                continue;
+            }
+
+            $coursesRequiringEvidence->push($course);
+        }
+
+        if ($coursesRequiringEvidence->isEmpty()) {
+            return $result;
+        }
+
+        $courseSections = CourseSection::query()
+            ->whereIn('course_id', $coursesRequiringEvidence->pluck('id'))
+            ->get([
+                'id',
+                'course_id',
+                'section_type',
+                'sectionable_type',
+                'sectionable_id',
+                'module_id',
+                'order',
+            ]);
+        $sectionsByCourse = $this->sectionSequence->learningByCourse($courseSections);
+        $allSections = $sectionsByCourse->flatten(1);
+        $completedSectionIds = $this->revisionReads
+            ->completedSectionIds((int) $user->id, $allSections->pluck('id'))
+            ->flip();
+
+        $lessonSections = $allSections->filter(
+            fn (CourseSection $section): bool => $section->getSectionType() === 'lesson'
+        );
+        $lessons = Lesson::query()
+            ->whereIn('id', $lessonSections->pluck('sectionable_id'))
+            ->with('mediaState:id,lesson_id,duration_seconds')
+            ->get()
+            ->keyBy('id');
+        $lessonEvidence = $this->revisionReads->lessonEvidenceMap(
+            (int) $user->id,
+            $lessons->keys()
+        );
+
+        $projectSections = $allSections->filter(
+            fn (CourseSection $section): bool => $section->getSectionType() === 'project'
+        );
+        $graduationProjectIds = Project::query()
+            ->whereIn('id', $projectSections->pluck('sectionable_id'))
+            ->where('is_graduation_project', true)
+            ->pluck('id');
+        $passedProjectIds = $this->revisionReads
+            ->passedProjectIds((int) $user->id, $graduationProjectIds)
+            ->flip();
+
+        foreach ($coursesRequiringEvidence as $course) {
+            $courseId = (int) $course->id;
+            $courseSections = $sectionsByCourse->get($courseId, collect());
+            if (
+                $courseSections->isEmpty()
+                || $courseSections->contains(
+                    fn (CourseSection $section): bool =>
+                        !$completedSectionIds->has((int) $section->id)
+                )
+            ) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => false,
+                    'reason' => 'course_incomplete',
+                ];
+                continue;
+            }
+
+            $hasIncompleteLessonEvidence = $courseSections
+                ->filter(
+                    fn (CourseSection $section): bool =>
+                        $section->getSectionType() === 'lesson'
+                )
+                ->contains(function (CourseSection $section) use (
+                    $lessons,
+                    $lessonEvidence
+                ): bool {
+                    $lesson = $lessons->get($section->sectionable_id);
+                    $evidence = $lesson
+                        ? $lessonEvidence->get((int) $lesson->id)
+                        : null;
+                    $requiredSeconds = $lesson && $evidence
+                        ? $this->learningEvidence->requiredSeconds(
+                            $lesson,
+                            $evidence->duration_seconds
+                        )
+                        : null;
+
+                    return $requiredSeconds === null
+                        || (int) $evidence->verified_seconds < $requiredSeconds;
+                });
+            if ($hasIncompleteLessonEvidence) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => false,
+                    'reason' => 'learning_evidence_incomplete',
+                ];
+                continue;
+            }
+
+            $courseGraduationProjectIds = $courseSections
+                ->filter(
+                    fn (CourseSection $section): bool =>
+                        $section->getSectionType() === 'project'
+                )
+                ->pluck('sectionable_id')
+                ->intersect($graduationProjectIds);
+            if ($courseGraduationProjectIds->contains(
+                fn ($projectId): bool => !$passedProjectIds->has((int) $projectId)
+            )) {
+                $result[$courseId] = [
+                    'included' => true,
+                    'available' => false,
+                    'reason' => 'graduation_project_incomplete',
+                ];
+                continue;
+            }
+
+            $result[$courseId] = [
+                'included' => true,
+                'available' => true,
+                'reason' => 'ready',
+            ];
+        }
+
+        return $result;
     }
 
     /** @return array{included:bool,available:bool,reason:string} */
@@ -59,7 +265,7 @@ final readonly class CertificateEligibilityService
         if ($earnedRevision !== null) {
             return ['included' => true, 'available' => true, 'reason' => 'ready'];
         }
-        if (!$course->isPublishedForLearning() || $course->isNestedCourse()) {
+        if (!$course->isPublishedForLearning()) {
             return ['included' => true, 'available' => false, 'reason' => 'course_unavailable'];
         }
 
@@ -81,7 +287,11 @@ final readonly class CertificateEligibilityService
             fn (CourseSection $section): bool => $section->getSectionType() === 'lesson'
         );
         if ($lessonSections->isNotEmpty()) {
-            $lessons = Lesson::query()->whereIn('id', $lessonSections->pluck('sectionable_id'))->get()->keyBy('id');
+            $lessons = Lesson::query()
+                ->whereIn('id', $lessonSections->pluck('sectionable_id'))
+                ->with('mediaState:id,lesson_id,duration_seconds')
+                ->get()
+                ->keyBy('id');
             $evidence = $this->revisionReads->lessonEvidenceMap(
                 (int) $user->id,
                 $lessons->keys()
@@ -96,43 +306,6 @@ final readonly class CertificateEligibilityService
                     : null;
                 if ($required === null || (int) $row->verified_seconds < $required) {
                     return ['included' => true, 'available' => false, 'reason' => 'learning_evidence_incomplete'];
-                }
-            }
-        }
-
-        $quizSections = $sections->filter(
-            fn (CourseSection $section): bool => $section->getSectionType() === 'quiz'
-        );
-        if ($quizSections->isNotEmpty()) {
-            $sectionAliases = $quizSections->mapWithKeys(fn (CourseSection $section): array => [
-                (int) $section->id => $this->stagedAuthoring->equivalentEntityIds(
-                    CourseSection::class,
-                    (int) $section->id
-                ),
-            ]);
-            $quizAliases = $quizSections->mapWithKeys(fn (CourseSection $section): array => [
-                (int) $section->id => $this->stagedAuthoring->equivalentEntityIds(
-                    \App\Models\ItemList::class,
-                    (int) $section->sectionable_id
-                ),
-            ]);
-            $passed = ExamAttempt::query()
-                ->where('user_id', $user->id)
-                ->where('course_id', $course->id)
-                ->where('status', ExamAttempt::STATUS_COMPLETED)
-                ->where('is_passed', true)
-                ->whereIn('quiz_id', $quizAliases->flatten()->unique()->values())
-                ->get(['section_id', 'quiz_id']);
-            foreach ($quizSections as $section) {
-                if (!$passed->contains(fn (ExamAttempt $attempt): bool =>
-                    in_array((int) $attempt->section_id, $sectionAliases->get((int) $section->id, []), true)
-                    || ($attempt->section_id === null && in_array(
-                        (int) $attempt->quiz_id,
-                        $quizAliases->get((int) $section->id, []),
-                        true
-                    ))
-                )) {
-                    return ['included' => true, 'available' => false, 'reason' => 'quiz_incomplete'];
                 }
             }
         }

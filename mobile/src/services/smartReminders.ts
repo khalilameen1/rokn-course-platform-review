@@ -37,13 +37,18 @@ const getSmartRemindersEnabledFor = async (
   return enabled;
 };
 
-export const getSmartRemindersEnabled = async () => {
-  const boundary = await captureAccountSessionBoundary();
+export const getSmartRemindersEnabled = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   return getSmartRemindersEnabledFor(boundary);
 };
 
-export const setSmartRemindersEnabled = async (enabled: boolean) => {
-  const boundary = await captureAccountSessionBoundary();
+export const setSmartRemindersEnabled = async (
+  enabled: boolean,
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const saved = await saveItem(
     await reminderEnabledStorageKey(boundary),
     enabled,
@@ -60,13 +65,18 @@ const getSmartReminderHourFor = async (boundary: AccountSessionBoundary) => {
   return hour;
 };
 
-export const getSmartReminderHour = async () => {
-  const boundary = await captureAccountSessionBoundary();
+export const getSmartReminderHour = async (
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   return getSmartReminderHourFor(boundary);
 };
 
-export const setSmartReminderHour = async (hour: number) => {
-  const boundary = await captureAccountSessionBoundary();
+export const setSmartReminderHour = async (
+  hour: number,
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const saved = await saveItem(
     await reminderHourStorageKey(boundary),
     safeReminderHour(hour),
@@ -282,20 +292,23 @@ export const previewCoinNotification = async ({
   });
 };
 
-export const scheduleNextLearningReminder = async ({
-  nextReelTitle,
-  courseTitle,
-  streakDays = 0,
-  courseId,
-  preferredHour,
-}: {
-  nextReelTitle?: string;
-  courseTitle?: string;
-  streakDays?: number;
-  courseId?: string;
-  preferredHour?: number;
-}) => {
-  const boundary = await captureAccountSessionBoundary();
+export const scheduleNextLearningReminder = async (
+  {
+    nextReelTitle,
+    courseTitle,
+    streakDays = 0,
+    courseId,
+    preferredHour,
+  }: {
+    nextReelTitle?: string;
+    courseTitle?: string;
+    streakDays?: number;
+    courseId?: string;
+    preferredHour?: number;
+  },
+  ownerBoundary?: AccountSessionBoundary,
+) => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   if (!(await getSmartRemindersEnabledFor(boundary))) return false;
   // Authenticated learners are scheduled centrally by the backend, which owns
   // cooldowns and course completion. A second local timer would produce the

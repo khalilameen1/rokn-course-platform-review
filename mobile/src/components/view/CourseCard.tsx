@@ -1,13 +1,5 @@
-import {useNavigation} from '@react-navigation/native';
-import type {RootNavigation} from '../../navigation/types';
 import React, {memo} from 'react';
-import {
-  ImageSourcePropType,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Fonts, PixelPerfect} from '../../constants/styleConstants';
 import {formatArabicDisplayText} from '../../constants/arabicFormatting';
 import {
@@ -21,40 +13,26 @@ import {
 import {MetaPill} from '../ui/PremiumUI';
 import {CourseArtwork} from '../ui/CourseArtwork';
 import {CoinAmount} from '../ui/RoknCoin';
+import type {Course} from '../../types/Course';
 
-export interface Course {
-  id: string;
-  title: string;
-  description: string;
-  label?: string;
-  labelTone?: 'neutral' | 'primary' | 'coin' | 'success';
-  instructor?: string;
-  image?: ImageSourcePropType;
-  coinPrice?: number;
-  durationMinutes?: number;
-  ratingAverage?: number;
-  ratingsCount?: number;
-  studentsCount?: number;
-  progress?: number;
-  owned?: boolean;
-  published?: boolean;
-}
+export type {Course};
 
 interface CourseCardProps {
   item: Course;
-  index: number;
+  onPress: (course: Course) => void;
   width?: number;
 }
 
 const CourseCard = memo<CourseCardProps>(
-  ({item, width}) => {
-    const navigation = useNavigation<RootNavigation>();
+  ({item, onPress, width}) => {
     const {largeText, railCardWidth} = useResponsiveLayout();
     const isAvailable = item.published !== false;
     const progress = Math.max(0, Math.min(100, Number(item.progress || 0)));
     const accessibilitySummary = [
       item.title,
-      item.owned && progress > 0 ? `اكتمل ${Math.round(progress)}٪` : undefined,
+      item.owned && item.started === true
+        ? `اكتمل ${Math.round(progress)}٪`
+        : undefined,
     ]
       .filter(Boolean)
       .join('، ');
@@ -72,14 +50,7 @@ const CourseCard = memo<CourseCardProps>(
         accessibilityRole="button"
         accessibilityState={{disabled: !isAvailable}}
         disabled={!isAvailable}
-        onPress={() =>
-          navigation.navigate('CourseDetails', {
-            courseId: item.id,
-            coinPrice: item.coinPrice,
-            title: item.title,
-            description: item.description,
-          })
-        }
+        onPress={() => onPress(item)}
         style={({pressed}) => [
           styles.courseItem,
           {width: width ?? railCardWidth},
@@ -117,7 +88,9 @@ const CourseCard = memo<CourseCardProps>(
             {formatArabicDisplayText(item.instructor)}
           </Text>
         )}
-        {(item.published === false || item.owned || item.coinPrice !== undefined) && (
+        {(item.published === false ||
+          item.owned ||
+          item.coinPrice !== undefined) && (
           <View style={styles.metaRow}>
             {item.published === false ? (
               <Text style={styles.upcomingLabel}>قريبًا</Text>
@@ -125,7 +98,7 @@ const CourseCard = memo<CourseCardProps>(
               <Text style={styles.ownedLabel}>
                 {progress >= 100
                   ? 'راجع الكورس'
-                  : progress > 0
+                  : item.started === true
                   ? 'استكمل من مكانك'
                   : 'ابدأ التعلّم الآن'}
               </Text>
@@ -146,7 +119,7 @@ const CourseCard = memo<CourseCardProps>(
   },
   (previous, next) =>
     previous.item === next.item &&
-    previous.index === next.index &&
+    previous.onPress === next.onPress &&
     previous.width === next.width,
 );
 

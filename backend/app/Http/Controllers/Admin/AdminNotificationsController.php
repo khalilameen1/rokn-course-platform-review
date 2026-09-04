@@ -8,6 +8,7 @@ use App\Models\AdminNotification;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\StoredFileDeletionService;
 use App\Support\BusinessClock;
+use App\Support\RoknAppLink;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,11 +22,12 @@ class AdminNotificationsController extends Controller
     public function index()
     {
         $admin_notifications = AdminNotification::query()
+            ->with('photo')
             ->orderBy('priority')
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
-            ->get();
-        $editorVersions = $admin_notifications->mapWithKeys(
+            ->paginate(30);
+        $editorVersions = $admin_notifications->getCollection()->mapWithKeys(
             fn (AdminNotification $notification): array => [
                 $notification->id => $this->editorVersion($notification),
             ]
@@ -240,6 +242,7 @@ class AdminNotificationsController extends Controller
         foreach (['starts_at', 'ends_at'] as $field) {
             $payload[$field] = BusinessClock::localInputToUtc($payload[$field] ?? null);
         }
+        $payload['link'] = RoknAppLink::normalize($payload['link'] ?? null);
 
         return $payload + [
             'is_active' => $request->boolean('is_active'),

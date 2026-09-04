@@ -8,23 +8,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CoursePdf;
 use App\Models\User;
+use App\Services\CourseAttachmentService;
 use App\Services\CourseModuleAccessService;
 use App\Services\CourseStagedAuthoringService;
+use App\Support\ResumableDownloadResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use App\Support\DownloadFilename;
+use Symfony\Component\HttpFoundation\Response;
 
 final class CoursePdfController extends Controller
 {
     public function __construct(
         private CourseModuleAccessService $access,
+        private CourseAttachmentService $attachments,
         private CourseStagedAuthoringService $revisions
     ) {}
 
     /** Get all active PDFs for an actively enrolled user. */
-    public function index(Request $request, $courseId): JsonResponse
+    public function index(int|string $courseId): JsonResponse
     {
         $user = auth('api')->user();
         if (!$user) {
@@ -35,6 +36,7 @@ final class CoursePdfController extends Controller
         if (!$course) {
             return $this->error('الكورس غير متاح', 404);
         }
+        $course = $this->revisions->canonicalFor($course);
         if (!$this->access->hasCourseAccess($user, $course)) {
             return $this->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
@@ -52,7 +54,7 @@ final class CoursePdfController extends Controller
     }
 
     /** Get entitled PDF metadata without exposing a storage key. */
-    public function show(Request $request, $courseId, $pdfId): JsonResponse
+    public function show(int|string $courseId, int|string $pdfId): JsonResponse
     {
         $user = auth('api')->user();
         if (!$user) {
@@ -62,6 +64,7 @@ final class CoursePdfController extends Controller
         if (!$course) {
             return $this->error('الكورس غير متاح', 404);
         }
+        $course = $this->revisions->canonicalFor($course);
         if (!$this->access->hasCourseAccess($user, $course)) {
             return $this->error('هذا الكورس غير مضاف إلى حسابك', 403);
         }
@@ -70,7 +73,7 @@ final class CoursePdfController extends Controller
             ?? (int) $pdfId;
         $pdf = CoursePdf::query()
             ->whereKey($currentPdfId)
-            ->where('course_id', $courseId)
+            ->where('course_id', $course->id)
             ->where('is_active', true)
             ->first();
         if (!$pdf) {
@@ -90,9 +93,9 @@ final class CoursePdfController extends Controller
         Request $request,
         int|string $course,
         int|string $pdf
-    ): StreamedResponse
+    ): Response
     {
-        $user = $this->access->userFromSignedDownloadRequest($request);
+        $user = $this->access->userFromOwnerClaim($request->query('owner'));
         abort_unless($user, 403);
 
         $courseModel = $this->revisions->canonicalFor(Course::query()->findOrFail($course));
@@ -103,54 +106,16 @@ final class CoursePdfController extends Controller
             ->firstOrFail();
         abort_unless($this->access->canDownloadPdf($user, $courseModel, $pdfModel), 403);
 
-        $disk = Storage::disk($pdfModel->storage_disk);
-        abort_unless($disk->exists($pdfModel->file_path), 404);
+        $file = $this->attachments->pdfFile($pdfModel);
+        abort_unless($file !== null, 404);
 
-        $name = DownloadFilename::safe(
-            $pdfModel->original_filename ?: $pdfModel->title,
-            'rokn-file',
-            'pdf'
-        );
-
-        return $disk->download($pdfModel->file_path, $name, [
-            'Content-Type' => 'application/pdf',
-            'X-Content-Type-Options' => 'nosniff',
-            'Cache-Control' => 'private, no-store',
-            'Content-Disposition' => DownloadFilename::disposition($name),
-        ]);
+        return ResumableDownloadResponse::make($file);
     }
 
     /** @return array<string, mixed> */
     private function metadata(CoursePdf $pdf, Course $course, User $user): array
     {
-        $expiresInSeconds = max(
-            300,
-            min(3600, (int) config('course_attachments.signed_url_minutes', 30) * 60)
-        );
-
-        return [
-            'id' => $pdf->id,
-            'title' => $pdf->title,
-            'title_en' => $pdf->title_en,
-            'description' => $pdf->description,
-            'description_en' => $pdf->description_en,
-            'order' => $pdf->order,
-            'file_size' => $pdf->formatted_file_size,
-            'file_size_bytes' => (int) $pdf->file_size,
-            'file_type' => 'pdf',
-            'mime_type' => 'application/pdf',
-            'download_only' => true,
-            'download_url' => $this->access->temporaryPdfDownloadUrl($user, $course, $pdf),
-            'expires_in_seconds' => $expiresInSeconds,
-            'download_url_expires_at' => now()->addSeconds($expiresInSeconds)->toIso8601String(),
-            'download_url_is_temporary' => true,
-            'download_version' => sha1(implode('|', [
-                $pdf->id,
-                $pdf->updated_at,
-                $pdf->file_path,
-                $pdf->file_size,
-            ])),
-        ];
+        return $this->attachments->pdfPayload($user, $course, $pdf);
     }
 
     private function error(string $message, int $httpStatus): JsonResponse

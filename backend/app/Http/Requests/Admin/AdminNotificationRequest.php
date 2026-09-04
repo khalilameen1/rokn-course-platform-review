@@ -6,6 +6,7 @@ use App\Models\AdminNotification;
 use App\Support\RoknAppLink;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class AdminNotificationRequest extends FormRequest
 {
@@ -39,6 +40,7 @@ class AdminNotificationRequest extends FormRequest
                 'string',
                 'max:80',
                 'regex:/^[a-z0-9_]+$/',
+                Rule::in(AdminNotification::SYSTEM_KEYS),
                 Rule::unique('admin_notifications', 'system_key')->ignore($notification?->id),
             ],
             'surface' => ['required', Rule::in(array_keys(AdminNotification::SURFACES))],
@@ -92,6 +94,32 @@ class AdminNotificationRequest extends FormRequest
         ];
     }
 
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $systemKey = trim((string) $this->input('system_key'));
+            $surface = trim((string) $this->input('surface'));
+            if ($systemKey === '' && $surface !== 'announcement') {
+                $validator->errors()->add(
+                    'surface',
+                    'الإعلان اليدوي يظهر في مساحة الإعلانات فقط'
+                );
+            }
+
+            if (!$this->boolean('is_active')) {
+                return;
+            }
+
+            $hasLink = RoknAppLink::normalize($this->input('link')) !== null;
+            $hasArabicAction = trim((string) $this->input('action_label_ar')) !== '';
+            if ($hasLink && !$hasArabicAction) {
+                $validator->errors()->add('action_label_ar', 'اكتب نص الزر الذي سيفتح الوجهة');
+            } elseif (!$hasLink && $hasArabicAction) {
+                $validator->errors()->add('link', 'اختر وجهة للزر أو احذف نصه');
+            }
+        });
+    }
+
     private function knownPlaceholders(): \Closure
     {
         return static function (string $attribute, mixed $value, \Closure $fail): void {
@@ -101,7 +129,7 @@ class AdminNotificationRequest extends FormRequest
                 'course',
                 'task',
                 'lesson',
-                'quiz',
+                'project',
                 'case',
             ]);
             if ($unknown !== []) {

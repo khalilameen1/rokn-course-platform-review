@@ -10,7 +10,7 @@ return new class extends Migration {
     {
         if (!Schema::hasColumn('settings', 'ai_plan_policy')) {
             Schema::table('settings', fn (Blueprint $table) =>
-                $table->json('ai_plan_policy')->nullable()->after('ai_answer_cache_minutes')
+                $table->json('ai_plan_policy')->nullable()
             );
         }
 
@@ -24,17 +24,17 @@ return new class extends Migration {
             ],
             'guided' => [
                 'chat_enabled' => true,
-                'chat_message_limit' => 25,
+                'chat_message_limit' => 50,
                 'chat_attachments_enabled' => true,
                 'project_feedback_level' => 'report',
                 'project_followup_message_limit' => 0,
             ],
             'mentor' => [
                 'chat_enabled' => true,
-                'chat_message_limit' => 80,
+                'chat_message_limit' => 150,
                 'chat_attachments_enabled' => true,
                 'project_feedback_level' => 'enhanced',
-                'project_followup_message_limit' => 20,
+                'project_followup_message_limit' => 50,
             ],
         ];
 
@@ -72,17 +72,17 @@ return new class extends Migration {
 
         $this->applyPaidTier('guided', [
             'chat_enabled' => true,
-            'chat_message_limit' => 25,
-            'chat_token_budget' => 12000,
+            'chat_message_limit' => 50,
+            'chat_token_budget' => 300000,
             'chat_attachments_enabled' => true,
             'chat_attachment_max_files' => 2,
-            'ai_budget_usd' => .45,
-            'request_reserve_usd' => .015,
-            'max_output_tokens' => 320,
+            'ai_budget_usd' => .80,
+            'request_reserve_usd' => .014,
+            'max_output_tokens' => 600,
             'project_feedback_level' => 'report',
-            'project_feedback_token_budget' => 6000,
-            'project_feedback_budget_usd' => .20,
-            'project_feedback_reserve_usd' => .04,
+            'project_feedback_token_budget' => 20000,
+            'project_feedback_budget_usd' => .25,
+            'project_feedback_reserve_usd' => .02,
             'project_followup_message_limit' => 0,
             'project_followup_token_budget' => 0,
             'project_followup_budget_usd' => 0,
@@ -94,21 +94,21 @@ return new class extends Migration {
         ]);
         $this->applyPaidTier('mentor', [
             'chat_enabled' => true,
-            'chat_message_limit' => 80,
-            'chat_token_budget' => 42000,
+            'chat_message_limit' => 150,
+            'chat_token_budget' => 1000000,
             'chat_attachments_enabled' => true,
             'chat_attachment_max_files' => 3,
-            'ai_budget_usd' => 1.5,
-            'request_reserve_usd' => .025,
-            'max_output_tokens' => 480,
+            'ai_budget_usd' => 2.5,
+            'request_reserve_usd' => .016,
+            'max_output_tokens' => 800,
             'project_feedback_level' => 'enhanced',
-            'project_feedback_token_budget' => 16000,
-            'project_feedback_budget_usd' => .60,
-            'project_feedback_reserve_usd' => .08,
-            'project_followup_message_limit' => 20,
-            'project_followup_token_budget' => 12000,
-            'project_followup_budget_usd' => .30,
-            'project_followup_reserve_usd' => .025,
+            'project_feedback_token_budget' => 50000,
+            'project_feedback_budget_usd' => .75,
+            'project_feedback_reserve_usd' => .025,
+            'project_followup_message_limit' => 50,
+            'project_followup_token_budget' => 250000,
+            'project_followup_budget_usd' => .75,
+            'project_followup_reserve_usd' => .015,
             'project_followup_attachments_enabled' => true,
             'project_followup_attachment_max_files' => 3,
             'project_output_enabled' => true,

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Rokn",
     "slug": "rokn",
-    "version": "1.0.36",
+    "version": "1.0.37",
     "icon": "./src/assets/images/brand/rokn-app-icon-1024.png",
     "orientation": "default",
     "scheme": "rokn",
@@ -31,7 +31,7 @@
     },
     "android": {
       "package": "com.rokn",
-      "versionCode": 37,
+      "versionCode": 38,
       "googleServicesFile": "./android/app/google-services.json",
       "intentFilters": [
         {
@@ -45,8 +45,7 @@
             {"path": "/profile"},
             {"path": "/wallet"},
             {"pathPrefix": "/support/"},
-            {"pathPrefix": "/course/"},
-            {"pathPrefix": "/courses/"}
+            {"pathPrefix": "/course/"}
           ]
         },
         {
@@ -60,8 +59,7 @@
             {"path": "/profile"},
             {"path": "/wallet"},
             {"pathPrefix": "/support/"},
-            {"pathPrefix": "/course/"},
-            {"pathPrefix": "/courses/"}
+            {"pathPrefix": "/course/"}
           ]
         }
       ],
@@ -78,7 +76,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.rokn",
-      "buildNumber": "34",
+      "buildNumber": "35",
       "googleServicesFile": "./ios/GoogleService-Info.plist",
       "supportsTablet": true,
       "usesAppleSignIn": true,

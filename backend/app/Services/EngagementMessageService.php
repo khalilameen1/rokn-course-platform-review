@@ -8,16 +8,12 @@ use App\Models\AdminNotification;
 use App\Models\RewardRule;
 use App\Models\Setting;
 use App\Support\RoknAppLink;
-use Illuminate\Support\Facades\Schema;
 
 final class EngagementMessageService
 {
     /** @return array<string, mixed>|null */
     public function publicMessage(string $systemKey, array $variables = []): ?array
     {
-        if (!Schema::hasTable('admin_notifications') || !Schema::hasColumn('admin_notifications', 'system_key')) {
-            return null;
-        }
         $message = AdminNotification::query()
             ->available()
             ->where('system_key', $systemKey)
@@ -41,10 +37,6 @@ final class EngagementMessageService
      */
     public function notificationPayload(string $systemKey, array $variables, array $fallback): ?array
     {
-        if (!Schema::hasTable('admin_notifications') || !Schema::hasColumn('admin_notifications', 'system_key')) {
-            return $fallback;
-        }
-
         $configured = AdminNotification::query()->where('system_key', $systemKey)->first();
         if (!$configured) {
             return $fallback;

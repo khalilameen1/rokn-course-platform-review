@@ -26,14 +26,19 @@ const STORAGE_KEY = '@rokn/portfolio-media-outbox/v1';
 const REFERENCE_OWNER = 'portfolio-media-outbox';
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 96;
-let operation: Promise<unknown> = Promise.resolve();
+const operations = new Map<string, Promise<unknown>>();
 
-const withLock = <T>(callback: () => Promise<T>): Promise<T> => {
+const withLock = <T>(key: string, callback: () => Promise<T>): Promise<T> => {
+  const operation = operations.get(key) ?? Promise.resolve();
   const result = operation.then(callback, callback);
-  operation = result.then(
+  const tail = result.then(
     () => undefined,
     () => undefined,
   );
+  operations.set(key, tail);
+  void tail.finally(() => {
+    if (operations.get(key) === tail) operations.delete(key);
+  });
   return result;
 };
 
@@ -53,14 +58,8 @@ export const decodePortfolioMediaOutboxEntries = (
 ): PortfolioMediaOutboxEntry[] | null =>
   Array.isArray(value) && value.every(validEntry) ? value : null;
 
-const readStored = async (
-  key: string,
-): Promise<PortfolioMediaOutboxEntry[]> =>
-  readJsonOrQuarantine(
-    key,
-    () => [],
-    decodePortfolioMediaOutboxEntries,
-  );
+const readStored = async (key: string): Promise<PortfolioMediaOutboxEntry[]> =>
+  readJsonOrQuarantine(key, () => [], decodePortfolioMediaOutboxEntries);
 
 const writeStored = async (
   key: string,
@@ -103,8 +102,8 @@ const repairStored = async (
     .sort((left, right) => left.createdAt - right.createdAt);
   const kept = readable.slice(-MAX_ENTRIES);
   const keptIds = new Set(kept.map(entry => entry.clientRequestId));
-  await retainStoredFiles(kept, accountScope);
   if (kept.length !== entries.length) await writeStored(key, kept);
+  await retainStoredFiles(kept, accountScope);
   await Promise.all(
     inspected
       .filter(result => !keptIds.has(result.entry.clientRequestId))
@@ -128,10 +127,12 @@ const scopedKey = async (
 
 export const listPortfolioMediaUploads = async (
   projectId?: string,
+  ownerBoundary?: AccountSessionBoundary,
 ): Promise<PortfolioMediaOutboxEntry[]> => {
-  const boundary = await captureAccountSessionBoundary();
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const key = await scopedKey(boundary);
-  return withLock(async () => {
+  return withLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const entries = await repairStored(
       key,
@@ -159,7 +160,7 @@ export const stagePortfolioMediaUpload = async (
   }
   const key = await scopedKey(boundary, entry.storageKey);
   const scopedEntry = {...entry, storageKey: key};
-  await withLock(async () => {
+  await withLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const entries = await repairStored(
       key,
@@ -178,14 +179,19 @@ export const stagePortfolioMediaUpload = async (
     const overflow = next.slice(0, Math.max(0, next.length - MAX_ENTRIES));
     const kept = next.slice(-MAX_ENTRIES);
     await retainStoredFiles(kept, boundary.scope);
-    await writeStored(key, kept);
-    assertAccountSessionBoundary(boundary);
+    try {
+      await writeStored(key, kept);
+    } catch (error) {
+      await retainStoredFiles(entries, boundary.scope).catch(() => undefined);
+      throw error;
+    }
     await Promise.all(
       overflow.map(candidate => removeLearnerDraftFile(candidate.file)),
     );
     if (replaced && replaced.file.uri !== scopedEntry.file.uri) {
       await removeLearnerDraftFile(replaced.file);
     }
+    assertAccountSessionBoundary(boundary);
   });
   return scopedEntry;
 };
@@ -196,7 +202,7 @@ export const completePortfolioMediaUpload = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await scopedKey(boundary, entry.storageKey);
-  await withLock(async () => {
+  await withLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const entries = await readStored(key);
     const completed = entries.find(
@@ -205,10 +211,13 @@ export const completePortfolioMediaUpload = async (
     const remaining = entries.filter(
       candidate => candidate.clientRequestId !== entry.clientRequestId,
     );
-    await retainStoredFiles(remaining, boundary.scope);
     await writeStored(key, remaining);
+    // The durable removal is the acknowledgement. Registry/file cleanup is
+    // maintenance and must not turn a successful server upload into a false
+    // retry after its outbox entry is already gone.
+    await retainStoredFiles(remaining, boundary.scope).catch(() => undefined);
+    await removeLearnerDraftFile(completed?.file).catch(() => undefined);
     assertAccountSessionBoundary(boundary);
-    await removeLearnerDraftFile(completed?.file);
   });
 };
 
@@ -218,7 +227,7 @@ export const discardPortfolioMediaUploads = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await scopedKey(boundary);
-  await withLock(async () => {
+  await withLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const entries = await readStored(key);
     const discarded = entries.filter(
@@ -227,11 +236,13 @@ export const discardPortfolioMediaUploads = async (
     const remaining = entries.filter(
       entry => entry.projectId !== String(projectId),
     );
-    await retainStoredFiles(remaining, boundary.scope);
     await writeStored(key, remaining);
-    assertAccountSessionBoundary(boundary);
+    await retainStoredFiles(remaining, boundary.scope).catch(() => undefined);
     await Promise.all(
-      discarded.map(entry => removeLearnerDraftFile(entry.file)),
+      discarded.map(entry =>
+        removeLearnerDraftFile(entry.file).catch(() => undefined),
+      ),
     );
+    assertAccountSessionBoundary(boundary);
   });
 };

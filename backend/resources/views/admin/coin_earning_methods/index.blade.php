@@ -190,7 +190,7 @@
             <div class="col-md-6 col-lg-4">
                 <div class="method-card">
                     <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="mb-0 font-weight-bold">{{ $method->title_ar }}</h5>
+                        <h5 class="mb-0 font-weight-bold">{{ $method->learnerTitleAr() }}</h5>
                         @include('admin.partials.status-badge', [
                             'badgeStatus' => $method->is_active ? 'active' : 'unknown',
                             'badgeLabel' => $method->is_active ? 'نشط' : 'غير نشط',
@@ -245,8 +245,8 @@
                         @if($method->requires_external_visit)
                             <i class="fa fa-external-link ml-1"></i>
                             خطوتان · عودة بعد {{ $method->verification_delay_seconds }} ثوانٍ
-                            @if($method->action_url)
-                                <a href="{{ $method->action_url }}" target="_blank" rel="noopener noreferrer" class="mr-2">فحص الرابط</a>
+                            @if($method->resolvedActionUrl())
+                                <a href="{{ $method->resolvedActionUrl() }}" target="_blank" rel="noopener noreferrer" class="mr-2">فحص الرابط</a>
                             @endif
                         @else
                             <i class="fa fa-check-circle ml-1"></i> مطالبة مباشرة داخل التطبيق

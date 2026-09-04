@@ -9,7 +9,10 @@ use App\Models\Course;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Support\DatabaseCapabilities;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -45,17 +48,57 @@ final readonly class WalletService
 
     public function coursePaidContribution(int $userId, int $courseId): int
     {
-        return max(0, (int) WalletTransaction::query()
-            ->where('user_id', $userId)
+        $key = $userId . ':' . $courseId;
+
+        return max(0, (int) (
+            $this->coursePaidContributionTotals([$userId], [$courseId])
+                ->get($key)?->paid_total ?? 0
+        ));
+    }
+
+    /**
+     * Paid-floor decisions count only debits that have not subsequently lost
+     * their financial entitlement. The reward contribution cap intentionally
+     * remains lifetime/course-wide, but reversed package money must not let a
+     * learner reopen an AI plan using only newly earned free coins.
+     *
+     * @param list<int> $userIds
+     * @param list<int> $courseIds
+     * @return Collection<string,object>
+     */
+    public function coursePaidContributionTotals(array $userIds, array $courseIds): Collection
+    {
+        $userIds = array_values(array_unique(array_filter(
+            array_map('intval', $userIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        $courseIds = array_values(array_unique(array_filter(
+            array_map('intval', $courseIds),
+            static fn (int $id): bool => $id > 0
+        )));
+        if ($userIds === [] || $courseIds === []) {
+            return collect();
+        }
+
+        $query = WalletTransaction::query()
+            ->whereIn('user_id', $userIds)
+            ->whereIn('source_id', $courseIds)
             ->where('direction', WalletTransaction::DIRECTION_DEBIT)
             ->where('source_type', Course::class)
-            ->where('source_id', $courseId)
             ->whereIn('category', [
                 'course_purchase',
                 'course_chat_upgrade',
                 'course_full_track_upgrade',
-            ])
-            ->sum('paid_amount'));
+            ]);
+        $this->excludeInvalidatedCourseDebits($query);
+
+        return $query
+            ->groupBy('user_id', 'source_id')
+            ->selectRaw('user_id, source_id, SUM(paid_amount) as paid_total')
+            ->get()
+            ->keyBy(static fn ($row): string =>
+                ((int) $row->user_id) . ':' . ((int) $row->source_id)
+            );
     }
 
     public function credit(
@@ -152,7 +195,7 @@ final readonly class WalletService
                 return $existing;
             }
 
-            [, $rewardBalance] = $this->normalizedBucketBalances($user);
+            [, $rewardBalance] = $this->ledgerBalances($user);
             $rewardCap = max(0, (int) (Setting::query()->value('reward_balance_cap') ?? 1200));
             $rewardRoom = max(0, $rewardCap - $rewardBalance);
             // A one-time offer is indivisible. Silently granting only the
@@ -313,6 +356,10 @@ final readonly class WalletService
         if ($amount < 0) {
             throw new \InvalidArgumentException('Wallet amount must be zero or greater.');
         }
+        $idempotencyKey = trim($idempotencyKey);
+        if ($idempotencyKey === '' || mb_strlen($idempotencyKey) > 140) {
+            throw new \InvalidArgumentException('Wallet idempotency key is required.');
+        }
 
         $fingerprint = $this->operationFingerprint(
             $amount,
@@ -363,9 +410,7 @@ final readonly class WalletService
                 return $existing;
             }
 
-            [$paidBalance, $rewardBalance] = $this->normalizedBucketBalances($user);
-            $balance = $paidBalance + $rewardBalance;
-
+            [$paidBalance, $rewardBalance] = $this->ledgerBalances($user);
             if ($direction === WalletTransaction::DIRECTION_DEBIT) {
                 $rewardSpendable = $maxRewardDebitAmount === null
                     ? $rewardBalance
@@ -506,23 +551,146 @@ final readonly class WalletService
         ], JSON_THROW_ON_ERROR));
     }
 
-    /** @return array{0:int,1:int} Paid and reward balances. */
-    private function normalizedBucketBalances(User $user): array
+    private function excludeInvalidatedCourseDebits(Builder $query): void
     {
-        $total = max(0, (int) $user->wallet_coins);
-        $paid = max(0, (int) $user->wallet_purchased_coins);
-        $reward = max(0, (int) $user->wallet_reward_coins);
-        $allocated = $paid + $reward;
-
-        if ($allocated < $total) {
-            $reward += $total - $allocated;
-        } elseif ($allocated > $total) {
-            $overage = $allocated - $total;
-            $rewardReduction = min($reward, $overage);
-            $reward -= $rewardReduction;
-            $paid = max(0, $paid - ($overage - $rewardReduction));
+        if (!DatabaseCapabilities::hasColumns('orders', [
+            'wallet_transaction_id',
+            'status',
+            'financial_status',
+            'reversed_at',
+        ])) {
+            return;
         }
 
-        return [$paid, $reward];
+        $hasHolds = DatabaseCapabilities::hasTable('financial_entitlement_holds');
+        $query->whereExists(function ($orders) use ($hasHolds): void {
+            $orders->selectRaw('1')
+                ->from('orders as wallet_course_order')
+                ->whereColumn(
+                    'wallet_course_order.wallet_transaction_id',
+                    'wallet_transactions.id'
+                )
+                ->whereColumn(
+                    'wallet_course_order.user_id',
+                    'wallet_transactions.user_id'
+                )
+                ->whereColumn(
+                    'wallet_course_order.course_id',
+                    'wallet_transactions.source_id'
+                )
+                ->where('wallet_course_order.payment_method', 'wallet_coins')
+                ->where('wallet_course_order.status', 'approved')
+                ->where('wallet_course_order.financial_status', 'settled')
+                ->whereNull('wallet_course_order.reversed_at');
+            if ($hasHolds) {
+                $orders->whereNotExists(function ($holds): void {
+                    $holds->selectRaw('1')
+                        ->from('financial_entitlement_holds as wallet_hold')
+                        ->whereColumn(
+                            'wallet_hold.course_order_id',
+                            'wallet_course_order.id'
+                        )
+                        ->where('wallet_hold.status', 'active');
+                });
+            }
+        });
+    }
+
+    /** @return array{total:int,paid:int,reward:int} */
+    public function balances(User $user): array
+    {
+        // Callers frequently render a bearer model that was hydrated before a
+        // concurrent payment callback. Read the projection and its append-only
+        // tail in one statement so an ordinary credit cannot look like ledger
+        // corruption merely because the supplied model instance is stale.
+        $snapshot = DB::table('users as wallet_user')
+            ->leftJoin('wallet_transactions as wallet_tail', function ($join): void {
+                $join->on('wallet_tail.user_id', '=', 'wallet_user.id')
+                    ->whereRaw(
+                        'wallet_tail.id = (SELECT MAX(wallet_latest.id)'
+                        . ' FROM wallet_transactions AS wallet_latest'
+                        . ' WHERE wallet_latest.user_id = wallet_user.id)'
+                    );
+            })
+            ->where('wallet_user.id', $user->getKey())
+            ->first([
+                'wallet_user.wallet_coins',
+                'wallet_user.wallet_purchased_coins',
+                'wallet_user.wallet_reward_coins',
+                'wallet_tail.id as ledger_id',
+                'wallet_tail.balance_after as ledger_balance',
+                'wallet_tail.paid_balance_after as ledger_paid',
+                'wallet_tail.reward_balance_after as ledger_reward',
+            ]);
+        if (!$snapshot) {
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())
+                ->setModel(User::class, [$user->getKey()]);
+        }
+
+        [$paid, $reward] = $this->validatedLedgerProjection(
+            (int) $snapshot->wallet_coins,
+            (int) $snapshot->wallet_purchased_coins,
+            (int) $snapshot->wallet_reward_coins,
+            $snapshot->ledger_id === null ? null : (int) $snapshot->ledger_balance,
+            $snapshot->ledger_id === null ? null : (int) $snapshot->ledger_paid,
+            $snapshot->ledger_id === null ? null : (int) $snapshot->ledger_reward
+        );
+
+        return ['total' => $paid + $reward, 'paid' => $paid, 'reward' => $reward];
+    }
+
+    /**
+     * The ledger tail is authoritative after the first wallet operation. User
+     * columns are a locked projection for cheap reads and must match it; never
+     * repair or reclassify a mismatch inside a learner request.
+     *
+     * @return array{0:int,1:int}
+     */
+    private function ledgerBalances(User $user): array
+    {
+        $tail = WalletTransaction::query()
+            ->where('user_id', $user->getKey())
+            ->latest('id')
+            ->first(['balance_after', 'paid_balance_after', 'reward_balance_after']);
+
+        return $this->validatedLedgerProjection(
+            (int) $user->wallet_coins,
+            (int) $user->wallet_purchased_coins,
+            (int) $user->wallet_reward_coins,
+            $tail ? (int) $tail->balance_after : null,
+            $tail ? (int) $tail->paid_balance_after : null,
+            $tail ? (int) $tail->reward_balance_after : null
+        );
+    }
+
+    /** @return array{0:int,1:int} */
+    private function validatedLedgerProjection(
+        int $projectedTotal,
+        int $projectedPaid,
+        int $projectedReward,
+        ?int $ledgerTotal,
+        ?int $ledgerPaid,
+        ?int $ledgerReward
+    ): array {
+        if ($ledgerTotal === null || $ledgerPaid === null || $ledgerReward === null) {
+            if ($projectedTotal !== 0 || $projectedPaid !== 0 || $projectedReward !== 0) {
+                throw new \LogicException('A non-zero wallet must have a ledger anchor.');
+            }
+
+            return [0, 0];
+        }
+
+        if (
+            $ledgerPaid < 0
+            || $ledgerReward < 0
+            || $ledgerTotal !== $ledgerPaid + $ledgerReward
+            || $ledgerPaid !== $projectedPaid
+            || $ledgerReward !== $projectedReward
+            || $projectedTotal !== $ledgerPaid + $ledgerReward
+        ) {
+            throw new \LogicException('Wallet ledger tail does not match its balance projection.');
+        }
+
+        return [$ledgerPaid, $ledgerReward];
     }
 }

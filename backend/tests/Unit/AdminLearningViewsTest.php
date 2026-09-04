@@ -35,7 +35,6 @@ final class AdminLearningViewsTest extends TestCase
         $css = $this->stylesheetSource(self::STYLESHEET);
 
         self::assertStringContainsString('.admin-learning {', $css);
-        self::assertStringContainsString('.admin-learning--quiz', $css);
         self::assertStringContainsString('.admin-learning--catalog', $css);
         self::assertStringContainsString('.admin-learning--coins', $css);
         self::assertStringContainsString('.admin-learning--contacts', $css);
@@ -64,9 +63,6 @@ final class AdminLearningViewsTest extends TestCase
     public function test_shared_admin_partials_are_used_by_learning_screens(): void
     {
         foreach ([
-            'questions/index.blade.php',
-            'questions/create.blade.php',
-            'questions/edit.blade.php',
             'abouts/privacy.blade.php',
             'abouts/policy.blade.php',
         ] as $view) {
@@ -83,107 +79,13 @@ final class AdminLearningViewsTest extends TestCase
         );
     }
 
-    public function test_quiz_routes_fields_and_dynamic_question_hooks_are_preserved(): void
-    {
-        $index = $this->viewSource('quizzes/index.blade.php');
-        $create = $this->viewSource('quizzes/create.blade.php');
-        $edit = $this->viewSource('quizzes/edit.blade.php');
-        $form = $this->viewSource('quizzes/_form.blade.php');
-        $question = $this->viewSource('quizzes/question.blade.php');
-        $all = $index.$create.$edit.$form.$question;
-
-        foreach ([
-            "route('admin.quizzes.store')",
-            "route('admin.quizzes.copy'",
-            "route('admin.quizzes.edit'",
-            "route('admin.quizzes.destroy'",
-            "route('admin.courses.sections.index'",
-            "route('admin.courses.index')",
-        ] as $contract) {
-            self::assertStringContainsString($contract, $all);
-        }
-
-        foreach ([
-            'name="exam_id"',
-            'name="course_id"',
-            "Form::text('title_ar'",
-            "Form::text('title_en'",
-            'name="type"',
-            'name="image"',
-            'name="questions[]"',
-            "Form::number('priority'",
-            "Form::number('time_minutes'",
-            "Form::textarea('description_ar'",
-            "Form::textarea('description_en'",
-            "Form::text('q_title[]'",
-            'name="q_question_image[]"',
-            "Form::textarea('q_question[]'",
-            'name="q_right_answer[',
-            "Form::text('q_choice1[]'",
-            "Form::text('q_choice6[]'",
-        ] as $field) {
-            self::assertStringContainsString($field, $all);
-        }
-
-        foreach ([
-            'id' => 'exam_form',
-            'data-question-numbers' => 'data-question-numbers',
-            'add question' => 'add_question',
-            'remove question' => 'remove_question',
-            'copy question' => 'copy_question',
-            'delegated image preview' => "$(document).on('change', '.q_image'",
-        ] as $label => $hook) {
-            self::assertStringContainsString($hook, $all, (string) $label);
-        }
-
-        self::assertStringContainsString("method=\"post\"", strtolower($index));
-        self::assertStringContainsString('value="DELETE"', $index);
-    }
-
-    public function test_question_routes_and_form_fields_are_preserved(): void
-    {
-        $index = $this->viewSource('questions/index.blade.php');
-        $create = $this->viewSource('questions/create.blade.php');
-        $edit = $this->viewSource('questions/edit.blade.php');
-        $form = $this->viewSource('questions/_form.blade.php');
-        $all = $index.$create.$edit.$form;
-
-        foreach ([
-            "['admin.questions.store']",
-            "route('admin.questions.update'",
-            "route('admin.questions.edit'",
-            "route('admin.questions.destroy'",
-            "route('admin.questions.index')",
-        ] as $route) {
-            self::assertStringContainsString($route, $all);
-        }
-
-        foreach ([
-            "Form::text('title'",
-            'name="list_id"',
-            "Form::text('priority'",
-            "Form::text('description'",
-            'name="image"',
-            "Form::text('question'",
-            "Form::text('choice1'",
-            "Form::text('choice2'",
-            "Form::text('choice3'",
-            "Form::text('choice4'",
-            "Form::text('choice5'",
-            "Form::text('choice6'",
-            "Form::number('right_answer'",
-        ] as $field) {
-            self::assertStringContainsString($field, $all);
-        }
-
-    }
-
     public function test_coin_method_routes_and_reward_fields_are_preserved(): void
     {
         $index = $this->viewSource('coin_earning_methods/index.blade.php');
         $create = $this->viewSource('coin_earning_methods/create.blade.php');
         $edit = $this->viewSource('coin_earning_methods/edit.blade.php');
-        $all = $index.$create.$edit;
+        $form = $this->viewSource('coin_earning_methods/_form.blade.php');
+        $all = $index.$create.$edit.$form;
 
         foreach ([
             "route('admin.coin-earning-methods.update-settings')",
@@ -208,6 +110,7 @@ final class AdminLearningViewsTest extends TestCase
             'action_url',
             'requires_external_visit',
             'verification_delay_seconds',
+            'sort_order',
         ] as $field) {
             self::assertStringContainsString("name=\"{$field}\"", $all);
         }
@@ -269,11 +172,28 @@ final class AdminLearningViewsTest extends TestCase
         self::assertStringContainsString('class="online-map__marker-label"', $online);
     }
 
+    public function test_public_links_and_legal_copy_have_one_dashboard_editor(): void
+    {
+        $settings = $this->viewSource('settings/index.blade.php');
+        $design = $this->viewSource('design-settings/index.blade.php');
+        $publicSettings = file_get_contents(dirname(__DIR__, 2).'/app/Services/PublicAppSettingsService.php');
+        self::assertIsString($publicSettings);
+
+        foreach (['facebook_url', 'instagram_url', 'tiktok_url', 'whatsapp_url', 'support_whatsapp_url'] as $field) {
+            self::assertStringContainsString($field, $settings);
+        }
+        foreach (['technical_contact', 'policy_content_ar', 'policy_content_en'] as $retiredField) {
+            self::assertStringNotContainsString($retiredField, $design);
+        }
+        self::assertStringNotContainsString("'policy_content' =>", $publicSettings);
+        self::assertStringNotContainsString("'about_us_url' =>", $publicSettings);
+        self::assertStringNotContainsString("'privacy_policy_url' =>", $publicSettings);
+    }
+
     public function test_dead_standalone_location_prototypes_stay_removed(): void
     {
         foreach ([
             'lessons/location.html',
-            'questions/location.html',
         ] as $view) {
             self::assertFileDoesNotExist(
                 dirname(__DIR__, 2).'/resources/views/admin/'.$view,
@@ -286,15 +206,6 @@ final class AdminLearningViewsTest extends TestCase
     public static function bladeViews(): array
     {
         return [
-            'quiz list' => ['quizzes/index.blade.php', true],
-            'quiz create' => ['quizzes/create.blade.php', true],
-            'quiz edit' => ['quizzes/edit.blade.php', true],
-            'quiz form partial' => ['quizzes/_form.blade.php', false],
-            'quiz question partial' => ['quizzes/question.blade.php', false],
-            'question list' => ['questions/index.blade.php', true],
-            'question create' => ['questions/create.blade.php', true],
-            'question edit' => ['questions/edit.blade.php', true],
-            'question form partial' => ['questions/_form.blade.php', false],
             'coin method list' => ['coin_earning_methods/index.blade.php', true],
             'coin method create' => ['coin_earning_methods/create.blade.php', true],
             'coin method edit' => ['coin_earning_methods/edit.blade.php', true],

@@ -2,56 +2,49 @@
 
 namespace App\Http\Resources;
 
+use App\Support\RoknPublicUrl;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class CertificateResource extends JsonResource
 {
     public function toArray($request)
     {
-        $storedStatus = (string) ($this->status ?? 'active');
-        $status = $storedStatus === 'revoked'
+        $revoked = $this->isRevokedCredential();
+        $artifactReady = !$revoked
+            && $this->hasCompleteCredentialSnapshot()
+            && $this->hasStoredArtifact();
+        $status = $revoked
             ? 'revoked'
-            : ($this->hasStoredArtifact() ? 'active' : 'pending');
+            : ($artifactReady ? 'active' : 'pending');
         $holderName = trim((string) $this->holder_name);
-        if ($holderName === '' && $this->relationLoaded('user') && $this->user) {
-            $holderName = trim((string) $this->user->name);
-        }
         $courseName = trim((string) $this->course_name);
-        if ($courseName === '' && $this->relationLoaded('course') && $this->course) {
-            $courseName = trim((string) ($this->course->name_ar ?: $this->course->name_en));
-        }
         $textTemplateKey = trim((string) $this->certificate_text_template_key);
         $certificateText = trim((string) $this->certificate_text);
         $publicId = trim((string) $this->public_id);
+        $verificationUrl = $publicId !== '' ? RoknPublicUrl::certificate($publicId) : '';
 
         return [
-            // The printed number, QR target, pending response and API identity
-            // are one public UUID. The database sequence is not a credential
-            // and must not become a second learner-facing certificate number.
-            'id' => $publicId,
-            'certificate_id' => $publicId,
+            // The printed number, QR target and API identity are one public
+            // UUID. The database sequence is not a learner-facing credential.
             'public_id' => $publicId,
-            'holder_name' => $holderName !== '' ? $holderName : 'طالب ركن',
-            'course_name' => $courseName !== '' ? $courseName : 'كورس ركن',
+            'course_id' => (int) $this->course_id,
+            'holder_name' => $holderName !== '' ? $holderName : null,
+            'course_name' => $courseName !== '' ? $courseName : null,
             'certificate_text_template_key' => $textTemplateKey !== '' ? $textTemplateKey : null,
             'certificate_text' => $certificateText !== '' ? $certificateText : null,
-            'certificate_url' => $status === 'active' ? $this->certificate_url : '',
-            'portfolio_url' => $this->portfolio_url,
-            'verification_url' => $this->portfolio_url,
+            'certificate_url' => $artifactReady && $publicId !== ''
+                ? RoknPublicUrl::certificateArtifact($publicId)
+                : '',
+            'certificate_pdf_url' => $artifactReady && $publicId !== ''
+                ? RoknPublicUrl::certificatePdf($publicId)
+                : '',
+            'verification_url' => $verificationUrl,
             'status' => $status,
             'verification_level' => $this->verification_level ?? 'completion',
             'verification_label' => ($this->verification_level ?? 'completion') === 'reviewed_project'
                 ? 'إتمام الكورس ومراجعة المشروع'
                 : 'إتمام الكورس',
             'generated_at' => $this->generated_at?->format('c'),
-            'course' => $this->whenLoaded('course', function () {
-                return $this->course ? [
-                    'id' => $this->course->id,
-                    'name' => trim((string) $this->course_name)
-                        ?: ($this->course->name_ar ?: $this->course->name_en),
-                    'image' => $this->course->image ? (string) $this->course->image : null,
-                ] : null;
-            }),
         ];
     }
 }

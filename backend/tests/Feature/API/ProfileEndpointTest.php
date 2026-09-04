@@ -20,14 +20,28 @@ class ProfileEndpointTest extends ApiTestCase
     {
         $response = $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
             'name' => 'Updated User',
-            'email' => 'updated@rokn.com'
         ]);
         $this->assertNotEquals(404, $response->status());
     }
 
+    public function test_social_identity_cannot_be_changed_through_profile_settings(): void
+    {
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
+            'email' => 'other@rokn.com',
+            'phone' => '201000000000',
+        ])->assertUnprocessable();
+    }
+
+    public function test_profile_update_has_no_parallel_legacy_route(): void
+    {
+        $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/update_profile', ['name' => 'Legacy route probe'])
+            ->assertNotFound();
+    }
+
     public function test_account_identity_fields_are_updated_together(): void
     {
-        $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/update_profile', [
+        $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/user/profile', [
             'name' => 'Rokn Learner',
             'job_title' => 'Product Designer',
             'portfolio_slug' => 'rokn-learner-' . $this->user->id,

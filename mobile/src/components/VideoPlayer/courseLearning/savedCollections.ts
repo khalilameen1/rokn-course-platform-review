@@ -1,10 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../../../constants/api';
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
-  getCurrentAccountStorageScope,
   type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {
@@ -13,14 +11,9 @@ import {
   removeSavedLessonEverywhereFromCache,
   removeSavedLessonFromCache,
 } from '../../../services/roknApi';
-import {isLocalDemoId} from '../../../config/runtime';
 import {secureRandomUuid} from '../../../utils/secureRandom';
-import {
-  readPlayerState,
-  readPlayerStateForScope,
-  updatePlayerStateForScope,
-} from './persistence';
-import {asArray, valueAsString} from './shared';
+import {updatePlayerStateForScope} from './persistence';
+import {valueAsString} from './shared';
 
 type SavedFolderDto = {
   id?: unknown;
@@ -31,39 +24,73 @@ type SavedFolderDto = {
 
 const WATCH_LATER_FOLDER_KEY = '@rokn/watch-later-folder-id/v2';
 const SAVED_FOLDERS_KEY = '@rokn/saved-folder-options/v1';
-const SAVED_RECONCILE_KEY = '@rokn/saved-collections-reconcile/v1';
 
-const responseStatus = (error: unknown) => Number(
-  error && typeof error === 'object'
-    ? (error as {status?: unknown; response?: {status?: unknown}}).status ??
-      (error as {response?: {status?: unknown}}).response?.status
-    : 0,
-);
+const folderListFlights = new Map<string, Promise<SavedFolderOption[]>>();
+const watchLaterFolderFlights = new Map<string, Promise<string | null>>();
+const createFolderFlights = new Map<string, Promise<SavedFolderOption>>();
+const deleteFolderFlights = new Map<string, Promise<void>>();
+const saveMembershipFlights = new Map<string, Promise<boolean>>();
+const removeMembershipFlights = new Map<string, Promise<void>>();
+const watchLaterFlights = new Map<string, Promise<boolean>>();
 
-const markSavedReconciliationNeeded = (accountScope: string) =>
-  AsyncStorage.setItem(
-    `${SAVED_RECONCILE_KEY}:${accountScope}`,
-    String(Date.now()),
-  ).catch(() => undefined);
+const singleFlight = <T>(
+  flights: Map<string, Promise<T>>,
+  key: string,
+  operation: () => Promise<T>,
+): Promise<T> => {
+  const running = flights.get(key);
+  if (running) return running;
+  const flight = operation();
+  flights.set(key, flight);
+  flight.then(
+    () => {
+      if (flights.get(key) === flight) flights.delete(key);
+    },
+    () => {
+      if (flights.get(key) === flight) flights.delete(key);
+    },
+  );
+  return flight;
+};
+
+const ownerKey = (boundary: AccountSessionBoundary) =>
+  `${boundary.scope}:${boundary.epoch}`;
+
+const responseStatus = (error: unknown) =>
+  Number(
+    error && typeof error === 'object'
+      ? (error as {status?: unknown; response?: {status?: unknown}}).status ??
+          (error as {response?: {status?: unknown}}).response?.status
+      : 0,
+  );
+
+const isSavedCollectionContractError = (error: unknown) =>
+  error instanceof Error &&
+  [
+    'INVALID_SAVED_FOLDERS_RESPONSE',
+    'SAVED_FOLDER_CREATE_FAILED',
+    'WATCH_LATER_FOLDER_CONTRACT_INVALID',
+    'SAVED_MEMBERSHIP_CONTRACT_INVALID',
+  ].includes(error.message);
 
 const acceptRemoteCacheRepair = async (
-  accountScope: string,
+  accountBoundary: AccountSessionBoundary,
   repair: () => Promise<unknown>,
 ) => {
   try {
-    await assertCurrentScope(accountScope);
+    assertAccountSessionBoundary(accountBoundary);
     await repair();
-    await assertCurrentScope(accountScope);
+    assertAccountSessionBoundary(accountBoundary);
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === 'ACCOUNT_CHANGED_DURING_SAVED_COLLECTION_OPERATION'
+      error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
     ) {
       throw error;
     }
-    // The server mutation is already authoritative. A cache outage must not
-    // report it as failed or trigger a non-idempotent DELETE retry loop.
-    void markSavedReconciliationNeeded(accountScope);
+    // The server mutation is already authoritative. The next folder/library
+    // read and the feed reconciliation rebuild both caches, so no mutation
+    // outbox may replay a successful write or delete.
   }
 };
 
@@ -75,57 +102,74 @@ const deleteIdempotently = async (route: string) => {
   }
 };
 
-const assertCurrentScope = async (expectedScope: string) => {
-  if ((await getCurrentAccountStorageScope()) !== expectedScope) {
-    throw new Error('ACCOUNT_CHANGED_DURING_SAVED_COLLECTION_OPERATION');
-  }
-};
-
 const ensureWatchLaterFolder = async (
-  expectedScope: string,
-): Promise<string | null> => {
-  const storageKey = `${WATCH_LATER_FOLDER_KEY}:${expectedScope}`;
-  const cached = await AsyncStorage.getItem(storageKey);
-  if (/^\d{1,18}$/.test(String(cached || '')) && Number(cached) > 0) {
-    return String(cached);
-  }
-  if (cached !== null) {
-    // Older builds occasionally persisted an object/stringified response here
-    // instead of the folder id. It is not an entitlement; discard it and ask
-    // the server for the authoritative folder on this launch.
-    await AsyncStorage.removeItem(storageKey);
-  }
-  if (!(await hasSession())) {
-    return null;
-  }
+  accountBoundary: AccountSessionBoundary,
+  ignoreCached = false,
+): Promise<string | null> =>
+  singleFlight(
+    watchLaterFolderFlights,
+    `${ownerKey(accountBoundary)}:${ignoreCached ? 'refresh' : 'cached'}`,
+    async () => {
+    const expectedScope = accountBoundary.scope;
+    const storageKey = `${WATCH_LATER_FOLDER_KEY}:${expectedScope}`;
+    const cached = await AsyncStorage.getItem(storageKey).catch(() => null);
+    assertAccountSessionBoundary(accountBoundary);
+    if (
+      !ignoreCached &&
+      /^\d{1,18}$/.test(String(cached || '')) &&
+      Number(cached) > 0
+    ) {
+      return String(cached);
+    }
+    if (cached !== null) {
+      // Older builds occasionally persisted an object/stringified response here
+      // instead of the folder id. It is not an entitlement; discard it and ask
+      // the server for the authoritative folder on this launch.
+      await AsyncStorage.removeItem(storageKey);
+    }
+    const sessionAvailable = await hasSession();
+    assertAccountSessionBoundary(accountBoundary);
+    if (!sessionAvailable) {
+      return null;
+    }
 
-  try {
     const response = await publicRequest.get('saved-folders');
+    assertAccountSessionBoundary(accountBoundary);
     const folderPayload = response?.data?.data;
     const folders = requireSavedFolderList(folderPayload);
     let folder = folders.find(item => {
-      const name = valueAsString(item?.name).trim().toLowerCase();
-      return name === 'watch later' || name === 'المشاهدة لاحقًا';
+      const name = normalizedFolderName(valueAsString(item?.name));
+      return name === normalizedFolderName('المشاهدة لاحقًا');
     });
     if (!folder) {
       const created = await publicRequest.post('saved-folders', {
         name: 'المشاهدة لاحقًا',
         client_request_id: secureRandomUuid(),
       });
-      const createdPayload = created?.data?.data;
-      folder = createdPayload?.data ?? createdPayload;
+      assertAccountSessionBoundary(accountBoundary);
+      folder = created?.data?.data;
     }
-    if (!folder?.id) {
-      return null;
+    if (!validSavedFolderOption(folder)) {
+      throw new Error('WATCH_LATER_FOLDER_CONTRACT_INVALID');
     }
     const id = valueAsString(folder.id);
-    await assertCurrentScope(expectedScope);
-    await AsyncStorage.setItem(storageKey, id).catch(() => {
-      void markSavedReconciliationNeeded(expectedScope);
-    });
+    await AsyncStorage.setItem(storageKey, id).catch(() => undefined);
+    assertAccountSessionBoundary(accountBoundary);
     return id;
-  } catch {
-    return null;
+    },
+  );
+
+const saveMembershipOnServer = async (folderId: string, lessonId: string) => {
+  const response = await publicRequest.post(`saved-folders/${folderId}/lessons`, {
+    lesson_id: lessonId,
+  });
+  const payload = response?.data?.data;
+  if (
+    payload?.is_saved !== true ||
+    valueAsString(payload?.folder_id) !== folderId ||
+    valueAsString(payload?.lesson_id) !== lessonId
+  ) {
+    throw new Error('SAVED_MEMBERSHIP_CONTRACT_INVALID');
   }
 };
 
@@ -138,7 +182,7 @@ export type SavedFolderOption = {
 
 const mapSavedFolder = (folder: SavedFolderDto): SavedFolderOption => ({
   id: valueAsString(folder.id),
-  name: valueAsString(folder.name),
+  name: valueAsString(folder.name).trim(),
   imageUrl: folder.image ? valueAsString(folder.image) : undefined,
   lessonsCount: Number.isFinite(Number(folder.lessons_count))
     ? Math.max(0, Number(folder.lessons_count))
@@ -150,404 +194,323 @@ const validSavedFolderOption = (value: unknown): value is SavedFolderDto => {
   const folder = value as SavedFolderDto;
   const id = valueAsString(folder.id);
   return (
-    (/^\d{1,18}$/.test(id) || id === 'local-watch-later') &&
+    /^\d{1,18}$/.test(id) &&
+    Number(id) > 0 &&
     valueAsString(folder.name).trim().length > 0
   );
 };
 
 const requireSavedFolderList = (value: unknown): SavedFolderDto[] => {
-  if (Array.isArray(value)) return value as SavedFolderDto[];
   if (
-    value &&
-    typeof value === 'object' &&
-    Array.isArray((value as {data?: unknown}).data)
+    !Array.isArray(value) ||
+    value.some(item => !validSavedFolderOption(item))
   ) {
-    return (value as {data: SavedFolderDto[]}).data;
+    throw new Error('INVALID_SAVED_FOLDERS_RESPONSE');
   }
-  throw new Error('INVALID_SAVED_FOLDERS_RESPONSE');
+  return value as SavedFolderDto[];
 };
 
-const localSavedFoldersKey = (accountScope?: string) =>
-  accountScope
-    ? Promise.resolve(`${SAVED_FOLDERS_KEY}:${accountScope}`)
-    : accountScopedStorageKey(SAVED_FOLDERS_KEY);
+const localSavedFoldersKey = (accountScope: string) =>
+  `${SAVED_FOLDERS_KEY}:${accountScope}`;
 
 const readLocalSavedFolders = async (
-  accountScope?: string,
+  accountScope: string,
 ): Promise<SavedFolderOption[]> => {
-  const raw = await AsyncStorage.getItem(
-    await localSavedFoldersKey(accountScope),
-  );
   try {
+    const raw = await AsyncStorage.getItem(localSavedFoldersKey(accountScope));
     const parsed = raw ? JSON.parse(raw) : [];
     if (Array.isArray(parsed) && parsed.length) {
-      return parsed
-        .filter(validSavedFolderOption)
-        .map(mapSavedFolder);
+      return parsed.filter(validSavedFolderOption).map(mapSavedFolder);
     }
   } catch {
     // A damaged local folder index should never block saving a reel.
   }
-  return [{id: 'local-watch-later', name: 'المشاهدة لاحقًا'}];
+  return [];
 };
 
 const writeLocalSavedFolders = async (
+  accountScope: string,
   folders: SavedFolderOption[],
-  storageKey?: string,
 ) =>
   AsyncStorage.setItem(
-    storageKey || (await localSavedFoldersKey()),
+    localSavedFoldersKey(accountScope),
     JSON.stringify(folders),
   );
 
 const normalizedFolderName = (value: string) =>
   value.trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
 
-const guestFoldersKey = (guestScope: string) =>
-  `${SAVED_FOLDERS_KEY}:${guestScope}`;
-
-/**
- * Turns the lists created during public preview into real account lists after
- * sign-in. The operation is retry-safe: folder names are matched first and
- * the lesson endpoint is idempotent, while the guest copy is retained until
- * every server write succeeds.
- */
-export const migrateGuestSavedCollections = async (
-  guestScope: string,
-  accountBoundary?: AccountSessionBoundary,
-): Promise<boolean> => {
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  if (!/^[a-z0-9_-]+$/i.test(guestScope) || !(await hasSession())) return false;
-  const accountScope =
-    accountBoundary?.scope ?? (await getCurrentAccountStorageScope());
-  if (guestScope === accountScope) return false;
-
-  const sourceFoldersRaw = await AsyncStorage.getItem(
-    guestFoldersKey(guestScope),
-  );
-  let sourceFolders: SavedFolderOption[] = [];
-  try {
-    const parsed = sourceFoldersRaw ? JSON.parse(sourceFoldersRaw) : [];
-    if (Array.isArray(parsed)) {
-      sourceFolders = parsed
-        .filter(item => item?.id && item?.name)
-        .map(mapSavedFolder);
-    }
-  } catch {
-    // The player state still contains the default watch-later membership.
-  }
-
-  const state = accountBoundary
-    ? await readPlayerStateForScope(accountScope, accountBoundary)
-    : await readPlayerState();
-  const localMembershipIds = Object.keys(state.savedFolderLessons).filter(id =>
-    id.startsWith('local-'),
-  );
-  const localFolderIds = Array.from(
-    new Set([
-      ...sourceFolders
-        .filter(folder => folder.id.startsWith('local-'))
-        .map(folder => folder.id),
-      ...localMembershipIds,
-    ]),
-  );
-  if (!localFolderIds.length) {
-    if (sourceFoldersRaw) {
-      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-      await AsyncStorage.removeItem(guestFoldersKey(guestScope));
-    }
-    return true;
-  }
-
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  const response = await publicRequest.get('saved-folders');
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  const folderPayload = response?.data?.data;
-  const remoteFolders = requireSavedFolderList(folderPayload)
-    .filter(item => item?.id && item?.name)
-    .map(mapSavedFolder);
-  const idMap = new Map<string, string>();
-
-  for (const localId of localFolderIds) {
-    const source = sourceFolders.find(folder => folder.id === localId);
-    const requestedName =
-      localId === 'local-watch-later'
-        ? 'المشاهدة لاحقًا'
-        : source?.name?.trim() || 'قائمة محفوظة';
-    const requestedNameKey = normalizedFolderName(requestedName);
-    let remote = remoteFolders.find(
-      folder => normalizedFolderName(folder.name) === requestedNameKey,
-    );
-    if (!remote && localId === 'local-watch-later') {
-      remote = remoteFolders.find(folder => {
-        const name = normalizedFolderName(folder.name);
-        return name === 'watch later' || name === 'المشاهدة لاحقًا';
-      });
-    }
-    if (!remote) {
-      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-      const created = await publicRequest.post('saved-folders', {
-        name: requestedName,
-        client_request_id: secureRandomUuid(),
-      });
-      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-      const createdPayload = created?.data?.data;
-      remote = mapSavedFolder(createdPayload?.data ?? createdPayload ?? {});
-      if (!remote.id) throw new Error('SAVED_FOLDER_CREATE_FAILED');
-      remoteFolders.push(remote);
-    }
-    idMap.set(localId, remote.id);
-  }
-
-  for (const [localId, lessonIds] of Object.entries(
-    state.savedFolderLessons,
-  )) {
-    const remoteId = idMap.get(localId);
-    if (!remoteId) continue;
-    for (const lessonId of lessonIds) {
-      if (!/^\d+$/.test(lessonId)) continue;
-      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-      await publicRequest.post(`saved-folders/${remoteId}/lessons`, {
-        lesson_id: lessonId,
-      });
-      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-    }
-  }
-
-  if (
-    !(await hasSession()) ||
-    (await getCurrentAccountStorageScope()) !== accountScope
-  ) {
-    throw new Error('ACCOUNT_CHANGED_DURING_GUEST_MIGRATION');
-  }
-
-  await updatePlayerStateForScope(accountScope, current => {
-    const remapped: Record<string, string[]> = {};
-    Object.entries(current.savedFolderLessons).forEach(
-      ([folderId, lessonIds]) => {
-        const targetId = idMap.get(folderId) || folderId;
-        remapped[targetId] = Array.from(
-          new Set([...(remapped[targetId] || []), ...lessonIds]),
-        );
-      },
-    );
-    return {...current, savedFolderLessons: remapped};
-  }, accountBoundary);
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  await writeLocalSavedFolders(
-    remoteFolders,
-    `${SAVED_FOLDERS_KEY}:${accountScope}`,
-  );
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  await AsyncStorage.removeItem(guestFoldersKey(guestScope));
-  return true;
-};
-
 export const getSavedFolderOptions = async (): Promise<SavedFolderOption[]> => {
   const accountBoundary = await captureAccountSessionBoundary();
   const accountScope = accountBoundary.scope;
-  if (!(await hasSession())) {
-    const folders = await readLocalSavedFolders(accountScope);
+  return singleFlight(folderListFlights, ownerKey(accountBoundary), async () => {
+    const sessionAvailable = await hasSession();
     assertAccountSessionBoundary(accountBoundary);
-    return folders;
-  }
-  try {
-    const response = await publicRequest.get('saved-folders');
-    const folderPayload = response?.data?.data;
-    const folders = requireSavedFolderList(folderPayload)
-      .filter(item => item?.id && item?.name)
-      .map(mapSavedFolder);
-    assertAccountSessionBoundary(accountBoundary);
-    await writeLocalSavedFolders(
-      folders,
-      `${SAVED_FOLDERS_KEY}:${accountScope}`,
-    );
-    return folders;
-  } catch (error) {
-    // ACCOUNT_CHANGED_DURING_REQUEST must never fall through to the previous
-    // owner's offline folder list.
-    assertAccountSessionBoundary(accountBoundary);
-    // Offline accounts may use cached server folders, not local-only ids.
-    const cached = (await readLocalSavedFolders(accountScope)).filter(
-      folder => !folder.id.startsWith('local-'),
-    );
-    assertAccountSessionBoundary(accountBoundary);
-    if (cached.length) return cached;
-    throw error instanceof Error
-      ? error
-      : new Error('SAVED_FOLDERS_UNAVAILABLE');
-  }
+    if (!sessionAvailable) {
+      throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
+    }
+    try {
+      const response = await publicRequest.get('saved-folders');
+      const folderPayload = response?.data?.data;
+      const folders = requireSavedFolderList(folderPayload).map(mapSavedFolder);
+      assertAccountSessionBoundary(accountBoundary);
+      await writeLocalSavedFolders(accountScope, folders).catch(
+        () => undefined,
+      );
+      assertAccountSessionBoundary(accountBoundary);
+      return folders;
+    } catch (error) {
+      // ACCOUNT_CHANGED_DURING_REQUEST must never fall through to the previous
+      // owner's offline folder list.
+      assertAccountSessionBoundary(accountBoundary);
+      if (isSavedCollectionContractError(error)) throw error;
+      const cached = await readLocalSavedFolders(accountScope);
+      assertAccountSessionBoundary(accountBoundary);
+      if (cached.length) return cached;
+      throw error instanceof Error
+        ? error
+        : new Error('SAVED_FOLDERS_UNAVAILABLE');
+    }
+  });
 };
 
 export const createSavedFolderOption = async (
   rawName: string,
 ): Promise<SavedFolderOption> => {
-  const accountScope = await getCurrentAccountStorageScope();
   const name = rawName.trim().slice(0, 60);
   if (!name) throw new Error('FOLDER_NAME_REQUIRED');
-  if (!(await hasSession())) {
-    const created = {id: `local-${secureRandomUuid()}`, name};
-    await assertCurrentScope(accountScope);
-    const current = await readLocalSavedFolders(accountScope);
-    await writeLocalSavedFolders(
-      [...current, created],
-      `${SAVED_FOLDERS_KEY}:${accountScope}`,
-    );
+  const accountBoundary = await captureAccountSessionBoundary();
+  const accountScope = accountBoundary.scope;
+  const flightKey = `${ownerKey(accountBoundary)}:${normalizedFolderName(name)}`;
+  return singleFlight(createFolderFlights, flightKey, async () => {
+    const sessionAvailable = await hasSession();
+    assertAccountSessionBoundary(accountBoundary);
+    if (!sessionAvailable) {
+      throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
+    }
+    const response = await publicRequest.post('saved-folders', {
+      name,
+      client_request_id: secureRandomUuid(),
+    });
+    assertAccountSessionBoundary(accountBoundary);
+    const payload = response?.data?.data;
+    if (!validSavedFolderOption(payload)) {
+      throw new Error('SAVED_FOLDER_CREATE_FAILED');
+    }
+    const created = mapSavedFolder(payload);
+    await acceptRemoteCacheRepair(accountBoundary, async () => {
+      const latest = await readLocalSavedFolders(accountScope);
+      await writeLocalSavedFolders(
+        accountScope,
+        [
+          ...latest.filter(item => item.id !== created.id),
+          created,
+        ],
+      );
+    });
     return created;
-  }
-  const response = await publicRequest.post('saved-folders', {
-    name,
-    client_request_id: secureRandomUuid(),
   });
-  const payload = response?.data?.data;
-  const folder = payload?.data ?? payload;
-  if (!folder?.id) throw new Error('SAVED_FOLDER_CREATE_FAILED');
-  const created = {
-    id: valueAsString(folder.id),
-    name: valueAsString(folder.name || name),
-    imageUrl: folder.image ? valueAsString(folder.image) : undefined,
-    lessonsCount: Number.isFinite(Number(folder.lessons_count))
-      ? Math.max(0, Number(folder.lessons_count))
-      : 0,
-  };
-  await acceptRemoteCacheRepair(accountScope, async () => {
-    const current = await readLocalSavedFolders(accountScope);
-    await writeLocalSavedFolders([
-      ...current.filter(
-        item => !item.id.startsWith('local-') && item.id !== created.id,
-      ),
-      created,
-    ], `${SAVED_FOLDERS_KEY}:${accountScope}`);
-  });
-  return created;
 };
 
 export const deleteSavedFolderOption = async (folderId: string) => {
-  const accountScope = await getCurrentAccountStorageScope();
-  const sessionAvailable = await hasSession();
-  if (sessionAvailable && !folderId.startsWith('local-')) {
-    await deleteIdempotently(`saved-folders/${folderId}`);
-  }
+  const normalizedFolderId = folderId.trim();
+  if (!normalizedFolderId) throw new Error('INVALID_SAVED_FOLDER_ROUTE');
+  const accountBoundary = await captureAccountSessionBoundary();
+  const accountScope = accountBoundary.scope;
+  return singleFlight(
+    deleteFolderFlights,
+    `${ownerKey(accountBoundary)}:${normalizedFolderId}`,
+    async () => {
+      const sessionAvailable = await hasSession();
+      assertAccountSessionBoundary(accountBoundary);
+      if (!sessionAvailable) {
+        throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
+      }
+      if (!/^\d{1,18}$/.test(normalizedFolderId)) {
+        throw new Error('INVALID_SAVED_FOLDER_ROUTE');
+      }
+      await deleteIdempotently(`saved-folders/${normalizedFolderId}`);
+      assertAccountSessionBoundary(accountBoundary);
 
-  const repair = async () => {
-    await assertCurrentScope(accountScope);
-    if (sessionAvailable && !folderId.startsWith('local-')) {
-      await removeSavedFolderFromCache(folderId);
-    }
-    const current = await readLocalSavedFolders(accountScope);
-    await writeLocalSavedFolders(
-      current.filter(folder => folder.id !== folderId),
-      `${SAVED_FOLDERS_KEY}:${accountScope}`,
-    );
-    await updatePlayerStateForScope(accountScope, state => {
-      const nextFolders = {...state.savedFolderLessons};
-      delete nextFolders[folderId];
-      const stillSaved = new Set(Object.values(nextFolders).flat());
-      return {...state, savedFolderLessons: nextFolders,
-        savedLessons: state.savedLessons.filter(id => stillSaved.has(id))};
-    });
-  };
-  if (sessionAvailable && !folderId.startsWith('local-')) {
-    await acceptRemoteCacheRepair(accountScope, repair);
-  } else {
-    await repair();
-  }
+      const repair = async () => {
+        assertAccountSessionBoundary(accountBoundary);
+        await removeSavedFolderFromCache(normalizedFolderId, accountBoundary);
+        const current = await readLocalSavedFolders(accountScope);
+        await writeLocalSavedFolders(
+          accountScope,
+          current.filter(folder => folder.id !== normalizedFolderId),
+        );
+        const watchLaterKey = `${WATCH_LATER_FOLDER_KEY}:${accountScope}`;
+        const watchLaterFolderId = await AsyncStorage.getItem(watchLaterKey);
+        if (watchLaterFolderId === normalizedFolderId) {
+          await AsyncStorage.removeItem(watchLaterKey);
+        }
+        await updatePlayerStateForScope(
+          accountScope,
+          state => {
+            const nextFolders = {...state.savedFolderLessons};
+            delete nextFolders[normalizedFolderId];
+            const stillSaved = new Set(Object.values(nextFolders).flat());
+            return {
+              ...state,
+              savedFolderLessons: nextFolders,
+              savedLessons: state.savedLessons.filter(id => stillSaved.has(id)),
+            };
+          },
+          accountBoundary,
+        );
+      };
+      await acceptRemoteCacheRepair(accountBoundary, repair);
+    },
+  );
 };
 
 export const saveLessonToFolder = async (
   lessonId: string,
   folder: SavedFolderOption,
 ) => {
-  const accountScope = await getCurrentAccountStorageScope();
-  const sessionAvailable = await hasSession();
-  if (sessionAvailable && !isLocalDemoId(lessonId)) {
-    if (folder.id.startsWith('local-')) {
-      throw new Error('UNSYNCED_SAVED_FOLDER');
-    }
-    // For real accounts the server is authoritative. Do not show a success
-    // that disappears on another device or after the next refresh.
-    await publicRequest.post(`saved-folders/${folder.id}/lessons`, {
-      lesson_id: lessonId,
-    });
+  const normalizedLessonId = lessonId.trim();
+  const normalizedFolderId = folder.id.trim();
+  if (!normalizedLessonId || !normalizedFolderId) {
+    throw new Error('INVALID_SAVED_LESSON_ROUTE');
   }
-  const repair = () => updatePlayerStateForScope(accountScope, state => ({
-    ...state,
-    savedLessons: Array.from(new Set([...state.savedLessons, lessonId])),
-    savedFolderLessons: {
-      ...state.savedFolderLessons,
-      [folder.id]: Array.from(
-        new Set([...(state.savedFolderLessons[folder.id] || []), lessonId]),
-      ),
+  const accountBoundary = await captureAccountSessionBoundary();
+  const accountScope = accountBoundary.scope;
+  return singleFlight(
+    saveMembershipFlights,
+    `${ownerKey(accountBoundary)}:${normalizedFolderId}:${normalizedLessonId}`,
+    async () => {
+      const sessionAvailable = await hasSession();
+      assertAccountSessionBoundary(accountBoundary);
+      if (!sessionAvailable) {
+        throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
+      }
+      if (
+        !/^\d{1,18}$/.test(normalizedFolderId) ||
+        !/^\d{1,18}$/.test(normalizedLessonId)
+      ) {
+        throw new Error('INVALID_SAVED_LESSON_ROUTE');
+      }
+      // For real accounts the server is authoritative. Do not show a success
+      // that disappears on another device or after the next refresh.
+      await saveMembershipOnServer(normalizedFolderId, normalizedLessonId);
+      assertAccountSessionBoundary(accountBoundary);
+      const repair = () =>
+        updatePlayerStateForScope(
+          accountScope,
+          state => ({
+            ...state,
+            savedLessons: Array.from(
+              new Set([...state.savedLessons, normalizedLessonId]),
+            ),
+            savedFolderLessons: {
+              ...state.savedFolderLessons,
+              [normalizedFolderId]: Array.from(
+                new Set([
+                  ...(state.savedFolderLessons[normalizedFolderId] || []),
+                  normalizedLessonId,
+                ]),
+              ),
+            },
+          }),
+          accountBoundary,
+        );
+      await acceptRemoteCacheRepair(accountBoundary, repair);
+      return true;
     },
-  }));
-  if (sessionAvailable && !isLocalDemoId(lessonId)) {
-    await acceptRemoteCacheRepair(accountScope, repair);
-  } else {
-    await assertCurrentScope(accountScope);
-    await repair();
-  }
-  return true;
+  );
 };
 
 export const toggleWatchLater = async (
   lessonId: string,
   currentlySaved: boolean,
 ) => {
-  const accountScope = await getCurrentAccountStorageScope();
+  const normalizedLessonId = lessonId.trim();
+  if (!normalizedLessonId) throw new Error('INVALID_SAVED_LESSON_ROUTE');
+  const accountBoundary = await captureAccountSessionBoundary();
+  const accountScope = accountBoundary.scope;
   const nextSaved = !currentlySaved;
-  const sessionAvailable = !isLocalDemoId(lessonId) && (await hasSession());
-  let targetFolderId = 'local-watch-later';
-
-  if (sessionAvailable) {
-    if (!nextSaved) {
-      await deleteIdempotently(`saved-lessons/${lessonId}`);
-    } else {
-      const folderId = await ensureWatchLaterFolder(accountScope);
-      if (!folderId) throw new Error('WATCH_LATER_FOLDER_UNAVAILABLE');
-      await publicRequest.post(`saved-folders/${folderId}/lessons`, {
-        lesson_id: lessonId,
-      });
-      targetFolderId = folderId;
-    }
-  }
-
-  const repair = () => updatePlayerStateForScope(accountScope, state => ({
-    ...state,
-    savedLessons: nextSaved
-      ? Array.from(new Set([...state.savedLessons, lessonId]))
-      : state.savedLessons.filter(id => id !== lessonId),
-    savedFolderLessons: nextSaved
-      ? {
-          ...state.savedFolderLessons,
-          [targetFolderId]: Array.from(
-            new Set([
-              ...(state.savedFolderLessons[targetFolderId] || []),
-              lessonId,
-            ]),
-          ),
-        }
-      : Object.fromEntries(
-          Object.entries(state.savedFolderLessons)
-            .map(([folderId, lessons]) => [
-              folderId,
-              lessons.filter(id => id !== lessonId),
-            ])
-            .filter(([, lessons]) => lessons.length > 0),
-        ),
-  }));
-  if (sessionAvailable) {
-    await acceptRemoteCacheRepair(accountScope, async () => {
-      if (!nextSaved) {
-        await removeSavedLessonEverywhereFromCache(lessonId);
+  return singleFlight(
+    watchLaterFlights,
+    `${ownerKey(accountBoundary)}:${normalizedLessonId}`,
+    async () => {
+      const sessionAvailable = await hasSession();
+      assertAccountSessionBoundary(accountBoundary);
+      if (!sessionAvailable) {
+        throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
       }
-      await repair();
-    });
-  } else {
-    await assertCurrentScope(accountScope);
-    await repair();
-  }
+      if (!/^\d{1,18}$/.test(normalizedLessonId)) {
+        throw new Error('INVALID_SAVED_LESSON_ROUTE');
+      }
+      let targetFolderId: string | null = null;
 
-  return nextSaved;
+      if (!nextSaved) {
+        await deleteIdempotently(`saved-lessons/${normalizedLessonId}`);
+      } else {
+        let folderId = await ensureWatchLaterFolder(accountBoundary);
+        if (!folderId) throw new Error('WATCH_LATER_FOLDER_UNAVAILABLE');
+        try {
+          await saveMembershipOnServer(folderId, normalizedLessonId);
+        } catch (error) {
+          if (responseStatus(error) !== 404) throw error;
+          assertAccountSessionBoundary(accountBoundary);
+          await AsyncStorage.removeItem(
+            `${WATCH_LATER_FOLDER_KEY}:${accountScope}`,
+          ).catch(() => undefined);
+          folderId = await ensureWatchLaterFolder(accountBoundary, true);
+          if (!folderId) throw new Error('WATCH_LATER_FOLDER_UNAVAILABLE');
+          await saveMembershipOnServer(folderId, normalizedLessonId);
+        }
+        targetFolderId = folderId;
+      }
+      assertAccountSessionBoundary(accountBoundary);
+      if (nextSaved && !targetFolderId) {
+        throw new Error('WATCH_LATER_FOLDER_UNAVAILABLE');
+      }
+
+      const repair = () =>
+        updatePlayerStateForScope(
+          accountScope,
+          state => ({
+            ...state,
+            savedLessons: nextSaved
+              ? Array.from(new Set([...state.savedLessons, normalizedLessonId]))
+              : state.savedLessons.filter(id => id !== normalizedLessonId),
+            savedFolderLessons: nextSaved
+              ? {
+                  ...state.savedFolderLessons,
+                  [targetFolderId as string]: Array.from(
+                    new Set([
+                      ...(state.savedFolderLessons[targetFolderId as string] ||
+                        []),
+                      normalizedLessonId,
+                    ]),
+                  ),
+                }
+              : Object.fromEntries(
+                  Object.entries(state.savedFolderLessons)
+                    .map(([folderId, lessons]) => [
+                      folderId,
+                      lessons.filter(id => id !== normalizedLessonId),
+                    ])
+                    .filter(([, lessons]) => lessons.length > 0),
+                ),
+          }),
+          accountBoundary,
+        );
+      await acceptRemoteCacheRepair(accountBoundary, async () => {
+        if (!nextSaved) {
+          await removeSavedLessonEverywhereFromCache(
+            normalizedLessonId,
+            accountBoundary,
+          );
+        }
+        await repair();
+      });
+
+      return nextSaved;
+    },
+  );
 };
 
 /**
@@ -557,9 +520,12 @@ export const toggleWatchLater = async (
 export const reconcileServerSavedLessons = async (
   rawLessonIds: string[],
 ): Promise<string[]> => {
-  const accountScope = await getCurrentAccountStorageScope();
-  if (!(await hasSession())) {
-    return (await readPlayerState()).savedLessons;
+  const accountBoundary = await captureAccountSessionBoundary();
+  const accountScope = accountBoundary.scope;
+  const sessionAvailable = await hasSession();
+  assertAccountSessionBoundary(accountBoundary);
+  if (!sessionAvailable) {
+    return [];
   }
   const lessonIds = Array.from(
     new Set(rawLessonIds.filter(id => /^\d+$/.test(id))),
@@ -572,35 +538,46 @@ export const reconcileServerSavedLessons = async (
     const response = await publicRequest.get('saved-lessons/state', {
       params: {lesson_ids: chunk},
     });
-    const ids = asArray<unknown>(response?.data?.data?.saved_lesson_ids);
+    assertAccountSessionBoundary(accountBoundary);
+    const ids = response?.data?.data?.saved_lesson_ids;
+    if (!Array.isArray(ids)) {
+      throw new Error('SAVED_LESSON_STATE_CONTRACT_INVALID');
+    }
+    const requested = new Set(chunk);
     ids.forEach(id => {
       const value = valueAsString(id);
-      if (/^\d+$/.test(value)) saved.add(value);
+      if (!/^\d{1,18}$/.test(value) || !requested.has(value)) {
+        throw new Error('SAVED_LESSON_STATE_CONTRACT_INVALID');
+      }
+      saved.add(value);
     });
   }
 
-  await assertCurrentScope(accountScope);
+  assertAccountSessionBoundary(accountBoundary);
   const queried = new Set(lessonIds);
-  await updatePlayerStateForScope(accountScope, state => ({
-    ...state,
-    savedLessons: Array.from(
-      new Set([
-        ...state.savedLessons.filter(id => !queried.has(id)),
-        ...saved,
-      ]),
-    ),
-    savedFolderLessons: Object.fromEntries(
-      Object.entries(state.savedFolderLessons)
-        .map(([folderId, ids]) => [
-          folderId,
-          ids.filter(id => !queried.has(id) || saved.has(id)),
-        ] as [string, string[]])
-        .filter(([, ids]) => ids.length > 0),
-    ),
-  }));
-
-  await AsyncStorage.removeItem(`${SAVED_RECONCILE_KEY}:${accountScope}`).catch(
-    () => undefined,
+  await updatePlayerStateForScope(
+    accountScope,
+    state => ({
+      ...state,
+      savedLessons: Array.from(
+        new Set([
+          ...state.savedLessons.filter(id => !queried.has(id)),
+          ...saved,
+        ]),
+      ),
+      savedFolderLessons: Object.fromEntries(
+        Object.entries(state.savedFolderLessons)
+          .map(
+            ([folderId, ids]) =>
+              [
+                folderId,
+                ids.filter(id => !queried.has(id) || saved.has(id)),
+              ] as [string, string[]],
+          )
+          .filter(([, ids]) => ids.length > 0),
+      ),
+    }),
+    accountBoundary,
   );
 
   return Array.from(saved);
@@ -610,46 +587,68 @@ export const removeLessonFromSavedFolder = async (
   lessonId: string,
   folderId: string,
 ) => {
-  const accountScope = await getCurrentAccountStorageScope();
-  const sessionAvailable = await hasSession();
-  if (sessionAvailable && !isLocalDemoId(lessonId)) {
-    if (!/^\d+$/.test(folderId) || !/^\d+$/.test(lessonId)) {
-      throw new Error('INVALID_SAVED_LESSON_ROUTE');
-    }
-    // The server commits first. A failed delete must not disappear locally and
-    // then reappear on the next refresh or another device.
-    await deleteIdempotently(
-      `saved-folders/${folderId}/lessons/${lessonId}`,
-    );
+  const normalizedLessonId = lessonId.trim();
+  const normalizedFolderId = folderId.trim();
+  if (!normalizedLessonId || !normalizedFolderId) {
+    throw new Error('INVALID_SAVED_LESSON_ROUTE');
   }
-  const repair = () => updatePlayerStateForScope(accountScope, state => {
-    const nextFolders = {...state.savedFolderLessons};
-    const remainingInFolder = (nextFolders[folderId] || []).filter(
-      id => id !== lessonId,
-    );
-    if (remainingInFolder.length) {
-      nextFolders[folderId] = remainingInFolder;
-    } else {
-      delete nextFolders[folderId];
-    }
-    const remainsSaved = Object.values(nextFolders).some(lessons =>
-      lessons.includes(lessonId),
-    );
-    return {
-      ...state,
-      savedFolderLessons: nextFolders,
-      savedLessons: remainsSaved
-        ? state.savedLessons
-        : state.savedLessons.filter(id => id !== lessonId),
-    };
-  });
-  if (sessionAvailable && !isLocalDemoId(lessonId)) {
-    await acceptRemoteCacheRepair(accountScope, async () => {
-      await removeSavedLessonFromCache(folderId, lessonId);
-      await repair();
-    });
-    return;
-  }
-  await assertCurrentScope(accountScope);
-  return repair();
+  const accountBoundary = await captureAccountSessionBoundary();
+  const accountScope = accountBoundary.scope;
+  return singleFlight(
+    removeMembershipFlights,
+    `${ownerKey(accountBoundary)}:${normalizedFolderId}:${normalizedLessonId}`,
+    async () => {
+      const sessionAvailable = await hasSession();
+      assertAccountSessionBoundary(accountBoundary);
+      if (!sessionAvailable) {
+        throw new Error('SAVED_COLLECTIONS_AUTH_REQUIRED');
+      }
+      if (
+        !/^\d{1,18}$/.test(normalizedFolderId) ||
+        !/^\d{1,18}$/.test(normalizedLessonId)
+      ) {
+        throw new Error('INVALID_SAVED_LESSON_ROUTE');
+      }
+      // The server commits first. A failed delete must not disappear locally and
+      // then reappear on the next refresh or another device.
+      await deleteIdempotently(
+        `saved-folders/${normalizedFolderId}/lessons/${normalizedLessonId}`,
+      );
+      assertAccountSessionBoundary(accountBoundary);
+      const repair = () =>
+        updatePlayerStateForScope(
+          accountScope,
+          state => {
+            const nextFolders = {...state.savedFolderLessons};
+            const remainingInFolder = (
+              nextFolders[normalizedFolderId] || []
+            ).filter(id => id !== normalizedLessonId);
+            if (remainingInFolder.length) {
+              nextFolders[normalizedFolderId] = remainingInFolder;
+            } else {
+              delete nextFolders[normalizedFolderId];
+            }
+            const remainsSaved = Object.values(nextFolders).some(lessons =>
+              lessons.includes(normalizedLessonId),
+            );
+            return {
+              ...state,
+              savedFolderLessons: nextFolders,
+              savedLessons: remainsSaved
+                ? state.savedLessons
+                : state.savedLessons.filter(id => id !== normalizedLessonId),
+            };
+          },
+          accountBoundary,
+        );
+      await acceptRemoteCacheRepair(accountBoundary, async () => {
+        await removeSavedLessonFromCache(
+          normalizedFolderId,
+          normalizedLessonId,
+          accountBoundary,
+        );
+        await repair();
+      });
+    },
+  );
 };

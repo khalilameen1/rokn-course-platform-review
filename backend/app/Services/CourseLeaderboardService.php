@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
-use App\Models\ItemList;
 use App\Models\User;
 use Carbon\Carbon;
 use App\Support\BusinessClock;
@@ -38,13 +37,6 @@ final readonly class CourseLeaderboardService
             ->whereHas('enrollments', function ($enrollments) use ($courseId): void {
                 $enrollments->where('course_id', $courseId)->active();
             })
-            ->with([
-                'examAttempts' => function ($attempts) use ($courseId, $lastFridayDate): void {
-                    $attempts->where('course_id', $courseId)
-                        ->where('status', 'completed')
-                        ->where('completed_at', '<', $lastFridayDate);
-                },
-            ])
             ->get();
         $progressByStudent = $this->revisionReads->sectionProgressRowsForUsers(
             $students->pluck('id'),
@@ -82,10 +74,7 @@ final readonly class CourseLeaderboardService
             ];
         }
 
-        $examSections = $course->sections()
-            ->where('sectionable_type', ItemList::class)
-            ->count();
-        $isVeryShortCourse = $totalSections <= 3 && $examSections <= 1;
+        $isVeryShortCourse = $totalSections <= 3;
         $studentsData = $students
             ->map(fn (User $student): array => $this->studentPayload($student, $totalSections))
             ->all();
@@ -111,8 +100,8 @@ final readonly class CourseLeaderboardService
                     'total_enrolled_students' => $students->count(),
                 ],
                 'ranking_criteria' => $isVeryShortCourse
-                    ? 'First to finish (completion date) + exam performance'
-                    : 'Progress + Exam Performance',
+                    ? 'الأسبق في إكمال الكورس'
+                    : 'نسبة التقدم ثم وقت الإكمال',
                 'best_students' => $bestStudents,
             ],
         ];
@@ -129,9 +118,6 @@ final readonly class CourseLeaderboardService
             ? ($completedCount / $totalSections) * 100
             : 0;
         $isFullyCompleted = $completedCount === $totalSections && $totalSections > 0;
-        $examAttempts = $user->examAttempts;
-        $totalExams = $examAttempts->count();
-        $passedExams = $examAttempts->where('is_passed', true)->count();
         $firstCompletionDate = $isFullyCompleted
             ? $completedSections->max('completed_at')
             : null;
@@ -145,18 +131,6 @@ final readonly class CourseLeaderboardService
                 'progress_percentage' => round($progressPercentage, 2),
                 'is_fully_completed' => $isFullyCompleted,
                 'first_completion_date' => $this->formatCompletionDate($firstCompletionDate),
-            ],
-            'exam_performance' => [
-                'total_exams_taken' => $totalExams,
-                'exams_passed' => $passedExams,
-                'exams_failed' => $totalExams - $passedExams,
-                'average_score' => round($totalExams > 0 ? $examAttempts->avg('score_percentage') : 0, 2),
-                'best_score' => round($totalExams > 0 ? $examAttempts->max('score_percentage') : 0, 2),
-                'pass_rate' => $totalExams > 0
-                    ? round(($passedExams / $totalExams) * 100, 2)
-                    : 0,
-                'total_correct_answers' => $examAttempts->sum('correct_answers'),
-                'total_questions_attempted' => $examAttempts->sum('total_questions'),
             ],
         ];
     }
@@ -209,19 +183,11 @@ final readonly class CourseLeaderboardService
                 <=> $left['progress']['is_fully_completed'];
         }
 
-        $comparisons = [
-            ['exam_performance', 'average_score'],
-            ['exam_performance', 'pass_rate'],
-            ['progress', 'progress_percentage'],
-        ];
-        foreach ($comparisons as [$group, $field]) {
-            if (abs($left[$group][$field] - $right[$group][$field]) > 0.01) {
-                return $right[$group][$field] <=> $left[$group][$field];
-            }
+        if (abs($left['progress']['progress_percentage'] - $right['progress']['progress_percentage']) > 0.01) {
+            return $right['progress']['progress_percentage'] <=> $left['progress']['progress_percentage'];
         }
 
-        return ($right['exam_performance']['total_correct_answers']
-            <=> $left['exam_performance']['total_correct_answers'])
+        return ($left['progress']['first_completion_date'] <=> $right['progress']['first_completion_date'])
             ?: ($left['user_id'] <=> $right['user_id']);
     }
 }

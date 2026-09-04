@@ -14,7 +14,7 @@ use LogicException;
 final class ProjectSubmissionEvaluationSnapshot
 {
     public const CURRENT_VERSION = 3;
-    public const SUPPORTED_VERSIONS = [1, 2, self::CURRENT_VERSION];
+    public const SUPPORTED_VERSIONS = [self::CURRENT_VERSION];
 
     /** @param array<string,mixed>|null $accessTerms */
     public static function capture(
@@ -60,7 +60,7 @@ final class ProjectSubmissionEvaluationSnapshot
         return $snapshot;
     }
 
-    /** Return null only for rows created before snapshots or malformed data. */
+    /** Reject any row that does not carry the current immutable contract. */
     public static function fromSubmission(ProjectSubmission $submission): ?array
     {
         $snapshot = $submission->evaluation_snapshot;
@@ -85,16 +85,12 @@ final class ProjectSubmissionEvaluationSnapshot
         $hasNoContext = $contextIds[0] === 0
             && $contextIds[1] === 0
             && $contextIds[2] === 0;
-        // Service-level callers can create an administrative/legacy standalone
-        // submission. Keep its immutable project policy readable, but reject a
-        // partially captured entitlement so a delayed worker can never combine
-        // old project terms with a different current course or enrollment.
+        // Standalone service-level submissions are allowed only when all
+        // course/enrollment references are absent. Partial context is unsafe.
         if (!$hasCompleteContext && !$hasNoContext) {
             return null;
         }
-        $requiredProjectKeys = $version >= 3
-            ? ['requirements_text']
-            : ['requirements_text', 'ai_prompt', 'temperature', 'tokens_number', 'passing_score'];
+        $requiredProjectKeys = ['requirements_text'];
         foreach ($requiredProjectKeys as $key) {
             if (!array_key_exists($key, (array) ($snapshot['project'] ?? []))) {
                 return null;

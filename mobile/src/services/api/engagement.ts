@@ -1,4 +1,9 @@
 import {publicRequest} from '../../constants/api';
+import {
+  assertAccountSessionBoundary,
+  captureAccountSessionBoundary,
+  type AccountSessionBoundary,
+} from '../../constants/helpers';
 import {learnerFacingText} from '../../utils/errorPayload';
 import {formatArabicDisplayText} from '../../constants/arabicFormatting';
 import {firstBoolean, payload} from './common';
@@ -59,13 +64,18 @@ const mapEngagementMessage = (
 ): EngagementMessage | null => {
   const id = rawText(item?.id);
   const title = copyText(item?.title_ar);
+  const description = copyText(item?.description_ar);
   const actionLabel = copyText(item?.action_label_ar);
+  const secondaryActionLabel = copyText(item?.secondary_action_label_ar);
+  const dismissible = firstBoolean(item?.dismissible) ?? true;
   if (
     !item ||
     rawText(item.key) !== expectedKey ||
     !id ||
     !title ||
-    !actionLabel
+    !description ||
+    !actionLabel ||
+    (dismissible && !secondaryActionLabel)
   ) {
     return null;
   }
@@ -73,13 +83,13 @@ const mapEngagementMessage = (
     id,
     key: expectedKey,
     title,
-    description: copyText(item.description_ar),
+    description,
     actionLabel,
-    secondaryActionLabel: copyText(item.secondary_action_label_ar),
+    secondaryActionLabel,
     imageUrl: imageUrl(item.image_url),
     link: rawText(item.link) || undefined,
     coins: Math.max(0, Number(item.coins || 0) || 0),
-    dismissible: firstBoolean(item.dismissible) ?? true,
+    dismissible,
     cooldownHours: Math.max(0, Number(item.cooldown_hours || 0) || 0),
     version: rawText(item.version) || id,
     campaignKey: rawText(item.campaign_key) || undefined,
@@ -89,14 +99,30 @@ const mapEngagementMessage = (
 
 export const getEngagementMessage = async (
   key: EngagementMessageKey,
+  ownerBoundary?: AccountSessionBoundary,
 ): Promise<EngagementMessage | null> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const response = await publicRequest.get(`engagement/messages/${key}`);
+  assertAccountSessionBoundary(boundary);
   const item = payload<EngagementMessageDto | null>(response);
-  return mapEngagementMessage(item, key);
+  const message = mapEngagementMessage(item, key);
+  assertAccountSessionBoundary(boundary);
+  return message;
 };
 
-export const getNextEngagementMessage = async (): Promise<EngagementMessage | null> => {
+export const getNextEngagementMessage = async (
+  ownerBoundary?: AccountSessionBoundary,
+): Promise<EngagementMessage | null> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const response = await publicRequest.get('engagement/next');
+  assertAccountSessionBoundary(boundary);
   const item = payload<EngagementMessageDto | null>(response);
-  return mapEngagementMessage(item, 'coin_offer');
+  const message = mapEngagementMessage(item, 'coin_offer');
+  // A template by itself is not an eligible task. Home only presents the
+  // personalized candidate whose one-time identity the backend selected.
+  const eligible = message?.taskId && message.campaignKey ? message : null;
+  assertAccountSessionBoundary(boundary);
+  return eligible;
 };

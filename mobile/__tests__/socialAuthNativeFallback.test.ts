@@ -94,7 +94,7 @@ const methods: SocialAuthMethods = {
   recommendationText: null,
 };
 
-describe('native social transport with browser fallback', () => {
+describe('canonical browser social transport', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPendingAttempt = null;
@@ -102,13 +102,17 @@ describe('native social transport with browser fallback', () => {
     mockSaveSession.mockResolvedValue(undefined);
   });
 
-  it('sends the native token through the canonical backend exchange and secure session', async () => {
-    mockNativeSignIn.mockResolvedValue({
-      type: 'success',
-      token: 'signed-google-id-token',
-    });
+  it('uses browser PKCE even when a native Google bridge is installed', async () => {
+    mockOpenAndroidAuthSession.mockImplementation(
+      async (_url: string, _returnUrl: string, challenge: string) => ({
+        type: 'success',
+        url: `rokn://auth?code=browser-code&attempt=${challenge}`,
+      }),
+    );
     mockPost.mockResolvedValue({
       data: {
+        status: 200,
+        success: true,
         data: {
           api_token: 'rokn-session-token',
           user: {
@@ -126,17 +130,17 @@ describe('native social transport with browser fallback', () => {
     ).resolves.toMatchObject({api_token: 'rokn-session-token'});
 
     expect(mockPost).toHaveBeenCalledWith(
-      'social-login',
+      'social-auth/complete',
       expect.objectContaining({
-        provider: 'google',
-        token: 'signed-google-id-token',
+        code: 'browser-code',
+        code_verifier: expect.any(String),
       }),
       expect.objectContaining({skipAuthorization: true}),
     );
     expect(mockSaveSession).toHaveBeenCalledWith(
       expect.objectContaining({api_token: 'rokn-session-token'}),
     );
-    expect(mockOpenAndroidAuthSession).not.toHaveBeenCalled();
+    expect(mockNativeSignIn).not.toHaveBeenCalled();
   });
 
   it('retires a failed native attempt and falls back to browser PKCE', async () => {

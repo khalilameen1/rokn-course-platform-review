@@ -24,6 +24,7 @@ final class SocialOAuthAttempt extends Model
         'state_consumed_at',
         'completion_expires_at',
         'completion_processing_at',
+        'completion_claim_id',
         'completion_consumed_at',
     ];
 
@@ -34,6 +35,7 @@ final class SocialOAuthAttempt extends Model
         'encrypted_token',
         'encrypted_completion_code',
         'encrypted_session_response',
+        'completion_claim_id',
     ];
 
     protected $casts = [

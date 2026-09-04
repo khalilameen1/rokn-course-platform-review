@@ -1,5 +1,5 @@
 import {publicRequest} from '../constants/api';
-import {AsyncKeys, getItem, saveItem} from '../constants/helpers';
+import {getItem, saveItem} from '../constants/helpers';
 import {isServerTimestampFresh, serverNowMs} from '../utils/serverClock';
 import {trustedUpdateUrl} from './appVersionPolicy';
 import {payload as apiPayload} from './api/common';
@@ -23,29 +23,20 @@ export type PublicAppSettings = {
 
 let cachedSettings: PublicAppSettings | null = null;
 let cachedAt = 0;
-let cachedLocale = '';
-let pendingRequest: {locale: string; promise: Promise<PublicAppSettings>} | null =
-  null;
+let pendingRequest: Promise<PublicAppSettings> | null = null;
 
 const CACHE_TTL_MS = 60 * 1000;
 const MAX_STALE_MS = 24 * 60 * 60 * 1000;
-const CACHE_STORAGE_KEY_PREFIX = '@rokn/public-app-settings/v2/';
+const CACHE_STORAGE_KEY = '@rokn/public-app-settings/v2/ar';
 
 type StoredPublicAppSettings = {
   settings: PublicAppSettings;
   savedAt: number;
 };
 
-const settingsLocale = async () =>
-  String((await getItem<string>(AsyncKeys.LANGUAGE)) || 'ar')
-    .toLowerCase()
-    .startsWith('en')
-    ? 'en'
-    : 'ar';
-
-const readStoredSettings = async (locale: string) => {
+const readStoredSettings = async () => {
   const stored = await getItem<StoredPublicAppSettings>(
-    `${CACHE_STORAGE_KEY_PREFIX}${locale}`,
+    CACHE_STORAGE_KEY,
   );
   if (
     !stored?.settings ||
@@ -115,24 +106,21 @@ const normalizeSettings = (value: unknown): PublicAppSettings | null => {
 };
 
 export const getPublicAppSettings = async (): Promise<PublicAppSettings> => {
-  const locale = await settingsLocale();
   if (
     cachedSettings &&
-    cachedLocale === locale &&
     isServerTimestampFresh(cachedAt, CACHE_TTL_MS)
   ) {
     return cachedSettings;
   }
-  if (pendingRequest?.locale === locale) return pendingRequest.promise;
+  if (pendingRequest) return pendingRequest;
 
-  const request: Promise<PublicAppSettings> = readStoredSettings(locale)
+  const request: Promise<PublicAppSettings> = readStoredSettings()
     .then(async stored => {
       if (stored && isServerTimestampFresh(stored.savedAt, CACHE_TTL_MS)) {
         const normalizedStored = normalizeSettings(stored.settings);
         if (normalizedStored) {
           cachedSettings = normalizedStored;
           cachedAt = stored.savedAt;
-          cachedLocale = locale;
           return normalizedStored;
         }
       }
@@ -153,8 +141,7 @@ export const getPublicAppSettings = async (): Promise<PublicAppSettings> => {
         if (!normalized) throw new Error('PUBLIC_SETTINGS_CONTRACT_INVALID');
         cachedSettings = normalized;
         cachedAt = serverNowMs();
-        cachedLocale = locale;
-        await saveItem(`${CACHE_STORAGE_KEY_PREFIX}${locale}`, {
+        await saveItem(CACHE_STORAGE_KEY, {
           settings: normalized,
           savedAt: cachedAt,
         });
@@ -168,17 +155,16 @@ export const getPublicAppSettings = async (): Promise<PublicAppSettings> => {
         ) {
           cachedSettings = storedSettings;
           cachedAt = stored.savedAt;
-          cachedLocale = locale;
           return storedSettings;
         }
         throw error;
       }
     })
     .finally(() => {
-      if (pendingRequest?.locale === locale) pendingRequest = null;
+      if (pendingRequest === request) pendingRequest = null;
     });
 
-  pendingRequest = {locale, promise: request};
+  pendingRequest = request;
   return request;
 };
 

@@ -1,4 +1,4 @@
-import type {DemoCourse} from '../src/data/demoContent';
+import type {Course} from '../src/types/Course';
 import {
   buildHomeSections,
   buildQuickSearches,
@@ -8,8 +8,8 @@ import {
 
 const course = (
   id: string,
-  overrides: Partial<DemoCourse> = {},
-): DemoCourse => ({
+  overrides: Partial<Course> = {},
+): Course => ({
   id,
   title: id,
   description: `وصف ${id}`,
@@ -22,7 +22,11 @@ const course = (
 
 describe('home catalogue presentation', () => {
   test('builds configured, continuation, and upcoming rows', () => {
-    const learning = course('learning', {owned: true, progress: 35});
+    const learning = course('learning', {
+      owned: true,
+      progress: 35,
+      started: true,
+    });
     const classified = course('classified', {
       homeRows: [{id: 'design', title: 'التصميم', order: 2}],
     });
@@ -30,9 +34,6 @@ describe('home catalogue presentation', () => {
 
     const rows = buildHomeSections({
       catalogue: [upcoming, classified, learning],
-      demoCatalogue: [],
-      demoSections: [],
-      usingLocalDemo: false,
     });
 
     expect(rows.map(row => row.id)).toEqual([
@@ -44,18 +45,23 @@ describe('home catalogue presentation', () => {
     expect(rows[0].data).toEqual([learning]);
   });
 
-  test('keeps the configured demo rows and replaces their course state', () => {
-    const stale = course('demo', {owned: false});
-    const current = course('demo', {owned: true});
-
-    const rows = buildHomeSections({
-      catalogue: [],
-      demoCatalogue: [current],
-      demoSections: [{id: 'demo-row', title: 'ابدأ هنا', data: [stale]}],
-      usingLocalDemo: true,
+  test('does not invent continuation from ownership or progress without canonical start', () => {
+    const staleProgress = course('stale-progress', {
+      owned: true,
+      progress: 35,
+      started: false,
+    });
+    const ownedNotStarted = course('owned', {
+      owned: true,
+      progress: 0,
+      started: false,
     });
 
-    expect(rows[0].data).toEqual([current]);
+    expect(
+      buildHomeSections({catalogue: [staleProgress, ownedNotStarted]}).some(
+        row => row.id === 'continue-learning',
+      ),
+    ).toBe(false);
   });
 
   test('selects a published hero and searches normalized Arabic text', () => {
@@ -65,27 +71,18 @@ describe('home catalogue presentation', () => {
       isMainCourse: true,
     });
 
-    expect(
-      selectHeroCourses({
-        catalogue: [hidden, hero],
-        demoCourse: hidden,
-        usingLocalDemo: false,
-      }),
-    ).toEqual([hero]);
+    expect(selectHeroCourses([hidden, hero])).toEqual([hero]);
     expect(
       searchHomeCatalogue({
-        browseCatalogue: [],
         catalogue: [hero],
-        demoCatalogue: [],
         remoteCourses: [hero],
         searchQuery: 'المحتوي',
         loadedSearchQuery: 'المحتوي',
-        usingLocalDemo: false,
       }),
     ).toEqual([hero]);
   });
 
-  test('deduplicates server row names before fallback searches', () => {
+  test('deduplicates server row names before building quick searches', () => {
     const first = course('first', {
       homeRows: [{id: 'skills', title: 'المهارات', order: 1}],
     });
@@ -99,23 +96,16 @@ describe('home catalogue presentation', () => {
     ]);
   });
 
-  test('does not present results from an older rapid search as authoritative', () => {
+  test('does not present local or older results as an authoritative search', () => {
     const oldResult = course('old', {title: 'التسويق'});
-    const currentLocalMatch = course('current', {
-      title: 'التصميم',
-      instructor: 'أحمد',
-    });
 
     expect(
       searchHomeCatalogue({
-        browseCatalogue: [oldResult, currentLocalMatch],
         catalogue: [oldResult],
-        demoCatalogue: [],
         remoteCourses: [oldResult],
         searchQuery: 'احمد',
         loadedSearchQuery: 'التسويق',
-        usingLocalDemo: false,
       }),
-    ).toEqual([currentLocalMatch]);
+    ).toEqual([]);
   });
 });

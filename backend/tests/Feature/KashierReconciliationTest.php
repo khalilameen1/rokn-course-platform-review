@@ -162,6 +162,32 @@ final class KashierReconciliationTest extends TestCase
         self::assertSame(0, PaymentReconciliationFinding::query()->count());
     }
 
+    public function test_provider_history_expiry_does_not_quarantine_a_settled_order(): void
+    {
+        $order = $this->pendingOrder('PKG-RECON-SETTLED-NOT-FOUND');
+        app(KashierPaymentService::class)->fulfillOrder(
+            $order,
+            'TXN-RECON-SETTLED-NOT-FOUND',
+            $this->providerPayload($order, 'CAPTURED', 'TXN-RECON-SETTLED-NOT-FOUND')
+        );
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([], 404),
+        ]);
+
+        $result = app(KashierReconciliationService::class)->reconcile(100);
+
+        self::assertSame(1, $result['findings']);
+        $settled = $order->fresh();
+        self::assertTrue($settled->isFinanciallyEffective());
+        self::assertSame('TXN-RECON-SETTLED-NOT-FOUND', $settled->transaction_id);
+        self::assertSame(500, (int) $this->user->fresh()->wallet_purchased_coins);
+        $this->assertDatabaseHas('payment_reconciliation_findings', [
+            'order_id' => $order->id,
+            'kind' => 'provider_missing_local_order',
+            'state' => PaymentReconciliationFinding::STATE_OPEN,
+        ]);
+    }
+
     public function test_reconciliation_uses_payment_status_before_the_success_envelope(): void
     {
         $order = $this->pendingOrder('PKG-RECON-UNPAID');
@@ -239,7 +265,13 @@ final class KashierReconciliationTest extends TestCase
         ]);
         self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
         self::assertSame(1, DB::table('wallet_transactions')->where('category', 'package_reversal')->count());
-        self::assertSame(1, DB::table('order_financial_events')->where('order_id', $order->id)->count());
+        self::assertSame(
+            1,
+            DB::table('order_financial_events')
+                ->where('order_id', $order->id)
+                ->where('event_type', Order::FINANCIAL_REFUNDED)
+                ->count()
+        );
         $this->assertDatabaseHas('payment_reconciliation_findings', [
             'order_id' => $order->id,
             'kind' => 'provider_reversal_requires_review',

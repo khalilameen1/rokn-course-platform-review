@@ -6,9 +6,9 @@
 
 This file retains the legal documents published with every production package, including NOTICE files. An exact name/version/integrity-bound review record is used only when an npm package publishes no standalone legal file.
 
-- Unique packages: 735
-- Resolved production package paths: 818
-- Exact package-root legal documents: 610
+- Unique packages: 734
+- Resolved production package paths: 817
+- Exact package-root legal documents: 609
 - Reviewed legal-file absence records: 125
 
 ## Explicit license choices
@@ -30,7 +30,7 @@ This file retains the legal documents published with every production package, i
 | CC0-1.0 | 1 |
 | FSL-1.1-MIT | 9 |
 | ISC | 38 |
-| MIT | 561 |
+| MIT | 560 |
 | MPL-2.0 | 12 |
 | Python-2.0 | 1 |
 | Unlicense | 2 |
@@ -41460,42 +41460,6 @@ SHA-256: `cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173`
 MIT License
 
 Copyright (c) Meta Platforms, Inc. and affiliates.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
-### redux-persist@6.0.0
-
-- Selected license: `MIT`
-- Declared license: `MIT`
-- Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/redux-persist/v/6.0.0)
-- Integrity: `sha512-71LLMbUq2r02ng2We9S215LtPu3fY0KgaGE0k8WRgl6RkqxtGfl7HUozz1Dftwsb0D/5mZ8dwAaPbtnzfvbEwQ==`
-
-#### LICENSE
-
-SHA-256: `d042262c37aebcd68193e4846a8d39fdae22c7d40b65d8a29a3df11bbc6ac1e9`
-
-```text
-MIT License
-
-Copyright (c) 2017 Zack Story
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -1,11 +1,11 @@
-import type {DemoCourse} from '../src/data/demoContent';
+import type {Course} from '../src/types/Course';
 import {recommendCourses} from '../src/services/courseRecommendations';
 
 const course = (
   id: string,
-  category: DemoCourse['category'],
-  overrides: Partial<DemoCourse> = {},
-): DemoCourse => ({
+  category: Course['category'],
+  overrides: Partial<Course> = {},
+): Course => ({
   id,
   category,
   description: `Description ${id}`,

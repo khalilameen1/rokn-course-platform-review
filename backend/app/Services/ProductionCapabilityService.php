@@ -363,7 +363,6 @@ final class ProductionCapabilityService
             (array) config('social_auth.return_urls', [])
         ))));
         $callbacksReady = $this->validSocialApiUrl($publicApiUrl)
-            && config('social_auth.allow_legacy_pkce') === false
             && $returnUrls === ['rokn://auth'];
         $handoffReady = $this->socialHandoffIsReady();
 

@@ -1,6 +1,7 @@
 import {
   projectFeedbackFailureHasRetryAction,
   projectFeedbackFailureText,
+  projectFeedbackThreadIsPending,
 } from '../src/components/VideoPlayer/projectFeedback/policy';
 
 describe('project feedback retry policy', () => {
@@ -23,5 +24,17 @@ describe('project feedback retry policy', () => {
     expect(projectFeedbackFailureHasRetryAction('plan_limit_reached')).toBe(
       false,
     );
+  });
+
+  it('polls only while the server still owns an unfinished message', () => {
+    expect(projectFeedbackThreadIsPending([{status: 'queued'}])).toBe(true);
+    expect(projectFeedbackThreadIsPending([{status: 'sent'}])).toBe(true);
+    expect(projectFeedbackThreadIsPending([{status: 'streaming'}])).toBe(true);
+    expect(
+      projectFeedbackThreadIsPending([
+        {status: 'completed'},
+        {status: 'failed'},
+      ]),
+    ).toBe(false);
   });
 });

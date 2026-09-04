@@ -27,6 +27,7 @@ final class LearningRewardEndpointTest extends ApiTestCase
             'coins_amount' => 25,
             'rolling_30_day_cap' => 100,
         ]);
+        DB::table('wallet_transactions')->where('user_id', $this->user->id)->delete();
         $this->user->forceFill([
             'wallet_coins' => 0,
             'wallet_reward_coins' => 0,

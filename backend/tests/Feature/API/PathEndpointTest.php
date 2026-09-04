@@ -172,8 +172,13 @@ class PathEndpointTest extends ApiTestCase
         ]);
         $secondSectionId = DB::table('course_sections')->insertGetId([
             'course_id' => $this->courseId,
+            'module_id' => $this->moduleId,
             'title_ar' => 'قسم 2',
             'title_en' => 'Section 2',
+            'section_type' => 'lesson',
+            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_id' => 10,
+            'order' => 2,
             'sort_order' => 2,
             'is_free' => true,
             'created_at' => now(),

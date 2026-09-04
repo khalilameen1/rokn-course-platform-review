@@ -8,21 +8,17 @@ use App\Models\Order;
 use App\Models\Package;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
-use App\Models\WalletTransaction;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final readonly class KashierPaymentService
 {
     public function __construct(
         private readonly OrderLifecycleService $orderLifecycle,
-        private readonly WalletService $wallet,
-        private readonly FinancialProvenanceService $financialProvenance,
         private readonly PackageChannelPricingService $pricing,
+        private readonly KashierProviderOrderService $providerOrders,
+        private readonly KashierGatewayEvidenceService $evidence,
     ) {
     }
 
@@ -129,7 +125,6 @@ final readonly class KashierPaymentService
 
             $otherPendingCheckout = Order::query()
                 ->where('user_id', $user->id)
-                ->where('package_id', $package->id)
                 ->where('payment_method', Order::PAYMENT_METHOD_KASHIER)
                 ->where('status', Order::STATUS_PENDING)
                 ->lockForUpdate()
@@ -171,141 +166,17 @@ final readonly class KashierPaymentService
             ]);
 
             return ['order' => $order, 'reused' => false, 'closed' => null];
-        });
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     */
-    public function parseAndValidateSignature(
-        Request $request,
-        KashierService $kashier,
-        array &$params
-    ): bool {
-        try {
-            $configuration = $this->configuration();
-        } catch (\RuntimeException $exception) {
-            Log::error('Kashier signature verification is not configured', [
-                'exception' => $exception::class,
-            ]);
-
-            return false;
-        }
-
-        $secret = $configuration['api_key'];
-        $signatureSource = isset($params['data']) && is_array($params['data'])
-            ? $params['data']
-            : $params;
-
-        if (isset($params['data']) && is_array($params['data'])) {
-            $params = array_merge($params, $params['data']);
-        }
-
-        $candidates = array_values(array_filter([
-            $request->header('x-kashier-signature'),
-            $request->header('kashier-signature'),
-            $request->header('signature'),
-            $params['kashierSignature'] ?? null,
-            $params['signature'] ?? null,
-            $params['hash'] ?? null,
-            $signatureSource['kashierSignature'] ?? null,
-            $signatureSource['hash'] ?? null,
-            $signatureSource['signature'] ?? null,
-        ], fn ($candidate): bool => is_scalar($candidate) && (string) $candidate !== ''));
-
-        if (!empty($params['signatureKeys']) && is_array($params['signatureKeys'])) {
-            $queryString = $this->buildSignatureKeysQuery($params['signatureKeys'], $signatureSource);
-            if ($queryString !== null) {
-                $expectedSignature = hash_hmac('sha256', $queryString, $secret, false);
-
-                foreach ($candidates as $candidate) {
-                    if (hash_equals($expectedSignature, (string) $candidate)) {
-                        return true;
-                    }
-                }
-            }
-
-            Log::warning('Kashier webhook signature mismatch (signatureKeys check failed)', [
-                'mode' => config('kashier.mode'),
-            ]);
-        }
-
-        $rawBody = $request->getContent();
-        foreach ($candidates as $candidate) {
-            if (
-                $rawBody !== ''
-                && hash_equals(hash_hmac('sha256', $rawBody, $secret, false), (string) $candidate)
-            ) {
-                return true;
-            }
-        }
-
-        if (!empty($params['signature'])) {
-            return $this->validateFlatCallbackSignature($params, $secret);
-        }
-
-        return $kashier->validateSignature($this->flattenCallbackParams($params));
+        }, 3);
     }
 
     public function isValidOrderReference(mixed $orderRef): bool
     {
-        return is_string($orderRef)
-            && preg_match('/^PKG-[A-Z0-9-]{8,64}$/i', $orderRef) === 1;
+        return $this->providerOrders->isValidReference($orderRef);
     }
 
     public function normalizeTransactionId(mixed $value): ?string
     {
-        if (!is_string($value)) {
-            return null;
-        }
-
-        $value = trim($value);
-
-        return preg_match('/\A[A-Za-z0-9][A-Za-z0-9._:\/-]{0,190}\z/D', $value) === 1
-            ? $value
-            : null;
-    }
-
-    /**
-     * @return array{mode: string, api_key: string, secret_key: string, mid: string, base_url: string}
-     */
-    public function configuration(): array
-    {
-        $mode = strtolower(trim((string) config('kashier.mode')));
-        if (!in_array($mode, ['live', 'test'], true)) {
-            throw new \RuntimeException('KASHIER_MODE must be explicitly set to live or test.');
-        }
-
-        $prefix = $mode === 'live' ? 'KASHIER_LIVE' : 'KASHIER_TEST';
-        $apiKey = trim((string) config("kashier.{$mode}.api_key"));
-        $secretKey = trim((string) config("kashier.{$mode}.secret_key"));
-        $mid = trim((string) config("kashier.{$mode}.mid"));
-        $baseUrl = trim((string) config("kashier.{$mode}.base_url"));
-        $missing = [];
-
-        if ($apiKey === '') {
-            $missing[] = $prefix . '_API_KEY';
-        }
-        if ($secretKey === '') {
-            $missing[] = $prefix . '_SECRET_KEY';
-        }
-        if ($mid === '') {
-            $missing[] = $prefix . '_MID';
-        }
-        if ($baseUrl === '') {
-            $missing[] = 'Kashier checkout base URL';
-        }
-        if ($missing !== []) {
-            throw new \RuntimeException('Missing Kashier configuration: ' . implode(', ', $missing));
-        }
-
-        return [
-            'mode' => $mode,
-            'api_key' => $apiKey,
-            'secret_key' => $secretKey,
-            'mid' => $mid,
-            'base_url' => $baseUrl,
-        ];
+        return $this->evidence->normalizeTransactionId($value);
     }
 
     /**
@@ -313,71 +184,7 @@ final readonly class KashierPaymentService
      */
     public function verifyOrderViaApi(string $orderRef): ?array
     {
-        if (!$this->isValidOrderReference($orderRef)) {
-            Log::warning('Kashier order verification rejected an invalid reference', [
-                'order_ref_fingerprint' => hash('sha256', $orderRef),
-            ]);
-
-            return null;
-        }
-
-        try {
-            $configuration = $this->configuration();
-        } catch (\RuntimeException $exception) {
-            Log::error('Kashier order verification is not configured', [
-                'order_ref' => $orderRef,
-                'exception' => $exception::class,
-            ]);
-
-            return null;
-        }
-
-        $apiHost = $configuration['mode'] === 'live'
-            ? 'https://api.kashier.io'
-            : 'https://test-api.kashier.io';
-
-        try {
-            $response = Http::withHeaders([
-                // Kashier exposes this as one complete dashboard API
-                // Authorization value. The payment API key above is a
-                // different credential used to sign the hosted checkout.
-                'Authorization' => $configuration['secret_key'],
-            ])
-                ->connectTimeout(5)
-                ->timeout(10)
-                ->get("{$apiHost}/payments/orders/" . rawurlencode($orderRef));
-
-            if ($response->status() === 404) {
-                // An HPP link can be opened and abandoned before Kashier
-                // creates a provider-side order. Preserve that distinction so
-                // an expired local checkout can close without pretending the
-                // provider was unavailable.
-                return [
-                    'response' => [
-                        'status' => 'NOT_FOUND',
-                        'merchantOrderId' => $orderRef,
-                    ],
-                ];
-            }
-
-            if (!$response->successful()) {
-                Log::warning('Kashier order verification API failed', [
-                    'order_ref' => $orderRef,
-                    'status' => $response->status(),
-                ]);
-
-                return null;
-            }
-
-            return $response->json();
-        } catch (\Throwable $exception) {
-            Log::error('Kashier order verification API error', [
-                'order_ref' => $orderRef,
-                'exception' => $exception::class,
-            ]);
-
-            return null;
-        }
+        return $this->providerOrders->fetch($orderRef);
     }
 
     /**
@@ -385,16 +192,12 @@ final readonly class KashierPaymentService
      */
     public function isOrderCaptured(?array $apiResponse): bool
     {
-        return $this->isCaptureNotificationStatus(
-            $this->providerOrderStatus($apiResponse)
-        );
+        return $this->evidence->isCaptureStatus($this->evidence->status($apiResponse));
     }
 
     public function isCaptureNotificationStatus(?string $status): bool
     {
-        return in_array(strtoupper(trim((string) $status)), [
-            'SUCCESS', 'CAPTURED', 'PAID',
-        ], true);
+        return $this->evidence->isCaptureStatus($status);
     }
 
     /**
@@ -402,85 +205,7 @@ final readonly class KashierPaymentService
      */
     public function providerOrderStatus(?array $apiResponse): ?string
     {
-        if (!$apiResponse) {
-            return null;
-        }
-
-        // Order summaries commonly stay CAPTURED after a later refund or
-        // reversal. Financial transactions are the newer evidence and must
-        // win regardless of provider array ordering.
-        $reversalEvents = $this->extractFinancialReversalEvents($apiResponse);
-        if ($reversalEvents !== []) {
-            $priority = [
-                'CHARGEBACK' => 4,
-                'REVERSED' => 3,
-                'REFUNDED' => 2,
-                'PARTIAL_REFUND' => 1,
-            ];
-            usort($reversalEvents, static function (array $left, array $right) use ($priority): int {
-                return ($priority[$right['payment_status']] ?? 0)
-                    <=> ($priority[$left['payment_status']] ?? 0);
-            });
-
-            return $reversalEvents[0]['payment_status'];
-        }
-
-        // Kashier can return `status=SUCCESS` for the reconciliation request
-        // itself while the order's `paymentStatus` is still `unpaid`. Payment
-        // state is the financial evidence and must win over the transport
-        // envelope or an abandoned HPP could be credited as a capture.
-        $status = $apiResponse['response']['paymentStatus']
-            ?? $apiResponse['response']['payment_status']
-            ?? $apiResponse['response']['order']['paymentStatus']
-            ?? $apiResponse['response']['order']['payment_status']
-            ?? $apiResponse['response']['data'][0]['paymentStatus']
-            ?? $apiResponse['response']['data'][0]['payment_status']
-            ?? $apiResponse['data']['paymentStatus']
-            ?? $apiResponse['data']['payment_status']
-            ?? $apiResponse['paymentStatus']
-            ?? $apiResponse['payment_status']
-            ?? $apiResponse['response']['status']
-            ?? $apiResponse['data']['status']
-            ?? $apiResponse['status']
-            ?? null;
-        $status = strtoupper(trim((string) $status));
-
-        if ($status === '') {
-            $transactions = $apiResponse['response']['transactions']
-                ?? $apiResponse['data']['transactions']
-                ?? $apiResponse['transactions']
-                ?? [];
-            if (is_array($transactions)) {
-                foreach (array_reverse($transactions) as $transaction) {
-                    if (!is_array($transaction)) continue;
-                    $transactionStatus = strtoupper(trim((string) (
-                        $transaction['status'] ?? $transaction['paymentStatus'] ?? ''
-                    )));
-                    $operation = strtoupper(trim((string) (
-                        $transaction['operation'] ?? $transaction['type'] ?? ''
-                    )));
-                    if (in_array($transactionStatus, ['SUCCESS', 'CAPTURED', 'PAID'], true)) {
-                        if (str_contains($operation, 'REFUND')) return 'REFUNDED';
-                        if (str_contains($operation, 'CHARGEBACK') || str_contains($operation, 'DISPUTE')) {
-                            return 'CHARGEBACK';
-                        }
-                        if (str_contains($operation, 'REVERS') || str_contains($operation, 'VOID')) {
-                            return 'REVERSED';
-                        }
-                        if (in_array($operation, ['PAY', 'CAPTURE', 'SALE', 'PURCHASE'], true)) {
-                            return 'CAPTURED';
-                        }
-                    }
-                    if (preg_match('/\A[A-Z0-9_-]{1,32}\z/D', $transactionStatus) === 1) {
-                        return $transactionStatus;
-                    }
-                }
-            }
-        }
-
-        return $status !== '' && preg_match('/\A[A-Z0-9_-]{1,32}\z/D', $status) === 1
-            ? $status
-            : null;
+        return $this->evidence->status($apiResponse);
     }
 
     /**
@@ -494,113 +219,12 @@ final readonly class KashierPaymentService
      */
     public function extractFinancialReversalEvents(?array $apiResponse): array
     {
-        if (!$apiResponse) return [];
-
-        $transactions = $apiResponse['response']['transactions']
-            ?? $apiResponse['data']['transactions']
-            ?? $apiResponse['transactions']
-            ?? null;
-        if (!is_array($transactions)) return [];
-
-        $events = [];
-        foreach ($transactions as $transaction) {
-            if (!is_array($transaction)) continue;
-            $transactionStatus = strtoupper(trim((string) (
-                $transaction['status'] ?? $transaction['paymentStatus'] ?? ''
-            )));
-            $operation = strtoupper(trim((string) (
-                $transaction['operation'] ?? $transaction['type'] ?? ''
-            )));
-            $successful = in_array($transactionStatus, [
-                'SUCCESS', 'CAPTURED', 'PAID', 'REFUND', 'REFUNDED',
-                'FULLY_REFUNDED', 'PARTIAL_REFUND', 'PARTIALLY_REFUNDED',
-                'CHARGEBACK', 'DISPUTED', 'REVERSED', 'REVERSAL',
-            ], true);
-            if (!$successful) continue;
-
-            $paymentStatus = null;
-            if (str_contains($operation, 'CHARGEBACK') || str_contains($operation, 'DISPUTE')) {
-                $paymentStatus = 'CHARGEBACK';
-            } elseif (str_contains($operation, 'REVERS') || str_contains($operation, 'VOID')) {
-                $paymentStatus = 'REVERSED';
-            } elseif (str_contains($operation, 'REFUND')) {
-                $paymentStatus = str_contains($operation, 'FULL')
-                    ? 'REFUNDED'
-                    : 'PARTIAL_REFUND';
-            } elseif (in_array($transactionStatus, ['CHARGEBACK', 'DISPUTED'], true)) {
-                $paymentStatus = 'CHARGEBACK';
-            } elseif (in_array($transactionStatus, ['REVERSED', 'REVERSAL'], true)) {
-                $paymentStatus = 'REVERSED';
-            } elseif (in_array($transactionStatus, ['FULLY_REFUNDED'], true)) {
-                $paymentStatus = 'REFUNDED';
-            } elseif (in_array($transactionStatus, [
-                'REFUND', 'REFUNDED', 'PARTIAL_REFUND', 'PARTIALLY_REFUNDED',
-            ], true)) {
-                $paymentStatus = in_array($transactionStatus, [
-                    'PARTIAL_REFUND', 'PARTIALLY_REFUNDED',
-                ], true) ? 'PARTIAL_REFUND' : 'REFUNDED';
-            }
-            if ($paymentStatus === null) continue;
-
-            $providerEventId = $this->normalizeTransactionId(
-                $transaction['eventId']
-                ?? $transaction['event_id']
-                ?? $transaction['refundId']
-                ?? $transaction['refund_id']
-                ?? $transaction['transactionId']
-                ?? $transaction['transaction_id']
-                ?? null
-            );
-            $originalTransactionId = $this->normalizeTransactionId(
-                $transaction['originalTransactionId']
-                ?? $transaction['original_transaction_id']
-                ?? $transaction['parentTransactionId']
-                ?? $transaction['parent_transaction_id']
-                ?? null
-            );
-            $amount = $transaction['amount'] ?? $transaction['refundAmount'] ?? null;
-            $amount = is_int($amount) || is_float($amount) || is_string($amount)
-                ? $amount
-                : null;
-            $currency = strtoupper(trim((string) (
-                $transaction['currency'] ?? $transaction['currencyCode'] ?? ''
-            )));
-            $currency = preg_match('/\A[A-Z]{3}\z/D', $currency) === 1
-                ? $currency
-                : null;
-            $occurredAt = trim((string) (
-                $transaction['createdAt']
-                ?? $transaction['created_at']
-                ?? $transaction['date']
-                ?? ''
-            ));
-            $occurredAt = $occurredAt !== '' ? $occurredAt : null;
-            $fingerprint = hash('sha256', json_encode([
-                $paymentStatus,
-                $providerEventId,
-                $originalTransactionId,
-                $amount,
-                $currency,
-                $occurredAt,
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-            $events[$providerEventId ?? $fingerprint] = [
-                'payment_status' => $paymentStatus,
-                'provider_event_id' => $providerEventId,
-                'original_transaction_id' => $originalTransactionId,
-                'amount' => $amount,
-                'currency' => $currency,
-                'occurred_at' => $occurredAt,
-                'evidence_fingerprint' => $fingerprint,
-            ];
-        }
-
-        ksort($events);
-        return array_values($events);
+        return $this->evidence->reversalEvents($apiResponse);
     }
 
     public function isProviderPendingStatus(?string $status): bool
     {
-        return in_array($status, ['PENDING', 'INITIATED', 'AUTHORIZED', 'PROCESSING'], true);
+        return $this->evidence->isPendingStatus($status);
     }
 
     /**
@@ -611,32 +235,12 @@ final readonly class KashierPaymentService
      */
     public function providerStatusMayCaptureWithoutLearner(?string $status): bool
     {
-        $normalized = strtoupper(trim((string) $status));
-        if ($normalized === '') {
-            // A successful HTTP response with an unknown body is not evidence
-            // that the payment can be safely replaced.
-            return true;
-        }
-
-        if (in_array($normalized, [
-            'NOT_FOUND', 'UNPAID', 'PENDING', 'INITIATED', 'FAILED', 'FAILURE', 'DECLINED',
-            'CANCELLED', 'CANCELED', 'VOIDED', 'EXPIRED',
-        ], true)) {
-            return false;
-        }
-
-        // AUTHORIZED/PROCESSING and new provider states stay recoverable until
-        // reconciliation can classify them. Unknown must fail closed here: a
-        // second payable checkout is more harmful than a short pending state.
-        return true;
+        return $this->evidence->mayCaptureWithoutLearner($status);
     }
 
     public function isProviderFailureStatus(?string $status): bool
     {
-        return in_array($status, [
-            'NOT_FOUND', 'UNPAID', 'FAILED', 'FAILURE', 'DECLINED', 'CANCELLED', 'CANCELED',
-            'VOIDED', 'EXPIRED',
-        ], true);
+        return $this->evidence->isFailureStatus($status);
     }
 
     /**
@@ -644,58 +248,7 @@ final readonly class KashierPaymentService
      */
     public function extractTransactionId(?array $apiResponse): ?string
     {
-        if (!$apiResponse) {
-            return null;
-        }
-
-        $direct = $this->normalizeTransactionId(
-            $apiResponse['response']['transactionId']
-            ?? $apiResponse['transactionId']
-            ?? ($apiResponse['data']['transactionId'] ?? null)
-        );
-        if ($direct !== null) {
-            return $direct;
-        }
-
-        $transactions = $apiResponse['response']['transactions']
-            ?? $apiResponse['data']['transactions']
-            ?? $apiResponse['transactions']
-            ?? [];
-        if (!is_array($transactions)) {
-            return null;
-        }
-
-        $successful = array_values(array_filter(
-            $transactions,
-            static fn (mixed $transaction): bool => is_array($transaction)
-                && in_array(strtoupper(trim((string) ($transaction['status'] ?? ''))), [
-                    'SUCCESS',
-                    'CAPTURED',
-                ], true)
-        ));
-        foreach (array_reverse($successful) as $transaction) {
-            $operation = strtolower(trim((string) ($transaction['operation'] ?? '')));
-            if (!in_array($operation, ['pay', 'capture', 'sale', 'purchase'], true)) {
-                continue;
-            }
-            $transactionId = $this->normalizeTransactionId(
-                $transaction['transactionId'] ?? $transaction['transaction_id'] ?? null
-            );
-            if ($transactionId !== null) {
-                return $transactionId;
-            }
-        }
-
-        foreach (array_reverse($successful) as $transaction) {
-            $transactionId = $this->normalizeTransactionId(
-                $transaction['transactionId'] ?? $transaction['transaction_id'] ?? null
-            );
-            if ($transactionId !== null) {
-                return $transactionId;
-            }
-        }
-
-        return null;
+        return $this->evidence->transactionId($apiResponse);
     }
 
     /**
@@ -733,68 +286,6 @@ final readonly class KashierPaymentService
             && !hash_equals($order->transaction_id, $transactionId);
     }
 
-    private function buildSignatureKeysQuery(array $signatureKeys, array $source): ?string
-    {
-        $pairs = [];
-        foreach ($signatureKeys as $key) {
-            if (
-                !is_string($key)
-                || $key === ''
-                || !array_key_exists($key, $source)
-                || (!is_scalar($source[$key]) && $source[$key] !== null)
-            ) {
-                return null;
-            }
-
-            $value = $source[$key];
-            $pairs[] = rawurlencode($key) . '=' . rawurlencode($value === null ? '' : (string) $value);
-        }
-
-        return implode('&', $pairs);
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     * @return array<string, scalar|null>
-     */
-    private function flattenCallbackParams(array $params): array
-    {
-        $flat = [];
-        foreach ($params as $key => $value) {
-            if (is_array($value) || is_object($value)) {
-                continue;
-            }
-            $flat[$key] = $value;
-        }
-
-        return $flat;
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     */
-    private function validateFlatCallbackSignature(array $params, string $secret): bool
-    {
-        $providedSignature = $params['signature'] ?? '';
-        if ($providedSignature === '' || $providedSignature === null) {
-            return false;
-        }
-
-        $excludeKeys = ['signature', 'mode', 'hash', 'event', 'data', 'signatureKeys'];
-        $queryString = '';
-
-        foreach ($params as $key => $value) {
-            if (in_array($key, $excludeKeys, true) || is_array($value) || is_object($value)) {
-                continue;
-            }
-            $queryString .= "&{$key}={$value}";
-        }
-
-        $expectedSignature = hash_hmac('sha256', ltrim($queryString, '&'), $secret, false);
-
-        return hash_equals($expectedSignature, (string) $providedSignature);
-    }
-
     /**
      * @param array<string, mixed> $gatewayResponse
      */
@@ -818,10 +309,12 @@ final readonly class KashierPaymentService
                 return false;
             }
 
-            $locked->update([
-                'financial_status' => Order::FINANCIAL_REVIEW_REQUIRED,
-                'payment_gateway_response' => $this->sanitizeGatewayResponse($gatewayResponse),
-            ]);
+            $this->flagCaptureForReview(
+                $locked,
+                'capture_transaction_conflict',
+                $transactionId,
+                $gatewayResponse
+            );
 
             Log::critical('Kashier replay carried a different transaction identifier', [
                 'order_ref' => $locked->order_ref,
@@ -831,18 +324,12 @@ final readonly class KashierPaymentService
             ]);
 
             return true;
-        });
+        }, 3);
     }
 
     public function financialReversalType(string $paymentStatus): ?string
     {
-        return match (strtoupper(trim($paymentStatus))) {
-            'REFUND', 'REFUNDED', 'FULLY_REFUNDED',
-            'PARTIAL_REFUND', 'PARTIALLY_REFUNDED' => Order::FINANCIAL_REFUNDED,
-            'CHARGEBACK', 'DISPUTED' => Order::FINANCIAL_CHARGEBACK,
-            'REVERSED', 'REVERSAL' => Order::FINANCIAL_REVERSED,
-            default => null,
-        };
+        return $this->evidence->reversalType($paymentStatus);
     }
 
     /**
@@ -979,9 +466,8 @@ final readonly class KashierPaymentService
      */
     public function fulfillOrder(Order $order, ?string $transactionId, array $gatewayResponse): Order
     {
-        DB::beginTransaction();
-
-        try {
+        /** @var array{order: Order, user: User, late_capture: bool, notify: bool} $result */
+        $result = DB::transaction(function () use ($order, $transactionId, $gatewayResponse): array {
             $expectedUserId = (int) $order->user_id;
             $lockedUser = User::withTrashed()->lockForUpdate()->findOrFail($expectedUserId);
             $order = Order::with(['user', 'package'])->lockForUpdate()->findOrFail($order->id);
@@ -990,11 +476,23 @@ final readonly class KashierPaymentService
             }
 
             if ($order->status === Order::STATUS_APPROVED) {
-                if ($this->transactionIdConflicts($order, $transactionId)) {
-                    $order->update([
-                        'financial_status' => Order::FINANCIAL_REVIEW_REQUIRED,
-                        'payment_gateway_response' => $this->sanitizeGatewayResponse($gatewayResponse),
-                    ]);
+                if ($transactionId === null && !$order->transaction_id) {
+                    $order = $this->flagCaptureForReview(
+                        $order,
+                        'capture_transaction_missing',
+                        null,
+                        $gatewayResponse
+                    );
+                } elseif ($transactionId !== null && (
+                    $this->transactionIdConflicts($order, $transactionId)
+                    || $this->transactionAssignedToAnotherOrder($order, $transactionId)
+                )) {
+                    $order = $this->flagCaptureForReview(
+                        $order,
+                        'capture_transaction_conflict',
+                        $transactionId,
+                        $gatewayResponse
+                    );
                     Log::critical('Concurrent Kashier fulfillment carried a different transaction identifier', [
                         'order_ref' => $order->order_ref,
                         'order_id' => $order->id,
@@ -1002,16 +500,33 @@ final readonly class KashierPaymentService
                         'incoming_transaction_id' => $transactionId,
                     ]);
                 } else {
+                    if ($order->transaction_id === null && $transactionId !== null) {
+                        $order->update(['transaction_id' => $transactionId]);
+                    }
                     $this->assertGatewayPaymentMatchesOrder($order, $gatewayResponse);
                     $settlementFacts = $this->gatewaySettlementFacts($order, $gatewayResponse);
                     if ($settlementFacts !== []) {
                         $order->update($settlementFacts);
                     }
+                    if ($order->isFinanciallyEffective()) {
+                        // Approval owns package crediting and the purchase
+                        // receipt. Replaying a provider capture also repairs an
+                        // interrupted local fulfilment without minting twice.
+                        $order = $this->orderLifecycle->approve(
+                            $order,
+                            null,
+                            $order->notes,
+                            true
+                        );
+                    }
                 }
 
-                DB::commit();
-
-                return $order->fresh(['user', 'package']);
+                return [
+                    'order' => $order->fresh(['user', 'package']),
+                    'user' => $lockedUser,
+                    'late_capture' => false,
+                    'notify' => false,
+                ];
             }
 
             if (
@@ -1037,9 +552,12 @@ final readonly class KashierPaymentService
                     'financial_status' => $order->financial_status,
                     'transaction_id' => $transactionId,
                 ]);
-                DB::commit();
-
-                return $order->fresh(['user', 'package']);
+                return [
+                    'order' => $order->fresh(['user', 'package']),
+                    'user' => $lockedUser,
+                    'late_capture' => false,
+                    'notify' => false,
+                ];
             }
 
             if (!in_array($order->status, [
@@ -1055,31 +573,72 @@ final readonly class KashierPaymentService
             // currency fields: sparse provider/webhook responses are valid
             // evidence for reconciliation, but never evidence for crediting.
             if ($transactionId === null) {
-                $order->update([
-                    'financial_status' => Order::FINANCIAL_REVIEW_REQUIRED,
-                    'payment_gateway_response' => $this->sanitizeGatewayResponse($gatewayResponse),
-                ]);
+                $order = $this->flagCaptureForReview(
+                    $order,
+                    'capture_transaction_missing',
+                    null,
+                    $gatewayResponse
+                );
 
                 Log::critical('Kashier capture is missing a valid transaction identifier', [
                     'order_ref' => $order->order_ref,
                     'order_id' => $order->id,
                 ]);
 
-                DB::commit();
-
-                return $order->fresh(['user', 'package']);
+                return [
+                    'order' => $order->fresh(['user', 'package']),
+                    'user' => $lockedUser,
+                    'late_capture' => false,
+                    'notify' => false,
+                ];
             }
 
             $this->assertGatewayPaymentMatchesOrder($order, $gatewayResponse);
 
             if (
-                $transactionId
-                && Order::query()
-                    ->where('transaction_id', $transactionId)
-                    ->whereKeyNot($order->id)
-                    ->exists()
+                $order->financial_status === Order::FINANCIAL_REVIEW_REQUIRED
+                && $this->hasReversalReviewEvidence($order)
             ) {
-                throw new \RuntimeException('Kashier transaction was already assigned to another order.');
+                $order->update(array_merge([
+                    'payment_gateway_response' => $this->sanitizeGatewayResponse($gatewayResponse),
+                ], $this->gatewaySettlementFacts($order, $gatewayResponse)));
+
+                Log::critical('Kashier capture withheld because reversal evidence arrived first', [
+                    'order_ref' => $order->order_ref,
+                    'order_id' => $order->id,
+                    'transaction_id' => $transactionId,
+                ]);
+
+                return [
+                    'order' => $order->fresh(['user', 'package']),
+                    'user' => $lockedUser,
+                    'late_capture' => false,
+                    'notify' => false,
+                ];
+            }
+
+            if (
+                $transactionId
+                && $this->transactionAssignedToAnotherOrder($order, $transactionId)
+            ) {
+                $order = $this->flagCaptureForReview(
+                    $order,
+                    'capture_transaction_conflict',
+                    $transactionId,
+                    $gatewayResponse
+                );
+                Log::critical('Kashier transaction was already assigned to another order', [
+                    'order_ref' => $order->order_ref,
+                    'order_id' => $order->id,
+                    'transaction_id' => $transactionId,
+                ]);
+
+                return [
+                    'order' => $order->fresh(['user', 'package']),
+                    'user' => $lockedUser,
+                    'late_capture' => false,
+                    'notify' => false,
+                ];
             }
 
             $lateCapture = $order->status !== Order::STATUS_PENDING
@@ -1101,18 +660,28 @@ final readonly class KashierPaymentService
                     'transaction_id' => $transactionId,
                 ]);
 
-                DB::commit();
-
-                return $order->fresh(['user', 'package']);
+                return [
+                    'order' => $order->fresh(['user', 'package']),
+                    'user' => $lockedUser,
+                    'late_capture' => $lateCapture,
+                    'notify' => false,
+                ];
             }
 
             $order->update(array_merge([
-                'status' => Order::STATUS_APPROVED,
-                'financial_status' => Order::FINANCIAL_SETTLED,
                 'transaction_id' => $transactionId,
-                'approved_at' => now(),
                 'payment_gateway_response' => $this->sanitizeGatewayResponse($gatewayResponse),
             ], $this->gatewaySettlementFacts($order, $gatewayResponse)));
+
+            // OrderLifecycleService owns the state transition and every local
+            // side effect. Provider identity and settlement evidence are
+            // attached first, while the order is still pending.
+            $order = $this->orderLifecycle->approve(
+                $order,
+                null,
+                $order->notes,
+                true
+            );
 
             if ($lateCapture) {
                 // Redirects, webhooks and reconciliation can arrive out of
@@ -1127,77 +696,67 @@ final readonly class KashierPaymentService
                 ]);
             }
 
-            $paidCredit = $this->wallet->credit(
-                $order->user_id,
-                $this->coinAmount($order),
-                'package_purchase',
-                "kashier-order:{$order->id}",
-                $order,
-                [
-                    'package_id' => $order->package_id,
-                    'transaction_id' => $transactionId,
-                ],
-                WalletTransaction::BUCKET_PAID
-            );
-            $this->financialProvenance->recordPaidPackageCredit($order, $paidCredit);
             /** @var User $user */
             $user = User::withTrashed()->findOrFail($order->user_id);
 
-            $user->purchasedPackages()->attach($order->package_id, [
-                'order_id' => $order->id,
-                'price' => $order->final_amount,
-                'coins' => $this->coinAmount($order),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            return [
+                'order' => $order->fresh(['user', 'package']),
+                'user' => $user,
+                'late_capture' => $lateCapture,
+                'notify' => true,
+            ];
+        }, 3);
 
-            DB::commit();
+        $order = $result['order'];
+        $user = $result['user'];
+        $lateCapture = $result['late_capture'];
 
-            if ($lateCapture && Schema::hasTable('payment_reconciliation_findings')) {
-                try {
-                    $overlappingOrder = Order::query()
-                        ->whereKeyNot($order->id)
-                        ->where('user_id', $order->user_id)
-                        ->where('package_id', $order->package_id)
-                        ->where('payment_method', Order::PAYMENT_METHOD_KASHIER)
-                        ->financiallyEffective()
-                        ->where('created_at', '>=', $order->created_at)
-                        ->oldest('id')
-                        ->first(['id', 'order_ref']);
-                    if ($overlappingOrder) {
-                        $fingerprint = hash('sha256', implode('|', [
-                            'kashier',
-                            (string) $order->id,
-                            'late_capture_overlap',
-                            (string) $overlappingOrder->id,
-                        ]));
-                        PaymentReconciliationFinding::query()->firstOrCreate(
-                            ['fingerprint' => $fingerprint],
-                            [
-                                'provider' => 'kashier',
-                                'order_id' => $order->id,
-                                'order_ref' => (string) $order->order_ref,
-                                'kind' => 'late_capture_overlaps_newer_payment',
-                                'local_status' => (string) $order->status,
-                                'local_financial_status' => (string) $order->financial_status,
-                                'provider_status' => 'CAPTURED',
-                                'provider_transaction_id' => $transactionId,
-                                'state' => PaymentReconciliationFinding::STATE_OPEN,
-                                'attempts' => 1,
-                                'first_seen_at' => now(),
-                                'last_seen_at' => now(),
-                                'evidence' => [
-                                    'overlapping_order_id' => (int) $overlappingOrder->id,
-                                    'overlapping_order_ref' => (string) $overlappingOrder->order_ref,
-                                ],
-                            ]
-                        );
-                    }
-                } catch (\Throwable $findingException) {
-                    report($findingException);
+        if ($lateCapture && $result['notify']) {
+            try {
+                $overlappingOrder = Order::query()
+                    ->whereKeyNot($order->id)
+                    ->where('user_id', $order->user_id)
+                    ->where('package_id', $order->package_id)
+                    ->where('payment_method', Order::PAYMENT_METHOD_KASHIER)
+                    ->financiallyEffective()
+                    ->where('created_at', '>=', $order->created_at)
+                    ->oldest('id')
+                    ->first(['id', 'order_ref']);
+                if ($overlappingOrder) {
+                    $fingerprint = hash('sha256', implode('|', [
+                        'kashier',
+                        (string) $order->id,
+                        'late_capture_overlap',
+                        (string) $overlappingOrder->id,
+                    ]));
+                    PaymentReconciliationFinding::query()->firstOrCreate(
+                        ['fingerprint' => $fingerprint],
+                        [
+                            'provider' => 'kashier',
+                            'order_id' => $order->id,
+                            'order_ref' => (string) $order->order_ref,
+                            'kind' => 'late_capture_overlaps_newer_payment',
+                            'local_status' => (string) $order->status,
+                            'local_financial_status' => (string) $order->financial_status,
+                            'provider_status' => 'CAPTURED',
+                            'provider_transaction_id' => $transactionId,
+                            'state' => PaymentReconciliationFinding::STATE_OPEN,
+                            'attempts' => 1,
+                            'first_seen_at' => now(),
+                            'last_seen_at' => now(),
+                            'evidence' => [
+                                'overlapping_order_id' => (int) $overlappingOrder->id,
+                                'overlapping_order_ref' => (string) $overlappingOrder->order_ref,
+                            ],
+                        ]
+                    );
                 }
+            } catch (\Throwable $findingException) {
+                report($findingException);
             }
+        }
 
+        if ($result['notify']) {
             try {
                 if ($user->trashed()) {
                     return $order->fresh(['user', 'package']);
@@ -1219,13 +778,9 @@ final readonly class KashierPaymentService
             } catch (\Throwable $notificationException) {
                 report($notificationException);
             }
-
-            return $order->fresh(['user', 'package']);
-        } catch (\Throwable $exception) {
-            DB::rollBack();
-
-            throw $exception;
         }
+
+        return $order->fresh(['user', 'package']);
     }
 
     /**
@@ -1243,24 +798,25 @@ final readonly class KashierPaymentService
                 throw new \RuntimeException('Kashier order ownership changed while recording failure.');
             }
 
-            if ($locked->status === Order::STATUS_PENDING) {
-                $updates = [
-                    'status' => Order::STATUS_CANCELLED,
-                    'financial_status' => Order::FINANCIAL_CANCELLED,
-                ];
+            if (
+                $locked->status === Order::STATUS_PENDING
+                && $locked->financial_status !== Order::FINANCIAL_REVIEW_REQUIRED
+            ) {
                 if ($gatewayResponse !== null) {
-                    $updates['payment_gateway_response'] = $this->sanitizeGatewayResponse($gatewayResponse);
+                    $locked->update([
+                        'payment_gateway_response' => $this->sanitizeGatewayResponse($gatewayResponse),
+                    ]);
                 }
-                $locked->update($updates);
+                $locked = $this->orderLifecycle->cancelPending($locked);
             }
 
             return $locked->fresh(['user', 'package']);
-        });
+        }, 3);
     }
 
     public function coinAmount(Order $order): int
     {
-        return max(0, (int) ($order->package_coins ?? $order->package?->coins ?? 0));
+        return max(0, (int) $order->package_coins);
     }
 
     /**
@@ -1269,36 +825,7 @@ final readonly class KashierPaymentService
      */
     private function sanitizeGatewayResponse(array $payload): array
     {
-        $secretKeys = [
-            'signature', 'hash', 'signaturekeys', 'token', 'cardtoken',
-            'ccvtoken', 'carddatatoken', 'accesstoken', 'refreshtoken',
-            'authorization', 'api_key', 'apikey', 'apipassword', 'password',
-            'secret', 'secretkey', 'securitycode',
-        ];
-        $privateContainers = [
-            'card', 'cardinfo', 'carddata', 'customer', 'customerdata',
-            'paymentsource', 'sourceoffunds', 'requestcredentials',
-            'credentials', 'auth',
-        ];
-
-        foreach ($payload as $key => $value) {
-            $normalizedKey = strtolower((string) $key);
-            if (in_array($normalizedKey, $secretKeys, true)) {
-                unset($payload[$key]);
-
-                continue;
-            }
-            if (in_array($normalizedKey, $privateContainers, true)) {
-                $payload[$key] = '[redacted]';
-
-                continue;
-            }
-            if (is_array($value)) {
-                $payload[$key] = $this->sanitizeGatewayResponse($value);
-            }
-        }
-
-        return $payload;
+        return $this->evidence->sanitize($payload);
     }
 
     /**
@@ -1311,53 +838,7 @@ final readonly class KashierPaymentService
      */
     private function gatewaySettlementFacts(Order $order, array $gatewayResponse): array
     {
-        if (!Schema::hasColumn('orders', 'gateway_gross_amount')) {
-            return [];
-        }
-
-        $payload = isset($gatewayResponse['kashier_api_response'])
-            && is_array($gatewayResponse['kashier_api_response'])
-                ? $gatewayResponse['kashier_api_response']
-                : $gatewayResponse;
-        $fee = $this->normalizeGatewayAmount($this->firstGatewayValue($payload, [
-            'fee', 'fees', 'feeAmount', 'fee_amount', 'processingFee',
-            'response.fee', 'response.fees', 'response.feeAmount',
-            'response.settlement.fee', 'data.fee', 'data.feeAmount',
-        ]));
-        $net = $this->normalizeGatewayAmount($this->firstGatewayValue($payload, [
-            'netAmount', 'net_amount', 'settlementAmount', 'settlement_amount',
-            'response.netAmount', 'response.net_amount',
-            'response.settlement.netAmount', 'response.settlement.amount',
-            'data.netAmount', 'data.settlementAmount',
-        ]));
-        $gross = (float) $order->final_amount;
-        if ($net === null && $fee !== null) {
-            $net = max(0, $gross - $fee);
-        }
-        $currency = strtoupper((string) ($this->firstGatewayValue($payload, [
-            'currency', 'response.currency', 'response.settlement.currency', 'data.currency',
-        ]) ?? 'EGP'));
-        $providerStatus = strtolower(trim((string) ($this->firstGatewayValue($payload, [
-            'settlementStatus', 'settlement_status', 'response.settlement.status',
-            'data.settlementStatus', 'response.paymentStatus', 'response.payment_status',
-            'paymentStatus', 'payment_status', 'response.status', 'status',
-        ]) ?? 'captured')));
-
-        $facts = [];
-        foreach ([
-            'gateway_gross_amount' => number_format($gross, 2, '.', ''),
-            'gateway_currency' => substr($currency, 0, 3),
-            'gateway_settlement_status' => $net !== null ? 'settled' : substr($providerStatus, 0, 32),
-            'gateway_fee_amount' => $fee !== null ? number_format($fee, 2, '.', '') : null,
-            'gateway_net_amount' => $net !== null ? number_format($net, 2, '.', '') : null,
-            'gateway_settled_at' => $net !== null ? now() : null,
-        ] as $field => $value) {
-            if ($order->{$field} === null && $value !== null) {
-                $facts[$field] = $value;
-            }
-        }
-
-        return $facts;
+        return $this->evidence->settlementFacts($order, $gatewayResponse);
     }
 
     /**
@@ -1365,71 +846,53 @@ final readonly class KashierPaymentService
      */
     public function assertGatewayPaymentMatchesOrder(Order $order, array $gatewayResponse): void
     {
-        $payload = isset($gatewayResponse['kashier_api_response'])
-            && is_array($gatewayResponse['kashier_api_response'])
-                ? $gatewayResponse['kashier_api_response']
-                : $gatewayResponse;
+        $this->evidence->assertMatches($order, $gatewayResponse);
+    }
 
-        $gatewayOrderRef = $this->firstGatewayValue($payload, [
-            'merchantOrderId',
-            'merchant_order_id',
-            'order_ref',
-            'response.merchantOrderId',
-            'response.merchant_order_id',
-            'response.order_ref',
-            'response.order.merchantOrderId',
-            'response.order.merchant_order_id',
-            'response.order.order_ref',
-            'response.transactions.0.merchantOrderId',
-            'data.merchantOrderId',
-            'data.merchant_order_id',
-            'data.order_ref',
-        ]);
-        if (
-            $gatewayOrderRef !== null
-            && !hash_equals((string) $order->order_ref, trim((string) $gatewayOrderRef))
-        ) {
-            throw new \RuntimeException('Kashier merchant order reference mismatch.');
-        }
+    private function transactionAssignedToAnotherOrder(Order $order, string $transactionId): bool
+    {
+        return Order::query()
+            ->where('transaction_id', $transactionId)
+            ->whereKeyNot($order->id)
+            ->exists();
+    }
 
-        $gatewayAmount = $this->firstGatewayValue($payload, [
-            'amount',
-            'amount.value',
-            'response.amount',
-            'response.amount.value',
-            'response.paymentAmount',
-            'response.totalAmount',
-            'response.order.amount',
-            'response.order.amount.value',
-            'response.transactions.0.amount',
-            'data.amount',
-            'data.amount.value',
-        ]);
-        $normalizedAmount = $this->normalizeGatewayAmount($gatewayAmount);
-        if (
-            $gatewayAmount === null
-            || $normalizedAmount === null
-            || abs($normalizedAmount - (float) $order->final_amount) > 0.009
-        ) {
-            throw new \RuntimeException('Kashier payment amount mismatch.');
-        }
+    private function hasReversalReviewEvidence(Order $order): bool
+    {
+        return $order->financialEvents()
+            ->whereIn('event_type', [
+                'partial_refund',
+                Order::FINANCIAL_REFUNDED,
+                Order::FINANCIAL_CHARGEBACK,
+                Order::FINANCIAL_REVERSED,
+            ])
+            ->exists();
+    }
 
-        $gatewayCurrency = $this->firstGatewayValue($payload, [
-            'currency',
-            'amount.currency',
-            'response.currency',
-            'response.amount.currency',
-            'response.order.currency',
-            'response.transactions.0.currency',
-            'data.currency',
-            'data.amount.currency',
-        ]);
-        if (
-            $gatewayCurrency === null
-            || strtoupper(trim((string) $gatewayCurrency)) !== 'EGP'
-        ) {
-            throw new \RuntimeException('Kashier payment currency mismatch.');
-        }
+    /** @param array<string, mixed> $gatewayResponse */
+    private function flagCaptureForReview(
+        Order $order,
+        string $reason,
+        ?string $transactionId,
+        array $gatewayResponse
+    ): Order {
+        $safeEvidence = $this->sanitizeGatewayResponse($gatewayResponse);
+        $order->update(['payment_gateway_response' => $safeEvidence]);
+
+        return $this->orderLifecycle->flagExternalFinancialReview(
+            $order,
+            $reason,
+            'Kashier capture requires financial review.',
+            'kashier:capture-review:' . hash('sha256', implode('|', [
+                (string) $order->id,
+                $reason,
+                (string) $transactionId,
+                json_encode($safeEvidence, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            ])),
+            'kashier',
+            null,
+            $safeEvidence
+        );
     }
 
     private function recordCaptureAfterAccountDeletion(
@@ -1437,10 +900,6 @@ final readonly class KashierPaymentService
         string $transactionId,
         User $user
     ): void {
-        if (!Schema::hasTable('payment_reconciliation_findings')) {
-            return;
-        }
-
         $fingerprint = hash('sha256', implode('|', [
             'kashier',
             (string) $order->id,
@@ -1470,32 +929,4 @@ final readonly class KashierPaymentService
         );
     }
 
-    private function firstGatewayValue(array $payload, array $paths): mixed
-    {
-        foreach ($paths as $path) {
-            $value = data_get($payload, $path);
-            if ($value !== null && $value !== '' && !is_array($value) && !is_object($value)) {
-                return $value;
-            }
-        }
-
-        return null;
-    }
-
-    private function normalizeGatewayAmount(mixed $value): ?float
-    {
-        if (is_int($value) || is_float($value)) {
-            return (float) $value;
-        }
-
-        if (!is_string($value)) {
-            return null;
-        }
-
-        $normalized = str_replace([',', ' '], '', trim($value));
-
-        return $normalized !== '' && is_numeric($normalized)
-            ? (float) $normalized
-            : null;
-    }
 }

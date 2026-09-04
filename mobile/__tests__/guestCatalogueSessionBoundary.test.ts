@@ -12,15 +12,16 @@ jest.mock('../src/constants/api', () => ({
 }));
 
 import {
+  getCachedPublishedCourses,
   getPublishedCoursesPage,
   hasSession,
 } from '../src/services/api/courses';
-import {resetSecureSessionMigrationForTests} from '../src/services/secureSession';
+import {resetSecureSessionForTests} from '../src/services/secureSession';
 
 describe('guest catalogue session boundary', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
-    resetSecureSessionMigrationForTests();
+    resetSecureSessionForTests();
     await AsyncStorage.clear();
   });
 
@@ -46,7 +47,78 @@ describe('guest catalogue session boundary', () => {
     });
     expect(mockGet).toHaveBeenCalledWith(
       'courses/list',
-      expect.objectContaining({optionalAuthorization: true}),
+      expect.objectContaining({skipAuthorization: true}),
+    );
+    expect(mockGet.mock.calls[0][1]).not.toHaveProperty(
+      'optionalAuthorization',
+    );
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
+  it('maps the current search contract through the same card model', async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          items: [
+            {
+              course_id: 52,
+              title: 'صناعة المحتوى',
+              teacher_name: 'مدرب ركن',
+              image: null,
+              badge: 'مختار لك',
+              badge_tone: 'gold',
+              is_coming_soon: false,
+              duration_minutes: 62,
+              ratings_count: 4,
+              average_rating: 4.5,
+              students_count: 18,
+            },
+          ],
+          catalogue_revision: 3,
+          pagination: {current_page: 1, last_page: 1, total: 1},
+        },
+      },
+    });
+
+    await expect(
+      getPublishedCoursesPage({search: 'محتوى'}),
+    ).resolves.toMatchObject({
+      courses: [
+        expect.objectContaining({
+          id: '52',
+          title: 'صناعة المحتوى',
+          instructor: 'مدرب ركن',
+          label: 'مختار لك',
+          durationMinutes: 62,
+          owned: false,
+        }),
+      ],
+      revision: 3,
+    });
+    expect(mockGet).toHaveBeenCalledWith(
+      'search/courses',
+      expect.objectContaining({
+        params: expect.objectContaining({q: 'محتوي'}),
+      }),
+    );
+  });
+
+  it('requires the catalogue generation declared by the current API', async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          courses: [],
+          pagination: {current_page: 1, last_page: 1, total: 0},
+        },
+      },
+    });
+
+    await expect(getPublishedCoursesPage()).rejects.toThrow(
+      'COURSE_CATALOGUE_CONTRACT_INVALID',
     );
   });
 
@@ -81,5 +153,79 @@ describe('guest catalogue session boundary', () => {
       page: 1,
       fromCache: false,
     });
+  });
+
+  it('uses cached catalogue only for availability failures, not an invalid 200 contract', async () => {
+    const valid = {
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          courses: [{id: 52, title: 'كورس ركن'}],
+          catalogue_revision: 1,
+          pagination: {current_page: 1, last_page: 1, total: 1},
+        },
+      },
+    };
+    mockGet.mockResolvedValueOnce(valid);
+    await expect(getPublishedCoursesPage()).resolves.toMatchObject({
+      fromCache: false,
+    });
+
+    mockGet.mockRejectedValueOnce({status: 503});
+    await expect(getPublishedCoursesPage()).resolves.toMatchObject({
+      fromCache: true,
+      courses: [expect.objectContaining({id: '52'})],
+    });
+
+    mockGet.mockResolvedValueOnce({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          courses: [{id: null, title: ''}],
+          catalogue_revision: 1,
+          pagination: {current_page: 1, last_page: 1, total: 1},
+        },
+      },
+    });
+    await expect(getPublishedCoursesPage()).rejects.toThrow(
+      'COURSE_CATALOGUE_CONTRACT_INVALID',
+    );
+
+    expect(
+      (await AsyncStorage.getAllKeys()).some(key =>
+        key.includes(
+          encodeURIComponent(
+            'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/',
+          ),
+        ),
+      ),
+    ).toBe(true);
+  });
+
+  it('does not revive an expired catalogue after an availability failure', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {
+        data: {
+          courses: [{id: 52, title: 'كورس ركن'}],
+          catalogue_revision: 1,
+          pagination: {current_page: 1, last_page: 1, total: 1},
+        },
+      },
+    });
+    await getPublishedCoursesPage();
+    await getCachedPublishedCourses();
+
+    const cacheKey = (await AsyncStorage.getAllKeys()).find(key =>
+      key.includes('@rokn/catalogue-page/v6:'),
+    );
+    expect(cacheKey).toBeTruthy();
+    const cached = JSON.parse((await AsyncStorage.getItem(cacheKey!))!);
+    cached.savedAt = Date.now() - 3 * 60 * 60 * 1000;
+    await AsyncStorage.setItem(cacheKey!, JSON.stringify(cached));
+
+    mockGet.mockRejectedValueOnce({status: 503});
+    await expect(getPublishedCoursesPage()).rejects.toEqual({status: 503});
   });
 });

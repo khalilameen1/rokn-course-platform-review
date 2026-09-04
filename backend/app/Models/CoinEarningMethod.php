@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PublicAppSettingsService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -45,6 +46,7 @@ class CoinEarningMethod extends Model
         'starts_at',
         'ends_at',
         'total_claim_limit',
+        'sort_order',
         'is_active',
         'is_repeatable',
     ];
@@ -57,6 +59,7 @@ class CoinEarningMethod extends Model
         'starts_at' => 'datetime',
         'ends_at' => 'datetime',
         'total_claim_limit' => 'integer',
+        'sort_order' => 'integer',
     ];
 
     protected static function booted(): void
@@ -96,6 +99,30 @@ class CoinEarningMethod extends Model
             });
     }
 
+    /**
+     * Tasks exposed to learners have a stable action identity and a real
+     * reward. Keep this catalogue boundary separate from `active()` because
+     * the registration reward is consumed internally during social login.
+     */
+    public function scopeLearnerTask($query)
+    {
+        return $query->active()
+            ->whereNotNull('action_key')
+            ->where('action_key', '!=', '')
+            ->where('action_key', '!=', 'register')
+            ->where('coins_amount', '>', 0);
+    }
+
+    public function isLearnerTask(): bool
+    {
+        $actionKey = trim((string) $this->action_key);
+
+        return $this->isAvailableNow()
+            && $actionKey !== ''
+            && $actionKey !== 'register'
+            && (int) $this->coins_amount > 0;
+    }
+
     public function userEarnings()
     {
         return $this->hasMany(UserCoinEarning::class, 'coin_earning_method_id');
@@ -125,7 +152,8 @@ class CoinEarningMethod extends Model
         if ($url === '') {
             $channel = $this->socialChannel();
             if ($channel !== null) {
-                $url = trim((string) (DesignSetting::query()->value("{$channel}_url") ?? ''));
+                $settings = app(PublicAppSettingsService::class)->snapshot();
+                $url = trim((string) ($settings['social_media'][$channel] ?? ''));
             }
         }
 
@@ -135,6 +163,9 @@ class CoinEarningMethod extends Model
     public function learnerTitleAr(): string
     {
         $key = strtolower(trim((string) $this->action_key));
+        $title = trim((string) ($this->title_ar ?: $this->title_en));
+
+        if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
 
         if (str_contains($key, 'coin_guide')) return 'تعرّف إلى رصيد ركن';
         if (str_contains($key, 'instagram')) return 'تابع ركن على Instagram';
@@ -143,7 +174,24 @@ class CoinEarningMethod extends Model
         if (str_contains($key, 'youtube')) return 'تابع ركن على YouTube';
         if ($key === 'link_whatsapp') return 'اربط واتسابك بركن';
 
-        return trim((string) ($this->title_ar ?: $this->title_en)) ?: 'مهمة مكافأة';
+        return 'مهمة مكافأة';
+    }
+
+    public function learnerTitleEn(): string
+    {
+        $key = strtolower(trim((string) $this->action_key));
+        $title = trim((string) ($this->title_en ?: $this->title_ar));
+
+        if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
+
+        if (str_contains($key, 'coin_guide')) return 'Learn about your Rokn balance';
+        if (str_contains($key, 'instagram')) return 'Follow Rokn on Instagram';
+        if (str_contains($key, 'tiktok')) return 'Follow Rokn on TikTok';
+        if (str_contains($key, 'facebook')) return 'Follow Rokn on Facebook';
+        if (str_contains($key, 'youtube')) return 'Follow Rokn on YouTube';
+        if ($key === 'link_whatsapp') return 'Link WhatsApp to Rokn';
+
+        return 'Reward task';
     }
 
     public function hasUsableDestination(): bool
@@ -189,5 +237,13 @@ class CoinEarningMethod extends Model
         }
 
         return null;
+    }
+
+    private function titleRevealsMechanism(string $title): bool
+    {
+        return preg_match(
+            '/(?:افتح|فتح).*(?:ارجع|عد|المطالبة)|(?:ارجع|عد).*(?:استلم|طالب)|open.*return.*claim/iu',
+            $title
+        ) === 1;
     }
 }

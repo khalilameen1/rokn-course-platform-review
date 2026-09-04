@@ -1,13 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {secureRandomUuid} from '../utils/secureRandom';
+import {settleWithin} from '../utils/settleWithin';
 
 const INSTALLATION_ID_KEY = '@rokn/installation-id/v1';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const INSTALLATION_ID_READ_BUDGET_MS = 400;
 
 let installationIdPromise: Promise<string | null> | null = null;
 
-export const getInstallationId = () => {
+const loadInstallationId = () => {
   if (!installationIdPromise) {
     const flight = (async () => {
       try {
@@ -32,3 +34,12 @@ export const getInstallationId = () => {
   }
   return installationIdPromise;
 };
+
+/**
+ * Installation identity improves rollout bucketing and device diagnostics, but
+ * it is not part of the public API contract. A damaged or busy native storage
+ * bridge must therefore never hold catalogue/auth discovery before dispatch.
+ * The shared load keeps running so a later request can still attach the ID.
+ */
+export const getInstallationId = () =>
+  settleWithin(loadInstallationId(), null, INSTALLATION_ID_READ_BUDGET_MS);

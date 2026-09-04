@@ -39,8 +39,6 @@ const oversizedState = () => {
     completedSections: ['section-1'],
     savedLessons: [],
     savedFolderLessons: {},
-    passedProjects: [],
-    provisionalProjects: [],
     activityDays: [],
   };
 };
@@ -54,8 +52,12 @@ describe('player state read recovery', () => {
 
   it('returns the valid compacted snapshot when its maintenance write fails', async () => {
     await AsyncStorage.setItem(KEY, JSON.stringify(oversizedState()));
-    const originalSetItem = (AsyncStorage.setItem as jest.Mock).getMockImplementation();
-    jest.spyOn(AsyncStorage, 'setItem').mockRejectedValue(new Error('DEVICE_FULL'));
+    const originalSetItem = (
+      AsyncStorage.setItem as jest.Mock
+    ).getMockImplementation();
+    jest
+      .spyOn(AsyncStorage, 'setItem')
+      .mockRejectedValue(new Error('DEVICE_FULL'));
 
     try {
       const state = await readPlayerState(undefined, boundary);
@@ -68,14 +70,16 @@ describe('player state read recovery', () => {
 
   it('does not disguise an account switch during compaction as empty state', async () => {
     await AsyncStorage.setItem(KEY, JSON.stringify(oversizedState()));
-    const originalSetItem = (AsyncStorage.setItem as jest.Mock).getMockImplementation();
-    jest.spyOn(AsyncStorage, 'setItem').mockImplementation(
-      async (key: string, value: string) => {
+    const originalSetItem = (
+      AsyncStorage.setItem as jest.Mock
+    ).getMockImplementation();
+    jest
+      .spyOn(AsyncStorage, 'setItem')
+      .mockImplementation(async (key: string, value: string) => {
         const result = await originalSetItem?.(key, value);
         mockAccountEpoch = 2;
         return result;
-      },
-    );
+      });
 
     try {
       await expect(readPlayerState(undefined, boundary)).rejects.toThrow(
@@ -84,5 +88,24 @@ describe('player state read recovery', () => {
     } finally {
       (AsyncStorage.setItem as jest.Mock).mockImplementation(originalSetItem);
     }
+  });
+
+  it('drops device-only saved aliases while preserving remote memberships', async () => {
+    await AsyncStorage.setItem(
+      KEY,
+      JSON.stringify({
+        ...oversizedState(),
+        savedLessons: ['44', 'local-demo', 55],
+        savedFolderLessons: {
+          '7': ['44', '45', 'local-demo'],
+          'local-watch-later': ['46'],
+        },
+      }),
+    );
+
+    const state = await readPlayerState(undefined, boundary);
+
+    expect(state.savedFolderLessons).toEqual({'7': ['44', '45']});
+    expect(state.savedLessons).toEqual(['44', '45']);
   });
 });

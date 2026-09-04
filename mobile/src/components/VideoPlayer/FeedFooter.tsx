@@ -57,7 +57,8 @@ const FeedFooter = ({data, bottomInset = 0}: FeedFooterProps) => {
           accessibilityLabel={canExpand ? 'عرض الكابشن كاملًا' : undefined}
           disabled={!canExpand}
           hitSlop={{top: 10, bottom: 10, left: 4, right: 4}}
-          onPress={() => setExpanded(value => !value)}>
+          onPress={() => setExpanded(value => !value)}
+          style={styles.captionBlock}>
           <Text
             onTextLayout={captureCaptionLayout}
             style={styles.caption}
@@ -107,6 +108,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...textDirection,
+    alignSelf: 'stretch',
     color: '#FFFFFF',
     fontFamily: Fonts.bold,
     fontSize: 18,
@@ -114,6 +116,7 @@ const styles = StyleSheet.create({
   },
   caption: {
     ...textDirection,
+    alignSelf: 'stretch',
     marginTop: 4,
     color: 'rgba(255,255,255,.86)',
     fontFamily: Fonts.regular,
@@ -122,9 +125,13 @@ const styles = StyleSheet.create({
   },
   more: {
     ...textDirection,
+    alignSelf: 'stretch',
     color: '#FFFFFF',
     fontFamily: Fonts.semiBold,
     fontSize: 12,
     marginTop: 2,
+  },
+  captionBlock: {
+    alignSelf: 'stretch',
   },
 });

@@ -6,16 +6,18 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
-use App\Models\ItemList;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
-use App\Models\Link;
 use App\Models\Project;
-use App\Models\Question;
 use Illuminate\Support\Facades\Storage;
 
 class CoursePublishingService
 {
+    public function __construct(
+        private readonly CertificateTextTemplateService $certificateTemplates
+    ) {
+    }
+
     /**
      * A coming-soon card may be announced before the course content exists,
      * but never before its public identity is complete.
@@ -58,6 +60,7 @@ class CoursePublishingService
         return [
             'ready' => $issues === [],
             'issues' => array_values(array_unique($issues)),
+            'issue_details' => $this->describeIssues($issues),
         ];
     }
 
@@ -76,10 +79,7 @@ class CoursePublishingService
             'classifications',
             'accessPlans',
             'activePdfs',
-            'modules.attachments',
-            'modules.sections.attachments',
             'modules.sections.sectionable',
-            'sections.attachments',
             'sections.sectionable',
         ]);
 
@@ -132,23 +132,12 @@ class CoursePublishingService
         // A certificate wording is an editorial claim, not a cosmetic
         // fallback. If a configured key was removed or its text is empty,
         // stop publication instead of silently issuing the generic wording.
-        $certificateTemplateKey = trim((string) $course->getRawOriginal(
-            'certificate_text_template_key'
-        ));
-        $certificateTemplate = data_get(
-            (array) config('certificate.text_templates', []),
-            $certificateTemplateKey
-        );
-        if (
-            !is_array($certificateTemplate)
-            || trim((string) ($certificateTemplate['text'] ?? '')) === ''
-        ) {
+        if ($this->certificateTemplates->forCourse($course) === null) {
             $issues[] = 'اختر صياغة شهادة صالحة قبل النشر.';
         }
 
         $lessons = $course->modules
             ->flatMap(fn ($module) => $module->sections)
-            ->merge($course->sections)
             ->map(fn ($section) => $section->sectionable)
             ->filter(fn ($sectionable) => $sectionable instanceof Lesson)
             ->unique(fn (Lesson $lesson) => (int) $lesson->id)
@@ -161,29 +150,10 @@ class CoursePublishingService
             'mediaState',
             $mediaStates->get($lesson->id)
         ));
-        $quizzes = $course->modules
-            ->flatMap(fn ($module) => $module->sections)
-            ->merge($course->sections)
-            ->map(fn ($section) => $section->sectionable)
-            ->filter(fn ($sectionable) => $sectionable instanceof ItemList && $sectionable->type === 'quiz')
-            ->unique(fn (ItemList $quiz) => (int) $quiz->id)
-            ->values();
-        $questionsByQuiz = Question::query()
-            ->whereIn('list_id', $quizzes->pluck('id'))
-            ->orderBy('priority')
-            ->orderBy('id')
-            ->get()
-            ->groupBy('list_id');
-
         foreach ($course->activePdfs as $pdf) {
             if (!$this->storedFileExists((string) $pdf->storage_disk, (string) $pdf->file_path)) {
                 $issues[] = "ملف «{$pdf->title}» غير موجود في التخزين";
             }
-        }
-
-        $ungroupedSections = $course->sections->whereNull('module_id');
-        if ($ungroupedSections->isNotEmpty()) {
-            $issues[] = 'انقل كل أجزاء الكورس إلى وحدات؛ توجد أجزاء غير مرتبطة بوحدة.';
         }
 
         // The player keys progression, playback and submissions by these
@@ -228,89 +198,20 @@ class CoursePublishingService
             $projects = $sections->filter(fn ($section) => $section->getSectionType() === 'project');
             $reelsCount += $reels->count();
             $projectsCount += $projects->count();
-            $attachmentsCount += $module->attachments->count();
-            foreach ($module->attachments as $attachment) {
-                if (!$this->storedFileExists((string) $attachment->storage_disk, (string) $attachment->file_path)) {
-                    $issues[] = "{$moduleLabel}: المرفق «{$attachment->title}» غير موجود في التخزين";
-                }
-            }
-            if (
-                trim((string) $module->attachments_link) !== ''
-                && SafeExternalUrl::sanitize($module->attachments_link) === null
-            ) {
-                $issues[] = "{$moduleLabel}: رابط المرفقات غير صالح";
-            }
-            if (SafeExternalUrl::sanitize($module->attachments_link) !== null) {
-                // A single external link may point to a bundle containing several files.
-                $attachmentsCount++;
-            }
-
             if ($reels->isEmpty()) {
                 $issues[] = "{$moduleLabel}: أضف مقطعًا تعليميًا واحدًا على الأقل";
             }
 
             foreach ($sections as $section) {
-                $attachmentsCount += $section->attachments->count();
-                foreach ($section->attachments as $attachment) {
-                    if (!$this->storedFileExists((string) $attachment->storage_disk, (string) $attachment->file_path)) {
-                        $issues[] = "{$moduleLabel}: المرفق «{$attachment->title}» غير موجود في التخزين";
-                    }
-                }
                 $sectionTitle = trim((string) ($section->title_ar ?: $section->title_en));
                 if ($sectionTitle === '') {
                     $issues[] = "{$moduleLabel}: يوجد جزء بلا عنوان";
                 }
 
-                if ($section->getSectionType() === 'quiz') {
-                    $quiz = $section->sectionable;
-                    $quizQuestions = $quiz instanceof ItemList
-                        ? $questionsByQuiz->get($quiz->id, collect())
-                        : collect();
-                    if (!$quiz instanceof ItemList || $quiz->type !== 'quiz') {
-                        $issues[] = "{$moduleLabel}: الاختبار غير مرتبط بمحتواه";
-                    } elseif (
-                        trim((string) ($quiz->title_ar ?: $quiz->title_en ?: $quiz->getRawOriginal('title'))) === ''
-                        || (int) $quiz->time_minutes < 1
-                        || $quizQuestions->isEmpty()
-                    ) {
-                        $issues[] = "{$moduleLabel}: أكمل عنوان ومدة وأسئلة الاختبار «{$sectionTitle}»";
-                    } elseif ($quizQuestions->contains(function (Question $question): bool {
-                        $correctChoice = 'choice' . (int) $question->right_answer;
-                        return trim((string) $question->question) === ''
-                            || trim((string) $question->choice1) === ''
-                            || trim((string) $question->choice2) === ''
-                            || !in_array((int) $question->right_answer, [1, 2, 3, 4, 5, 6], true)
-                            || trim((string) ($question->{$correctChoice} ?? '')) === '';
-                    })) {
-                        $issues[] = "{$moduleLabel}: راجع الأسئلة والإجابات الصحيحة في «{$sectionTitle}»";
-                    }
+                if (!in_array($section->getSectionType(), ['lesson', 'project'], true)) {
+                    $issues[] = "{$moduleLabel}: المحتوى «{$sectionTitle}» ليس مقطعًا أو مشروع عبور";
                 }
 
-                if (in_array($section->getSectionType(), ['link', 'course', 'question'], true)) {
-                    $issues[] = "{$moduleLabel}: المحتوى «{$sectionTitle}» لا يظهر داخل المشغل؛ استخدم مرفقات الكورس أو مقطع فيديو";
-                }
-
-                if ($section->getSectionType() === 'link') {
-                    $link = $section->sectionable;
-                    if (!$link instanceof Link || SafeExternalUrl::sanitize($link->link) === null) {
-                        $issues[] = "{$moduleLabel}: الرابط «{$sectionTitle}» غير صالح";
-                    }
-                }
-
-                if ($section->getSectionType() === 'pdf') {
-                    $issues[] = "{$moduleLabel}: انقل الملف «{$sectionTitle}» إلى مرفقات الكورس بدل خريطة المشاهدة";
-                }
-            }
-
-            $quizPositions = $sections
-                ->filter(fn ($section) => $section->getSectionType() === 'quiz')
-                ->keys();
-            $lastLessonPosition = $sections
-                ->filter(fn ($section) => $section->getSectionType() === 'lesson')
-                ->keys()
-                ->max();
-            if ($quizPositions->isNotEmpty() && $lastLessonPosition !== null && $quizPositions->min() < $lastLessonPosition) {
-                $issues[] = "{$moduleLabel}: ضع الاختبار بعد آخر مقطع في الوحدة";
             }
 
             foreach ($reels as $reel) {
@@ -319,13 +220,6 @@ class CoursePublishingService
                 if ($reelTitle === '') {
                     $issues[] = "{$moduleLabel}: أضف عنوانًا للمقطع";
                     $reelTitle = 'بلا عنوان';
-                }
-                if (
-                    $lesson instanceof Lesson
-                    && (int) $lesson->duration_minutes < 1
-                    && (int) ($lesson->mediaState?->duration_seconds ?? 0) < 1
-                ) {
-                    $issues[] = "{$moduleLabel}: حدّد مدة المقطع «{$reelTitle}» قبل النشر";
                 }
                 if (!$lesson instanceof Lesson || !$this->lessonHasPlayableVideo($lesson)) {
                     $issues[] = "{$moduleLabel}: المقطع «{$reelTitle}» لا يحتوي على فيديو صالح";
@@ -336,10 +230,20 @@ class CoursePublishingService
                         $issues[] = "{$moduleLabel}: افحص تشغيل الفيديو «{$reelTitle}» فعليًا قبل النشر";
                     } elseif (
                         $mediaState->status !== 'ready'
-                        || (string) $mediaState->provider_media_id !== (string) $lesson->bunny_video_id
+                        || !hash_equals(
+                            strtolower(trim((string) $lesson->bunny_video_id)),
+                            strtolower(trim((string) $mediaState->provider_media_id))
+                        )
+                        || $mediaState->integrity_status === 'quarantined'
+                        || $mediaState->quarantined_at !== null
                         || $this->hasBlockingMediaIssue((array) $mediaState->integrity_issues)
                     ) {
                         $issues[] = "{$moduleLabel}: الفيديو «{$reelTitle}» غير جاهز للمشاهدة";
+                    } elseif ((int) $mediaState->duration_seconds < 1) {
+                        // Playback rejects ready rows without provider-derived
+                        // duration. A manually typed display duration cannot
+                        // make that media generation playable.
+                        $issues[] = "{$moduleLabel}: لم تكتمل مدة الفيديو «{$reelTitle}»";
                     } elseif ($mediaState->integrity_status !== 'healthy') {
                         $warnings[] = "{$moduleLabel}: راجع صورة ومدة وجودة الفيديو «{$reelTitle}»";
                     }
@@ -365,13 +269,6 @@ class CoursePublishingService
             }
         }
 
-        $declaredReelsCount = (int) ($course->video_count ?? 0);
-        if ($declaredReelsCount > 0 && $declaredReelsCount !== $reelsCount) {
-            $issues[] = "عدد المقاطع المعلن {$declaredReelsCount} بينما الموجود {$reelsCount}";
-        }
-        if ((int) ($course->files_count ?? 0) > 0 && $attachmentsCount === 0) {
-            $issues[] = 'الكورس يعلن وجود مرفقات، لكن لا يوجد رابط أو ملف مرفق بأي وحدة.';
-        }
         if ($course->attachment_prompt_enabled && $attachmentsCount === 0) {
             $issues[] = 'نافذة المرفقات مفعلة لكن الكورس لا يحتوي على مرفقات.';
         }
@@ -385,12 +282,7 @@ class CoursePublishingService
                 $issues[] = 'اختر متى يتكرر تنبيه المرفقات.';
             }
             $orderedModules = $course->modules->sortBy('order')->values();
-            $promptModule = $course->activePdfs->isNotEmpty()
-                ? $orderedModules->first()
-                : $orderedModules->first(fn ($module): bool =>
-                    $module->attachments->isNotEmpty()
-                    || SafeExternalUrl::sanitize($module->attachments_link) !== null
-                );
+            $promptModule = $orderedModules->first();
             $firstLesson = $promptModule?->sections
                 ->sortBy('order')
                 ->first(fn ($section) => $section->getSectionType() === 'lesson')
@@ -434,6 +326,7 @@ class CoursePublishingService
         return [
             'ready' => $issues === [],
             'issues' => array_values(array_unique($issues)),
+            'issue_details' => $this->describeIssues($issues),
             'warnings' => array_values(array_unique($warnings)),
             'counts' => [
                 'modules' => $course->modules->count(),
@@ -502,45 +395,11 @@ class CoursePublishingService
                 $issues[] = "الفئة «{$plan->name_ar}» تحتاج حدًا مدفوعًا صالحًا لتغطية خدماتها";
             }
 
-            if ($plan->chat_enabled) {
-                if (
-                    (int) $plan->chat_message_limit < 1
-                    || (int) $plan->chat_token_budget < (int) $plan->max_output_tokens
-                    || (float) $plan->ai_budget_usd <= 0
-                    || (float) $plan->request_reserve_usd <= 0
-                    || (float) $plan->request_reserve_usd > (float) $plan->ai_budget_usd
-                ) {
-                    $issues[] = "ميزانية المحادثة في الفئة «{$plan->name_ar}» غير صالحة";
-                }
-                if ((bool) $plan->chat_attachments_enabled
-                    && (int) $plan->chat_attachment_max_files < 1) {
-                    $issues[] = "مرفقات المحادثة في الفئة «{$plan->name_ar}» غير مكتملة الإعداد";
-                }
-            }
-
-            if ($hasProjectCost && (
-                (int) $plan->project_feedback_token_budget < (int) $plan->max_output_tokens
-                || (float) $plan->project_feedback_budget_usd <= 0
-                || (float) $plan->project_feedback_reserve_usd <= 0
-                || (float) $plan->project_feedback_reserve_usd > (float) $plan->project_feedback_budget_usd
-            )) {
-                $issues[] = "ميزانية تقييم المشاريع في الفئة «{$plan->name_ar}» غير صالحة";
-            }
-            if ($feedback === CourseAccessPlan::FEEDBACK_ENHANCED && (
-                (int) $plan->project_followup_message_limit < 1
-                || (int) $plan->project_followup_token_budget < (int) $plan->max_output_tokens
-                || (float) $plan->project_followup_budget_usd <= 0
-                || (float) $plan->project_followup_reserve_usd <= 0
-                || (float) $plan->project_followup_reserve_usd > (float) $plan->project_followup_budget_usd
-            )) {
-                $issues[] = "ميزانية متابعة تقرير المشروع في الفئة «{$plan->name_ar}» غير صالحة";
-            }
-            if ((bool) $plan->project_followup_attachments_enabled && (
-                $feedback !== CourseAccessPlan::FEEDBACK_ENHANCED
-                || (int) $plan->project_followup_attachment_max_files < 1
-            )) {
-                $issues[] = "مرفقات متابعة المشروع في الفئة «{$plan->name_ar}» غير مكتملة الإعداد";
-            }
+            // AI limits, token budgets and attachment ceilings are enforced by
+            // the administrator-owned global plan policy when these rows are
+            // saved. They are not course-authoring requirements and must not
+            // leave a moderator blocked by controls that are intentionally
+            // absent from the course editor.
         }
 
     }
@@ -563,5 +422,43 @@ class CoursePublishingService
             fn ($issue) => is_array($issue)
                 && in_array((string) ($issue['code'] ?? ''), $blockingCodes, true)
         );
+    }
+
+    /**
+     * Keep readiness wording and its editing destination owned by one service.
+     * The dashboard can render the same audit without matching Arabic copy in
+     * every Blade view.
+     *
+     * @param array<int, string> $issues
+     * @return list<array{message:string,area:string}>
+     */
+    private function describeIssues(array $issues): array
+    {
+        return collect($issues)->unique()->values()->map(function (string $message): array {
+            $area = match (true) {
+                str_contains($message, 'غلاف') => 'image',
+                str_contains($message, 'فئة'),
+                str_contains($message, 'فئات'),
+                str_contains($message, 'أسعار'),
+                str_contains($message, 'حدًا مدفوعًا') => 'plans',
+                str_contains($message, 'شهادة') => 'certificate',
+                str_contains($message, 'نافذة') => 'settings',
+                str_contains($message, 'مرفق'),
+                str_contains($message, 'ملف') => 'attachments',
+                str_contains($message, 'فيديو'),
+                str_contains($message, 'مقطع'),
+                str_contains($message, 'مدة') => 'media',
+                str_contains($message, 'وحدة'),
+                str_contains($message, 'جزء'),
+                str_contains($message, 'محتوى'),
+                str_contains($message, 'مشروع') => 'content',
+                str_contains($message, 'محاضر'),
+                str_contains($message, 'تصنيف'),
+                str_contains($message, 'شارة') => 'settings',
+                default => 'details',
+            };
+
+            return ['message' => $message, 'area' => $area];
+        })->all();
     }
 }

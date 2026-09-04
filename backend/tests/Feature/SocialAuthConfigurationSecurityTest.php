@@ -12,10 +12,24 @@ final class SocialAuthConfigurationSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_missing_return_url_configuration_fails_closed(): void
+    {
+        config([
+            'social_auth.return_urls' => [],
+            'services.google.client_id' => 'test-client-id',
+            'services.google.client_secret' => 'test-client-secret',
+        ]);
+
+        $this->get('/api/v1/social-auth/google/start?' . http_build_query([
+            'code_challenge' => str_repeat('A', 43),
+            'code_challenge_method' => 'S256',
+            'return_to' => 'rokn://auth',
+        ]))->assertStatus(422);
+    }
+
     public function test_misconfigured_external_return_url_is_never_accepted_at_runtime(): void
     {
         config([
-            'social_auth.allow_legacy_pkce' => false,
             'social_auth.return_urls' => [
                 'rokn://auth',
                 'https://attacker.invalid/callback',
@@ -33,7 +47,6 @@ final class SocialAuthConfigurationSecurityTest extends TestCase
     public function test_explicit_rokn_callback_remains_usable_with_pkce(): void
     {
         config([
-            'social_auth.allow_legacy_pkce' => false,
             'social_auth.return_urls' => ['rokn://auth'],
             'services.google.client_id' => 'test-client-id',
             'services.google.client_secret' => 'test-client-secret',
@@ -56,7 +69,6 @@ final class SocialAuthConfigurationSecurityTest extends TestCase
     public function test_callback_is_bound_to_the_pkce_attempt_that_started_it(): void
     {
         config([
-            'social_auth.allow_legacy_pkce' => false,
             'social_auth.return_urls' => ['rokn://auth'],
             'services.google.client_id' => 'test-client-id',
             'services.google.client_secret' => 'test-client-secret',
@@ -80,18 +92,15 @@ final class SocialAuthConfigurationSecurityTest extends TestCase
         ]));
     }
 
-    public function test_transient_token_exchange_failure_does_not_burn_owned_state(): void
+    public function test_transient_token_exchange_failure_does_not_replay_provider_code(): void
     {
         config([
             'social_auth.providers' => ['google'],
-            'social_auth.allow_legacy_pkce' => false,
             'social_auth.return_urls' => ['rokn://auth'],
             'services.google.client_id' => 'test-client-id',
             'services.google.client_secret' => 'test-client-secret',
         ]);
-        Http::fakeSequence()
-            ->push(['error' => 'temporarily_unavailable'], 503)
-            ->push(['id_token' => 'verified-later-by-social-login'], 200);
+        Http::fakeSequence()->push(['error' => 'temporarily_unavailable'], 503);
         $challenge = str_repeat('D', 43);
         $start = $this->get('/api/v1/social-auth/google/start?' . http_build_query([
             'code_challenge' => $challenge,
@@ -112,18 +121,16 @@ final class SocialAuthConfigurationSecurityTest extends TestCase
             ]));
         $this->assertDatabaseHas('social_oauth_attempts', [
             'state_hash' => hash('sha256', $state),
-            'state_consumed_at' => null,
             'completion_hash' => null,
         ]);
+        self::assertNotNull(\App\Models\SocialOAuthAttempt::query()
+            ->where('state_hash', hash('sha256', $state))
+            ->value('state_consumed_at'));
 
-        $retry = $this->get($callbackUrl)->assertRedirect();
-        parse_str((string) parse_url((string) $retry->headers->get('Location'), PHP_URL_QUERY), $completion);
-
-        self::assertSame($challenge, $completion['attempt'] ?? null);
-        self::assertSame(72, strlen((string) ($completion['code'] ?? '')));
-        $this->assertDatabaseMissing('social_oauth_attempts', [
-            'state_hash' => hash('sha256', $state),
-            'state_consumed_at' => null,
-        ]);
+        $this->get($callbackUrl)->assertRedirect('rokn://auth?' . http_build_query([
+            'error' => 'login_cancelled',
+            'attempt' => $challenge,
+        ]));
+        Http::assertSentCount(1);
     }
 }

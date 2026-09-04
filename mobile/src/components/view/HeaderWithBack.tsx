@@ -1,6 +1,7 @@
 // import {faArrowLeft, faArrowRight} from '@fortawesome/free-solid-svg-icons';
 // import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
 import {useNavigation} from '@react-navigation/native';
+import {goBackOrHome} from '../../navigation/RootNavigationHelper';
 import type {RootNavigation} from '../../navigation/types';
 import React, {FC, useState} from 'react';
 import {useTranslation} from 'react-i18next';
@@ -62,7 +63,7 @@ const HeaderWithBack: FC<IHeader> = ({
   hideLeftContent = false,
   onPress,
 }) => {
-  const {goBack, canGoBack, navigate} = useNavigation<RootNavigation>();
+  const navigation = useNavigation<RootNavigation>();
   const {contentWidth, gutter, largeText} = useResponsiveLayout();
 
   const {t} = useTranslation();
@@ -83,7 +84,7 @@ const HeaderWithBack: FC<IHeader> = ({
           accessibilityRole="button"
           hitSlop={6}
           onPress={() => {
-            onPress ? onPress() : canGoBack() ? goBack() : navigate('Home');
+            onPress ? onPress() : goBackOrHome(navigation);
           }}
           style={[styles.backButton, styleCircle]}>
           <ArrowRight />

@@ -1,6 +1,7 @@
 @php
     $headerUser = auth()->user();
-    $headerIsAdministrator = strtolower(trim((string) $headerUser?->role)) === 'admin';
+    $headerIsAdministrator = app(\App\Auth\AdminPermissionMatrix::class)
+        ->isAdministrator($headerUser?->role);
     $headerNotificationState = app(\App\Services\AdminHeaderNotificationService::class)->for($headerUser);
     $headerNotifications = $headerNotificationState['items'];
     $headerUnreadCount = $headerNotificationState['unread_count'];
@@ -12,7 +13,7 @@
                 : null)
             : asset(ltrim($legacyProfileImage, '/'));
     }
-    $headerProfileImage = $headerProfileImage ?: asset('images/admin.jpg');
+    $headerProfileImage = $headerProfileImage ?: asset('images/avatar/customer_blank.png');
 @endphp
 <header id="header" class="modern-header">
 
@@ -99,16 +100,10 @@
                 </button>
 
                 <div class="user-dropdown" id="userMenu" aria-hidden="true">
-                    @if($headerIsAdministrator)
                     <a class="user-dropdown-item" href="{{ route('admin.admin_data') }}">
                         <span>تعديل بيانات الدخول</span>
                         <i class="fa fa-user"></i>
                     </a>
-                    <a class="user-dropdown-item" href="{{ route('admin.settings') }}">
-                        <span>الإعدادات</span>
-                        <i class="fa fa-cog"></i>
-                    </a>
-                    @endif
                     <a class="user-dropdown-item logout" href="#" onclick="event.preventDefault(); document.getElementById('logoutForm').submit();">
                         <span>تسجيل خروج</span>
                         <i class="fa fa-sign-out"></i>

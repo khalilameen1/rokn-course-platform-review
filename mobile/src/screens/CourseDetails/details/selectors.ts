@@ -1,54 +1,11 @@
-import {createDemoCourse} from '../../../components/VideoPlayer/demoCourse';
-import {
-  ECONOMY_CONFIG,
-  selectSmallestSufficientPackage,
-} from '../../../config/economy';
 import {CAN_START_COIN_CHECKOUT} from '../../../constants/distribution';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
-import {
-  DEMO_COIN_PACKAGES,
-  DEMO_COURSE_PRICE,
-} from '../../../services/demoExperience';
-import type {
-  DemoCoinPackage,
-  DemoExperienceState,
-} from '../../../services/demoExperience';
+import type {CoinPackage} from '../../../services/api/coinPackageMapper';
 import type {
   CourseAccessPlan,
   CourseDetails as CourseDetailsDto,
 } from '../../../services/roknApi';
-
-const COURSE_TITLE = 'من أول مهارة إلى أول عميل';
-const DEMO_COURSE_DURATION_MINUTES = Math.ceil(
-  createDemoCourse().modules.reduce(
-    (total, module) =>
-      total +
-      module.reels.reduce(
-        (moduleTotal, reel) => moduleTotal + (reel.durationSeconds || 0),
-        0,
-      ),
-    0,
-  ) / 60,
-);
-let demoAccessPlans: CourseAccessPlan[] | null = null;
-
-export const canChooseCourseAccess = ({
-  isDemoCourse,
-  owned,
-  pageReady,
-  remoteError,
-  remoteSession,
-}: {
-  isDemoCourse: boolean;
-  owned: boolean;
-  pageReady: boolean;
-  remoteError: string;
-  remoteSession: boolean | null;
-}) =>
-  !owned &&
-  pageReady &&
-  !remoteError &&
-  (isDemoCourse || remoteSession === true);
+import {derivePurchaseTerms} from './purchaseTerms';
 
 export const planBenefits = (plan: CourseAccessPlan): string[] => {
   const items = ['محتوى الكورس كامل'];
@@ -83,214 +40,142 @@ export const planBenefits = (plan: CourseAccessPlan): string[] => {
   return items;
 };
 
-type CourseRouteParams = {
-  coinPrice?: unknown;
-  description?: unknown;
-  price?: unknown;
-  title?: unknown;
-};
-
 type CourseDetailsPresentationInput = {
-  courseId: string;
-  experience: DemoExperienceState | null;
-  isDemoCourse: boolean;
   remoteBalance: number | null;
+  remoteCommerceLoading: boolean;
   remoteCourse: CourseDetailsDto | null;
   remoteError: string;
   remoteLoading: boolean;
-  remoteOwned: boolean;
   remotePaidBalance?: number | null;
-  remotePackages: DemoCoinPackage[];
+  remotePackages: CoinPackage[];
   remoteSession: boolean | null;
   remoteRewardBalance?: number | null;
   remoteRewardContributionCap?: number | null;
   remoteSpendableBalance: number | null;
-  routeParams?: CourseRouteParams;
   selectedPlanCode: string;
 };
 
 export const selectCourseDetailsPresentation = ({
-  courseId,
-  experience,
-  isDemoCourse,
   remoteBalance,
+  remoteCommerceLoading,
   remoteCourse,
   remoteError,
   remoteLoading,
-  remoteOwned,
   remotePaidBalance = null,
   remotePackages,
   remoteSession,
   remoteRewardBalance = null,
   remoteRewardContributionCap = null,
   remoteSpendableBalance,
-  routeParams = {},
   selectedPlanCode,
 }: CourseDetailsPresentationInput) => {
-  const route = {params: routeParams};
-  const routePrice = route.params?.coinPrice ?? route.params?.price;
-  const parsedRoutePrice = Number(routePrice);
-  const safeRoutePrice =
-    routePrice === null ||
-    routePrice === undefined ||
-    !Number.isFinite(parsedRoutePrice)
-      ? null
-      : Math.max(0, parsedRoutePrice);
-  const baseCoursePrice = isDemoCourse
-    ? DEMO_COURSE_PRICE
-    : remoteCourse?.price ?? safeRoutePrice;
-  const accessPlans = ((): CourseAccessPlan[] => {
-    if (isDemoCourse) {
-      if (demoAccessPlans) return demoAccessPlans;
-      demoAccessPlans = [
-        {
-          code: 'basic',
-          name: 'التعلّم',
-          priceCoins: DEMO_COURSE_PRICE,
-          minimumPaidCoins: 0,
-          chatEnabled: false,
-          chatMessageLimit: 0,
-          projectFeedbackLevel: 'pass_only',
-          projectReportEnabled: false,
-          projectFollowupEnabled: false,
-          projectFollowupMessageLimit: 0,
-          projectOutputEnabled: false,
-          certificateEnabled: true,
-        },
-        {
-          code: 'guided',
-          name: 'التعلّم بإرشاد',
-          priceCoins: DEMO_COURSE_PRICE + 1300,
-          minimumPaidCoins: 1300,
-          chatEnabled: true,
-          chatMessageLimit: 25,
-          projectFeedbackLevel: 'report',
-          projectReportEnabled: true,
-          projectFollowupEnabled: false,
-          projectFollowupMessageLimit: 0,
-          projectOutputEnabled: false,
-          certificateEnabled: true,
-        },
-        {
-          code: 'mentor',
-          name: 'التعلّم بمتابعة',
-          priceCoins: DEMO_COURSE_PRICE + 4200,
-          minimumPaidCoins: 4200,
-          chatEnabled: true,
-          chatMessageLimit: 80,
-          projectFeedbackLevel: 'enhanced',
-          projectReportEnabled: true,
-          projectFollowupEnabled: true,
-          projectFollowupMessageLimit: 20,
-          projectOutputEnabled: true,
-          certificateEnabled: true,
-        },
-      ];
-      return demoAccessPlans;
-    }
-    return remoteCourse?.accessPlans || [];
-  })();
+  const baseCoursePrice = remoteCourse?.price ?? null;
+  const accessPlans: CourseAccessPlan[] = remoteCourse?.accessPlans || [];
   const selectedPlan =
     accessPlans.find(plan => plan.code === selectedPlanCode) || accessPlans[0];
   const coursePrice = accessPlans.length
     ? Math.min(...accessPlans.map(plan => plan.priceCoins))
     : baseCoursePrice;
-  const courseTitle = isDemoCourse
-    ? COURSE_TITLE
-    : remoteCourse?.title || String(route.params?.title || 'كورس ركن');
-  const courseDescription = isDemoCourse
-    ? 'ابنِ عرضك وأدر عميلك وحوّل التسليم إلى مشروع يفتح لك الباب التالي'
-    : remoteCourse?.description || String(route.params?.description || '');
-  const reelCount = isDemoCourse ? 30 : remoteCourse?.reelCount || 0;
-  const projectCount = isDemoCourse ? 3 : remoteCourse?.projectCount || 0;
-  const previewReelCount = isDemoCourse
-    ? 2
-    : remoteCourse?.previewReelCount || 0;
+  const courseTitle = remoteCourse?.title || 'كورس ركن';
+  const courseDescription = remoteCourse?.description || '';
+  const reelCount = remoteCourse?.reelCount || 0;
+  const projectCount = remoteCourse?.projectCount || 0;
+  const previewReelCount = remoteCourse?.previewReelCount || 0;
   const hasPreview = previewReelCount > 0;
 
-  const owned = isDemoCourse
-    ? Boolean(experience?.purchasedCourseIds.includes(courseId))
-    : remoteOwned;
-  const balance = isDemoCourse ? experience?.balance ?? 0 : remoteBalance ?? 0;
-  const paidBalance = isDemoCourse
-    ? experience?.paidBalance ?? 0
-    : remotePaidBalance ?? 0;
-  const rewardBalance = isDemoCourse
-    ? experience?.rewardBalance ?? 0
-    : remoteRewardBalance ?? Math.max(0, balance - paidBalance);
-  const genericRewardAllowance = isDemoCourse
-    ? ECONOMY_CONFIG.maxRewardContributionPerCourse
-    : Math.max(
-        0,
-        remoteRewardContributionCap ??
-          (remoteSpendableBalance ?? paidBalance) - paidBalance,
-      );
+  // Course details is the only entitlement snapshot on this screen. Keeping
+  // a second ownership boolean lets a late read turn a completed purchase
+  // back into a buy CTA (or the reverse).
+  const owned = remoteCourse?.owned === true;
+  const balance = remoteBalance ?? 0;
+  const paidBalance = remotePaidBalance ?? 0;
+  const rewardBalance =
+    remoteRewardBalance ?? Math.max(0, balance - paidBalance);
+  const genericRewardAllowance = Math.max(
+    0,
+    remoteRewardContributionCap ??
+      (remoteSpendableBalance ?? paidBalance) - paidBalance,
+  );
+  const purchasePrice = selectedPlan?.priceCoins ?? coursePrice ?? 0;
+  const terms = derivePurchaseTerms({
+    balance,
+    minimumPaidCoins: selectedPlan?.minimumPaidCoins ?? 0,
+    packages: remotePackages,
+    paidBalance,
+    price: purchasePrice,
+    rewardBalance,
+    rewardContributionLimit: genericRewardAllowance,
+  });
   const planSpendableBalances = Object.fromEntries(
     accessPlans.map(plan => [
       plan.code,
-      paidBalance +
-        Math.min(
-          rewardBalance,
-          genericRewardAllowance,
-          Math.max(0, plan.priceCoins - (plan.minimumPaidCoins ?? 0)),
-        ),
+      derivePurchaseTerms({
+        balance,
+        minimumPaidCoins: plan.minimumPaidCoins ?? 0,
+        packages: [],
+        paidBalance,
+        price: plan.priceCoins,
+        rewardBalance,
+        rewardContributionLimit: genericRewardAllowance,
+      }).spendableBalance,
     ]),
   ) as Record<string, number>;
-  const spendableBalance = selectedPlan
-    ? planSpendableBalances[selectedPlan.code] ?? 0
-    : paidBalance + Math.min(rewardBalance, genericRewardAllowance);
-  const purchasePrice = selectedPlan?.priceCoins ?? coursePrice ?? 0;
-  const rewardContributionLimit = Math.min(
-    genericRewardAllowance,
-    Math.max(0, purchasePrice - (selectedPlan?.minimumPaidCoins ?? 0)),
-  );
-  const usableCurrentBalance = Math.min(purchasePrice, spendableBalance);
-  const rewardContributionPercent =
-    purchasePrice > 0
-      ? Math.floor((rewardContributionLimit / purchasePrice) * 100)
-      : 0;
-  const shortfall = Math.max(0, purchasePrice - spendableBalance);
-  const packages = (isDemoCourse ? DEMO_COIN_PACKAGES : remotePackages)
-    .slice()
-    .sort((left, right) => left.coins - right.coins);
-  const sufficientPackage = selectSmallestSufficientPackage(
+  const {
     packages,
+    rewardContributionLimit,
+    rewardContributionPercent,
     shortfall,
-  );
-  const checkoutPackages = packages.filter(item => item.coins >= shortfall);
-  const pageReady = isDemoCourse
-    ? Boolean(experience)
-    : Boolean(remoteCourse) && !remoteLoading;
-  const primaryActionLabel = remoteError
-    ? 'تعذّر تحميل التفاصيل'
+    spendableBalance,
+    sufficientPackage,
+    sufficientPackages: checkoutPackages,
+    usableCurrentBalance,
+  } = terms;
+  const pageReady = Boolean(remoteCourse) && !remoteLoading;
+  const started = owned && remoteCourse?.started === true;
+  const primaryAction = remoteError
+    ? ({kind: 'disabled', label: 'تعذّر تحميل التفاصيل'} as const)
+    : !pageReady || remoteSession === null
+    ? ({kind: 'disabled', label: 'جارٍ تجهيز الكورس'} as const)
     : owned
-    ? 'استكمل الكورس'
-    : !isDemoCourse && remoteSession === false
-    ? 'سجّل الدخول لفتح الكورس'
+    ? started
+      ? ({kind: 'resume', label: 'استكمل الكورس'} as const)
+      : ({kind: 'start', label: 'ابدأ الكورس'} as const)
+    : remoteSession === false && hasPreview
+    ? ({kind: 'preview', label: 'شاهد مجانًا'} as const)
+    : remoteSession === false
+    ? ({kind: 'login', label: 'سجّل الدخول لفتح الكورس'} as const)
     : coursePrice === null
-    ? 'السعر لم يُنشر بعد'
+    ? ({kind: 'price_unavailable', label: 'السعر لم يُنشر بعد'} as const)
     : !CAN_START_COIN_CHECKOUT && hasPreview
-    ? 'شاهد مجانًا'
+    ? ({kind: 'preview', label: 'شاهد مجانًا'} as const)
     : !CAN_START_COIN_CHECKOUT
-    ? 'الشراء غير متاح الآن'
-    : coursePrice === 0
-    ? 'ابدأ التعلّم مجانًا'
+    ? ({kind: 'checkout_unavailable', label: 'الشراء غير متاح الآن'} as const)
+    : coursePrice > 0 && remoteCommerceLoading
+    ? ({kind: 'disabled', label: 'جارٍ تجهيز الشراء'} as const)
+    : coursePrice > 0 && remoteBalance === null
+    ? ({kind: 'wallet_unavailable', label: 'شراء الكورس'} as const)
     : accessPlans.length > 1
-    ? 'اختر الفئة المناسبة لك'
-    : 'شراء الكورس';
-  // Demo metrics stay isolated from server course data.
-  const ratingsCount = isDemoCourse ? 186 : remoteCourse?.ratingsCount ?? 0;
-  const ratingAverage = isDemoCourse
-    ? 4.9
-    : remoteCourse?.ratingAverage ?? null;
-  const studentsCount = isDemoCourse ? 320 : remoteCourse?.studentsCount ?? 0;
-  const durationMinutes = isDemoCourse
-    ? DEMO_COURSE_DURATION_MINUTES
-    : remoteCourse?.durationMinutes ?? null;
+    ? ({kind: 'choose_plan', label: 'اختر الفئة المناسبة لك'} as const)
+    : coursePrice === 0
+    ? ({kind: 'free', label: 'ابدأ التعلّم مجانًا'} as const)
+    : ({kind: 'purchase', label: 'شراء الكورس'} as const);
+  const canChooseAccess =
+    !owned && pageReady && !remoteError && remoteSession === true;
+  const showSecondaryPreview =
+    !owned &&
+    hasPreview &&
+    pageReady &&
+    CAN_START_COIN_CHECKOUT &&
+    primaryAction.kind !== 'preview';
+  const ratingsCount = remoteCourse?.ratingsCount ?? 0;
+  const ratingAverage = remoteCourse?.ratingAverage ?? null;
+  const studentsCount = remoteCourse?.studentsCount ?? 0;
+  const durationMinutes = remoteCourse?.durationMinutes ?? null;
 
   return {
     accessPlans,
     balance,
+    canChooseAccess,
     courseDescription,
     coursePrice,
     courseTitle,
@@ -302,7 +187,9 @@ export const selectCourseDetailsPresentation = ({
     planSpendableBalances,
     pageReady,
     previewReelCount,
-    primaryActionLabel,
+    primaryAction,
+    primaryActionDisabled: primaryAction.kind === 'disabled',
+    primaryActionLabel: primaryAction.label,
     projectCount,
     purchasePrice,
     rewardContributionLimit,
@@ -311,13 +198,19 @@ export const selectCourseDetailsPresentation = ({
     ratingsCount,
     reelCount,
     selectedPlan,
+    showSecondaryPreview,
     shortfall,
     spendableBalance,
+    started,
     usableCurrentBalance,
     studentsCount,
     sufficientPackage,
   };
 };
+
+export type CoursePrimaryAction = ReturnType<
+  typeof selectCourseDetailsPresentation
+>['primaryAction'];
 
 export const selectCourseHeroHeight = ({
   fontScale,
@@ -336,3 +229,20 @@ export const selectCourseHeroHeight = ({
     heroBaseHeight + Math.max(0, fontScale - 1) * 150,
   );
 };
+
+export type CoursePurchaseEntryStep = 'plans' | 'topup' | 'confirm';
+
+export const selectCoursePurchaseEntryStep = ({
+  forcePlanSelection,
+  purchasePrice,
+  spendableBalance,
+}: {
+  forcePlanSelection: boolean;
+  purchasePrice: number;
+  spendableBalance: number;
+}): CoursePurchaseEntryStep =>
+  forcePlanSelection
+    ? 'plans'
+    : spendableBalance >= purchasePrice
+    ? 'confirm'
+    : 'topup';

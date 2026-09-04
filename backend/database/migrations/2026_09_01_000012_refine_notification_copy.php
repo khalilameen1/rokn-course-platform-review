@@ -28,7 +28,6 @@ return new class extends Migration
             'certificate_ready' => ['شهادتك جاهزة', '{course}', 'افتح الشهادة', 'إغلاق'],
             'project_update' => ['نتيجة مشروعك جاهزة', '{course}', 'افتح النتيجة', 'إغلاق'],
             'new_course_lesson' => ['مقطع جديد', "{lesson}\n{course}", 'شاهد الآن', 'لاحقًا'],
-            'new_quiz' => ['اختبار جديد', "{quiz}\n{course}", 'افتح الاختبار', 'لاحقًا'],
             'course_update' => ['جديد في كورسك', '{course}', 'افتح الكورس', 'لاحقًا'],
             'course_promotion' => ['كورس يناسبك', '{course}', 'تفاصيل الكورس', 'لاحقًا'],
             'continue_course' => ['أكمل من مكانك', '{course}', 'أكمل الآن', 'لاحقًا'],
@@ -48,7 +47,6 @@ return new class extends Migration
             'certificate_ready' => '{course}',
             'project_update' => '{course}',
             'new_course_lesson' => "{lesson}\n{course}",
-            'new_quiz' => "{quiz}\n{course}",
             'course_update' => '{course}',
             'course_promotion' => '{course}',
             'continue_course' => '{course}',
@@ -67,7 +65,6 @@ return new class extends Migration
             'certificate_ready' => ['Certificate ready', '{course}', 'Open certificate', 'Close', '{course}'],
             'project_update' => ['Project result ready', '{course}', 'Open result', 'Close', '{course}'],
             'new_course_lesson' => ['New clip', "{lesson}\n{course}", 'Watch now', 'Later', "{lesson}\n{course}"],
-            'new_quiz' => ['New quiz', "{quiz}\n{course}", 'Open quiz', 'Later', "{quiz}\n{course}"],
             'course_update' => ['New in your course', '{course}', 'Open course', 'Later', '{course}'],
             'course_promotion' => ['A course for you', '{course}', 'View course', 'Later', '{course}'],
             'continue_course' => ['Continue where you stopped', '{course}', 'Continue', 'Later', '{course}'],
@@ -109,7 +106,6 @@ return new class extends Migration
 
         foreach ([
             'new_course_lesson' => 12,
-            'new_quiz' => 12,
             'course_update' => 12,
             'course_promotion' => 72,
             'continue_course' => 24,

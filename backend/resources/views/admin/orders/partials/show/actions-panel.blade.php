@@ -8,6 +8,12 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    @if($order->status === \App\Models\Order::STATUS_PENDING && $order->requiresProviderVerification())
+                        <div class="alert alert-{{ $order->payment_operation_state === 'expired' ? 'secondary' : 'info' }}">
+                            <strong>{{ $order->payment_operation_label }}</strong>
+                            <div>{{ $order->payment_operation_state === 'expired' ? 'انتهت مهلة المحاولة ويمكن للعميل بدء محاولة جديدة بعد إغلاقها من مسار التسوية.' : 'فتح صفحة الدفع لا يثبت التحصيل. القرار يأتي من دليل المزود أو طابور التسوية.' }}</div>
+                        </div>
+                    @endif
                     @if(
                         $order->status === \App\Models\Order::STATUS_APPROVED
                         && $order->package_id
@@ -61,6 +67,8 @@
                         && $order->course_id
                         && $order->payment_method === \App\Models\Order::PAYMENT_METHOD_WALLET_COINS
                         && $order->wallet_transaction_id
+                        && $order->coin_allocation_complete
+                        && (int) ($order->ledger_total_coins ?? 0) > 0
                     )
                         <div class="alert alert-light">
                             <strong>تعويض عطل من طرف ركن</strong>
@@ -70,7 +78,7 @@
                             @csrf
                             <div class="form-group">
                                 <label for="compensation-amount">عدد العملات</label>
-                                <input id="compensation-amount" name="amount" type="number" min="1" max="{{ (int) $order->total_coins }}" class="form-control" value="{{ old('amount') }}" required>
+                                <input id="compensation-amount" name="amount" type="number" min="1" max="{{ (int) ($order->ledger_total_coins ?? 0) }}" class="form-control" value="{{ old('amount') }}" required>
                             </div>
                             <div class="form-group">
                                 <label for="compensation-note">رقم الشكوى وسبب التعويض</label>
@@ -106,27 +114,6 @@
                         </form>
                         <hr class="order-action-separator">
                     @endif
-                    @if($order->status === 'pending' && !$order->requiresProviderVerification())
-                        <button type="button" class="btn btn-success btn-block action-btn" onclick="updateOrderStatus('approved')">
-                            <i class="fa fa-check-circle"></i> اعتماد الطلب
-                        </button>
-                        <button type="button" class="btn btn-danger btn-block action-btn" onclick="updateOrderStatus('rejected')">
-                            <i class="fa fa-times-circle"></i> رفض الطلب
-                        </button>
-                    @endif
-
-                    @if($order->status === 'rejected' && !$order->requiresProviderVerification())
-                        <button type="button" class="btn btn-success btn-block action-btn" onclick="updateOrderStatus('approved')">
-                            <i class="fa fa-check-circle"></i> اعتماد الطلب
-                        </button>
-                    @endif
-
-                    @if($order->bill)
-                        <a href="{{ route('admin.bills.show', $order->bill) }}" class="btn btn-info btn-block action-btn">
-                            <i class="fa fa-file-text"></i> مشاهدة الفاتورة
-                        </a>
-                    @endif
-
                     <hr class="order-action-separator">
 
                     <div class="text-center">

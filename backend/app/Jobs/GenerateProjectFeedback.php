@@ -6,24 +6,25 @@ namespace App\Jobs;
 
 use App\Exceptions\AiPlanLimitReachedException;
 use App\Exceptions\AiProviderUnavailableException;
+use App\Models\AiInputAttachment;
 use App\Models\AiUsageEvent;
 use App\Models\Course;
-use App\Models\CourseSection;
-use App\Models\Project;
 use App\Models\ProjectSubmission;
+use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiPromptPolicy;
 use App\Services\AiStreamCheckpointService;
-use App\Models\AiInputAttachment;
-use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseChatAccessService;
-use App\Services\CourseStagedAuthoringService;
 use App\Services\OpenRouterService;
-use App\Services\ProjectFeedbackThreadService;
 use App\Services\PaidAiCallExecutionService;
+use App\Services\ProjectFeedbackThreadService;
+use App\Services\ProjectSubmissionFileRetentionService;
+use App\Support\ProjectReportRetryPolicy;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
+use App\Support\UnicodeText;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -32,7 +33,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use App\Support\UnicodeText;
 use Throwable;
 
 final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
@@ -74,7 +74,8 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
         PaidAiCallExecutionService $paidCalls,
         AiStreamCheckpointService $streamCheckpoints,
         AiPromptPolicy $promptPolicy,
-        CourseStagedAuthoringService $stagedAuthoring
+        AiFailurePolicy $failurePolicy,
+        ProjectSubmissionFileRetentionService $fileRetention
     ): void {
         $submission = ProjectSubmission::with('project')->find($this->submissionId);
         if (!$submission || $submission->review_status !== ProjectSubmission::STATUS_PASSED) return;
@@ -82,44 +83,32 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             // Do not leave a revoked learner's report permanently queued for
             // the recovery command to dispatch every two minutes.
             $this->markUnavailable($submission->id, 'account_unavailable');
+            $fileRetention->purgeIfEligible($submission->fresh(), true);
             return;
         }
 
         $evaluationSnapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
-        $publishedProjectId = $evaluationSnapshot
-            ? null
-            : ($stagedAuthoring->currentLearnerEntityMap(
-                Project::class,
-                [(int) $submission->project_id]
-            )[(int) $submission->project_id] ?? (int) $submission->project_id);
-        $section = $evaluationSnapshot ? null : CourseSection::query()
-                ->where('sectionable_type', Project::class)
-                ->where('sectionable_id', $publishedProjectId)
-                ->with(['course', 'sectionable'])
-                ->first();
-        $courseId = $evaluationSnapshot
-            ? (int) $evaluationSnapshot['course_id']
-            : (int) ($section?->course_id ?? 0);
-        $course = $evaluationSnapshot
-            ? Course::query()->find($courseId)
-            : $section?->course;
-        if (!$course || $courseId <= 0 || (!$evaluationSnapshot && !$section?->sectionable)) {
+        if (!$evaluationSnapshot) {
             $this->markUnavailable($submission->id, 'project_context_missing');
+            $fileRetention->purgeIfEligible($submission->fresh(), true);
+            return;
+        }
+        $courseId = (int) $evaluationSnapshot['course_id'];
+        $course = Course::query()->find($courseId);
+        if (!$course || $courseId <= 0) {
+            $this->markUnavailable($submission->id, 'project_context_missing');
+            $fileRetention->purgeIfEligible($submission->fresh(), true);
             return;
         }
 
-        $enrollment = $evaluationSnapshot
-            ? $access->activeCapturedEnrollmentFor(
-                (int) $submission->user_id,
-                $courseId,
-                (int) data_get($evaluationSnapshot, 'access.enrollment_id')
-            )
-            : $access->activeEnrollmentFor((int) $submission->user_id, $courseId);
+        $enrollment = $access->activeCapturedEnrollmentFor(
+            (int) $submission->user_id,
+            $courseId,
+            (int) data_get($evaluationSnapshot, 'access.enrollment_id')
+        );
         $currentTerms = $enrollment ? $plans->termsForEnrollment($enrollment) : null;
         $currentContract = $plans->publicPayloadFromTerms($currentTerms ?? []);
-        $evaluationTerms = $evaluationSnapshot
-            ? data_get($evaluationSnapshot, 'access.terms')
-            : $currentTerms;
+        $evaluationTerms = data_get($evaluationSnapshot, 'access.terms');
         $evaluationTerms = is_array($evaluationTerms) ? $evaluationTerms : null;
         $contract = $plans->publicPayloadFromTerms($evaluationTerms ?? []);
         if (
@@ -131,23 +120,18 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             || !(bool) $contract['project_report_enabled']
         ) {
             $this->markUnavailable($submission->id, 'report_not_included');
+            $fileRetention->purgeIfEligible($submission->fresh(), true);
             return;
         }
-        // Rows created before evaluation snapshots keep their old behavior,
-        // but every new row reads only the immutable project policy below.
-        $legacySnapshot = $evaluationSnapshot ? null : ProjectSubmissionEvaluationSnapshot::capture(
-                $section?->sectionable,
-                $section,
-                $enrollment,
-                $currentTerms
-            );
-        $projectPolicy = (array) ($evaluationSnapshot['project'] ?? $legacySnapshot['project']);
-        $snapshotFingerprint = (string) (
-            $evaluationSnapshot['fingerprint']
-            ?? $legacySnapshot['fingerprint']
-        );
+        $projectPolicy = (array) $evaluationSnapshot['project'];
+        $snapshotFingerprint = (string) $evaluationSnapshot['fingerprint'];
 
         $metadata = is_array($submission->submission_metadata) ? $submission->submission_metadata : [];
+        $requestId = (string) data_get(
+            $metadata,
+            'ai_feedback.request_id',
+            $submission->public_id
+        );
         // A worker may die after marking the submission as processing. Let the
         // queued retry continue; ShouldBeUnique still prevents concurrent runs.
         if (data_get($metadata, 'ai_feedback.status') === 'ready') {
@@ -157,7 +141,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             // from the settled provider event (or the thread) and reserve the
             // submission field for the append-only review decision summary.
             $event = AiUsageEvent::query()
-                ->where('request_id', $submission->public_id)
+                ->where('request_id', $requestId)
                 ->where('feature', 'project_feedback')
                 ->first();
             $report = trim((string) data_get($event?->metadata, 'accepted_response', ''));
@@ -171,6 +155,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             if ($report !== '') {
                 $threads->storeInitialReport($submission, $enrollment, $courseId, $evaluationTerms, $report);
                 $paidCalls->markPresented($event);
+                $fileRetention->purgeIfEligible($submission->fresh());
             }
             return;
         }
@@ -192,6 +177,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 $evaluationTerms,
                 trim((string) ($submission->feedback ?: 'تم اعتماد المحاولة وفتح المحتوى التالي'))
             );
+            $fileRetention->purgeIfEligible($submission->fresh());
             return;
         }
 
@@ -214,6 +200,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             $meta['ai_feedback'] = [
                 'status' => 'processing',
                 'execution_id' => $this->executionId,
+                'request_id' => data_get(
+                    $meta,
+                    'ai_feedback.request_id',
+                    $locked->public_id
+                ),
+                'retry_count' => (int) data_get($meta, 'ai_feedback.retry_count', 0),
                 'attempt' => $this->attempts(),
                 'started_at' => now()->toIso8601String(),
                 'lease_expires_at' => now()->addSeconds($this->timeout + 30)->toIso8601String(),
@@ -224,13 +216,11 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
         }, 3);
         if (!$claimed) return;
 
-        $allowed = array_values(array_filter(config('openrouter.allowed_models', [])));
-        $model = trim((string) config('openrouter.default_model'));
-        if (!in_array($model, $allowed, true)) $model = (string) config('openrouter.default_model');
-        $maxTokens = min(
-            (int) config('openrouter.max_tokens', 500),
+        $model = '';
+        $maxTokens = max(80, min(
+            (int) config('openrouter.max_tokens', 800),
             (int) (($evaluationTerms['max_output_tokens'] ?? null) ?: 320)
-        );
+        ));
         $requirements = UnicodeText::limit(
             UnicodeText::clean(strip_tags((string) ($projectPolicy['requirements_text'] ?? ''))),
             6000
@@ -245,7 +235,6 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             ($projectPolicy['title_ar'] ?? null)
             ?: ($projectPolicy['title_en'] ?? null)
             ?: ($projectPolicy['title'] ?? null)
-            ?: $section?->title
         )), 240);
         $promptVersion = $promptPolicy->version('project-report', [
             'snapshot' => $snapshotFingerprint,
@@ -273,6 +262,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
         $providerResultKnown = false;
         $reportMessage = null;
         try {
+            $model = $openRouter->configuredModel('project_model');
             $estimated = $maxTokens
                 + (int) ceil((strlen($requirements) + strlen($text)) / 4)
                 + $attachments->estimatedInputTokens($ownedAttachments);
@@ -281,12 +271,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 'project_feedback',
                 $estimated,
                 $model,
-                (string) $submission->public_id
+                $requestId
             );
             if (!$reservation) {
                 throw new AiPlanLimitReachedException('Project feedback is not metered for this enrollment.');
             }
-            if ($reservation && $reservation->status === 'completed') {
+            if ($reservation->status === 'completed') {
                 $replay = trim((string) data_get($reservation->metadata, 'accepted_response', ''));
                 if ($replay === '') {
                     throw new \RuntimeException('Completed project report has no replay response.');
@@ -297,112 +287,127 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 }
                 $result = ['message' => $replay];
             } else {
-                if ($reservation && $reservation->status !== 'reserved') {
+                if ($reservation->status !== 'reserved') {
                     throw new \RuntimeException('Project report request cannot be resumed.');
                 }
-            $landed = $paidCalls->landedResult($reservation?->fresh());
-            if ($landed !== null) {
-                $settlement = $budget->settleForActiveUser(
-                    $reservation, $landed, (int) $submission->user_id
-                );
-                if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
-                $result = $landed;
-                if ($ownedAttachments->isNotEmpty()) {
-                    $attachments->markProcessed(
-                        $ownedAttachments,
-                        is_array($landed['file_annotations'] ?? null) ? $landed['file_annotations'] : []
+                $landed = $paidCalls->landedResult($reservation->fresh());
+                if ($landed !== null) {
+                    $settlement = $budget->settleForActiveUser(
+                        $reservation,
+                        $landed,
+                        (int) $submission->user_id
                     );
-                }
-            } else {
-            $reportMessage = $threads->beginInitialReport(
-                $submission,
-                $enrollment,
-                $courseId,
-                $evaluationTerms
-            );
+                    if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
+                    $result = $landed;
+                    if ($ownedAttachments->isNotEmpty()) {
+                        $attachments->markProcessed(
+                            $ownedAttachments,
+                            is_array($landed['file_annotations'] ?? null)
+                                ? $landed['file_annotations']
+                                : []
+                        );
+                    }
+                } else {
+                    $reportMessage = $threads->beginInitialReport(
+                        $submission,
+                        $enrollment,
+                        $courseId,
+                        $evaluationTerms
+                    );
+                    $callState = $paidCalls->beginForActiveUser(
+                        $reservation,
+                        $this->executionId,
+                        (int) $submission->user_id
+                    );
+                    if ($callState === PaidAiCallExecutionService::INACTIVE) {
+                        $budget->release($reservation, 'account_deleted_before_provider');
+                        return;
+                    }
+                    if ($callState !== PaidAiCallExecutionService::START) {
+                        if ($callState === PaidAiCallExecutionService::LIVE) return;
+                        $fresh = $reservation->fresh();
+                        if (
+                            $callState === PaidAiCallExecutionService::STALE_STARTED
+                            && $paidCalls->providerWasStarted($fresh)
+                        ) {
+                            $paidCalls->settleUnknown($budget, $fresh, [
+                                'project_id' => (int) $submission->project_id,
+                                'submission_id' => (string) $submission->public_id,
+                                'prompt_version' => $promptVersion,
+                            ]);
+                        }
+                        $this->markUnavailable($submission->id, 'provider_outcome_unknown');
+                        return;
+                    }
 
-            $callState = $paidCalls->beginForActiveUser(
-                $reservation, $this->executionId, (int) $submission->user_id
-            );
-            if ($callState === PaidAiCallExecutionService::INACTIVE) {
-                $budget->release($reservation, 'account_deleted_before_provider');
-                return;
-            }
-            if ($callState !== PaidAiCallExecutionService::START) {
-                if ($callState === PaidAiCallExecutionService::LIVE) return;
-                $fresh = $reservation->fresh();
-                if ($callState === PaidAiCallExecutionService::STALE_STARTED
-                    && $paidCalls->providerWasStarted($fresh)) {
-                    $paidCalls->settleUnknown($budget, $fresh, [
+                    $result = $openRouter->chat(
+                        $model,
+                        $messages,
+                        (float) config('openrouter.temperature', .35),
+                        $maxTokens,
+                        (string) $reservation->request_id,
+                        function (array $providerResult) use (
+                            $paidCalls,
+                            $reservation,
+                            $submission,
+                            $promptVersion,
+                            $contract,
+                            $courseId
+                        ): void {
+                            $providerResult['request_context'] = [
+                                'course_id' => (int) $courseId,
+                                'project_id' => (int) $submission->project_id,
+                                'submission_id' => (string) $submission->public_id,
+                                'prompt_version' => $promptVersion,
+                                'feedback_level' => (string) $contract['project_feedback_level'],
+                            ];
+                            $paidCalls->landSuccessfulResultForActiveUser(
+                                $reservation,
+                                $this->executionId,
+                                (int) $submission->user_id,
+                                $providerResult
+                            );
+                        },
+                        function (string $partial) use (
+                            $streamCheckpoints,
+                            $reportMessage
+                        ): void {
+                            $streamCheckpoints->projectMessage($reportMessage, $partial);
+                        }
+                    );
+                    $result['request_context'] = [
+                        'course_id' => (int) $courseId,
                         'project_id' => (int) $submission->project_id,
                         'submission_id' => (string) $submission->public_id,
                         'prompt_version' => $promptVersion,
-                    ]);
-                }
-                $this->markUnavailable($submission->id, 'provider_outcome_unknown');
-                return;
-            }
-                $result = $openRouter->chat(
-                    $model,
-                    $messages,
-                    (float) config('openrouter.temperature', .35),
-                    $maxTokens,
-                    (string) $reservation->request_id,
-                    function (array $providerResult) use (
-                        $paidCalls,
+                        'feedback_level' => (string) $contract['project_feedback_level'],
+                    ];
+                    $providerResultKnown = true;
+                    $landingState = $paidCalls->landSuccessfulResultForActiveUser(
                         $reservation,
-                        $submission,
-                        $promptVersion,
-                        $contract,
-                        $courseId
-                    ): void {
-                        $providerResult['request_context'] = [
-                            'course_id' => (int) $courseId,
-                            'project_id' => (int) $submission->project_id,
-                            'submission_id' => (string) $submission->public_id,
-                            'prompt_version' => $promptVersion,
-                            'feedback_level' => (string) $contract['project_feedback_level'],
-                        ];
-                        $paidCalls->landSuccessfulResultForActiveUser(
-                            $reservation,
-                            $this->executionId,
-                            (int) $submission->user_id,
-                            $providerResult
-                        );
-                    },
-                    function (string $partial) use (
-                        $streamCheckpoints,
-                        $reportMessage
-                    ): void {
-                        $streamCheckpoints->projectMessage($reportMessage, $partial);
-                    }
-                );
-                $result['request_context'] = [
-                    'course_id' => (int) $courseId,
-                    'project_id' => (int) $submission->project_id,
-                    'submission_id' => (string) $submission->public_id,
-                    'prompt_version' => $promptVersion,
-                    'feedback_level' => (string) $contract['project_feedback_level'],
-                ];
-                $providerResultKnown = true;
-                $landingState = $paidCalls->landSuccessfulResultForActiveUser(
-                    $reservation, $this->executionId, (int) $submission->user_id, $result
-                );
-                if ($landingState !== PaidAiCallExecutionService::LANDED) return;
-                $result = $paidCalls->landedResult($reservation->fresh()) ?? $result;
-                $settlement = $budget->settleForActiveUser(
-                    $reservation, $result, (int) $submission->user_id
-                );
-                if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
-                if ($ownedAttachments->isNotEmpty()) {
-                    $attachments->markProcessed(
-                        $ownedAttachments,
-                        is_array($result['file_annotations'] ?? null) ? $result['file_annotations'] : []
+                        $this->executionId,
+                        (int) $submission->user_id,
+                        $result
                     );
+                    if ($landingState !== PaidAiCallExecutionService::LANDED) return;
+                    $result = $paidCalls->landedResult($reservation->fresh()) ?? $result;
+                    $settlement = $budget->settleForActiveUser(
+                        $reservation,
+                        $result,
+                        (int) $submission->user_id
+                    );
+                    if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
+                    if ($ownedAttachments->isNotEmpty()) {
+                        $attachments->markProcessed(
+                            $ownedAttachments,
+                            is_array($result['file_annotations'] ?? null)
+                                ? $result['file_annotations']
+                                : []
+                        );
+                    }
                 }
             }
-            }
-            DB::transaction(function () use ($submission, $contract, $result): void {
+            DB::transaction(function () use ($submission, $contract, $result, $requestId): void {
                 if (!User::query()->whereKey($submission->user_id)->where('active', true)
                     ->lockForUpdate()->exists()) return;
                 $fresh = ProjectSubmission::query()->lockForUpdate()->find($submission->id);
@@ -417,6 +422,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 $meta['ai_feedback'] = [
                     'status' => 'ready',
                     'level' => $contract['project_feedback_level'],
+                    'request_id' => $requestId,
                     'generated_at' => now()->toIso8601String(),
                 ];
                 $fresh->forceFill(['submission_metadata' => $meta])->save();
@@ -430,14 +436,18 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 trim((string) $result['message'])
             );
             $paidCalls->markPresented($reservation?->fresh());
+            $fileRetention->purgeIfEligible($submission->fresh());
         } catch (AiPlanLimitReachedException $exception) {
             $this->markUnavailable($submission->id, 'plan_budget_reached');
+            $fileRetention->purgeIfEligible($submission->fresh(), true);
         } catch (AiProviderUnavailableException $exception) {
             if ($ownedAttachments->isNotEmpty() && $exception->fileAnnotations !== []) {
                 $attachments->markProcessed($ownedAttachments, $exception->fileAnnotations);
             }
+            if ($exception->retrySafe && $reservation) {
+                $paidCalls->markRetrySafe($reservation, $this->executionId);
+            }
             if ($exception->retrySafe && $this->attempts() < $this->tries) {
-                if ($reservation) $paidCalls->markRetrySafe($reservation, $this->executionId);
                 $this->markRetryable($submission->id);
                 throw $exception;
             }
@@ -450,11 +460,26 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             } else {
                 $budget->release($reservation, 'provider_unavailable');
             }
-            $this->markUnavailable($submission->id, 'provider_unavailable');
-            $threads->failInitialReport($submission, 'provider_unavailable');
-            if ($exception->retrySafe) {
-                throw $exception;
-            }
+            $failureCode = $exception->outcomeUnknown
+                ? 'provider_outcome_unknown'
+                : $failurePolicy->providerCode($exception);
+            $this->markUnavailable(
+                $submission->id,
+                $failureCode
+            );
+            // Keep the project input while the public contract still offers
+            // a safe report retry. The bounded retention sweep removes it if
+            // the learner never retries; terminal failures can be retired now.
+            $freshSubmission = $submission->fresh();
+            $retryCount = (int) data_get(
+                $freshSubmission->submission_metadata,
+                'ai_feedback.retry_count',
+                0
+            );
+            $fileRetention->purgeIfEligible(
+                $freshSubmission,
+                !ProjectReportRetryPolicy::allows($failureCode, $retryCount, null)
+            );
         } catch (\Throwable $exception) {
             $settled = $reservation?->fresh();
             $accepted = trim((string) data_get(
@@ -495,7 +520,6 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 $budget->release($reservation, 'project_feedback_failed');
             }
             $this->markUnavailable($submission->id, 'provider_unavailable');
-            $threads->failInitialReport($submission, 'provider_unavailable');
             throw $exception;
         }
     }
@@ -517,6 +541,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             $metadata['ai_feedback'] = [
                 'status' => 'queued',
                 'execution_id' => $this->executionId,
+                'request_id' => data_get(
+                    $metadata,
+                    'ai_feedback.request_id',
+                    $submission->public_id
+                ),
+                'retry_count' => (int) data_get($metadata, 'ai_feedback.retry_count', 0),
                 'attempt' => $this->attempts(),
                 'retry_after' => now()->addSeconds(
                     $this->backoff()[min($this->attempts() - 1, count($this->backoff()) - 1)]
@@ -529,9 +559,16 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
     public function failed(Throwable $exception): void
     {
         $submission = ProjectSubmission::query()->find($this->submissionId);
+        if (data_get($submission?->submission_metadata, 'ai_feedback.status') === 'unavailable') {
+            return;
+        }
         $event = $submission
             ? AiUsageEvent::query()
-                ->where('request_id', $submission->public_id)
+                ->where('request_id', data_get(
+                    $submission->submission_metadata,
+                    'ai_feedback.request_id',
+                    $submission->public_id
+                ))
                 ->where('feature', 'project_feedback')
                 ->first()
             : null;
@@ -572,26 +609,41 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             }
         }
         $this->markUnavailable($this->submissionId, 'worker_failed');
-        app(ProjectFeedbackThreadService::class)
-            ->failInitialReport($this->submissionId, 'worker_failed');
+        if ($submission) {
+            app(ProjectSubmissionFileRetentionService::class)
+                ->purgeIfEligible($submission->fresh(), false);
+        }
     }
 
     private function markUnavailable(int $submissionId, string $reason): void
     {
-        DB::transaction(function () use ($submissionId, $reason): void {
+        $changed = DB::transaction(function () use ($submissionId, $reason): bool {
             $submission = ProjectSubmission::query()->lockForUpdate()->find($submissionId);
-            if (!$submission) return;
+            if (!$submission) return false;
             $metadata = is_array($submission->submission_metadata) ? $submission->submission_metadata : [];
-            if (data_get($metadata, 'ai_feedback.status') === 'ready') return;
+            if (data_get($metadata, 'ai_feedback.status') === 'ready') return false;
             $owner = (string) data_get($metadata, 'ai_feedback.execution_id', '');
-            if ($owner !== '' && $owner !== $this->executionId) return;
+            if ($owner !== '' && $owner !== $this->executionId) return false;
 
             $metadata['ai_feedback'] = [
                 'status' => 'unavailable',
                 'reason' => $reason,
+                'request_id' => data_get(
+                    $metadata,
+                    'ai_feedback.request_id',
+                    $submission->public_id
+                ),
+                'retry_count' => (int) data_get($metadata, 'ai_feedback.retry_count', 0),
                 'failed_at' => now()->toIso8601String(),
             ];
             $submission->forceFill(['submission_metadata' => $metadata])->save();
+
+            return true;
         }, 3);
+
+        if ($changed) {
+            app(ProjectFeedbackThreadService::class)
+                ->failInitialReport($submissionId, $reason);
+        }
     }
 }

@@ -1,21 +1,4 @@
 <script>
-function updateOrderStatus(status) {
-    if (confirm('هل أنت متأكد من تحديث حالة الطلب؟')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = '{{ route("admin.orders.update-status", $order) }}';
-
-        form.innerHTML = `
-            @csrf
-            @method('PATCH')
-            <input type="hidden" name="status" value="${status}">
-        `;
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
-
 function showFullScreenshot(imageUrl) {
     // Update image source
     document.getElementById('fullScreenshotImage').src = imageUrl;

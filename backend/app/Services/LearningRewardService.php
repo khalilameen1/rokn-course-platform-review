@@ -12,9 +12,9 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserDailyLearningActivity;
 use App\Models\WalletTransaction;
+use App\Support\DatabaseCapabilities;
 use Carbon\CarbonImmutable;
 use App\Support\BusinessClock;
-use App\Support\DatabaseCapabilities;
 use Illuminate\Support\Facades\DB;
 
 final class LearningRewardService
@@ -85,11 +85,6 @@ final class LearningRewardService
             $dailyRule,
             $streakRule
         ): array {
-            $supportsSnapshots = DatabaseCapabilities::hasColumns('user_reward_checkins', [
-                'daily_rule_snapshot',
-                'streak_rule_snapshot',
-                'rules_snapshotted_at',
-            ]);
             DB::table('user_reward_checkins')->insertOrIgnore([
                 'user_id' => $user->id,
                 'checkin_date' => $today,
@@ -101,7 +96,7 @@ final class LearningRewardService
                 ->where('checkin_date', $today)
                 ->lockForUpdate()
                 ->first();
-            if ($supportsSnapshots && !$checkin->rules_snapshotted_at) {
+            if (!$checkin->rules_snapshotted_at) {
                 DB::table('user_reward_checkins')->where('id', $checkin->id)->update([
                     'daily_rule_snapshot' => $this->encodeRuleSnapshot($dailyRule),
                     'streak_rule_snapshot' => $this->encodeRuleSnapshot($streakRule),
@@ -112,12 +107,8 @@ final class LearningRewardService
             }
 
             return [
-                'daily' => $supportsSnapshots
-                    ? $this->decodeRuleSnapshot($checkin->daily_rule_snapshot)
-                    : $this->decodeRuleSnapshot($this->encodeRuleSnapshot($dailyRule)),
-                'streak' => $supportsSnapshots
-                    ? $this->decodeRuleSnapshot($checkin->streak_rule_snapshot)
-                    : $this->decodeRuleSnapshot($this->encodeRuleSnapshot($streakRule)),
+                'daily' => $this->decodeRuleSnapshot($checkin->daily_rule_snapshot),
+                'streak' => $this->decodeRuleSnapshot($checkin->streak_rule_snapshot),
             ];
         }, 3);
 
@@ -361,18 +352,21 @@ final class LearningRewardService
                 ->where('occurred_at', '>=', $this->rewardNow()->subDays(30))
                 ->sum('amount');
             $rollingRoom = max(0, $rollingCap - $rollingTotal);
+            $balances = $this->wallet->balances($lockedUser);
             $balanceRoom = max(
                 0,
-                (int) $settings->reward_balance_cap - (int) $lockedUser->wallet_reward_coins
+                (int) $settings->reward_balance_cap - $balances['reward']
             );
-            $amount = min($requested, $rollingRoom, $balanceRoom);
-            if ($amount <= 0) {
+            // A displayed reward is one commercial promise. Crediting a
+            // smaller remainder would consume its one-time idempotency key
+            // while silently paying fewer coins than the configured amount.
+            if ($requested > $rollingRoom || $requested > $balanceRoom) {
                 return null;
             }
 
             return $this->wallet->credit(
                 $lockedUser->id,
-                $amount,
+                $requested,
                 $category,
                 $idempotencyKey,
                 $source,
@@ -393,11 +387,12 @@ final class LearningRewardService
         // retries (and long-running workers can do the same). The ledger is
         // authoritative even when this call did not create a transaction.
         $fresh = $user->fresh();
+        $balances = $this->wallet->balances($fresh);
 
         return $extra + [
             'awarded' => $transaction ? (int) $transaction->amount : 0,
-            'balance' => (int) $fresh->wallet_coins,
-            'reward_balance' => (int) $fresh->wallet_reward_coins,
+            'balance' => $balances['total'],
+            'reward_balance' => $balances['reward'],
             'transaction_id' => $transaction?->public_id,
         ];
     }

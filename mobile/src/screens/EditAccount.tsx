@@ -4,7 +4,6 @@ import React, {useEffect, useRef, useState} from 'react';
 import {
   Alert,
   Image,
-  type ImageSourcePropType,
   Pressable,
   StyleSheet,
   Text,
@@ -27,8 +26,8 @@ import {
   captureAccountSessionBoundary,
   extractApiToken,
   extractUserProfile,
-  getCurrentAccountStorageScope,
   getItem,
+  sessionIdentityKey,
 } from '../constants/helpers';
 import {
   Palette,
@@ -48,6 +47,7 @@ import {
 } from '../services/learnerDraftFiles';
 import {secureRandomUuid} from '../utils/secureRandom';
 import {showMediaPickerFailure} from '../services/mediaPickerErrors';
+import {DefaultAvatar} from '../components/ui/DefaultAvatar';
 
 export default function EditAccount() {
   const navigation = useNavigation<RootNavigation>();
@@ -55,9 +55,7 @@ export default function EditAccount() {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const user = extractUserProfile(storedUser);
   const hasStoredToken = Boolean(extractApiToken(storedUser));
-  const identityKey = hasStoredToken
-    ? String(user.id ?? user.user_id ?? 'authenticated')
-    : 'guest';
+  const identityKey = sessionIdentityKey(storedUser);
   const [name, setName] = useState(user.name ?? '');
   const [jobTitle, setJobTitle] = useState(
     !hasStoredToken && user.job_title === 'مصمم واجهات ومستقل'
@@ -66,11 +64,7 @@ export default function EditAccount() {
   );
   const [email, setEmail] = useState(user.email ?? '');
   const storedAvatar = user.avatar || user.profile_image;
-  const [avatar, setAvatar] = useState<ImageSourcePropType>(
-    storedAvatar
-      ? {uri: storedAvatar}
-      : require('../assets/images/default-avatar.png'),
-  );
+  const [avatar, setAvatar] = useState(storedAvatar || '');
   const [avatarUpload, setAvatarUpload] = useState<
     {uri: string; type?: string; fileName?: string; size?: number} | undefined
   >();
@@ -110,7 +104,7 @@ export default function EditAccount() {
     setName('');
     setJobTitle('');
     setEmail('');
-    setAvatar(require('../assets/images/default-avatar.png'));
+    setAvatar('');
     setProfileRevision(0);
     setServerSession(null);
     void removeLearnerDraftFile(staleDraft);
@@ -120,6 +114,11 @@ export default function EditAccount() {
     let active = true;
     void (async () => {
       if (active) setHydrationState('loading');
+      if (!hasStoredToken) {
+        setServerSession(false);
+        setHydrationState('error');
+        return;
+      }
       const sessionAvailable = await hasSession();
       if (!active) return;
       setServerSession(sessionAvailable);
@@ -127,12 +126,17 @@ export default function EditAccount() {
         setHydrationState('error');
         return;
       }
-      const accountScope = await getCurrentAccountStorageScope();
-      const profileResult = await getProfile().then(
+      const boundary = await captureAccountSessionBoundary();
+      const profileResult = await getProfile(boundary).then(
         value => ({status: 'fulfilled' as const, value}),
         reason => ({status: 'rejected' as const, reason}),
       );
-      if (!active || (await getCurrentAccountStorageScope()) !== accountScope) {
+      try {
+        assertAccountSessionBoundary(boundary);
+      } catch {
+        return;
+      }
+      if (!active) {
         return;
       }
       if (active && profileResult.status === 'fulfilled') {
@@ -140,7 +144,7 @@ export default function EditAccount() {
         setName(profile.name);
         setJobTitle(profile.jobTitle);
         setEmail(profile.email);
-        if (profile.avatar) setAvatar({uri: profile.avatar});
+        setAvatar(profile.avatar || '');
         setProfileRevision(profile.profileRevision);
       }
       if (active) {
@@ -148,14 +152,22 @@ export default function EditAccount() {
           profileResult.status === 'fulfilled' ? 'ready' : 'error',
         );
       }
-    })();
+    })().catch(() => {
+      if (active) setHydrationState('error');
+    });
     return () => {
       active = false;
     };
-  }, [identityKey, reloadProfile]);
+  }, [hasStoredToken, identityKey, reloadProfile]);
 
   const chooseAvatar = async () => {
-    if (pickerFlightRef.current || saveFlightRef.current) return;
+    if (
+      serverSession !== true ||
+      hydrationState !== 'ready' ||
+      pickerFlightRef.current ||
+      saveFlightRef.current
+    )
+      return;
     pickerFlightRef.current = true;
     let cachedSelection:
       | {uri: string; type?: string; fileName?: string; size?: number}
@@ -203,7 +215,7 @@ export default function EditAccount() {
           return;
         }
         const previous = avatarUpload;
-        setAvatar({uri: cached.uri});
+        setAvatar(cached.uri);
         setAvatarUpload(cached);
         cachedSelection = undefined;
         profileRequestRef.current = null;
@@ -242,7 +254,6 @@ export default function EditAccount() {
     let remoteProfileSaved = false;
     try {
       const accountBoundary = await captureAccountSessionBoundary();
-      const accountScope = accountBoundary.scope;
       const sessionAtStart = await getItem(AsyncKeys.USER_DATA);
       assertAccountSessionBoundary(accountBoundary);
       const ownerAtStart = extractUserProfile(sessionAtStart);
@@ -268,14 +279,17 @@ export default function EditAccount() {
             id: secureRandomUuid(),
           };
         }
-        const profile = await updateProfile({
-          name: name.trim(),
-          jobTitle: jobTitle.trim(),
-          avatar: avatarUpload,
-          portfolioHeadline: jobTitle.trim(),
-          clientRequestId: profileRequestRef.current.id,
-          expectedProfileRevision: profileRevision,
-        });
+        const profile = await updateProfile(
+          {
+            name: name.trim(),
+            jobTitle: jobTitle.trim(),
+            avatar: avatarUpload,
+            portfolioHeadline: jobTitle.trim(),
+            clientRequestId: profileRequestRef.current.id,
+            expectedProfileRevision: profileRevision,
+          },
+          accountBoundary,
+        );
         assertAccountSessionBoundary(accountBoundary);
         if (avatarUpload && !profile.avatar) {
           throw new Error('PROFILE_AVATAR_NOT_PERSISTED');
@@ -284,9 +298,7 @@ export default function EditAccount() {
         setProfileRevision(profile.profileRevision);
         remoteProfileSaved = true;
       }
-      if ((await getCurrentAccountStorageScope()) !== accountScope) {
-        throw new Error('ACCOUNT_CHANGED_DURING_PROFILE_UPDATE');
-      }
+      assertAccountSessionBoundary(accountBoundary);
       const next = await updateSecureSessionForOwner(
         expectedOwner,
         activeSession => {
@@ -322,8 +334,7 @@ export default function EditAccount() {
     } catch (error: unknown) {
       if (
         error instanceof Error &&
-        (error.message === 'ACCOUNT_CHANGED_DURING_REQUEST' ||
-          error.message === 'ACCOUNT_CHANGED_DURING_PROFILE_UPDATE')
+        error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
       ) {
         return;
       }
@@ -333,10 +344,7 @@ export default function EditAccount() {
           setReloadProfile(value => value + 1);
           await removeLearnerDraftFile(avatarUpload).catch(() => undefined);
           setAvatarUpload(undefined);
-          Alert.alert(
-            'حُفظت التغييرات',
-            'ستظهر عند فتح الصفحة من جديد',
-          );
+          Alert.alert('حُفظت التغييرات', 'ستظهر عند فتح الصفحة من جديد');
         } else {
           Alert.alert(
             'تعذّر حفظ التغييرات',
@@ -361,7 +369,7 @@ export default function EditAccount() {
       <Content noPadding>
         <ResponsiveFrame style={styles.frame}>
           <HeaderWithBack title="بيانات الحساب" />
-          {serverSession === false ? (
+          {!hasStoredToken || serverSession === false ? (
             <StatusView
               actionLabel="سجّل الدخول"
               description="بيانات الحساب مرتبطة بطريقة الدخول التي اخترتها"
@@ -373,6 +381,8 @@ export default function EditAccount() {
               state="error"
               title="سجّل الدخول لتعديل حسابك"
             />
+          ) : hydrationState === 'loading' || serverSession === null ? (
+            <StatusView state="loading" title="جارٍ تحميل بيانات الحساب" />
           ) : hydrationState === 'error' ? (
             <StatusView
               actionLabel="إعادة المحاولة"
@@ -384,14 +394,16 @@ export default function EditAccount() {
           ) : (
             <>
               <View style={styles.avatarArea}>
-                <Image
-                  accessibilityLabel="صورة الحساب"
-                  onError={() =>
-                    setAvatar(require('../assets/images/default-avatar.png'))
-                  }
-                  source={avatar}
-                  style={styles.avatar}
-                />
+                {avatar ? (
+                  <Image
+                    accessibilityLabel="صورة الحساب"
+                    onError={() => setAvatar('')}
+                    source={{uri: avatar}}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <DefaultAvatar accessibilityLabel="صورة الحساب" size={92} />
+                )}
                 <Pressable
                   accessibilityLabel="تغيير صورة الحساب"
                   accessibilityRole="button"
@@ -425,15 +437,11 @@ export default function EditAccount() {
                   </Text>
                 </View>
                 <Text style={styles.hint}>
-                  يتبع حساب Google أو TikTok أو Facebook الذي سجلت به
+                  يتبع حساب Google أو Facebook أو TikTok أو Apple الذي سجلت به
                 </Text>
               </PremiumCard>
               <Button
-                disable={
-                  saving ||
-                  hydrationState !== 'ready' ||
-                  !name.trim()
-                }
+                disable={saving || hydrationState !== 'ready' || !name.trim()}
                 loader={saving}
                 onPress={save}
                 title="حفظ التغييرات"

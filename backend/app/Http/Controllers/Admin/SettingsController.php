@@ -21,6 +21,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use App\Support\AdminSingletonLock;
+use App\Auth\AdminSessionIdentity;
 
 class SettingsController extends Controller
 {
@@ -196,8 +197,6 @@ class SettingsController extends Controller
             'bunny_storage_zone_name' => 'nullable|string',
             'bunny_storage_password' => 'nullable|string|max:4096',
             'bunny_security_key' => 'nullable|string|max:4096',
-            'about_us_url' => 'nullable|url|starts_with:https://|max:500',
-            'privacy_policy_url' => 'nullable|url|starts_with:https://|max:500',
             'support_whatsapp_url' => 'nullable|string|max:255',
             'facebook_url' => 'nullable|url|starts_with:https://|max:2048',
             'youtube_url' => 'nullable|url|starts_with:https://|max:2048',
@@ -205,17 +204,17 @@ class SettingsController extends Controller
             'tiktok_url' => 'nullable|url|starts_with:https://|max:2048',
             'telegram_url' => 'nullable|url|starts_with:https://|max:2048',
             'whatsapp_url' => 'nullable|string|max:2048',
-            'ai_daily_user_limit' => 'sometimes|required|integer|min:1|max:1000',
             'ai_global_daily_request_limit' => 'sometimes|required|integer|min:1|max:10000000',
             'ai_global_daily_token_budget' => 'sometimes|required|integer|min:1000|max:1000000000',
             'ai_global_monthly_token_budget' => 'sometimes|required|integer|min:1000|max:10000000000',
-            'ai_answer_cache_minutes' => 'sometimes|required|integer|min:5|max:10080',
             'ai_plan_policy' => 'sometimes|required|array:basic,guided,mentor',
             'ai_plan_policy.*.chat_enabled' => 'nullable|boolean',
-            'ai_plan_policy.*.chat_message_limit' => 'required|integer|min:0|max:100000',
+            'ai_plan_policy.*.chat_message_limit' => 'required|integer|min:0|max:'
+                . max(1, (int) config('course_plans.ai_tiers.mentor.chat_message_limit', 150)),
             'ai_plan_policy.*.chat_attachments_enabled' => 'nullable|boolean',
             'ai_plan_policy.*.project_feedback_level' => ['required', Rule::in(['pass_only', 'report', 'enhanced'])],
-            'ai_plan_policy.*.project_followup_message_limit' => 'required|integer|min:0|max:100000',
+            'ai_plan_policy.*.project_followup_message_limit' => 'required|integer|min:0|max:'
+                . max(1, (int) config('course_plans.ai_tiers.mentor.project_followup_message_limit', 50)),
             'editor_version' => 'required|string|size:64',
             ]);
         } catch (ValidationException $exception) {
@@ -231,10 +230,20 @@ class SettingsController extends Controller
                 $chatLimit = max(0, (int) $tier['chat_message_limit']);
                 $feedback = (string) $tier['project_feedback_level'];
                 $followupLimit = max(0, (int) $tier['project_followup_message_limit']);
+                $tierCeiling = max(0, (int) config(
+                    "course_plans.ai_tiers.{$code}.chat_message_limit",
+                    0
+                ));
 
                 if ($chatEnabled && $chatLimit === 0) {
                     throw ValidationException::withMessages([
                         "ai_plan_policy.{$code}.chat_message_limit" => 'حدد عدد الرسائل عند تشغيل الشات',
+                    ]);
+                }
+                if ($chatLimit > $tierCeiling) {
+                    throw ValidationException::withMessages([
+                        "ai_plan_policy.{$code}.chat_message_limit" =>
+                            "الحد الأقصى لهذه الفئة {$tierCeiling} رسالة",
                     ]);
                 }
                 if ($code === 'basic') {
@@ -247,6 +256,16 @@ class SettingsController extends Controller
                 if ($feedback === 'enhanced' && $followupLimit === 0) {
                     throw ValidationException::withMessages([
                         "ai_plan_policy.{$code}.project_followup_message_limit" => 'حدد عدد رسائل المتابعة لهذه الفئة',
+                    ]);
+                }
+                $followupCeiling = max(0, (int) config(
+                    "course_plans.ai_tiers.{$code}.project_followup_message_limit",
+                    0
+                ));
+                if ($followupLimit > $followupCeiling) {
+                    throw ValidationException::withMessages([
+                        "ai_plan_policy.{$code}.project_followup_message_limit" =>
+                            "الحد الأقصى لهذه الفئة {$followupCeiling} رسالة",
                     ]);
                 }
 
@@ -409,7 +428,7 @@ class SettingsController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function updateAdminData(Request $request)
+    public function updateAdminData(Request $request, AdminSessionIdentity $sessionIdentity)
     {
         $user = $request->user();
         abort_unless($user, 403);
@@ -428,23 +447,12 @@ class SettingsController extends Controller
             $user->password = Hash::make($validated['password']);
         }
         $user->save();
+        $request->session()->put(
+            AdminSessionIdentity::SESSION_KEY,
+            $sessionIdentity->fingerprint($user)
+        );
 
         return redirect()->route('admin.admin_data')->with('success', 'تم التعديل بنجاح');
-    }
-
-    /**
-     * Display the student platform URL page
-     *
-     * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
-     */
-    public function studentPlatform()
-    {
-        $platformUrl = config('app.url', url('/'));
-
-        // Get design settings for platform name
-        $designSettings = DesignSetting::getDefaultSettings();
-
-        return view('admin.settings.student-platform', compact('platformUrl', 'designSettings'));
     }
 
     /**

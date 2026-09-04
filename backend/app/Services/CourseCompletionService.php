@@ -6,22 +6,18 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseSection;
-use App\Models\ExamAttempt;
 use App\Models\Lesson;
 use App\Models\StudentSectionProgress;
 use App\Models\User;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final readonly class CourseCompletionService
 {
     public function __construct(
-        private CourseReadCompatibilityService $courseReads,
         private CoursePresentationService $coursePresentation,
         private LearningEvidenceService $learningEvidence,
         private CourseModuleAccessService $courseAccess,
         private InternalSignalService $internalSignals,
-        private CourseStagedAuthoringService $stagedAuthoring,
         private CourseRevisionLearnerReadService $revisionReads
     ) {
     }
@@ -31,7 +27,27 @@ final readonly class CourseCompletionService
      */
     public function complete(User $user, int $courseId, int $sectionId): array
     {
-        $course = Course::findOrFail($courseId);
+        // Publishing takes the canonical course lock before swapping section
+        // IDs. Hold that same boundary through evidence validation and the
+        // progress write so a request can never complete a section removed by
+        // a publish that won the race.
+        return DB::transaction(function () use ($user, $courseId, $sectionId): array {
+            $course = Course::query()
+                ->whereKey($courseId)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            return $this->completeWithinCourseLock($user, $course, $sectionId);
+        }, 3);
+    }
+
+    /** @return array{success:bool,status:int,message:string,data:mixed,code?:string} */
+    private function completeWithinCourseLock(User $user, Course $course, int $sectionId): array
+    {
+        $courseId = (int) $course->id;
+        if (!$course->isPublishedForLearning()) {
+            return $this->failure(404, 'Course is not available for learning');
+        }
         $section = CourseSection::query()
             ->whereKey($sectionId)
             ->where('course_id', $courseId)
@@ -40,7 +56,10 @@ final readonly class CourseCompletionService
         if (!$section) {
             return $this->failure(404, 'Section not found in this course');
         }
-        if (!$this->courseReads->hasLearningAccess((int) $user->id, $courseId)) {
+        if (!in_array($section->getSectionType(), ['lesson', 'project'], true)) {
+            return $this->failure(404, 'Section is not part of the learning sequence');
+        }
+        if (!$this->courseAccess->hasCourseAccess($user, $course)) {
             return $this->failure(403, 'You are not authorized to access this course');
         }
 
@@ -48,6 +67,28 @@ final readonly class CourseCompletionService
             (int) $user->id,
             $sectionId
         );
+
+        if ($existingProgress && $existingProgress->is_completed) {
+            $courseProgress = DB::transaction(function () use ($user, $courseId): array {
+                User::query()->lockForUpdate()->findOrFail($user->id);
+
+                return $this->recordCourseCompletionIfEligible(
+                    (int) $user->id,
+                    $courseId
+                );
+            }, 3);
+
+            return $this->success(
+                'Section already completed',
+                [
+                    'section' => $this->sectionPayload(
+                        $section,
+                        $existingProgress->completed_at ?? $existingProgress->updated_at
+                    ),
+                    'course_progress' => $courseProgress,
+                ]
+            );
+        }
 
         if ($section->getSectionType() === 'project') {
             return $this->failure(
@@ -78,36 +119,6 @@ final readonly class CourseCompletionService
             }
         }
 
-        if ($section->getSectionType() === 'quiz' && !$this->hasPassedQuiz($user, $course, $section)) {
-            return $this->failure(
-                409,
-                'Pass this assessment before continuing',
-                'passed_quiz_required'
-            );
-        }
-
-        if ($existingProgress && $existingProgress->is_completed) {
-            $courseProgress = DB::transaction(function () use ($user, $courseId): array {
-                User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
-
-                return $this->recordCourseCompletionIfEligible(
-                    (int) $user->id,
-                    $courseId
-                );
-            }, 3);
-
-            return $this->success(
-                'Section already completed',
-                [
-                    'section' => $this->sectionPayload(
-                        $section,
-                        $existingProgress->completed_at ?? $existingProgress->updated_at
-                    ),
-                    'course_progress' => $courseProgress,
-                ]
-            );
-        }
-
         $courseSections = CourseSection::query()
             ->where('course_id', $courseId)
             ->orderBy('order')
@@ -130,32 +141,11 @@ final readonly class CourseCompletionService
             );
         }
 
-        $progress = DB::transaction(function () use (
-            $user,
-            $sectionId,
-            $courseId
-        ): StudentSectionProgress {
-            User::query()->lockForUpdate()->findOrFail($user->id);
-
-            $progress = StudentSectionProgress::firstOrNew([
-                'user_id' => $user->id,
-                'course_section_id' => $sectionId,
-            ]);
-            $progress->is_completed = true;
-            $progress->completed_at ??= now();
-            $progress->save();
-
-            // The completion signal is part of the same commit as the last
-            // section. Queue availability is irrelevant to this guarantee.
-            $this->recordCourseCompletionIfEligible((int) $user->id, $courseId);
-
-            return $progress;
-        }, 3);
-
-        $courseProgress = $this->coursePresentation->progressSummary(
+        [$progress, $courseProgress] = $this->recordCompletedSection(
             (int) $user->id,
-            $courseId
+            $section
         );
+
         return $this->success('Section marked as completed successfully', [
             'section' => $this->sectionPayload(
                 $section,
@@ -163,6 +153,53 @@ final readonly class CourseCompletionService
             ),
             'course_progress' => $courseProgress,
         ]);
+    }
+
+    /** Project review is the only caller allowed to complete a project gate. */
+    public function recordPassedProject(int $userId, CourseSection $section): array
+    {
+        if ($section->getSectionType() !== 'project') {
+            throw new \InvalidArgumentException('Only a passed project can complete a project section.');
+        }
+
+        [, $summary] = $this->recordCompletedSection($userId, $section);
+
+        return $summary;
+    }
+
+    /** @return array{0:StudentSectionProgress,1:array<string,mixed>} */
+    private function recordCompletedSection(int $userId, CourseSection $section): array
+    {
+        return DB::transaction(function () use ($userId, $section): array {
+            User::query()->lockForUpdate()->findOrFail($userId);
+
+            DB::table('student_section_progress')->insertOrIgnore([
+                'user_id' => $userId,
+                'course_section_id' => (int) $section->id,
+                'is_completed' => true,
+                'completed_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $progress = StudentSectionProgress::query()
+                ->where('user_id', $userId)
+                ->where('course_section_id', $section->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+            if (!$progress->is_completed) {
+                $progress->forceFill([
+                    'is_completed' => true,
+                    'completed_at' => $progress->completed_at ?? now(),
+                ])->save();
+            }
+
+            $summary = $this->recordCourseCompletionIfEligible(
+                $userId,
+                (int) $section->course_id
+            );
+
+            return [$progress, $summary];
+        }, 3);
     }
 
     /** @return array<string, mixed> */
@@ -184,11 +221,21 @@ final readonly class CourseCompletionService
 
     public function canAccessSection(User $user, CourseSection $section): bool
     {
+        return (bool) $this->sectionAccessState($user, $section)['can_access'];
+    }
+
+    /** @return array{can_access:bool,is_locked:bool,lock_reason:?string} */
+    public function sectionAccessState(User $user, CourseSection $section): array
+    {
         $course = $section->relationLoaded('course')
             ? $section->course
             : Course::find($section->course_id);
         if (!$course || !$this->courseAccess->hasCourseAccess($user, $course)) {
-            return false;
+            return [
+                'can_access' => false,
+                'is_locked' => true,
+                'lock_reason' => 'course_purchase_required',
+            ];
         }
 
         $sections = CourseSection::query()
@@ -205,63 +252,12 @@ final readonly class CourseCompletionService
             (int) $user->id
         )->firstWhere('section_id', $section->id);
 
-        return (bool) ($state['can_access'] ?? false);
-    }
-
-    public function accessStates(User $user, Collection $sections): Collection
-    {
-        if ($sections->isEmpty()) {
-            return collect();
-        }
-
-        $completedSectionIds = $this->revisionReads->completedSectionIds(
-            (int) $user->id,
-            $sections->pluck('id')
-        );
-
-        return $this->coursePresentation->sectionLockStatus(
-            $sections,
-            $completedSectionIds,
-            (int) $user->id
-        )->map(fn (array $state): array => $this->accessState(
-            $state['section_id'],
-            (bool) $state['can_access']
-        ));
-    }
-
-    private function hasPassedQuiz(User $user, Course $course, CourseSection $section): bool
-    {
-        $sectionIds = $this->stagedAuthoring->equivalentEntityIds(
-            CourseSection::class,
-            (int) $section->id
-        );
-        $quizIds = $this->stagedAuthoring->equivalentEntityIds(
-            \App\Models\ItemList::class,
-            (int) $section->sectionable_id
-        );
-
-        return ExamAttempt::query()
-            ->where('user_id', $user->id)
-            ->where('course_id', $course->id)
-            ->where(function ($attempts) use ($sectionIds, $quizIds): void {
-                $attempts->whereIn('section_id', $sectionIds)
-                    ->orWhere(function ($legacyAttempts) use ($quizIds): void {
-                        $legacyAttempts->whereNull('section_id')
-                            ->whereIn('quiz_id', $quizIds);
-                    });
-            })
-            ->where('status', ExamAttempt::STATUS_COMPLETED)
-            ->where('is_passed', true)
-            ->exists();
-    }
-
-    /** @return array{section_id:mixed,can_access:bool,is_locked:bool} */
-    private function accessState(mixed $sectionId, bool $canAccess): array
-    {
         return [
-            'section_id' => $sectionId,
-            'can_access' => $canAccess,
-            'is_locked' => !$canAccess,
+            'can_access' => (bool) ($state['can_access'] ?? false),
+            'is_locked' => (bool) ($state['is_locked'] ?? true),
+            'lock_reason' => isset($state['lock_reason'])
+                ? (string) $state['lock_reason']
+                : null,
         ];
     }
 

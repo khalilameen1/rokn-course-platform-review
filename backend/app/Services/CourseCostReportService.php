@@ -11,7 +11,6 @@ use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use App\Support\BusinessClock;
 
 /** Allocates measurable and invoiced service costs to course learners. */
@@ -32,27 +31,13 @@ final class CourseCostReportService
         $userIds = $userIds->map(fn ($id): int => (int) $id)->filter()->unique()->values();
         $rows = $userIds->mapWithKeys(fn (int $id): array => [$id => $this->emptyUserCost()]);
         $usdToEgp = (float) (Setting::query()->value('openrouter_usd_to_egp_rate') ?? 0);
-        $aiMeasurementAvailable = Schema::hasTable('ai_usage_events');
-        if (!$aiMeasurementAvailable) {
-            $rows = $rows->map(function (array $row): array {
-                $row['ai_measurement_available'] = false;
-                $row['ai_cost_complete'] = false;
-                return $row;
-            });
-        }
+        $aiMeasurementAvailable = true;
 
-        if ($userIds->isNotEmpty() && $aiMeasurementAvailable) {
-            $hasEgpSnapshots = Schema::hasColumn('ai_usage_events', 'cost_egp');
+        if ($userIds->isNotEmpty()) {
             $costSource = match (DB::connection()->getDriverName()) {
                 'mysql', 'mariadb' => "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.cost_usage_source'))",
                 'pgsql' => "metadata->>'cost_usage_source'",
                 'sqlite' => "json_extract(metadata, '$.cost_usage_source')",
-                default => "''",
-            };
-            $usageSource = match (DB::connection()->getDriverName()) {
-                'mysql', 'mariadb' => "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.usage_source'))",
-                'pgsql' => "metadata->>'usage_source'",
-                'sqlite' => "json_extract(metadata, '$.usage_source')",
                 default => "''",
             };
             $deliverySource = match (DB::connection()->getDriverName()) {
@@ -63,12 +48,8 @@ final class CourseCostReportService
             };
             $delivered = "COALESCE({$deliverySource}, 'true') NOT IN ('false', '0')";
             $unanswered = "COALESCE({$deliverySource}, 'true') IN ('false', '0')";
-            // Older cache hits only carried usage_source=cached_answer. They
-            // are known zero-cost deliveries, not unsettled provider costs.
-            $estimatedCost = "COALESCE({$costSource}, '') NOT IN ('provider', 'cache_zero_cost') AND COALESCE({$usageSource}, '') NOT IN ('cached_answer', 'cache_zero_cost')";
-            $egpSelect = $hasEgpSnapshots
-                ? ", SUM(CASE WHEN status = 'completed' AND COALESCE({$costSource}, '') = 'provider' THEN COALESCE(cost_egp, 0) ELSE 0 END) as cost_egp, SUM(CASE WHEN status = 'completed' AND COALESCE({$costSource}, '') = 'provider' AND cost_usd > 0 AND cost_egp IS NULL THEN cost_usd ELSE 0 END) as unsnapped_cost_usd, SUM(CASE WHEN status = 'completed' AND {$estimatedCost} THEN COALESCE(cost_egp, 0) ELSE 0 END) as estimated_cost_egp, SUM(CASE WHEN status = 'completed' AND {$estimatedCost} AND cost_usd > 0 AND cost_egp IS NULL THEN cost_usd ELSE 0 END) as estimated_unsnapped_cost_usd"
-                : ", 0 as cost_egp, SUM(CASE WHEN status = 'completed' AND COALESCE({$costSource}, '') = 'provider' THEN cost_usd ELSE 0 END) as unsnapped_cost_usd, 0 as estimated_cost_egp, SUM(CASE WHEN status = 'completed' AND {$estimatedCost} THEN cost_usd ELSE 0 END) as estimated_unsnapped_cost_usd";
+            $estimatedCost = "COALESCE({$costSource}, '') <> 'provider'";
+            $egpSelect = ", SUM(CASE WHEN status = 'completed' AND COALESCE({$costSource}, '') = 'provider' THEN COALESCE(cost_egp, 0) ELSE 0 END) as cost_egp, SUM(CASE WHEN status = 'completed' AND COALESCE({$costSource}, '') = 'provider' AND cost_usd > 0 AND cost_egp IS NULL THEN cost_usd ELSE 0 END) as unsnapped_cost_usd, SUM(CASE WHEN status = 'completed' AND {$estimatedCost} THEN COALESCE(cost_egp, 0) ELSE 0 END) as estimated_cost_egp, SUM(CASE WHEN status = 'completed' AND {$estimatedCost} AND cost_usd > 0 AND cost_egp IS NULL THEN cost_usd ELSE 0 END) as estimated_unsnapped_cost_usd";
             $ai = DB::table('ai_usage_events')
                 ->where('course_id', $course->id)
                 ->whereIn('user_id', $userIds)
@@ -136,14 +117,14 @@ final class CourseCostReportService
             $incompleteActualServices[self::OPENROUTER_SERVICE] = true;
             $incompleteEstimatedServices[self::OPENROUTER_SERVICE] = true;
         }
-        if (Schema::hasTable('operating_cost_pools')) {
-            $pools = OperatingCostPool::query()
+        $pools = OperatingCostPool::query()
                 ->where(function ($query) use ($course): void {
                     $query->whereNull('course_id')->orWhere('course_id', $course->id);
                 })
                 ->orderBy('period_start')
                 ->get();
-            foreach ($pools as $pool) {
+        $driverAllocations = [];
+        foreach ($pools as $pool) {
                 $amountEgp = $pool->amountEgp();
                 if ($amountEgp === null) {
                     $unallocatedPools[] = "{$pool->name}: سعر التحويل غير موجود";
@@ -160,7 +141,14 @@ final class CourseCostReportService
                     }
                     continue;
                 }
-                $allocation = $this->poolDriver($pool, (int) $course->id, $userIds);
+                $allocationKey = implode(':', [
+                    $pool->allocation_driver,
+                    $pool->course_id ?: 'platform',
+                    $pool->period_start->format('Y-m-d'),
+                    $pool->period_end->format('Y-m-d'),
+                ]);
+                $allocation = $driverAllocations[$allocationKey]
+                    ??= $this->poolDriver($pool, (int) $course->id, $userIds);
                 if ($allocation['denominator'] <= 0) {
                     $unallocatedPools[] = "{$pool->name}: لا توجد بيانات لمسبب التكلفة";
                     $incompleteFinalPool = $incompleteFinalPool || (bool) $pool->is_final;
@@ -191,18 +179,11 @@ final class CourseCostReportService
                     );
                     $rows->put($userId, $row);
                 }
-            }
         }
 
         foreach ($rows as $userId => $row) {
             $hasUnsnapshottedAiCost = !$row['ai_cost_complete']
                 || ((float) $row['ai_cost_usd'] > 0 && $row['ai_cost_egp'] === null);
-            if ($hasUnsnapshottedAiCost) {
-                $incompleteActualServices[self::OPENROUTER_SERVICE] = true;
-            }
-            if ($row['ai_cost_egp_estimated'] === null) {
-                $incompleteEstimatedServices[self::OPENROUTER_SERVICE] = true;
-            }
             $row['service_cost_complete'] = !$hasUnsnapshottedAiCost && !$incompleteFinalPool;
             $row['service_cost_actual_egp'] = !$row['service_cost_complete']
                 ? null
@@ -224,13 +205,16 @@ final class CourseCostReportService
                 $estimatedBase = $serviceKey === self::OPENROUTER_SERVICE
                     ? $row['ai_cost_egp_estimated']
                     : $actual;
+                $actualIncomplete = isset($incompleteActualServices[$serviceKey])
+                    || ($serviceKey === self::OPENROUTER_SERVICE && $hasUnsnapshottedAiCost);
+                $estimateIncomplete = isset($incompleteEstimatedServices[$serviceKey])
+                    || ($serviceKey === self::OPENROUTER_SERVICE && $estimatedBase === null);
                 $row['actual_cost_by_service_egp'][$serviceKey]
-                    = isset($incompleteActualServices[$serviceKey]) ? null : round((float) $actual, 4);
+                    = $actualIncomplete ? null : round((float) $actual, 4);
                 $row['cost_with_estimates_by_service_egp'][$serviceKey]
-                    = (isset($incompleteActualServices[$serviceKey])
+                    = ($actualIncomplete
                             && $serviceKey !== self::OPENROUTER_SERVICE)
-                        || isset($incompleteEstimatedServices[$serviceKey])
-                        || $estimatedBase === null
+                        || $estimateIncomplete
                             ? null
                             : round((float) $estimatedBase + (float) $estimate, 4);
             }
@@ -246,7 +230,10 @@ final class CourseCostReportService
             string $label,
             string $serviceKey
         ) use ($rows, $incompleteActualServices, $incompleteEstimatedServices): array {
-            $actualComplete = !isset($incompleteActualServices[$serviceKey]);
+            $actualComplete = !isset($incompleteActualServices[$serviceKey])
+                && $rows->every(fn (array $row): bool =>
+                    ($row['actual_cost_by_service_egp'][$serviceKey] ?? null) !== null
+                );
             $estimateComplete = !isset($incompleteEstimatedServices[$serviceKey])
                 && ($actualComplete || $serviceKey === self::OPENROUTER_SERVICE)
                 && $rows->every(fn (array $row): bool =>
@@ -388,9 +375,6 @@ final class CourseCostReportService
         ?CarbonInterface $end,
         ?Collection $userIds
     ): array {
-        if (!Schema::hasTable('playback_sessions') || !Schema::hasTable('course_sections')) {
-            return ['users' => collect(), 'minutes' => 0.0, 'gb' => 0.0];
-        }
         $query = DB::table('playback_sessions as ps')
             ->join('course_sections as cs', 'cs.id', '=', 'ps.course_section_id')
             ->select([
@@ -413,7 +397,7 @@ final class CourseCostReportService
         }
 
         $users = collect();
-        foreach ($query->get() as $session) {
+        foreach ($query->cursor() as $session) {
             $started = $session->started_playing_at ?: $session->started_at;
             $ended = $session->ended_at ?: $session->last_heartbeat_at;
             $seconds = $started && $ended

@@ -28,34 +28,35 @@ class AdminDashboardViewTest extends TestCase
         self::assertStringNotContainsString('<style', $source);
     }
 
-    public function test_course_editor_keeps_its_styles_and_sections_out_of_the_page_template(): void
+    public function test_course_studio_keeps_its_editor_in_shared_partials(): void
     {
-        $editor = $this->viewSource('courses/edit.blade.php');
+        $editor = $this->viewSource('courses/show.blade.php');
+        $settingsPanel = $this->viewSource('courses/partials/show/course-settings-panel.blade.php');
+        $behavior = $this->viewSource('courses/partials/editor-scripts.blade.php');
         $partials = [
-            'basic-information',
-            'course-settings',
-            'access-plans',
-            'course-image',
+            'editor.basic-information' => 'courses/partials/editor/basic-information.blade.php',
+            'edit.course-settings' => 'courses/partials/edit/course-settings.blade.php',
+            'edit.access-plans' => 'courses/partials/edit/access-plans.blade.php',
+            'editor.course-image' => 'courses/partials/editor/course-image.blade.php',
         ];
 
         self::assertStringContainsString('admin/assets/css/course-editor.css', $editor);
         self::assertLessThanOrEqual(350, substr_count($editor, "\n") + 1);
 
-        $formSource = $editor;
-        foreach ($partials as $partial) {
-            $view = "courses/partials/edit/{$partial}.blade.php";
+        $formSource = $editor.$settingsPanel.$behavior;
+        foreach ($partials as $include => $view) {
             $source = $this->viewSource($view);
 
             self::assertStringContainsString(
-                "@include('admin.courses.partials.edit.{$partial}')",
-                $editor
+                "@include('admin.courses.partials.{$include}'",
+                $settingsPanel
             );
             $this->assertNoInlineStyles($source, $view);
             self::assertLessThanOrEqual(250, substr_count($source, "\n") + 1, $view);
             $formSource .= $source;
         }
 
-        $this->assertNoInlineStyles($editor, 'courses/edit.blade.php');
+        $this->assertNoInlineStyles($editor, 'courses/show.blade.php');
         foreach ([
             'classification_ids[]',
             'teacher_ids[]',
@@ -64,9 +65,10 @@ class AdminDashboardViewTest extends TestCase
             self::assertStringContainsString($fieldName, $formSource);
         }
 
-        self::assertStringContainsString("document.addEventListener('DOMContentLoaded'", $editor);
-        self::assertStringContainsString('function handleFileSelect(e)', $editor);
-        self::assertStringContainsString('function checkForChanges()', $editor);
+        self::assertStringContainsString("@include('admin.courses.partials.editor-scripts'", $editor);
+        self::assertStringContainsString("document.addEventListener('DOMContentLoaded'", $behavior);
+        self::assertStringContainsString('const showImage = file =>', $behavior);
+        self::assertStringContainsString('const refreshState = () =>', $behavior);
         self::assertStringContainsString('<label class="file-upload-area" for="image">', $formSource);
         self::assertStringNotContainsString('onclick="document.getElementById(\'image\').click()"', $formSource);
 
@@ -77,47 +79,37 @@ class AdminDashboardViewTest extends TestCase
         self::assertStringContainsString('.course-editor', $stylesheet);
     }
 
-    #[DataProvider('courseSectionEditors')]
-    public function test_course_section_editors_keep_fields_and_scripts_in_partials(
-        string $mode,
-        array $expectedFields
-    ): void {
-        $editor = $this->viewSource("course-sections/{$mode}.blade.php");
-        $partials = [
-            'basic-information',
-            'type-selection',
-            'lesson-form',
-            'link-form',
-            'quiz-form',
-            'project-form',
-            'course-form',
-            'scripts',
-        ];
+    public function test_course_sections_use_the_single_inline_studio_editor(): void
+    {
+        $editor = $this->viewSource('courses/partials/show/inline-authoring.blade.php');
+        $outline = file_get_contents(dirname(__DIR__, 2).'/public/admin/assets/js/course-studio-outline.js');
+        $coordinator = file_get_contents(dirname(__DIR__, 2).'/public/admin/assets/js/course-studio-editor-coordinator.js');
+        $sectionEditor = file_get_contents(dirname(__DIR__, 2).'/public/admin/assets/js/course-studio-section-editor.js');
+        $moduleEditor = file_get_contents(dirname(__DIR__, 2).'/public/admin/assets/js/course-studio-module-editor.js');
 
-        self::assertLessThanOrEqual(150, substr_count($editor, "\n") + 1);
-        self::assertStringContainsString('admin/assets/css/course-sections-editor.css', $editor);
-        $this->assertNoInlineStyles($editor, "course-sections/{$mode}.blade.php");
-
-        $source = $editor;
-        foreach ($partials as $partial) {
-            $view = "course-sections/partials/{$mode}/{$partial}.blade.php";
-            $partialSource = $this->viewSource($view);
-
-            self::assertStringContainsString(
-                "@include('admin.course-sections.partials.{$mode}.{$partial}')",
-                $editor
-            );
-            $this->assertNoInlineStyles($partialSource, $view);
-            $source .= $partialSource;
+        self::assertIsString($outline);
+        self::assertIsString($coordinator);
+        self::assertIsString($sectionEditor);
+        self::assertIsString($moduleEditor);
+        $this->assertNoInlineStyles($editor, 'courses/partials/show/inline-authoring.blade.php');
+        foreach ([
+            'section_type',
+            'title_ar',
+            'lesson_duration_minutes',
+            'video_source_type',
+            'bunny_video',
+            'project_requirements_ar',
+            'project_submission_types',
+        ] as $fieldName) {
+            self::assertStringContainsString($fieldName, $editor);
         }
-
-        foreach ($expectedFields as $fieldName) {
-            self::assertStringContainsString($fieldName, $source);
-        }
-
-        self::assertStringContainsString("document.addEventListener('DOMContentLoaded'", $source);
-        self::assertStringContainsString('function updateRequiredFields', $source);
-        self::assertStringContainsString('function createQuestionTemplate', $source);
+        self::assertStringContainsString("RoknCourseStudio.register('outline'", $outline);
+        self::assertStringContainsString("RoknCourseStudio.register('editor-coordinator'", $coordinator);
+        self::assertStringContainsString("RoknCourseStudio.register('section-editor'", $sectionEditor);
+        self::assertStringContainsString("core.provide('section-editor', {openNew})", $sectionEditor);
+        self::assertStringContainsString("RoknCourseStudio.register('module-editor'", $moduleEditor);
+        self::assertFileDoesNotExist(dirname(__DIR__, 2).'/resources/views/admin/course-sections/create.blade.php');
+        self::assertFileDoesNotExist(dirname(__DIR__, 2).'/resources/views/admin/course-sections/edit.blade.php');
     }
 
     #[DataProvider('orderScreens')]
@@ -151,76 +143,48 @@ class AdminDashboardViewTest extends TestCase
         }
     }
 
-    public function test_course_create_keeps_fields_and_behavior_in_partials(): void
+    public function test_course_create_is_a_thin_shell_that_enters_the_studio(): void
     {
-        $editor = $this->viewSource('courses/create.blade.php');
-        $partials = [
-            'basic-information',
-            'course-settings',
-            'course-image',
-            'scripts',
-        ];
+        $shell = $this->viewSource('courses/create.blade.php');
 
-        self::assertLessThanOrEqual(100, substr_count($editor, "\n") + 1);
-        $this->assertNoInlineStyles($editor, 'courses/create.blade.php');
-
-        $source = $editor;
-        foreach ($partials as $partial) {
-            $view = "courses/partials/create/{$partial}.blade.php";
-            $partialSource = $this->viewSource($view);
-
-            self::assertStringContainsString(
-                "@include('admin.courses.partials.create.{$partial}')",
-                $editor
-            );
-            $this->assertNoInlineStyles($partialSource, $view);
-            self::assertLessThanOrEqual(200, substr_count($partialSource, "\n") + 1, $view);
-            $source .= $partialSource;
-        }
-
-        foreach ([
-            "Form::text('name_ar'",
-            "Form::checkbox('is_main_course'",
-            "Form::checkbox('is_coming_soon'",
-            'name="image"',
-        ] as $contract) {
-            self::assertStringContainsString($contract, $source);
-        }
-
-        self::assertStringContainsString("document.addEventListener('DOMContentLoaded'", $source);
-        self::assertStringContainsString('function updateProgress()', $source);
-        self::assertStringContainsString('<label class="file-upload-area" for="image">', $source);
-        self::assertStringNotContainsString('onclick="document.getElementById(\'image\').click()"', $source);
-
-        $stylesheet = file_get_contents(
-            dirname(__DIR__, 2).'/public/admin/assets/css/course-create.css'
-        );
-        self::assertNotFalse($stylesheet);
-        self::assertStringNotContainsString('-9999px', $stylesheet);
+        self::assertLessThanOrEqual(75, substr_count($shell, "\n") + 1);
+        $this->assertNoInlineStyles($shell, 'courses/create.blade.php');
+        self::assertStringContainsString("route' => ['admin.courses.store']", $shell);
+        self::assertStringContainsString("Form::text('name_ar'", $shell);
+        self::assertStringContainsString('name="authoring_request_id"', $shell);
+        self::assertStringContainsString('name="certificate_text_template_key"', $shell);
+        self::assertStringContainsString('course-authoring-draft', $shell);
+        self::assertStringNotContainsString('editor.basic-information', $shell);
+        self::assertFileDoesNotExist(dirname(__DIR__, 2).'/public/admin/assets/css/course-create.css');
     }
 
     public function test_ai_policy_is_owned_by_admin_settings_not_course_authoring(): void
     {
         $settings = $this->viewSource('settings/index.blade.php');
         $create = $this->viewSource('courses/create.blade.php');
-        $edit = $this->viewSource('courses/edit.blade.php');
+        $studio = $this->viewSource('courses/show.blade.php');
+        $courseSettings = $this->viewSource('courses/partials/show/course-settings-panel.blade.php');
         $plans = $this->viewSource('courses/partials/edit/access-plans.blade.php');
 
         self::assertStringContainsString('ai_plan_policy[{{ $code }}][chat_enabled]', $settings);
         self::assertStringContainsString('ai_plan_policy[{{ $code }}][project_feedback_level]', $settings);
-        self::assertStringNotContainsString('ai-settings', $create.$edit);
-        self::assertStringNotContainsString('chat_enabled', $plans);
-        self::assertStringNotContainsString('project_feedback_level', $plans);
+        self::assertStringNotContainsString('ai-settings', $create.$studio.$courseSettings);
+        self::assertStringNotContainsString(
+            'name="access_plans[{{ $code }}][chat_enabled]"',
+            $plans
+        );
+        self::assertStringNotContainsString(
+            'name="access_plans[{{ $code }}][project_feedback_level]"',
+            $plans
+        );
     }
 
-    #[DataProvider('courseSectionEditors')]
-    public function test_project_authoring_contains_content_not_ai_policy(string $mode, array $_expectedFields): void
+    public function test_project_authoring_contains_content_not_ai_policy(): void
     {
-        $project = $this->viewSource("course-sections/partials/{$mode}/project-form.blade.php");
+        $project = $this->viewSource('courses/partials/show/inline-authoring.blade.php');
 
         self::assertStringContainsString('project_requirements_ar', $project);
-        self::assertStringContainsString('submission_max_files', $project);
-        foreach (['ai_prompt', 'ai_model_type', 'temperature', 'tokens_number', 'passing_score', 'fallback_review_delay_seconds'] as $field) {
+        foreach (['submission_max_files', 'ai_prompt', 'ai_model_type', 'temperature', 'tokens_number', 'passing_score', 'fallback_review_delay_seconds'] as $field) {
             self::assertStringNotContainsString($field, $project);
         }
     }
@@ -278,38 +242,11 @@ class AdminDashboardViewTest extends TestCase
             'urgent tasks dashboard' => ['urgent-tasks/index.blade.php'],
             'urgent pending orders' => ['urgent-tasks/pending-orders.blade.php'],
             'urgent inactive students' => ['urgent-tasks/inactive-students.blade.php'],
-            'urgent courses without quiz' => ['urgent-tasks/courses-without-quiz.blade.php'],
-            'course sections list' => ['course-sections/index.blade.php'],
-            'course section details' => ['course-sections/show.blade.php'],
-            'course section create' => ['course-sections/create.blade.php'],
-            'course section edit' => ['course-sections/edit.blade.php'],
             'orders list' => ['orders/index.blade.php'],
             'order details' => ['orders/show.blade.php'],
             'courses list' => ['courses/index.blade.php'],
             'course details' => ['courses/show.blade.php'],
             'course create' => ['courses/create.blade.php'],
-            'course edit' => ['courses/edit.blade.php'],
-        ];
-    }
-
-    /** @return array<string, array{string, array<int, string>}> */
-    public static function courseSectionEditors(): array
-    {
-        $sharedFields = [
-            'section_type',
-            'lesson_title_ar',
-            'lesson_duration_minutes',
-            'video_source_type',
-            'bunny_video',
-            'quiz_title_ar',
-            'questions[${index}][question_text]',
-            'project_requirements_ar',
-            'course_name_ar',
-        ];
-
-        return [
-            'create section' => ['create', $sharedFields],
-            'edit section' => ['edit', $sharedFields],
         ];
     }
 
@@ -320,12 +257,12 @@ class AdminDashboardViewTest extends TestCase
             'orders list' => [
                 'index',
                 ['statistics', 'filters', 'orders-table', 'payment-modal', 'scripts'],
-                ['name="status"', 'name="payment_method"', 'name="date_from"', 'updateOrderStatus', 'showPaymentScreenshot'],
+                ['name="state"', 'name="payment_method"', 'name="date_from"', 'showPaymentScreenshot'],
             ],
             'order details' => [
                 'show',
                 ['order-information', 'actions-panel', 'screenshot-modal', 'scripts'],
-                ['name="resolution"', 'name="note"', 'admin.orders.resolve-financial-review', 'updateOrderStatus', 'showFullScreenshot'],
+                ['name="resolution"', 'name="note"', 'admin.orders.resolve-financial-review', 'showFullScreenshot'],
             ],
         ];
     }
@@ -341,8 +278,8 @@ class AdminDashboardViewTest extends TestCase
             ],
             'course details' => [
                 'show',
-                ['statistics', 'commercial-report', 'scripts'],
-                ['courseStudio', 'publishingAudit', 'course-studio__preview-toggle', 'admin.courses.sections.reorder'],
+                ['statistics', 'commercial-report', 'inline-authoring', 'scripts'],
+                ['courseStudio', 'publishingAudit', 'workspace-header', 'courseAuthoringGraph'],
             ],
         ];
     }

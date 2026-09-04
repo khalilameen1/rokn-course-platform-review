@@ -7,9 +7,12 @@ namespace Tests\Feature\API;
 use App\Models\User;
 use App\Models\Lesson;
 use App\Models\PlaybackSession;
+use App\Models\ProjectSubmission;
+use App\Models\InternalSignal;
 use App\Services\LearningEvidenceService;
 use App\Services\InternalSignalService;
 use App\Services\InternalSignalHandler;
+use App\Services\ProjectSubmissionService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -17,10 +20,62 @@ use Illuminate\Support\Str;
 /**
  * End-to-end Feature flow test simulating a realistic student journey in the Rokn e-learning platform.
  * This covers major business flows after social sign-in: course browsing, code redemption,
- * section completion, taking exams, checking results, submitting ratings, and managing saved folders & portfolio.
+ * section completion, ratings, saved folders, and portfolio management.
  */
 class StudentElearningFlowTest extends ApiTestCase
 {
+    public function test_project_review_notification_signal_recovers_idempotently(): void
+    {
+        Queue::fake();
+        $projectId = DB::table('projects')->insertGetId([
+            'requirements_text' => 'نفذ المشروع',
+            'ai_prompt' => 'راجع المحاولة',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('course_sections')->insert([
+            'course_id' => $this->courseId,
+            'title' => 'مشروع العبور',
+            'section_type' => 'project',
+            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_id' => $projectId,
+            'order' => 2,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $submission = ProjectSubmission::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $this->user->id,
+            'project_id' => $projectId,
+            'idempotency_key' => (string) Str::uuid(),
+            'effort_status' => ProjectSubmission::EFFORT_VALID,
+            'review_status' => ProjectSubmission::STATUS_PENDING,
+            'submitted_at' => now(),
+            'auto_pass_at' => now()->subSecond(),
+        ]);
+
+        $reviewed = app(ProjectSubmissionService::class)->finalizeIfDue($submission);
+        self::assertSame(ProjectSubmission::STATUS_PASSED, $reviewed->review_status);
+
+        $signal = InternalSignal::query()
+            ->where('type', 'project.review.notification')
+            ->where('aggregate_type', ProjectSubmission::class)
+            ->where('aggregate_id', $submission->id)
+            ->sole();
+
+        app(InternalSignalHandler::class)->handle($signal);
+        app(InternalSignalHandler::class)->handle($signal);
+
+        self::assertSame(1, DB::table('student_notifications')
+            ->where('delivery_key', "project-review:{$submission->public_id}:passed")
+            ->count());
+        $this->assertDatabaseHas('student_notifications', [
+            'user_id' => $this->user->id,
+            'notification_type' => 'project_update',
+            'link' => "rokn://course/{$this->courseId}/project/{$projectId}",
+        ]);
+    }
+
     public function test_completion_signal_cannot_create_an_earned_revision_without_complete_learning_evidence(): void
     {
         Queue::fake();
@@ -95,6 +150,17 @@ class StudentElearningFlowTest extends ApiTestCase
             'completed_curriculum_revision' => 7,
         ]);
 
+        app(InternalSignalHandler::class)->handle($first);
+        self::assertSame(1, DB::table('internal_signals')
+            ->where('type', 'course.completed.badge')
+            ->count());
+        self::assertSame(1, DB::table('internal_signals')
+            ->where('type', 'course.completed.reward')
+            ->count());
+        self::assertSame(0, DB::table('internal_signals')
+            ->where('type', 'course.completed.certificate')
+            ->count());
+
         DB::table('courses')->where('id', $this->courseId)->update([
             'authoring_version' => 8,
             'last_published_authoring_version' => 8,
@@ -117,6 +183,14 @@ class StudentElearningFlowTest extends ApiTestCase
     public function test_learning_evidence_uses_the_accepted_playback_session_sample(): void
     {
         DB::table('lessons')->where('id', 10)->update(['duration_minutes' => 2]);
+        DB::table('lesson_media_states')->insert([
+            'lesson_id' => 10,
+            'provider' => 'bunny',
+            'status' => 'ready',
+            'duration_seconds' => 120,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         DB::table('course_sections')->where('id', $this->sectionId)->update([
             'sectionable_type' => Lesson::class,
             'sectionable_id' => 10,
@@ -165,16 +239,10 @@ class StudentElearningFlowTest extends ApiTestCase
             'lesson_id' => 10,
             'position_seconds' => 0,
             'duration_seconds' => 1,
-        ])->assertOk()->assertJsonPath('data.learning_evidence.required_seconds', null);
-
-        $this->travel(1)->seconds();
-        $this->actingAs($this->user, 'api')->postJson('/api/v1/user/watch-history', [
-            'lesson_id' => 10,
-            'position_seconds' => 1,
-            'duration_seconds' => 1,
-        ])->assertOk()
-            ->assertJsonPath('data.learning_evidence.required_seconds', null)
-            ->assertJsonPath('data.learning_evidence.eligible_for_completion', false);
+            'playback_session_id' => (string) Str::uuid(),
+            'sequence' => 1,
+        ])->assertStatus(409)
+            ->assertJsonPath('code', 'video_metadata_unavailable');
 
         $this->actingAs($this->user, 'api')
             ->postJson("/api/v1/courses/{$this->courseId}/sections/{$this->sectionId}/complete")
@@ -186,8 +254,77 @@ class StudentElearningFlowTest extends ApiTestCase
         ]);
     }
 
+    public function test_a_replayed_heartbeat_cannot_rewind_the_resume_position(): void
+    {
+        DB::table('course_enrollments')->insert([
+            'user_id' => $this->user->id,
+            'course_id' => $this->courseId,
+            'is_active' => true,
+            'enrolled_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('lesson_media_states')->insert([
+            'lesson_id' => 10,
+            'provider' => 'bunny',
+            'status' => 'ready',
+            'duration_seconds' => 120,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $startedAt = now()->subMinute();
+        $session = PlaybackSession::query()->create([
+            'id' => (string) Str::uuid(),
+            'user_id' => $this->user->id,
+            'lesson_id' => 10,
+            'course_section_id' => $this->sectionId,
+            'last_sequence' => 2,
+            'last_position_seconds' => 30,
+            'duration_seconds' => 120,
+            'started_at' => $startedAt,
+            'last_heartbeat_at' => now(),
+            'event_type' => 'heartbeat',
+            'source_protocol' => 'hls',
+        ]);
+        DB::table('watching_logs')->insert([
+            'user_id' => $this->user->id,
+            'lesson_id' => 10,
+            'lesson_name' => 'Lesson 10',
+            'course_id' => $this->courseId,
+            'course_section_id' => $this->sectionId,
+            'course_name' => 'دورة تجريبية',
+            'position_seconds' => 30,
+            'duration_seconds' => 120,
+            'playback_session_id' => $session->id,
+            'playback_session_started_at' => $startedAt,
+            'last_playback_sequence' => 2,
+            'watched_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($this->user, 'api')->postJson('/api/v1/user/watch-history', [
+            'lesson_id' => 10,
+            'position_seconds' => 5,
+            'duration_seconds' => 120,
+            'playback_session_id' => $session->id,
+            'sequence' => 1,
+            'event_type' => 'heartbeat',
+        ])->assertOk()
+            ->assertJsonPath('data.duplicate', true)
+            ->assertJsonPath('data.recorded', false)
+            ->assertJsonPath('data.position_seconds', 30);
+
+        $this->assertDatabaseHas('watching_logs', [
+            'user_id' => $this->user->id,
+            'lesson_id' => 10,
+            'position_seconds' => 30,
+            'last_playback_sequence' => 2,
+        ]);
+    }
+
     /**
-     * Test complete student journey from registration to course progress and exam completion.
+     * Test the complete student journey from registration to course completion.
      */
     public function test_complete_elearning_journey_from_social_sign_in_to_certification(): void
     {
@@ -201,8 +338,32 @@ class StudentElearningFlowTest extends ApiTestCase
             'active' => true,
             'social_provider' => 'google',
             'social_id' => 'google-sara-001',
-            'wallet_coins' => 20,
+            'watch_history_enabled' => true,
         ]);
+        $student->forceFill([
+            'wallet_coins' => 20,
+            'wallet_purchased_coins' => 0,
+            'wallet_reward_coins' => 20,
+        ])->save();
+
+        DB::table('wallet_transactions')->insert([
+            'public_id' => (string) Str::uuid(),
+            'user_id' => $student->id,
+            'direction' => 'credit',
+            'category' => 'welcome_bonus',
+            'bucket' => 'reward',
+            'amount' => 20,
+            'paid_amount' => 0,
+            'reward_amount' => 20,
+            'balance_after' => 20,
+            'paid_balance_after' => 0,
+            'reward_balance_after' => 20,
+            'idempotency_key' => "welcome-bonus:user:{$student->id}",
+            'occurred_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $student->refresh();
 
         $this->assertDatabaseHas('users', [
             'id' => $student->id,
@@ -211,13 +372,13 @@ class StudentElearningFlowTest extends ApiTestCase
         ]);
 
         // 2. Student browses courses and checks access before enrolling
-        $browseResponse = $this->actingAs($student, 'api')->getJson('/api/v1/courses');
+        $browseResponse = $this->actingAs($student, 'api')->getJson('/api/v1/courses/list');
         $browseResponse->assertStatus(200);
 
-        $accessCheckBefore = $this->actingAs($student, 'api')->postJson('/api/v1/courses/check-access', [
-            'course_id' => $this->courseId
-        ]);
-        $accessCheckBefore->assertStatus(200);
+        $this->actingAs($student, 'api')
+            ->getJson("/api/v1/courses/{$this->courseId}/details")
+            ->assertOk()
+            ->assertJsonPath('data.enrollment', null);
 
         // 3. Student redeems a course code to gain full access
         $redeemResponse = $this->actingAs($student, 'api')->postJson('/api/v1/course-codes/redeem', [
@@ -246,6 +407,16 @@ class StudentElearningFlowTest extends ApiTestCase
             'sectionable_id' => 10,
             'section_type' => 'lesson',
         ]);
+        DB::table('lesson_media_states')->updateOrInsert(
+            ['lesson_id' => 10],
+            [
+                'provider' => 'bunny',
+                'status' => 'ready',
+                'duration_seconds' => 60,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
         $playbackSession = PlaybackSession::query()->create([
             'id' => (string) Str::uuid(),
             'user_id' => $student->id,
@@ -301,33 +472,7 @@ class StudentElearningFlowTest extends ApiTestCase
         $courseProgressResponse = $this->actingAs($student, 'api')->getJson("/api/v1/courses/{$this->courseId}/progress");
         $courseProgressResponse->assertStatus(200);
 
-        // 5. Student takes the course exam
-        $startExamResponse = $this->actingAs($student, 'api')->postJson('/api/v1/exams/start', [
-            'quiz_id' => 1
-        ]);
-        $startExamResponse->assertStatus(200);
-        $examAttemptId = (int) $startExamResponse->json('data.exam_attempt_id');
-        $this->assertGreaterThan(0, $examAttemptId, 'Exam attempt should be created');
-
-        // Submit an answer to question 1 (selected_answer must match choice index: 2 = '4')
-        $submitAnswerResponse = $this->actingAs($student, 'api')->postJson('/api/v1/exams/submit-answer', [
-            'exam_attempt_id' => $examAttemptId,
-            'question_id' => 1,
-            'selected_answer' => 2
-        ]);
-        $submitAnswerResponse->assertStatus(200);
-
-        // End exam
-        $endExamResponse = $this->actingAs($student, 'api')->postJson('/api/v1/exams/end', [
-            'exam_attempt_id' => $examAttemptId
-        ]);
-        $endExamResponse->assertStatus(200);
-
-        // Check exam history
-        $historyResponse = $this->actingAs($student, 'api')->getJson('/api/v1/exams/history');
-        $historyResponse->assertStatus(200);
-
-        // 6. Student submits course rating and checks profile
+        // 5. Student submits course rating and checks profile
         $rateResponse = $this->actingAs($student, 'api')->postJson("/api/v1/courses/{$this->courseId}/rate", [
             'rating' => 5,
             'comment' => 'ممتازة جدا وشرح رائع',

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Package;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminEconomyReadService;
+use App\Services\AdminPaymentOperationsReadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -18,10 +20,10 @@ class PackageController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(AdminEconomyReadService $economy)
     {
-        $packages = Package::latest()->get();
-        $editorVersions = $packages->mapWithKeys(fn (Package $package): array => [
+        $packages = $economy->packages();
+        $editorVersions = $packages->getCollection()->mapWithKeys(fn (Package $package): array => [
             $package->id => $this->editorVersion($package),
         ]);
         return view('admin.packages.index', compact('packages', 'editorVersions'));
@@ -76,6 +78,7 @@ class PackageController extends Controller
             'name_en' => 'required|string|max:255',
             'price' => 'required|numeric|min:0.01',
             'coins' => 'required|integer|min:1',
+            'sort_order' => 'nullable|integer|min:0|max:10000',
             'is_active' => 'required|boolean',
             'direct_enabled' => 'required|boolean',
             'google_product_id' => [
@@ -93,6 +96,15 @@ class PackageController extends Controller
             'authoring_request_id' => [$package ? 'nullable' : 'required', 'uuid'],
         ]);
         unset($validated['authoring_request_id']);
+        $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
+
+        $candidate = $package ? clone $package : new Package();
+        $candidate->forceFill($validated);
+        if ($candidate->is_active && !$candidate->hasPurchasableChannel()) {
+            throw ValidationException::withMessages([
+                'channels' => ['فعّل كاشير أو اربط منتجًا مفعّلًا في أحد المتجرين قبل إظهار الباقة'],
+            ]);
+        }
 
         return $validated;
     }
@@ -103,12 +115,13 @@ class PackageController extends Controller
      * @param  \App\Models\Package  $package
      * @return \Illuminate\Http\Response
      */
-    public function show(Package $package)
+    public function show(Package $package, AdminPaymentOperationsReadService $payments)
     {
-        $package->load(['purchases' => function($q) {
-            $q->latest()->limit(50);
-        }]);
-        return view('admin.packages.show', compact('package'));
+        return view('admin.packages.show', [
+            'package' => $package,
+            'orders' => $payments->packageOrders($package),
+            'paymentMethodLabels' => $payments->channelLabels(),
+        ]);
     }
 
     /**
@@ -148,7 +161,7 @@ class PackageController extends Controller
             }, 3);
         } catch (\DomainException $exception) {
             throw ValidationException::withMessages([
-                'coins' => [$exception->getMessage()],
+                'package' => [$exception->getMessage()],
             ]);
         }
 
@@ -191,6 +204,7 @@ class PackageController extends Controller
     {
         return AdminEditorVersion::for($package, [
             'name_ar', 'name_en', 'price', 'coins', 'is_active', 'direct_enabled',
+            'sort_order',
             'google_product_id', 'apple_product_id', 'google_enabled', 'apple_enabled',
         ]);
     }

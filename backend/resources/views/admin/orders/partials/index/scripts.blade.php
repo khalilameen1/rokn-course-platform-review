@@ -18,29 +18,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const isOpen = localStorage.getItem('filterSectionOpen');
 
     // Open by default if there are active filters or if previously opened
-    const hasActiveFilters = {{ request()->hasAny(['status', 'payment_method', 'user_search', 'course_search', 'date_from', 'date_to', 'amount_min', 'amount_max']) ? 'true' : 'false' }};
+    const hasActiveFilters = {{ request()->hasAny(['state', 'payment_method', 'user_search', 'course_search', 'date_from', 'date_to', 'amount_min', 'amount_max']) ? 'true' : 'false' }};
     if (isOpen === 'true' || hasActiveFilters) {
         filterBody.classList.add('show');
         toggleIcon.classList.add('rotated');
     }
 });
-
-function updateOrderStatus(orderId, status) {
-    if (confirm('هل أنت متأكد من تحديث حالة الطلب؟')) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `orders/${orderId}/status`;
-
-        form.innerHTML = `
-            @csrf
-            @method('PATCH')
-            <input type="hidden" name="status" value="${status}">
-        `;
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-}
 
 function showPaymentScreenshot(imageUrl) {
     // Update image source

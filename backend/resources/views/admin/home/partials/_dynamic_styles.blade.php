@@ -141,16 +141,6 @@ body.dark-mode {
     color: white !important;
 }
 
-/* Student Platform Link - Uses Secondary Color */
-.student-platform-link {
-    background: rgba(255, 255, 255, 0.95) !important;
-    color: var(--color-primary) !important;
-}
-
-.student-platform-link:hover {
-    color: var(--color-primary-dark) !important;
-}
-
 /* Stats Cards */
 .stats-card {
     background: var(--bg-primary) !important;

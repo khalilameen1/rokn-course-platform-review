@@ -34,6 +34,16 @@ final class UserDeactivationSecurityTest extends TestCase
             $table->unsignedBigInteger('user_id');
             $table->timestamp('issued_at')->nullable();
             $table->timestamp('expired_at');
+            $table->uuid('session_id')->nullable()->unique();
+            $table->uuid('device_id')->nullable();
+            $table->string('platform', 16)->nullable();
+            $table->string('device_class', 12)->nullable();
+            $table->string('app_version', 32)->nullable();
+            $table->string('app_build', 16)->nullable();
+            $table->string('auth_provider', 24)->nullable();
+            $table->string('auth_provider_user_id', 191)->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('revoked_at')->nullable();
         });
         Schema::create('user_device_tokens', function (Blueprint $table): void {
             $table->id();

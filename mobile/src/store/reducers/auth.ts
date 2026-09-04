@@ -1,7 +1,7 @@
 import {createSlice, PayloadAction} from '@reduxjs/toolkit';
 
 export interface AuthState {
-  /** Raw compatible backend/social-auth response persisted for token recovery. */
+  /** Canonical authenticated session mirrored from secure storage. */
   userData: unknown;
   isLogin: boolean;
 }

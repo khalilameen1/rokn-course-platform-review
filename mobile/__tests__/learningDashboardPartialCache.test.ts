@@ -33,12 +33,12 @@ describe('learning dashboard partial cache', () => {
   });
 
   it('keeps the last complete secondary panels and does not overwrite that cache with partial empties', async () => {
-    const cacheKey = `@rokn/learning-dashboard/v2:user-${'a'.repeat(24)}`;
+    const cacheKey = `@rokn/learning-dashboard/v3:user-${'a'.repeat(24)}`;
     const cached = {
-      version: 2,
+      version: 3,
       savedAt: Date.now(),
       dashboard: {
-        courses: [{id: '1', title: 'قديم', progress: 20, completedSections: 1, totalSections: 5, category: 'freelance'}],
+        courses: [{id: '1', title: 'قديم', progress: 20, completedSections: 1, totalSections: 5, category: 'freelance', accessType: 'paid', chatAvailable: false, certificateAvailable: true}],
         paths: [{id: '8', title: 'المسار', upcomingLevels: [], progress: 40, remainingToNextLevel: 60, completedSections: 2, totalSections: 5}],
         badges: [{id: '9', title: 'شارة'}],
         activityDays: ['2026-09-01'],

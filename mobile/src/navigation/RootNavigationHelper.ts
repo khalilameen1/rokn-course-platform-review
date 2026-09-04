@@ -17,7 +17,11 @@ const sameLinkableDestination = (
   if (!navigationRef.isReady()) return false;
   const current = navigationRef.getCurrentRoute();
   if (current?.name !== name) return false;
-  if (name === 'Home' || name === 'Profile' || name === 'Wallet') return true;
+  if (name === 'Home' || name === 'Wallet') return true;
+  if (name === 'Profile') {
+    const currentParams = (current.params || {}) as Record<string, unknown>;
+    return String(currentParams.tab || '') === String(params?.tab || '');
+  }
   if (name === 'Feedback') {
     const currentParams = (current.params || {}) as Record<string, unknown>;
     return String(currentParams.caseId || '') === String(params?.caseId || '');
@@ -29,7 +33,8 @@ const sameLinkableDestination = (
   return (
     String(currentParams.courseId || '') === String(nextParams.courseId || '') &&
     String(currentParams.reelId || '') === String(nextParams.reelId || '') &&
-    String(currentParams.lessonId || '') === String(nextParams.lessonId || '')
+    String(currentParams.lessonId || '') === String(nextParams.lessonId || '') &&
+    String(currentParams.projectId || '') === String(nextParams.projectId || '')
   );
 };
 

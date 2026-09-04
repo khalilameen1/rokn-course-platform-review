@@ -5,6 +5,8 @@ import {
 } from '../src/screens/settings/settingsData';
 import {mainUrl} from '../src/constants/api';
 import {returnsPolicyUrl} from '../src/services/publicLinks';
+import fs from 'fs';
+import path from 'path';
 
 const callback = jest.fn;
 
@@ -133,5 +135,126 @@ describe('settings screen contract', () => {
     expect(contact[0].title).toBe('تواصل معنا');
     contact[0].onPress?.();
     expect(onFeedback).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps implementation notes and retired choices out of the settings UI', () => {
+    const rows = flattenRows(createProps());
+    const visibleCopy = rows
+      .flatMap(row => [row.title, row.subtitle, row.value])
+      .filter(Boolean)
+      .join('\n');
+
+    expect(visibleCopy).not.toMatch(
+      /مكتبات مفتوحة المصدر|سياسة الاسترداد|طريقة عرض الفيديو|متاح (?:حتى )?(?:دون|بدون) تسجيل/,
+    );
+  });
+
+  it('uses the same flat avatar fallback in profile and account editing', () => {
+    const profile = fs.readFileSync(
+      path.join(__dirname, '../src/screens/Profile/index.tsx'),
+      'utf8',
+    );
+    const editAccount = fs.readFileSync(
+      path.join(__dirname, '../src/screens/EditAccount.tsx'),
+      'utf8',
+    );
+    const avatar = fs.readFileSync(
+      path.join(__dirname, '../src/components/ui/DefaultAvatar.tsx'),
+      'utf8',
+    );
+
+    expect(profile).toContain('<DefaultAvatar');
+    expect(editAccount).toContain('<DefaultAvatar');
+    expect(profile).not.toContain('default-avatar.png');
+    expect(editAccount).not.toContain('default-avatar.png');
+    expect(avatar).toContain('<Circle');
+    expect(avatar).toContain('<Path');
+    expect(avatar).not.toMatch(/LinearGradient|RadialGradient|Mask|filter=/);
+  });
+
+  it('routes privacy questions through the same in-app support journey', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '../src/screens/Informations/PrivacyPolicy.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain(
+      "navigation.navigate('Feedback', {sourceScreen: 'privacy'})",
+    );
+    expect(source).not.toContain('openSupportWhatsApp');
+  });
+
+  it('keeps one in-app support operation instead of a second WhatsApp fallback', () => {
+    const source = fs.readFileSync(
+      path.join(__dirname, '../src/screens/Feedback.tsx'),
+      'utf8',
+    );
+
+    expect(source).toContain('<HeaderWithBack title="تواصل معنا" />');
+    expect(source).not.toMatch(
+      /openSupportWhatsApp|getSupportWhatsAppUrl|إرسالها للدعم على واتساب/,
+    );
+  });
+
+  it('binds support drafts to the canonical account identity', () => {
+    const feedback = fs.readFileSync(
+      path.join(__dirname, '../src/screens/Feedback.tsx'),
+      'utf8',
+    );
+    const preferences = fs.readFileSync(
+      path.join(__dirname, '../src/screens/settings/useSettingsPreferences.ts'),
+      'utf8',
+    );
+
+    expect(feedback).toContain('sessionIdentityKey(storedUser)');
+    expect(preferences).toContain('sessionIdentityKey(userData)');
+    expect(feedback).not.toMatch(/\?\s*String\([^)]*storedToken/);
+  });
+
+  it('keeps guest reminders local and device rows free of build diagnostics', () => {
+    const preferences = fs.readFileSync(
+      path.join(__dirname, '../src/screens/settings/useSettingsPreferences.ts'),
+      'utf8',
+    );
+    const devices = fs.readFileSync(
+      path.join(__dirname, '../src/screens/DeviceSessions.tsx'),
+      'utf8',
+    );
+
+    expect(preferences).toMatch(
+      /if \(!hasAuthenticatedAccount\) return true;[\s\S]{0,180}registerPushDeviceIfEligible/,
+    );
+    expect(devices).not.toContain('session.app_build');
+    expect(devices).not.toContain('session.app_version');
+    expect(devices).not.toMatch(/كمبيوتر|حاسوب|لابتوب/);
+    expect(devices).toContain(
+      "openGuestLogin(navigation, {name: 'DeviceSessions'})",
+    );
+    expect(devices).toContain('if (authenticated)');
+  });
+
+  it('does not expose the account editor while identity is unresolved', () => {
+    const editAccount = fs.readFileSync(
+      path.join(__dirname, '../src/screens/EditAccount.tsx'),
+      'utf8',
+    );
+
+    expect(editAccount).toContain('if (!hasStoredToken)');
+    expect(editAccount).toContain("hydrationState === 'loading'");
+    expect(editAccount).toContain('جارٍ تحميل بيانات الحساب');
+    expect(editAccount).toContain('Apple');
+  });
+
+  it('does not promise support recovery for coins discarded by account deletion', () => {
+    const actions = fs.readFileSync(
+      path.join(
+        __dirname,
+        '../src/screens/settings/useAccountSettingsActions.ts',
+      ),
+      'utf8',
+    );
+
+    expect(actions).toContain('استخدمه قبل حذف الحساب');
+    expect(actions).not.toContain('راجع الدعم قبل الحذف إذا أردت استعادته');
   });
 });

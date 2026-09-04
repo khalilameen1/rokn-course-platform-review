@@ -1,5 +1,4 @@
-import {publicRequest} from '../../../constants/api';
-import {isLocalDemoId} from '../../../config/runtime';
+import {publicRequest, type RoknRequestConfig} from '../../../constants/api';
 import {isProductFeatureEnabled} from '../../../services/productFeatures';
 import {
   assertAccountSessionBoundary,
@@ -16,48 +15,139 @@ import {asArray, asRecord, valueAsBoolean, valueAsString} from './shared';
 // full provider timeout.  After this bound the client reconciles the same
 // immutable request id through the turn endpoint, so there is no second debit.
 const COURSE_CHAT_REQUEST_TIMEOUT_MS = 15_000;
+// The chat hook already owns a bounded polling loop. Letting the shared GET
+// interceptor replay every status read turns a short provider wait into
+// several minutes during an origin outage and cannot improve correctness: the
+// next poll reads the same durable turn. Keep each status probe cheap.
+export const COURSE_CHAT_STATUS_TIMEOUT_MS = 3_500;
 const assistantAttachmentOpenFlights = new Map<string, Promise<void>>();
 
-const demoAssistantReply = (message: string, reel?: CourseReel) => {
-  const question = message.trim();
-  const normalized = question.toLocaleLowerCase('ar');
-  if (/^(سلام|أهلا|اهلا|هاي|hello)/i.test(normalized)) {
-    return 'أهلًا\nاكتب المشكلة أو الهدف مباشرة\nسأجيبك باختصار';
-  }
-  if (normalized.includes('سعر') || normalized.includes('تسعير')) {
-    return 'اربط السعر بنطاق واضح\nما الذي ستسلّمه\nعدد جولات التعديل\nموعد التسليم\nأي إضافة خارج الاتفاق لها سعر منفصل';
-  }
-  if (normalized.includes('عميل') || normalized.includes('عرض')) {
-    return 'اكتب رسالة قصيرة\nالمشكلة التي فهمتها\nالنتيجة التي ستقدمها\nالخطوة التالية وموعدها';
-  }
+export type CourseAssistantTurnResponse = {
+  text: string;
+  offline: boolean;
+  blocked?: boolean;
+  unavailable?: boolean;
+  clientRequestId?: string;
+  turnStatus?: ChatMessage['deliveryStatus'];
+  code?: string;
+  canRetry?: boolean;
+  retryAfterSeconds?: number;
+  pollWindowSeconds?: number;
+  partial?: boolean;
+};
+
+const COURSE_CHAT_TURN_STATUSES = new Set([
+  'queued',
+  'sent',
+  'streaming',
+  'completed',
+  'failed',
+  'cancelled',
+]);
+
+const COURSE_CHAT_BLOCK_CODES = new Set([
+  'chat_upgrade_required',
+  'chat_plan_limit_reached',
+  'course_not_available',
+  'course_access_required',
+  'chat_disabled_for_course',
+]);
+
+const mapCourseAssistantTurn = (
+  payload: unknown,
+  expectedClientRequestId?: string,
+): CourseAssistantTurnResponse => {
+  const responsePayload = asRecord(payload);
+  const data = asRecord(responsePayload.data);
+  const code = valueAsString(responsePayload.code).toLowerCase();
+  const responseClientRequestId = valueAsString(data.client_request_id);
   if (
-    normalized.includes('مشروع') ||
-    normalized.includes('تسليم') ||
-    normalized.includes('ارفع')
+    expectedClientRequestId &&
+    responseClientRequestId &&
+    responseClientRequestId !== expectedClientRequestId
   ) {
-    return 'ارفع لقطة واضحة للعمل أو ملف النتيجة\nواكتب سطرين عما نفذته\nلا نطلب عملًا كاملًا\nالمهم أن يظهر مجهودك بوضوح';
+    return {
+      text: 'نتحقق من إجابتك الآن',
+      offline: false,
+      unavailable: false,
+      clientRequestId: expectedClientRequestId,
+      turnStatus: 'queued',
+      code: 'chat_answer_in_progress',
+      retryAfterSeconds: 1,
+    };
   }
-  if (normalized.includes('بورتفوليو') || normalized.includes('معرض')) {
-    return 'اعرض المشروع كقصة قرار\nالمشكلة\nدورك\nأهم قرار اتخذته\nالنتيجة\nصور قليلة قوية أفضل من ألبوم طويل';
+
+  const rawStatus = valueAsString(data.turn_status).toLowerCase();
+  const blocked = COURSE_CHAT_BLOCK_CODES.has(code);
+  const responseText =
+    (blocked && code === 'chat_plan_limit_reached'
+      ? 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط'
+      : cleanUnicodeText(
+          valueAsString(data.message, valueAsString(data.reply)),
+        )) || '';
+  const turnStatus = COURSE_CHAT_TURN_STATUSES.has(rawStatus)
+    ? (rawStatus as ChatMessage['deliveryStatus'])
+    : code === 'chat_answer_in_progress'
+    ? 'queued'
+    : blocked || data.unavailable === true || code !== ''
+    ? 'failed'
+    : responseText
+    ? 'completed'
+    : 'failed';
+
+  if (
+    (turnStatus === 'completed' && !responseText) ||
+    (!rawStatus && !code && !responseText)
+  ) {
+    return {
+      text: 'لم تكتمل الإجابة\nحاول مرة أخرى',
+      offline: false,
+      unavailable: true,
+      clientRequestId: expectedClientRequestId || responseClientRequestId,
+      turnStatus: 'failed',
+      code: 'chat_response_invalid',
+    };
   }
-  if (reel?.caption) {
-    return `فكرة هذا المقطع\n${reel.caption}\nطبّقها على حالة حقيقية`;
-  }
-  return 'اكتب هدفك والمشكلة بوضوح\nمثال\nأريد تنفيذ كذا لكنني توقفت عند كذا';
+
+  return {
+    text:
+      responseText ||
+      (turnStatus === 'cancelled'
+        ? 'تم إيقاف الرد'
+        : turnStatus === 'failed'
+        ? 'لم تكتمل الإجابة\nحاول مرة أخرى'
+        : 'الرد قيد التجهيز\nسيظهر خلال لحظات'),
+    offline: false,
+    blocked,
+    unavailable: !blocked && data.unavailable === true,
+    clientRequestId: expectedClientRequestId || responseClientRequestId,
+    turnStatus,
+    code: code || (turnStatus === 'failed' ? 'chat_turn_failed' : undefined),
+    canRetry: typeof data.can_retry === 'boolean' ? data.can_retry : undefined,
+    retryAfterSeconds: Math.max(0, Number(data.retry_after_seconds) || 0),
+    pollWindowSeconds: Math.max(0, Number(data.poll_window_seconds) || 0),
+    partial: valueAsBoolean(data.partial),
+  };
+};
+
+const requireServerCourseId = (value: unknown): string => {
+  const courseId = String(value ?? '').trim();
+  if (!/^\d+$/.test(courseId)) throw new Error('COURSE_ID_INVALID');
+  return courseId;
 };
 
 export const courseIncludesAssistant = (
-  course: Pick<CourseLearningData, 'accessType' | 'chatAvailable' | 'isDemo'>,
+  course: Pick<CourseLearningData, 'accessType' | 'chatAvailable'>,
 ) => includesCourseAssistant(course);
 
 export const loadCourseAssistantHistory = async (
   courseId: string,
   lessonId?: string,
 ): Promise<ChatMessage[]> => {
-  if (isLocalDemoId(courseId)) return [];
+  const serverCourseId = requireServerCourseId(courseId);
   const response = await publicRequest.get('course-chat/messages', {
     params: {
-      course_id: courseId,
+      course_id: serverCourseId,
       lesson_id: lessonId,
       per_page: 20,
     },
@@ -71,16 +161,31 @@ export const loadCourseAssistantHistory = async (
     if (
       !id ||
       !['user', 'assistant'].includes(role) ||
-      !['queued', 'sent', 'streaming', 'completed', 'failed', 'cancelled'].includes(
-        status,
-      )
-    ) return [];
+      ![
+        'queued',
+        'sent',
+        'streaming',
+        'completed',
+        'failed',
+        'cancelled',
+      ].includes(status)
+    )
+      return [];
     const createdAt = Date.parse(valueAsString(message.created_at));
-    const text = cleanUnicodeText(valueAsString(message.text)) ||
+    const canRetry =
+      typeof message.can_retry === 'boolean' ? message.can_retry : undefined;
+    const text =
+      cleanUnicodeText(valueAsString(message.text)) ||
       (role === 'assistant' && status === 'failed'
-        ? 'لم تكتمل الإجابة\nاستعد الرد'
+        ? canRetry
+          ? 'لم تكتمل الإجابة\nحاول مرة أخرى'
+          : 'تعذّر تأكيد نتيجة الإجابة السابقة'
+        : role === 'assistant' && status === 'cancelled'
+        ? 'تم إيقاف الرد'
         : '');
-    const attachments = asArray<Record<string, unknown>>(message.attachments).map(file => ({
+    const attachments = asArray<Record<string, unknown>>(
+      message.attachments,
+    ).map(file => ({
       uri: '',
       name: cleanUnicodeText(valueAsString(file.name, 'مرفق'), false),
       type: valueAsString(file.mime_type, 'application/octet-stream'),
@@ -88,20 +193,27 @@ export const loadCourseAssistantHistory = async (
       uploadId: valueAsString(file.id),
       serverId: valueAsString(file.id),
       downloadUrl: valueAsString(file.download_url) || undefined,
-      downloadExpiresAt: valueAsString(file.download_url_expires_at) || undefined,
+      downloadExpiresAt:
+        valueAsString(file.download_url_expires_at) || undefined,
     }));
-    return [{
-      id,
-      role: role as ChatMessage['role'],
-      text,
-      createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
-      pending: role === 'assistant' && ['queued', 'sent', 'streaming'].includes(status),
-      clientRequestId: valueAsString(message.client_request_id) || undefined,
-      deliveryStatus: status as ChatMessage['deliveryStatus'],
-      errorCode: valueAsString(message.error_code) || undefined,
-      contextEligible: valueAsBoolean(message.context_eligible),
-      attachments,
-    }];
+    return [
+      {
+        id,
+        role: role as ChatMessage['role'],
+        text,
+        createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
+        clientRequestId: valueAsString(message.client_request_id) || undefined,
+        deliveryStatus: status as ChatMessage['deliveryStatus'],
+        errorCode: valueAsString(message.error_code) || undefined,
+        canRetry,
+        retryAfterSeconds: Math.max(
+          0,
+          Number(message.retry_after_seconds) || 0,
+        ),
+        contextEligible: valueAsBoolean(message.context_eligible),
+        attachments,
+      },
+    ];
   });
 };
 
@@ -168,22 +280,19 @@ export const openCourseAssistantAttachment = (
 
 export const pollCourseAssistantTurn = async (
   clientRequestId: string,
-): Promise<{
-  text: string;
-  offline: boolean;
-  blocked?: boolean;
-  unavailable?: boolean;
-  clientRequestId?: string;
-  turnStatus?: ChatMessage['deliveryStatus'];
-  code?: string;
-  retryAfterSeconds?: number;
-  partial?: boolean;
-}> => {
+): Promise<CourseAssistantTurnResponse> => {
   let response: Awaited<ReturnType<typeof publicRequest.get>>;
   try {
     response = await publicRequest.get(
       `course-chat/turns/${encodeURIComponent(clientRequestId)}`,
-      {timeout: 6000},
+      {
+        timeout: COURSE_CHAT_STATUS_TIMEOUT_MS,
+        // `onRejectedResponse` retries only when this counter is below the
+        // shared ladder length. A status probe has its own outer retry loop,
+        // so mark the inner ladder as already consumed.
+        roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
+        roknNetworkRetryDeadlineAt: Date.now() + COURSE_CHAT_STATUS_TIMEOUT_MS,
+      } as RoknRequestConfig,
     );
   } catch (error: unknown) {
     const failure = asRecord(error);
@@ -197,6 +306,7 @@ export const pollCourseAssistantTurn = async (
         clientRequestId,
         turnStatus: 'failed',
         code: 'chat_turn_not_found',
+        canRetry: true,
       };
     }
     // A status read cannot invalidate a turn already accepted by the server.
@@ -212,50 +322,12 @@ export const pollCourseAssistantTurn = async (
       retryAfterSeconds: 5,
     };
   }
-  const responsePayload = asRecord(asRecord(response).data);
-  const data = asRecord(responsePayload.data);
-  const status = valueAsString(data.turn_status);
-  const turnStatus = [
-    'queued',
-    'sent',
-    'streaming',
-    'completed',
-    'failed',
-    'cancelled',
-  ].includes(status)
-    ? (status as ChatMessage['deliveryStatus'])
-    : 'failed';
-
-  const code = valueAsString(responsePayload.code).toLowerCase();
-  const blocked = [
-    'chat_upgrade_required',
-    'chat_plan_limit_reached',
-    'course_not_available',
-    'course_access_required',
-    'chat_disabled_for_course',
-  ].includes(code);
-
-  return {
-    text:
-      (blocked && code === 'chat_plan_limit_reached'
-        ? 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط'
-        : cleanUnicodeText(valueAsString(data.message))) ||
-      (turnStatus === 'completed'
-        ? ''
-        : 'الرد قيد التجهيز\nسيظهر خلال لحظات'),
-    offline: false,
-    blocked,
-    unavailable: !blocked && data.unavailable === true,
-    clientRequestId:
-      valueAsString(data.client_request_id) || clientRequestId,
-    turnStatus,
-    code: code || undefined,
-    retryAfterSeconds: Math.max(0, Number(data.retry_after_seconds) || 0),
-    partial: valueAsBoolean(data.partial),
-  };
+  return mapCourseAssistantTurn(asRecord(response).data, clientRequestId);
 };
 
-export const cancelCourseAssistantTurn = async (clientRequestId: string): Promise<boolean> => {
+export const cancelCourseAssistantTurn = async (
+  clientRequestId: string,
+): Promise<boolean> => {
   try {
     await publicRequest.delete(
       `course-chat/turns/${encodeURIComponent(clientRequestId)}`,
@@ -281,17 +353,7 @@ export const askCourseAssistant = async ({
   clientRequestId?: string;
   onRequestStart?: () => void;
   attachmentIds?: string[];
-}): Promise<{
-  text: string;
-  offline: boolean;
-  blocked?: boolean;
-  unavailable?: boolean;
-  clientRequestId?: string;
-  turnStatus?: ChatMessage['deliveryStatus'];
-  code?: string;
-  retryAfterSeconds?: number;
-  partial?: boolean;
-}> => {
+}): Promise<CourseAssistantTurnResponse> => {
   if (!courseIncludesAssistant(course)) {
     return {
       text: 'Rokn AI غير مشمول في وصولك الحالي',
@@ -300,173 +362,123 @@ export const askCourseAssistant = async ({
       code: 'chat_upgrade_required',
     };
   }
-  const courseId = course.id;
-  if (isLocalDemoId(courseId)) {
-    return {text: demoAssistantReply(message, reel), offline: true};
+  const courseId = requireServerCourseId(course.id);
+  if (!(await isProductFeatureEnabled('ai_chat'))) {
+    return {
+      text: 'Rokn AI متوقف مؤقتًا للصيانة\nتقدمك محفوظ\nحاول لاحقًا',
+      offline: true,
+      unavailable: true,
+      code: 'ai_feature_unavailable',
+    };
   }
-  if (!isLocalDemoId(courseId)) {
-    if (!(await isProductFeatureEnabled('ai_chat'))) {
+  try {
+    onRequestStart?.();
+    const response = await publicRequest.post(
+      `courses/${courseId}/chat`,
+      {
+        message,
+        client_request_id: clientRequestId,
+        lesson_id: reel?.lessonId,
+        attachment_ids: attachmentIds,
+      },
+      {timeout: COURSE_CHAT_REQUEST_TIMEOUT_MS},
+    );
+    return mapCourseAssistantTurn(response?.data, clientRequestId);
+  } catch (error: unknown) {
+    const failure = asRecord(error);
+    const response = asRecord(failure.response);
+    const status = Number(response.status || failure.status || 0);
+    const errorCode = valueAsString(
+      asRecord(failure.data).code,
+      valueAsString(asRecord(response.data).code),
+    ).toLowerCase();
+    if (errorCode === 'chat_upgrade_required') {
       return {
-        text: 'Rokn AI متوقف مؤقتًا للصيانة\nتقدمك محفوظ\nحاول لاحقًا',
-        offline: true,
-        unavailable: true,
-        code: 'ai_feature_unavailable',
+        text: 'Rokn AI غير مشمول في المنحة\nيمكنك إضافته بالترقية',
+        offline: false,
+        blocked: true,
+        code: errorCode,
       };
     }
-    try {
-      onRequestStart?.();
-      const response = await publicRequest.post(
-        `courses/${courseId}/chat`,
-        {
-          message,
-          client_request_id: clientRequestId,
-          lesson_id: reel?.lessonId,
-          reel_title: reel?.title,
-          attachment_ids: attachmentIds,
-        },
-        {timeout: COURSE_CHAT_REQUEST_TIMEOUT_MS},
-      );
-      const text =
-        response?.data?.data?.message ||
-        response?.data?.data?.reply ||
-        response?.data?.message;
-      if (text) {
-        const data = asRecord(response?.data?.data);
-        const unavailable = data.unavailable === true;
-        const code = valueAsString(response?.data?.code).toLowerCase();
-        const responseStatus = valueAsString(data.turn_status);
-        const turnStatus = [
-          'queued',
-          'sent',
-          'streaming',
-          'completed',
-          'failed',
-          'cancelled',
-        ].includes(responseStatus)
-          ? (responseStatus as ChatMessage['deliveryStatus'])
-          : unavailable
-          ? 'failed'
-          : 'completed';
-        return {
-          text: cleanUnicodeText(valueAsString(text)),
-          offline: false,
-          unavailable,
-          clientRequestId:
-            valueAsString(data.client_request_id) || clientRequestId,
-          turnStatus,
-          code: code || undefined,
-          retryAfterSeconds: Math.max(0, Number(data.retry_after_seconds) || 0),
-          partial: valueAsBoolean(data.partial),
-        };
-      }
-    } catch (error: unknown) {
-      const failure = asRecord(error);
-      const response = asRecord(failure.response);
-      const status = Number(response.status || failure.status || 0);
-      const errorCode = valueAsString(
-        asRecord(failure.data).code,
-        valueAsString(asRecord(response.data).code),
-      ).toLowerCase();
-      if (errorCode === 'chat_upgrade_required') {
-        return {
-          text: 'Rokn AI غير مشمول في المنحة\nيمكنك إضافته بالترقية',
-          offline: false,
-          blocked: true,
-          code: errorCode,
-        };
-      }
-      if (errorCode === 'chat_plan_limit_reached') {
-        return {
-          text: 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط',
-          offline: false,
-          blocked: true,
-          code: errorCode,
-        };
-      }
-      if (
-        [
-          'course_not_available',
-          'course_access_required',
-          'chat_disabled_for_course',
-        ].includes(errorCode)
-      ) {
-        return {
-          text:
-            errorCode === 'course_not_available'
-              ? 'هذا الكورس غير متاح الآن'
-              : errorCode === 'course_access_required'
-              ? 'افتح الكورس أولًا لاستخدام Rokn AI'
-              : 'Rokn AI غير متاح في هذا الكورس',
-          offline: false,
-          blocked: true,
-          code: errorCode,
-          clientRequestId,
-          turnStatus: 'failed',
-        };
-      }
-      if (errorCode === 'chat_daily_limit_reached') {
-        return {
-          text: 'اكتملت أسئلة اليوم\nيمكنك المتابعة غدًا',
-          offline: false,
-          unavailable: true,
-          code: errorCode,
-          clientRequestId,
-          turnStatus: 'failed',
-        };
-      }
-      if (errorCode === 'chat_rate_limited') {
-        return {
-          text: 'انتظر قليلًا\nثم أرسل سؤالك مرة أخرى',
-          offline: false,
-          unavailable: true,
-          code: errorCode,
-          clientRequestId,
-          turnStatus: 'failed',
-        };
-      }
-
-      // A timeout or server/gateway disconnect does not prove that the paid
-      // turn was rejected. Keep the immutable request id and recover through
-      // the status endpoint; resubmitting a fresh turn here could debit the
-      // learner and call the provider twice for one visible question.
-      if (
-        clientRequestId &&
-        (status === 0 || status === 408 || status >= 500)
-      ) {
-        return {
-          text: 'نجهز إجابتك الآن\nستظهر خلال لحظات',
-          offline: status === 0,
-          unavailable: false,
-          clientRequestId,
-          turnStatus: 'queued',
-          code: 'chat_answer_in_progress',
-          retryAfterSeconds: 2,
-        };
-      }
-
+    if (errorCode === 'chat_plan_limit_reached') {
       return {
-        text: 'Rokn AI غير متاح الآن\nأكمل المقطع ومكانك محفوظ\nحاول لاحقًا',
-        offline: true,
-        unavailable: true,
+        text: 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط',
+        offline: false,
+        blocked: true,
+        code: errorCode,
+      };
+    }
+    if (
+      [
+        'course_not_available',
+        'course_access_required',
+        'chat_disabled_for_course',
+      ].includes(errorCode)
+    ) {
+      return {
+        text:
+          errorCode === 'course_not_available'
+            ? 'هذا الكورس غير متاح الآن'
+            : errorCode === 'course_access_required'
+            ? 'افتح الكورس أولًا لاستخدام Rokn AI'
+            : 'Rokn AI غير متاح في هذا الكورس',
+        offline: false,
+        blocked: true,
+        code: errorCode,
         clientRequestId,
-        code:
-          errorCode ||
-          (valueAsString(failure.code).toUpperCase() === 'ECONNABORTED'
-            ? 'client_timeout'
-            : 'network_unavailable'),
         turnStatus: 'failed',
       };
     }
-  }
+    if (errorCode === 'chat_daily_limit_reached') {
+      return {
+        text: 'اكتملت أسئلة اليوم\nيمكنك المتابعة غدًا',
+        offline: false,
+        unavailable: true,
+        code: errorCode,
+        clientRequestId,
+        turnStatus: 'failed',
+      };
+    }
+    if (errorCode === 'chat_rate_limited') {
+      return {
+        text: 'انتظر قليلًا\nثم أرسل سؤالك مرة أخرى',
+        offline: false,
+        unavailable: true,
+        code: errorCode,
+        clientRequestId,
+        turnStatus: 'failed',
+      };
+    }
 
-  return {
-    text: 'Rokn AI غير متاح الآن\nأكمل المقطع ومكانك محفوظ\nحاول لاحقًا',
-    offline: true,
-    unavailable: true,
-    clientRequestId,
-    code: 'ai_temporarily_unavailable',
-    turnStatus: 'failed',
-  };
+    // A timeout or server/gateway disconnect does not prove that the paid
+    // turn was rejected. Keep the immutable request id and recover through
+    // the status endpoint; resubmitting a fresh turn here could debit the
+    // learner and call the provider twice for one visible question.
+    if (clientRequestId && (status === 0 || status === 408 || status >= 500)) {
+      return {
+        text: 'نجهز إجابتك الآن\nستظهر خلال لحظات',
+        offline: status === 0,
+        unavailable: false,
+        clientRequestId,
+        turnStatus: 'queued',
+        code: 'chat_answer_in_progress',
+        retryAfterSeconds: 2,
+      };
+    }
+
+    return {
+      text: 'Rokn AI غير متاح الآن\nأكمل المقطع ومكانك محفوظ\nحاول لاحقًا',
+      offline: true,
+      unavailable: true,
+      clientRequestId,
+      code:
+        errorCode ||
+        (valueAsString(failure.code).toUpperCase() === 'ECONNABORTED'
+          ? 'client_timeout'
+          : 'network_unavailable'),
+      turnStatus: 'failed',
+    };
+  }
 };
 
 export const uploadCourseAssistantAttachment = async ({
@@ -476,6 +488,7 @@ export const uploadCourseAssistantAttachment = async ({
   courseId: string;
   file: import('../types').ChatAttachmentDraft;
 }): Promise<string> => {
+  const serverCourseId = requireServerCourseId(courseId);
   const body = new FormData();
   body.append('client_upload_id', file.uploadId);
   body.append('attachment', {
@@ -484,7 +497,7 @@ export const uploadCourseAssistantAttachment = async ({
     type: file.type || 'application/octet-stream',
   } as unknown as Blob);
   const response = await publicRequest.post(
-    `courses/${courseId}/chat/attachments`,
+    `courses/${serverCourseId}/chat/attachments`,
     body,
     {headers: {'Content-Type': 'multipart/form-data'}, timeout: 45000},
   );

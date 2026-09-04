@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\AdminNotification;
 use App\Models\User;
 
 final class NotificationDeliveryPolicy
@@ -46,12 +47,39 @@ final class NotificationDeliveryPolicy
         return 0;
     }
 
+    public static function cooldownHours(string $type): int
+    {
+        $configured = AdminNotification::query()
+            ->where('system_key', $type)
+            ->value('cooldown_hours');
+
+        return $configured === null
+            ? self::defaultCooldownHours($type)
+            : max(0, (int) $configured);
+    }
+
     /** @return array<int,string> */
     public static function frequencyFamily(string $type): array
     {
         if (self::isMarketing($type)) return self::MARKETING_TYPES;
         if (self::isLearningReminder($type)) return self::LEARNING_TYPES;
         return [$type];
+    }
+
+    /** @return array<int,string> */
+    public static function cooldownFamily(string $type): array
+    {
+        return match ($type) {
+            'new_course_lesson', 'course_update' => [
+                'new_course_lesson',
+                'course_update',
+            ],
+            'learning_nudge', 'continue_course' => [
+                'learning_nudge',
+                'continue_course',
+            ],
+            default => self::frequencyFamily($type),
+        };
     }
 
     /** Marketing and retention pushes wait for the shared quiet window to end. */
@@ -72,7 +100,7 @@ final class NotificationDeliveryPolicy
     public static function allowsInbox(User $user, string $type): bool
     {
         return (bool) $user->active
-            && $user->role === 'client'
+            && strtolower(trim((string) $user->role)) === 'client'
             && (!self::isMarketing($type) || (bool) $user->marketing_notifications_enabled);
     }
 

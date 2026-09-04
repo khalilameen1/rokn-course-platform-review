@@ -494,82 +494,6 @@
                     </div>
                 </div>
 
-                <!-- Contact Info Section -->
-                <div class="accordion-item-design">
-                    <div class="accordion-header-design">
-                        <button type="button" class="accordion-button-design" onclick="toggleAccordion(this, 'contact')">
-                            <div class="icon-circle">
-                                <i class="fa fa-phone"></i>
-                            </div>
-                            <span>معلومات التواصل والدعم</span>
-                            <i class="fa fa-chevron-down arrow-icon"></i>
-                        </button>
-                    </div>
-                    <div class="accordion-content-design" id="contact">
-                        <div class="accordion-body-design">
-                            <div class="form-row-design">
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-headset"></i>
-                                        رقم الدعم الفني
-                                    </label>
-                                    <input type="text" name="technical_contact" class="form-control-design"
-                                           value="{{ $settings->technical_contact }}" placeholder="+966 5XXXXXXXX">
-                                </div>
-
-
-                            </div>
-
-                            <h4 class="design-section-heading">
-                                <i class="fa fa-copyright"></i>
-                                <span>Powered By</span>
-                            </h4>
-
-                            <div class="powered-by-row">
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-text-width"></i>
-                                        العنوان الأول
-                                    </label>
-                                    <input type="text" name="powered_by_titles[]" class="form-control-design"
-                                           value="{{ isset($settings->powered_by[0]['title']) ? $settings->powered_by[0]['title'] : '' }}"
-                                           placeholder="اسم الشركة أو الجهة">
-                                </div>
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-link"></i>
-                                        الرابط الأول
-                                    </label>
-                                    <input type="url" name="powered_by_urls[]" class="form-control-design"
-                                           value="{{ isset($settings->powered_by[0]['url']) ? $settings->powered_by[0]['url'] : '' }}"
-                                           placeholder="https://...">
-                                </div>
-                            </div>
-
-                            <div class="powered-by-row">
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-text-width"></i>
-                                        العنوان الثاني
-                                    </label>
-                                    <input type="text" name="powered_by_titles[]" class="form-control-design"
-                                           value="{{ isset($settings->powered_by[1]['title']) ? $settings->powered_by[1]['title'] : '' }}"
-                                           placeholder="اسم الشركة أو الجهة">
-                                </div>
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-link"></i>
-                                        الرابط الثاني
-                                    </label>
-                                    <input type="url" name="powered_by_urls[]" class="form-control-design"
-                                           value="{{ isset($settings->powered_by[1]['url']) ? $settings->powered_by[1]['url'] : '' }}"
-                                           placeholder="https://...">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Advanced Settings Section -->
                 <div class="accordion-item-design">
                     <div class="accordion-header-design">
@@ -591,7 +515,7 @@
                                 </label>
                                 <div class="switch-label">
                                     <i class="fa fa-eye"></i>
-                                    عرض قسم "كيف تعمل المنصة" في موقع الطلاب
+                                    عرض قسم "كيف تعمل المنصة" في الموقع التعريفي
                                 </div>
                             </div>
 
@@ -629,28 +553,6 @@
                                 </div>
                             </div>
 
-                            <h4 class="design-section-heading">
-                                <i class="fa fa-file-alt"></i>
-                                <span>محتوى سياسة الاستخدام</span>
-                            </h4>
-
-                            <div class="form-row-design">
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-align-right"></i>
-                                        محتوى السياسة (عربي)
-                                    </label>
-                                    <textarea name="policy_content_ar" class="form-control-design" rows="10">{{ $settings->policy_content_ar }}</textarea>
-                                </div>
-
-                                <div class="form-group-design">
-                                    <label class="form-label-design">
-                                        <i class="fa fa-align-left"></i>
-                                        محتوى السياسة (إنجليزي)
-                                    </label>
-                                    <textarea name="policy_content_en" class="form-control-design" rows="10">{{ $settings->policy_content_en }}</textarea>
-                                </div>
-                            </div>
                         </div>
                     </div>
                 </div>

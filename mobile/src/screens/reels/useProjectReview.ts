@@ -1,15 +1,16 @@
-import {useCallback, useEffect} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 import type {Dispatch, MutableRefObject, SetStateAction} from 'react';
 import {
   applyLocalLearningState,
   loadCourseLearningData,
-  retryPendingProjectSubmissions,
 } from '../../components/VideoPlayer/courseLearningApi';
 import type {CourseLearningData} from '../../components/VideoPlayer/types';
 import {buildAccessibleFeed} from './presentation';
 import {useAppActiveState} from '../../hooks/useAppActiveState';
-import {isLocalDemoId} from '../../config/runtime';
-import {watchProjectResolution} from '../../components/VideoPlayer/courseLearning/projects';
+import {
+  loadProjectResolution,
+  watchProjectResolution,
+} from '../../components/VideoPlayer/courseLearning/projects';
 
 type ProjectReviewRefs = {
   loadedCourse: MutableRefObject<CourseLearningData | null>;
@@ -34,11 +35,17 @@ export const useProjectReview = ({
 }) => {
   const appIsActive = useAppActiveState();
   const reviewActive = active && appIsActive;
+  const pendingMapRefreshRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    pendingMapRefreshRef.current = null;
+  }, [course?.id]);
+
   const refreshProjectState = useCallback(
     async (projectId: string) => {
       const activeCourseId = course?.id;
       const ownerGeneration = refs.ownerGeneration.current;
-      if (!activeCourseId || isLocalDemoId(activeCourseId)) return null;
+      if (!activeCourseId) return null;
       try {
         const result = await loadCourseLearningData(activeCourseId, {
           reconcilePending: false,
@@ -52,21 +59,20 @@ export const useProjectReview = ({
           return null;
         }
         const project = refreshed.modules
-          .flatMap(module =>
-            module.projects?.length
-              ? module.projects
-              : module.project
-              ? [module.project]
-              : [],
-          )
+          .flatMap(module => module.projects || [])
           .find(item => item?.id === projectId);
+        // A missing project is not a fresh "draft". Publishing or account
+        // state changed while this review was resolving, so keep the current
+        // map and retry instead of replacing it with an unrelated journey.
+        if (!project) return null;
         const refreshedFeed = buildAccessibleFeed(refreshed);
         const projectFeedIndex = refreshedFeed.findIndex(
           item => item.type === 'project' && item.project.id === projectId,
         );
+        pendingMapRefreshRef.current = null;
         setCourse(refreshed);
         return {
-          status: project?.status || 'not_submitted',
+          status: project.status,
           canContinue:
             projectFeedIndex >= 0 &&
             projectFeedIndex < refreshedFeed.length - 1,
@@ -86,8 +92,27 @@ export const useProjectReview = ({
       const watcher = ++refs.reviewWatcher.current;
       watchProjectResolution({
         projectId,
-        resolve: refreshProjectState,
-        beforeResolve: () => retryPendingProjectSubmissions().catch(() => []),
+        resolve: async currentProjectId => {
+          const resolution = await loadProjectResolution(currentProjectId);
+          if (
+            resolution.status !== 'passed' &&
+            resolution.status !== 'needs_changes'
+          ) {
+            return {status: resolution.status, canContinue: false};
+          }
+          // Reload the larger course contract only once after the decision so
+          // its newly unlocked manifests and map state arrive together.
+          const refreshed = await refreshProjectState(currentProjectId);
+          if (refreshed) return refreshed;
+
+          // Knowing the decision is not enough to advance: the course payload
+          // owns the newly unlocked section and its signed-media entitlement.
+          // Report this poll as still evaluating so the watcher keeps trying
+          // after a transient map failure instead of freezing forever on the
+          // old project card.
+          pendingMapRefreshRef.current = currentProjectId;
+          return {status: 'evaluating' as const, canContinue: false};
+        },
         isActive: () => reviewActive && refs.reviewWatcher.current === watcher,
         initialDelayMs: 2500,
         onExhausted: () => {
@@ -96,7 +121,10 @@ export const useProjectReview = ({
           }
         },
         onResolution: refreshed => {
-          if (refreshed.status === 'passed' || refreshed.status === 'needs_retry') {
+          if (
+            refreshed.status === 'passed' ||
+            refreshed.status === 'needs_changes'
+          ) {
             refs.watchedProject.current = null;
           }
         },
@@ -113,15 +141,14 @@ export const useProjectReview = ({
 
   useEffect(() => {
     if (!course || previewMode || !reviewActive) return;
-    const reviewingProject = course.modules
-      .flatMap(module =>
-        module.projects?.length
-          ? module.projects
-          : module.project
-          ? [module.project]
-          : [],
-      )
-      .find(project => project?.status === 'reviewing');
+    const pendingProjectId = pendingMapRefreshRef.current;
+    const reviewingProject = pendingProjectId
+      ? course.modules
+          .flatMap(module => module.projects || [])
+          .find(project => project?.id === pendingProjectId)
+      : course.modules
+          .flatMap(module => module.projects || [])
+          .find(project => project?.status === 'evaluating');
     if (reviewingProject) watchProjectUntilResolved(reviewingProject.id);
   }, [course, previewMode, reviewActive, watchProjectUntilResolved]);
 

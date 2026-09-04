@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AiConversationContext;
-use App\Models\CourseChatTurn;
 use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectFeedbackThread;
 use App\Models\User;
@@ -16,52 +15,11 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Durable extractive memory without a second, unmetered model request.
- *
- * The checkpoint stores structured source excerpts, not a truncated tail.
- * Every prompt selects stable anchors, recent exchanges and excerpts relevant
- * to the current question. Course-chat checkpoints are rebuilt from live
- * retained turns, so expired/deleted history cannot survive as ghost memory.
+ * Durable extractive memory for long project-feedback threads without a
+ * second model request.
  */
 final class AiConversationContextService
 {
-    public function courseChat(
-        int $userId,
-        int $courseId,
-        int $beforeTurnId,
-        int $characterBudget,
-        string $focus,
-        Carbon $sessionStartedAt
-    ): string {
-        return $this->rebuildAndSelect(
-            $userId,
-            $courseId,
-            'course_chat',
-            'course',
-            fn (): Collection => CourseChatTurn::query()
-                ->where('user_id', $userId)
-                ->where('course_id', $courseId)
-                ->where('status', CourseChatTurn::COMPLETED)
-                ->where('expires_at', '>', now())
-                ->where('created_at', '>=', $sessionStartedAt)
-                ->where('id', '<', $beforeTurnId)
-                ->orderBy('id')
-                ->get(['id', 'lesson_id', 'question', 'answer']),
-            static fn (CourseChatTurn $turn): array => [
-                'id' => (int) $turn->id,
-                'kind' => 'exchange',
-                'text' => 'سؤال سابق: ' . UnicodeText::limit((string) $turn->question, 320)
-                    . "\nالخلاصة: " . UnicodeText::limit((string) $turn->answer, 560),
-            ],
-            $characterBudget,
-            $focus,
-            now()->addMinutes(max(
-                15,
-                (int) config('openrouter.chat_context_session_minutes', 120)
-            ))
-        );
-    }
-
     public function projectThread(
         ProjectFeedbackThread $thread,
         int $beforeMessageId,
@@ -80,8 +38,11 @@ final class AiConversationContextService
                 ->whereIn('role', ['user', 'assistant'])
                 ->where('client_request_id', '<>', $initialReportRequestId)
                 ->where('id', '<', $beforeMessageId)
-                ->orderBy('id')
-                ->get(['id', 'role', 'body']),
+                ->orderByDesc('id')
+                ->limit(120)
+                ->get(['id', 'role', 'body'])
+                ->reverse()
+                ->values(),
             static fn (ProjectFeedbackMessage $message): array => [
                 'id' => (int) $message->id,
                 'kind' => (string) $message->role,

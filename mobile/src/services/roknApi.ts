@@ -1,2 +1,2 @@
-/** Mobile API facade with canonical domain names and compatibility aliases. */
+/** Mobile API facade. Domain modules expose one canonical name per operation. */
 export * from './api';

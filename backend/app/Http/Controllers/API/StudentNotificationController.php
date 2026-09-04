@@ -20,63 +20,6 @@ final class StudentNotificationController extends Controller
     {
     }
 
-    public function getUnreadCount(Request $request): JsonResponse
-    {
-        try {
-            /** @var User|null $user */
-            $user = auth('api')->user();
-            if (!$user) {
-                return $this->responses->error('سجّل الدخول أولًا', 401);
-            }
-
-            $unreadCount = StudentNotification::where('user_id', $user->id)
-                ->unread()
-                ->count();
-            $data = ['unread_count' => $unreadCount];
-
-            return $this->responses->success(
-                $data,
-                'تم تحميل عدد الإشعارات الجديدة',
-                200,
-                $data
-            );
-        } catch (\Exception $exception) {
-            $this->rethrowExpectedRequestException($exception);
-            report($exception);
-
-            return $this->responses->error('تعذّر تحميل عدد الإشعارات', 500);
-        }
-    }
-
-    public function getLastTen(Request $request): JsonResponse
-    {
-        try {
-            /** @var User|null $user */
-            $user = auth('api')->user();
-            if (!$user) {
-                return $this->responses->error('سجّل الدخول أولًا', 401);
-            }
-
-            $notifications = StudentNotification::where('user_id', $user->id)
-                ->with('notifiable')
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->limit(10)
-                ->get();
-            $this->preparePresentationRelations($notifications);
-
-            return $this->responses->success(
-                StudentNotificationResource::collection($notifications),
-                'تم تحميل الإشعارات'
-            );
-        } catch (\Exception $exception) {
-            $this->rethrowExpectedRequestException($exception);
-            report($exception);
-
-            return $this->responses->error('تعذّر تحميل الإشعارات', 500);
-        }
-    }
-
     public function getAll(Request $request): JsonResponse
     {
         $validated = $request->validate([

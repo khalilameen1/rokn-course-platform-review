@@ -172,7 +172,7 @@ final readonly class WhatsAppLinkService
                     // if the first webhook committed the wallet credit but the
                     // HTTP process stopped before enqueueing its push.
                     'earned_coins' => (int) ($earning?->amount ?? 0),
-                    'balance' => (int) $user->wallet_coins,
+                    'balance' => $this->wallet->balances($user)['total'],
                     'reward_deferred' => false,
                     'reward_unavailable' => false,
                 ];
@@ -234,7 +234,7 @@ final readonly class WhatsAppLinkService
             $rewardAvailable = $method->isAvailableNow() && $method->hasClaimCapacity();
             $coins = 0;
             $earnedCoins = (int) ($earning?->amount ?? 0);
-            $balance = (int) $user->wallet_coins;
+            $balance = $this->wallet->balances($user)['total'];
             $rewardDeferred = false;
 
             if (!$alreadyClaimed && $rewardAvailable) {

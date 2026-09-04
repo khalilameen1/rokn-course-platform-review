@@ -98,10 +98,6 @@ class RoknExperienceDemoSeeder extends Seeder
                 'price' => 20,
                 'price_before_discount' => null,
                 'currency' => 'ROKN_COINS',
-                'video_count' => 30,
-                'hours_count' => 1,
-                'home_work_count' => 3,
-                'files_count' => 3,
                 // Never invent social proof in an empty catalogue.
                 'students_count' => 0,
                 'course_type' => 'online',
@@ -130,24 +126,18 @@ class RoknExperienceDemoSeeder extends Seeder
                     'title_ar' => 'ابنِ خدمتك',
                     'title_en' => 'Build your service',
                     'description_ar' => 'اختر مشكلة واضحة وحوّل مهارتك إلى خدمة قابلة للبيع.',
-                    'attachment_platform' => 'computer',
-                    'attachments_link' => env('DEMO_SERVICE_WORKBOOK_URL'),
                     'project' => 'اكتب وصف خدمتك في صفحة واحدة وارفع لقطة واضحة منها.',
                 ],
                 [
                     'title_ar' => 'اصنع عرضًا يقنع',
                     'title_en' => 'Create a convincing offer',
                     'description_ar' => 'رتّب القيمة والنتيجة والسعر دون حشو.',
-                    'attachment_platform' => 'mobile',
-                    'attachments_link' => env('DEMO_OFFER_TEMPLATE_URL'),
                     'project' => 'صمّم عرضًا بسيطًا لخدمتك وارفعه كصورة أو ملف.',
                 ],
                 [
                     'title_ar' => 'احصل على أول عميل',
                     'title_en' => 'Win your first client',
                     'description_ar' => 'اكتب رسالة افتتاحية وادخل محادثة البيع بثقة.',
-                    'attachment_platform' => 'both',
-                    'attachments_link' => env('DEMO_OUTREACH_KIT_URL'),
                     'project' => 'اكتب رسالة تواصل حقيقية لعميل مناسب وارفع لقطة للمحاولة.',
                 ],
             ];
@@ -175,8 +165,6 @@ class RoknExperienceDemoSeeder extends Seeder
                         'description' => $definition['description_ar'],
                         'description_ar' => $definition['description_ar'],
                         'description_en' => 'A focused practical module with ten short reels and one crossing project.',
-                        'attachments_link' => $definition['attachments_link'],
-                        'attachment_platform' => $definition['attachment_platform'],
                     ]
                 );
 
@@ -241,11 +229,7 @@ class RoknExperienceDemoSeeder extends Seeder
                     'requirements_text' => $definition['project'],
                     'requirements_text_ar' => $definition['project'],
                     'requirements_text_en' => 'Upload a clear attempt for this module project.',
-                    'ai_prompt' => 'Accept any sincere effort. Reject only empty, black, corrupted, or clearly effortless submissions.',
-                    'passing_score' => 50,
                     'is_graduation_project' => $moduleIndex === 2,
-                    'temperature' => 0.2,
-                    'tokens_number' => 250,
                 ])->save();
 
                 CourseSection::withTrashed()->updateOrCreate(
