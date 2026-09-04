@@ -313,12 +313,12 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-core.js",
-      "sha256": "99a32b51b397c28e77616324d79f64ea3eb02a70e7f5aef11f916b817b71d666",
+      "sha256": "f14fd3f555b68eaf8602022c3185fae09860829ba59b7a5e3819fe59dec0bcc9",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/js/course-studio-details.js",
-      "sha256": "90043b0248933a751a954919f91c23a408ac907a1ff635d7b64c79b178081e76",
+      "sha256": "28d453123cf1c0a5c7f63af4a000e47f5849b3126c88b4a843ef2308063a0532",
       "classification": "first_party"
     },
     {
