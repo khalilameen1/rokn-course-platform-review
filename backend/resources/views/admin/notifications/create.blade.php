@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 @section('page.title', $targetStudent ? 'إرسال إشعار للطالب' : 'إرسال إشعار للطلاب')
 @section('styles')
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/notifications-dashboard.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/notifications-dashboard.css') }}">
 @endsection
 @section('breadcrumbs')
     <div class="col-sm-12">

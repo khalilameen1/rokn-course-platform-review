@@ -11,9 +11,9 @@
     <nav class="sidebar-nav">
 
         <div class="modern-brand">
-            <a class="brand-logo" href="{{ $dashboardHome }}">
-                <i class="fa fa-graduation-cap brand-icon" aria-hidden="true"></i>
-                <span class="brand-text">Rokn</span>
+            <a class="brand-logo" href="{{ $dashboardHome }}" aria-label="ركن الرئيسية">
+                <img class="brand-wordmark" src="{{ asset('images/rokn-wordmark.png') }}" alt="Rokn" width="112" height="37">
+                <img class="brand-symbol" src="{{ asset('images/rokn-app-icon.png') }}" alt="" width="38" height="38">
             </a>
             <button
                 type="button"

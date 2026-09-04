@@ -1,7 +1,7 @@
 @extends('admin.layouts.app')
 
 @section('page.title', 'قوالب الإشعارات')
-@section('styles')<link rel="stylesheet" href="{{ asset('admin/assets/css/notifications-dashboard.css') }}">@endsection
+@section('styles')<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/notifications-dashboard.css') }}">@endsection
 
 @section('content')
 <div class="admin-page notifications-page" dir="rtl">

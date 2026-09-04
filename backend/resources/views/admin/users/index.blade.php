@@ -5,7 +5,7 @@
 @section('styles')
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.users.partials._dynamic_styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/users-index.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/users-index.css') }}">
 @endsection
 
 @section('content')
@@ -245,5 +245,5 @@
 @endsection
 
 @section('scripts')
-<script src="{{ asset('admin/assets/js/users-index.js') }}"></script>
+<script src="{{ versioned_asset('admin/assets/js/users-index.js') }}"></script>
 @endsection

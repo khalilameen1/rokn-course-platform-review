@@ -92,7 +92,9 @@ final class AdminInlineStyleContractTest extends TestCase
         self::assertStringContainsString('id="logoutForm"', $header);
         self::assertStringContainsString('class="d-none" id="logoutForm"', $header);
         self::assertStringContainsString('modern-sidebar', $aside);
-        self::assertStringContainsString("classList.add('is-closing')", $alert);
+        self::assertStringContainsString('data-close-alert', $alert);
+        self::assertStringNotContainsString('<script', $header);
+        self::assertStringNotContainsString('<script', $alert);
     }
 
     public function test_retired_dashboard_palette_cannot_return(): void

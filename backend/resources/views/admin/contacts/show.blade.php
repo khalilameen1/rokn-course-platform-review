@@ -2,7 +2,7 @@
 @section('page.title', $contact->isAccountDeletionRequest() ? 'طلب حذف حساب' : 'تفاصيل الرسالة')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/admin-learning-views.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/admin-learning-views.css') }}">
 @endsection
 
 @section('content')

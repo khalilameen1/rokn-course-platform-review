@@ -6,8 +6,8 @@
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.urgent-tasks.partials._dynamic_styles')
 
-<link rel="stylesheet" href="{{ asset('admin/assets/css/urgent-tasks-shared.css') }}">
-<link rel="stylesheet" href="{{ asset('admin/assets/css/urgent-tasks-inactive-students.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/urgent-tasks-shared.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/urgent-tasks-inactive-students.css') }}">
 @endsection
 
 @section('content')

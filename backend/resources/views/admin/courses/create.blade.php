@@ -3,7 +3,7 @@
 @section('page.title', 'كورس جديد')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/course-studio.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/course-studio.css') }}">
 @endsection
 
 @section('content')

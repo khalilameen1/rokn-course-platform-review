@@ -34,11 +34,7 @@ final class AdminLoginViewTest extends TestCase
         self::assertDoesNotMatchRegularExpression('/\.style(?:\.|\[)/', $this->source);
 
         foreach (['custom-global.css', 'login.css'] as $asset) {
-            self::assertStringContainsString("asset('admin/assets/css/{$asset}')", $this->source);
-            self::assertStringContainsString(
-                "filemtime(public_path('admin/assets/css/{$asset}'))",
-                $this->source
-            );
+            self::assertStringContainsString("versioned_asset('admin/assets/css/{$asset}')", $this->source);
         }
 
         self::assertStringContainsString('<body class="rokn-login">', $this->source);

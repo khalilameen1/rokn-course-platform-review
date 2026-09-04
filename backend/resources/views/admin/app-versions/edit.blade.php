@@ -3,7 +3,7 @@
 @section('page.title', 'تعديل الإصدار')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/app-versions.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/app-versions.css') }}">
 @endsection
 
 @section('content')

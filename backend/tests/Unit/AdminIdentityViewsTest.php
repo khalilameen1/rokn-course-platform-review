@@ -123,7 +123,6 @@ class AdminIdentityViewsTest extends TestCase
             'function highlightSearchResults',
             'function viewStudents',
             'function syncPlatformFields',
-            "localStorage.getItem('darkMode')",
             'data-progress-value',
             'aria-valuenow',
         ] as $interaction) {
@@ -174,7 +173,7 @@ class AdminIdentityViewsTest extends TestCase
             $this->projectRoot().'/public/admin/assets/js/admin-identity-theme.js'
         );
         self::assertStringContainsString('data-progress-value', $runtime);
-        self::assertStringContainsString("localStorage.getItem('darkMode')", $runtime);
+        self::assertStringNotContainsString('localStorage', $runtime);
     }
 
     /** @return array<string, string> */

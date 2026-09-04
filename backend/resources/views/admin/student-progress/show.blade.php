@@ -3,7 +3,7 @@
 @section('page.title', 'تفاصيل تقدم الطالب')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/student-progress-show.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/student-progress-show.css') }}">
 @endsection
 
 @section('content')

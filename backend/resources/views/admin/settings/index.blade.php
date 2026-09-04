@@ -2,7 +2,7 @@
 @section('page.title', 'إعدادات التطبيق')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/settings-dashboard.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/settings-dashboard.css') }}">
 @endsection
 
 @section('content')

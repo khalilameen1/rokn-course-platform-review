@@ -584,14 +584,3 @@ body.dark-mode .text-success {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 </style>
-
-{{-- Dark Mode Script (will be triggered from header) --}}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check for saved dark mode preference
-    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
-    if (isDarkMode) {
-        document.body.classList.add('dark-mode');
-    }
-});
-</script>

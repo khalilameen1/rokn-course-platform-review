@@ -4,6 +4,21 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Current acceptance boundary — 2026-09-05
+
+The latest user-installed APK failed Arabic alignment and course assistant
+entry-point acceptance. Earlier checkpoints below are historical evidence,
+not approval of the current app. No replacement APK has been built for this pass.
+
+Current source work covers partial authoring updates, one course-details/map
+snapshot, visible versus usable chat actions, Arabic direction, payment review
+recovery and the shared dashboard runtime. Browser shell checks cover navigation,
+storage denial, AJAX/native saves and responsive widths, not complete page QA.
+
+Authentication, project submission, portfolio/certificate journeys and remaining
+dashboard page implementations are still being reviewed. No whole-project
+completion or zero-defect claim follows from these individual repairs.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

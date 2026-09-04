@@ -574,14 +574,4 @@ body.dark-mode .alert-info {
 }
 </style>
 
-{{-- Dark Mode Script (will be triggered from header) --}}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Check for saved dark mode preference
-    const isDarkMode = localStorage.getItem('darkMode') === 'enabled';
-    if (isDarkMode) {
-        document.body.classList.add('dark-mode');
-    }
-});
-</script>
 

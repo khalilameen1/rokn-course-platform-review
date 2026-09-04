@@ -55,9 +55,6 @@
             progressBar.style.width = value + '%';
         });
 
-        if (localStorage.getItem('darkMode') === 'enabled') {
-            document.body.classList.add('dark-mode');
-        }
     }
 
     if (document.readyState === 'loading') {

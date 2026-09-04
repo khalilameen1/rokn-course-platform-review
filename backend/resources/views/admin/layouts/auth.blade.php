@@ -6,10 +6,10 @@
     <meta name="robots" content="noindex,nofollow,noarchive">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('page.title') | {{ config('settings.site_name_ar', 'Rokn') }}</title>
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/normalize.css') }}">
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/font-awesome.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/custom-global.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/normalize.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/font-awesome.min.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/custom-global.css') }}">
 </head>
 <body class="admin-auth-shell">
     <main class="admin-auth-card">

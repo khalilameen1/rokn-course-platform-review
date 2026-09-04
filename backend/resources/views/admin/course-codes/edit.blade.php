@@ -6,7 +6,7 @@
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.course-codes.partials._dynamic_styles')
 
-<link rel="stylesheet" href="{{ asset('admin/assets/css/course-codes-edit.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/course-codes-edit.css') }}">
 @endsection
 
 @section('content')

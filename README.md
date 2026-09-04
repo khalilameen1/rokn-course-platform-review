@@ -1,6 +1,6 @@
-# Rokn Course Platform — Review Snapshot
+# Rokn Course Platform
 
-This public repository is a clean review snapshot of the Rokn learning platform. It contains the current mobile application and the Laravel backend/admin dashboard without the historical Git repositories, production credentials, runtime data, dependency folders, or build outputs.
+This is the working repository for the Rokn mobile application and its Laravel API and dashboard. The production deployment uses this repository. Production credentials, runtime data, dependency folders and mobile build outputs do not belong in source control.
 
 ## Structure
 
@@ -9,7 +9,7 @@ This public repository is a clean review snapshot of the Rokn learning platform.
 
 ## Review status
 
-The snapshot is intended for engineering review, not direct production deployment.
+The source is under active repair. A deployed backend or a passing test suite is not a claim that the latest APK has passed acceptance. Track source changes, deployment and device verification separately.
 
 - Mobile and backend verification commands are listed below. Treat their current
   output and CI artifact as evidence; do not rely on a copied historical test

@@ -14,6 +14,64 @@ jQuery(document).ready(function($) {
 
 
 	const body = document.body;
+	const darkModeToggle = document.getElementById('darkModeToggle');
+	function setDarkMode(enabled) {
+		body.classList.toggle('dark-mode', enabled);
+		darkModeToggle?.setAttribute('aria-pressed', String(enabled));
+	}
+	// A denied storage preference must not disable navigation or editing.
+	try {
+		setDarkMode(localStorage.getItem('darkMode') === 'enabled');
+	} catch (_) {
+		setDarkMode(body.classList.contains('dark-mode'));
+	}
+	darkModeToggle?.addEventListener('click', function() {
+		const enabled = !body.classList.contains('dark-mode');
+		setDarkMode(enabled);
+		try { localStorage.setItem('darkMode', enabled ? 'enabled' : 'disabled'); } catch (_) {}
+	});
+
+	const headerMenus = [
+		['notificationToggle', 'notificationMenu', '.modern-notification'],
+		['userMenuToggle', 'userMenu', '.modern-user-menu'],
+	].map(function([buttonId, panelId, selector]) {
+		return {
+			button: document.getElementById(buttonId),
+			panel: document.getElementById(panelId),
+			container: document.querySelector(selector),
+		};
+	}).filter(function(menu) { return menu.button && menu.panel && menu.container; });
+
+	function setHeaderMenu(menu, open) {
+		menu.container.classList.toggle('show', open);
+		menu.button.setAttribute('aria-expanded', String(open));
+		menu.panel.setAttribute('aria-hidden', String(!open));
+	}
+	headerMenus.forEach(function(menu) {
+		menu.button.addEventListener('click', function() {
+			const opening = !menu.container.classList.contains('show');
+			headerMenus.forEach(function(other) { setHeaderMenu(other, other === menu && opening); });
+		});
+	});
+	document.addEventListener('click', function(event) {
+		headerMenus.forEach(function(menu) {
+			if (!menu.container.contains(event.target)) setHeaderMenu(menu, false);
+		});
+		const closeButton = event.target.closest('[data-close-alert]');
+		closeButton?.closest('.enhanced-alert')?.remove();
+	});
+	document.addEventListener('keydown', function(event) {
+		if (event.key !== 'Escape') return;
+		headerMenus.forEach(function(menu) {
+			if (!menu.container.classList.contains('show')) return;
+			setHeaderMenu(menu, false);
+			menu.button.focus();
+		});
+	});
+	document.querySelectorAll('.enhanced-alert-success').forEach(function(alert) {
+		window.setTimeout(function() { alert.remove(); }, 4500);
+	});
+
 	const sidebar = document.getElementById('left-panel');
 	const menuToggle = document.getElementById('menuToggle');
 	const sidebarClose = document.getElementById('adminSidebarClose');

@@ -1,15 +1,59 @@
+@font-face {
+    font-family: "Rokn Cairo";
+    src: url("../fonts/cairo/Cairo-Regular.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 400 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Rokn Cairo";
+    src: url("../fonts/cairo/Cairo-Bold.ttf") format("truetype");
+    font-style: normal;
+    font-weight: 600 900;
+    font-display: swap;
+}
+
 :root {
-    --rokn-admin-primary: #2563eb;
-    --rokn-admin-primary-dark: #172554;
+    --rokn-admin-primary: #2c69db;
+    --rokn-admin-primary-dark: #245cc7;
+    --rokn-admin-primary-soft: #eaf0fb;
+    --rokn-admin-text: #111620;
+    --rokn-admin-canvas: #f5f7fb;
     --rokn-admin-success: #198754;
     --rokn-admin-warning: #b7791f;
     --rokn-admin-danger: #c53030;
-    --rokn-admin-muted: #6c757d;
+    --rokn-admin-muted: #626d80;
     --rokn-admin-surface: #ffffff;
     --rokn-admin-surface-soft: #f8f9fa;
     --rokn-admin-border: #e5e7eb;
-    --rokn-admin-radius: 15px;
-    --rokn-admin-shadow: 0 4px 16px rgba(15, 23, 42, .07);
+    --rokn-admin-radius: 12px;
+    --rokn-admin-shadow: 0 8px 24px rgba(7, 10, 16, .08);
+    --rokn-admin-nav: #070a10;
+    --rokn-admin-nav-hover: #171d29;
+    --rokn-admin-nav-border: #252c38;
+    --rokn-admin-nav-text: #f7f9fc;
+    --rokn-admin-nav-muted: #9ba6b8;
+    --rokn-admin-overlay: rgba(3, 5, 9, .76);
+}
+
+body.admin-shell,
+body.admin-auth-shell,
+body.admin-shell :is(input, select, textarea, button) {
+    font-family: "Rokn Cairo", Tahoma, Arial, sans-serif;
+}
+
+body.dark-mode {
+    --rokn-admin-text: #f7f9fc;
+    --rokn-admin-canvas: #0b1018;
+    --rokn-admin-surface: #111620;
+    --rokn-admin-surface-soft: #171d29;
+    --rokn-admin-border: #252c38;
+    --rokn-admin-muted: #9ba6b8;
+    --rokn-admin-primary-soft: rgba(52, 120, 246, .14);
+    --rokn-admin-success: #48b98a;
+    --rokn-admin-warning: #d8a63c;
+    --rokn-admin-danger: #f06469;
 }
 
 .table-responsive {
@@ -32,12 +76,12 @@
 
 .table-responsive::-webkit-scrollbar-thumb {
     min-height: 40px;
-    background: linear-gradient(135deg, #2563eb 0%, #172554 100%);
+    background: var(--rokn-admin-muted);
     border-radius: 10px;
 }
 
 .table-responsive::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(135deg, #172554 0%, #2563eb 100%);
+    background: var(--rokn-admin-primary);
 }
 
 .table-responsive table {
@@ -86,7 +130,7 @@
     width: 44px;
     height: 44px;
     color: var(--rokn-admin-primary);
-    background: #eff6ff;
+    background: var(--rokn-admin-primary-soft);
     border-radius: 13px;
 }
 
@@ -125,7 +169,7 @@
 .admin-hero {
     overflow: hidden;
     color: #fff;
-    background: linear-gradient(135deg, var(--rokn-admin-primary-dark), var(--rokn-admin-primary));
+    background: var(--rokn-admin-nav);
     border: 0;
     border-radius: 18px;
     box-shadow: var(--rokn-admin-shadow);
@@ -256,7 +300,7 @@ a.admin-metric:hover {
 .admin-audit-item {
     padding-right: 12px;
     margin-bottom: 12px;
-    border-right: 3px solid #6c63ff;
+    border-inline-start: 3px solid var(--rokn-admin-primary);
 }
 
 .admin-panel-row {
@@ -294,7 +338,7 @@ a.admin-metric:hover {
 
 .admin-auth-card__header {
     color: #fff;
-    background: linear-gradient(135deg, var(--rokn-admin-primary-dark), var(--rokn-admin-primary));
+    background: var(--rokn-admin-nav);
     border-radius: 17px 17px 0 0;
 }
 

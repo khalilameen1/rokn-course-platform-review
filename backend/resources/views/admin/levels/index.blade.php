@@ -3,7 +3,7 @@
 @section('page.title', 'مستويات الدورات')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/levels-dashboard.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/levels-dashboard.css') }}">
 @endsection
 
 @section('content')

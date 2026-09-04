@@ -77,5 +77,5 @@
     @endif
 @endsection
 @section('styles')
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/admin-learning-views.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/admin-learning-views.css') }}">
 @endsection

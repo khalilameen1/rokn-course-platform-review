@@ -14,7 +14,7 @@
     },
     {
       "path": "public/admin/assets/css/admin-shell.css",
-      "sha256": "a0b9de84ace6f9d9c03b3d481fe865a48f86c05a7c779586d7ebcba838bed606",
+      "sha256": "8b6ce38453f5b7cdba0d24e465f7a1cdb4b57d71e1209ed8f500f1adc525213d",
       "classification": "first_party"
     },
     {
@@ -91,7 +91,7 @@
     },
     {
       "path": "public/admin/assets/css/custom-global.css",
-      "sha256": "00985ca5608cf02db930efabdb67b419713153d7e885bce6fe8aae2df157b0b9",
+      "sha256": "e4867cf889b799cb65af65d7ea2c57459665a58fdc9a86e1e140f307447d3c6c",
       "classification": "first_party"
     },
     {
@@ -248,6 +248,18 @@
       "classification": "first_party"
     },
     {
+      "path": "public/admin/assets/fonts/cairo/Cairo-Bold.ttf",
+      "sha256": "a0e58d71b85b15902ea87914d8e31a6d22da48ac2db70213dcfd1a7dad3f198a",
+      "classification": "third_party",
+      "family": "cairo"
+    },
+    {
+      "path": "public/admin/assets/fonts/cairo/Cairo-Regular.ttf",
+      "sha256": "44786a38e27c58262cbd65341beda4fa4f6c7085ec42e830b35ba1ae37807030",
+      "classification": "third_party",
+      "family": "cairo"
+    },
+    {
       "path": "public/admin/assets/fonts/fontawesome-webfont.eot",
       "sha256": "7bfcab6db99d5cfbf1705ca0536ddc78585432cc5fa41bbd7ad0f009033b2979",
       "classification": "third_party",
@@ -303,7 +315,7 @@
     },
     {
       "path": "public/admin/assets/js/admin-identity-theme.js",
-      "sha256": "5d0f95da2112429d08fb6a7ec70260f409a3309a1c5272c21626e93211985194",
+      "sha256": "a332b442cc9937cb0237b651734b5c5ffd0d044d926d0e8a585e4cd919134ad3",
       "classification": "first_party"
     },
     {
@@ -348,7 +360,7 @@
     },
     {
       "path": "public/admin/assets/js/main.js",
-      "sha256": "6335536f6b8a492e3a5907b00bc476d06725e121fb6387cac8913328558a3a7d",
+      "sha256": "f2f8a6ea4d9b1d5ceb38a27fa9fc2c8692f85de6c3e68bf47a39aebacff6ce34",
       "classification": "third_party",
       "family": "sufee"
     },
@@ -480,6 +492,16 @@
       "classification": "first_party"
     },
     {
+      "path": "public/images/rokn-app-icon.png",
+      "sha256": "7cbbeb281e9c06ab3409e406513d380a7581e8fbfd7cc9e63d28d387f980f6ca",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/images/rokn-wordmark.png",
+      "sha256": "a257b8279434edef0813f5d6ed92f20698a5cc81bc03ba14855ea0603494ea8c",
+      "classification": "first_party"
+    },
+    {
       "path": "public/images/service.jpg",
       "sha256": "0523486a6f7ec77842a8612d203d603bc10bfebf84b0fd9eaf2a9d987cb1e744",
       "classification": "first_party"
@@ -572,7 +594,7 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "47fae822e06be63d3ca24186b05ec1617d00a3b877d80829bb46d05f0869ec60",
+      "sha256": "2e57b7381c7a59a9e352918436d49bca971c1443dcdb2bf7abec462be9d7892d",
       "classification": "generated"
     },
     {

@@ -1,5 +1,15 @@
 export const thirdPartyFamilies = [
     {
+        id: 'cairo', name: 'Cairo', version: 'Rokn mobile bundled regular and bold', license: 'OFL-1.1',
+        source: 'https://github.com/Gue3bara/Cairo',
+        artifacts: [
+            'public/admin/assets/fonts/cairo/Cairo-Regular.ttf',
+            'public/admin/assets/fonts/cairo/Cairo-Bold.ttf',
+        ],
+        legal: [['Cairo font license', 'resources/legal/frontend/CAIRO-OFL.txt']],
+        modifications: 'Unmodified copies of the fonts distributed with the Rokn mobile app.',
+    },
+    {
         id: 'frontend-bundle',
         name: 'Compiled frontend bundle',
         version: 'bootstrap 4.6.2; jQuery 3.7.1; Popper.js 1.16.1',

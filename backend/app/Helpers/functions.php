@@ -2,6 +2,14 @@
 
 use Illuminate\Support\Facades\Request;
 
+/** Invalidate local frontend assets on deployment without expiring page data. */
+function versioned_asset(string $path): string
+{
+    $file = public_path($path);
+
+    return asset($path).(is_file($file) ? '?v='.filemtime($file) : '');
+}
+
 /**
  * @param $route
  * @return bool

@@ -6,7 +6,7 @@
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.grades.partials._dynamic_styles')
 <link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap4.min.css" integrity="sha384-JMAAyYCa30ppXdV7yVd0xvCueC8MkzDGdJhVfdB5a0cLZB632nCcG+t8jtFM/3rf" crossorigin="anonymous">
-<link rel="stylesheet" href="{{ asset('admin/assets/css/grades-index.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/grades-index.css') }}">
 @endsection
 
 @section('content')

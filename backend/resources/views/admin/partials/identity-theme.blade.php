@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="{{ asset($stylesheet) }}">
+<link rel="stylesheet" href="{{ versioned_asset($stylesheet) }}">
 <meta name="admin-identity-theme"
       content="{{ $designSettings->color_1 ?? '#2563eb' }}"
       data-secondary="{{ $designSettings->color_2 ?? '#16a34a' }}"
@@ -7,7 +7,7 @@
 
 @once
     @push('scripts')
-        <script src="{{ asset('admin/assets/js/admin-identity-theme.js') }}"></script>
+        <script src="{{ versioned_asset('admin/assets/js/admin-identity-theme.js') }}"></script>
     @endpush
 @endonce
 

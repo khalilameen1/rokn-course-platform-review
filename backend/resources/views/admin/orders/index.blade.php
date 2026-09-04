@@ -5,7 +5,7 @@
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.orders.partials._dynamic_styles')
 
-<link rel="stylesheet" href="{{ asset('admin/assets/css/orders-index.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/orders-index.css') }}">
 @endsection
 
 @section('content')

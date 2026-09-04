@@ -3,7 +3,7 @@
 @section('page.title', 'إعدادات التصميم')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/design-settings.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/design-settings.css') }}">
 @endsection
 
 @section('content')

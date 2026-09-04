@@ -6,14 +6,14 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>دخول لوحة ركن</title>
 
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/font-awesome.min.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/font-awesome.min.css') }}">
     <link
         rel="stylesheet"
-        href="{{ asset('admin/assets/css/custom-global.css') }}?v={{ filemtime(public_path('admin/assets/css/custom-global.css')) }}"
+        href="{{ versioned_asset('admin/assets/css/custom-global.css') }}"
     >
     <link
         rel="stylesheet"
-        href="{{ asset('admin/assets/css/login.css') }}?v={{ filemtime(public_path('admin/assets/css/login.css')) }}"
+        href="{{ versioned_asset('admin/assets/css/login.css') }}"
     >
 </head>
 <body class="rokn-login">

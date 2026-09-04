@@ -9,16 +9,16 @@
 
     <link rel="shortcut icon" href="{{ asset('favicon.ico') }}">
 
-    <link rel="stylesheet" href="/admin/assets/css/normalize.css">
-    <link rel="stylesheet" href="/admin/assets/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/admin/assets/css/font-awesome.min.css">
-    <link rel="stylesheet" href="/admin/assets/css/themify-icons.css">
-    <link rel="stylesheet" href="/admin/assets/scss/style.css">
-    <link rel="stylesheet" href="/admin/assets/css/custom-global.css">
-    <link rel="stylesheet" href="{{ asset('admin/assets/js/vendor/select2/select2.min.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/normalize.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/font-awesome.min.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/themify-icons.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/scss/style.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/custom-global.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/js/vendor/select2/select2.min.css') }}">
     @yield('styles')
     @stack('styles')
-    <link rel="stylesheet" href="{{ asset('admin/assets/css/admin-shell.css') }}">
+    <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/admin-shell.css') }}">
 </head>
 <body class="admin-shell">
 @auth
@@ -47,10 +47,10 @@
     </div>
 @endauth
 <!-- Scripts -->
-<script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
-<script src="{{ asset('admin/assets/js/vendor/select2/select2.min.js') }}"></script>
-<script src="{{ asset('admin/assets/js/main.js') }}?v={{ filemtime(public_path('admin/assets/js/main.js')) }}"></script>
-<script src="{{ asset('admin/assets/js/request.js') }}?v={{ filemtime(public_path('admin/assets/js/request.js')) }}"></script>
+<script src="{{ versioned_asset('js/app.js') }}"></script>
+<script src="{{ versioned_asset('admin/assets/js/vendor/select2/select2.min.js') }}"></script>
+<script src="{{ versioned_asset('admin/assets/js/main.js') }}"></script>
+<script src="{{ versioned_asset('admin/assets/js/request.js') }}"></script>
 
 @yield('scripts')
 @stack('scripts')

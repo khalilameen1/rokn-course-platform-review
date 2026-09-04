@@ -3,7 +3,7 @@
 @section('page.title', 'معاينة الطالب')
 
 @section('styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/course-student-preview.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/course-student-preview.css') }}">
 @endsection
 
 @section('content')

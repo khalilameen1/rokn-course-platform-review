@@ -3,7 +3,7 @@
 @section('styles')
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.home.partials._dynamic_styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/home-dashboard.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/home-dashboard.css') }}">
 @endsection
 @section('page.title', 'لوحة التحكم')
 @section('content')
@@ -340,7 +340,7 @@
             // The dashboard remains usable if the optional chart CDN is unavailable.
             if (typeof window.Chart !== 'function') {
                 return;
-            }
+            }
 
 
             // ============================================
@@ -429,7 +429,7 @@
                         }
                     }
                 });
-            }
+            }
 
 
             // ============================================

@@ -5,8 +5,8 @@
 @section('styles')
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.users.partials._dynamic_styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/users-editor.css') }}">
-<link rel="stylesheet" href="{{ asset('admin/assets/css/users-form.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/users-editor.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/users-form.css') }}">
 @endsection
 
 @section('content')

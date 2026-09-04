@@ -4,9 +4,9 @@
 
 @section('styles')
 @include('admin.courses.partials._dynamic_styles')
-<link rel="stylesheet" href="{{ asset('admin/assets/css/course-studio.css') }}">
-<link rel="stylesheet" href="{{ asset('admin/assets/css/course-workspace.css') }}">
-<link rel="stylesheet" href="{{ asset('admin/assets/css/course-editor.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/course-studio.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/course-workspace.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/course-editor.css') }}">
 @endsection
 
 @section('content')
@@ -170,7 +170,7 @@
 @section('scripts')
 @php($sortableAsset = public_path('admin/assets/js/vendor/sortablejs/Sortable.min.js'))
 @if(is_file($sortableAsset))
-<script src="{{ asset('admin/assets/js/vendor/sortablejs/Sortable.min.js') }}?v={{ filemtime($sortableAsset) }}"></script>
+<script src="{{ versioned_asset('admin/assets/js/vendor/sortablejs/Sortable.min.js') }}"></script>
 @endif
 @include('admin.courses.partials.show.scripts')
 @if($course->is_coming_soon)

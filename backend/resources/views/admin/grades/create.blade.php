@@ -6,8 +6,8 @@
 {{-- Include Dynamic Theme Styles --}}
 @include('admin.grades.partials._dynamic_styles')
 
-<link rel="stylesheet" href="{{ asset('admin/assets/css/grades-create.css') }}">
-<link rel="stylesheet" href="{{ asset('admin/assets/css/grades-form.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/grades-create.css') }}">
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/grades-form.css') }}">
 
 @endsection
 
