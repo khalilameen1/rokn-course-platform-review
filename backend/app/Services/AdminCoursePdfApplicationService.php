@@ -154,16 +154,18 @@ final class AdminCoursePdfApplicationService
         $stored = null;
         $oldDisk = (string) $pdf->storage_disk;
         $oldPath = (string) $pdf->file_path;
-        $attributes = [
-            'title' => $data['title'],
-            'title_en' => $data['title_en'] ?? null,
-            'description' => $data['description'] ?? null,
-            'description_en' => $data['description_en'] ?? null,
-            'order' => $data['order'] ?? $pdf->order,
-            'is_active' => array_key_exists('is_active', $data)
-                ? (bool) $data['is_active']
-                : $pdf->is_active,
-        ];
+        $attributes = [];
+        foreach (['title', 'title_en', 'description', 'description_en'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $attributes[$field] = $data[$field];
+            }
+        }
+        if (isset($data['order'])) {
+            $attributes['order'] = $data['order'];
+        }
+        if (array_key_exists('is_active', $data)) {
+            $attributes['is_active'] = (bool) $data['is_active'];
+        }
 
         if ($replacement) {
             $metadata = $this->filePolicy->pdf($replacement);

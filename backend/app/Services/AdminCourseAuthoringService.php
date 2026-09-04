@@ -51,6 +51,12 @@ final readonly class AdminCourseAuthoringService
             $course = DB::transaction(function () use ($data, $request, $imagePath): Course {
                 $course = Course::create($data);
                 $this->accessPlans->createDefaults($course);
+                if ($request->has('access_plans')) {
+                    $this->accessPlans->syncAdminPlans(
+                        $course,
+                        (array) $request->validated('access_plans', [])
+                    );
+                }
                 $course->classifications()->sync($request->input('classification_ids', []));
                 $course->teachers()->sync($request->input('teacher_ids', []));
                 if ($imagePath) {
@@ -88,13 +94,20 @@ final readonly class AdminCourseAuthoringService
     /** @return array{status:string, course:Course, issues?:array} */
     public function update(CourseRequest $request, Course $course, bool $administrator): array
     {
+        $validated = $request->validated();
         $wasDraft = (bool) $course->is_coming_soon;
         $publishingRequested = $request->input('publishing_intent') === 'publish';
-        $catalogVisible = $request->has('is_catalog_visible')
+        $catalogVisibilitySubmitted = array_key_exists('is_catalog_visible', $validated);
+        $catalogVisible = $catalogVisibilitySubmitted
             ? $request->boolean('is_catalog_visible')
             : (bool) $course->is_catalog_visible;
         $data = $this->courseData($request);
-        $data['is_catalog_visible'] = !$wasDraft && $publishingRequested && $catalogVisible;
+        if (!$wasDraft && $publishingRequested) {
+            $data['is_catalog_visible'] = $catalogVisible;
+        }
+        if ($wasDraft && $catalogVisibilitySubmitted && !$catalogVisible) {
+            $data['is_catalog_visible'] = false;
+        }
         if ($wasDraft && $publishingRequested) {
             $data['is_coming_soon'] = true;
         }
@@ -121,6 +134,7 @@ final readonly class AdminCourseAuthoringService
                 $course,
                 $data,
                 $request,
+                $validated,
                 $administrator,
                 $imagePath,
                 $oldPhotos,
@@ -139,7 +153,7 @@ final readonly class AdminCourseAuthoringService
                 if ($request->has('access_plans')) {
                     $this->accessPlans->syncAdminPlans(
                         $locked,
-                        (array) $request->input('access_plans', [])
+                        (array) $request->validated('access_plans', [])
                     );
                 }
                 if (!$managedDraft && $administrator && (
@@ -152,8 +166,14 @@ final readonly class AdminCourseAuthoringService
                         $request->boolean('grant_project_followup_attachments_to_current_enrollments')
                     );
                 }
-                $locked->classifications()->sync($request->input('classification_ids', []));
-                $locked->teachers()->sync($request->input('teacher_ids', []));
+                if (array_key_exists('classification_ids', $validated)
+                    || $request->boolean('classification_ids_present')) {
+                    $locked->classifications()->sync((array) $request->input('classification_ids', []));
+                }
+                if (array_key_exists('teacher_ids', $validated)
+                    || $request->boolean('teacher_ids_present')) {
+                    $locked->teachers()->sync((array) $request->input('teacher_ids', []));
+                }
                 if ($imagePath) {
                     $locked->allPhotos()->create(['path' => $imagePath, 'type' => 'featured']);
                     Photo::query()->whereIn('id', $oldPhotos->pluck('id'))
@@ -212,7 +232,12 @@ final readonly class AdminCourseAuthoringService
         }
 
         $fresh = $course->fresh();
-        if (!$managedDraft && $fresh->is_coming_soon && $catalogVisible) {
+        if (
+            !$managedDraft
+            && $fresh->is_coming_soon
+            && $catalogVisibilitySubmitted
+            && $catalogVisible
+        ) {
             $catalog = $this->publishCatalogCard($fresh, (int) $ownedVersion);
             if ($catalog['status'] !== 'catalog_published') {
                 return $catalog;
@@ -347,13 +372,20 @@ final readonly class AdminCourseAuthoringService
         return collect($request->validated())->except([
             'image',
             'classification_ids',
+            'classification_ids_present',
             'teacher_ids',
+            'teacher_ids_present',
             'access_plans',
             'authoring_version',
             'authoring_request_id',
             'grant_chat_attachments_to_current_enrollments',
             'grant_project_followup_attachments_to_current_enrollments',
             'is_main_course',
+            // Publication state and the compatibility price mirror are owned
+            // by the publishing and access-plan services, never a general save.
+            'is_coming_soon',
+            'is_catalog_visible',
+            'price',
             'publishing_intent',
         ])->all();
     }

@@ -90,11 +90,13 @@ final class AdminCourseModuleApplicationService
             $requestedOrder = array_key_exists('order', $data) && $data['order'] !== null
                 ? (int) $data['order']
                 : (int) $lockedModule->order;
-            $lockedModule->update([
-                'title_ar' => $data['title_ar'],
-                'title_en' => $data['title_en'] ?? null,
-                'order' => $requestedOrder,
-            ]);
+            $changes = ['order' => $requestedOrder];
+            foreach (['title_ar', 'title_en'] as $field) {
+                if (array_key_exists($field, $data)) {
+                    $changes[$field] = $data[$field];
+                }
+            }
+            $lockedModule->update($changes);
             $this->ordering->place($lockedCourse, $lockedModule, $requestedOrder);
             $version = $this->authoring->advance($lockedCourse);
 

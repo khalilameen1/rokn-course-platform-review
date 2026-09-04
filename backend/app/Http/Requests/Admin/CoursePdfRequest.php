@@ -20,13 +20,27 @@ final class CoursePdfRequest extends FormRequest
         $creating = $this->isMethod('POST');
 
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'title_en' => ['nullable', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'description_en' => ['nullable', 'string', 'max:1000'],
-            'pdf_file' => [$creating ? 'required' : 'nullable', 'file', 'mimes:pdf', 'max:51200'],
-            'order' => ['nullable', 'integer', 'min:0'],
-            'is_active' => ['nullable', 'boolean'],
+            'title' => $creating
+                ? ['required', 'string', 'max:255']
+                : ['sometimes', 'required', 'string', 'max:255'],
+            'title_en' => $creating
+                ? ['nullable', 'string', 'max:255']
+                : ['sometimes', 'nullable', 'string', 'max:255'],
+            'description' => $creating
+                ? ['nullable', 'string', 'max:1000']
+                : ['sometimes', 'nullable', 'string', 'max:1000'],
+            'description_en' => $creating
+                ? ['nullable', 'string', 'max:1000']
+                : ['sometimes', 'nullable', 'string', 'max:1000'],
+            'pdf_file' => $creating
+                ? ['required', 'file', 'mimes:pdf', 'max:51200']
+                : ['sometimes', 'nullable', 'file', 'mimes:pdf', 'max:51200'],
+            'order' => $creating
+                ? ['nullable', 'integer', 'min:0']
+                : ['sometimes', 'nullable', 'integer', 'min:0'],
+            'is_active' => $creating
+                ? ['nullable', 'boolean']
+                : ['sometimes', 'nullable', 'boolean'],
             'authoring_version' => ['required', 'integer', 'min:1'],
             'authoring_request_id' => [$creating ? 'required' : 'nullable', 'uuid'],
         ];
@@ -36,15 +50,23 @@ final class CoursePdfRequest extends FormRequest
     {
         $normalized = [];
         foreach (['title', 'title_en'] as $field) {
+            if (!$this->exists($field)) {
+                continue;
+            }
             $normalized[$field] = $this->filled($field)
                 ? UnicodeText::clean($this->input($field), false)
                 : null;
         }
         foreach (['description', 'description_en'] as $field) {
+            if (!$this->exists($field)) {
+                continue;
+            }
             $normalized[$field] = $this->filled($field)
                 ? UnicodeText::clean($this->input($field))
                 : null;
         }
-        $this->merge($normalized);
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
     }
 }

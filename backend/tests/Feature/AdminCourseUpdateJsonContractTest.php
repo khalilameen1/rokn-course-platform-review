@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Classification;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\AdminCourseEditorStatePresenter;
@@ -82,6 +83,65 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
             ])
             ->assertUnprocessable()
             ->assertJsonValidationErrors('name_ar');
+    }
+
+    public function test_partial_patch_preserves_omitted_relations_publication_state_and_plan_price(): void
+    {
+        $course = $this->draftCourse();
+        $moderator = $this->moderator();
+        $classification = Classification::query()->create([
+            'name_ar' => 'تصنيف ثابت',
+            'name_en' => 'Stable category',
+        ]);
+        $teacher = new User();
+        $teacher->forceFill([
+            'name_ar' => 'مدرب ثابت',
+            'email' => 'stable-teacher@example.test',
+            'role' => 'teacher',
+            'active' => true,
+        ])->save();
+        $course->classifications()->attach($classification->id);
+        $course->teachers()->attach($teacher->id);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $this->actingAs($moderator, 'web')
+            ->patchJson(route('admin.courses.update', $course), [
+                'authoring_version' => 3,
+                // Crafted legacy fields must not bypass their owning services.
+                'price' => 1,
+                'is_coming_soon' => false,
+            ])
+            ->assertOk();
+
+        $course->refresh();
+        self::assertSame('مسودة الكورس', $course->name_ar);
+        self::assertSame(800, (int) $course->price);
+        self::assertTrue((bool) $course->is_coming_soon);
+        self::assertFalse((bool) $course->is_catalog_visible);
+        self::assertTrue($course->classifications()->whereKey($classification->id)->exists());
+        self::assertTrue($course->teachers()->whereKey($teacher->id)->exists());
+
+        $this->actingAs($moderator, 'web')
+            ->patchJson(route('admin.courses.update', $course), [
+                'authoring_version' => 4,
+                'classification_ids_present' => false,
+                'teacher_ids_present' => false,
+            ])
+            ->assertOk();
+
+        self::assertTrue($course->classifications()->whereKey($classification->id)->exists());
+        self::assertTrue($course->teachers()->whereKey($teacher->id)->exists());
+
+        $this->actingAs($moderator, 'web')
+            ->patchJson(route('admin.courses.update', $course), [
+                'authoring_version' => 5,
+                'classification_ids_present' => true,
+                'teacher_ids_present' => true,
+            ])
+            ->assertOk();
+
+        self::assertFalse($course->classifications()->exists());
+        self::assertFalse($course->teachers()->exists());
     }
 
     public function test_every_authoring_result_uses_the_same_editor_payload_shape(): void

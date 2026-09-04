@@ -16,6 +16,7 @@
                             <i class="fa fa-tags label-icon"></i>
                             التصنيفات
                         </label>
+                        <input type="hidden" name="classification_ids_present" value="1">
                         <select name="classification_ids[]" id="classification_ids" class="form-control-modern select2" multiple>
                             @foreach($classifications as $classification)
                                 <option value="{{ $classification->id }}" {{ $course->classifications->contains($classification->id) ? 'selected' : '' }}>
@@ -119,6 +120,7 @@
                             <i class="fa fa-user-tie label-icon"></i>
                             المعلمون
                         </label>
+                        <input type="hidden" name="teacher_ids_present" value="1">
                         <select name="teacher_ids[]" id="teacher_ids" class="form-control-modern select2" multiple>
                             @foreach($teachers as $teacher)
                                 <option value="{{ $teacher->id }}" {{ $course->teachers->contains($teacher->id) ? 'selected' : '' }}>
@@ -151,8 +153,6 @@
                 {{-- The update route owns both operations. The clicked submit
                      button supplies the one explicit intent; publication is no
                      longer hidden inside an inverted draft checkbox. --}}
-                <input type="hidden" name="is_coming_soon" value="1">
-
                 <div class="form-row">
                     <div class="form-group-modern">
                         <label class="checkbox-item {{ $catalogVisibilityDefault ? 'selected' : '' }}" for="is_catalog_visible">

@@ -12,6 +12,7 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Project;
 use App\Services\CourseSectionContentService;
+use App\Services\CourseSectionInput;
 use App\Services\CourseSectionOrderingService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
@@ -328,6 +329,86 @@ final class CourseSectionAtomicityTest extends TestCase
             'course_section_id' => $section->id,
             'is_completed' => true,
         ]);
+    }
+
+    public function test_partial_lesson_update_preserves_omitted_content_fields(): void
+    {
+        $course = Course::create(['name_ar' => 'اختبار', 'is_coming_soon' => true]);
+        $module = CourseModule::create(['course_id' => $course->id]);
+        $lesson = Lesson::query()->create([
+            'title_ar' => 'المقطع',
+            'title_en' => 'Lesson',
+            'description_ar' => 'وصف محفوظ',
+            'description_en' => 'Preserved caption',
+            'video_source_type' => 'bunny',
+            'bunny_video_id' => 'same-generation',
+            'thumbnail_path' => 'lessons/same.webp',
+            'list_id' => $course->id,
+            'is_opened' => true,
+            'duration_minutes' => 7,
+        ]);
+        LessonMediaState::query()->create([
+            'lesson_id' => $lesson->id,
+        ] + LessonMediaState::resetForGeneration('same-generation'));
+        $section = CourseSection::create([
+            'title_ar' => 'المقطع',
+            'title_en' => 'Lesson',
+            'course_id' => $course->id,
+            'module_id' => $module->id,
+            'section_type' => 'lesson',
+            'sectionable_type' => Lesson::class,
+            'sectionable_id' => $lesson->id,
+            'order' => 1,
+        ]);
+        $request = Request::create('/dashboard/courses/1/sections/1', 'PATCH', [
+            'section_type' => 'lesson',
+            'title_ar' => 'عنوان محدث فقط',
+            'title_en' => 'Title only',
+        ]);
+
+        app(CourseSectionContentService::class)->update(
+            $request,
+            $course,
+            $section,
+            1,
+            null,
+            null,
+            'same-generation',
+            'lessons/same.webp'
+        );
+
+        $lesson->refresh();
+        self::assertSame('وصف محفوظ', $lesson->description_ar);
+        self::assertSame('Preserved caption', $lesson->description_en);
+        self::assertTrue((bool) $lesson->is_opened);
+        self::assertSame(7, (int) $lesson->duration_minutes);
+    }
+
+    public function test_project_text_is_rejected_before_exceeding_text_storage(): void
+    {
+        $course = Course::create(['name_ar' => 'اختبار', 'is_coming_soon' => true]);
+        $module = CourseModule::create(['course_id' => $course->id]);
+        $section = CourseSection::create([
+            'title_ar' => 'مشروع',
+            'title_en' => 'Project',
+            'course_id' => $course->id,
+            'module_id' => $module->id,
+            'section_type' => 'project',
+            'sectionable_type' => Project::class,
+            'sectionable_id' => 91,
+            'order' => 1,
+        ]);
+        $request = Request::create('/dashboard/courses/1/sections/1', 'PATCH', [
+            'authoring_version' => 1,
+            'project_requirements_ar' => str_repeat('a', 12001),
+        ]);
+
+        try {
+            app(CourseSectionInput::class)->validate($request, $course, $section, false);
+            self::fail('Oversized project text was accepted.');
+        } catch (ValidationException $exception) {
+            self::assertArrayHasKey('project_requirements_ar', $exception->errors());
+        }
     }
 
     public function test_authoring_eager_load_orders_sections_without_querying_project_order(): void

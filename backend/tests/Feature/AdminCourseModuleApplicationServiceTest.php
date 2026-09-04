@@ -62,11 +62,17 @@ final class AdminCourseModuleApplicationServiceTest extends TestCase
         self::assertSame(4, $updated['authoring_version']);
         self::assertSame('الوحدة الأولى المحدثة', $updated['module']['title']);
 
+        $partial = $service->update($course, $firstModule->fresh(), [
+            'order' => 2,
+        ], 4);
+        self::assertSame(5, $partial['authoring_version']);
+        self::assertSame('الوحدة الأولى المحدثة', $firstModule->fresh()->title_ar);
+
         $reordered = $service->reorder($course, [
             ['id' => (int) $second['module']['id'], 'order' => 1],
             ['id' => (int) $first['module']['id'], 'order' => 2],
-        ], 4);
-        self::assertSame(5, $reordered['authoring_version']);
+        ], 5);
+        self::assertSame(6, $reordered['authoring_version']);
         self::assertSame(
             [$second['module']['id'], $first['module']['id']],
             array_column($reordered['modules'], 'id')
@@ -75,9 +81,9 @@ final class AdminCourseModuleApplicationServiceTest extends TestCase
         $deleted = $service->destroy(
             $course,
             CourseModule::query()->findOrFail($second['module']['id']),
-            5
+            6
         );
-        self::assertSame(6, $deleted['authoring_version']);
+        self::assertSame(7, $deleted['authoring_version']);
         self::assertSame($second['module']['id'], $deleted['deleted_module_id']);
         self::assertSame([], $deleted['section_ids']);
         self::assertSame(

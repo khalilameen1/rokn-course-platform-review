@@ -113,7 +113,14 @@ final readonly class CourseSectionContentService
         ?string $thumbnailPath,
         bool $videoChanged
     ): Lesson {
-        $data = $this->lessonData($request, $course, $order, $videoGuid, $thumbnailPath);
+        $data = $this->lessonData(
+            $request,
+            $course,
+            $order,
+            $videoGuid,
+            $thumbnailPath,
+            $lesson
+        );
         if ($lesson) {
             $lesson->update($data);
         } else {
@@ -136,26 +143,38 @@ final readonly class CourseSectionContentService
         Course $course,
         int $order,
         ?string $videoGuid,
-        ?string $thumbnailPath
+        ?string $thumbnailPath,
+        ?Lesson $existing = null
     ): array {
-        return [
+        $data = [
             'title_ar' => $request->input('title_ar'),
             'title_en' => $request->input('title_en'),
-            'description_ar' => $request->input('lesson_description_ar', ''),
-            'description_en' => $request->input('lesson_description_en', ''),
             'video_link' => null,
             'video_source_type' => 'bunny',
             'bunny_video_id' => $videoGuid,
             'thumbnail_path' => $thumbnailPath,
             'list_id' => $course->id,
-            'is_opened' => $request->boolean('is_opened'),
-            'duration_minutes' => $request->input('lesson_duration_minutes'),
         ];
+
+        foreach ([
+            'lesson_description_ar' => ['description_ar', ''],
+            'lesson_description_en' => ['description_en', ''],
+            'lesson_duration_minutes' => ['duration_minutes', null],
+        ] as $input => [$attribute, $createDefault]) {
+            if (!$existing || $request->exists($input)) {
+                $data[$attribute] = $request->input($input, $createDefault);
+            }
+        }
+        if (!$existing || $request->exists('is_opened')) {
+            $data['is_opened'] = $request->boolean('is_opened');
+        }
+
+        return $data;
     }
 
     private function updateProject(Request $request, ?Project $project): Project
     {
-        $data = $this->projectData($request);
+        $data = $this->projectData($request, $project);
         if ($project) {
             $project->update($data);
             return $project;
@@ -165,7 +184,7 @@ final readonly class CourseSectionContentService
     }
 
     /** @return array<string, mixed> */
-    private function projectData(Request $request): array
+    private function projectData(Request $request, ?Project $existing = null): array
     {
         $submissionTypes = (array) config('projects.submission_types', []);
         $selectedTypes = collect((array) $request->input('project_submission_types', []))
@@ -183,12 +202,25 @@ final readonly class CourseSectionContentService
             ->values()
             ->all();
 
-        return [
-            'requirements_text_ar' => $request->input('project_requirements_ar'),
-            'requirements_text_en' => $request->input('project_requirements_en'),
-            'is_graduation_project' => $request->boolean('is_graduation_project'),
-            'submission_text_enabled' => $selectedTypes->contains('text'),
-            'submission_allowed_mime_types' => $allowedMimeTypes,
-        ];
+        $data = [];
+        foreach ([
+            'project_requirements_ar' => 'requirements_text_ar',
+            'project_requirements_en' => 'requirements_text_en',
+        ] as $input => $attribute) {
+            if (!$existing || $request->exists($input)) {
+                $data[$attribute] = $request->input($input);
+            }
+        }
+        if (!$existing || $request->exists('is_graduation_project')) {
+            $data['is_graduation_project'] = $request->boolean('is_graduation_project');
+        }
+        if (!$existing || $request->exists('project_submission_types')) {
+            $data += [
+                'submission_text_enabled' => $selectedTypes->contains('text'),
+                'submission_allowed_mime_types' => $allowedMimeTypes,
+            ];
+        }
+
+        return $data;
     }
 }

@@ -20,9 +20,15 @@ final class CourseModuleRequest extends FormRequest
         $creating = $this->isMethod('POST');
 
         return [
-            'title_ar' => ['required', 'string', 'max:255'],
-            'title_en' => ['nullable', 'string', 'max:255'],
-            'order' => ['nullable', 'integer', 'min:0'],
+            'title_ar' => $creating
+                ? ['required', 'string', 'max:255']
+                : ['sometimes', 'required', 'string', 'max:255'],
+            'title_en' => $creating
+                ? ['nullable', 'string', 'max:255']
+                : ['sometimes', 'nullable', 'string', 'max:255'],
+            'order' => $creating
+                ? ['nullable', 'integer', 'min:0']
+                : ['sometimes', 'nullable', 'integer', 'min:0'],
             'authoring_version' => ['required', 'integer', 'min:1'],
             'authoring_request_id' => [$creating ? 'required' : 'nullable', 'uuid'],
         ];
@@ -30,11 +36,17 @@ final class CourseModuleRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $this->merge([
-            'title_ar' => UnicodeText::clean($this->input('title_ar'), false),
-            'title_en' => $this->filled('title_en')
+        $normalized = [];
+        if ($this->exists('title_ar')) {
+            $normalized['title_ar'] = UnicodeText::clean($this->input('title_ar'), false);
+        }
+        if ($this->exists('title_en')) {
+            $normalized['title_en'] = $this->filled('title_en')
                 ? UnicodeText::clean($this->input('title_en'), false)
-                : null,
-        ]);
+                : null;
+        }
+        if ($normalized !== []) {
+            $this->merge($normalized);
+        }
     }
 }

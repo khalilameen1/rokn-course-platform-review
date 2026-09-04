@@ -2,36 +2,20 @@
 
 namespace App\Http\Requests\Admin;
 
-use App\Models\Course;
 use App\Services\CertificateTextTemplateService;
-use App\Services\CourseAccessPlanService;
 use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class CourseRequest extends FormRequest
 {
-    private const PROTECTED_PLAN_RUNTIME_FIELDS = [
-        'chat_enabled',
-        'chat_message_limit',
-        'chat_token_budget',
-        'project_feedback_token_budget',
-        'project_followup_message_limit',
-        'project_followup_token_budget',
-        'max_output_tokens',
-        'project_feedback_level',
-        'ai_budget_usd',
-        'request_reserve_usd',
-        'project_feedback_budget_usd',
-        'project_feedback_reserve_usd',
-        'project_followup_budget_usd',
-        'project_followup_reserve_usd',
-        'model_override',
-        'chat_attachments_enabled',
-        'chat_attachment_max_files',
-        'project_followup_attachments_enabled',
-        'project_followup_attachment_max_files',
-        'project_output_enabled',
+    private const EDITABLE_PLAN_FIELDS = [
+        'name_ar',
+        'name_en',
+        'price_coins',
+        'minimum_paid_coins',
+        'is_active',
+        'certificate_enabled',
     ];
 
     protected function prepareForValidation(): void
@@ -55,26 +39,15 @@ class CourseRequest extends FormRequest
         }
         $plans = $this->input('access_plans');
         if (is_array($plans)) {
-            // Course authoring owns names, prices and availability only.
-            // Preserve the global AI policy fields against missing or crafted
-            // values so an ordinary course save cannot rewrite operations policy.
-            $course = $this->route('course');
-            if ($course instanceof Course) {
-                $protectedPlans = app(CourseAccessPlanService::class)
-                    ->plansForEditor($course)
-                    ->keyBy('code');
-                foreach (['basic', 'guided', 'mentor'] as $code) {
-                    $protected = $protectedPlans->get($code);
-                    if (!$protected || !is_array($plans[$code] ?? null)) continue;
-                    foreach (self::PROTECTED_PLAN_RUNTIME_FIELDS as $field) {
-                        // These fields are owned by the global administrator
-                        // policy and cannot be overwritten by course authoring.
-                        $plans[$code][$field] = $protected->getAttribute($field);
-                    }
-                }
-            }
             foreach (['basic', 'guided', 'mentor'] as $code) {
                 if (!is_array($plans[$code] ?? null)) continue;
+                // Runtime AI policy is neither displayed nor owned here. Drop
+                // stale or crafted fields before validation; the plan service
+                // reloads its authoritative runtime values under the DB lock.
+                $plans[$code] = array_intersect_key(
+                    $plans[$code],
+                    array_flip(self::EDITABLE_PLAN_FIELDS)
+                );
                 foreach (['name_ar', 'name_en'] as $field) {
                     if (array_key_exists($field, $plans[$code])) {
                         $plans[$code][$field] = UnicodeText::clean(
@@ -107,10 +80,13 @@ class CourseRequest extends FormRequest
     public function rules()
     {
         $certificateTemplateKeys = app(CertificateTextTemplateService::class)->keys();
+        $updating = $this->isMethod('patch') || $this->isMethod('put');
 
         return [
-            'name_ar' => 'required|string|min:3|max:255',
-            'authoring_version' => [$this->isMethod('patch') || $this->isMethod('put') ? 'required' : 'nullable', 'integer', 'min:1'],
+            'name_ar' => $updating
+                ? ['sometimes', 'required', 'string', 'min:3', 'max:255']
+                : ['required', 'string', 'min:3', 'max:255'],
+            'authoring_version' => [$updating ? 'required' : 'nullable', 'integer', 'min:1'],
             'authoring_request_id' => [$this->isMethod('post') ? 'required' : 'nullable', 'uuid'],
             'name_en' => 'nullable|string|max:255',
             'description_ar' => 'nullable|string|max:6000',
@@ -129,8 +105,6 @@ class CourseRequest extends FormRequest
             'attachment_prompt_body' => 'nullable|string|max:500',
             'attachment_prompt_button_text' => 'nullable|string|max:80',
             'path_id' => 'nullable|exists:paths,id',
-            'price' => 'nullable|integer|min:0|max:100000000',
-            'is_coming_soon' => 'nullable|boolean',
             'publishing_intent' => ['nullable', Rule::in(['save', 'publish'])],
             'is_catalog_visible' => 'nullable|boolean',
             'is_main_course' => 'nullable|boolean',
@@ -146,51 +120,29 @@ class CourseRequest extends FormRequest
             'level_id' => 'nullable|required_if:awards_badge,1|exists:levels,id',
             'awards_badge' => 'nullable|boolean',
             'badge_track' => 'nullable|required_if:awards_badge,1|in:professional,freelance',
-            'certificate_text_template_key' => [
-                'required',
-                Rule::in($certificateTemplateKeys),
-            ],
+            'certificate_text_template_key' => $updating
+                ? ['sometimes', 'required', Rule::in($certificateTemplateKeys)]
+                : ['required', Rule::in($certificateTemplateKeys)],
             'classification_ids' => 'nullable|array|max:12',
             'classification_ids.*' => 'integer|distinct|exists:classifications,id',
+            'classification_ids_present' => 'nullable|boolean',
             'teacher_ids' => 'nullable|array|max:10',
             'teacher_ids.*' => [
                 'integer',
                 'distinct',
                 Rule::exists('users', 'id')->where(fn ($query) => $query->whereIn('role', ['teacher', 'admin'])),
             ],
+            'teacher_ids_present' => 'nullable|boolean',
             'access_plans' => 'nullable|array:basic,guided,mentor',
             'access_plans.basic' => 'required_with:access_plans|array',
             'access_plans.guided' => 'required_with:access_plans|array',
             'access_plans.mentor' => 'required_with:access_plans|array',
-            'access_plans.*' => 'array',
+            'access_plans.*' => 'array:'.implode(',', self::EDITABLE_PLAN_FIELDS),
             'access_plans.*.name_ar' => 'required_with:access_plans|string|max:120',
             'access_plans.*.name_en' => 'nullable|string|max:120',
             'access_plans.*.price_coins' => 'required_with:access_plans|integer|min:0|max:100000000',
             'access_plans.*.minimum_paid_coins' => 'required_with:access_plans|integer|min:0|max:100000000',
             'access_plans.*.is_active' => 'nullable|boolean',
-            'access_plans.*.chat_enabled' => 'nullable|boolean',
-            'access_plans.*.chat_message_limit' => 'nullable|integer|min:0|max:100000',
-            'access_plans.*.chat_token_budget' => 'nullable|integer|min:0|max:1000000000',
-            'access_plans.*.chat_attachments_enabled' => 'nullable|boolean',
-            'access_plans.*.chat_attachment_max_files' => 'nullable|integer|min:0|max:5',
-            'access_plans.*.project_followup_attachments_enabled' => 'nullable|boolean',
-            'access_plans.*.project_followup_attachment_max_files' => 'nullable|integer|min:0|max:5',
-            'access_plans.*.ai_budget_usd' => 'nullable|numeric|min:0|max:10000',
-            'access_plans.*.request_reserve_usd' => 'nullable|numeric|min:0|max:1000',
-            'access_plans.*.project_feedback_token_budget' => 'nullable|integer|min:0|max:1000000000',
-            'access_plans.*.project_feedback_budget_usd' => 'nullable|numeric|min:0|max:10000',
-            'access_plans.*.project_feedback_reserve_usd' => 'nullable|numeric|min:0|max:1000',
-            'access_plans.*.project_followup_message_limit' => 'nullable|integer|min:0|max:100000',
-            'access_plans.*.project_followup_token_budget' => 'nullable|integer|min:0|max:1000000000',
-            'access_plans.*.project_followup_budget_usd' => 'nullable|numeric|min:0|max:10000',
-            'access_plans.*.project_followup_reserve_usd' => 'nullable|numeric|min:0|max:1000',
-            'access_plans.*.max_output_tokens' => 'nullable|integer|min:80|max:' . max(80, (int) config('openrouter.max_tokens', 800)),
-            'access_plans.*.model_override' => [
-                'nullable', 'string', 'max:190',
-                Rule::in(array_values(array_filter(config('openrouter.allowed_models', [])))),
-            ],
-            'access_plans.*.project_feedback_level' => ['nullable', Rule::in(['pass_only', 'report', 'enhanced'])],
-            'access_plans.*.project_output_enabled' => 'nullable|boolean',
             'access_plans.*.certificate_enabled' => 'nullable|boolean',
         ];
     }

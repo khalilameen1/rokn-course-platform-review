@@ -274,6 +274,8 @@ final class CoursePdfSharedStorageTest extends TestCase
 
         $store = CoursePdfRequest::create('/admin/course-pdf', 'POST', [
             'title' => 'دليل الكورس',
+            'description' => 'وصف محفوظ',
+            'description_en' => 'Preserved description',
             'is_active' => true,
             'authoring_version' => 1,
             'authoring_request_id' => (string) Str::uuid(),
@@ -317,12 +319,16 @@ final class CoursePdfSharedStorageTest extends TestCase
         $update = CoursePdfRequest::create('/admin/course-pdf/'.$pdf->id, 'PUT', [
             'title' => 'دليل الكورس المحدث',
             'authoring_version' => 2,
+            'order' => null,
         ]);
         $update->headers->set('Accept', 'application/json');
         $this->prepareFormRequest($update, $course);
         $updated = $controller->update($update, $course, $pdf)->getData(true);
         self::assertSame(3, $updated['authoring_version']);
         self::assertSame('دليل الكورس المحدث', $updated['pdf']['title']);
+        self::assertSame('وصف محفوظ', $updated['pdf']['description']);
+        self::assertSame('Preserved description', $updated['pdf']['description_en']);
+        self::assertSame($pdf->order, $updated['pdf']['order']);
         $this->assertPdfPayload($updated['pdf']);
 
         $toggle = CoursePdfVersionRequest::create('/admin/course-pdf/'.$pdf->id.'/toggle', 'POST', [

@@ -32,6 +32,22 @@ final class CourseAuthoringDeletionServiceTest extends TestCase
             $table->string('thumbnail_path')->nullable();
             $table->timestamps();
         });
+        Schema::create('bunny_video_cleanup_candidates', function (Blueprint $table): void {
+            $table->id();
+            $table->string('video_guid', 64)->unique();
+            $table->unsignedBigInteger('lesson_id')->nullable();
+            $table->string('reason', 48);
+            $table->timestamp('eligible_after');
+            $table->timestamp('reviewed_at')->nullable();
+            $table->unsignedBigInteger('reviewed_by')->nullable();
+            $table->timestamp('remote_deleted_at')->nullable();
+            $table->text('last_error')->nullable();
+            $table->boolean('requires_review')->default(true);
+            $table->unsignedSmallInteger('attempts')->default(0);
+            $table->timestamp('last_attempt_at')->nullable();
+            $table->timestamps();
+            $table->foreign('lesson_id')->references('id')->on('lessons')->nullOnDelete();
+        });
         Schema::create('projects', function (Blueprint $table): void {
             $table->id();
             $table->timestamps();
@@ -83,7 +99,8 @@ final class CourseAuthoringDeletionServiceTest extends TestCase
     {
         foreach ([
             'ai_input_attachments', 'project_feedback_messages', 'project_feedback_threads',
-            'project_submissions', 'course_sections', 'projects', 'lessons',
+            'project_submissions', 'course_sections', 'projects',
+            'bunny_video_cleanup_candidates', 'lessons',
             'course_modules',
         ] as $table) {
             Schema::dropIfExists($table);
@@ -101,6 +118,7 @@ final class CourseAuthoringDeletionServiceTest extends TestCase
         ]);
         $lessonId = DB::table('lessons')->insertGetId([
             'list_id' => 8,
+            'bunny_video_id' => '11111111-1111-1111-1111-111111111111',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -136,6 +154,11 @@ final class CourseAuthoringDeletionServiceTest extends TestCase
         self::assertTrue(CourseSection::withTrashed()->whereKey($lessonSectionId)->firstOrFail()->trashed());
         self::assertTrue(CourseSection::withTrashed()->whereKey($projectSectionId)->firstOrFail()->trashed());
         self::assertFalse(Lesson::query()->whereKey($lessonId)->exists());
+        self::assertDatabaseHas('bunny_video_cleanup_candidates', [
+            'video_guid' => '11111111-1111-1111-1111-111111111111',
+            'lesson_id' => null,
+            'reason' => 'section_deleted',
+        ]);
         self::assertFalse(Project::query()->whereKey($projectId)->exists());
         self::assertSame(0, DB::table('project_submissions')->count());
         self::assertSame(0, DB::table('project_feedback_threads')->count());

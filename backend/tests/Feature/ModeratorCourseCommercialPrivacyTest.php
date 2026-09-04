@@ -11,6 +11,7 @@ use App\Models\CourseAccessPlan;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 final class ModeratorCourseCommercialPrivacyTest extends TestCase
@@ -75,7 +76,15 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
         $persisted = $course->accessPlans()->get()->keyBy('code');
         $submittedPlans = [];
         foreach (CourseAccessPlan::CODES as $code) {
-            $submittedPlans[$code] = ['name_ar' => 'فئة '.$code];
+            $plan = $persisted->get($code);
+            $submittedPlans[$code] = [
+                'name_ar' => 'فئة '.$code,
+                'name_en' => $plan->name_en,
+                'price_coins' => $plan->price_coins,
+                'minimum_paid_coins' => $plan->minimum_paid_coins,
+                'is_active' => $plan->is_active,
+                'certificate_enabled' => $plan->certificate_enabled,
+            ];
             foreach (self::AI_POLICY_FIELDS as $field) {
                 $submittedPlans[$code][$field] = in_array($field, ['model_override', 'project_feedback_level'], true)
                     ? 'forged-value'
@@ -85,6 +94,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
 
         foreach ([$moderator, $administrator] as $actor) {
             $request = CourseRequest::create('/dashboard/courses/'.$course->id, 'PATCH', [
+                'authoring_version' => 3,
                 'access_plans' => $submittedPlans,
             ]);
             $request->setContainer($this->app);
@@ -102,13 +112,16 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
 
             foreach (CourseAccessPlan::CODES as $code) {
                 foreach (self::AI_POLICY_FIELDS as $field) {
-                    self::assertSame(
-                        (string) $persisted->get($code)->getAttribute($field),
-                        (string) data_get($request->input('access_plans'), "{$code}.{$field}"),
-                        "{$actor->role} changed protected {$code}.{$field}"
+                    self::assertFalse(
+                        data_get($request->input('access_plans'), "{$code}.{$field}", false),
+                        "{$actor->role} retained protected {$code}.{$field}"
                     );
                 }
             }
+            self::assertFalse(
+                Validator::make($request->all(), $request->rules())->fails(),
+                "{$actor->role} could not save editable plan fields"
+            );
         }
     }
 

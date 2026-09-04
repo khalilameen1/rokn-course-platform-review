@@ -111,6 +111,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
                 ],
             ]
         )->all();
+        $input[CourseAccessPlan::BASIC]['price_coins'] = 1250;
 
         $service->syncAdminPlans($course, $input);
 
@@ -121,6 +122,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
         self::assertSame('0.000000', (string) $guided->project_feedback_reserve_usd);
         self::assertSame('0.000000', (string) $guided->project_followup_budget_usd);
         self::assertSame('0.000000', (string) $guided->project_followup_reserve_usd);
+        self::assertSame(1250, (int) $course->fresh()->price);
     }
 
     public function test_opening_course_editor_does_not_persist_missing_plans_or_advance_revision(): void

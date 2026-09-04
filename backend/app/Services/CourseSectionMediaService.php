@@ -86,7 +86,11 @@ final readonly class CourseSectionMediaService
         $oldVideo = $stage->previousVideoGuid();
         if ($oldVideo && ($newType !== 'lesson' || $stage->videoChanged)) {
             $reason = $newType !== 'lesson' ? 'section_type_changed' : 'superseded_video';
-            if (!$this->bunny->queueVideoCleanup($oldVideo, $stage->previousLesson, $reason, 168, true)) {
+            // A type change has already deleted the old lesson inside the
+            // section transaction. Do not attach a cleanup row to a vanished
+            // FK; the GUID remains the durable cleanup identity.
+            $cleanupLesson = $newType === 'lesson' ? $stage->previousLesson : null;
+            if (!$this->bunny->queueVideoCleanup($oldVideo, $cleanupLesson, $reason, 168, true)) {
                 throw new RuntimeException('تعذر تسجيل تقاعد الفيديو السابق بأمان');
             }
         }
@@ -108,7 +112,9 @@ final readonly class CourseSectionMediaService
         $videoGuid = trim((string) $lesson->bunny_video_id);
         if ($videoGuid !== '' && !$this->bunny->queueVideoCleanup(
             $videoGuid,
-            $lesson,
+            // Deletion removes the lesson in the same transaction. Cleanup is
+            // keyed by the provider GUID and must not require that row to live.
+            null,
             'section_deleted',
             168,
             true
