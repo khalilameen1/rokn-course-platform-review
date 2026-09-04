@@ -158,9 +158,6 @@ final readonly class AdminCourseAuthoringService
                     $locked->allPhotos()->create(['path' => $imagePath, 'type' => 'featured']);
                     Photo::query()->whereIn('id', $oldPhotos->pluck('id'))
                         ->lockForUpdate()->get()->each->delete();
-                    foreach ($oldPhotos as $oldPhoto) {
-                        $this->files->deleteOrQueue('public', (string) $oldPhoto->path);
-                    }
                 }
                 if (!$wasDraft && $publishingRequested) {
                     $audit = $this->publishing->audit($locked->fresh());

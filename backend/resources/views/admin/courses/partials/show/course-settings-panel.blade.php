@@ -9,8 +9,9 @@
     </header>
 
     {!! Form::model($course, ['method' => 'PATCH', 'files' => true, 'url' => route('admin.courses.update', $course->id), 'id' => 'studioCourseForm']) !!}
-        <input type="hidden" name="authoring_version" value="{{ $course->authoring_version }}">
-        <div class="studio-inline-feedback" data-course-feedback role="status" aria-live="polite" hidden></div>
+        <input type="hidden" name="authoring_version" value="{{ (int) $course->authoring_version }}">
+        <input type="hidden" name="return_to" value="studio">
+        <div class="studio-inline-feedback{{ $errors->any() ? ' is-error' : '' }}" data-course-feedback role="alert" aria-live="assertive" @if(!$errors->any()) hidden @endif>{{ $errors->first() }}</div>
         <div class="studio-course-panel__body">
             @include('admin.courses.partials.editor.basic-information')
             @include('admin.courses.partials.edit.course-settings')

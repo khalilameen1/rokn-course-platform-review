@@ -143,7 +143,7 @@
             const expectedVersion = core.authoringVersion;
             const response = await core.request(url, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': core.csrf},
+                headers: core.mutationHeaders(null, {'Content-Type': 'application/json'}),
                 body: JSON.stringify({...payload, authoring_version: expectedVersion}),
             });
             const nextVersion = core.requireMutation(response, expectedVersion);

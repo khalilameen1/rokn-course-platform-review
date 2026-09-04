@@ -9,7 +9,7 @@
         </a>
         <div>
             <span>صناعة الكورس</span>
-            <h1>{{ $workspaceTitle }}</h1>
+            <h1 data-studio-course-title>{{ $workspaceTitle }}</h1>
         </div>
         <small class="course-workspace__state {{ $course->is_coming_soon ? 'is-draft' : 'is-live' }}">
             {{ $course->is_coming_soon ? 'مسودة' : 'منشور' }}

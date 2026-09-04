@@ -4,9 +4,9 @@ namespace Rokn\FormCompat;
 
 use DateTimeInterface;
 use Illuminate\Contracts\Routing\UrlGenerator;
-use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\HtmlString;
+use LogicException;
 
 /**
  * Deliberately small Form facade implementation.
@@ -20,10 +20,8 @@ class FormBuilder
 {
     private mixed $model = null;
 
-    public function __construct(
-        private readonly UrlGenerator $url,
-        private readonly Request $request
-    ) {
+    public function __construct(private readonly UrlGenerator $url)
+    {
     }
 
     public function open(array $options = []): HtmlString
@@ -48,7 +46,7 @@ class FormBuilder
             $html .= $this->hidden('_method', $method);
         }
         if ($htmlMethod !== 'GET') {
-            $html .= $this->hidden('_token', csrf_token());
+            $html .= $this->hidden('_token', $this->csrfToken());
         }
 
         return new HtmlString($html);
@@ -204,7 +202,10 @@ class FormBuilder
     private function value(string $name, mixed $explicit): mixed
     {
         $key = $this->fieldKey($name);
-        $old = $this->request->old();
+        // Resolve the current request lazily. Long-running workers replace the
+        // request binding between requests; retaining the first Request here
+        // makes later dashboard forms read stale input and session state.
+        $old = request()->old();
         if (Arr::has($old, $key)) {
             return data_get($old, $key);
         }
@@ -218,6 +219,25 @@ class FormBuilder
         }
 
         return data_get($this->model, $key);
+    }
+
+    private function csrfToken(): string
+    {
+        if (!app()->bound('session')) {
+            throw new LogicException('A session is required to render a state-changing form.');
+        }
+
+        $session = app('session');
+        $token = trim((string) $session->token());
+        if ($token === '') {
+            $session->regenerateToken();
+            $token = trim((string) $session->token());
+        }
+        if ($token === '') {
+            throw new LogicException('A CSRF token could not be generated for the form.');
+        }
+
+        return $token;
     }
 
     private function resolveAction(array $options): string

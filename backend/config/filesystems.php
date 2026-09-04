@@ -18,6 +18,18 @@ $s3Disk = static function (string $environmentPrefix = '', string $root = ''): a
         ),
         'root' => trim($root, '/'),
         'throw' => true,
+        // A dashboard save must fail clearly instead of occupying the HTTP
+        // worker indefinitely when object storage is unavailable.
+        'http' => [
+            'connect_timeout' => (float) $value(
+                'AWS_CONNECT_TIMEOUT_SECONDS',
+                env('AWS_CONNECT_TIMEOUT_SECONDS', 5)
+            ),
+            'timeout' => (float) $value(
+                'AWS_REQUEST_TIMEOUT_SECONDS',
+                env('AWS_REQUEST_TIMEOUT_SECONDS', 20)
+            ),
+        ],
     ];
 };
 

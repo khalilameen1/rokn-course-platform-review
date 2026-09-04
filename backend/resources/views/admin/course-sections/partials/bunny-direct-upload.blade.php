@@ -293,20 +293,30 @@ document.addEventListener('DOMContentLoaded', function () {
     const metadataValue = value => btoa(unescape(encodeURIComponent(String(value))));
 
     const createTusUpload = async (file, record) => {
-        const response = await fetch(record.endpoint, {
-            method: 'POST',
-            headers: {
-                ...record.headers,
-                'Tus-Resumable': '1.0.0',
-                'Upload-Length': String(file.size),
-                'Upload-Metadata': `filename ${metadataValue(file.name)},filetype ${metadataValue(file.type)}`,
-            },
-        });
-        if (!response.ok) throw new Error('تعذر بدء رفع الفيديو');
-        const location = response.headers.get('Location');
-        if (!location) throw new Error('لم ترجع خدمة الفيديو رابط الرفع');
-        record.uploadUrl = new URL(location, record.endpoint).toString();
-        saveRecord(record);
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), 20000);
+        try {
+            const response = await fetch(record.endpoint, {
+                method: 'POST',
+                headers: {
+                    ...record.headers,
+                    'Tus-Resumable': '1.0.0',
+                    'Upload-Length': String(file.size),
+                    'Upload-Metadata': `filename ${metadataValue(file.name)},filetype ${metadataValue(file.type)}`,
+                },
+                signal: controller.signal,
+            });
+            if (!response.ok) throw new Error('تعذر بدء رفع الفيديو');
+            const location = response.headers.get('Location');
+            if (!location) throw new Error('لم ترجع خدمة الفيديو رابط الرفع');
+            record.uploadUrl = new URL(location, record.endpoint).toString();
+            saveRecord(record);
+        } catch (error) {
+            if (error?.name === 'AbortError') throw new Error('تعذر بدء الرفع بسبب بطء الاتصال');
+            throw error;
+        } finally {
+            window.clearTimeout(timer);
+        }
     };
 
     const remoteOffset = async (record, totalSize) => {

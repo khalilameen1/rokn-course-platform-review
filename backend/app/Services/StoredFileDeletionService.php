@@ -32,20 +32,9 @@ final class StoredFileDeletionService
             return;
         }
 
-        // Never remove bytes while the database transaction that detached
-        // them can still roll back. In that case the durable cleanup row and
-        // its dispatch are committed together with the reference change.
-        if (DB::transactionLevel() === 0) {
-            try {
-                $storage = Storage::disk($disk);
-                if (!$storage->exists($path) || $storage->delete($path)) {
-                    return;
-                }
-            } catch (Throwable $exception) {
-                report($exception);
-            }
-        }
-
+        // Remote deletion never belongs to an authoring HTTP request. The
+        // durable row is the source of truth and the media worker performs
+        // the reference check again immediately before deleting the bytes.
         $row = AccountFileDeletion::query()->updateOrCreate(
             ['disk' => $disk, 'path_hash' => hash('sha256', $path)],
             [
@@ -87,7 +76,7 @@ final class StoredFileDeletionService
     ): string {
         $path = $this->trackedUploadDestination($file, $directory, $disk, $operationIdentity);
         $this->trackPotentialOrphan($disk, $path, $orphanDelayMinutes);
-        $this->writeTrackedUpload($file, $path, $disk);
+        $this->writeTrackedUpload($file, $path, $disk, $operationIdentity !== null);
         return $path;
     }
 
@@ -117,7 +106,12 @@ final class StoredFileDeletionService
     }
 
     /** Write bytes only after the orphan ledger and any domain reservation exist. */
-    public function writeTrackedUpload(UploadedFile $file, string $path, string $disk = 'public'): void
+    public function writeTrackedUpload(
+        UploadedFile $file,
+        string $path,
+        string $disk = 'public',
+        bool $resumeExisting = true
+    ): void
     {
         $path = ltrim(trim($path), '/');
         $disk = trim($disk);
@@ -128,12 +122,11 @@ final class StoredFileDeletionService
         }
         $storage = Storage::disk($disk);
         $expectedSize = (int) $file->getSize();
-        if ($storage->exists($path) && (int) $storage->size($path) === $expectedSize) {
+        if ($resumeExisting && $storage->exists($path) && (int) $storage->size($path) === $expectedSize) {
             return;
         }
         $stored = $file->storeAs($directory, $filename, $disk);
-        if (!is_string($stored) || ltrim($stored, '/') !== $path
-            || !$storage->exists($path) || (int) $storage->size($path) !== $expectedSize) {
+        if (!is_string($stored) || ltrim($stored, '/') !== $path) {
             throw new RuntimeException('Tracked file storage failed.');
         }
     }

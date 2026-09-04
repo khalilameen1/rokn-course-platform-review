@@ -78,6 +78,8 @@ final class AdminCourseSectionStateContractTest extends TestCase
         self::assertStringContainsString('submittingAfterUpload = false;', $view);
         self::assertStringContainsString('window.RoknCourseVideoUpload = Object.freeze({', $view);
         self::assertStringContainsString('resetAfterCommit: () => resetRuntime(true)', $view);
+        self::assertStringContainsString('window.setTimeout(() => controller.abort(), 20000)', $view);
+        self::assertStringContainsString("if (error?.name === 'AbortError') throw new Error('تعذر بدء الرفع بسبب بطء الاتصال')", $view);
         self::assertStringContainsString('setSectionContext: (nextSectionId, videoRequired = true) => {', $view);
         self::assertStringContainsString("form.dataset.sectionId = nextSectionId ? String(nextSectionId) : '';", $view);
         self::assertStringContainsString("fileInput.toggleAttribute('required', required);", $view);
@@ -140,7 +142,20 @@ final class AdminCourseSectionStateContractTest extends TestCase
         foreach ([$outline, $sectionEditor, $moduleEditor, $details, $attachments] as $module) {
             self::assertStringNotContainsString('serializeMutation(', $module);
             self::assertStringContainsString('core.mutate(', $module);
+            self::assertStringContainsString('core.mutationHeaders(', $module);
+            self::assertStringNotContainsString('core.csrf', $module);
         }
+        foreach ([$sectionEditor, $moduleEditor, $details, $attachments] as $formMutation) {
+            self::assertStringContainsString('core.authoringFormData(', $formMutation);
+        }
+        self::assertStringContainsString("body.set('_method', method)", $core);
+        self::assertStringContainsString("if (feedback) showFeedback(feedback, message)", $core);
+        self::assertStringContainsString("else notify(message, true)", $core);
+        self::assertStringContainsString("sessionStorage.setItem(reconciliationMessageKey, message)", $core);
+        self::assertStringContainsString('timeout: 30000', $details);
+        self::assertStringNotContainsString('timeout: 45000', $details);
+        self::assertStringNotContainsString('window.location.assign(course.studio_url)', $details);
+        self::assertStringContainsString('applySavedCourse(course)', $details);
         self::assertStringContainsString("core.provide('editor-coordinator'", $coordinator);
         self::assertStringContainsString("coordinator.register('section'", $sectionEditor);
         self::assertStringContainsString("coordinator.register('module'", $moduleEditor);

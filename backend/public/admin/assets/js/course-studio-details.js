@@ -8,6 +8,36 @@
 
         const feedback = panel.querySelector('[data-course-feedback]');
 
+        const applySavedCourse = course => {
+            document.querySelectorAll('[data-studio-course-title]').forEach(node => {
+                node.textContent = course.title;
+            });
+            if (typeof course.image_url !== 'string' || course.image_url === '') return;
+            const imageSection = form.querySelector('#course-editor-image');
+            const uploadArea = imageSection?.querySelector('.file-upload-area');
+            if (!imageSection || !uploadArea) return;
+            let current = imageSection.querySelector('.course-editor__current-image');
+            if (!current) {
+                current = document.createElement('div');
+                current.className = 'course-editor__current-image';
+                const image = document.createElement('img');
+                image.className = 'current-image';
+                const status = document.createElement('div');
+                status.className = 'course-editor__image-status';
+                status.textContent = 'الصورة الحالية';
+                current.append(image, status);
+                uploadArea.before(current);
+            }
+            const image = current.querySelector('img');
+            if (image) {
+                image.src = course.image_url;
+                image.alt = course.title;
+            }
+            const input = imageSection.querySelector('#image');
+            if (input) input.value = '';
+            imageSection.querySelector('#imagePreview')?.replaceChildren();
+        };
+
         const open = target => {
             panel.hidden = false;
             const section = document.getElementById(`course-editor-${target}`)
@@ -45,28 +75,41 @@
 
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
-                const body = new FormData(form);
-                body.set('authoring_version', String(expectedVersion));
+                const body = core.authoringFormData(form, expectedVersion, 'PATCH');
                 body.set('publishing_intent', intent);
                 const response = await core.request(form.action, {
                     method: 'POST',
-                    headers: {'X-CSRF-TOKEN': core.csrf},
+                    headers: core.mutationHeaders(form),
                     body,
-                    timeout: 45000,
+                    timeout: 30000,
                 });
                 const nextVersion = core.requireMutation(response, expectedVersion);
                 const course = response?.course;
                 if (response?.saved !== true
                     || Number(course?.authoring_version) !== Number(nextVersion)
                     || !['draft', 'coming_soon', 'published', 'unlisted'].includes(course?.publishing_status)
-                    || typeof course?.studio_url !== 'string' || course.studio_url === '') {
+                    || typeof course?.studio_url !== 'string' || course.studio_url === ''
+                    || typeof course?.title !== 'string') {
                     throw core.invalid();
                 }
                 core.syncVersion(nextVersion);
                 const issues = Array.isArray(response.issues) ? response.issues.filter(Boolean) : [];
-                if (issues.length) core.notify(issues[0], true);
-                else core.notify(response.warning || response.message || 'تم حفظ الكورس');
-                window.location.assign(course.studio_url);
+                const message = issues[0] || response.warning || response.message || 'تم حفظ الكورس';
+                const currentUrl = new URL(window.location.href);
+                const destination = new URL(course.studio_url, window.location.href);
+                const staysInDraft = intent === 'save'
+                    && currentUrl.pathname === destination.pathname
+                    && currentUrl.search === destination.search;
+                if (staysInDraft) {
+                    applySavedCourse(course);
+                    core.showFeedback(feedback, message, Boolean(issues.length));
+                    core.notify(message, Boolean(issues.length), 5000);
+                    return;
+                }
+                try {
+                    window.sessionStorage.setItem('rokn-course-studio-save-message', message);
+                } catch (_) {}
+                window.location.assign(destination.toString());
             }, {feedback, form});
         });
     });

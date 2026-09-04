@@ -162,7 +162,7 @@
                     const expectedVersion = core.authoringVersion;
                     const response = await core.request(current.toggle_url, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': core.csrf},
+                        headers: core.mutationHeaders(form, {'Content-Type': 'application/json'}),
                         body: JSON.stringify({authoring_version: expectedVersion}),
                     });
                     const nextVersion = core.requireMutation(response, expectedVersion);
@@ -183,10 +183,9 @@
             const targetId = editingId;
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
-                const body = new FormData(form);
-                body.set('authoring_version', String(expectedVersion));
+                const body = core.authoringFormData(form, expectedVersion);
                 const response = await core.request(form.action, {
-                    method: 'POST', headers: {'X-CSRF-TOKEN': core.csrf}, body, timeout: 120000,
+                    method: 'POST', headers: core.mutationHeaders(form), body, timeout: 120000,
                 });
                 if (!validPdf(response.pdf) || (targetId && Number(response.pdf.id) !== targetId)) throw core.invalid();
                 const duplicateCreate = !targetId && pdfs.has(Number(response.pdf.id));
@@ -208,7 +207,7 @@
                 const expectedVersion = core.authoringVersion;
                 const response = await core.request(pdf.delete_url, {
                     method: 'DELETE',
-                    headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': core.csrf},
+                    headers: core.mutationHeaders(form, {'Content-Type': 'application/json'}),
                     body: JSON.stringify({authoring_version: expectedVersion}),
                 });
                 const nextVersion = core.requireMutation(response, expectedVersion);
@@ -235,7 +234,7 @@
                         const expectedVersion = core.authoringVersion;
                         const response = await core.request(graph.reorder_url, {
                             method: 'POST',
-                            headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': core.csrf},
+                            headers: core.mutationHeaders(form, {'Content-Type': 'application/json'}),
                             body: JSON.stringify({order, authoring_version: expectedVersion}),
                         });
                         const nextVersion = core.requireMutation(response, expectedVersion);

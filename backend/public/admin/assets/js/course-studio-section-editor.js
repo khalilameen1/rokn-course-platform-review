@@ -178,10 +178,9 @@
             const order = Number(form.elements.order.value);
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
-                const body = new FormData(form);
-                body.set('authoring_version', String(expectedVersion));
+                const body = core.authoringFormData(form, expectedVersion);
                 const response = await core.request(form.action, {
-                    method: 'POST', headers: {'X-CSRF-TOKEN': core.csrf}, body, timeout: 30000,
+                    method: 'POST', headers: core.mutationHeaders(form), body, timeout: 30000,
                 });
                 const nextVersion = core.requireMutation(response, expectedVersion);
                 if (!validSection(response, {id: previous?.id, moduleId, type})) throw core.invalid();
@@ -231,7 +230,7 @@
                 const expectedVersion = core.authoringVersion;
                 const response = await core.request(target.delete_url, {
                     method: 'DELETE',
-                    headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': core.csrf},
+                    headers: core.mutationHeaders(form, {'Content-Type': 'application/json'}),
                     body: JSON.stringify({authoring_version: expectedVersion}),
                 });
                 const nextVersion = core.requireMutation(response, expectedVersion);

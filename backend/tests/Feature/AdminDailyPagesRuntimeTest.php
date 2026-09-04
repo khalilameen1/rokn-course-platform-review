@@ -13,6 +13,8 @@ use App\Models\Lesson;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
+use DOMDocument;
+use DOMXPath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -123,8 +125,10 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($admin, 'web');
 
+        $studio = $this->get(route('admin.courses.show', $course))->assertOk();
+        $this->assertStudioCourseForm($studio->getContent(), $course);
+
         foreach ([
-            route('admin.courses.show', $course),
             route('admin.users.show', $student),
             route('admin.users.edit', $student),
             route('admin.orders.show', $order),
@@ -173,5 +177,37 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         ])->save();
 
         return $course;
+    }
+
+    private function assertStudioCourseForm(string $html, Course $course): void
+    {
+        $document = new DOMDocument();
+        @$document->loadHTML($html);
+        $xpath = new DOMXPath($document);
+        $forms = $xpath->query('//*[@id="studioCourseForm"]');
+
+        self::assertNotFalse($forms);
+        self::assertSame(1, $forms->length);
+        $form = $forms->item(0);
+        self::assertNotNull($form);
+        self::assertSame('POST', strtoupper($form->getAttribute('method')));
+        self::assertSame(route('admin.courses.update', $course), $form->getAttribute('action'));
+        self::assertSame('PATCH', $this->formValue($xpath, $form, '_method'));
+        self::assertNotSame('', $this->formValue($xpath, $form, '_token'));
+        self::assertSame('1', $this->formValue($xpath, $form, 'authoring_version'));
+        self::assertSame('studio', $this->formValue($xpath, $form, 'return_to'));
+
+        $feedback = $xpath->query('.//*[@data-course-feedback and @role="alert"]', $form);
+        self::assertNotFalse($feedback);
+        self::assertSame(1, $feedback->length);
+    }
+
+    private function formValue(DOMXPath $xpath, \DOMNode $form, string $name): string
+    {
+        $fields = $xpath->query('.//input[@name="'.$name.'"]', $form);
+        self::assertNotFalse($fields);
+        self::assertSame(1, $fields->length, "Unexpected {$name} field count");
+
+        return $fields->item(0)?->attributes?->getNamedItem('value')?->nodeValue ?? '';
     }
 }

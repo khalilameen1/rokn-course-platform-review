@@ -45,6 +45,7 @@ final class AdminCourseEditorStatePresenter
                 'authoring_version' => $version,
                 'publishing_status' => $publishingStatus,
                 'studio_url' => route('admin.courses.show', $course),
+                'image_url' => $course->image,
             ],
         ];
         if ($saved && $status !== 'updated') {

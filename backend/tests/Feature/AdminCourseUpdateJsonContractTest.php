@@ -45,6 +45,7 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
                     'authoring_version' => 4,
                     'publishing_status' => 'draft',
                     'studio_url' => route('admin.courses.show', $course),
+                    'image_url' => null,
                 ],
             ]);
 
@@ -112,7 +113,7 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
             self::assertSame($status, $result['payload']['status']);
             self::assertSame(3, $result['payload']['authoring_version']);
             self::assertSame([
-                'id', 'title', 'authoring_version', 'publishing_status', 'studio_url',
+                'id', 'title', 'authoring_version', 'publishing_status', 'studio_url', 'image_url',
             ], array_keys($result['payload']['course']));
             if ($status === 'not_ready') {
                 self::assertSame(['أضف مقطعًا'], $result['payload']['issues']);

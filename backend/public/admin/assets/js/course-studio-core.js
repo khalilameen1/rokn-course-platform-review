@@ -17,26 +17,64 @@
         if (!studio) return null;
 
         const toast = document.getElementById('courseStudioToast');
-        const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        const metaCsrf = document.querySelector('meta[name="csrf-token"]')?.content?.trim() || '';
         const graph = parseJson(document.getElementById('courseAuthoringGraph'));
-        let authoringVersion = Number(studio.dataset.authoringVersion || graph.authoring_version || 1);
+        let authoringVersion = Number(studio.dataset.authoringVersion || graph.authoring_version);
         let busyCount = 0;
         const externalBusySources = new Set();
         const services = new Map();
 
-        const notify = (message, error = false) => {
+        const reconciliationMessageKey = 'rokn-course-studio-reconciliation';
+        const savedMessageKey = 'rokn-course-studio-save-message';
+        const notify = (message, error = false, duration = 2800) => {
             if (!toast || !message) return;
             toast.textContent = message;
             toast.classList.toggle('is-error', error);
             toast.classList.add('is-visible');
-            window.setTimeout(() => toast.classList.remove('is-visible'), 2800);
+            window.setTimeout(() => toast.classList.remove('is-visible'), duration);
         };
 
-        const showFeedback = (element, message = '') => {
+        const showFeedback = (element, message = '', error = Boolean(message)) => {
             if (!element) return;
             element.textContent = message;
-            element.classList.toggle('is-error', Boolean(message));
+            element.classList.toggle('is-error', Boolean(error));
             element.hidden = !message;
+        };
+
+        const csrfToken = form => {
+            const tokenInput = form?.querySelector('input[name="_token"]')
+                || document.querySelector('input[name="_token"]');
+            const formToken = tokenInput?.value?.trim() || '';
+            const token = metaCsrf || formToken;
+            if (!token) {
+                throw new window.RoknAdminRequest.AdminRequestError(
+                    'تعذر تأكيد جلسة الدخول\nأعد تحميل الصفحة ثم حاول مرة أخرى',
+                    419,
+                    'csrf_token_missing'
+                );
+            }
+            return token;
+        };
+
+        const mutationHeaders = (form = null, headers = {}) => ({
+            ...headers,
+            'X-CSRF-TOKEN': csrfToken(form),
+        });
+
+        const authoringFormData = (form, expectedVersion, method = null) => {
+            const version = Number(expectedVersion);
+            if (!Number.isSafeInteger(version) || version < 1) {
+                throw new window.RoknAdminRequest.AdminRequestError(
+                    'تعذر تحميل نسخة الحفظ\nأعد تحميل الصفحة ثم حاول مرة أخرى',
+                    422,
+                    'authoring_version_missing'
+                );
+            }
+            const body = new FormData(form);
+            body.set('_token', csrfToken(form));
+            body.set('authoring_version', String(version));
+            if (method) body.set('_method', method);
+            return body;
         };
 
         const refreshBusy = () => {
@@ -95,8 +133,12 @@
         const reconcile = error => {
             window.RoknAdminRequest.blockMutationsUntilReload();
             studio.querySelectorAll('button, input, select, textarea').forEach(control => control.disabled = true);
-            notify(error?.message || 'لم يصل رد الحفظ كاملًا\nنعيد تحميل أحدث نسخة', true);
-            window.setTimeout(() => window.location.reload(), 900);
+            const message = error?.message || 'لم يصل رد الحفظ كاملًا\nنعيد تحميل أحدث نسخة';
+            try {
+                window.sessionStorage.setItem(reconciliationMessageKey, message);
+            } catch (_) {}
+            notify(message, true, 7000);
+            window.setTimeout(() => window.location.reload(), 1500);
         };
 
         const setFormBusy = (form, busy) => {
@@ -119,7 +161,9 @@
                         reconcile(error);
                         return null;
                     }
-                    showFeedback(feedback, error?.message || 'تعذر حفظ التعديل');
+                    const message = error?.message || 'تعذر حفظ التعديل';
+                    if (feedback) showFeedback(feedback, message);
+                    else notify(message, true);
                     return null;
                 })
                 .finally(() => {
@@ -172,12 +216,13 @@
 
         return {
             studio,
-            csrf,
             graph,
             canAuthor: studio.dataset.canAuthor === '1',
             get authoringVersion() { return authoringVersion; },
             notify,
             showFeedback,
+            mutationHeaders,
+            authoringFormData,
             syncVersion,
             requireMutation,
             reconcile,
@@ -207,6 +252,17 @@
             },
             start() {
                 activateTabs();
+                try {
+                    const reconciliationMessage = window.sessionStorage.getItem(reconciliationMessageKey);
+                    const savedMessage = window.sessionStorage.getItem(savedMessageKey);
+                    if (reconciliationMessage) {
+                        window.sessionStorage.removeItem(reconciliationMessageKey);
+                        notify(`${reconciliationMessage}\nهذه هي آخر نسخة محفوظة`, true, 8000);
+                    } else if (savedMessage) {
+                        window.sessionStorage.removeItem(savedMessageKey);
+                        notify(savedMessage, false, 5000);
+                    }
+                } catch (_) {}
             },
         };
     };
