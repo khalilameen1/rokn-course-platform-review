@@ -200,6 +200,7 @@ export const certificateStyles = StyleSheet.create({
     ...Type.caption,
     color: '#8BB5FF',
     marginTop: Spacing.xs,
+    direction: 'ltr',
     writingDirection: 'ltr',
     textAlign: 'left',
   },

@@ -272,6 +272,7 @@ const ProjectFeedbackPanel = ({
 
 const styles = StyleSheet.create({
   thread: {
+    direction: 'rtl',
     width: '100%',
     marginTop: 18,
     padding: 12,
@@ -306,12 +307,12 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   bubbleAssistant: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
     backgroundColor: '#17202C',
     borderTopLeftRadius: 5,
   },
   bubbleUser: {
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
     backgroundColor: '#236FE8',
     borderTopRightRadius: 5,
   },

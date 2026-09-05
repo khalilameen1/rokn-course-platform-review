@@ -150,6 +150,8 @@ export const styles = StyleSheet.create({
     ...Type.caption,
     color: Palette.textFaint,
     marginTop: Spacing.xs,
+    direction: 'ltr',
+    writingDirection: 'ltr',
     textAlign: 'left',
   },
   attachmentButton: {

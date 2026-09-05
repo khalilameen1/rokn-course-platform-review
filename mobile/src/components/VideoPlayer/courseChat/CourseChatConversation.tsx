@@ -242,7 +242,7 @@ export const CourseChatConversation = ({
                 />
               )}
               <Text numberOfLines={1} style={styles.attachmentName}>
-                {file.name}
+                {cleanUnicodeText(file.name, false)}
               </Text>
               <Pressable
                 accessibilityRole="button"

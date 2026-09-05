@@ -24,6 +24,16 @@ describe('learner locale formatting', () => {
     );
   });
 
+  it('removes imported bidi controls before adding bounded isolates', () => {
+    expect(
+      formatArabicDisplayText(
+        '\u200E\u202AABC 52\u202C عنوان\u2066 https://rokn.app\u2069',
+      ),
+    ).toBe(
+      '\u2068ABC\u2069 ٥٢ عنوان \u2068https://rokn.app\u2069',
+    );
+  });
+
   it('uses Arabic count forms instead of an English singular rule', () => {
     expect(formatArabicMinutes(1)).toBe('دقيقة');
     expect(formatArabicMinutes(2)).toBe('دقيقتان');

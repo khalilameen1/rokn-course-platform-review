@@ -1,3 +1,5 @@
+import {cleanUnicodeText} from '../utils/unicodeText';
+
 const ARABIC_INDIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'] as const;
 
 type VisibleValue = string | number | bigint | null | undefined;
@@ -42,7 +44,10 @@ export const toArabicDigits = (value: VisibleValue): string => {
 
 /** Localizes learner-facing copy without touching model, route or API names. */
 export const formatArabicDisplayText = (value: VisibleValue): string => {
-  return String(value ?? '')
+  // Text authored outside the app can contain invisible bidi controls that
+  // override the direction of one title while neighbouring titles look fine.
+  // Remove imported controls first, then add our own bounded isolates below.
+  return cleanUnicodeText(value)
     .split(MIXED_DIRECTION_SEGMENT)
     .map(part => {
       if (IS_MIXED_DIRECTION_SEGMENT.test(part)) {

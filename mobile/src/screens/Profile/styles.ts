@@ -82,6 +82,7 @@ export const profileStyles = StyleSheet.create({
   publicLinkText: {
     ...Type.bodyStrong,
     color: '#8BB5FF',
+    direction: 'ltr',
     writingDirection: 'ltr',
     textAlign: 'left',
   },

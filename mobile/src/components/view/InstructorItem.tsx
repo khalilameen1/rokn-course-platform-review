@@ -60,14 +60,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.bold,
     color: Colors.white,
     flexShrink: 1,
-    textAlign: 'left',
   },
   instructorDescription: {
     ...textDirection,
     fontSize: PixelPerfect(12),
     fontFamily: Fonts.regular,
     color: '#848484',
-    textAlign: 'left',
   },
 });
 

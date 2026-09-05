@@ -70,6 +70,7 @@ export const courseChatStyles = StyleSheet.create({
     backgroundColor: Palette.coin,
   },
   presenceText: {
+    ...textDirection,
     color: 'rgba(255,255,255,.62)',
     fontFamily: Fonts.medium,
     fontSize: 10,
@@ -92,6 +93,7 @@ export const courseChatStyles = StyleSheet.create({
     flex: 1,
   },
   messagesContent: {
+    direction: 'rtl',
     paddingHorizontal: 14,
     paddingVertical: 18,
     gap: 10,
@@ -105,12 +107,12 @@ export const courseChatStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   userBubble: {
-    alignSelf: 'flex-end',
+    alignSelf: 'flex-start',
     backgroundColor: '#236FE8',
     borderBottomRightRadius: 5,
   },
   assistantBubble: {
-    alignSelf: 'flex-start',
+    alignSelf: 'flex-end',
     backgroundColor: '#192230',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.07)',
@@ -138,6 +140,7 @@ export const courseChatStyles = StyleSheet.create({
     textAlign: 'center',
   },
   messageAttachment: {
+    ...textDirection,
     color: 'rgba(255,255,255,.78)',
     fontFamily: Fonts.medium,
     fontSize: 11,
@@ -293,6 +296,7 @@ export const courseChatStyles = StyleSheet.create({
   },
   attachmentPreview: {width: 30, height: 30, borderRadius: 7},
   attachmentName: {
+    ...textDirection,
     maxWidth: 110,
     color: '#FFFFFF',
     fontFamily: Fonts.regular,
