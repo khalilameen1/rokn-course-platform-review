@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -32,6 +33,11 @@ final class UserWhatsAppConnection extends Model
         'marketing_consent_at' => 'datetime',
         'marketing_withdrawn_at' => 'datetime',
     ];
+
+    public function scopeVerified(Builder $query): Builder
+    {
+        return $query->where('ownership_verified', true)->whereNotNull('verified_at');
+    }
 
     public function user(): BelongsTo
     {

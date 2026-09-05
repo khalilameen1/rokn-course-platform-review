@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Exceptions\RewardGrantDeferred;
 use App\Models\InternalSignal;
 use App\Services\InternalSignalHandler;
 use Illuminate\Bus\Queueable;
@@ -59,6 +60,20 @@ final class ProcessInternalSignal implements ShouldQueue
                     'status' => InternalSignal::STATUS_HANDLED,
                     'handled_at' => now(),
                     'available_at' => null,
+                    'locked_at' => null,
+                    'lease_id' => null,
+                    'last_error_fingerprint' => null,
+                    'updated_at' => now(),
+                ]);
+        } catch (RewardGrantDeferred $exception) {
+            InternalSignal::query()
+                ->whereKey($signal->id)
+                ->where('status', InternalSignal::STATUS_PROCESSING)
+                ->where('lease_id', $leaseId)
+                ->update([
+                    'status' => InternalSignal::STATUS_PENDING,
+                    'available_at' => $exception->retryAt,
+                    'dispatched_at' => null,
                     'locked_at' => null,
                     'lease_id' => null,
                     'last_error_fingerprint' => null,

@@ -23,7 +23,7 @@ final readonly class WhatsAppLinkService
     }
 
     /** @return array<string, mixed> */
-    public function createLink(User $user, CoinEarningMethod $method): array
+    public function createLink(User $user, CoinEarningMethod $method, bool $supportsReadyClaim = false): array
     {
         if (
             !(bool) config('whatsapp.enabled')
@@ -45,7 +45,7 @@ final readonly class WhatsAppLinkService
             min(1440, (int) config('whatsapp.linking.token_minutes', 30))
         ));
 
-        $result = DB::transaction(function () use ($user, $method, $rawToken, $expiresAt): array {
+        $result = DB::transaction(function () use ($user, $method, $rawToken, $expiresAt, $supportsReadyClaim): array {
             /** @var User $lockedUser */
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
             // Starting a link does not consume the campaign quota. The actual
@@ -71,7 +71,15 @@ final readonly class WhatsAppLinkService
             );
 
             if ($earning || $attempt->status === UserCoinTaskAttempt::STATUS_CLAIMED) {
-                return ['claimed' => true, 'attempt' => $attempt];
+                return ['task_state' => 'claimed', 'attempt' => $attempt];
+            }
+
+            // Verification survives a deferred reward (for example a full
+            // reward wallet). Claiming later must not require another message.
+            // Legacy clients only know how to reopen a linking message here.
+            // Keep that path until the caller can render a separate claim action.
+            if ($supportsReadyClaim && $lockedUser->whatsappConnection()->verified()->exists()) {
+                return ['task_state' => 'ready_to_claim', 'attempt' => $attempt];
             }
 
             // Keep earlier unexpired links usable. A rapid second tap can race
@@ -86,12 +94,12 @@ final readonly class WhatsAppLinkService
                 'expires_at' => $expiresAt,
             ]);
 
-            return ['claimed' => false, 'attempt' => $attempt];
+            return ['task_state' => 'started', 'attempt' => $attempt];
         });
 
-        if ($result['claimed']) {
+        if ($result['task_state'] !== 'started') {
             return [
-                'task_state' => 'claimed',
+                'task_state' => $result['task_state'],
                 'action_url' => null,
                 'attempt_id' => $result['attempt']->public_id,
             ];

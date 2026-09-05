@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\RewardGrantDeferred;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\Project;
@@ -21,6 +22,7 @@ final class LearningRewardService
 {
     private const DEFAULT_REWARD_BALANCE_CAP = 1200;
     private const DEFAULT_REWARD_CONTRIBUTION_PER_COURSE = 1200;
+    private const TEMPORARY_BALANCE_CAP_RETRY_HOURS = 12;
 
     public function __construct(
         private readonly WalletService $wallet,
@@ -163,29 +165,34 @@ final class LearningRewardService
         }
 
         $rule = RewardRule::activeFor('study_session');
-        if (!$rule) {
-            return $this->result($user, null);
-        }
         $today = $this->rewardNow()->toDateString();
         $activity = DB::transaction(function () use ($user, $today, $seconds, $rule) {
             // One atomic insert protects the daily row from concurrent player
             // heartbeats. The previous select-then-create sequence could race
             // and violate the (user, day) unique key under normal playback.
-            DB::table('user_daily_learning_activities')->insertOrIgnore([
-                'user_id' => $user->id,
-                'activity_date' => $today,
-                'qualified_seconds' => 0,
-                'reward_contract' => null,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            if ($rule) {
+                DB::table('user_daily_learning_activities')->insertOrIgnore([
+                    'user_id' => $user->id,
+                    'activity_date' => $today,
+                    'qualified_seconds' => 0,
+                    'reward_contract' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
 
             $activity = UserDailyLearningActivity::query()
                 ->where('user_id', $user->id)
                 ->where('activity_date', $today)
                 ->lockForUpdate()
-                ->firstOrFail();
+                ->first();
+            if (!$activity) {
+                return null;
+            }
             if (!is_array($activity->reward_contract)) {
+                if (!$rule) {
+                    return null;
+                }
                 $activity->reward_contract = [
                     'rule_id' => (int) $rule->id,
                     'slot_seconds' => max(60, (int) $rule->interval_count * 60),
@@ -202,6 +209,9 @@ final class LearningRewardService
 
             return $activity->fresh();
         });
+        if (!$activity) {
+            return $this->result($user, null);
+        }
 
         $contract = (array) $activity->reward_contract;
         $slotSeconds = max(60, (int) ($contract['slot_seconds'] ?? 60));
@@ -275,7 +285,8 @@ final class LearningRewardService
             "first-project-reward:{$user->id}",
             (int) $contract['rolling_30_day_cap'],
             RewardRule::query()->find((int) $contract['rule_id']),
-            ['project_id' => $projectId, 'reward_rule_id' => $contract['rule_id']]
+            ['project_id' => $projectId, 'reward_rule_id' => $contract['rule_id']],
+            true
         );
 
         return $this->result($user, $transaction);
@@ -304,7 +315,8 @@ final class LearningRewardService
             "course-completion-reward:{$user->id}:{$course->id}",
             (int) $contract['rolling_30_day_cap'],
             RewardRule::query()->find((int) $contract['rule_id']),
-            ['course_id' => $course->id, 'reward_rule_id' => $contract['rule_id']]
+            ['course_id' => $course->id, 'reward_rule_id' => $contract['rule_id']],
+            true
         );
 
         return $this->result($user, $transaction);
@@ -317,7 +329,8 @@ final class LearningRewardService
         string $idempotencyKey,
         int $rollingCap,
         $source = null,
-        array $metadata = []
+        array $metadata = [],
+        bool $deferOnCap = false
     ): ?WalletTransaction {
         $requested = max(0, $requested);
         if ($requested === 0) {
@@ -331,7 +344,8 @@ final class LearningRewardService
             $idempotencyKey,
             $rollingCap,
             $source,
-            $metadata
+            $metadata,
+            $deferOnCap
         ): ?WalletTransaction {
             // All reward sources share the same user aggregate lock. This keeps
             // two different simultaneous rewards from each seeing stale room
@@ -361,6 +375,28 @@ final class LearningRewardService
             // smaller remainder would consume its one-time idempotency key
             // while silently paying fewer coins than the configured amount.
             if ($requested > $rollingRoom || $requested > $balanceRoom) {
+                $balanceCap = max(0, (int) $settings->reward_balance_cap);
+                $canEverFit = $requested <= $rollingCap && $requested <= $balanceCap;
+                if ($deferOnCap && $canEverFit) {
+                    $retryAt = $this->rewardNow()
+                        ->addHours(self::TEMPORARY_BALANCE_CAP_RETRY_HOURS)
+                        ->utc();
+                    if ($requested > $rollingRoom) {
+                        $rollingRetryAt = $this->rollingCapRetryAt(
+                            (int) $lockedUser->id,
+                            $category,
+                            $requested,
+                            $rollingCap,
+                            $rollingTotal
+                        );
+                        if ($rollingRetryAt && $rollingRetryAt->greaterThan($retryAt)) {
+                            $retryAt = $rollingRetryAt;
+                        }
+                    }
+
+                    throw new RewardGrantDeferred($retryAt);
+                }
+
                 return null;
             }
 
@@ -379,6 +415,41 @@ final class LearningRewardService
                 WalletTransaction::BUCKET_REWARD
             );
         }, 3);
+    }
+
+    private function rollingCapRetryAt(
+        int $userId,
+        string $category,
+        int $requested,
+        int $rollingCap,
+        int $rollingTotal
+    ): ?CarbonImmutable {
+        $amountThatMustExpire = max(0, $rollingTotal + $requested - $rollingCap);
+        if ($amountThatMustExpire === 0) {
+            return null;
+        }
+
+        $expiringAmount = 0;
+        $credits = WalletTransaction::query()
+            ->where('user_id', $userId)
+            ->where('category', $category)
+            ->where('direction', WalletTransaction::DIRECTION_CREDIT)
+            ->where('occurred_at', '>=', $this->rewardNow()->subDays(30))
+            ->orderBy('occurred_at')
+            ->orderBy('id')
+            ->get(['amount', 'occurred_at']);
+        foreach ($credits as $credit) {
+            $expiringAmount += max(0, (int) $credit->amount);
+            if ($expiringAmount >= $amountThatMustExpire) {
+                return CarbonImmutable::parse($credit->occurred_at)
+                    ->setTimezone($this->rewardTimezone())
+                    ->addDays(30)
+                    ->addSecond()
+                    ->utc();
+            }
+        }
+
+        return null;
     }
 
     private function result(User $user, ?WalletTransaction $transaction, array $extra = []): array

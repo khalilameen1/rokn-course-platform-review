@@ -558,18 +558,12 @@ class SignController extends Controller
             ? $preferredProvider
             : $providers->first();
         try {
-            $offers = Cache::remember(
-                'auth-methods:registration-offers:v1:'.($recommendedProvider ?: 'none'),
-                60,
-                static fn (): array => [
-                    'welcome' => \App\Services\StudentNotificationService::registrationBonusOffer(),
-                    'recommended' => $recommendedProvider
-                        ? \App\Services\StudentNotificationService::registrationBonusOffer($recommendedProvider)
-                        : 0,
-                ]
-            );
-            $welcomeBonus = max(0, (int) ($offers['welcome'] ?? 0));
-            $recommendedTotal = max(0, (int) ($offers['recommended'] ?? 0));
+            // Read the same rule/settings as registration credit. An independent
+            // offer cache made discovery lag behind dashboard changes.
+            $welcomeBonus = max(0, \App\Services\StudentNotificationService::registrationBonusOffer());
+            $recommendedTotal = $recommendedProvider
+                ? max(0, \App\Services\StudentNotificationService::registrationBonusOffer($recommendedProvider))
+                : 0;
         } catch (\Throwable $exception) {
             // Login discovery is core availability. Rewards are optional copy
             // and may be omitted while their ledger/settings tables recover.

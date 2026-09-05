@@ -28,6 +28,7 @@ import {
   getPendingWelcomeBonus,
 } from '../../services/pendingWelcomeBonus';
 import {serverNowMs} from '../../utils/serverClock';
+import {roknCalendarDay} from '../../constants/roknCalendar';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
 import type {HomeCampaign} from './HomeOverlays';
 
@@ -114,9 +115,9 @@ export const useHomeEngagement = ({
 
   useEffect(() => {
     if (!active || serverSession !== true) return;
-    const attempt = `${identityKey}:${new Date(serverNowMs())
-      .toISOString()
-      .slice(0, 10)}`;
+    const attempt = `${identityKey}:${roknCalendarDay(
+      new Date(serverNowMs()),
+    )}`;
     if (
       rewardFlightRef.current?.identityKey === identityKey ||
       rewardAttemptRef.current === attempt
@@ -128,7 +129,15 @@ export const useHomeEngagement = ({
       .then(boundary => claimDailyReward(boundary))
       .then(
         () => true,
-        () => false,
+        () => {
+          // A transport failure may mean either that the idempotent award was
+          // accepted or that it never reached the server. Allow the next
+          // foreground activation to reconcile by calling the same endpoint.
+          if (rewardAttemptRef.current === attempt) {
+            rewardAttemptRef.current = '';
+          }
+          return false;
+        },
       );
     rewardFlightRef.current = {identityKey, promise};
     void promise.finally(() => {

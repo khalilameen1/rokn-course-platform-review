@@ -104,12 +104,15 @@ export type CoinTask = {
   description: string;
   reward: number;
   url?: string;
-  status: 'available' | 'started' | 'claimed';
+  status: 'available' | 'started' | 'ready_to_claim' | 'claimed';
   actionKey: string;
   requiresExternalVisit: boolean;
 };
 
-type CoinTaskStartResult = {status: string; url?: string};
+type CoinTaskStartResult = {
+  status: 'started' | 'ready_to_claim' | 'claimed';
+  url?: string;
+};
 type CoinTaskClaimResult = {balance: number; amount: number};
 
 const startFlights = new Map<string, Promise<CoinTaskStartResult>>();
@@ -180,11 +183,18 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
       title: coinTaskTitle(item),
       description: taskDescription(actionKey),
       reward: Number(item.coins_amount),
-      url: item.action_url ? String(item.action_url) : rememberedUrls[serverId],
+      url:
+        typeof item.action_url === 'string' && item.action_url.trim()
+          ? item.action_url.trim()
+          : state === 'started'
+          ? rememberedUrls[serverId]
+          : undefined,
       status:
         state === 'claimed'
           ? 'claimed'
-          : state === 'started' || state === 'ready_to_claim'
+          : state === 'ready_to_claim'
+          ? 'ready_to_claim'
+          : state === 'started'
           ? 'started'
           : 'available',
       actionKey,
@@ -192,11 +202,11 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
         firstBoolean(item.requires_external_visit) ?? false,
     };
   });
-  const activeIds = new Set(
-    tasks.filter(task => task.status !== 'claimed').map(task => task.serverId),
+  const resumableIds = new Set(
+    tasks.filter(task => task.status === 'started').map(task => task.serverId),
   );
   Object.keys(rememberedUrls).forEach(taskId => {
-    if (!activeIds.has(taskId)) {
+    if (!resumableIds.has(taskId)) {
       void forgetActionUrl(taskId, boundary).catch(() => undefined);
     }
   });
@@ -217,27 +227,38 @@ export const startCoinTask = async (
   const flight = (async () => {
     assertAccountSessionBoundary(boundary);
     const data = payload(
-      await publicRequest.post(`coin-earning-methods/${task.serverId}/start`),
+      await publicRequest.post(`coin-earning-methods/${task.serverId}/start`, {
+        supports_ready_claim: true,
+      }),
     );
     assertAccountSessionBoundary(boundary);
     if (!isApiRecord(data)) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
-    const status = String(data.task_state || '');
+    const status = String(data.task_state || '') as CoinTaskStartResult['status'];
     if (!['started', 'ready_to_claim', 'claimed'].includes(status)) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
     const actionUrl =
       typeof data.action_url === 'string' ? data.action_url.trim() : '';
-    const url = actionUrl || task.url;
+    const url =
+      status === 'started'
+        ? actionUrl || task.url
+        : status === 'ready_to_claim' && actionUrl
+        ? actionUrl
+        : undefined;
+    const requiresActionUrl =
+      task.requiresExternalVisit &&
+      (status === 'started' ||
+        (status === 'ready_to_claim' && task.actionKey !== 'link_whatsapp'));
     if (
       status !== 'claimed' &&
       (String(data.attempt_id || '').trim() === '' ||
-        (task.requiresExternalVisit && !actionUrl))
+        (requiresActionUrl && !actionUrl))
     ) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
-    if (status === 'claimed') {
+    if (status === 'claimed' || (status === 'ready_to_claim' && !url)) {
       await forgetActionUrl(task.serverId, boundary).catch(() => undefined);
     } else {
       await rememberActionUrl(task.serverId, url, boundary).catch(

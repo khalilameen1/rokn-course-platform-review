@@ -58,11 +58,14 @@ final class CoinEarningMethodController extends Controller
         }
 
         $tombstones = $this->tombstones;
+        $whatsAppVerified = $user && $methods->contains('action_key', 'link_whatsapp')
+            && $user->whatsappConnection()->verified()->exists();
         $consumedRewardKeys = $user ? $tombstones->consumedRewardKeys($user) : [];
         $methods->each(function (CoinEarningMethod $method) use (
             $earnings,
             $attempts,
             $tombstones,
+            $whatsAppVerified,
             $consumedRewardKeys
         ): void {
             $attempt = $attempts->get($method->id);
@@ -73,7 +76,10 @@ final class CoinEarningMethodController extends Controller
             $state = 'available';
             if ($claimed) {
                 $state = 'claimed';
-            } elseif ($attempt && $attempt->claim_available_at?->isFuture()) {
+            } elseif ($attempt && (
+                $attempt->claim_available_at?->isFuture()
+                || ($method->action_key === 'link_whatsapp' && !$whatsAppVerified)
+            )) {
                 $state = 'started';
             } elseif ($attempt) {
                 $state = 'ready_to_claim';
@@ -117,7 +123,11 @@ final class CoinEarningMethodController extends Controller
         }
         if ($method->action_key === 'link_whatsapp') {
             try {
-                $data = $whatsAppLinks->createLink($user, $method);
+                $data = $whatsAppLinks->createLink(
+                    $user,
+                    $method,
+                    request()->boolean('supports_ready_claim')
+                );
             } catch (\DomainException $exception) {
                 return $this->error(
                     $exception->getMessage() === 'whatsapp_bot_unavailable'
@@ -260,8 +270,7 @@ final class CoinEarningMethodController extends Controller
                 if (
                     $lockedMethod->action_key === 'link_whatsapp'
                     && !$user->whatsappConnection()
-                        ->where('ownership_verified', true)
-                        ->whereNotNull('verified_at')
+                        ->verified()
                         ->exists()
                 ) {
                     throw new \DomainException('whatsapp_not_verified');

@@ -89,7 +89,9 @@ const validCachedTasks = (value: unknown): value is CoinTask[] =>
       isNonNegativeFinite(item.reward) &&
       Number.isSafeInteger(Number(item.reward)) &&
       Number(item.reward) > 0 &&
-      ['available', 'started', 'claimed'].includes(item.status) &&
+      ['available', 'started', 'ready_to_claim', 'claimed'].includes(
+        item.status,
+      ) &&
       typeof item.actionKey === 'string' &&
       item.actionKey.trim().length > 0 &&
       typeof item.requiresExternalVisit === 'boolean' &&

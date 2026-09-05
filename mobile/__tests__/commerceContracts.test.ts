@@ -169,6 +169,27 @@ describe('commerce API contracts', () => {
     ]);
   });
 
+  it('preserves a verified WhatsApp task as ready to claim', async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        data: [
+          {
+            id: 12,
+            action_key: 'link_whatsapp',
+            title_ar: 'اربط واتسابك بركن',
+            coins_amount: 15,
+            task_state: 'ready_to_claim',
+            requires_external_visit: true,
+          },
+        ],
+      },
+    });
+
+    await expect(getCoinTasks()).resolves.toEqual([
+      expect.objectContaining({status: 'ready_to_claim', url: undefined}),
+    ]);
+  });
+
   it('single-flights rapid task starts and claims per account', async () => {
     const task: CoinTask = {
       id: 'production-11',
@@ -206,6 +227,9 @@ describe('commerce API contracts', () => {
       },
     ]);
     expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockPost).toHaveBeenCalledWith('coin-earning-methods/11/start', {
+      supports_ready_claim: true,
+    });
 
     mockPost.mockClear();
     mockPost.mockResolvedValueOnce({
@@ -225,6 +249,84 @@ describe('commerce API contracts', () => {
       {balance: 175, amount: 75},
     ]);
     expect(mockPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('accepts a verified task start without requiring another external URL', async () => {
+    const task: CoinTask = {
+      id: 'production-12',
+      serverId: '12',
+      title: 'اربط واتسابك بركن',
+      description: '',
+      reward: 15,
+      status: 'available',
+      actionKey: 'link_whatsapp',
+      requiresExternalVisit: true,
+    };
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          attempt_id: 'attempt-12',
+          task_state: 'ready_to_claim',
+        },
+      },
+    });
+
+    await expect(startCoinTask(task)).resolves.toEqual({
+      status: 'ready_to_claim',
+      url: undefined,
+    });
+  });
+
+  it('preserves an immediate social verification URL for the first open', async () => {
+    const task: CoinTask = {
+      id: 'production-13',
+      serverId: '13',
+      title: 'تابع ركن',
+      description: '',
+      reward: 15,
+      status: 'available',
+      actionKey: 'follow_instagram',
+      requiresExternalVisit: true,
+    };
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          attempt_id: 'attempt-13',
+          task_state: 'ready_to_claim',
+          action_url: 'https://instagram.com/rokn.app',
+        },
+      },
+    });
+
+    await expect(startCoinTask(task)).resolves.toEqual({
+      status: 'ready_to_claim',
+      url: 'https://instagram.com/rokn.app',
+    });
+  });
+
+  it('rejects immediate social verification without its required destination', async () => {
+    const task: CoinTask = {
+      id: 'production-13',
+      serverId: '13',
+      title: 'تابع ركن',
+      description: '',
+      reward: 15,
+      status: 'available',
+      actionKey: 'follow_instagram',
+      requiresExternalVisit: true,
+    };
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          attempt_id: 'attempt-13',
+          task_state: 'ready_to_claim',
+        },
+      },
+    });
+
+    await expect(startCoinTask(task)).rejects.toThrow(
+      'API_CONTRACT_INVALID_COIN_TASK_START',
+    );
   });
 
   it('renders coin packages as a horizontal rail with another card visible', () => {

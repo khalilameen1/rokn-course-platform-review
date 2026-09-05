@@ -7,8 +7,11 @@ namespace Tests\Feature;
 use App\Jobs\SendUserPushNotification;
 use App\Jobs\SendWhatsAppMessage;
 use App\Models\CoinEarningMethod;
+use App\Models\Setting;
 use App\Models\StudentNotification;
 use App\Models\User;
+use App\Services\WalletService;
+use App\Services\WhatsAppLinkService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -200,6 +203,108 @@ final class CoinEarningTaskLifecycleTest extends TestCase
             'category' => 'task_reward',
             'amount' => 43,
         ]);
+    }
+
+    public function test_opening_whatsapp_does_not_mark_an_unverified_task_ready_to_claim(): void
+    {
+        config()->set('whatsapp.enabled', true);
+        config()->set('whatsapp.linking.bot_phone', '201001234567');
+        $user = $this->student('whatsapp-unverified@rokn.test');
+        $token = $user->generateApiToken();
+        $method = $this->method('link_whatsapp', 43);
+        $method->update(['requires_external_visit' => true]);
+
+        $this->withToken($token)
+            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->assertOk()
+            ->assertJsonPath('data.task_state', 'started');
+
+        $this->withToken($token)->getJson('/api/v1/coin-earning-methods')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $method->id, 'task_state' => 'started']);
+        $this->withToken($token)->postJson('/api/v1/claim-coins', ['method_id' => $method->id])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'whatsapp_not_verified');
+    }
+
+    public function test_verified_whatsapp_reward_can_be_claimed_after_spending_without_another_message(): void
+    {
+        config()->set('whatsapp.enabled', true);
+        config()->set('whatsapp.linking.bot_phone', '201001234567');
+        Setting::query()->firstOrCreate()->forceFill(['reward_balance_cap' => 100])->save();
+        $user = $this->student('whatsapp-deferred@rokn.test');
+        $token = $user->generateApiToken();
+        $method = $this->method('link_whatsapp', 43);
+        $method->update(['requires_external_visit' => true]);
+        $wallet = app(WalletService::class);
+        $wallet->credit($user->id, 100, 'test_reward', 'initial-reward');
+
+        $start = $this->withToken($token)
+            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')->assertOk();
+        parse_str((string) parse_url((string) $start->json('data.action_url'), PHP_URL_QUERY), $query);
+        $inbound = app(WhatsAppLinkService::class)->consumeInbound('201012345678', $query['text']);
+        self::assertTrue($inbound['reward_deferred']);
+        $this->assertDatabaseMissing('user_coin_earnings', ['user_id' => $user->id]);
+
+        $wallet->debit($user->id, 60, 'test_purchase', 'spend-reward');
+        $this->withToken($token)->getJson('/api/v1/coin-earning-methods')
+            ->assertOk()
+            ->assertJsonFragment(['id' => $method->id, 'task_state' => 'ready_to_claim']);
+
+        // Returning to the task must not generate a new link or require a
+        // second message for an ownership check already completed by inbound.
+        $this->withToken($token)
+            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start', ['supports_ready_claim' => true])
+            ->assertOk()
+            ->assertJsonPath('data.task_state', 'ready_to_claim')
+            ->assertJsonPath('data.action_url', null);
+        $this->assertDatabaseCount('whatsapp_link_tokens', 1);
+
+        foreach ([false, true] as $replay) {
+            $this->withToken($token)->postJson('/api/v1/claim-coins', ['method_id' => $method->id])
+                ->assertOk()
+                ->assertJsonPath('data.already_claimed', $replay)
+                ->assertJsonPath('data.new_balance', 83)
+                ->assertJsonPath('data.task_state', 'claimed');
+        }
+        $this->assertDatabaseCount('user_coin_earnings', 1);
+        self::assertSame(1, DB::table('wallet_transactions')->where('category', 'task_reward')->count());
+    }
+
+    public function test_legacy_mobile_can_finish_a_deferred_whatsapp_reward_with_its_linking_message(): void
+    {
+        config()->set('whatsapp.enabled', true);
+        config()->set('whatsapp.linking.bot_phone', '201001234567');
+        Setting::query()->firstOrCreate()->forceFill(['reward_balance_cap' => 100])->save();
+        $user = $this->student('whatsapp-legacy@rokn.test');
+        $token = $user->generateApiToken();
+        $method = $this->method('link_whatsapp', 43);
+        $method->update(['requires_external_visit' => true]);
+        $wallet = app(WalletService::class);
+        $wallet->credit($user->id, 100, 'test_reward', 'initial-reward');
+
+        foreach ([true, false] as $deferred) {
+            $start = $this->withToken($token)
+                ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+                ->assertOk()
+                ->assertJsonPath('data.task_state', 'started');
+            parse_str((string) parse_url((string) $start->json('data.action_url'), PHP_URL_QUERY), $query);
+            self::assertStringContainsString('ROKN_LINK_', $query['text']);
+            $result = app(WhatsAppLinkService::class)->consumeInbound('201012345678', $query['text']);
+            self::assertSame($deferred, $result['reward_deferred']);
+            if ($deferred) {
+                $wallet->debit($user->id, 60, 'test_purchase', 'spend-reward');
+            }
+        }
+
+        $this->withToken($token)
+            ->postJson('/api/v1/coin-earning-methods/' . $method->id . '/start')
+            ->assertOk()
+            ->assertJsonPath('data.task_state', 'claimed');
+        $this->assertDatabaseCount('user_coin_earnings', 1);
+        $this->assertDatabaseCount('whatsapp_link_tokens', 2);
+        self::assertSame(83, $wallet->balances($user->fresh())['total']);
+        self::assertSame(1, DB::table('wallet_transactions')->where('category', 'task_reward')->count());
     }
 
     private function student(string $email): User

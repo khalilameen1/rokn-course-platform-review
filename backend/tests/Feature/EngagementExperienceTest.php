@@ -133,6 +133,123 @@ final class EngagementExperienceTest extends TestCase
         self::assertSame(0, StudentNotificationService::sendRegistrationBonus($user));
     }
 
+    public function test_login_offer_refreshes_after_settings_save_and_matches_the_actual_grant(): void
+    {
+        config()->set([
+            'social_auth.providers' => ['google'],
+            'services.google.client_id' => 'configured',
+            'services.google.client_secret' => 'configured',
+        ]);
+        $settings = Setting::query()->firstOrCreate([]);
+        $settings->update([
+            'reward_balance_cap' => 1200,
+            'recommended_social_provider' => 'google',
+            'recommended_provider_bonus_coins' => 9,
+        ]);
+        RewardRule::query()->where('event_key', 'welcome_bonus')->update(['coins_amount' => 20]);
+
+        $this->getJson('/api/v1/auth-methods')
+            ->assertOk()
+            ->assertJsonPath('data.recommended_provider_total_coins', 29);
+
+        // This is the model save performed by the dashboard settings action.
+        $settings->refresh()->update(['recommended_provider_bonus_coins' => 19]);
+        $promised = (int) $this->getJson('/api/v1/auth-methods')
+            ->assertOk()
+            ->assertJsonPath('data.recommended_provider_total_coins', 39)
+            ->json('data.recommended_provider_total_coins');
+
+        $user = $this->student('fresh-offer-google@rokn.test', 'google');
+        $granted = StudentNotificationService::sendRegistrationBonus($user, 'google');
+
+        self::assertSame($promised, $granted);
+        self::assertSame($promised, (int) $user->fresh()->wallet_reward_coins);
+    }
+
+    public function test_login_offer_refreshes_after_welcome_rule_model_save_and_matches_the_actual_grant(): void
+    {
+        config()->set([
+            'social_auth.providers' => ['google'],
+            'services.google.client_id' => 'configured',
+            'services.google.client_secret' => 'configured',
+        ]);
+        Setting::query()->firstOrCreate([])->update([
+            'reward_balance_cap' => 1200,
+            'recommended_social_provider' => 'google',
+            'recommended_provider_bonus_coins' => 9,
+        ]);
+        $welcomeRule = RewardRule::query()->where('event_key', 'welcome_bonus')->firstOrFail();
+        $welcomeRule->coins_amount = 20;
+        $welcomeRule->save();
+
+        $this->getJson('/api/v1/auth-methods')
+            ->assertOk()
+            ->assertJsonPath('data.recommended_provider_total_coins', 29);
+
+        // Dashboard reward-rule updates use Eloquent saves, whose model event
+        // invalidates both the canonical rule cache and login discovery cache.
+        $welcomeRule->refresh();
+        $welcomeRule->coins_amount = 30;
+        $welcomeRule->save();
+        $promised = (int) $this->getJson('/api/v1/auth-methods')
+            ->assertOk()
+            ->assertJsonPath('data.welcome_bonus_coins', 30)
+            ->assertJsonPath('data.recommended_provider_total_coins', 39)
+            ->json('data.recommended_provider_total_coins');
+
+        $user = $this->student('fresh-rule-google@rokn.test', 'google');
+        $granted = StudentNotificationService::sendRegistrationBonus($user, 'google');
+
+        self::assertSame($promised, $granted);
+        self::assertSame($promised, (int) $user->fresh()->wallet_reward_coins);
+    }
+
+    public function test_login_offer_refreshes_when_the_recommended_available_provider_changes(): void
+    {
+        config()->set([
+            'social_auth.providers' => ['google', 'facebook'],
+            'services.google.client_id' => 'configured',
+            'services.google.client_secret' => 'configured',
+            'services.facebook.client_id' => 'configured',
+            'services.facebook.client_secret' => 'configured',
+            'services.facebook.graph_version' => 'v23.0',
+        ]);
+        $settings = Setting::query()->firstOrCreate([]);
+        $settings->update([
+            'reward_balance_cap' => 1200,
+            'recommended_social_provider' => 'google',
+            'recommended_provider_bonus_coins' => 9,
+        ]);
+        RewardRule::query()->where('event_key', 'welcome_bonus')->update(['coins_amount' => 20]);
+
+        $this->getJson('/api/v1/auth-methods')
+            ->assertOk()
+            ->assertJsonPath('data.recommended_provider', 'google')
+            ->assertJsonPath('data.recommended_provider_total_coins', 29);
+
+        $settings->refresh()->update(['recommended_social_provider' => 'facebook']);
+        $promised = (int) $this->getJson('/api/v1/auth-methods')
+            ->assertOk()
+            ->assertJsonPath('data.providers.0', 'google')
+            ->assertJsonPath('data.providers.1', 'facebook')
+            ->assertJsonPath('data.recommended_provider', 'facebook')
+            ->assertJsonPath('data.welcome_bonus_coins', 20)
+            ->assertJsonPath('data.recommended_provider_bonus_coins', 9)
+            ->assertJsonPath('data.recommended_provider_total_coins', 29)
+            ->json('data.recommended_provider_total_coins');
+
+        $facebookUser = $this->student('fresh-offer-facebook@rokn.test', 'facebook');
+        self::assertSame(
+            $promised,
+            StudentNotificationService::sendRegistrationBonus($facebookUser, 'facebook')
+        );
+        self::assertSame($promised, (int) $facebookUser->fresh()->wallet_reward_coins);
+
+        $googleUser = $this->student('base-offer-google@rokn.test', 'google');
+        self::assertSame(20, StudentNotificationService::sendRegistrationBonus($googleUser, 'google'));
+        self::assertSame(20, (int) $googleUser->fresh()->wallet_reward_coins);
+    }
+
     public function test_welcome_offer_is_not_promised_or_consumed_when_it_exceeds_the_wallet_cap(): void
     {
         $settings = Setting::query()->firstOrCreate([]);

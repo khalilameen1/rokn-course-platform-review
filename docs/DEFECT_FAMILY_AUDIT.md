@@ -428,6 +428,43 @@ publisher now uses the existing canonical asset-hash helper, matching the
 validator and Linux output. The complete production build and all six asset-policy
 tests then passed; generated distributed files have no content changes.
 
+## Reward configuration to learner settlement — 2026-09-05
+
+The next vertical review found and reproduced these daily failures:
+
+- Login discovery kept a separate 60-second offer cache after the dashboard
+  changed the actual registration grant. Removing that cache makes the displayed
+  base, recommended-provider bonus and provider selection follow the same reader
+  as registration credit. Warm-cache regressions compare each promise to the
+  actual new-user ledger grant after model saves.
+- A started study day lost its frozen reward contract when its rule was disabled.
+  Existing daily activity now completes its contract; a disabled rule still
+  cannot start another day.
+- Achievement reward signals were marked handled when a temporarily full balance
+  or rolling cap prevented credit. Only these reward effects now defer, without
+  delaying their badge/notification siblings. Balance retries wait 12 hours;
+  rolling retries wait until sufficient credits actually expire, using Cairo
+  calendar arithmetic across DST. Existing receipts, zero/excluded grants and
+  amounts that cannot fit their caps remain terminal, not infinite retries.
+- Mobile remembered a failed daily request as the day's completed attempt and
+  keyed that day in UTC. It now retries on the next foreground activation after
+  failure and uses the shared Cairo day.
+- Task reads confused opening WhatsApp with completed verification, while mobile
+  collapsed `ready_to_claim` into `started`. Verified rewards deferred by a full
+  wallet can now be claimed after spending without another linking message.
+  Social destinations still open before claiming, and the coin guide still
+  opens after an immediate-ready start. Failed openings retain their retry action.
+
+New clients advertise `supports_ready_claim` on task start. The server retains
+the existing token/message path for older APKs that cannot render the ready claim
+action. Both paths are covered through deferred credit and one final receipt.
+
+Verification: 122 focused backend tests / 909 assertions; five mobile suites /
+43 tests; full mobile typecheck and changed-file ESLint passed. New regressions
+were first observed failing before their fixes. No live prices, balances or
+settings were changed, and no already-handled historical reward signals were
+replayed. These checks do not substitute for an installed-APK acceptance pass.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

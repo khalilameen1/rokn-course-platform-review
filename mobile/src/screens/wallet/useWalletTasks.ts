@@ -31,6 +31,11 @@ export const walletTaskActionLabel = (
   openingNeedsRetry: boolean,
 ) => {
   if (task.status === 'claimed') return 'تم الاستلام';
+  if (task.status === 'ready_to_claim') {
+    return !isWhatsAppTask(task) && openingNeedsRetry && task.url
+      ? 'فتح'
+      : 'استلام';
+  }
   if (openingNeedsRetry) return 'فتح';
   if (task.status === 'started' && isWhatsAppTask(task)) return 'فتح';
   if (task.status === 'started') return 'استلام';
@@ -104,28 +109,47 @@ export const useWalletTasks = (
     [ownsBoundary, setOpeningNeedsRetry],
   );
 
+  const applyTaskStart = useCallback(
+    async (
+      task: CoinTask,
+      boundary: AccountSessionBoundary,
+      started: Awaited<ReturnType<typeof startCoinTask>>,
+    ) => {
+      if (started.status === 'claimed') {
+        updateTask(task.id, {status: 'claimed'});
+        await refreshAfterCurrent();
+        return;
+      }
+
+      updateTask(task.id, {
+        status: started.status,
+        url: started.url,
+      });
+      if (isCoinGuideTask(task)) {
+        showCoinRules();
+        return;
+      }
+      if (started.status === 'ready_to_claim' && isWhatsAppTask(task)) {
+        return;
+      }
+      if (task.requiresExternalVisit || isWhatsAppTask(task)) {
+        await openTaskDestination(task, boundary, started.url);
+      }
+    },
+    [
+      openTaskDestination,
+      refreshAfterCurrent,
+      showCoinRules,
+      updateTask,
+    ],
+  );
+
   const startAndOpenTask = useCallback(
     async (task: CoinTask, boundary: AccountSessionBoundary) => {
       try {
         const started = await startCoinTask(task, boundary);
         if (!ownsBoundary(boundary)) return;
-        if (started.status === 'claimed') {
-          updateTask(task.id, {status: 'claimed'});
-          await refreshAfterCurrent();
-          return;
-        }
-
-        updateTask(task.id, {
-          status: 'started',
-          url: started.url || task.url,
-        });
-        if (isCoinGuideTask(task)) {
-          showCoinRules();
-          return;
-        }
-        if (task.requiresExternalVisit || isWhatsAppTask(task)) {
-          await openTaskDestination(task, boundary, started.url);
-        }
+        await applyTaskStart(task, boundary, started);
       } catch (error: unknown) {
         if (!ownsBoundary(boundary)) return;
         Alert.alert(
@@ -135,11 +159,8 @@ export const useWalletTasks = (
       }
     },
     [
-      openTaskDestination,
+      applyTaskStart,
       ownsBoundary,
-      refreshAfterCurrent,
-      showCoinRules,
-      updateTask,
     ],
   );
 
@@ -151,16 +172,7 @@ export const useWalletTasks = (
         // reopen an obsolete destination.
         const resumed = await startCoinTask(task, boundary);
         if (!ownsBoundary(boundary)) return;
-        if (resumed.status === 'claimed') {
-          updateTask(task.id, {status: 'claimed'});
-          await refreshAfterCurrent();
-          return;
-        }
-        updateTask(task.id, {
-          status: 'started',
-          url: resumed.url || task.url,
-        });
-        await openTaskDestination(task, boundary, resumed.url);
+        await applyTaskStart(task, boundary, resumed);
       } catch (error: unknown) {
         if (!ownsBoundary(boundary)) return;
         setOpeningNeedsRetry(task.id, true);
@@ -171,11 +183,9 @@ export const useWalletTasks = (
       }
     },
     [
-      openTaskDestination,
+      applyTaskStart,
       ownsBoundary,
-      refreshAfterCurrent,
       setOpeningNeedsRetry,
-      updateTask,
     ],
   );
 
@@ -206,8 +216,10 @@ export const useWalletTasks = (
       if (!ownsBoundary(boundary)) return;
       const openingNeedsRetry = openRetryIds.includes(task.id);
       if (
-        task.status === 'started' &&
-        (isWhatsAppTask(task) || openingNeedsRetry)
+        (task.status === 'started' && isWhatsAppTask(task)) ||
+        (openingNeedsRetry &&
+          Boolean(task.url) &&
+          !(task.status === 'ready_to_claim' && isWhatsAppTask(task)))
       ) {
         await resumeExternalTask(task, boundary);
       } else if (task.status === 'available') {
