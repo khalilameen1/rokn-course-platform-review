@@ -6,6 +6,16 @@ exists against the deployed backend and the signed mobile artifact.
 
 ## Recover confirmed and still-pending checkout outcomes — 2026-09-05
 
+Publication check: mobile CI `33986546218` for `99f3eec` completed with
+Android and iOS builds passing, but JavaScript failed one source-string
+assertion expecting the unformatted course title in `CourseShelf`. Replaced
+that assertion with a rendered shelf regression: the authored title stays
+intact, the card opens details only, and the nested resume action stops
+propagation and opens the canonical next project only. No production logic
+was changed to satisfy the assertion. The local release Jest run including
+the pending checkout fixes passed 164 suites / 891 tests; TypeScript and
+scoped ESLint passed. This is not authenticated-device acceptance.
+
 Two distinct mobile boundaries were dropping valid server/payment outcomes:
 
 - Foreground recovery joined an in-flight checkout but converted both pending

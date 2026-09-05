@@ -179,13 +179,11 @@ describe('signed-in daily journey', () => {
 
   it('reloads My Corner on account change and keeps resume separate from course details', () => {
     const myCorner = source('src/screens/MyCorner.tsx');
-    const courseShelf = source('src/screens/myCorner/CourseShelf.tsx');
     const myCornerData = source('src/screens/myCorner/useMyCornerData.ts');
 
     expect(myCornerData).toContain('}, [appIsActive, identityKey]),');
     expect(myCornerData).toContain('ownerRef.current !== identityKey');
     expect(myCorner).toContain("navigation.navigate('CourseDetails'");
-    expect(courseShelf).toContain('`عرض تفاصيل ${course.title}');
     expect(myCorner).toContain("navigation.navigate('Reels', target)");
     expect(myCorner).not.toContain('WatchHistorySection');
     expect(myCornerData).not.toContain('getWatchHistory');

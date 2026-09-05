@@ -9,6 +9,10 @@ import {PortfolioProjectGrid} from '../src/screens/Profile/gallery/PortfolioProj
 import type {CourseReel} from '../src/components/VideoPlayer/types';
 import type {Project} from '../src/screens/Profile/gallery/portfolioModel';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
+import {CourseShelf} from '../src/screens/myCorner/CourseShelf';
+import type {LearningCourse} from '../src/services/roknApi';
+
+jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
 const authoredTitle = 'ريلز 2026';
 const authoredCode = 'const label = "ريلز";\nconst limit = 3;';
@@ -38,6 +42,72 @@ const renderText = (
 };
 
 describe('authored text is not localized as interface copy', () => {
+  it('keeps authored course names while separating details from resume actions', () => {
+    const course: LearningCourse = {
+      id: '52',
+      title: authoredTitle,
+      progress: 20,
+      started: true,
+      completedSections: 1,
+      totalSections: 5,
+      category: 'freelance',
+      accessType: 'paid',
+      chatAvailable: true,
+      certificateAvailable: false,
+      nextSectionId: '71',
+      nextSectionTitle: 'مشروع العبور',
+      nextSectionType: 'project',
+    };
+    const onOpenCourse = jest.fn();
+    const onResume = jest.fn();
+    renderText(
+      <CourseShelf
+        error=""
+        hasActiveCourses
+        largeText={false}
+        learningOwnershipFresh
+        onOpenCourse={onOpenCourse}
+        onResume={onResume}
+        orderedCourses={[course]}
+        primaryResumeId={course.id}
+      />,
+      (renderer, texts) => {
+        expect(texts).toContain(authoredTitle);
+        const buttons = renderer.root.findAll(
+          node =>
+            node.props.accessibilityRole === 'button' &&
+            typeof node.props.onPress === 'function',
+        );
+        const details = buttons.find(node =>
+          cleanUnicodeText(node.props.accessibilityLabel).startsWith(
+            `عرض تفاصيل ${authoredTitle}`,
+          ),
+        );
+        const resume = buttons.find(
+          node =>
+            cleanUnicodeText(node.props.accessibilityLabel) ===
+            `استكمال ${authoredTitle}`,
+        );
+        expect(details).toBeDefined();
+        expect(resume).toBeDefined();
+
+        act(() => details!.props.onPress());
+        expect(onOpenCourse).toHaveBeenCalledWith('52');
+        expect(onResume).not.toHaveBeenCalled();
+
+        onOpenCourse.mockClear();
+        const stopPropagation = jest.fn();
+        act(() => resume!.props.onPress({stopPropagation}));
+        expect(stopPropagation).toHaveBeenCalledTimes(1);
+        expect(onResume).toHaveBeenCalledWith({
+          courseId: '52',
+          projectId: '71',
+        });
+        expect(onOpenCourse).not.toHaveBeenCalled();
+      },
+    );
+  });
+
   it('preserves an authored home row heading through the shared section component', () => {
     const course = {id: 'course-1', title: 'Blender', image: 1} as Course;
     renderText(
