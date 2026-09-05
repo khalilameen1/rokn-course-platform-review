@@ -9,7 +9,7 @@
     },
     {
       "path": "public/admin/assets/css/admin-learning-views.css",
-      "sha256": "c242fd6c6d6ed9a4d3953d018fe27f8b0f910126d5e20464a66499bda62121e0",
+      "sha256": "69f0007c9cb74581411be45586738abdff9596ce5e4120aa2826aca534aea634",
       "classification": "first_party"
     },
     {
@@ -340,7 +340,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-module-editor.js",
-      "sha256": "6aa4c9f104a81490fdeb25dc23665104f5c0fb464b3e6250fad5ae5ac44acab1",
+      "sha256": "e3e39cf62f2cd3904781f138a534636f24e5aac10b488f4cae7ed46fb269a526",
       "classification": "first_party"
     },
     {
@@ -350,7 +350,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-section-editor.js",
-      "sha256": "08123b4b622cd2a5f3a64e993f3b36a36d80aa664bdc54d08e40f54e2f72b563",
+      "sha256": "81de36226cbb11d53459e584eacc7cf5e78f51111ae1a1762831e29e956d3257",
       "classification": "first_party"
     },
     {
@@ -468,7 +468,7 @@
     },
     {
       "path": "public/images/certificate_template_v2.png",
-      "sha256": "2d9222fb27276b3878da741f15e59e3d233499bb8b51520fb29f700307d05e95",
+      "sha256": "300ddb3320eb0a53122d1d9112797402d60165656e6b9c75ab25d0afaea336ff",
       "classification": "first_party"
     },
     {

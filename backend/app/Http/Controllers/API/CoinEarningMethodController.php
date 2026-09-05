@@ -270,7 +270,7 @@ final class CoinEarningMethodController extends Controller
                     throw new \DomainException('task_quota_reached');
                 }
 
-                if ($method->requires_external_visit && !$attempt) {
+                if ($lockedMethod->requires_external_visit && !$attempt) {
                     throw new \DomainException('task_not_started');
                 }
                 if ($attempt?->claim_available_at?->isFuture()) {

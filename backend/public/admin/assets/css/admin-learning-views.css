@@ -161,21 +161,45 @@
     box-shadow: var(--learning-shadow);
 }
 
-.admin-learning--coins .methods-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 2rem;
-    margin-bottom: 2rem;
-    color: #fff;
-    background: linear-gradient(135deg, var(--learning-primary-dark), var(--learning-primary));
-    border-radius: 20px;
+.admin-learning--coins .coin-accent-icon,
+.admin-learning--coins .method-card__amount {
+    color: var(--learning-primary);
 }
 
-.admin-learning--coins .methods-header h1 {
-    margin-bottom: .5rem;
-    font-size: 1.8rem;
+.admin-learning--coins .reward-rule-card {
+    padding: 1rem;
+    background: var(--learning-surface);
+    border: 1px solid var(--learning-border);
+    border-radius: var(--learning-radius);
+}
+
+.admin-learning--coins .reward-rule-fields {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem 1rem;
+}
+
+.admin-learning--coins .reward-rule-field {
+    min-width: 0;
+}
+
+.admin-learning--coins .reward-rule-field label {
+    display: block;
+    min-height: 1.5rem;
+    margin-bottom: .35rem;
+    line-height: 1.5;
+}
+
+.admin-learning--coins .reward-rule-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    padding-top: 1rem;
+}
+
+.admin-learning--coins .reward-rule-actions form {
+    margin: 0;
 }
 
 .admin-learning--coins .method-card {
@@ -187,6 +211,28 @@
     border-radius: var(--learning-radius);
     box-shadow: var(--learning-shadow);
     transition: border-color .2s ease, transform .2s ease;
+}
+
+.admin-learning--coins .method-card__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: .65rem 1rem;
+}
+
+.admin-learning--coins .method-card__title {
+    flex: 1 1 12rem;
+    min-width: 0;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
+.admin-learning--coins .method-card__badges {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: .35rem;
 }
 
 .admin-learning--coins .method-card:hover {
@@ -613,10 +659,15 @@
     margin-right: 20px;
 }
 
+@media (max-width: 1199px) {
+    .admin-learning--coins .reward-rule-fields {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 @media (max-width: 768px) {
-    .admin-learning--coins .methods-header {
-        align-items: flex-start;
-        flex-direction: column;
+    .admin-learning--coins .reward-rule-fields {
+        grid-template-columns: 1fr;
     }
 
     .admin-learning--contacts.contacts-wrapper {

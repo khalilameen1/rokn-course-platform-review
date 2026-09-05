@@ -100,6 +100,40 @@ final class CoinEarningTaskLifecycleTest extends TestCase
         ]);
     }
 
+    public function test_claim_uses_the_fresh_visit_requirement_loaded_inside_the_transaction(): void
+    {
+        $user = $this->student('reward-fresh-visit-rule@rokn.test');
+        $token = $user->generateApiToken();
+        $method = $this->method('fresh-visit-rule', 23);
+        $switched = false;
+
+        CoinEarningMethod::retrieved(function (CoinEarningMethod $retrieved) use ($method, &$switched): void {
+            if ($switched || $retrieved->id !== $method->id) {
+                return;
+            }
+
+            $switched = true;
+            DB::table('coin_earning_methods')
+                ->where('id', $method->id)
+                ->update(['requires_external_visit' => true]);
+        });
+
+        $this->withToken($token)
+            ->postJson('/api/v1/claim-coins', ['method_id' => $method->id])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'task_not_started');
+
+        self::assertTrue($switched, 'The rule must change after the request reads its first snapshot.');
+        $this->assertDatabaseMissing('wallet_transactions', [
+            'user_id' => $user->id,
+            'category' => 'task_reward',
+        ]);
+        $this->assertDatabaseMissing('user_coin_task_attempts', [
+            'user_id' => $user->id,
+            'coin_earning_method_id' => $method->id,
+        ]);
+    }
+
     public function test_whatsapp_reward_and_its_inbox_receipt_roll_back_and_retry_together(): void
     {
         config()->set('whatsapp.enabled', true);

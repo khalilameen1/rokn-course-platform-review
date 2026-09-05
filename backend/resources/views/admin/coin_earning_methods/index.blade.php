@@ -8,11 +8,28 @@
 
 @section('content')
 <div class="fade-in admin-learning admin-learning--coins admin-page">
+    @include('admin.partials.page-header', [
+        'pageTitle' => 'طرق ربح العملات',
+        'pageDescription' => 'إدارة طرق الربح وقواعد المكافآت وحدود استخدامها',
+        'pageIcon' => 'fa-money',
+        'pageActionUrl' => route('admin.coin-earning-methods.create'),
+        'pageActionLabel' => 'إضافة طريقة جديدة',
+        'pageActionIcon' => 'fa-plus',
+    ])
+
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('success') }}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    @endif
 
     {{-- How to Use Coins Settings --}}
     <div class="card shadow-sm border-0 mb-4 coin-panel">
         <div class="card-header bg-white py-3 d-flex align-items-center">
-            <i class="fa fa-info-circle text-warning ml-2"></i>
+            <i class="fa fa-info-circle coin-accent-icon ml-2"></i>
             <h6 class="mb-0 font-weight-bold">نص "كيفية استخدام العملات"</h6>
         </div>
         <div class="card-body p-4">
@@ -84,7 +101,7 @@
                         <input class="form-control" dir="ltr" id="recommended_provider_badge_en" maxlength="255" name="recommended_provider_badge_en" value="{{ old('recommended_provider_badge_en', $setting?->recommended_provider_badge_en) }}">
                     </div>
                 </div>
-                <button type="submit" class="btn btn-warning px-4 coin-form-action">
+                <button type="submit" class="btn btn-primary px-4 coin-form-action">
                     <i class="fa fa-save ml-1"></i> حفظ قواعد استخدام العملات
                 </button>
             </form>
@@ -94,7 +111,7 @@
     <div class="card shadow-sm border-0 mb-4 coin-panel">
         <div class="card-header bg-white py-3 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center">
-                <i class="fa fa-bolt text-warning ml-2"></i>
+                <i class="fa fa-bolt coin-accent-icon ml-2"></i>
                 <div>
                     <h6 class="mb-1 font-weight-bold">مكافآت الأحداث داخل التطبيق</h6>
                     <p class="mb-0 text-muted small">كل قاعدة قابلة للإضافة والتعديل والتعطيل والحذف. حذف القاعدة يوقف الحدث ولا يمس العملات التي استلمها المستخدمون.</p>
@@ -126,13 +143,14 @@
                     <div class="col-md-4 mb-3"><label class="font-weight-bold">الحد خلال 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" class="form-control"></div>
                 </div>
                 <input type="hidden" name="is_active" value="1">
-                <button class="btn btn-warning px-4"><i class="fa fa-plus ml-1"></i> إضافة القاعدة</button>
+                <button class="btn btn-primary px-4"><i class="fa fa-plus ml-1"></i> إضافة القاعدة</button>
             </form>
 
             <div class="row">
                 @forelse($rewardRules as $rule)
-                    <div class="col-lg-6 mb-3">
-                        <form action="{{ route('admin.reward-rules.update', $rule) }}" method="POST" class="border rounded p-3 h-100">
+                    <div class="col-12 mb-3">
+                        <div class="reward-rule-card">
+                        <form id="reward-rule-{{ $rule->id }}" action="{{ route('admin.reward-rules.update', $rule) }}" method="POST" class="reward-rule-form">
                             @csrf
                             @method('PUT')
                             <input type="hidden" name="editor_version" value="{{ $rewardRuleEditorVersions->get($rule->id) }}">
@@ -141,23 +159,26 @@
                                 <strong>{{ $rewardEvents[$rule->event_key] ?? $rule->event_key }}</strong>
                                 <label class="mb-0"><input type="checkbox" name="is_active" value="1" {{ $rule->is_active ? 'checked' : '' }}> نشطة</label>
                             </div>
-                            <div class="row">
-                                <div class="col-md-4 mb-2"><label>الاسم بالعربية</label><input name="title_ar" value="{{ $rule->title_ar }}" class="form-control" required></div>
-                                <div class="col-md-4 mb-2"><label>الاسم بالإنجليزية</label><input name="title_en" value="{{ $rule->title_en }}" class="form-control"></div>
-                                <div class="col-md-4 mb-2"><label>العملات</label><input type="number" min="0" name="coins_amount" value="{{ $rule->coins_amount }}" class="form-control" required></div>
-                                <div class="col-md-4 mb-2"><label>الفترة/الشرط</label><input type="number" min="1" name="interval_count" value="{{ $rule->interval_count }}" class="form-control" required></div>
-                                <div class="col-md-4 mb-2"><label>حد يومي</label><input type="number" min="0" name="daily_cap" value="{{ $rule->daily_cap }}" class="form-control"></div>
-                                <div class="col-md-4 mb-2"><label>حد 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" value="{{ $rule->rolling_30_day_cap }}" class="form-control"></div>
+                            <div class="reward-rule-fields">
+                                <div class="reward-rule-field"><label>الاسم بالعربية</label><input name="title_ar" value="{{ $rule->title_ar }}" class="form-control" required></div>
+                                <div class="reward-rule-field"><label>الاسم بالإنجليزية</label><input name="title_en" value="{{ $rule->title_en }}" class="form-control"></div>
+                                <div class="reward-rule-field"><label>العملات</label><input type="number" min="0" name="coins_amount" value="{{ $rule->coins_amount }}" class="form-control" required></div>
+                                <div class="reward-rule-field"><label>الفترة/الشرط</label><input type="number" min="1" name="interval_count" value="{{ $rule->interval_count }}" class="form-control" required></div>
+                                <div class="reward-rule-field"><label>حد يومي</label><input type="number" min="0" name="daily_cap" value="{{ $rule->daily_cap }}" class="form-control"></div>
+                                <div class="reward-rule-field"><label>حد 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" value="{{ $rule->rolling_30_day_cap }}" class="form-control"></div>
                             </div>
                             <input type="hidden" name="sort_order" value="{{ $rule->sort_order }}">
-                            <button class="btn btn-sm btn-outline-primary mt-2"><i class="fa fa-save ml-1"></i> حفظ</button>
                         </form>
-                        <form action="{{ route('admin.reward-rules.destroy', $rule) }}" method="POST" class="mt-2" onsubmit="return confirm('حذف القاعدة سيوقف هذه المكافأة فورًا. هل أنت متأكد؟')">
-                            @csrf
-                            @method('DELETE')
-                            <input type="hidden" name="editor_version" value="{{ $rewardRuleEditorVersions->get($rule->id) }}">
-                            <button class="btn btn-sm btn-outline-danger"><i class="fa fa-trash ml-1"></i> حذف القاعدة</button>
-                        </form>
+                        <div class="reward-rule-actions">
+                            <button type="submit" form="reward-rule-{{ $rule->id }}" class="btn btn-sm btn-outline-primary"><i class="fa fa-save ml-1"></i> حفظ</button>
+                            <form action="{{ route('admin.reward-rules.destroy', $rule) }}" method="POST" onsubmit="return confirm('حذف القاعدة سيوقف هذه المكافأة فورًا. هل أنت متأكد؟')">
+                                @csrf
+                                @method('DELETE')
+                                <input type="hidden" name="editor_version" value="{{ $rewardRuleEditorVersions->get($rule->id) }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fa fa-trash ml-1"></i> حذف القاعدة</button>
+                            </form>
+                        </div>
+                        </div>
                     </div>
                 @empty
                     <div class="col-12 text-center text-muted py-4">لا توجد مكافآت أحداث نشطة أو محفوظة.</div>
@@ -166,46 +187,30 @@
         </div>
     </div>
 
-    <div class="methods-header d-flex justify-content-between align-items-center">
-        <div>
-            <h1><i class="fa fa-coins ml-2"></i> طرق ربح العملات</h1>
-            <p class="mb-0">إدارة الطرق التي يمكن للطلاب من خلالها كسب العملات</p>
-        </div>
-        <a href="{{ route('admin.coin-earning-methods.create') }}" class="btn btn-light btn-modern">
-            <i class="fa fa-plus"></i> إضافة طريقة جديدة
-        </a>
-    </div>
-
-    @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            {{ session('success') }}
-            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-    @endif
-
+    <h2 class="h5 mb-3">مهام ربح العملات</h2>
     <div class="row">
         @forelse($methods as $method)
             <div class="col-md-6 col-lg-4">
                 <div class="method-card">
-                    <div class="d-flex justify-content-between align-items-start mb-3">
-                        <h5 class="mb-0 font-weight-bold">{{ $method->learnerTitleAr() }}</h5>
-                        @include('admin.partials.status-badge', [
-                            'badgeStatus' => $method->is_active ? 'active' : 'unknown',
-                            'badgeLabel' => $method->is_active ? 'نشط' : 'غير نشط',
-                            'badgeTone' => $method->is_active ? 'success' : 'danger',
-                        ])
-                        @include('admin.partials.status-badge', [
-                            'badgeStatus' => 'unknown',
-                            'badgeLabel' => 'مرة واحدة',
-                            'badgeTone' => 'muted',
-                        ])
+                    <div class="method-card__head mb-3">
+                        <h5 class="method-card__title mb-0 font-weight-bold">{{ $method->learnerTitleAr() }}</h5>
+                        <div class="method-card__badges">
+                            @include('admin.partials.status-badge', [
+                                'badgeStatus' => $method->is_active ? 'active' : 'unknown',
+                                'badgeLabel' => $method->is_active ? 'نشط' : 'غير نشط',
+                                'badgeTone' => $method->is_active ? 'success' : 'danger',
+                            ])
+                            @include('admin.partials.status-badge', [
+                                'badgeStatus' => 'unknown',
+                                'badgeLabel' => 'مرة واحدة',
+                                'badgeTone' => 'muted',
+                            ])
+                        </div>
                     </div>
                     <p class="text-muted mb-2">{{ $method->title_en }}</p>
                     <div class="d-flex justify-content-between align-items-center mt-4">
-                        <div class="h4 mb-0 text-warning">
-                            <i class="fa fa-coins"></i> {{ $method->coins_amount }}
+                        <div class="h4 mb-0 method-card__amount">
+                            {{ $method->coins_amount }} <span class="small">عملة</span>
                         </div>
                         <div class="btn-group">
                             <a href="{{ route('admin.coin-earning-methods.edit', $method->id) }}" class="btn btn-sm btn-outline-primary">

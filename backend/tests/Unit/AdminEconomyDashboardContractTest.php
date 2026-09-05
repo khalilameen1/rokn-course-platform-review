@@ -100,7 +100,8 @@ final class AdminEconomyDashboardContractTest extends TestCase
         $read = $this->source('app/Services/AdminEconomyReadService.php');
 
         self::assertStringContainsString('scopeLearnerTask', $model);
-        self::assertSame(2, substr_count($api, 'CoinEarningMethod::learnerTask()'));
+        self::assertStringContainsString('CoinEarningMethod::learnerTask()', $api);
+        self::assertStringContainsString('$lockedMethod->isLearnerTask()', $api);
         self::assertStringContainsString('->learnerTask()', $engagement);
         self::assertStringContainsString("->orderBy('sort_order')", $engagement);
         self::assertStringContainsString("'coins_amount' => ['required', 'integer', 'min:1']", $admin);
