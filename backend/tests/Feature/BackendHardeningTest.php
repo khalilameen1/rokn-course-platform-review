@@ -1469,7 +1469,25 @@ final class BackendHardeningTest extends TestCase
             'openrouter.fallback_models' => [],
         ]);
         $user = $this->user();
-        $course = $this->course();
+        $courseDescription = 'Build <form method="post"> with <input type="email" required>.';
+        $lessonDescription = 'Explain <label for="email"> and <input id="email">.';
+        $course = $this->course(['description_ar' => $courseDescription]);
+        $lessonId = DB::table('lessons')->insertGetId([
+            'list_id' => $course->id,
+            'title' => 'HTML forms',
+            'description' => $lessonDescription,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('course_sections')->insert([
+            'course_id' => $course->id,
+            'sectionable_type' => \App\Models\Lesson::class,
+            'sectionable_id' => $lessonId,
+            'section_type' => 'lesson',
+            'title' => 'HTML forms',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
         $plan = $this->paidPlanTerms($course);
         $enrollmentId = DB::table('course_enrollments')->insertGetId([
@@ -1488,12 +1506,12 @@ final class BackendHardeningTest extends TestCase
         $technicalQuestion = 'Why does SQLSTATE appear in the stack trace for <html> output?';
         $technicalAnswer = 'SQLSTATE identifies a database error. Review the stack trace, then render <html><body>Example</body></html> as text.';
         $completed = $turns->begin(
-            $user->id, $course->id, $enrollmentId, null,
+            $user->id, $course->id, $enrollmentId, $lessonId,
             (string) Str::uuid(), $technicalQuestion, 'ar', $promptVersion
         );
         self::assertTrue($turns->complete($completed, $technicalAnswer));
         $failed = $turns->begin(
-            $user->id, $course->id, $enrollmentId, null,
+            $user->id, $course->id, $enrollmentId, $lessonId,
             (string) Str::uuid(), 'Failed question must stay out of context', 'ar', $promptVersion
         );
         $failed->forceFill([
@@ -1509,6 +1527,7 @@ final class BackendHardeningTest extends TestCase
             ->postJson('/api/v1/courses/'.$course->id.'/chat', [
                 'message' => $question,
                 'client_request_id' => $requestId,
+                'lesson_id' => $lessonId,
             ])
             ->assertOk()
             ->assertJsonPath('data.turn_status', CourseChatTurn::QUEUED);
@@ -1516,15 +1535,25 @@ final class BackendHardeningTest extends TestCase
         $this->postJson('/api/v1/courses/'.$course->id.'/chat', [
             'message' => $question,
             'client_request_id' => $requestId,
+            'lesson_id' => $lessonId,
         ])->assertOk();
         $this->postJson('/api/v1/courses/'.$course->id.'/chat', [
             'message' => $question.'<br>',
             'client_request_id' => $requestId,
+            'lesson_id' => $lessonId,
         ])->assertStatus(409)->assertJsonPath('code', 'chat_request_identity_conflict');
 
         Bus::assertDispatched(\App\Jobs\GenerateCourseChatReply::class, function ($job) use (
-            $technicalQuestion, $technicalAnswer, $question
+            $technicalQuestion, $technicalAnswer, $question, $courseDescription, $lessonDescription
         ): bool {
+            self::assertStringContainsString(
+                "BEGIN COURSE DESCRIPTION\n{$courseDescription}\nEND COURSE DESCRIPTION",
+                $job->messages[0]['content']
+            );
+            self::assertStringContainsString(
+                "BEGIN CURRENT LESSON CONTEXT\n{$lessonDescription}\nEND CURRENT LESSON CONTEXT",
+                $job->messages[1]['content']
+            );
             $conversation = array_values(array_filter(
                 $job->messages,
                 static fn (array $message): bool => $message['role'] !== 'system'
@@ -2861,6 +2890,7 @@ final class BackendHardeningTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('list_id')->nullable();
             $table->string('title')->nullable();
+            $table->text('description')->nullable();
             $table->string('bunny_video_id')->nullable();
             $table->boolean('is_opened')->default(false);
             $table->timestamps();

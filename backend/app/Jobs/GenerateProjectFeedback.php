@@ -222,7 +222,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             (int) (($evaluationTerms['max_output_tokens'] ?? null) ?: 320)
         ));
         $requirements = UnicodeText::limit(
-            UnicodeText::clean(strip_tags((string) ($projectPolicy['requirements_text'] ?? ''))),
+            UnicodeText::clean((string) ($projectPolicy['requirements_text'] ?? '')),
             6000
         );
         $courseTitle = UnicodeText::limit(UnicodeText::clean((string) (

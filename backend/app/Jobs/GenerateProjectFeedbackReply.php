@@ -206,7 +206,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         ));
         $history = $this->boundedConversationHistory($thread, $terms);
         $requirements = UnicodeText::limit(
-            UnicodeText::clean(strip_tags((string) ($projectPolicy['requirements_text'] ?? ''))),
+            UnicodeText::clean((string) ($projectPolicy['requirements_text'] ?? '')),
             6000
         );
         $submission = UnicodeText::limit(

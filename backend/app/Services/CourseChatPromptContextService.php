@@ -39,16 +39,16 @@ final readonly class CourseChatPromptContextService
         $version = $this->version($course);
 
         return Cache::remember(
-            sprintf('course-chat:brief:v5:%d:%s', $course->id, $version),
+            sprintf('course-chat:brief:v6:%d:%s', $course->id, $version),
             now()->addHours(12),
             function () use ($course): string {
                 $courseName = UnicodeText::clean(
                     $course->name_ar ?: $course->name_en,
                     false
                 );
-                $description = UnicodeText::limit(UnicodeText::clean(strip_tags((string) (
+                $description = UnicodeText::limit(UnicodeText::clean((string) (
                     $course->description_ar ?: $course->description_en
-                ))), 600);
+                )), 600);
 
                 return $this->promptPolicy->courseChat(
                     $courseName,

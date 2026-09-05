@@ -133,7 +133,7 @@ final class ProjectSubmissionOrchestrator
         $maxOutputTokens = max(80, min((int) config('openrouter.max_tokens', 800), (int) ($terms['max_output_tokens'] ?? 320)));
         $semanticText = implode("\n", [
             UnicodeText::clean((string) $text),
-            UnicodeText::clean(strip_tags((string) $project->requirements_text)),
+            UnicodeText::clean((string) $project->requirements_text),
         ]);
         $estimatedRequestTokens = $maxOutputTokens + (int) ceil(strlen($semanticText) / 4) + $attachmentTokens;
         $reportBudget = max(0, (int) ($terms['project_feedback_token_budget'] ?? 0));

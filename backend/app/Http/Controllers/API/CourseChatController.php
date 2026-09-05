@@ -457,7 +457,7 @@ final class CourseChatController extends Controller
             }
             $currentStepTitle = (string) $lesson->title;
             $currentStepDescription = UnicodeText::limit(
-                UnicodeText::clean(strip_tags((string) $lesson->description), false),
+                UnicodeText::clean((string) $lesson->description, false),
                 500
             );
         }

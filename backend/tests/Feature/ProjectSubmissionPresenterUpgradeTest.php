@@ -56,11 +56,23 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_project_report_admission_counts_html_source_against_remaining_tokens(): void
+    public static function projectMarkupBudgetInputs(): array
+    {
+        return ['learner code' => [false], 'authored requirements code' => [true]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('projectMarkupBudgetInputs')]
+    public function test_project_report_admission_counts_html_source_against_remaining_tokens(
+        bool $markupInRequirements
+    ): void
     {
         Bus::fake();
         Http::preventStrayRequests();
-        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $code = '<input data-example="'.str_repeat('code', 350).'">Learner notes about the form';
+        $fixture = $this->submissionFixture(
+            upgradedToEnhanced: false,
+            requirements: $markupInRequirements ? $code : null
+        );
         $fixture['project']->forceFill(['submission_text_enabled' => true])->save();
         AiEntitlementUsage::query()->create([
             'enrollment_id' => $fixture['enrollment']->id,
@@ -69,10 +81,10 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             'used_requests' => 1,
             'used_tokens' => 3500,
         ]);
-        $code = '<input data-example="'.str_repeat('code', 350).'">Learner notes about the form';
-
         $result = app(ProjectSubmissionOrchestrator::class)->submit(
-            $fixture['user'], $fixture['project'], $code, [], (string) Str::uuid(), []
+            $fixture['user'], $fixture['project'],
+            $markupInRequirements ? 'Learner notes about the form' : $code,
+            [], (string) Str::uuid(), []
         );
 
         self::assertSame('invalid', $result['state']);
@@ -84,7 +96,8 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
     public function test_initial_report_provider_receives_literal_learner_html_submission(): void
     {
         $this->fakeProjectProvider();
-        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $requirements = 'Implement <input type="email" required> inside <form method="post">.';
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false, requirements: $requirements);
         $code = '<html><body><input type="text" required></body></html>';
         $fixture['submission']->forceFill(['submission_text' => $code."\x00"])->save();
 
@@ -92,6 +105,10 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
 
         Http::assertSentCount(1);
         $request = Http::recorded()->first()[0];
+        self::assertStringContainsString(
+            "BEGIN PROJECT REQUIREMENTS\n{$requirements}\nEND PROJECT REQUIREMENTS",
+            $request['messages'][0]['content']
+        );
         self::assertSame(
             "BEGIN LEARNER SUBMISSION\n{$code}\nEND LEARNER SUBMISSION",
             $request['messages'][1]['content'][0]['text']
@@ -103,7 +120,8 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
     {
         Bus::fake();
         $this->fakeProjectProvider();
-        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $requirements = 'Implement <input type="email" required> inside <form method="post">.';
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true, requirements: $requirements);
         $submissionCode = '<html><body><input required></body></html>';
         $fixture['submission']->forceFill(['submission_text' => $submissionCode])->save();
         $thread = $fixture['submission']->feedbackThread;
@@ -131,6 +149,10 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         Http::assertSentCount(1);
         $request = Http::recorded()->first()[0];
         $messages = $request['messages'];
+        self::assertStringContainsString(
+            "BEGIN PROJECT REQUIREMENTS\n{$requirements}\nEND PROJECT REQUIREMENTS",
+            $messages[0]['content']
+        );
         self::assertStringContainsString($submissionCode, $messages[0]['content']);
         self::assertContains(['role' => 'user', 'content' => $prior['user']], $messages);
         self::assertContains(['role' => 'assistant', 'content' => $prior['assistant']], $messages);
@@ -366,7 +388,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
     }
 
     /** @return array{submission:ProjectSubmission,user:User,project:Project,enrollment:CourseEnrollment,text:string,idempotency_key:string} */
-    private function submissionFixture(bool $upgradedToEnhanced): array
+    private function submissionFixture(bool $upgradedToEnhanced, ?string $requirements = null): array
     {
         $user = new User();
         $user->forceFill([
@@ -378,7 +400,10 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         ])->save();
         $course = Course::factory()->make();
         $course->forceFill(['tenant_id' => 1])->save();
-        $project = Project::factory()->create();
+        $project = Project::factory()->create($requirements === null ? [] : [
+            'requirements_text_ar' => $requirements,
+            'requirements_text_en' => $requirements,
+        ]);
         $module = CourseModule::query()->create([
             'course_id' => $course->id,
             'title_ar' => 'الوحدة الأولى',

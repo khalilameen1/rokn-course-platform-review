@@ -4,6 +4,22 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Keep authored course context identical to the student's plain text — 2026-09-05
+
+The studio's course description, lesson caption and project requirements are
+plain textareas, normalized with UnicodeText and persisted directly. Their AI
+readers nevertheless stripped HTML examples. Those readers now preserve the same
+text shown to the student, within existing context limits, including immutable
+project requirements snapshots and admission token estimates. The course-brief
+cache namespace moves from v5 to v6 so old stripped summaries are not reused.
+
+Four expanded HTTP/job/provider-payload cases reproduced the loss before the
+change. The combined backend/project suites passed 78 tests / 451 assertions;
+the final project suite with authored-requirements budgeting then passed 12 tests
+/ 75 assertions. These are locally intercepted provider payloads, not paid calls
+or a deployment. Existing OOXML document extraction and diagnostic-only filtering
+are separate mechanisms and were not blindly removed.
+
 ## Preserve paid chat delivery and technical lesson text — 2026-09-05
 
 Cancellation could discard a course-chat answer after provider landing or after
