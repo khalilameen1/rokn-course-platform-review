@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Auth\AdminPermissionMatrix;
 use App\Http\Middleware\RequireAdminMfa;
+use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -249,6 +251,39 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         self::assertNull($emptyTeacher->fresh()->profile_image_url);
     }
 
+    public function test_teacher_course_count_and_list_exclude_staged_authoring_copies(): void
+    {
+        $administrator = $this->dashboardUser('admin', 'course-count-owner@example.test');
+        $teacher = $this->teacher();
+        $canonical = $this->course('الكورس المنشور', false);
+        $draft = $this->course('نسخة التحرير الداخلية', true);
+        $canonical->teachers()->attach($teacher);
+        $draft->teachers()->attach($teacher);
+        CourseAuthoringRevision::query()->create([
+            'canonical_course_id' => $canonical->id,
+            'revision_course_id' => $draft->id,
+            'base_authoring_version' => 1,
+            'status' => CourseAuthoringRevision::DRAFT,
+            'active_slot' => 'course-draft:'.$canonical->id,
+            'clone_key' => (string) Str::uuid(),
+        ]);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $index = $this->actingAs($administrator)
+            ->get(route('admin.teachers.index'))
+            ->assertOk();
+        $listedTeacher = $index->original->getData()['teachers']->firstWhere('id', $teacher->id);
+        self::assertNotNull($listedTeacher);
+        self::assertSame(1, (int) $listedTeacher->teaching_courses_count);
+
+        $show = $this->actingAs($administrator)
+            ->get(route('admin.teachers.show', $teacher))
+            ->assertOk();
+        $courses = $show->original->getData()['courses'];
+        self::assertSame([$canonical->id], $courses->getCollection()->modelKeys());
+        $show->assertSee('الكورس المنشور')->assertDontSee('نسخة التحرير الداخلية');
+    }
+
     /** @return array<string, mixed> */
     private function publicProfilePayload(User $teacher): array
     {
@@ -290,6 +325,23 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         ])->save();
 
         return $teacher;
+    }
+
+    private function course(string $name, bool $draft): Course
+    {
+        $course = new Course();
+        $course->forceFill([
+            'tenant_id' => 1,
+            'name_ar' => $name,
+            'price' => 500,
+            'is_coming_soon' => $draft,
+            'is_catalog_visible' => !$draft,
+            'authoring_version' => 1,
+            'last_published_authoring_version' => $draft ? null : 1,
+            'published_at' => $draft ? null : now(),
+        ])->save();
+
+        return $course;
     }
 
     private function dashboardUser(string $role, string $email): User

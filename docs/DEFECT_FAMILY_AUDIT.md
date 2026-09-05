@@ -281,6 +281,23 @@ no duplicate image write or global student-photo query was introduced. A real
 UploadedFile create/replace regression verifies the stored object and the
 rendered/API reads, including legacy-image fallback and empty profiles.
 
+Deployment `d90a7ea` was observed as Deployed in Laravel Cloud. Fresh production
+reads open the settings page successfully, with exactly one checkbox and one
+distinct hidden fallback for each of its three repaired controls. The teacher-list screenshot
+shows the uploaded portrait, and the course studio reports the instructor image
+fully loaded at its actual 160px source width. A fresh coin-rule screenshot also
+confirms the repaired field/action layout remains intact. No production reward
+values or account credentials were changed during these acceptance reads.
+
+That live teacher list exposed a separate count error: the published course and
+its staged authoring copy were counted as two courses. Both the count and the
+teacher's course list now exclude revision-course IDs from the existing
+CourseAuthoringRevision ledger. The global relationship remains unchanged so
+draft integrity and deletion checks still see their internal associations.
+The HTTP regression checks one canonical course plus its draft as one logical
+course and verifies the list excludes the copy (profile-boundary suite: 6 tests,
+68 assertions). No production course or draft was deleted to correct the count.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

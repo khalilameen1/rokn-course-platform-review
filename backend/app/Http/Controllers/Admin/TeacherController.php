@@ -6,6 +6,7 @@ use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,9 @@ class TeacherController extends Controller
             ->select($this->teacherColumns($canManageCredentials))
             ->where('role', 'teacher')
             ->with('photo')
-            ->withCount('teachingCourses');
+            ->withCount([
+                'teachingCourses' => fn ($courses) => $this->onlyCanonicalCourses($courses),
+            ]);
 
         if ($request->has('search') && !empty($request->search)) {
             $search = $request->search;
@@ -176,7 +179,7 @@ class TeacherController extends Controller
             ->with('photo')
             ->findOrFail($id);
         $canViewEnrollmentCounts = $this->permissions->isAdministrator($request->user()?->role);
-        $coursesQuery = $teacher->teachingCourses()
+        $coursesQuery = $this->onlyCanonicalCourses($teacher->teachingCourses())
             ->orderByDesc('courses.id');
         if ($canViewEnrollmentCounts) {
             $coursesQuery->withCount('activeEnrollments');
@@ -365,6 +368,14 @@ class TeacherController extends Controller
         return $this->permissions->allowsCapability(
             $request->user()?->role,
             AdminPermissionMatrix::ACCOUNT_CREDENTIALS
+        );
+    }
+
+    private function onlyCanonicalCourses($courses)
+    {
+        return $courses->whereNotIn(
+            'courses.id',
+            CourseAuthoringRevision::query()->select('revision_course_id')
         );
     }
 
