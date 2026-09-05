@@ -182,9 +182,31 @@ const purchaseKey = (purchase: Purchase) =>
   );
 
 const cancelledError = (error: {code?: unknown}) => {
-  const code = String(error.code || '').toLowerCase();
-  return code.includes('cancel') || code.includes('user');
+  const code = String(error.code || '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-');
+  return [
+    'user-cancelled',
+    'user-canceled',
+    'e-user-cancelled',
+    'e-user-canceled',
+    'cancelled',
+    'canceled',
+  ].includes(code);
 };
+
+const pendingError = (error: {code?: unknown}) =>
+  ['pending', 'deferred-payment'].includes(
+    String(error.code || '').trim().toLowerCase(),
+  );
+
+const pendingResult = (): NativeCoinCheckoutResult => ({
+  success: false,
+  pending: true,
+  cancelled: false,
+  coinsAdded: 0,
+});
 
 const settleActive = (
   productId: string,
@@ -307,40 +329,55 @@ const handlePurchaseUpdate = async (purchase: Purchase) => {
 
 const installListeners = () => {
   if (listenersReady) return;
-  listenersReady = true;
-  purchaseUpdatedListener(purchase => {
-    void handlePurchaseUpdate(purchase);
-  });
-  purchaseErrorListener(error => {
-    const productId =
-      'productId' in error && error.productId
-        ? String(error.productId)
-        : undefined;
-    const candidates = [...activePurchases.values()].filter(
-      active => !productId || active.productId === productId,
-    );
+  let purchaseUpdates: {remove: () => void} | undefined;
+  let purchaseErrors: {remove: () => void} | undefined;
+  try {
+    purchaseUpdates = purchaseUpdatedListener(purchase => {
+      void handlePurchaseUpdate(purchase);
+    });
+    purchaseErrors = purchaseErrorListener(error => {
+      const productId =
+        'productId' in error && error.productId
+          ? String(error.productId)
+          : undefined;
+      const candidates = [...activePurchases.values()].filter(
+        active => !productId || active.productId === productId,
+      );
 
-    // Store error callbacks do not carry our account binding. When two Rokn
-    // accounts have an in-flight request for the same product, attributing an
-    // unbound error would let an old sheet close the new account's checkout.
-    // The scoped requestPurchase rejection or timeout will settle each request.
-    if (candidates.length !== 1) return;
-    const [current] = candidates;
-    activePurchases.delete(current.accountScope);
-    clearTimeout(current.timer);
-    if (cancelledError(error)) {
-      current.resolve({
-        success: false,
-        pending: false,
-        cancelled: true,
-        coinsAdded: 0,
-      });
-      return;
-    }
-    current.reject(
-      new Error(String(error.code || error.message || 'STORE_PURCHASE_FAILED')),
-    );
-  });
+      // Store error callbacks do not carry our account binding. When two Rokn
+      // accounts have an in-flight request for the same product, attributing an
+      // unbound error would let an old sheet close the new account's checkout.
+      // The scoped requestPurchase rejection or timeout will settle each request.
+      if (candidates.length !== 1) return;
+      const [current] = candidates;
+      activePurchases.delete(current.accountScope);
+      clearTimeout(current.timer);
+      if (pendingError(error)) {
+        current.resolve(pendingResult());
+        return;
+      }
+      if (cancelledError(error)) {
+        current.resolve({
+          success: false,
+          pending: false,
+          cancelled: true,
+          coinsAdded: 0,
+        });
+        return;
+      }
+      current.reject(
+        new Error(
+          String(error.code || error.message || 'STORE_PURCHASE_FAILED'),
+        ),
+      );
+    });
+    listenersReady = true;
+  } catch (error) {
+    purchaseUpdates?.remove();
+    purchaseErrors?.remove();
+    listenersReady = false;
+    throw error;
+  }
 };
 
 const ensureConnection = async () => {
@@ -536,6 +573,10 @@ export const purchaseNativeCoinPackage = async (
     });
   } catch (error: unknown) {
     settleActive(productId, owner.accountScope, active => {
+      if (pendingError(error as {code?: unknown})) {
+        active.resolve(pendingResult());
+        return;
+      }
       if (cancelledError(error as {code?: unknown})) {
         active.resolve({
           success: false,

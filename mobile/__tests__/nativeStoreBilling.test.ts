@@ -31,6 +31,7 @@ jest.mock('../src/services/operationalTelemetry', () => ({
 
 describe('native store billing', () => {
   let purchaseUpdate: (purchase: Record<string, unknown>) => void;
+  let purchaseFailure: (error: Record<string, unknown>) => void;
 
   beforeEach(() => {
     jest.resetModules();
@@ -44,7 +45,10 @@ describe('native store billing', () => {
       purchaseUpdate = listener;
       return {remove: jest.fn()};
     });
-    mockExpoIap.purchaseErrorListener.mockReturnValue({remove: jest.fn()});
+    mockExpoIap.purchaseErrorListener.mockImplementation(listener => {
+      purchaseFailure = listener;
+      return {remove: jest.fn()};
+    });
   });
 
   it('uses the store-localized product and omits unconfigured packages', async () => {
@@ -246,6 +250,115 @@ describe('native store billing', () => {
       pending: false,
       cancelled: true,
     });
+  });
+
+  it('does not hide a store user error as if the learner cancelled', async () => {
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockExpoIap.requestPurchase.mockRejectedValue({code: 'user-error'});
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
+
+    await expect(
+      purchaseNativeCoinPackage({
+        id: '1',
+        coins: 600,
+        price: 120,
+        label: '600',
+        storeProductIds: {google: 'rokn.coins.600'},
+      }),
+    ).rejects.toMatchObject({code: 'user-error'});
+  });
+
+  it.each(['pending', 'deferred-payment'])(
+    'keeps a %s checkout pending instead of reporting a failure',
+    async code => {
+      mockApi.get.mockResolvedValue({
+        data: {data: {google_obfuscated_account_id: 'account-binding'}},
+      });
+      mockExpoIap.requestPurchase.mockRejectedValue({code});
+      const {
+        purchaseNativeCoinPackage,
+      } = require('../src/services/nativeStoreBilling');
+
+      await expect(
+        purchaseNativeCoinPackage({
+          id: '1',
+          coins: 600,
+          price: 120,
+          label: '600',
+          storeProductIds: {google: 'rokn.coins.600'},
+        }),
+      ).resolves.toMatchObject({
+        success: false,
+        pending: true,
+        cancelled: false,
+      });
+    },
+  );
+
+  it('keeps an asynchronous deferred-payment callback pending', async () => {
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockExpoIap.requestPurchase.mockImplementation(async () => {
+      purchaseFailure({
+        code: 'deferred-payment',
+        productId: 'rokn.coins.600',
+      });
+      return null;
+    });
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
+
+    await expect(
+      purchaseNativeCoinPackage({
+        id: '1',
+        coins: 600,
+        price: 120,
+        label: '600',
+        storeProductIds: {google: 'rokn.coins.600'},
+      }),
+    ).resolves.toMatchObject({
+      success: false,
+      pending: true,
+      cancelled: false,
+    });
+  });
+
+  it('retries listener installation after a partial native setup failure', async () => {
+    const removePurchaseUpdates = jest.fn();
+    mockExpoIap.purchaseUpdatedListener
+      .mockReturnValueOnce({remove: removePurchaseUpdates})
+      .mockImplementation(listener => {
+        purchaseUpdate = listener;
+        return {remove: jest.fn()};
+      });
+    mockExpoIap.purchaseErrorListener
+      .mockImplementationOnce(() => {
+        throw new Error('listener setup failed');
+      })
+      .mockReturnValue({remove: jest.fn()});
+    const {
+      reconcileNativeStorePurchases,
+    } = require('../src/services/nativeStoreBilling');
+
+    await expect(reconcileNativeStorePurchases()).rejects.toThrow(
+      'listener setup failed',
+    );
+    await expect(reconcileNativeStorePurchases()).resolves.toEqual({
+      pending: false,
+      pendingProductIds: [],
+      reconciled: 0,
+    });
+
+    expect(removePurchaseUpdates).toHaveBeenCalledTimes(1);
+    expect(mockExpoIap.initConnection).toHaveBeenCalledTimes(2);
+    expect(mockExpoIap.purchaseUpdatedListener).toHaveBeenCalledTimes(2);
+    expect(mockExpoIap.purchaseErrorListener).toHaveBeenCalledTimes(2);
   });
 
   it('leaves store receipts untouched while Rokn is in guest mode', async () => {
