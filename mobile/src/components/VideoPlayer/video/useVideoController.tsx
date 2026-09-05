@@ -82,11 +82,11 @@ export const useVideoController = (
   const stopOnRemovalRef = useRef<() => void>(() => undefined);
   const {
     currentTime,
-    duration,
     durationRef,
     lastPositionRef,
     panHandlers,
     pendingSeekRef,
+    pendingSeekStartedAtRef,
     previewTime,
     resetTimeline,
     seekBy,
@@ -478,7 +478,6 @@ export const useVideoController = (
     bufferingStartedAt: bufferingStartedAtRef,
     data,
     diagnosticRequest: diagnosticRequestRef,
-    duration,
     durationRef,
     emitPlaybackEvent,
     hasRestored: hasRestoredRef,
@@ -493,6 +492,7 @@ export const useVideoController = (
     onProgressChange: onProgress,
     ownsPlayback: () => activePlayerOwnerRef.current === playerOwner,
     pendingSeek: pendingSeekRef,
+    pendingSeekStartedAt: pendingSeekStartedAtRef,
     publishRuntimeMetrics,
     recoverOrFail,
     reelInitialPosition: reelInitialPositionRef,

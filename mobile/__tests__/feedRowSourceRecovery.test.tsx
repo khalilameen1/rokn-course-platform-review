@@ -20,6 +20,8 @@ jest.mock('../src/components/VideoPlayer/ProjectTransition', () =>
 import FeedRow, {
   SOURCE_PENDING_RETRY_DELAY_MS,
 } from '../src/components/VideoPlayer/FeedRow';
+import VideoComponent from '../src/components/VideoPlayer/VideoComponent';
+import FeedSideBar from '../src/components/VideoPlayer/FeedSideBar';
 import type {
   CourseFeedItem,
   CourseLearningData,
@@ -65,7 +67,10 @@ const course: CourseLearningData = {
 };
 
 describe('feed row source recovery', () => {
-  beforeEach(() => jest.useFakeTimers());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
   afterEach(() => {
     jest.clearAllTimers();
     jest.useRealTimers();
@@ -191,6 +196,96 @@ describe('feed row source recovery', () => {
       finishRefresh?.();
       await Promise.resolve();
     });
+    await ReactTestRenderer.act(() => renderer!.unmount());
+  });
+
+  it('does not carry an attachment clock into a recycled reel row', async () => {
+    const playableReel = {
+      ...reel,
+      videoUrl: 'https://cdn.example.com/reel-1.m3u8',
+    };
+    const playableItem = {...item, reel: playableReel};
+    const nextReel = {
+      ...playableReel,
+      id: 'reel-2',
+      lessonId: 'lesson-2',
+      sectionId: 'section-2',
+      videoUrl: 'https://cdn.example.com/reel-2.m3u8',
+    };
+    const nextItem: CourseFeedItem = {
+      key: 'reel-2',
+      type: 'reel',
+      moduleId: 'module-1',
+      reel: nextReel,
+    };
+    const courseWithPrompt: CourseLearningData = {
+      ...course,
+      attachments: [
+        {
+          id: 'attachment-1',
+          title: 'ملف الكورس',
+          url: 'https://cdn.example.com/course.pdf',
+          platform: 'mobile',
+        },
+      ],
+      attachmentPrompt: {
+        enabled: true,
+        atSeconds: 5,
+        title: 'مرفقات الكورس',
+        body: 'حمّل الملفات',
+        buttonText: 'تحميل',
+        frequency: 'once_per_course',
+      },
+      modules: [{...course.modules[0], reels: [playableReel, nextReel]}],
+    };
+    const commonProps = {
+      course: courseWithPrompt,
+      pageWidth: 390,
+      pageHeight: 844,
+      frameWidth: 390,
+      isVisible: true,
+      playbackBlocked: false,
+      shouldMountVideo: true,
+      playbackSpeed: 1,
+      selectedQuality: 'auto' as const,
+      saved: false,
+      savePending: false,
+      initialPosition: 0,
+      topInset: 0,
+      bottomInset: 0,
+      onPlaybackSpeedChange: jest.fn(),
+      onQualityChange: jest.fn(),
+      onToggleSave: jest.fn(),
+      onBeforeOpenSave: () => true,
+      onOpenChat: jest.fn(),
+      onSelectFeedItem: jest.fn(),
+      onProgress: jest.fn(),
+      onComplete: jest.fn(),
+      onRefreshVideo: jest.fn(),
+      onPlaybackEvent: jest.fn(),
+      onPlaybackMetrics: jest.fn(),
+      onSubmitProject: jest.fn(),
+    };
+    let renderer: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(
+        <FeedRow item={playableItem} {...commonProps} />,
+      );
+    });
+
+    const videoProps = jest.mocked(VideoComponent).mock.calls.at(-1)?.[0];
+    await ReactTestRenderer.act(() => videoProps?.onProgress?.(8, 30));
+    expect(
+      jest.mocked(FeedSideBar).mock.calls.at(-1)?.[0].currentTime,
+    ).toBe(5);
+
+    await ReactTestRenderer.act(() => {
+      renderer!.update(<FeedRow item={nextItem} {...commonProps} />);
+    });
+
+    expect(
+      jest.mocked(FeedSideBar).mock.calls.at(-1)?.[0].currentTime,
+    ).toBe(0);
     await ReactTestRenderer.act(() => renderer!.unmount());
   });
 });

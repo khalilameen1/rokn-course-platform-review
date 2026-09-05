@@ -93,6 +93,7 @@ const FeedRow = ({
 }: FeedRowProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const attachmentClockRef = useRef(0);
+  const attachmentClockOwnerRef = useRef(item.key);
   const [headerOverlayVisible, setHeaderOverlayVisible] = useState(false);
   const [sidebarOverlayVisible, setSidebarOverlayVisible] = useState(false);
   const [sourceWaitExpired, setSourceWaitExpired] = useState(false);
@@ -101,6 +102,8 @@ const FeedRow = ({
   const sourceRefreshGenerationRef = useRef(0);
   const [sourceRetrying, setSourceRetrying] = useState(false);
   const localOverlayVisible = headerOverlayVisible || sidebarOverlayVisible;
+  const attachmentCurrentTime =
+    attachmentClockOwnerRef.current === item.key ? currentTime : 0;
   const awaitingVisibleSource =
     item.type === 'reel' &&
     isVisible &&
@@ -137,6 +140,9 @@ const FeedRow = ({
     setSourceAttempt(0);
     setSourceRetrying(false);
     setSourceWaitExpired(false);
+    attachmentClockOwnerRef.current = item.key;
+    attachmentClockRef.current = 0;
+    setCurrentTime(0);
     return () => {
       sourceRefreshGenerationRef.current += 1;
       sourceRefreshFlightRef.current = null;
@@ -160,6 +166,10 @@ const FeedRow = ({
         attachmentPromptAt !== null &&
         attachmentClockRef.current <= attachmentPromptAt
       ) {
+        if (attachmentClockOwnerRef.current !== item.key) {
+          attachmentClockOwnerRef.current = item.key;
+          attachmentClockRef.current = 0;
+        }
         const next = Math.min(
           attachmentPromptAt,
           Math.max(0, Math.floor(time)),
@@ -171,7 +181,7 @@ const FeedRow = ({
       }
       onProgress(time, duration);
     },
-    [attachmentPromptAt, onProgress],
+    [attachmentPromptAt, item.key, onProgress],
   );
   const retryMissingSource = useCallback(() => {
     if (sourceRefreshFlightRef.current) return;
@@ -309,7 +319,7 @@ const FeedRow = ({
               onOpenChat={onOpenChat}
               onOverlayVisibilityChange={setSidebarOverlayVisible}
               onSelectFeedItem={onSelectFeedItem}
-              currentTime={currentTime}
+              currentTime={attachmentCurrentTime}
             />
             <FeedFooter data={item.reel} bottomInset={bottomInset} />
           </>

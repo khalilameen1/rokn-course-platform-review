@@ -12,7 +12,10 @@ jest.mock('react-native-video', () => {
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
 import VideoComponent from '../src/components/VideoPlayer/VideoComponent';
-import {createVideoEventHandlers} from '../src/components/VideoPlayer/video/eventHandlers';
+import {
+  createVideoEventHandlers,
+  SEEK_ACKNOWLEDGEMENT_TIMEOUT_MS,
+} from '../src/components/VideoPlayer/video/eventHandlers';
 import {
   formatVideoDuration,
   normalizeVideoUri,
@@ -43,7 +46,6 @@ describe('video component policy', () => {
       bufferingStartedAt: {current: null},
       data: {id: 'android-7-reel'},
       diagnosticRequest: {current: 0},
-      duration: 90,
       durationRef: {current: 90},
       emitPlaybackEvent: jest.fn(),
       hasRestored: {current: true},
@@ -57,6 +59,7 @@ describe('video component policy', () => {
       onProgressChange,
       ownsPlayback: () => true,
       pendingSeek,
+      pendingSeekStartedAt: {current: Date.now()},
       publishRuntimeMetrics: jest.fn(),
       recoverOrFail: jest.fn(),
       reelInitialPosition: {current: 0},
@@ -89,6 +92,109 @@ describe('video component policy', () => {
     expect(onProgressChange).toHaveBeenLastCalledWith(44, 90);
   });
 
+  it('recovers when a decoder never acknowledges the requested seek', () => {
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+    const pendingSeek = {current: 70 as number | null};
+    const pendingSeekStartedAt = {current: 1_000 as number | null};
+    const setCurrentTime = jest.fn();
+    const onProgressChange = jest.fn();
+    const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () => true,
+      bufferCount: {current: 0},
+      bufferDurationMs: {current: 0},
+      bufferingStartedAt: {current: null},
+      data: {id: 'clamped-seek-reel'},
+      diagnosticRequest: {current: 0},
+      durationRef: {current: 90},
+      emitPlaybackEvent: jest.fn(),
+      hasRestored: {current: true},
+      hasStarted: {current: true},
+      isFallbackSource: false,
+      isPlaying: {current: true},
+      lastPosition: {current: 12},
+      loadStartedAt: {current: null},
+      longBufferTimer: {current: null},
+      onPlaybackHealthy: jest.fn(),
+      onProgressChange,
+      ownsPlayback: () => true,
+      pendingSeek,
+      pendingSeekStartedAt,
+      publishRuntimeMetrics: jest.fn(),
+      recoverOrFail: jest.fn(),
+      reelInitialPosition: {current: 0},
+      retryPosition: {current: null},
+      setBufferedTime: jest.fn(),
+      setCurrentTime,
+      setDuration: jest.fn(),
+      setError: jest.fn(),
+      setIsBuffering: jest.fn(),
+      setIsLoaded: jest.fn(),
+      setRecoveryMessage: jest.fn(),
+      sourceType: 'm3u8',
+      sourceUri: 'https://cdn.example.com/clamped-seek.m3u8',
+      videoRef: {current: null},
+    });
+
+    handlers.onProgress?.({currentTime: 12, seekableDuration: 90} as never);
+    expect(setCurrentTime).not.toHaveBeenCalled();
+
+    now.mockReturnValue(1_000 + SEEK_ACKNOWLEDGEMENT_TIMEOUT_MS);
+    handlers.onProgress?.({currentTime: 13, seekableDuration: 90} as never);
+
+    expect(pendingSeek.current).toBeNull();
+    expect(pendingSeekStartedAt.current).toBeNull();
+    expect(setCurrentTime).toHaveBeenLastCalledWith(13);
+    expect(onProgressChange).toHaveBeenLastCalledWith(13, 90);
+    now.mockRestore();
+  });
+
+  it('drops a detached decoder seek when a remounted source starts at zero', () => {
+    const pendingSeek = {current: 70 as number | null};
+    const pendingSeekStartedAt = {current: Date.now() as number | null};
+    const seek = jest.fn();
+    const handlers = createVideoEventHandlers({
+      acceptsLearningEvents: () => true,
+      bufferCount: {current: 0},
+      bufferDurationMs: {current: 0},
+      bufferingStartedAt: {current: null},
+      data: {id: 'remounted-reel'},
+      diagnosticRequest: {current: 0},
+      durationRef: {current: 90},
+      emitPlaybackEvent: jest.fn(),
+      hasRestored: {current: false},
+      hasStarted: {current: false},
+      isFallbackSource: false,
+      isPlaying: {current: false},
+      lastPosition: {current: 70},
+      loadStartedAt: {current: null},
+      longBufferTimer: {current: null},
+      onPlaybackHealthy: jest.fn(),
+      ownsPlayback: () => true,
+      pendingSeek,
+      pendingSeekStartedAt,
+      publishRuntimeMetrics: jest.fn(),
+      recoverOrFail: jest.fn(),
+      reelInitialPosition: {current: 0},
+      retryPosition: {current: 0},
+      setBufferedTime: jest.fn(),
+      setCurrentTime: jest.fn(),
+      setDuration: jest.fn(),
+      setError: jest.fn(),
+      setIsBuffering: jest.fn(),
+      setIsLoaded: jest.fn(),
+      setRecoveryMessage: jest.fn(),
+      sourceType: 'm3u8',
+      sourceUri: 'https://cdn.example.com/remounted.m3u8',
+      videoRef: {current: {seek} as never},
+    });
+
+    handlers.onLoad?.({duration: 90} as never);
+
+    expect(pendingSeek.current).toBeNull();
+    expect(pendingSeekStartedAt.current).toBeNull();
+    expect(seek).not.toHaveBeenCalled();
+  });
+
   it('does not arm buffer recovery behind chat or another overlay', () => {
     jest.useFakeTimers();
     const recoverOrFail = jest.fn();
@@ -104,7 +210,6 @@ describe('video component policy', () => {
       bufferingStartedAt,
       data: {id: 'covered-reel'},
       diagnosticRequest: {current: 0},
-      duration: 90,
       durationRef: {current: 90},
       emitPlaybackEvent: jest.fn(),
       hasRestored: {current: true},
@@ -117,6 +222,7 @@ describe('video component policy', () => {
       onPlaybackHealthy: jest.fn(),
       ownsPlayback: () => true,
       pendingSeek: {current: null},
+      pendingSeekStartedAt: {current: null},
       publishRuntimeMetrics: jest.fn(),
       recoverOrFail,
       reelInitialPosition: {current: 0},
@@ -155,7 +261,6 @@ describe('video component policy', () => {
       bufferingStartedAt: {current: null},
       data: {id: 'old-reel'},
       diagnosticRequest: {current: 0},
-      duration: 60,
       durationRef: {current: 60},
       emitPlaybackEvent: jest.fn(),
       hasRestored: {current: false},
@@ -170,6 +275,7 @@ describe('video component policy', () => {
       onProgressChange,
       ownsPlayback: () => false,
       pendingSeek: {current: null},
+      pendingSeekStartedAt: {current: null},
       publishRuntimeMetrics: jest.fn(),
       recoverOrFail,
       reelInitialPosition: {current: 0},
@@ -212,7 +318,6 @@ describe('video component policy', () => {
       bufferingStartedAt: {current: null},
       data: {id: 'preloaded-reel'},
       diagnosticRequest: {current: 0},
-      duration: 60,
       durationRef: {current: 60},
       emitPlaybackEvent: jest.fn(),
       hasRestored: {current: true},
@@ -227,6 +332,7 @@ describe('video component policy', () => {
       onProgressChange,
       ownsPlayback: () => true,
       pendingSeek: {current: null},
+      pendingSeekStartedAt: {current: null},
       publishRuntimeMetrics: jest.fn(),
       recoverOrFail: jest.fn(),
       reelInitialPosition: {current: 0},

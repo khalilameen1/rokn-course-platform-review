@@ -17,6 +17,7 @@ export const useVideoTimelineController = ({
   const lastPositionRef = useRef(initialPosition);
   const durationRef = useRef(initialDuration);
   const pendingSeekRef = useRef<number | null>(null);
+  const pendingSeekStartedAtRef = useRef<number | null>(null);
   const [duration, setDuration] = useState(initialDuration);
   const [bufferedTime, setBufferedTime] = useState(0);
   const [currentTime, setCurrentTime] = useState(initialPosition);
@@ -27,6 +28,7 @@ export const useVideoTimelineController = ({
     (seconds: number) => {
       const target = Math.max(0, seconds);
       pendingSeekRef.current = target;
+      pendingSeekStartedAtRef.current = Date.now();
       lastPositionRef.current = target;
       videoRef.current?.seek(target);
     },
@@ -38,6 +40,7 @@ export const useVideoTimelineController = ({
       lastPositionRef.current = position;
       durationRef.current = declaredDuration;
       pendingSeekRef.current = null;
+      pendingSeekStartedAtRef.current = null;
       setCurrentTime(position);
       setDuration(declaredDuration);
       setBufferedTime(0);
@@ -54,6 +57,7 @@ export const useVideoTimelineController = ({
       if (!commit) return;
 
       pendingSeekRef.current = seconds;
+      pendingSeekStartedAtRef.current = Date.now();
       lastPositionRef.current = seconds;
       videoRef.current?.seek(seconds);
       setCurrentTime(seconds);
@@ -92,9 +96,10 @@ export const useVideoTimelineController = ({
         0,
         Math.min(duration, timeline.displayedTime + offsetSeconds),
       );
-      videoRef.current?.seek(seconds);
       pendingSeekRef.current = seconds;
+      pendingSeekStartedAtRef.current = Date.now();
       lastPositionRef.current = seconds;
+      videoRef.current?.seek(seconds);
       setCurrentTime(seconds);
       setPreviewTime(null);
     },
@@ -108,6 +113,7 @@ export const useVideoTimelineController = ({
     lastPositionRef,
     panHandlers: panResponder.panHandlers,
     pendingSeekRef,
+    pendingSeekStartedAtRef,
     previewTime,
     resetTimeline,
     seekBy,

@@ -34,7 +34,6 @@ type VideoEventContext = {
   bufferingStartedAt: MutableValue<number | null>;
   data: Pick<CourseReel, 'id'>;
   diagnosticRequest: MutableValue<number>;
-  duration: number;
   durationRef: MutableValue<number>;
   emitPlaybackEvent: (
     eventType: PlaybackPlayerEvent['eventType'],
@@ -56,6 +55,7 @@ type VideoEventContext = {
   acceptsLearningEvents: () => boolean;
   ownsPlayback: () => boolean;
   pendingSeek: MutableValue<number | null>;
+  pendingSeekStartedAt: MutableValue<number | null>;
   publishRuntimeMetrics: (updates: Partial<PlaybackRuntimeMetrics>) => void;
   recoverOrFail: (reason: 'source' | 'timeout') => boolean;
   reelInitialPosition: MutableValue<number>;
@@ -73,6 +73,8 @@ type VideoEventContext = {
 };
 
 type NativeErrorRecord = Record<string, unknown>;
+
+export const SEEK_ACKNOWLEDGEMENT_TIMEOUT_MS = 4_000;
 
 const asErrorRecord = (value: unknown): NativeErrorRecord =>
   typeof value === 'object' && value !== null
@@ -123,8 +125,14 @@ export const createVideoEventHandlers = (
         loadedDuration > 0 && requestedPosition >= loadedDuration - 3
           ? 0
           : Math.max(0, requestedPosition);
+      // A native source remount starts a new decoder generation. A seek that
+      // belonged to the detached decoder cannot remain authoritative when
+      // the new source intentionally resumes from the beginning.
+      context.pendingSeek.current = null;
+      context.pendingSeekStartedAt.current = null;
       if (resumeAt > 0) {
         context.pendingSeek.current = resumeAt;
+        context.pendingSeekStartedAt.current = Date.now();
         context.videoRef.current?.seek(resumeAt);
       }
       context.setCurrentTime(resumeAt);
@@ -137,7 +145,14 @@ export const createVideoEventHandlers = (
     if (!context.ownsPlayback() || !context.acceptsLearningEvents()) return;
     const rawTime = Number(event.currentTime || 0);
     const nextTime = Number.isFinite(rawTime) ? Math.max(0, rawTime) : 0;
-    const rawDuration = context.duration || Number(event.seekableDuration || 0);
+    // onLoad updates the ref synchronously while the state render follows.
+    // Reading rendered duration here can therefore persist one early sample
+    // against stale author metadata and mark a reel complete too soon.
+    const knownDuration = Number(context.durationRef.current || 0);
+    const rawDuration =
+      (Number.isFinite(knownDuration) && knownDuration > 0
+        ? knownDuration
+        : 0) || Number(event.seekableDuration || 0);
     const nextDuration = Number.isFinite(rawDuration)
       ? Math.max(0, rawDuration)
       : 0;
@@ -148,13 +163,17 @@ export const createVideoEventHandlers = (
         Number.isFinite(rawPlayableDuration) ? rawPlayableDuration : 0,
       ),
     );
-    if (nextDuration && !context.duration) {
+    if (nextDuration && !context.durationRef.current) {
       context.setDuration(nextDuration);
       context.durationRef.current = nextDuration;
     }
     const pendingSeek = context.pendingSeek.current;
     if (pendingSeek !== null) {
-      if (Math.abs(nextTime - pendingSeek) > 2) {
+      const pendingSince = context.pendingSeekStartedAt.current;
+      const stillAwaitingSeek =
+        pendingSince !== null &&
+        Date.now() - pendingSince < SEEK_ACKNOWLEDGEMENT_TIMEOUT_MS;
+      if (Math.abs(nextTime - pendingSeek) > 2 && stillAwaitingSeek) {
         return;
       }
       // Some Android decoders (especially older ExoPlayer builds/devices)
@@ -163,6 +182,7 @@ export const createVideoEventHandlers = (
       // the acknowledgement; otherwise every later sample is rejected once
       // playback moves more than two seconds past the stale seek target.
       context.pendingSeek.current = null;
+      context.pendingSeekStartedAt.current = null;
     }
     if (nextTime > context.lastPosition.current + 0.25) {
       // A manifest response or metadata load is not proof that playback was
@@ -182,7 +202,10 @@ export const createVideoEventHandlers = (
     if (
       pendingTarget !== null &&
       Number.isFinite(acknowledgedTarget) &&
-      Math.abs(acknowledgedTarget - pendingTarget) > 2
+      Math.abs(acknowledgedTarget - pendingTarget) > 2 &&
+      context.pendingSeekStartedAt.current !== null &&
+      Date.now() - context.pendingSeekStartedAt.current <
+        SEEK_ACKNOWLEDGEMENT_TIMEOUT_MS
     ) {
       return;
     }
@@ -191,6 +214,7 @@ export const createVideoEventHandlers = (
       Number(event.currentTime ?? event.seekTime ?? pendingTarget) || 0,
     );
     context.pendingSeek.current = null;
+    context.pendingSeekStartedAt.current = null;
     context.lastPosition.current = nextTime;
     context.setCurrentTime(nextTime);
     context.onProgressChange?.(nextTime, context.durationRef.current);
@@ -347,6 +371,7 @@ export const createVideoEventHandlers = (
       context.lastPosition.current,
     );
     context.pendingSeek.current = null;
+    context.pendingSeekStartedAt.current = null;
     context.durationRef.current = finalDuration;
     context.setDuration(finalDuration);
     context.lastPosition.current = finalDuration;
