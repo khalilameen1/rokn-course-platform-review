@@ -1,5 +1,8 @@
 const mockStartBrowser = jest.fn();
 const mockStartApple = jest.fn();
+const mockGetRequiredInstallationId = jest.fn(
+  async () => '11111111-1111-4111-8111-111111111111',
+);
 
 jest.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: jest.fn(),
@@ -15,6 +18,9 @@ jest.mock('../src/services/socialAuthCompletion', () => ({
 }));
 jest.mock('../src/services/socialAuthDiscovery', () => ({
   getDeviceSocialAuthMethods: jest.fn(),
+}));
+jest.mock('../src/services/installationIdentity', () => ({
+  getRequiredInstallationId: () => mockGetRequiredInstallationId(),
 }));
 
 import {
@@ -35,7 +41,23 @@ const methods: SocialAuthMethods = {
 };
 
 describe('social auth facade ownership', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetRequiredInstallationId.mockResolvedValue(
+      '11111111-1111-4111-8111-111111111111',
+    );
+  });
+
+  it('does not open a provider that the device cannot finish', async () => {
+    mockGetRequiredInstallationId.mockRejectedValueOnce(
+      new Error('SESSION_STORAGE_UNAVAILABLE_INSTALLATION_ID'),
+    );
+
+    await expect(signInWithSocialProvider('google', methods)).rejects.toThrow(
+      'SESSION_STORAGE_UNAVAILABLE_INSTALLATION_ID',
+    );
+    expect(mockStartBrowser).not.toHaveBeenCalled();
+  });
 
   it('joins an identical tap and rejects a competing provider attempt', async () => {
     let finish!: (value: {api_token: string; user: never}) => void;

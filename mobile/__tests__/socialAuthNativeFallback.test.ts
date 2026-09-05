@@ -45,7 +45,9 @@ jest.mock('../src/constants/api', () => ({
 }));
 
 jest.mock('../src/services/installationIdentity', () => ({
-  getInstallationId: jest.fn(async () => null),
+  getRequiredInstallationId: jest.fn(
+    async () => '11111111-1111-4111-8111-111111111111',
+  ),
 }));
 
 jest.mock('../src/services/pendingWelcomeBonus', () => ({

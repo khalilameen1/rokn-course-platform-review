@@ -3,7 +3,7 @@ import {Platform} from 'react-native';
 import {publicRequest, type RoknRequestConfig} from '../constants/api';
 import {roknApiUrl} from '../constants/apiBaseUrl';
 import {serverNowMs} from '../utils/serverClock';
-import {getInstallationId} from './installationIdentity';
+import {getRequiredInstallationId} from './installationIdentity';
 import {
   isSocialAuthCallbackUrl,
   socialAuthCompletionIsTerminal,
@@ -54,13 +54,13 @@ const completeBrowserCode = async (
   code: string,
   pending: PendingSocialAuthAttempt,
 ) => {
-  const installationId = await getInstallationId();
+  const installationId = await getRequiredInstallationId();
   const body = {
     code,
     code_verifier: pending.verifier,
     device_os: Platform.OS,
     device_type: Platform.OS,
-    ...(installationId ? {device_id: installationId} : {}),
+    device_id: installationId,
   };
   const retryDelays = [0, 700, 1500, 3000];
   const deadlineAt = Date.now() + COMPLETION_BUDGET_MS;
@@ -107,7 +107,7 @@ export const exchangeAppleSocialToken = (
   options: SocialAuthOptions,
 ) =>
   runCompletion(pending, async () => {
-    const installationId = await getInstallationId();
+    const installationId = await getRequiredInstallationId();
     const response = await publicRequest.post(
       'social-login',
       {
@@ -117,7 +117,7 @@ export const exchangeAppleSocialToken = (
         ...(pending.providerName ? {provider_name: pending.providerName} : {}),
         device_os: Platform.OS,
         device_type: Platform.OS,
-        ...(installationId ? {device_id: installationId} : {}),
+        device_id: installationId,
       },
       {skipAuthorization: true} as RoknRequestConfig,
     );

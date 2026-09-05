@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import {startAppleSocialAuth} from './socialAuthApple';
 import {startBrowserSocialAuth} from './socialAuthBrowser';
 import {resumePendingSocialAuth} from './socialAuthCompletion';
+import {getRequiredInstallationId} from './installationIdentity';
 import type {SocialAuthOptions} from './socialAuthContract';
 import {getDeviceSocialAuthMethods} from './socialAuthDiscovery';
 import type {
@@ -51,6 +52,7 @@ export const signInWithSocialProvider = (
     if (!methods.providers.includes(provider)) {
       throw new Error('PROVIDER_NOT_CONFIGURED');
     }
+    await getRequiredInstallationId();
     return provider === 'apple'
       ? startAppleSocialAuth(options)
       : startBrowserSocialAuth(provider, methods, options);

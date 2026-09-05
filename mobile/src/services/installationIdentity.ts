@@ -6,6 +6,7 @@ const INSTALLATION_ID_KEY = '@rokn/installation-id/v1';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const INSTALLATION_ID_READ_BUDGET_MS = 400;
+const REQUIRED_INSTALLATION_ID_READ_BUDGET_MS = 3_000;
 
 let installationIdPromise: Promise<string | null> | null = null;
 
@@ -43,3 +44,21 @@ const loadInstallationId = () => {
  */
 export const getInstallationId = () =>
   settleWithin(loadInstallationId(), null, INSTALLATION_ID_READ_BUDGET_MS);
+
+/**
+ * Authentication cannot omit this identity: the server's normal
+ * single-device policy rejects an empty device_id. Keep ordinary public reads
+ * fast, but fail before opening an external provider when durable local
+ * storage cannot supply the identity required to finish the login.
+ */
+export const getRequiredInstallationId = async () => {
+  const installationId = await settleWithin(
+    loadInstallationId(),
+    null,
+    REQUIRED_INSTALLATION_ID_READ_BUDGET_MS,
+  );
+  if (!installationId) {
+    throw new Error('SESSION_STORAGE_UNAVAILABLE_INSTALLATION_ID');
+  }
+  return installationId;
+};

@@ -42,6 +42,12 @@ jest.mock('../src/constants/api', () => ({
   publicRequest: {get: jest.fn(), post: jest.fn()},
 }));
 
+jest.mock('../src/services/installationIdentity', () => ({
+  getRequiredInstallationId: jest.fn(
+    async () => '11111111-1111-4111-8111-111111111111',
+  ),
+}));
+
 jest.mock('../src/services/secureSession', () => ({
   savePendingSocialAuthAttempt: jest.fn(async () => undefined),
   replacePendingSocialAuthAttempt: jest.fn(async () => true),

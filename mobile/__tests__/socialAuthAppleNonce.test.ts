@@ -31,7 +31,9 @@ jest.mock('../src/constants/api', () => ({
   },
 }));
 jest.mock('../src/services/installationIdentity', () => ({
-  getInstallationId: jest.fn(async () => null),
+  getRequiredInstallationId: jest.fn(
+    async () => '11111111-1111-4111-8111-111111111111',
+  ),
 }));
 jest.mock('../src/services/pendingWelcomeBonus', () => ({
   savePendingWelcomeBonus: jest.fn(async () => undefined),
@@ -107,6 +109,7 @@ describe('Apple sign-in nonce binding', () => {
         provider: 'apple',
         token: 'signed-apple-identity-token',
         nonce: rawNonce,
+        device_id: '11111111-1111-4111-8111-111111111111',
       }),
     );
     expect(mockPost.mock.calls[0][1]).not.toEqual(

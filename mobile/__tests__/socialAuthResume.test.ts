@@ -4,6 +4,9 @@ const mockSave = jest.fn();
 const mockDelete = jest.fn();
 const mockReplace = jest.fn();
 const mockSaveWelcomeBonus = jest.fn();
+const mockGetRequiredInstallationId = jest.fn(
+  async () => '11111111-1111-4111-8111-111111111111',
+);
 
 jest.mock('react-native', () => ({Platform: {OS: 'android'}}));
 jest.mock('expo-crypto', () => ({
@@ -36,7 +39,7 @@ jest.mock('../src/services/androidAuthSession', () => ({
   openAndroidAuthSession: jest.fn(),
 }));
 jest.mock('../src/services/installationIdentity', () => ({
-  getInstallationId: jest.fn(async () => null),
+  getRequiredInstallationId: () => mockGetRequiredInstallationId(),
 }));
 jest.mock('../src/services/pendingWelcomeBonus', () => ({
   savePendingWelcomeBonus: (...args: unknown[]) =>
@@ -66,6 +69,9 @@ describe('social auth cold-start recovery', () => {
     });
     mockDelete.mockResolvedValue(true);
     mockSaveWelcomeBonus.mockResolvedValue(true);
+    mockGetRequiredInstallationId.mockResolvedValue(
+      '11111111-1111-4111-8111-111111111111',
+    );
   });
 
   it('completes the initial deep link with the durable PKCE verifier', async () => {
@@ -108,6 +114,7 @@ describe('social auth cold-start recovery', () => {
         code_verifier: pending.verifier,
         device_os: 'android',
         device_type: 'android',
+        device_id: '11111111-1111-4111-8111-111111111111',
       },
       {
         timeout: 8_000,
@@ -163,6 +170,26 @@ describe('social auth cold-start recovery', () => {
     expect(mockSave).toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
     timeout.mockRestore();
+  });
+
+  it('keeps a cold-start callback when durable device identity is temporarily unavailable', async () => {
+    mockGetRequiredInstallationId.mockRejectedValueOnce(
+      new Error('SESSION_STORAGE_UNAVAILABLE_INSTALLATION_ID'),
+    );
+
+    await expect(
+      resumePendingSocialAuth(
+        `rokn://auth?code=retryable-code&attempt=${pending.challenge}`,
+      ),
+    ).rejects.toThrow('SESSION_STORAGE_UNAVAILABLE_INSTALLATION_ID');
+
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        callbackUrl: `rokn://auth?code=retryable-code&attempt=${pending.challenge}`,
+      }),
+    );
   });
 
   it('ignores a stale callback without consuming the newer PKCE attempt', async () => {
