@@ -94,6 +94,7 @@
             if (form.getAttribute('aria-busy') === 'true') return;
             const target = editing;
             const creating = !target;
+            let firstSectionTrigger = null;
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
@@ -127,11 +128,20 @@
                 close(true);
                 if (creating) {
                     core.notify('تم حفظ الوحدة\nأضف أول مقطع');
-                    sectionEditor.openNew(node.querySelector('.outline-item-insert'));
+                    firstSectionTrigger = node.querySelector('.outline-item-insert');
                 } else {
                     core.notify('تم حفظ الوحدة');
                 }
-            }, {feedback, form});
+            }, {feedback, form}).then(() => {
+                // Switching editors is deliberately deferred until mutate has
+                // removed the form/studio busy gates. Calling the coordinator
+                // from inside the mutation asks it to close a busy module form,
+                // so the legitimate transition is rejected as if it were a
+                // second user action during save.
+                if (firstSectionTrigger?.isConnected) {
+                    sectionEditor.openNew(firstSectionTrigger);
+                }
+            });
         });
 
         deleteButton.addEventListener('click', () => {

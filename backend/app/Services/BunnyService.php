@@ -259,9 +259,12 @@ class BunnyService
         if (!$this->isEnabled() || $libraryId === '' || $apiKey === '') {
             throw new RuntimeException('Bunny Stream is not configured.');
         }
-        $expiresAt = time() + max(300, min(
-            3600,
-            (int) config('bunny.direct_upload_signature_ttl_seconds', 1800)
+        // Bunny fixes the resumable upload resource lifetime from the
+        // AuthorizationExpire used by its first POST. Renewing the signature
+        // later authorizes requests but does not extend that resource lifetime.
+        $expiresAt = time() + max(3600, min(
+            86400,
+            (int) config('bunny.direct_upload_signature_ttl_seconds', 86400)
         ));
 
         return [

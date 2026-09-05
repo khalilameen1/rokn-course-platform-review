@@ -21,6 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
         webm: 'video/webm',
     };
     const chunkBytes = 20 * 1024 * 1024;
+    const transportRetryDelays = [750, 1500, 3000];
     const recordVersion = 3;
     const ownerId = @json((string) auth()->id());
     const courseId = String(form.dataset.courseId || '');
@@ -123,6 +124,78 @@ document.addEventListener('DOMContentLoaded', function () {
             progressBar.setAttribute('aria-valuenow', String(Math.round(bounded)));
         }
         retryButton?.classList.toggle('is-hidden', !retry);
+    };
+
+    const cancelledError = () => Object.assign(new Error('تم إيقاف الرفع'), {cancelled: true});
+    const throwIfStopped = () => {
+        if (stopped) throw cancelledError();
+    };
+    const retryableStatus = status => [401, 403, 408, 425, 429].includes(Number(status || 0))
+        || Number(status || 0) >= 500;
+    const responseError = (message, status) => Object.assign(new Error(message), {
+        status,
+        retryable: retryableStatus(status),
+    });
+
+    const waitBeforeRetry = delay => new Promise((resolve, reject) => {
+        throwIfStopped();
+        let settled = false;
+        const request = {
+            abort: () => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timer);
+                if (currentRequest === request) currentRequest = null;
+                reject(cancelledError());
+            },
+        };
+        const timer = window.setTimeout(() => {
+            if (settled) return;
+            settled = true;
+            if (currentRequest === request) currentRequest = null;
+            resolve();
+        }, delay);
+        currentRequest = request;
+        if (stopped) request.abort();
+    });
+
+    const bunnyFetch = async (url, options, timeout, timeoutMessage) => {
+        throwIfStopped();
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => controller.abort(), timeout);
+        currentRequest = controller;
+        try {
+            return await fetch(url, {...options, signal: controller.signal});
+        } catch (error) {
+            if (stopped) throw cancelledError();
+            if (error?.name === 'AbortError') {
+                throw Object.assign(new Error(timeoutMessage), {retryable: true});
+            }
+            if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(String(error?.message || ''))) {
+                throw Object.assign(new Error('تعذر الاتصال بخدمة الفيديو\nتحقق من الاتصال ثم حاول مرة أخرى'), {
+                    retryable: true,
+                });
+            }
+            throw error;
+        } finally {
+            window.clearTimeout(timer);
+            if (currentRequest === controller) currentRequest = null;
+        }
+    };
+
+    const withTransportRetry = async (operation, retryMessage, onRetry = null) => {
+        for (let attempt = 0; ; attempt += 1) {
+            throwIfStopped();
+            try {
+                return await operation();
+            } catch (error) {
+                if (error?.cancelled || stopped) throw cancelledError();
+                if (!error?.retryable || attempt >= transportRetryDelays.length) throw error;
+                onRetry?.(error);
+                show(retryMessage, Number(progressBar?.getAttribute('aria-valuenow') || 0), false);
+                await waitBeforeRetry(transportRetryDelays[attempt]);
+            }
+        }
     };
 
     const postJson = async (url, body) => {
@@ -276,6 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const freshAuthorization = async record => {
+        throwIfStopped();
         if (Number(record.authoringVersion) !== currentAuthoringVersion()) {
             throw Object.assign(new Error('تغيّرت المسودة أثناء الرفع\nأعد تحميل الصفحة قبل المتابعة'), {
                 code: 'bunny_upload_claim_unavailable',
@@ -285,6 +359,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return record.headers;
         }
         const auth = await postJson(form.dataset.bunnyUploadRenew, {claim: record.claim});
+        throwIfStopped();
         applyAuthorization(record, auth);
         saveRecord(record);
         return record.headers;
@@ -292,57 +367,52 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const metadataValue = value => btoa(unescape(encodeURIComponent(String(value))));
 
-    const createTusUpload = async (file, record) => {
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), 20000);
-        try {
-            const response = await fetch(record.endpoint, {
+    const createTusUpload = async (file, record, title) => {
+        await withTransportRetry(async () => {
+            const headers = await freshAuthorization(record);
+            const response = await bunnyFetch(record.endpoint, {
                 method: 'POST',
                 headers: {
-                    ...record.headers,
+                    ...headers,
                     'Tus-Resumable': '1.0.0',
                     'Upload-Length': String(file.size),
-                    'Upload-Metadata': `filename ${metadataValue(file.name)},filetype ${metadataValue(file.type)}`,
+                    'Upload-Metadata': `filename ${metadataValue(file.name)},filetype ${metadataValue(file.type)},title ${metadataValue(title)}`,
                 },
-                signal: controller.signal,
-            });
-            if (!response.ok) throw new Error('تعذر بدء رفع الفيديو');
+            }, 20000, 'تعذر بدء الرفع بسبب بطء الاتصال');
+            if (!response.ok) throw responseError('تعذر بدء رفع الفيديو', response.status);
             const location = response.headers.get('Location');
             if (!location) throw new Error('لم ترجع خدمة الفيديو رابط الرفع');
             record.uploadUrl = new URL(location, record.endpoint).toString();
             saveRecord(record);
-        } catch (error) {
-            if (error?.name === 'AbortError') throw new Error('تعذر بدء الرفع بسبب بطء الاتصال');
-            throw error;
-        } finally {
-            window.clearTimeout(timer);
-        }
+        }, 'انقطع الاتصال\nنحاول بدء الرفع مرة أخرى', error => {
+            if ([401, 403].includes(Number(error?.status || 0))) {
+                record.authorizationExpiresAt = 0;
+                record.authorizationDeadline = 0;
+            }
+        });
     };
 
     const remoteOffset = async (record, totalSize) => {
-        const headers = await freshAuthorization(record);
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => controller.abort(), 15000);
-        try {
-            const response = await fetch(record.uploadUrl, {
+        return withTransportRetry(async () => {
+            const headers = await freshAuthorization(record);
+            const response = await bunnyFetch(record.uploadUrl, {
                 method: 'HEAD',
                 headers: {...headers, 'Tus-Resumable': '1.0.0'},
-                signal: controller.signal,
-            });
+            }, 15000, 'الاتصال بخدمة الفيديو بطيء جدًا');
             if (response.status === 404 || response.status === 410) return null;
-            if (!response.ok) throw new Error('تعذر استئناف الرفع');
+            if (!response.ok) throw responseError('تعذر استئناف الرفع', response.status);
             const rawOffset = response.headers.get('Upload-Offset');
             const offset = rawOffset === null ? Number.NaN : Number(rawOffset);
             if (!Number.isSafeInteger(offset) || offset < 0 || offset > totalSize) {
                 throw new Error('حالة الرفع غير صالحة');
             }
             return offset;
-        } catch (error) {
-            if (error?.name === 'AbortError') throw new Error('الاتصال بطيء جدًا');
-            throw error;
-        } finally {
-            window.clearTimeout(timer);
-        }
+        }, 'انقطع الاتصال\nنحاول استئناف الرفع', error => {
+            if ([401, 403].includes(Number(error?.status || 0))) {
+                record.authorizationExpiresAt = 0;
+                record.authorizationDeadline = 0;
+            }
+        });
     };
 
     const patchChunk = (record, file, offset, headers) => new Promise((resolve, reject) => {
@@ -420,6 +490,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 idempotency_key: record.idempotencyKey,
                 authoring_version: record.authoringVersion,
             });
+            throwIfStopped();
             Object.assign(record, {
                 endpoint: issued.upload_endpoint,
                 claim: issued.claim,
@@ -427,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             applyAuthorization(record, issued);
             saveRecord(record);
-            await createTusUpload(file, record);
+            await createTusUpload(file, record, title);
         } else {
             if (!record.claim) {
                 const issued = await postJson(form.dataset.bunnyUploadInit, {
@@ -439,6 +510,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     idempotency_key: record.idempotencyKey,
                     authoring_version: record.authoringVersion,
                 });
+                throwIfStopped();
                 Object.assign(record, {
                     endpoint: issued.upload_endpoint,
                     claim: issued.claim,
@@ -449,12 +521,12 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             claimInput.value = record.claim;
             if (!record.uploadUrl) {
-                await freshAuthorization(record);
-                await createTusUpload(file, record);
+                await createTusUpload(file, record, title);
             }
         }
 
         let offset = await remoteOffset(record, file.size);
+        throwIfStopped();
         if (offset === null) {
             clearRecord();
             if (restartCount >= 1) {
@@ -483,7 +555,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 failures += 1;
                 if (failures > 5) throw error;
-                await new Promise(resolve => setTimeout(resolve, [1000, 2000, 5000, 10000, 20000][failures - 1]));
+                await waitBeforeRetry([1000, 2000, 5000, 10000, 20000][failures - 1]);
                 const resumed = await remoteOffset(record, file.size);
                 if (resumed === null) {
                     clearRecord();
@@ -513,6 +585,7 @@ document.addEventListener('DOMContentLoaded', function () {
         retryButton?.classList.add('is-hidden');
         try {
             await upload(currentFile);
+            throwIfStopped();
             uploading = false;
             if (!form.checkValidity()) {
                 form.reportValidity();

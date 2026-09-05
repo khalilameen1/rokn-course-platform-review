@@ -16,7 +16,7 @@ return [
     'webhook_secret' => env('BUNNY_STREAM_WEBHOOK_SECRET'),
     'connect_timeout_seconds' => (int) env('BUNNY_CONNECT_TIMEOUT_SECONDS', 15),
     'upload_timeout_seconds' => (int) env('BUNNY_UPLOAD_TIMEOUT_SECONDS', 3600),
-    'direct_upload_signature_ttl_seconds' => (int) env('BUNNY_DIRECT_UPLOAD_SIGNATURE_TTL_SECONDS', 1800),
+    'direct_upload_signature_ttl_seconds' => (int) env('BUNNY_DIRECT_UPLOAD_SIGNATURE_TTL_SECONDS', 86400),
     'direct_upload_claim_ttl_hours' => (int) env('BUNNY_DIRECT_UPLOAD_CLAIM_TTL_HOURS', 24),
     'direct_upload_allocation_lease_seconds' => (int) env('BUNNY_DIRECT_UPLOAD_ALLOCATION_LEASE_SECONDS', 120),
     'probe_circuit_failure_threshold' => (int) env('BUNNY_PROBE_CIRCUIT_FAILURE_THRESHOLD', 3),

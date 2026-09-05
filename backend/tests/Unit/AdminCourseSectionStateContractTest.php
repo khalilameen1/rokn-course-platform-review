@@ -72,14 +72,14 @@ final class AdminCourseSectionStateContractTest extends TestCase
         $view = $this->source('resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php');
         $draft = $this->source('resources/views/admin/partials/course-authoring-draft.blade.php');
 
-        self::assertStringContainsString("await upload(currentFile);\n            uploading = false;", $view);
+        self::assertStringContainsString("await upload(currentFile);\n            throwIfStopped();\n            uploading = false;", $view);
         self::assertStringContainsString('if (!uploading || submittingAfterUpload) return;', $view);
         self::assertStringContainsString('if (!event.defaultPrevented) return;', $view);
         self::assertStringContainsString('submittingAfterUpload = false;', $view);
         self::assertStringContainsString('window.RoknCourseVideoUpload = Object.freeze({', $view);
         self::assertStringContainsString('resetAfterCommit: () => resetRuntime(true)', $view);
-        self::assertStringContainsString('window.setTimeout(() => controller.abort(), 20000)', $view);
-        self::assertStringContainsString("if (error?.name === 'AbortError') throw new Error('تعذر بدء الرفع بسبب بطء الاتصال')", $view);
+        self::assertStringContainsString("}, 20000, 'تعذر بدء الرفع بسبب بطء الاتصال');", $view);
+        self::assertStringContainsString("throw Object.assign(new Error(timeoutMessage), {retryable: true});", $view);
         self::assertStringContainsString('setSectionContext: (nextSectionId, videoRequired = true) => {', $view);
         self::assertStringContainsString("form.dataset.sectionId = nextSectionId ? String(nextSectionId) : '';", $view);
         self::assertStringContainsString("fileInput.toggleAttribute('required', required);", $view);

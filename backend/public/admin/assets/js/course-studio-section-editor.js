@@ -176,6 +176,7 @@
             if (claimRequired && !String(form.elements.bunny_video_claim?.value || '').trim()) return;
             const moduleId = Number(form.elements.module_id.value);
             const order = Number(form.elements.order.value);
+            let focusNextLesson = false;
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
@@ -218,9 +219,16 @@
                 }
                 resetForCreate(moduleId, order + 1, 'lesson');
                 editor.hidden = false;
-                titleInput.focus();
+                focusNextLesson = true;
                 core.notify('تم حفظ المقطع\nيمكنك إضافة المقطع التالي');
-            }, {feedback, form});
+            }, {feedback, form}).then(() => {
+                // resetForCreate runs while the studio is inert. Restore focus
+                // only after the save gate is gone so keyboard authoring can
+                // continue without a second click.
+                if (!focusNextLesson || editor.hidden) return;
+                titleInput.focus();
+                editor.scrollIntoView({behavior: 'smooth', block: 'center'});
+            });
         });
 
         deleteButton.addEventListener('click', () => {
