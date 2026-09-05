@@ -116,6 +116,29 @@ describe('reels presentation policy', () => {
     expect(resolveReelsFeedAnchor(feed, {lessonId: 'reel-1'})).toBeNull();
   });
 
+  it('continues after the last free preview instead of replaying it after purchase', () => {
+    const course = fixture();
+    const feed = buildAccessibleFeed(course);
+
+    expect(
+      resolveReelsFeedAnchor(feed, {continueAfterReelId: 'reel-1'}),
+    ).toMatchObject({
+      index: 1,
+      item: {key: 'reel-reel-2'},
+    });
+
+    course.modules[0].projects![0].sectionOrder = 2;
+    course.modules[0].reels[1].sectionOrder = 3;
+    course.modules[0].reels[1].isLocked = true;
+    course.modules[0].reels[1].lockReason = 'module_project_not_passed';
+    const projectGateFeed = buildAccessibleFeed(course);
+    expect(
+      resolveReelsFeedAnchor(projectGateFeed, {
+        continueAfterReelId: 'reel-1',
+      }),
+    ).toMatchObject({item: {key: 'project-project-1'}});
+  });
+
   it('updates only the reviewed project status', () => {
     const course = fixture();
     const next = updateProjectStatusOnly(course, 'project-1', 'evaluating');

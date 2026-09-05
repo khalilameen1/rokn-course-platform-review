@@ -4,6 +4,7 @@ import {Alert, NativeModules, Platform} from 'react-native';
 import {
   PROJECT_SUBMISSION_FORMATS_LABEL,
   PROJECT_SUBMISSION_MAX_LABEL,
+  projectFileMatchesAllowedTypes,
   validateProjectFile,
 } from '../../../config/projects';
 import {
@@ -25,9 +26,6 @@ import type {CourseProject, ProjectStatus, SelectedProjectFile} from '../types';
 import {pickProjectFilesOwned} from './pickers';
 
 const EMPTY_MIME_TYPES: string[] = [];
-
-const isAllowedProjectFile = (file: SelectedProjectFile, allowed: string[]) =>
-  allowed.includes(file.type.trim().toLowerCase());
 
 const allowedFileTypesLabel = (mimeTypes: string[]) => {
   const labels: string[] = [];
@@ -204,9 +202,7 @@ export const useProjectSubmission = ({
         if (generation !== draftGenerationRef.current || !draft) return;
         const files = fileSubmissionEnabled
           ? (draft.files || []).filter(file =>
-              allowedMimeTypes.length === 0
-                ? true
-                : allowedMimeTypes.includes(file.type.toLowerCase()),
+              projectFileMatchesAllowedTypes(file, allowedMimeTypes),
             )
           : [];
         const removedFiles = (draft.files || []).filter(
@@ -296,7 +292,7 @@ export const useProjectSubmission = ({
       try {
         const validated = await Promise.all(
           files.map(async file => {
-            if (!isAllowedProjectFile(file, allowedMimeTypes)) {
+            if (!projectFileMatchesAllowedTypes(file, allowedMimeTypes)) {
               throw new Error('PROJECT_FILE_TYPE_UNSUPPORTED');
             }
             return {
@@ -496,7 +492,7 @@ export const useProjectSubmission = ({
         Math.max(0, maximumFiles - selectedFiles.length),
       );
       for (const file of available) {
-        if (!isAllowedProjectFile(file, allowedMimeTypes)) {
+        if (!projectFileMatchesAllowedTypes(file, allowedMimeTypes)) {
           throw new Error('PROJECT_FILE_TYPE_UNSUPPORTED');
         }
         const size = await validateProjectFile(file);

@@ -69,6 +69,7 @@ export type ReelsFeedAnchor = {
   reelId?: string | number;
   lessonId?: string | number;
   projectId?: string | number;
+  continueAfterReelId?: string | number;
 };
 
 /**
@@ -80,6 +81,17 @@ export const resolveReelsFeedAnchor = (
   items: CourseFeedItem[],
   anchor: ReelsFeedAnchor,
 ): {index: number; item: CourseFeedItem} | null => {
+  const continueAfterReelId = String(anchor.continueAfterReelId || '').trim();
+  if (continueAfterReelId) {
+    const completedPreviewIndex = items.findIndex(
+      item =>
+        item.type === 'reel' && item.reel.id === continueAfterReelId,
+    );
+    const nextIndex = completedPreviewIndex + 1;
+    if (completedPreviewIndex >= 0 && nextIndex < items.length) {
+      return {index: nextIndex, item: items[nextIndex]};
+    }
+  }
   const reelId = String(anchor.reelId || '').trim();
   const lessonId = String(anchor.lessonId || '').trim();
   const projectId = String(anchor.projectId || '').trim();

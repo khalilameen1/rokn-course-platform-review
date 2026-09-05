@@ -117,9 +117,10 @@ export default function CourseDetails() {
       }
       navigation.navigate('Reels', {
         courseId,
-        reelId: resumeReelId || undefined,
+        reelId: undefined,
         lessonId: undefined,
         projectId: undefined,
+        continueAfterReelId: resumeReelId || undefined,
         preview: false,
         previewCount: undefined,
         initialReelIndex: undefined,

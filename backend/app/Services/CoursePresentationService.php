@@ -238,7 +238,6 @@ final readonly class CoursePresentationService
         $enforceSectionOrder = $settings
             ? (bool) $settings->enforce_course_section_order
             : true;
-        $moduleProjectStatus = [];
         $orderedSections = $this->sectionSequence->learning($sections);
         $previousSections = [];
         $previousSection = null;
@@ -247,68 +246,54 @@ final readonly class CoursePresentationService
             $previousSection = $orderedSection;
         }
 
-        if ($userId) {
-            $projectsByModule = $sections
-                ->filter(fn ($section): bool => $section->module_id && $section->getSectionType() === 'project')
-                ->groupBy('module_id');
-            $projectIds = $projectsByModule->flatten(1)->pluck('sectionable_id')->filter();
-            $passedProjectIds = $projectIds->isEmpty()
-                ? collect()
-                : $this->revisionReads->passedProjectIds($userId, $projectIds);
-
-            foreach ($sections->pluck('module_id')->filter()->unique() as $moduleId) {
-                $projectSections = $projectsByModule->get($moduleId, collect());
-                $moduleProjectStatus[$moduleId] = $projectSections->isEmpty()
-                    || $projectSections->every(
-                        fn ($projectSection): bool => $passedProjectIds->contains($projectSection->sectionable_id)
-                    );
-            }
-        }
+        $projectIds = $orderedSections
+            ->filter(fn ($section): bool => $section->getSectionType() === 'project')
+            ->pluck('sectionable_id')
+            ->filter();
+        $passedProjectIds = $userId && $projectIds->isNotEmpty()
+            ? $this->revisionReads->passedProjectIds($userId, $projectIds)
+            : collect();
+        $hasUnpassedProjectGate = false;
 
         return $orderedSections->map(function ($section) use (
+            &$hasUnpassedProjectGate,
             $completedSectionIds,
             $enforceSectionOrder,
-            $moduleProjectStatus,
+            $passedProjectIds,
             $previousSections,
             $userId
         ): array {
-            $isCompleted = $completedSectionIds->contains($section->id);
+            $isProject = $section->getSectionType() === 'project';
+            $projectPassed = $isProject
+                && $userId
+                && $passedProjectIds->contains($section->sectionable_id);
+            // Review status is authoritative for a project. The derived
+            // progress row can lag a committed review and must never open or
+            // close a crossing gate by itself.
+            $isCompleted = $isProject && $userId
+                ? $projectPassed
+                : $completedSectionIds->contains($section->id);
             $isLocked = false;
             $lockReason = null;
 
-            if ($enforceSectionOrder) {
-                $previousSection = $previousSections[(int) $section->id] ?? null;
-
-                if ($previousSection) {
-                    if (!$completedSectionIds->contains($previousSection->id)) {
-                        $isLocked = true;
-                        // A project is a deliberate course gate, not just an
-                        // unfinished neighbouring section. Preserve that
-                        // distinction for the client so it can show the
-                        // project action instead of a generic locked row.
-                        $lockReason = $userId
-                            && $previousSection->getSectionType() === 'project'
-                            ? 'module_project_not_passed'
-                            : 'previous_section_incomplete';
-                    }
-
-                    if (
-                        !$isLocked
-                        && $userId
-                        && $section->module_id
-                        && $previousSection->module_id !== $section->module_id
-                    ) {
-                        $previousModuleId = $previousSection->module_id;
-                        if (
-                            $previousModuleId
-                            && isset($moduleProjectStatus[$previousModuleId])
-                            && !$moduleProjectStatus[$previousModuleId]
-                        ) {
-                            $isLocked = true;
-                            $lockReason = 'module_project_not_passed';
-                        }
-                    }
+            $previousSection = $previousSections[(int) $section->id] ?? null;
+            if ($userId && $hasUnpassedProjectGate) {
+                $isLocked = true;
+                $lockReason = 'module_project_not_passed';
+            } elseif ($enforceSectionOrder && $previousSection) {
+                $previousCompleted = $previousSection->getSectionType() === 'project'
+                    ? $passedProjectIds->contains($previousSection->sectionable_id)
+                    : $completedSectionIds->contains($previousSection->id);
+                if (!$previousCompleted) {
+                    $isLocked = true;
+                    $lockReason = $previousSection->getSectionType() === 'project'
+                        ? 'module_project_not_passed'
+                        : 'previous_section_incomplete';
                 }
+            }
+
+            if ($userId && $isProject && !$projectPassed) {
+                $hasUnpassedProjectGate = true;
             }
 
             return [

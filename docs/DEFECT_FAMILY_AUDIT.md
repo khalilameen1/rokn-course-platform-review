@@ -56,10 +56,11 @@ used all of its column height while the delete form was its following sibling.
 The repair places both actions in the card's own layout, gives fields practical
 width, and separates method titles from wrapping status badges. The same
 form-height/sibling pattern was not found elsewhere in the admin templates.
-An isolated CSS layout fixture covers 360/768/1024/1440px. The deployed page was
-also inspected at those four widths. At 1024px the rule inputs are approximately
-301px wide instead of 70px; save/delete actions remain within each card without
-overlap or clipping. Mobile and wider layouts have no horizontal page overflow.
+An isolated CSS layout fixture covers 360/768/1024/1440px. Production screenshots
+confirm useful-width inputs and save/delete actions inside their cards without
+overlap or clipping at the observed browser size. A later live viewport override
+did not actually resize the browser, so the fixture's four breakpoints must not
+be reported as four independently verified production viewport sizes.
 No reward value, campaign or financial setting was changed during this check.
 
 Profile editing now shares one revisioned name/image/professional-headline
@@ -297,6 +298,51 @@ draft integrity and deletion checks still see their internal associations.
 The HTTP regression checks one canonical course plus its draft as one logical
 course and verifies the list excludes the copy (profile-boundary suite: 6 tests,
 68 assertions). No production course or draft was deleted to correct the count.
+
+### Daily learning boundaries after the dashboard repair — 2026-09-05
+
+The earlier incomplete-course checkpoint above is superseded: course 3 was
+published through the studio with 3 modules, 15 reels, 3 crossing projects,
+teacher 7, artwork, three plans and its practical certificate template. Fresh
+guest list/details reads showed it in the catalogue and as the hero course,
+with 1195 seconds of content and revision 30. Deployment `9a18d2d` was observed
+as Deployed, and the teacher list showed one logical course rather than counting
+the staged revision as a second course. These are dashboard/API observations,
+not signed-APK playback, checkout, provider callback or certificate acceptance.
+
+Four concrete daily boundary failures were repaired in the next source batch:
+
+- Disabling sequential lesson viewing also disabled crossing projects. The
+  ordered course graph now carries the first unpassed project gate through all
+  later sections, including a second lesson and an entire later module without
+  a project. Project review results, not lagging derived progress rows, determine
+  passage. The actual playback access service and course serializer consume
+  this one state. Regression covers both directions of progress/review mismatch
+  and access before/after passage (15 backend tests / 118 assertions).
+- Purchase after the free sample reused the last preview reel as its resume
+  destination. It now expresses continuation after that reel in the accessible
+  course feed. The intent is consumed only after a successful load, so refresh
+  cannot drag the learner backwards and a required project cannot be skipped.
+- Android document providers may return missing, generic or inaccurate MIME
+  metadata for a valid selected file. Selection, submission and draft hydration
+  now share the same project-specific file admission rule. Actual byte/OOXML
+  validation stays on the server; this is not a filename-based permission grant.
+- The chat UI truncated a healthy accepted answer at 45 seconds or 36 probes,
+  although the server advertises up to 110 seconds including queue settlement.
+  It also polled earlier than a five-second server retry interval. Two failing
+  runtime tests reproduced those cases before repair. Polling now obeys the
+  bounded server window and retry minimum, adopts the window after a lost send
+  response, and counts send time inside the same attempt. Origin outages stay
+  bounded from the last reachable response. Recovery keeps the same request ID
+  and never resends an accepted question or creates another charge.
+
+Combined verification passed 16 targeted mobile suites / 125 tests, TypeScript
+and scoped ESLint, plus 24 backend tests / 223 assertions spanning content
+access, playback sessions, project presentation and OOXML validation.
+These mobile changes are source-level repairs with targeted runtime verification.
+They are not yet in a replacement signed APK and have not been accepted on a
+phone against the live providers. No AI model, reward amount or credential was
+changed during this batch.
 
 ## Attribution boundary
 

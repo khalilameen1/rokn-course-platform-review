@@ -14,6 +14,7 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\CourseCompletionService;
 use App\Services\CoursePresentationService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -52,6 +53,13 @@ final class CourseContentSecurityTest extends TestCase
             $table->unsignedBigInteger('course_id');
             $table->unsignedInteger('order');
             $table->timestamps();
+        });
+        Schema::create('courses', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name_ar')->nullable();
+            $table->boolean('is_coming_soon')->default(false);
+            $table->timestamps();
+            $table->softDeletes();
         });
         Schema::create('course_authoring_revisions', function (Blueprint $table): void {
             $table->id();
@@ -169,6 +177,7 @@ final class CourseContentSecurityTest extends TestCase
         Schema::dropIfExists('course_authoring_revision_entities');
         Schema::dropIfExists('course_authoring_revisions');
         Schema::dropIfExists('course_modules');
+        Schema::dropIfExists('courses');
         Schema::dropIfExists('settings');
 
         parent::tearDown();
@@ -381,6 +390,218 @@ final class CourseContentSecurityTest extends TestCase
 
         self::assertTrue($states[203]['is_locked']);
         self::assertSame('module_project_not_passed', $states[203]['lock_reason']);
+    }
+
+    public function test_disabling_lesson_order_does_not_disable_crossing_projects(): void
+    {
+        Setting::create(['enforce_course_section_order' => false]);
+        \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+            ['id' => 401, 'course_id' => 77, 'order' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 402, 'course_id' => 77, 'order' => 2, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 403, 'course_id' => 77, 'order' => 3, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $firstLesson = $this->section(
+            301,
+            1,
+            401,
+            $this->lesson(31, false, 'unordered-first'),
+            'درس غير مكتمل'
+        );
+        $project = new CourseSection();
+        $project->forceFill([
+            'id' => 302,
+            'course_id' => 77,
+            'module_id' => 401,
+            'section_type' => 'project',
+            'sectionable_type' => \App\Models\Project::class,
+            'sectionable_id' => 501,
+            'order' => 2,
+        ]);
+        $nextModuleFirst = $this->section(
+            303,
+            1,
+            402,
+            $this->lesson(32, false, 'after-project'),
+            'أول درس بعد مشروع العبور'
+        );
+        $nextModuleSecond = $this->section(
+            304,
+            2,
+            402,
+            $this->lesson(33, false, 'after-project-second'),
+            'ثاني درس بعد مشروع العبور'
+        );
+        $thirdModuleLesson = $this->section(
+            305,
+            1,
+            403,
+            $this->lesson(34, false, 'third-module'),
+            'الوحدة الثالثة بلا مشروع جديد'
+        );
+
+        $states = app(CoursePresentationService::class)->sectionLockStatus(
+            collect([
+                $thirdModuleLesson,
+                $nextModuleSecond,
+                $nextModuleFirst,
+                $project,
+                $firstLesson,
+            ]),
+            // A stale derived progress row must not impersonate a passed
+            // project when the review outcome is still absent.
+            collect([$project->id]),
+            42
+        )->keyBy('section_id');
+
+        self::assertFalse($states[302]['is_locked']);
+        self::assertTrue($states[303]['is_locked']);
+        self::assertSame('module_project_not_passed', $states[303]['lock_reason']);
+        self::assertTrue($states[304]['is_locked']);
+        self::assertSame('module_project_not_passed', $states[304]['lock_reason']);
+        self::assertTrue($states[305]['is_locked']);
+        self::assertSame('module_project_not_passed', $states[305]['lock_reason']);
+        self::assertFalse($states[302]['is_completed']);
+
+        \Illuminate\Support\Facades\DB::table('project_submissions')->insert([
+            'user_id' => 42,
+            'project_id' => 501,
+            'review_status' => \App\Models\ProjectSubmission::STATUS_PASSED,
+            'submitted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $afterPass = app(CoursePresentationService::class)->sectionLockStatus(
+            collect([
+                $thirdModuleLesson,
+                $nextModuleSecond,
+                $nextModuleFirst,
+                $project,
+                $firstLesson,
+            ]),
+            // The committed review is authoritative even if progress repair
+            // has not populated the project section row yet.
+            collect(),
+            42
+        )->keyBy('section_id');
+
+        self::assertTrue($afterPass[302]['is_completed']);
+        self::assertFalse($afterPass[303]['is_locked']);
+        self::assertFalse($afterPass[304]['is_locked']);
+        self::assertFalse($afterPass[305]['is_locked']);
+    }
+
+    public function test_playback_access_service_cannot_skip_a_crossing_project(): void
+    {
+        Setting::create(['enforce_course_section_order' => false]);
+        \Illuminate\Support\Facades\DB::table('courses')->insert([
+            'id' => 77,
+            'name_ar' => 'اختبار بوابة التشغيل',
+            'is_coming_soon' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        \Illuminate\Support\Facades\DB::table('course_modules')->insert([
+            ['id' => 401, 'course_id' => 77, 'order' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 402, 'course_id' => 77, 'order' => 2, 'created_at' => now(), 'updated_at' => now()],
+            ['id' => 403, 'course_id' => 77, 'order' => 3, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        \Illuminate\Support\Facades\DB::table('course_sections')->insert([
+            [
+                'id' => 301,
+                'course_id' => 77,
+                'module_id' => 401,
+                'sectionable_type' => Lesson::class,
+                'sectionable_id' => 31,
+                'order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 302,
+                'course_id' => 77,
+                'module_id' => 401,
+                'sectionable_type' => \App\Models\Project::class,
+                'sectionable_id' => 501,
+                'order' => 2,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 303,
+                'course_id' => 77,
+                'module_id' => 402,
+                'sectionable_type' => Lesson::class,
+                'sectionable_id' => 32,
+                'order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 304,
+                'course_id' => 77,
+                'module_id' => 402,
+                'sectionable_type' => Lesson::class,
+                'sectionable_id' => 33,
+                'order' => 2,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => 305,
+                'course_id' => 77,
+                'module_id' => 403,
+                'sectionable_type' => Lesson::class,
+                'sectionable_id' => 34,
+                'order' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+        CourseEnrollment::create([
+            'user_id' => 42,
+            'course_id' => 77,
+            'is_active' => true,
+            'enrolled_at' => now(),
+            'access_granted_at' => now(),
+        ]);
+
+        $user = new User();
+        $user->forceFill(['id' => 42, 'active' => true]);
+        $user->exists = true;
+        $completion = app(CourseCompletionService::class);
+
+        foreach ([304, 305] as $sectionId) {
+            $state = $completion->sectionAccessState(
+                $user,
+                CourseSection::query()->findOrFail($sectionId)
+            );
+
+            self::assertFalse($state['can_access']);
+            self::assertTrue($state['is_locked']);
+            self::assertSame('module_project_not_passed', $state['lock_reason']);
+        }
+
+        \Illuminate\Support\Facades\DB::table('project_submissions')->insert([
+            'user_id' => 42,
+            'project_id' => 501,
+            'review_status' => \App\Models\ProjectSubmission::STATUS_PASSED,
+            'submitted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([304, 305] as $sectionId) {
+            $state = $completion->sectionAccessState(
+                $user,
+                CourseSection::query()->findOrFail($sectionId)
+            );
+
+            self::assertTrue($state['can_access']);
+            self::assertFalse($state['is_locked']);
+            self::assertNull($state['lock_reason']);
+        }
     }
 
     private function lesson(int $id, bool $isPreview, string $guid): Lesson

@@ -42,6 +42,8 @@ final class LessonMediaDeliveryContractTest extends TestCase
         self::assertStringContainsString('function sectionAccessState(', $completion);
         self::assertStringContainsString("'course_purchase_required'", $completion);
         self::assertStringContainsString('->sectionAccessState($user, $section)', $manifest);
+        self::assertStringContainsString("\$allowed = \$accessState['can_access']", $manifest);
+        self::assertStringContainsString("\$accessState['lock_reason'] ?? 'lesson_locked'", $manifest);
         self::assertStringContainsString("'module_project_not_passed'", $controller);
         self::assertStringContainsString("'course_purchase_required'", $controller);
         self::assertStringContainsString("'previous_section_incomplete'", $controller);
@@ -86,8 +88,10 @@ final class LessonMediaDeliveryContractTest extends TestCase
     {
         $resource = $this->source('app/Http/Resources/CourseResource.php');
 
+        self::assertStringContainsString('->sectionLockStatus(', $resource);
         self::assertStringContainsString("'is_locked' => \$isLocked", $resource);
         self::assertStringContainsString("['is_completed'] ?? false", $resource);
+        self::assertStringContainsString('if (!$isLocked || $isPreview)', $resource);
     }
 
     public function test_course_section_order_is_the_only_learner_sequence_contract(): void

@@ -1,4 +1,4 @@
-import {useCallback, useEffect} from 'react';
+import {useCallback, useEffect, useRef} from 'react';
 import type {Dispatch, MutableRefObject, SetStateAction} from 'react';
 import {
   applyLocalLearningState,
@@ -71,6 +71,7 @@ export const useReelsCourseLoader = ({
   setSavedLessons: Dispatch<SetStateAction<Set<string>>>;
   setServerSession: Dispatch<SetStateAction<boolean | null>>;
 }) => {
+  const consumedContinueAfterTokenRef = useRef<string | null>(null);
   const load = useCallback(
     async (reloadTarget?: CourseReloadTarget) => {
       refs.loadAbort.current?.abort();
@@ -172,12 +173,25 @@ export const useReelsCourseLoader = ({
         // with an explicit index (for example after opening a project gate)
         // must not be dragged back to the reel that originally opened the
         // screen.
+        const continueAfterReelId = String(
+          params.continueAfterReelId || '',
+        ).trim();
+        const continueAfterToken = continueAfterReelId
+          ? `${requestedCourseId}:${continueAfterReelId}`
+          : '';
+        const pendingContinueAfterReelId =
+          !reloadTarget &&
+          continueAfterToken &&
+          consumedContinueAfterTokenRef.current !== continueAfterToken
+            ? continueAfterReelId
+            : undefined;
         const requestedAnchor = reloadTarget
           ? {lessonId: reloadTarget.lessonId}
           : {
               reelId: params.reelId,
               lessonId: params.lessonId,
               projectId: params.projectId,
+              continueAfterReelId: pendingContinueAfterReelId,
             };
         const requestedPosition = Number(params.initialPositionSeconds);
         const accessibleItems = previewMode
@@ -217,6 +231,9 @@ export const useReelsCourseLoader = ({
           key: resolvedAnchor?.item.key,
           ...(initialIndex !== null ? {index: initialIndex} : {}),
         });
+        if (pendingContinueAfterReelId) {
+          consumedContinueAfterTokenRef.current = continueAfterToken;
+        }
         reloadTarget?.onResult?.(true);
       } catch (error) {
         if (!isCurrentOwner()) return;
@@ -243,6 +260,7 @@ export const useReelsCourseLoader = ({
       navigation,
       identityKey,
       params.courseId,
+      params.continueAfterReelId,
       params.initialReelIndex,
       params.initialPositionSeconds,
       params.lessonId,

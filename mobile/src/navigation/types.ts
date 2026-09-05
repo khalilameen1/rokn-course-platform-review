@@ -17,6 +17,7 @@ export type ReelsRouteParams = {
   reelId?: string | number;
   lessonId?: string | number;
   projectId?: string | number;
+  continueAfterReelId?: string | number;
   initialReelIndex?: number;
   initialPositionSeconds?: number;
   preview?: boolean;

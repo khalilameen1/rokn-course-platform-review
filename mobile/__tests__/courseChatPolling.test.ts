@@ -4,6 +4,7 @@ jest.mock('../src/components/VideoPlayer/courseLearning/assistant', () => ({
 
 import {pollCourseAssistantTurn} from '../src/components/VideoPlayer/courseLearning/assistant';
 import {
+  COURSE_CHAT_DEFAULT_POLL_WINDOW_MS,
   COURSE_CHAT_MAX_POLL_WINDOW_MS,
   pollAcceptedCourseChatTurn,
 } from '../src/components/VideoPlayer/courseChat/turnPolling';
@@ -248,5 +249,178 @@ describe('course chat foreground polling', () => {
     });
     expect(onPartial).toHaveBeenCalledTimes(1);
     expect(onPartial).toHaveBeenCalledWith('مرحبا بك اليوم');
+  });
+
+  it('receives a healthy answer after 45 seconds within the server window', async () => {
+    const startedAt = Date.now();
+    jest.mocked(pollCourseAssistantTurn).mockImplementation(async () => {
+      const elapsed = Date.now() - startedAt;
+      return elapsed >= 55_000
+        ? {text: 'الإجابة مكتملة', offline: false, turnStatus: 'completed'}
+        : {
+            text: `جزء متزايد من الإجابة ${'أ'.repeat(Math.floor(elapsed / 1000))}`,
+            offline: false,
+            code: 'chat_answer_in_progress',
+            turnStatus: 'streaming',
+            partial: true,
+            retryAfterSeconds: 1,
+          };
+    });
+    const result = pollAcceptedCourseChatTurn({
+      clientRequestId: requestId,
+      initialResponse: {
+        text: '',
+        offline: false,
+        code: 'chat_answer_in_progress',
+        turnStatus: 'queued',
+        pollWindowSeconds: 95,
+        retryAfterSeconds: 1,
+      },
+      isActive: () => true,
+      onPartial: jest.fn(),
+      onStatus: jest.fn(),
+    });
+    await jest.runAllTimersAsync();
+    await expect(result).resolves.toEqual({
+      foregroundWaitExpired: false,
+      response: expect.objectContaining({
+        turnStatus: 'completed',
+        text: 'الإجابة مكتملة',
+      }),
+    });
+  });
+
+  it('never probes sooner than the server retry interval', async () => {
+    jest.mocked(pollCourseAssistantTurn).mockResolvedValue({
+      text: 'الإجابة مكتملة',
+      offline: false,
+      turnStatus: 'completed',
+    });
+    const result = pollAcceptedCourseChatTurn({
+      clientRequestId: requestId,
+      initialResponse: {
+        text: '',
+        offline: false,
+        code: 'chat_answer_in_progress',
+        turnStatus: 'queued',
+        retryAfterSeconds: 5,
+      },
+      isActive: () => true,
+      onPartial: jest.fn(),
+      onStatus: jest.fn(),
+    });
+    await jest.advanceTimersByTimeAsync(4999);
+    expect(pollCourseAssistantTurn).not.toHaveBeenCalled();
+    await jest.runAllTimersAsync();
+    await expect(result).resolves.toEqual({
+      foregroundWaitExpired: false,
+      response: expect.objectContaining({turnStatus: 'completed'}),
+    });
+  });
+
+  it('adopts the server window after the send response was lost', async () => {
+    const startedAt = Date.now();
+    await jest.advanceTimersByTimeAsync(15_000);
+    jest.mocked(pollCourseAssistantTurn).mockImplementation(async () =>
+      Date.now() - startedAt >= 55_000
+        ? {text: 'الإجابة المستعادة', offline: false, turnStatus: 'completed'}
+        : {
+            text: '',
+            offline: false,
+            code: 'chat_answer_in_progress',
+            turnStatus: 'queued',
+            pollWindowSeconds: 95,
+            retryAfterSeconds: 3,
+          },
+    );
+    const result = pollAcceptedCourseChatTurn({
+      clientRequestId: requestId,
+      attemptStartedAt: startedAt,
+      initialResponse: {
+        text: '',
+        offline: true,
+        code: 'chat_answer_in_progress',
+        turnStatus: 'queued',
+        retryAfterSeconds: 2,
+      },
+      isActive: () => true,
+      onPartial: jest.fn(),
+      onStatus: jest.fn(),
+    });
+    await jest.runAllTimersAsync();
+    await expect(result).resolves.toEqual({
+      foregroundWaitExpired: false,
+      response: expect.objectContaining({turnStatus: 'completed'}),
+    });
+    expect(
+      jest.mocked(pollCourseAssistantTurn).mock.calls.every(
+        ([id]) => id === requestId,
+      ),
+    ).toBe(true);
+  });
+
+  it.each([95, 110])(
+    'counts the send timeout inside the %s-second foreground window',
+    async pollWindowSeconds => {
+      const attemptStartedAt = Date.now();
+      await jest.advanceTimersByTimeAsync(15_000);
+      jest.mocked(pollCourseAssistantTurn).mockResolvedValue({
+        text: '',
+        offline: false,
+        code: 'chat_answer_in_progress',
+        turnStatus: 'queued',
+        pollWindowSeconds,
+        retryAfterSeconds: 3,
+      });
+      const result = pollAcceptedCourseChatTurn({
+        clientRequestId: requestId,
+        attemptStartedAt,
+        initialResponse: {
+          text: '',
+          offline: true,
+          code: 'chat_answer_in_progress',
+          turnStatus: 'queued',
+          retryAfterSeconds: 2,
+        },
+        isActive: () => true,
+        onPartial: jest.fn(),
+        onStatus: jest.fn(),
+      });
+      await jest.runAllTimersAsync();
+      expect(Date.now() - attemptStartedAt).toBe(pollWindowSeconds * 1000);
+      await expect(result).resolves.toEqual({
+        foregroundWaitExpired: true,
+        response: expect.objectContaining({code: 'chat_answer_in_progress'}),
+      });
+    },
+  );
+
+  it('keeps an unreachable origin bounded even with a longer provider window', async () => {
+    jest.mocked(pollCourseAssistantTurn).mockResolvedValue({
+      text: '',
+      offline: true,
+      code: 'chat_answer_in_progress',
+      turnStatus: 'queued',
+      retryAfterSeconds: 5,
+    });
+    const result = pollAcceptedCourseChatTurn({
+      clientRequestId: requestId,
+      initialResponse: {
+        text: '',
+        offline: false,
+        code: 'chat_answer_in_progress',
+        turnStatus: 'queued',
+        pollWindowSeconds: 95,
+        retryAfterSeconds: 1,
+      },
+      isActive: () => true,
+      onPartial: jest.fn(),
+      onStatus: jest.fn(),
+    });
+    await jest.advanceTimersByTimeAsync(COURSE_CHAT_DEFAULT_POLL_WINDOW_MS + 1);
+    await expect(result).resolves.toEqual({
+      foregroundWaitExpired: true,
+      response: expect.objectContaining({offline: true}),
+    });
   });
 });

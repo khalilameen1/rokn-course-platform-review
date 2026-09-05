@@ -30,19 +30,56 @@ const allowedMimeTypes = new Set([
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ]);
 
+const canonicalMimeByExtension: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+  txt: 'text/plain',
+  docx:
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  pptx:
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+
+const canonicalMime = (value?: string) => {
+  const mime = String(value || '').trim().toLowerCase();
+  return mime === 'image/jpg' ? 'image/jpeg' : mime;
+};
+
+const canonicalMimeFromName = (value?: string) => {
+  const extension = String(value || '')
+    .trim()
+    .toLowerCase()
+    .match(/\.([a-z0-9]+)$/)?.[1];
+  return canonicalMimeByExtension[extension || ''] || '';
+};
+
+/**
+ * Android document providers may omit a MIME type for valid DOCX/PDF/image
+ * files. The server still validates the actual bytes; this only keeps the
+ * client-side project contract from rejecting a supported file before upload.
+ */
+export const projectFileMatchesAllowedTypes = (
+  file: {name?: string; type?: string},
+  allowed: string[],
+): boolean => {
+  if (allowed.length === 0) return true;
+  const accepted = new Set(allowed.map(canonicalMime));
+  return (
+    accepted.has(canonicalMime(file.type)) ||
+    accepted.has(canonicalMimeFromName(file.name))
+  );
+};
+
 export const validateProjectFileType = (file: {
   name?: string;
   type?: string;
 }): void => {
-  const mime = String(file.type || '').trim().toLowerCase();
-  const extension = String(file.name || '')
-    .trim()
-    .toLowerCase()
-    .match(/\.([a-z0-9]+)$/)?.[1];
-  const extensionAllowed = ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'txt', 'docx', 'pptx'].includes(
-    extension || '',
-  );
-  if (!allowedMimeTypes.has(mime) && !extensionAllowed) {
+  const mime = canonicalMime(file.type);
+  const extensionMime = canonicalMimeFromName(file.name);
+  if (!allowedMimeTypes.has(mime) && !allowedMimeTypes.has(extensionMime)) {
     throw new Error('PROJECT_FILE_TYPE_UNSUPPORTED');
   }
 };

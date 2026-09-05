@@ -167,7 +167,8 @@ describe('learning async ownership contracts', () => {
 
     expect(chat).toContain('COURSE_CHAT_DEFAULT_POLL_WINDOW_MS');
     expect(chat).toContain('Number(response.pollWindowSeconds) * 1000');
-    expect(chat).toContain('Date.now() < deadlineAt');
+    expect(chat).toContain('Date.now() < currentDeadline()');
+    expect(chatController).toContain('attemptStartedAt,');
     expect(chat).toContain('statusProbes < COURSE_CHAT_MAX_STATUS_PROBES');
     expect(chatController).toContain('resumeInterruptedTurnRef.current = true');
 

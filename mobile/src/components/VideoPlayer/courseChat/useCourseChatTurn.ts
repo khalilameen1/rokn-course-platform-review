@@ -291,6 +291,7 @@ export const useCourseChatTurn = ({
         const requestCourse = upgraded
           ? {...course, accessType: 'paid', chatAvailable: true}
           : course;
+        let attemptStartedAt = Date.now();
         let response = retryClientRequestId
           ? await pollCourseAssistantTurn(retryClientRequestId)
           : await askCourseAssistant({
@@ -323,6 +324,7 @@ export const useCourseChatTurn = ({
             turnBoundary,
           );
           assertAccountSessionBoundary(turnBoundary);
+          attemptStartedAt = Date.now();
           response = await askCourseAssistant({
             course: requestCourse,
             reel,
@@ -335,6 +337,7 @@ export const useCourseChatTurn = ({
         const polling = await pollAcceptedCourseChatTurn({
           clientRequestId,
           initialResponse: response,
+          attemptStartedAt,
           isActive: () => interactiveRef.current && ownsTurn(),
           onStatus: turn => {
             commitMessages(rendered =>
