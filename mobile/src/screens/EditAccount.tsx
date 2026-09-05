@@ -57,14 +57,15 @@ export default function EditAccount() {
   const hasStoredToken = Boolean(extractApiToken(storedUser));
   const identityKey = sessionIdentityKey(storedUser);
   const [name, setName] = useState(user.name ?? '');
-  const [jobTitle, setJobTitle] = useState(
-    !hasStoredToken && user.job_title === 'مصمم واجهات ومستقل'
-      ? ''
-      : user.job_title ?? '',
+  const [portfolioHeadline, setPortfolioHeadline] = useState(
+    hasStoredToken && typeof user.portfolio_headline === 'string'
+      ? user.portfolio_headline
+      : '',
   );
   const [email, setEmail] = useState(user.email ?? '');
   const storedAvatar = user.avatar || user.profile_image;
   const [avatar, setAvatar] = useState(storedAvatar || '');
+  const [failedAvatarUri, setFailedAvatarUri] = useState<string>();
   const [avatarUpload, setAvatarUpload] = useState<
     {uri: string; type?: string; fileName?: string; size?: number} | undefined
   >();
@@ -75,6 +76,11 @@ export default function EditAccount() {
   >('loading');
   const [reloadProfile, setReloadProfile] = useState(0);
   const [saving, setSaving] = useState(false);
+  const normalizedName = name.trim().replace(/\s+/g, ' ');
+  const normalizedPortfolioHeadline = portfolioHeadline
+    .trim()
+    .replace(/\s+/g, ' ');
+  const validName = Array.from(normalizedName).length >= 2;
   const mountedRef = useRef(true);
   const saveFlightRef = useRef(false);
   const pickerFlightRef = useRef(false);
@@ -102,7 +108,7 @@ export default function EditAccount() {
     setAvatarUpload(undefined);
     profileRequestRef.current = null;
     setName('');
-    setJobTitle('');
+    setPortfolioHeadline('');
     setEmail('');
     setAvatar('');
     setProfileRevision(0);
@@ -142,7 +148,7 @@ export default function EditAccount() {
       if (active && profileResult.status === 'fulfilled') {
         const profile = profileResult.value;
         setName(profile.name);
-        setJobTitle(profile.jobTitle);
+        setPortfolioHeadline(profile.portfolioHeadline);
         setEmail(profile.email);
         setAvatar(profile.avatar || '');
         setProfileRevision(profile.profileRevision);
@@ -244,7 +250,7 @@ export default function EditAccount() {
     if (
       serverSession !== true ||
       hydrationState !== 'ready' ||
-      !name.trim() ||
+      !validName ||
       pickerFlightRef.current ||
       saveFlightRef.current
     )
@@ -263,12 +269,15 @@ export default function EditAccount() {
       if (!expectedOwner) {
         throw new Error('PROFILE_SESSION_OWNER_UNAVAILABLE');
       }
+      let remoteName = normalizedName;
+      let remotePortfolioHeadline = normalizedPortfolioHeadline;
       let remoteAvatar = storedAvatar;
+      let remoteProfileRevision = profileRevision;
       if (serverSession) {
         assertAccountSessionBoundary(accountBoundary);
         const requestFingerprint = JSON.stringify([
-          name.trim(),
-          jobTitle.trim(),
+          normalizedName,
+          normalizedPortfolioHeadline,
           avatarUpload?.uri || '',
           avatarUpload?.size || 0,
           profileRevision,
@@ -281,10 +290,9 @@ export default function EditAccount() {
         }
         const profile = await updateProfile(
           {
-            name: name.trim(),
-            jobTitle: jobTitle.trim(),
+            name: normalizedName,
             avatar: avatarUpload,
-            portfolioHeadline: jobTitle.trim(),
+            portfolioHeadline: normalizedPortfolioHeadline,
             clientRequestId: profileRequestRef.current.id,
             expectedProfileRevision: profileRevision,
           },
@@ -294,7 +302,10 @@ export default function EditAccount() {
         if (avatarUpload && !profile.avatar) {
           throw new Error('PROFILE_AVATAR_NOT_PERSISTED');
         }
+        remoteName = profile.name;
+        remotePortfolioHeadline = profile.portfolioHeadline;
         remoteAvatar = profile.avatar || remoteAvatar;
+        remoteProfileRevision = profile.profileRevision;
         setProfileRevision(profile.profileRevision);
         remoteProfileSaved = true;
       }
@@ -307,10 +318,12 @@ export default function EditAccount() {
           const activeUser = extractUserProfile(activeSession);
           const updatedProfile = {
             ...activeUser,
-            name: name.trim(),
-            job_title: jobTitle.trim(),
+            name: remoteName,
+            portfolio_headline: remotePortfolioHeadline,
             avatar: remoteAvatar,
             profile_image: remoteAvatar,
+            image: remoteAvatar,
+            profile_revision: remoteProfileRevision,
           };
           return activeRecord.user
             ? {...activeRecord, user: updatedProfile}
@@ -394,19 +407,39 @@ export default function EditAccount() {
           ) : (
             <>
               <View style={styles.avatarArea}>
-                {avatar ? (
-                  <Image
-                    accessibilityLabel="صورة الحساب"
-                    onError={() => setAvatar('')}
-                    source={{uri: avatar}}
-                    style={styles.avatar}
-                  />
-                ) : (
-                  <DefaultAvatar accessibilityLabel="صورة الحساب" size={92} />
-                )}
+                <Pressable
+                  accessibilityLabel="اختيار صورة الحساب"
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    disabled: saving || hydrationState !== 'ready',
+                  }}
+                  disabled={saving || hydrationState !== 'ready'}
+                  onPress={chooseAvatar}
+                  style={({pressed}) => [
+                    styles.avatarButton,
+                    pressed && styles.avatarPressed,
+                  ]}>
+                  <View
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants">
+                    {avatar && avatar !== failedAvatarUri ? (
+                      <Image
+                        onError={() => setFailedAvatarUri(avatar)}
+                        source={{uri: avatar}}
+                        style={styles.avatar}
+                      />
+                    ) : (
+                      <DefaultAvatar
+                        accessibilityLabel="صورة الحساب"
+                        size={92}
+                      />
+                    )}
+                  </View>
+                </Pressable>
                 <Pressable
                   accessibilityLabel="تغيير صورة الحساب"
                   accessibilityRole="button"
+                  disabled={saving || hydrationState !== 'ready'}
                   onPress={chooseAvatar}
                   style={styles.changePhoto}>
                   <Text style={styles.changePhotoLabel}>تغيير الصورة</Text>
@@ -417,18 +450,22 @@ export default function EditAccount() {
                 <TextInput
                   accessibilityLabel="الاسم الظاهر"
                   autoCapitalize="words"
+                  maxLength={120}
                   onChangeText={setName}
                   style={styles.input}
                   value={name}
                 />
-                <Text style={styles.label}>المسمى المهني (اختياري)</Text>
+                <Text style={styles.label}>
+                  العنوان المهني في البورتفوليو (اختياري)
+                </Text>
                 <TextInput
-                  accessibilityLabel="المسمى المهني"
-                  onChangeText={setJobTitle}
+                  accessibilityLabel="العنوان المهني في البورتفوليو"
+                  maxLength={160}
+                  onChangeText={setPortfolioHeadline}
                   placeholder="مصمم منتجات رقمية"
                   placeholderTextColor={Palette.textFaint}
                   style={styles.input}
-                  value={jobTitle}
+                  value={portfolioHeadline}
                 />
                 <Text style={styles.label}>البريد المرتبط بالحساب</Text>
                 <View style={[styles.input, styles.readonly]}>
@@ -441,7 +478,7 @@ export default function EditAccount() {
                 </Text>
               </PremiumCard>
               <Button
-                disable={saving || hydrationState !== 'ready' || !name.trim()}
+                disable={saving || hydrationState !== 'ready' || !validName}
                 loader={saving}
                 onPress={save}
                 title="حفظ التغييرات"
@@ -457,6 +494,12 @@ export default function EditAccount() {
 const styles = StyleSheet.create({
   frame: {maxWidth: 680},
   avatarArea: {alignItems: 'center', paddingVertical: Spacing.lg},
+  avatarButton: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+  },
+  avatarPressed: {opacity: 0.78},
   avatar: {
     width: 92,
     height: 92,

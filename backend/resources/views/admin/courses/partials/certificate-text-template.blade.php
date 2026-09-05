@@ -19,6 +19,7 @@
             $label = is_array($template) ? ($template['label'] ?? $key) : $key;
             $text = is_array($template) ? ($template['text'] ?? '') : (string) $template;
             $description = is_array($template) ? ($template['description'] ?? '') : '';
+            $qrDestination = is_array($template) ? ($template['qr_destination'] ?? 'certificate') : 'certificate';
         @endphp
         <label class="border rounded p-3 mb-2 d-block" for="certificate_text_template_key_{{ $key }}">
             <span class="d-flex align-items-start">
@@ -39,6 +40,9 @@
                     <span class="d-block mt-2">
                         <span>{{ $text }}</span>
                         <strong data-certificate-preview-course> — {{ $previewCourseName }}</strong>
+                    </span>
+                    <span class="d-block text-muted mt-1">
+                        رمز QR: {{ $qrDestination === 'portfolio' ? 'شاهد الأعمال' : 'تحقق من الشهادة' }}
                     </span>
                 </span>
             </span>

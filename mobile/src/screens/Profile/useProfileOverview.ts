@@ -45,17 +45,31 @@ export function useProfileOverview() {
   const identityLoaded = loadedIdentity === identityKey;
   const visibleRemoteProfile = identityLoaded ? remoteProfile : null;
   const visiblePortfolioProfile = identityLoaded ? portfolioProfile : null;
+  const sessionProfileRevision = Math.max(
+    0,
+    Number(user.profile_revision) || 0,
+  );
+  const sessionIdentityIsNewer =
+    authenticatedIdentity &&
+    sessionProfileRevision > (visibleRemoteProfile?.profileRevision ?? -1);
   const displayName =
-    visibleRemoteProfile?.name ||
+    (sessionIdentityIsNewer ? user.name : visibleRemoteProfile?.name) ||
     (authenticatedIdentity ? user.name : '') ||
     'ضيف ركن';
   const certificateHolderName =
-    visibleRemoteProfile?.name ||
+    (sessionIdentityIsNewer ? user.name : visibleRemoteProfile?.name) ||
     (authenticatedIdentity ? user.name : '') ||
     '';
   const role =
-    visibleRemoteProfile?.jobTitle ||
-    (authenticatedIdentity ? user.job_title : '') ||
+    (sessionIdentityIsNewer
+      ? typeof user.portfolio_headline === 'string'
+        ? user.portfolio_headline
+        : ''
+      : visibleRemoteProfile?.portfolioHeadline) ||
+    visiblePortfolioProfile?.headline ||
+    (authenticatedIdentity && typeof user.portfolio_headline === 'string'
+      ? user.portfolio_headline
+      : '') ||
     '';
   const username =
     visiblePortfolioProfile?.slug ||
@@ -81,13 +95,16 @@ export function useProfileOverview() {
     : '';
   const avatarUri = useMemo(
     () =>
-      visibleRemoteProfile?.avatar ||
+      (sessionIdentityIsNewer
+        ? user.avatar || user.profile_image
+        : visibleRemoteProfile?.avatar) ||
       (authenticatedIdentity ? user.avatar || user.profile_image : ''),
     [
       authenticatedIdentity,
       user.avatar,
       user.profile_image,
       visibleRemoteProfile?.avatar,
+      sessionIdentityIsNewer,
     ],
   );
 
@@ -174,7 +191,7 @@ export function useProfileOverview() {
     try {
       await shareOnce('portfolio', {
         title: `بورتفوليو ${displayName} على ركن`,
-        message: `شاهد أعمالي وشهاداتي الموثقة على ركن\n${publicPortfolioUrl}`,
+        message: `شاهد أعمالي على ركن\n${publicPortfolioUrl}`,
         url: publicPortfolioUrl,
       });
     } catch {

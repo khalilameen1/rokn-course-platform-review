@@ -14,7 +14,7 @@ use App\Support\UnicodeText;
 final class CertificateTextTemplateService
 {
     /**
-     * @return array<string,array{label:string,description:string,text:string}>
+     * @return array<string,array{label:string,description:string,text:string,qr_destination:string}>
      */
     public function catalogue(): array
     {
@@ -45,6 +45,9 @@ final class CertificateTextTemplateService
                 'label' => $label !== '' ? $label : $key,
                 'description' => $description,
                 'text' => $text,
+                'qr_destination' => ($template['qr_destination'] ?? null) === 'portfolio'
+                    ? 'portfolio'
+                    : 'certificate',
             ];
         }
 
@@ -76,5 +79,12 @@ final class CertificateTextTemplateService
         // model, so the current model attribute is the one shared contract for
         // authoring preview, publish validation and immutable snapshotting.
         return $this->resolve((string) $course->certificate_text_template_key);
+    }
+
+    public function qrDestination(string $key): string
+    {
+        return ($this->catalogue()[trim($key)]['qr_destination'] ?? null) === 'portfolio'
+            ? 'portfolio'
+            : 'certificate';
     }
 }

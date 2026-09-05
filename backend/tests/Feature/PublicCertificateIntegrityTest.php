@@ -12,6 +12,7 @@ use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\PublicPortfolioService;
+use App\Services\CertificateQrDestinationService;
 use App\Services\CertificateService;
 use App\Support\RoknAppLink;
 use App\Support\RoknPublicUrl;
@@ -70,7 +71,12 @@ final class PublicCertificateIntegrityTest extends TestCase
             ->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive')
             ->assertSee('اسم حامل الشهادة')
             ->assertSee('اسم الكورس وقت الإصدار')
-            ->assertSee('تقديرًا لإتمام المتطلبات التطبيقية لكورس');
+            ->assertSee('تقديرًا لإتمام المتطلبات التطبيقية لكورس')
+            ->assertSee($certificate->generated_at->locale('ar')->translatedFormat('j F Y'))
+            ->assertSee((string) $certificate->public_id)
+            ->assertSee('شهادة سارية')
+            ->assertDontSee('ملف الطالب على ركن')
+            ->assertDontSee('متعلم في ركن');
 
         $payload = (new CertificateResource($certificate->fresh()))->resolve();
         self::assertSame('اسم حامل الشهادة', $payload['holder_name']);
@@ -162,11 +168,7 @@ final class PublicCertificateIntegrityTest extends TestCase
 
         $certificate = $certificate->fresh();
         self::assertFalse($certificate->hasCompleteCredentialSnapshot());
-        self::assertNull(
-            app(PublicPortfolioService::class)->findCredential(
-                (string) $certificate->public_id
-            )
-        );
+        $this->get('/c/'.$certificate->public_id)->assertNotFound();
         $this->get('/c/'.$certificate->public_id.'/artifact')->assertNotFound();
         $this->get('/c/'.$certificate->public_id.'/download')->assertNotFound();
     }
@@ -189,7 +191,7 @@ final class PublicCertificateIntegrityTest extends TestCase
             $rules
         )->fails());
         self::assertSame(
-            'تقديرًا لإتمام التدريب المهاري في كورس',
+            'تقديرًا لإتمام التدريب العملي في كورس',
             config('certificate.text_templates.skills.text')
         );
         self::assertTrue(Validator::make(
@@ -222,6 +224,58 @@ final class PublicCertificateIntegrityTest extends TestCase
             self::assertGreaterThanOrEqual(0, $position['y']);
             self::assertLessThanOrEqual(1, $position['y']);
         }
+
+        $source = file_get_contents(resource_path('certificates/certificate_template_v2.svg'));
+        self::assertIsString($source);
+        self::assertStringNotContainsString('امسح الرمز لعرض بياناتها', $source);
+        self::assertStringNotContainsString('>التحقق من الشهادة<', $source);
+    }
+
+    public function test_qr_destination_follows_the_immutable_certificate_template_family(): void
+    {
+        [$user, , $practical] = $this->credential();
+        $destinations = app(CertificateQrDestinationService::class);
+
+        $practicalDestination = $destinations->for($practical);
+        self::assertNotNull($practicalDestination);
+        self::assertSame('portfolio', $practicalDestination['type']);
+        self::assertSame('شاهد الأعمال', $practicalDestination['title']);
+        self::assertMatchesRegularExpression(
+            '~^https://rokn\.app/@rokn-[a-z0-9]{24}$~',
+            $practicalDestination['url']
+        );
+        self::assertSame(
+            RoknPublicUrl::portfolio((string) $user->fresh()->portfolio_slug),
+            $practicalDestination['url']
+        );
+
+        $theoretical = new Certificate();
+        $theoretical->forceFill([
+            'public_id' => (string) Str::uuid(),
+            'certificate_text_template_key' => 'knowledge',
+        ]);
+        $theoreticalDestination = $destinations->for($theoretical);
+        self::assertNotNull($theoreticalDestination);
+        self::assertSame('certificate', $theoreticalDestination['type']);
+        self::assertSame('تحقق من الشهادة', $theoreticalDestination['title']);
+        self::assertSame(
+            RoknPublicUrl::certificate((string) $theoretical->public_id),
+            $theoreticalDestination['url']
+        );
+    }
+
+    public function test_public_verification_remains_available_when_only_the_artwork_is_missing(): void
+    {
+        [, , $certificate] = $this->credential();
+        Storage::disk('public')->delete((string) $certificate->image_path);
+
+        $this->get('/c/'.$certificate->public_id)
+            ->assertOk()
+            ->assertSee('شهادة سارية')
+            ->assertSee('اسم حامل الشهادة')
+            ->assertSee('اسم الكورس وقت الإصدار')
+            ->assertDontSee('عرض الشهادة')
+            ->assertDontSee('تحميل PDF');
     }
 
     public function test_long_arabic_certificate_fields_stay_inside_the_editorial_main_field(): void
@@ -263,12 +317,17 @@ final class PublicCertificateIntegrityTest extends TestCase
         }
     }
 
-    public function test_pending_unknown_and_non_uuid_credentials_are_not_public(): void
+    public function test_pending_artwork_does_not_hide_a_valid_credential_or_expose_an_artifact(): void
     {
         [, , $certificate] = $this->credential();
         $certificate->forceFill(['image_path' => 'pending'])->save();
 
-        $this->get('/c/'.$certificate->public_id)->assertNotFound();
+        $this->get('/c/'.$certificate->public_id)
+            ->assertOk()
+            ->assertSee('شهادة سارية')
+            ->assertDontSee('عرض الشهادة');
+        $this->get('/c/'.$certificate->public_id.'/artifact')->assertNotFound();
+        $this->get('/c/'.$certificate->public_id.'/download')->assertNotFound();
         $this->get('/c/'.Str::uuid())->assertNotFound();
         $this->get('/c/123')->assertNotFound();
     }
@@ -281,14 +340,10 @@ final class PublicCertificateIntegrityTest extends TestCase
 
         self::assertNull($service->find('student-'.$user->id));
 
-        $verification = $service->findCredential((string) $certificate->public_id);
-        self::assertNotNull($verification);
-        self::assertNull($verification['profile']['slug']);
-        self::assertSame('verification_only', $verification['profile']['share_mode']);
-        self::assertSame(
-            RoknPublicUrl::certificate((string) $certificate->public_id),
-            $verification['profile']['public_url']
-        );
+        $this->get('/c/'.$certificate->public_id)
+            ->assertOk()
+            ->assertSee('اسم حامل الشهادة')
+            ->assertDontSee('ملف الطالب على ركن');
     }
 
     public function test_retiring_a_course_keeps_issued_certificate_history_readable(): void

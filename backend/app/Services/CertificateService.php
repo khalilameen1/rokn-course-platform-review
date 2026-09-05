@@ -32,7 +32,8 @@ class CertificateService
         private readonly FinancialProvenanceService $financialProvenance,
         private readonly CertificateEligibilityService $eligibility,
         private readonly CourseStagedAuthoringService $stagedAuthoring,
-        private readonly CertificateTextTemplateService $textTemplates
+        private readonly CertificateTextTemplateService $textTemplates,
+        private readonly CertificateQrDestinationService $qrDestinations
     ) {
     }
 
@@ -446,9 +447,23 @@ class CertificateService
             });
 
             // ----- 6. QR code -----
-            $profileUrl = RoknPublicUrl::certificate((string) $certificate->public_id);
+            // Practical certificates lead to the learner's unlisted body of
+            // work. Theoretical certificates lead to this exact credential.
+            $qrDestination = $this->qrDestinations->for($certificate);
+            if ($qrDestination === null) {
+                return null;
+            }
+            $this->drawQrCaption(
+                $img,
+                $qrDestination,
+                (string) $certificate->public_id,
+                $positions,
+                $fontPath,
+                $width,
+                $height
+            );
             $qrSize     = $positions['qr_code']['size'];
-            $qrPng      = $this->generateQrCode($profileUrl, $qrSize);
+            $qrPng      = $this->generateQrCode($qrDestination['url'], $qrSize);
             if (!$qrPng) {
                 throw new \RuntimeException('Certificate QR code could not be generated.');
             }
@@ -586,6 +601,71 @@ class CertificateService
             $course->getRawOriginal('name_ar'),
             $course->getRawOriginal('name_en'),
         ]);
+    }
+
+    /**
+     * Replace the fixed caption in the base artwork so the words beside the
+     * QR always describe its actual destination.
+     *
+     * @param array{url:string,title:string,hint:string,type:string} $destination
+     * @param array<string,mixed> $positions
+     */
+    private function drawQrCaption(
+        $image,
+        array $destination,
+        string $certificatePublicId,
+        array $positions,
+        string $fontPath,
+        int $width,
+        int $height
+    ): void {
+        foreach (['qr_title' => 'title', 'qr_hint' => 'hint'] as $positionKey => $textKey) {
+            $position = $positions[$positionKey];
+            $text = $this->shapeIfArabic($destination[$textKey]);
+            $image->text(
+                $text,
+                (int) round($width * $position['x']),
+                (int) round($height * $position['y']),
+                function ($font) use ($fontPath, $position): void {
+                    $font->file($fontPath);
+                    $font->size($position['size']);
+                    $font->color($position['color']);
+                    $font->align('center');
+                    $font->valign('middle');
+                }
+            );
+        }
+
+        $verificationUrl = RoknPublicUrl::certificate($certificatePublicId);
+        $verificationParts = parse_url($verificationUrl);
+        $verificationLines = [
+            'verification_host' => (string) ($verificationParts['host'] ?? ''),
+            'verification_path' => (string) ($verificationParts['path'] ?? ''),
+        ];
+        foreach ($verificationLines as $positionKey => $text) {
+            if ($text === '') {
+                continue;
+            }
+            $position = $positions[$positionKey];
+            $position['size'] = $this->fittedFontSize(
+                $text,
+                $fontPath,
+                $position,
+                $width
+            );
+            $image->text(
+                $text,
+                (int) round($width * $position['x']),
+                (int) round($height * $position['y']),
+                function ($font) use ($fontPath, $position): void {
+                    $font->file($fontPath);
+                    $font->size($position['size']);
+                    $font->color($position['color']);
+                    $font->align('center');
+                    $font->valign('middle');
+                }
+            );
+        }
     }
 
     /** @param array<int, mixed> $values */

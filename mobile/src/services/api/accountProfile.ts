@@ -100,7 +100,7 @@ export const updateProfile = async (
     expectedProfileRevision,
   }: {
     name: string;
-    jobTitle: string;
+    jobTitle?: string;
     avatar?: {uri: string; type?: string; fileName?: string; size?: number};
     portfolioSlug?: string;
     portfolioHeadline?: string;
@@ -114,7 +114,7 @@ export const updateProfile = async (
   form.append('client_request_id', clientRequestId);
   form.append('expected_profile_revision', String(expectedProfileRevision));
   form.append('name', name);
-  form.append('job_title', jobTitle);
+  if (jobTitle !== undefined) form.append('job_title', jobTitle);
   if (portfolioSlug) form.append('portfolio_slug', portfolioSlug);
   if (portfolioHeadline !== undefined) {
     form.append('portfolio_headline', portfolioHeadline);
@@ -134,12 +134,16 @@ export const updateProfile = async (
     }),
   );
   assertAccountSessionBoundary(boundary);
-  return profileFromPayload(data, {
+  const updated = profileFromPayload(data, {
     jobTitle,
     name,
     portfolioHeadline,
     profileRevision: expectedProfileRevision,
   });
+  if (updated.profileRevision <= expectedProfileRevision) {
+    throw new Error('PROFILE_REVISION_NOT_ADVANCED');
+  }
+  return updated;
 };
 
 export const updateNotificationStatus = async (

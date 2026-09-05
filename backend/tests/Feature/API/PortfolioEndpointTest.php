@@ -7,8 +7,11 @@ namespace Tests\Feature\API;
 use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Support\RoknPublicUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Mockery;
 
 /**
@@ -346,5 +349,96 @@ class PortfolioEndpointTest extends ApiTestCase
             ->assertJsonPath('data.0.media.0.image_url', 'https://cdn.example/signed-image')
             ->assertJsonMissingPath('data.0.media.0.file_path')
             ->assertJsonMissingPath('data.0.media.0.thumbnail_path');
+    }
+
+    public function test_public_share_contains_only_public_portfolio_identity_and_works(): void
+    {
+        $slug = 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa';
+        $mediaPublicId = (string) Str::uuid();
+        $certificatePublicId = (string) Str::uuid();
+        $this->user->forceFill([
+            'portfolio_slug' => $slug,
+            'portfolio_headline' => null,
+            'job_title' => 'وظيفة الحساب الخاصة',
+            'bio' => 'نبذة الحساب الخاصة',
+        ])->save();
+        DB::table('portfolio_items')->where('id', 1)->update([
+            'is_public' => true,
+            'expected_media_count' => 1,
+        ]);
+        DB::table('portfolio_media')->insert([
+            'portfolio_item_id' => 1,
+            'public_id' => $mediaPublicId,
+            'file_type' => 'image',
+            'file_path' => 'portfolio/public-work.webp',
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        Storage::fake('public');
+        Storage::disk('public')->put('certificates/private.png', 'certificate');
+        DB::table('certificates')->insert([
+            'public_id' => $certificatePublicId,
+            'user_id' => $this->user->id,
+            'course_id' => $this->courseId,
+            'holder_name' => 'اسم حامل الشهادة',
+            'course_name' => 'شهادة لا تخص رابط الأعمال',
+            'certificate_text_template_key' => 'completion',
+            'certificate_text' => 'نص الشهادة الخاص',
+            'image_path' => 'certificates/private.png',
+            'status' => 'active',
+            'verification_level' => 'completion',
+            'generated_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $bunny = Mockery::mock(BunnyService::class);
+        $bunny->shouldReceive('generateBunnySignedUrl')
+            ->once()
+            ->with('portfolio/public-work.webp', 300)
+            ->andReturn('https://cdn.example.test/public-work');
+        $this->app->instance(BunnyService::class, $bunny);
+
+        $response = $this->getJson("/api/v1/public/portfolios/{$slug}");
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.profile.name', 'API Test User')
+            ->assertJsonPath('data.profile.headline', null)
+            ->assertJsonPath(
+                'data.projects.0.media.0.image_url',
+                RoknPublicUrl::portfolioMedia($slug, $mediaPublicId)
+            )
+            ->assertJsonMissingPath('data.profile.bio')
+            ->assertJsonMissingPath('data.profile.is_public')
+            ->assertJsonMissingPath('data.certificates')
+            ->assertJsonMissingPath('data.highlighted_certificate')
+            ->assertJsonMissingPath('data.badges')
+            ->assertJsonMissingPath('data.projects.0.id')
+            ->assertJsonMissingPath('data.projects.0.slug')
+            ->assertJsonMissingPath('data.projects.0.source_project_id')
+            ->assertJsonMissingPath('data.projects.0.upload_state')
+            ->assertJsonMissingPath('data.projects.0.expected_media_count')
+            ->assertJsonMissingPath('data.projects.0.media.0.id')
+            ->assertJsonMissingPath('data.projects.0.media.0.public_id')
+            ->assertJsonMissingPath('data.projects.0.media.0.status');
+
+        $this->get("/@{$slug}")
+            ->assertOk()
+            ->assertSee('Sample Portfolio Item')
+            ->assertDontSee('وظيفة الحساب الخاصة')
+            ->assertDontSee('نبذة الحساب الخاصة')
+            ->assertDontSee('شهادة لا تخص رابط الأعمال')
+            ->assertDontSee('الشارات المهنية');
+
+        $mediaResponse = $this->get(
+            RoknPublicUrl::portfolioMedia($slug, $mediaPublicId)
+        );
+        $mediaResponse->assertRedirect('https://cdn.example.test/public-work');
+        self::assertStringContainsString(
+            'no-store',
+            (string) $mediaResponse->headers->get('Cache-Control')
+        );
     }
 }

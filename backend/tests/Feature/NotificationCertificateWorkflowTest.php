@@ -21,7 +21,6 @@ use App\Services\CertificateEligibilityService;
 use App\Services\CoursePublishingService;
 use App\Services\NotificationService;
 use App\Services\NotificationCampaignService;
-use App\Services\PublicPortfolioService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -551,16 +550,10 @@ final class NotificationCertificateWorkflowTest extends TestCase
         self::assertNotSame('pending', $certificate->image_path);
         Storage::disk('certificate-test')->assertExists($certificate->image_path);
 
-        $verification = app(PublicPortfolioService::class)->findCredential(
-            (string) $certificate->public_id
-        );
-        self::assertNotNull($verification);
-        self::assertTrue($verification['is_limited_certificate_view']);
-        self::assertSame(
-            $certificate->public_id,
-            $verification['highlighted_certificate']['public_id']
-        );
-        self::assertSame('active', $verification['highlighted_certificate']['status']);
+        $this->get('/c/'.$certificate->public_id)
+            ->assertOk()
+            ->assertSee((string) $certificate->public_id)
+            ->assertSee('شهادة سارية');
 
         $firstArtifact = Storage::disk('certificate-test')->get($certificate->image_path);
         Storage::disk('certificate-test')->delete($certificate->image_path);

@@ -17,6 +17,7 @@ final class CertificateTextTemplateServiceTest extends TestCase
                 'label' => '  المشروعات  ',
                 'description' => '  للكورسات التطبيقية  ',
                 'text' => '  تقديرًا لإنجاز مشروعات كورس  ',
+                'qr_destination' => 'portfolio',
             ],
             'empty' => ['label' => 'فارغ', 'description' => '', 'text' => '   '],
         ]);
@@ -34,6 +35,8 @@ final class CertificateTextTemplateServiceTest extends TestCase
             ['key' => 'projects', 'text' => 'تقديرًا لإنجاز مشروعات كورس'],
             $service->forCourse($course)
         );
+        self::assertSame('portfolio', $service->qrDestination('projects'));
+        self::assertSame('certificate', $service->qrDestination('unknown'));
         self::assertNull($service->resolve('empty'));
     }
 }

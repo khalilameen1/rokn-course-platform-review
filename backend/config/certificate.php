@@ -49,26 +49,31 @@ return [
             'label' => 'إتمام الكورس',
             'description' => 'مناسبة لمعظم الكورسات',
             'text' => 'تقديرًا لإتمام متطلبات كورس',
+            'qr_destination' => 'certificate',
         ],
         'knowledge' => [
             'label' => 'المعرفة',
             'description' => 'مناسبة للكورسات المعرفية والنظرية',
-            'text' => 'تقديرًا لإتمام المسار المعرفي لكورس',
+            'text' => 'تقديرًا لإتمام الدراسة في كورس',
+            'qr_destination' => 'certificate',
         ],
         'applied' => [
             'label' => 'التطبيق العملي',
             'description' => 'مناسبة للكورسات التي تجمع التعلم بالتطبيق',
-            'text' => 'تقديرًا لإتمام المتطلبات التطبيقية لكورس',
+            'text' => 'تقديرًا لإتمام الدراسة والتطبيق في كورس',
+            'qr_destination' => 'portfolio',
         ],
         'skills' => [
             'label' => 'تدريب مهاري',
             'description' => 'مناسبة للكورسات التي تبني مهارة بالممارسة',
-            'text' => 'تقديرًا لإتمام التدريب المهاري في كورس',
+            'text' => 'تقديرًا لإتمام التدريب العملي في كورس',
+            'qr_destination' => 'portfolio',
         ],
         'projects' => [
             'label' => 'المشروعات',
             'description' => 'مناسبة للكورسات التي تعتمد على مشروعات العبور',
             'text' => 'تقديرًا لإنجاز مشروعات كورس',
+            'qr_destination' => 'portfolio',
         ],
     ],
 
@@ -141,6 +146,36 @@ return [
             'x'    => 0.125,
             'y'    => 0.345,
             'size' => 128,
+        ],
+
+        // The QR caption follows its real target and is rendered dynamically.
+        'qr_title' => [
+            'x' => 0.125,
+            'y' => 0.198,
+            'size' => 17,
+            'color' => '#09172C',
+        ],
+        'qr_hint' => [
+            'x' => 0.125,
+            'y' => 0.231,
+            'size' => 11,
+            'color' => '#6C7788',
+        ],
+        'verification_host' => [
+            'x' => 0.125,
+            'y' => 0.555,
+            'size' => 8,
+            'min_size' => 5,
+            'max_width' => 0.21,
+            'color' => '#245FD4',
+        ],
+        'verification_path' => [
+            'x' => 0.125,
+            'y' => 0.579,
+            'size' => 8,
+            'min_size' => 6,
+            'max_width' => 0.21,
+            'color' => '#245FD4',
         ],
     ],
 ];

@@ -74,7 +74,6 @@ export function useCertificatesController(resolvedDisplayName?: string) {
       identityOwnerRef.current === identityKey;
     setLoading(true);
     setLoadError('');
-    setCertificatePending(false);
     try {
       const boundary = await captureAccountSessionBoundary();
       const sessionAvailable = await hasSession();

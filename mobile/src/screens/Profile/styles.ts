@@ -39,6 +39,11 @@ export const profileStyles = StyleSheet.create({
   },
   staleNoticeAction: {...Type.caption, color: '#8BB5FF', flexShrink: 0},
   profileTop: {...rtlRowStyle, alignItems: 'center'},
+  avatarButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
   avatar: {
     width: 72,
     height: 72,

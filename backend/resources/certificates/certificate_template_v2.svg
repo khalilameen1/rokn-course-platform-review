@@ -45,10 +45,9 @@
     </g>
   </g>
 
-  <g aria-label="التحقق من الشهادة">
-    <text x="150" y="178" text-anchor="middle" direction="rtl" font-size="17" font-weight="750">التحقق من الشهادة</text>
-    <text x="150" y="208" text-anchor="middle" direction="rtl" font-size="11" font-weight="600" class="quiet">امسح الرمز لعرض بياناتها</text>
+  <g aria-label="بيانات الرمز">
+    <!-- The renderer adds a caption that matches the QR target. -->
     <text x="150" y="426" text-anchor="middle" direction="rtl" font-size="11" font-weight="600" class="quiet">رقم الشهادة</text>
-    <text x="150" y="512" text-anchor="middle" font-size="10" font-weight="750" fill="#245FD4">rokn.app</text>
+    <!-- The renderer adds the certificate's direct verification URL here. -->
   </g>
 </svg>

@@ -73,7 +73,7 @@ final class ProfileController extends Controller
             // desynchronise the account from its linked social credentials.
             'phone' => 'prohibited',
             'email' => 'prohibited',
-            'name' => 'nullable|string|max:255',
+            'name' => 'sometimes|required|string|min:2|max:120',
             'job_title' => 'nullable|string|max:255',
             'portfolio_headline' => 'nullable|string|max:160',
             // This controls delivery to the device. The in-app notification
@@ -92,7 +92,9 @@ final class ProfileController extends Controller
             'playback_speed' => 'nullable|numeric|in:0.5,0.75,1,1.25,1.5,1.75,2',
             'profile_image' => 'nullable|file|min:1|image|mimes:jpeg,png,jpg,webp|mimetypes:image/jpeg,image/png,image/webp|max:2048|dimensions:max_width=6000,max_height=6000',
         ], [
-            'name.max' => 'الاسم يجب ألا يتجاوز 255 حرفاً',
+            'name.required' => 'اكتب الاسم الظاهر',
+            'name.min' => 'الاسم قصير جدًا',
+            'name.max' => 'الاسم يجب ألا يتجاوز 120 حرفًا',
             'job_title.max' => 'مسمى الوظيفة يجب ألا يتجاوز 255 حرفاً',
             'portfolio_headline.max' => 'المسمى المهني طويل جدًا',
             'profile_image.image' => 'يجب أن يكون الملف صورة',
@@ -140,6 +142,11 @@ final class ProfileController extends Controller
 
         if ($request->has('name')) {
             $updateData['name'] = $request->name;
+            // Learner identity has one editable display name. Old localized
+            // columns otherwise win in User::getNameAttribute and make a
+            // successful social-profile edit appear to have been ignored.
+            $updateData['name_ar'] = null;
+            $updateData['name_en'] = null;
         }
 
         if ($request->has('job_title')) {

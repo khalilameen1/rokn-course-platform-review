@@ -19,6 +19,7 @@ import QRCode from '../../components/ui/QRCode';
 import {DefaultAvatar} from '../../components/ui/DefaultAvatar';
 import {profileStyles as styles} from './styles';
 import {useProfileOverview} from './useProfileOverview';
+import {openGuestLogin} from '../../navigation/journeyNavigation';
 
 type ProfileTab = 'portfolio' | 'certificates' | 'saved';
 
@@ -32,7 +33,7 @@ export default function Profile() {
   const navigation = useNavigation<RootNavigation>();
   const route = useRoute<RootRoute<'Profile'>>();
   const [activeTab, setActiveTab] = useState<ProfileTab>('portfolio');
-  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [failedAvatarUri, setFailedAvatarUri] = useState<string>();
   const [showPortfolioQr, setShowPortfolioQr] = useState(false);
   const {
     authenticatedIdentity,
@@ -50,8 +51,6 @@ export default function Profile() {
     setHasShareablePortfolio,
     sharePortfolio,
   } = useProfileOverview();
-
-  useEffect(() => setAvatarFailed(false), [avatarUri]);
 
   useEffect(() => {
     if (!canSharePortfolio) setShowPortfolioQr(false);
@@ -92,21 +91,42 @@ export default function Profile() {
 
           <PremiumCard style={styles.profileCard}>
             <View style={styles.profileTop}>
-              {avatarUri && !avatarFailed ? (
-                <Image
-                  accessibilityLabel={`صورة ${displayName}`}
-                  onError={() => setAvatarFailed(true)}
-                  progressiveRenderingEnabled
-                  resizeMethod="resize"
-                  source={{uri: avatarUri}}
-                  style={styles.avatar}
-                />
-              ) : (
-                <DefaultAvatar
-                  accessibilityLabel={`صورة ${displayName}`}
-                  size={72}
-                />
-              )}
+              <Pressable
+                accessibilityHint="يفتح بيانات الحساب"
+                accessibilityLabel={
+                  authenticatedIdentity
+                    ? `تغيير صورة ${displayName}`
+                    : 'تسجيل الدخول لتغيير صورة الحساب'
+                }
+                accessibilityRole="button"
+                onPress={() =>
+                  authenticatedIdentity
+                    ? navigation.navigate('EditAccount')
+                    : openGuestLogin(navigation, {name: 'EditAccount'})
+                }
+                style={({pressed}) => [
+                  styles.avatarButton,
+                  pressed && styles.pressed,
+                ]}>
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no-hide-descendants">
+                  {avatarUri && avatarUri !== failedAvatarUri ? (
+                    <Image
+                      onError={() => setFailedAvatarUri(avatarUri)}
+                      progressiveRenderingEnabled
+                      resizeMethod="resize"
+                      source={{uri: avatarUri}}
+                      style={styles.avatar}
+                    />
+                  ) : (
+                    <DefaultAvatar
+                      accessibilityLabel={`صورة ${displayName}`}
+                      size={72}
+                    />
+                  )}
+                </View>
+              </Pressable>
               <View style={styles.profileCopy}>
                 <Text style={styles.name}>{displayName}</Text>
                 {!!role && <Text style={styles.role}>{role}</Text>}

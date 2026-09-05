@@ -89,6 +89,7 @@ export type SessionProfile = {
   avatar?: string;
   profile_image?: string;
   image?: string;
+  profile_revision?: string | number;
   wallet_purchased_coins?: string | number;
 };
 
