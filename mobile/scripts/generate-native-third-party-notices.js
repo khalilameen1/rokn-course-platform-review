@@ -320,6 +320,14 @@ const POD_UPSTREAM_LEGAL_DOCUMENTS = new Map([
 
 const POD_EXACT_LICENSE_SELECTIONS = new Map([
   [
+    'GoogleSignIn@9.2.0',
+    {
+      license: 'Apache-2.0',
+      reason:
+        "The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.",
+    },
+  ],
+  [
     'GTMAppAuth@5.0.0',
     {
       license: 'Apache-2.0',

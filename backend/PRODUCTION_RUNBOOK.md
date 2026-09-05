@@ -77,6 +77,12 @@ This backend is prepared for the first production load, but capacity is an opera
 
 ## Deploy order
 
+Keep Laravel Cloud **Push to deploy** disabled for production. A push starts
+Backend CI, not a release. Promote only the exact commit with a successful
+Backend CI result, then verify Cloud deployed that commit. The production
+environment currently uses manual promotion; CI-triggered deployment is not
+configured yet. Do not describe the runbook alone as an enforced automated gate.
+
 The old web release and its workers remain alive while the database expands. A
 release migration must therefore add nullable/defaulted columns and accepting
 constraints first; destructive renames, drops, type narrowing, and removal of

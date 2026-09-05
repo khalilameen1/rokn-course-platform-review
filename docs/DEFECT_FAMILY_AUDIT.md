@@ -4,6 +4,23 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Stop production deployment from racing its checks — 2026-09-05
+
+Cloud production had **Push to deploy** enabled and its deploy hook disabled.
+The repository had independent backend/mobile checks and no CI-to-Cloud
+promotion. Deployment 172 published `d06502d` before Backend CI finished;
+run `33968098743` subsequently passed its full suite and migrated-MySQL gates.
+Passing afterward does not make that release ordering sound.
+
+Push-to-deploy was disabled in the actual production environment and saved;
+the switch was verified unchecked with no unsaved-change prompt. The running
+release was not stopped. Future pushes are not authorization to deploy.
+The runbooks now require a successful Backend CI result for the exact commit,
+followed by verification of Cloud's deployed commit. Automatic promotion is
+not configured yet; it requires an authorized deploy hook stored in GitHub
+and invoked only after CI success with an explicit `commit_hash`, supported
+by the [official Cloud deployment contract](https://laravel.com/cloud/docs/deployments#deploy-hooks).
+
 ## Correlate actual failures without mixing request and payment identities — 2026-09-05
 
 Backend Sentry kept request headers but discarded every user identifier.
@@ -43,6 +60,17 @@ the full native source/license generator and checks. It does not repeat Android
 lint/tests/bundle to repair notice metadata. The original full refresh remains
 the default. YAML parsing and 23 focused workflow/native-notice tests passed.
 Generated notice artifacts are still pending the next macOS run.
+
+Run `33968136485` proved the reuse-lock path and reached legal generation in
+about 11 minutes, then found the same abbreviated-license family in
+`GoogleSignIn@9.2.0`. Before another run, all 127 locked roots were inventoried:
+all 12 trunk specs matched their lock checksums, and all 115 external/local
+records passed classification. The existing exact Apache/BSD exceptions were
+retained; only GoogleSignIn 9.2.0 needed another exact Apache-2.0 mapping, proven
+by its [tagged license](https://github.com/google/GoogleSignIn-iOS/blob/9.2.0/LICENSE).
+No unreviewed ambiguous classification remained in that complete metadata
+inventory. The 23 focused tests passed; installed-source provenance generation
+still requires the subsequent macOS workflow to succeed.
 
 ## Refresh purchased course capabilities together — 2026-09-05
 

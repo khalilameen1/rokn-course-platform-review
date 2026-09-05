@@ -21,6 +21,13 @@ deployed.
 
 ## Required deployment order
 
+The production Cloud environment must not use **Push to deploy**. Backend CI
+must pass for the exact commit being promoted before a deployment is triggered.
+Check the deployed commit after Cloud finishes; a successful CI run for another
+commit is not approval. Mobile-only CI does not replace this backend gate, and
+unrelated mobile jobs need not delay a backend-only hotfix. Until a gated deploy
+hook is configured, deployment is manual after that exact-commit check.
+
 1. Back up the production database and matching object stores. Verify the exact
    artifact with `ops:verify-backup`; signed backup/restore evidence must remain
    within the configured RPO/RTO window.

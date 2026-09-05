@@ -127,6 +127,11 @@ test('normalizes reviewed Maven and Pod license metadata', () => {
     reason:
       "The exact GTMAppAuth 5.0.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.",
   });
+  assert.deepEqual(POD_EXACT_LICENSE_SELECTIONS.get('GoogleSignIn@9.2.0'), {
+    license: 'Apache-2.0',
+    reason:
+      "The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.",
+  });
   assert.deepEqual(
     POD_EXACT_LICENSE_SELECTIONS.get('GTMSessionFetcher@3.5.0'),
     {
@@ -206,6 +211,39 @@ test('applies reviewed Apache selections only to exact pod coordinates', async (
       POD_EXACT_LICENSE_SELECTIONS.get('GTMAppAuth@5.0.0'),
     );
 
+    const googleSignInSpec = Buffer.from(
+      JSON.stringify({
+        homepage: 'https://developers.google.com/identity/sign-in/ios/',
+        license: {type: 'Apache', file: 'LICENSE'},
+        source: {
+          git: 'https://github.com/google/GoogleSignIn-iOS.git',
+          tag: '9.2.0',
+        },
+      }),
+      'utf8',
+    );
+    global.fetch = async () =>
+      new Response(googleSignInSpec, {
+        status: 200,
+        headers: {'content-type': 'application/json'},
+      });
+    const googleSignInRecord = await buildRemotePodRecord(
+      {
+        coordinate: 'GoogleSignIn@9.2.0',
+        name: 'GoogleSignIn',
+        specChecksum: crypto
+          .createHash('sha1')
+          .update(googleSignInSpec)
+          .digest('hex'),
+      },
+      new Map(),
+    );
+    assert.deepEqual(googleSignInRecord.selectedLicenses, ['Apache-2.0']);
+    assert.deepEqual(
+      googleSignInRecord.exactLicenseSelection,
+      POD_EXACT_LICENSE_SELECTIONS.get('GoogleSignIn@9.2.0'),
+    );
+
     await assert.rejects(
       buildRemotePodRecord(
         {
@@ -213,7 +251,7 @@ test('applies reviewed Apache selections only to exact pod coordinates', async (
           name: 'UnreviewedApachePod',
           specChecksum: crypto
             .createHash('sha1')
-            .update(gtmAppAuthSpec)
+            .update(googleSignInSpec)
             .digest('hex'),
         },
         new Map(),
