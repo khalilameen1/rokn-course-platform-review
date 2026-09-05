@@ -50,7 +50,7 @@ final class CourseHeroSelectionService
             if ((int) $lockedCourse->authoring_version !== $expectedAuthoringVersion) {
                 throw ValidationException::withMessages([
                     'authoring_version' => [
-                        'تغيّر اختيار الكورس الرئيسي أثناء الحفظ\nأعد تحميل الصفحة قبل المحاولة',
+                        "تغيّر اختيار الكورس الرئيسي أثناء الحفظ\nأعد تحميل الصفحة قبل المحاولة",
                     ],
                 ])->status(409);
             }

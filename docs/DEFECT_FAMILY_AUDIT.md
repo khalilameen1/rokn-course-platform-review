@@ -4,6 +4,30 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Purchase receipt acceptance and readable error messages — 2026-09-05
+
+The migrated-MySQL gate now also exercises the real course-authorization
+controller, wallet, receipt and paid-lot allocation services. Its isolated
+learner starts with 900 paid coins and 45 reward coins, buys the mentor tier,
+then repeats the same request key. Assertions require one order, bill,
+enrollment, debit and allocation; a 45-coin remaining paid balance; no financial
+hold; and an idempotent second response with no new debit. The product-feature
+switch middleware is excluded from this financial contract test, so it is not
+evidence of the full installed application's checkout. CI execution is pending.
+
+A separate production read confirmed that the real learner's 900 paid coins
+are still backed by active lot 2 from settled Kashier order 7 / credit 10.
+The earlier 4,200-coin lot has no remaining balance. No financial record was
+changed by this inspection.
+
+82 Arabic PHP messages in 42 application files used single-quoted `\n` and
+therefore exposed literal backslashes instead of the intended line breaks.
+Only quoting was corrected; message wording and business decisions were not
+changed. A PHP-token regression catches this exact Arabic string family while
+leaving regular-expression and parser escapes alone. Source verification:
+42-file syntax checks passed, and the combined copy/CI/OpenRouter scope passed
+14 tests / 50 assertions.
+
 ## Daily checkout, reply and project state closure — 2026-09-05
 
 Backend CI run `33964361469` for `fcd30f2` passed the migrated MySQL product
@@ -32,7 +56,10 @@ The identical production probe then accepted all six real tier/schema pairs
 and still rejected version 999. It did not debit coins or create enrollments.
 CI run `33965327061` migrated successfully but correctly failed closed because
 the default PHPUnit XML selected SQLite. The dedicated MySQL configuration
-fixes that test-runner mismatch; actual insert-test execution is still pending.
+fixes that test-runner mismatch. Run `33965770077` then passed both actual
+MySQL tests (15 assertions), including current/historical inserts and negative
+constraint checks. The Artisan wrapper still returned failure for a duplicated
+configuration option, so this focused gate now invokes PHPUnit directly.
 
 The live OpenRouter provider catalog exposed another request-contract gap:
 `max_completion_tokens` with `require_parameters=true` restricted the configured

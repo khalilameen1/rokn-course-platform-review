@@ -348,7 +348,7 @@ final readonly class BunnyDirectUploadService
         }
         if (!$this->bunny->verifyDirectUpload((string) $payload['video_id'], (int) $payload['size'])) {
             throw ValidationException::withMessages([
-                'bunny_video_claim' => 'لم يكتمل رفع الفيديو بعد\nحاول الحفظ مرة أخرى بعد لحظات',
+                'bunny_video_claim' => "لم يكتمل رفع الفيديو بعد\nحاول الحفظ مرة أخرى بعد لحظات",
             ]);
         }
 

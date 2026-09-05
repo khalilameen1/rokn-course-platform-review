@@ -169,7 +169,7 @@ class UsersController extends Controller
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
                 throw ValidationException::withMessages([
-                    'editor_version' => ['تغيّرت بيانات الطالب منذ فتح الصفحة\nأعد تحميلها قبل الحفظ'],
+                    'editor_version' => ["تغيّرت بيانات الطالب منذ فتح الصفحة\nأعد تحميلها قبل الحفظ"],
                 ]);
             }
 
@@ -297,7 +297,7 @@ class UsersController extends Controller
             || $policy !== DeviceLoginService::POLICY_SINGLE_PERMANENT
         ) {
             throw ValidationException::withMessages([
-                'expected_policy' => ['تغيّرت سياسة الأجهزة\nأعد تحميل الصفحة'],
+                'expected_policy' => ["تغيّرت سياسة الأجهزة\nأعد تحميل الصفحة"],
             ]);
         }
 
@@ -309,7 +309,7 @@ class UsersController extends Controller
                 || !hash_equals($this->deviceEditorVersion($locked), (string) $validated['state_version'])
             ) {
                 throw ValidationException::withMessages([
-                    'state_version' => ['تغيّرت جلسات الطالب بالفعل\nأعد تحميل الصفحة'],
+                    'state_version' => ["تغيّرت جلسات الطالب بالفعل\nأعد تحميل الصفحة"],
                 ]);
             }
 

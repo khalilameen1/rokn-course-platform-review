@@ -31,7 +31,7 @@ final class CourseSectionTypeChangeGuard
         if ($hasActivity) {
             throw ValidationException::withMessages([
                 'section_type' => [
-                    'هذا المحتوى مرتبط بتقدم طلاب محفوظ\nيمكنك تعديله أو حذفه لكن لا تغيّر نوعه',
+                    "هذا المحتوى مرتبط بتقدم طلاب محفوظ\nيمكنك تعديله أو حذفه لكن لا تغيّر نوعه",
                 ],
             ]);
         }

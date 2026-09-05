@@ -149,7 +149,7 @@ class ClassificationController extends Controller
             $locked = Classification::query()->whereKey($classification->id)->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'عدّل شخص آخر هذا التصنيف\nأعد تحميل الصفحة قبل الحفظ',
+                    'editor_version' => "عدّل شخص آخر هذا التصنيف\nأعد تحميل الصفحة قبل الحفظ",
                 ]);
             }
             $locked->update($validated);

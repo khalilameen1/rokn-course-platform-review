@@ -189,12 +189,12 @@ final class CourseController extends Controller
         if ($result['status'] === 'staged_publish_failed') {
             return redirect()->route('admin.courses.show', $course)
                 ->with('success', 'تم حفظ المسودة')
-                ->with('error', 'لم يكتمل النشر\nالنسخة الحالية ما زالت متاحة للطلاب');
+                ->with('error', "لم يكتمل النشر\nالنسخة الحالية ما زالت متاحة للطلاب");
         }
         if ($result['status'] === 'publish_failed') {
             return redirect()->route('admin.courses.show', $course)
                 ->with('success', 'تم حفظ تعديلات الكورس')
-                ->with('error', 'لم يكتمل النشر\nأعد تحميل الصفحة وراجعه قبل المحاولة');
+                ->with('error', "لم يكتمل النشر\nأعد تحميل الصفحة وراجعه قبل المحاولة");
         }
         if ($result['status'] === 'not_ready') {
             return redirect()->route('admin.courses.show', $course)
@@ -204,7 +204,7 @@ final class CourseController extends Controller
         if ($result['status'] === 'catalog_publish_failed') {
             return redirect()->route('admin.courses.show', $course)
                 ->with('success', 'تم حفظ تعديلات الكورس')
-                ->with('error', 'لم يكتمل إظهار بطاقة الكورس\nأعد تحميل الصفحة ثم حاول مرة أخرى');
+                ->with('error', "لم يكتمل إظهار بطاقة الكورس\nأعد تحميل الصفحة ثم حاول مرة أخرى");
         }
         if ($result['status'] === 'catalog_not_ready') {
             return redirect()->route('admin.courses.show', $course)
@@ -214,7 +214,7 @@ final class CourseController extends Controller
         if ($result['status'] === 'hero_failed') {
             return redirect()->route('admin.courses.show', $course)
                 ->with('success', 'تم حفظ تعديلات الكورس')
-                ->with('error', 'لم يتغير اختيار الواجهة الرئيسية\nأعد تحميل الصفحة ثم حاول مرة أخرى');
+                ->with('error', "لم يتغير اختيار الواجهة الرئيسية\nأعد تحميل الصفحة ثم حاول مرة أخرى");
         }
 
         return redirect()->route('admin.courses.show', $course)

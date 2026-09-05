@@ -104,7 +104,7 @@ final class OperatingCostPoolController extends Controller
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                    'editor_version' => "تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
             }
             $locked->update($data);
@@ -121,7 +121,7 @@ final class OperatingCostPoolController extends Controller
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل الحذف',
+                    'editor_version' => "تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
                 ]);
             }
             $locked->delete();
@@ -149,7 +149,7 @@ final class OperatingCostPoolController extends Controller
                 ['openrouter_usd_to_egp_rate']
             ), $editorVersion)) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّر سعر التحويل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                    'editor_version' => "تغيّر سعر التحويل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
             }
             $setting->fill($data)->save();

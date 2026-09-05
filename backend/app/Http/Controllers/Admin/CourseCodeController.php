@@ -141,7 +141,7 @@ class CourseCodeController extends Controller
         } catch (\DomainException $e) {
             return back()->withInput()->with(
                 'error',
-                'تعذّر إنشاء الدفعة بهذه الإعدادات\nراجع بيانات الإتاحة ثم أعد المحاولة'
+                "تعذّر إنشاء الدفعة بهذه الإعدادات\nراجع بيانات الإتاحة ثم أعد المحاولة"
             );
         } catch (\Exception $e) {
             report($e);
@@ -218,7 +218,7 @@ class CourseCodeController extends Controller
                     ->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'تغيّر كود الجهة منذ فتح الصفحة\nأعد تحميله قبل الحفظ',
+                        'editor_version' => "تغيّر كود الجهة منذ فتح الصفحة\nأعد تحميله قبل الحفظ",
                     ]);
                 }
                 $locked->update($data);
@@ -249,7 +249,7 @@ class CourseCodeController extends Controller
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّر كود الجهة منذ فتح الصفحة\nأعد تحميله قبل الحذف',
+                    'editor_version' => "تغيّر كود الجهة منذ فتح الصفحة\nأعد تحميله قبل الحذف",
                 ]);
             }
             if ($locked->usages()->exists() || $locked->orders()->exists()) {
@@ -316,14 +316,14 @@ class CourseCodeController extends Controller
                     ->orderBy('id')->lockForUpdate()->get();
                 if ($codes->count() !== count(array_unique(array_map('intval', $selectedCodes)))) {
                     throw ValidationException::withMessages([
-                        'selected_codes' => 'تغيّرت قائمة الأكواد\nأعد تحميل الصفحة قبل المتابعة',
+                        'selected_codes' => "تغيّرت قائمة الأكواد\nأعد تحميل الصفحة قبل المتابعة",
                     ]);
                 }
                 foreach ($codes as $code) {
                     $submitted = (string) ($versions[$code->id] ?? '');
                     if ($submitted === '' || !hash_equals($this->editorVersion($code), $submitted)) {
                         throw ValidationException::withMessages([
-                            'editor_versions' => 'تغيّر أحد الأكواد المحددة\nأعد تحميل الصفحة قبل المتابعة',
+                            'editor_versions' => "تغيّر أحد الأكواد المحددة\nأعد تحميل الصفحة قبل المتابعة",
                         ]);
                     }
                 }
@@ -482,7 +482,7 @@ class CourseCodeController extends Controller
             if ($courseCodes->count() > 500) {
                 return back()->with(
                     'error',
-                    'نتيجة PDF أكبر من 500 كود\nضيّق البحث أو استخدم تصدير CSV للسجل الكامل'
+                    "نتيجة PDF أكبر من 500 كود\nضيّق البحث أو استخدم تصدير CSV للسجل الكامل"
                 );
             }
 

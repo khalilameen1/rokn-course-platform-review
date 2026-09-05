@@ -257,7 +257,7 @@ class TeacherController extends Controller
                     ->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'عدّل شخص آخر بيانات المحاضر\nأعد تحميل الصفحة قبل الحفظ',
+                        'editor_version' => "عدّل شخص آخر بيانات المحاضر\nأعد تحميل الصفحة قبل الحفظ",
                     ]);
                 }
                 if ($locked->active && !$request->boolean('active')) {
@@ -313,7 +313,7 @@ class TeacherController extends Controller
             $teacher = User::query()->where('role', 'teacher')->whereKey($id)->lockForUpdate()->firstOrFail();
             if ((bool) $teacher->active !== (bool) $validated['expected_active']) {
                 throw ValidationException::withMessages([
-                    'expected_active' => 'تغيّرت حالة المحاضر بالفعل\nأعد تحميل الصفحة',
+                    'expected_active' => "تغيّرت حالة المحاضر بالفعل\nأعد تحميل الصفحة",
                 ]);
             }
             if ($teacher->active) $this->assertCanDeactivate($teacher);

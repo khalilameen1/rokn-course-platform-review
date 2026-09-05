@@ -33,7 +33,7 @@ final class ResolveCourseAuthoringDraft
                 // is the only operation allowed to resolve that URL forward.
                 throw ValidationException::withMessages([
                     'authoring_version' => [
-                        'نُشرت هذه المسودة بالفعل\nأعد فتح استوديو الكورس قبل الحفظ',
+                        "نُشرت هذه المسودة بالفعل\nأعد فتح استوديو الكورس قبل الحفظ",
                     ],
                 ])->status(409);
             }
@@ -83,7 +83,7 @@ final class ResolveCourseAuthoringDraft
                     if ($isHistorical) {
                         throw ValidationException::withMessages([
                             'authoring_version' => [
-                                'هذا التبويب يعرض نسخة قديمة من الكورس\nأعد فتح الاستوديو قبل الحفظ',
+                                "هذا التبويب يعرض نسخة قديمة من الكورس\nأعد فتح الاستوديو قبل الحفظ",
                             ],
                         ])->status(409);
                     }

@@ -214,7 +214,7 @@ final class CourseStagedAuthoringService
                 || (int) $revision->revision_course_id !== (int) $draft->id
             ) {
                 throw ValidationException::withMessages([
-                    'authoring_version' => ['نُشرت هذه المسودة بالفعل\nأعد فتح استوديو الكورس'],
+                    'authoring_version' => ["نُشرت هذه المسودة بالفعل\nأعد فتح استوديو الكورس"],
                 ])->status(409);
             }
             $lockedDraft = Course::query()->whereKey($revision->revision_course_id)
@@ -222,12 +222,12 @@ final class CourseStagedAuthoringService
 
             if ((int) $lockedDraft->authoring_version !== $expectedVersion) {
                 throw ValidationException::withMessages([
-                    'authoring_version' => ['تغيّرت المسودة أثناء النشر\nأعد تحميلها ثم راجع آخر تعديل'],
+                    'authoring_version' => ["تغيّرت المسودة أثناء النشر\nأعد تحميلها ثم راجع آخر تعديل"],
                 ])->status(409);
             }
             if ((int) $canonical->authoring_version !== (int) $revision->base_authoring_version) {
                 throw ValidationException::withMessages([
-                    'authoring_version' => ['تغيّرت النسخة المنشورة منذ بدء المسودة\nابدأ مسودة جديدة ثم راجع التعديلات'],
+                    'authoring_version' => ["تغيّرت النسخة المنشورة منذ بدء المسودة\nابدأ مسودة جديدة ثم راجع التعديلات"],
                 ])->status(409);
             }
 
@@ -914,7 +914,7 @@ final class CourseStagedAuthoringService
         // drafts and unchanged legacy drafts continue without interruption.
         if (!$hasSnapshot && $live->sort()->values()->all() !== $draft->sort()->values()->all()) {
             throw ValidationException::withMessages([
-                'authoring_version' => ['تغيّرت صفوف الكورس منذ بدء هذه المسودة\nأعد فتح المسودة ثم راجع التصنيفات'],
+                'authoring_version' => ["تغيّرت صفوف الكورس منذ بدء هذه المسودة\nأعد فتح المسودة ثم راجع التصنيفات"],
             ])->status(409);
         }
 

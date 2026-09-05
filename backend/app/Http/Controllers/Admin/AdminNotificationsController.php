@@ -85,7 +85,7 @@ class AdminNotificationsController extends Controller
                 if ($notification) {
                     if (!$this->sameCreatePayload($notification, $payload, $request)) {
                         throw ValidationException::withMessages([
-                            'authoring_request_id' => ['تغيّرت بيانات القالب\nأعد فتح النموذج ثم أرسل'],
+                            'authoring_request_id' => ["تغيّرت بيانات القالب\nأعد فتح النموذج ثم أرسل"],
                         ]);
                     }
                 } else {
@@ -169,7 +169,7 @@ class AdminNotificationsController extends Controller
                     ->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'تغيّر القالب منذ فتح الصفحة\nأعد تحميله قبل الحفظ',
+                        'editor_version' => "تغيّر القالب منذ فتح الصفحة\nأعد تحميله قبل الحفظ",
                     ]);
                 }
                 if ($locked->isSystemTemplate()) {
@@ -214,7 +214,7 @@ class AdminNotificationsController extends Controller
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّر القالب منذ فتح الصفحة\nأعد تحميله قبل الإيقاف أو الحذف',
+                    'editor_version' => "تغيّر القالب منذ فتح الصفحة\nأعد تحميله قبل الإيقاف أو الحذف",
                 ]);
             }
             if ($locked->isSystemTemplate()) {

@@ -77,7 +77,7 @@ class AboutsController extends Controller
             $snapshot = $about ?? new About();
             if (!hash_equals($this->editorVersion($snapshot), $editorVersion)) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّر النص المنشور منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                    'editor_version' => "تغيّر النص المنشور منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
             }
             $about ??= About::query()->create([

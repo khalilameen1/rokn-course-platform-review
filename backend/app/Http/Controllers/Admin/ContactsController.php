@@ -116,7 +116,7 @@ class ContactsController extends Controller
             $locked = $this->lockedCurrent($contact, (string) $validated['editor_version']);
             if (!$locked->isAccountDeletionRequest() || $locked->isResolved() || !$locked->isProcessing()) {
                 throw ValidationException::withMessages([
-                    'editor_version' => ['تغيّرت حالة الطلب\nحدّث الصفحة قبل الإغلاق'],
+                    'editor_version' => ["تغيّرت حالة الطلب\nحدّث الصفحة قبل الإغلاق"],
                 ]);
             }
             $matchedUser = $this->existingUserForEmail($locked->email);
@@ -165,7 +165,7 @@ class ContactsController extends Controller
             $locked = $this->lockedCurrent($contact, (string) $validated['editor_version']);
             if (!$locked->isAccountDeletionRequest() || $locked->isResolved() || !$locked->isProcessing()) {
                 throw ValidationException::withMessages([
-                    'editor_version' => ['تغيّرت حالة الطلب\nحدّث الصفحة قبل تنفيذ الحذف'],
+                    'editor_version' => ["تغيّرت حالة الطلب\nحدّث الصفحة قبل تنفيذ الحذف"],
                 ]);
             }
             $matchedUser = $this->existingUserForEmail($locked->email);
@@ -234,7 +234,7 @@ class ContactsController extends Controller
         $locked = Contact::query()->whereKey($contact->id)->lockForUpdate()->firstOrFail();
         if (!hash_equals($this->editorVersion($locked), $expected)) {
             throw ValidationException::withMessages([
-                'editor_version' => ['تغيّرت الرسالة منذ فتح الصفحة\nحدّثها قبل تنفيذ الإجراء'],
+                'editor_version' => ["تغيّرت الرسالة منذ فتح الصفحة\nحدّثها قبل تنفيذ الإجراء"],
             ]);
         }
         return $locked;

@@ -354,7 +354,7 @@ class SettingsController extends Controller
                 $editorVersion
             )) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت إعدادات التطبيق منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                    'editor_version' => "تغيّرت إعدادات التطبيق منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
             }
             $settings ??= Setting::query()->create([]);

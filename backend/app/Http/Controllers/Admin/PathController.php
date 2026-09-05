@@ -158,7 +158,7 @@ class PathController extends Controller
             }
             if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'عدّل شخص آخر هذا المسار\nأعد تحميل الصفحة قبل الحفظ',
+                    'editor_version' => "عدّل شخص آخر هذا المسار\nأعد تحميل الصفحة قبل الحفظ",
                 ]);
             }
             $locked->update([

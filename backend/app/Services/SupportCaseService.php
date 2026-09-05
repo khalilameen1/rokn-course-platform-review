@@ -170,7 +170,7 @@ final class SupportCaseService
                 }
                 return $existing;
             }
-            abort_if((int) $locked->version !== $expectedVersion, 409, 'عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة');
+            abort_if((int) $locked->version !== $expectedVersion, 409, "عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة");
 
             $message = SupportCaseMessage::query()->create([
                 'public_id' => (string) Str::ulid(),
@@ -323,7 +323,7 @@ final class SupportCaseService
         try {
             $image = Image::make($upload->getRealPath());
         } catch (\Throwable) {
-            abort(422, 'تعذّرت قراءة الصورة\nاختر صورة أخرى');
+            abort(422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         }
         if (function_exists('exif_read_data')) $image->orientate();
         $image->resize(2048, 2048, static function ($constraint): void {
@@ -331,7 +331,7 @@ final class SupportCaseService
             $constraint->upsize();
         });
         $encoded = (string) $image->encode('jpg', 86);
-        abort_if($encoded === '', 422, 'تعذّرت قراءة الصورة\nاختر صورة أخرى');
+        abort_if($encoded === '', 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         $sha = hash('sha256', $encoded);
         $directory = ($report->created_at ?: now())->format('Y/m');
         $path = $directory.'/'.$report->public_id.'/'.hash(
@@ -375,7 +375,7 @@ final class SupportCaseService
     private function uploadFingerprint(UploadedFile $file): array
     {
         $hash = hash_file('sha256', $file->getRealPath());
-        abort_unless($hash && $file->getSize() > 0, 422, 'تعذّرت قراءة الصورة\nاختر صورة أخرى');
+        abort_unless($hash && $file->getSize() > 0, 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         return ['sha256' => $hash, 'size' => (int) $file->getSize()];
     }
 

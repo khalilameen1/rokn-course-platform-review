@@ -158,7 +158,7 @@ class LevelController extends Controller
                 $locked = Level::query()->whereKey($level->id)->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'عدّل شخص آخر هذا المستوى\nأعد تحميل الصفحة قبل الحفظ',
+                        'editor_version' => "عدّل شخص آخر هذا المستوى\nأعد تحميل الصفحة قبل الحفظ",
                     ]);
                 }
                 $locked->update($validated);

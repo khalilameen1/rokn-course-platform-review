@@ -59,7 +59,7 @@ final class CoursePdfController extends Controller
                     $this->completeStoreIntent($request, $lockedCourse, $pdf, $payload);
                 }
             ),
-            'تعذر رفع الملف الآن\nحاول مرة أخرى'
+            "تعذر رفع الملف الآن\nحاول مرة أخرى"
         );
     }
 
@@ -84,7 +84,7 @@ final class CoursePdfController extends Controller
                 (int) $data['authoring_version'],
                 $request->file('pdf_file')
             ),
-            'تعذر تحديث الملف الآن\nحاول مرة أخرى'
+            "تعذر تحديث الملف الآن\nحاول مرة أخرى"
         );
     }
 

@@ -125,7 +125,7 @@ final class CourseRatingController extends Controller
 
         if ($result['conflict']) {
             return $this->responses->error(
-                'تغيّر تقييمك من جهاز آخر\nحدّث الكورس ثم حاول مرة أخرى',
+                "تغيّر تقييمك من جهاز آخر\nحدّث الكورس ثم حاول مرة أخرى",
                 409,
                 $this->payload($course, $result['rating'])
             );
@@ -170,7 +170,7 @@ final class CourseRatingController extends Controller
 
         if ($result['conflict']) {
             return $this->responses->error(
-                'تغيّر تقييمك من جهاز آخر\nحدّث الكورس ثم حاول مرة أخرى',
+                "تغيّر تقييمك من جهاز آخر\nحدّث الكورس ثم حاول مرة أخرى",
                 409,
                 $this->payload($course, $result['rating'])
             );

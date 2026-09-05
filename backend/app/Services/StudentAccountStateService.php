@@ -27,7 +27,7 @@ final class StudentAccountStateService
                 || !hash_equals($this->editorVersion($locked), $expectedVersion)
             ) {
                 throw ValidationException::withMessages([
-                    'expected_active' => ['تغيّرت حالة الحساب بالفعل\nأعد تحميل الصفحة'],
+                    'expected_active' => ["تغيّرت حالة الحساب بالفعل\nأعد تحميل الصفحة"],
                 ]);
             }
 

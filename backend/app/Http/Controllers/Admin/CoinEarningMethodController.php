@@ -68,13 +68,13 @@ class CoinEarningMethodController extends Controller
             if (!$setting) {
                 if (!hash_equals($this->settingsEditorVersion(null), $editorVersion)) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                        'editor_version' => "تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                     ]);
                 }
                 $setting = Setting::query()->create([]);
             } elseif (!hash_equals($this->settingsEditorVersion($setting), $editorVersion)) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                    'editor_version' => "تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
             }
             $proposed = clone $setting;
@@ -140,7 +140,7 @@ class CoinEarningMethodController extends Controller
                     ->firstOrFail();
                 if (!hash_equals($this->methodEditorVersion($locked), $editorVersion)) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                        'editor_version' => "تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                     ]);
                 }
                 $this->ensureExecutableCoinMethod($payload, $settings);
@@ -166,7 +166,7 @@ class CoinEarningMethodController extends Controller
                 ->firstOrFail();
             if (!hash_equals($this->methodEditorVersion($locked), (string) $validated['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحذف',
+                    'editor_version' => "تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
                 ]);
             }
             $locked->delete();
@@ -214,7 +214,7 @@ class CoinEarningMethodController extends Controller
                 (string) $request->input('editor_version')
             )) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                    'editor_version' => "تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                 ]);
             }
             $this->ensureExecutableRewardRule($payload, $settings);
@@ -236,7 +236,7 @@ class CoinEarningMethodController extends Controller
                 (string) $validated['editor_version']
             )) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحذف',
+                    'editor_version' => "تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
                 ]);
             }
             $locked->delete();

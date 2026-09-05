@@ -154,7 +154,7 @@ class PackageController extends Controller
                 $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
+                        'editor_version' => "تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
                     ]);
                 }
                 $locked->update($validated);
@@ -181,7 +181,7 @@ class PackageController extends Controller
             $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل الحذف',
+                    'editor_version' => "تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
                 ]);
             }
             if ($locked->orders()->exists() || $locked->storePurchases()->exists()

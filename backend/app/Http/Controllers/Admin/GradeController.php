@@ -100,7 +100,7 @@ class GradeController extends Controller
             $locked = Grade::query()->whereKey($grade->id)->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'عدّل شخص آخر هذه المرحلة\nأعد تحميل الصفحة قبل الحفظ',
+                    'editor_version' => "عدّل شخص آخر هذه المرحلة\nأعد تحميل الصفحة قبل الحفظ",
                 ]);
             }
             $locked->update($request->validated());

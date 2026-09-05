@@ -532,7 +532,7 @@ final class CoursePurchaseController extends Controller
                     'coupon_not_applicable' => 'لا ينطبق الخصم على هذه الفئة',
                     'coupon_quota_reached' => 'اكتمل عدد مرات استخدام هذا الكود',
                     'coupon_invalid' => 'الكود غير صحيح أو انتهت صلاحيته',
-                    'course_price_changed' => 'تغير السعر\nراجع الإجمالي قبل الشراء',
+                    'course_price_changed' => "تغير السعر\nراجع الإجمالي قبل الشراء",
                     'course_terms_changed' => "تغيّرت تفاصيل الفئة\nراجعها قبل الشراء",
                     'course_purchase_not_effective', 'course_access_under_review' =>
                         "هذه العملية قيد المراجعة\nلم يُخصم رصيد جديد",

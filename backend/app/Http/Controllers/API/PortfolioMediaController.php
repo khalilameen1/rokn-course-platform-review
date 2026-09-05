@@ -68,7 +68,7 @@ final class PortfolioMediaController extends Controller
         } catch (PortfolioOperationException $exception) {
             return $this->portfolioOperationError($exception);
         } catch (LockTimeoutException) {
-            return $this->error('جارٍ رفع هذا الملف\nحاول بعد قليل', 409);
+            return $this->error("جارٍ رفع هذا الملف\nحاول بعد قليل", 409);
         }
 
         return $this->mediaResponse($result['media'], $result['replayed']);
@@ -100,7 +100,7 @@ final class PortfolioMediaController extends Controller
         } catch (PortfolioOperationException $exception) {
             return $this->portfolioOperationError($exception);
         } catch (LockTimeoutException) {
-            return $this->error('جارٍ تجهيز رفع الفيديو\nحاول بعد قليل', 409);
+            return $this->error("جارٍ تجهيز رفع الفيديو\nحاول بعد قليل", 409);
         }
     }
 

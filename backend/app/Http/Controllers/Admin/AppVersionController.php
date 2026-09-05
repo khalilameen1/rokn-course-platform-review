@@ -206,7 +206,7 @@ class AppVersionController extends Controller
     {
         if (!hash_equals($this->editorVersion($version), $editorVersion)) {
             throw ValidationException::withMessages([
-                'editor_version' => 'تغيّر إصدار التطبيق منذ فتح الصفحة\nأعد تحميلها قبل المتابعة',
+                'editor_version' => "تغيّر إصدار التطبيق منذ فتح الصفحة\nأعد تحميلها قبل المتابعة",
             ]);
         }
     }

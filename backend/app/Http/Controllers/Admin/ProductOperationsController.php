@@ -579,7 +579,7 @@ class ProductOperationsController extends Controller
                 (string) $validated['editor_version']
             )) {
                 throw ValidationException::withMessages([
-                    'editor_version' => ['تغيّر قرار تشغيل الميزة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ'],
+                    'editor_version' => ["تغيّر قرار تشغيل الميزة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ"],
                 ]);
             }
 

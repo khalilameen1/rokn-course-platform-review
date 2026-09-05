@@ -81,7 +81,7 @@ final class ModeratorController extends Controller
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $data['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => ['تغيّرت بيانات مسؤول المحتوى منذ فتح الصفحة\nأعد تحميلها قبل الحفظ'],
+                    'editor_version' => ["تغيّرت بيانات مسؤول المحتوى منذ فتح الصفحة\nأعد تحميلها قبل الحفظ"],
                 ]);
             }
 

@@ -149,7 +149,7 @@ class OrdersController extends Controller
                 => 'حالة هذا الطلب يحددها مزود الدفع بعد التحقق',
             'A settled order cannot be rejected. Register a refund or chargeback for finance review.',
             'A settled order cannot be cancelled. Register a refund or chargeback for finance review.'
-                => 'الطلب المسدد لا يُلغى من هنا\nسجّل الاسترداد أو الاعتراض للمراجعة المالية',
+                => "الطلب المسدد لا يُلغى من هنا\nسجّل الاسترداد أو الاعتراض للمراجعة المالية",
             'Only an already-pending order can remain pending.',
             'Only pending orders can remain pending.'
                 => 'هذه العملية متاحة للطلبات المعلقة فقط',
@@ -158,7 +158,7 @@ class OrdersController extends Controller
             'Invalid financial review resolution.'
                 => 'قرار المراجعة المالية غير صالح',
             'Financial resolution event key was reused for another decision.'
-                => 'تغير القرار أثناء الحفظ\nحدّث الصفحة ثم أعد المحاولة',
+                => "تغير القرار أثناء الحفظ\nحدّث الصفحة ثم أعد المحاولة",
             'Only a package under financial review can be resolved.'
                 => 'يمكن إغلاق المراجعة لباقات الشحن قيد المراجعة فقط',
             'Invalid course compensation.'
@@ -196,6 +196,6 @@ class OrdersController extends Controller
     {
         report($exception);
 
-        return 'تعذّر تنفيذ التغيير\nحدّث الصفحة ثم أعد المحاولة';
+        return "تعذّر تنفيذ التغيير\nحدّث الصفحة ثم أعد المحاولة";
     }
 }

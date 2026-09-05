@@ -353,7 +353,7 @@ final class FeedbackController extends Controller
     {
         if (!$file) return null;
         $hash = hash_file('sha256', $file->getRealPath());
-        abort_unless($hash && $file->getSize() > 0, 422, 'تعذّرت قراءة الصورة\nاختر صورة أخرى');
+        abort_unless($hash && $file->getSize() > 0, 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         return ['sha256' => $hash, 'size' => (int) $file->getSize()];
     }
 }

@@ -34,7 +34,7 @@ final class ContinuousIntegrationLayoutTest extends TestCase
         );
         $snapshotContract = strpos(
             $contents,
-            'php artisan test --configuration=phpunit.mysql.xml'
+            'vendor/bin/phpunit --configuration=phpunit.mysql.xml'
         );
         $sqliteSuite = strpos($contents, '- name: Run full test suite');
         self::assertIsInt($mysqlReplay);

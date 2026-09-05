@@ -25,7 +25,7 @@ final class CourseAuthoringConcurrencyService
         if ($submitted === null || (int) $submitted !== (int) $locked->authoring_version) {
             throw ValidationException::withMessages([
                 'authoring_version' => [
-                    'تغيّر الكورس منذ فتح هذه الصفحة\nأعد تحميلها ثم راجع التعديل قبل الحفظ',
+                    "تغيّر الكورس منذ فتح هذه الصفحة\nأعد تحميلها ثم راجع التعديل قبل الحفظ",
                 ],
             ])->status(409);
         }
@@ -46,7 +46,7 @@ final class CourseAuthoringConcurrencyService
         if ((int) $locked->authoring_version !== $expectedVersion) {
             throw ValidationException::withMessages([
                 'authoring_version' => [
-                    'تغيّر الكورس أثناء الحفظ\nراجع آخر تعديل قبل النشر',
+                    "تغيّر الكورس أثناء الحفظ\nراجع آخر تعديل قبل النشر",
                 ],
             ])->status(409);
         }
@@ -103,7 +103,7 @@ final class CourseAuthoringConcurrencyService
 
         throw ValidationException::withMessages([
             'authoring_version' => [
-                'نُشرت نسخة أحدث أثناء الحفظ\nأعد فتح استوديو الكورس ثم أرسل التعديل إلى المسودة الجديدة',
+                "نُشرت نسخة أحدث أثناء الحفظ\nأعد فتح استوديو الكورس ثم أرسل التعديل إلى المسودة الجديدة",
             ],
         ])->status(409);
     }

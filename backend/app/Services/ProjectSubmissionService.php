@@ -403,7 +403,7 @@ final class ProjectSubmissionService
             $passed = $wasAlreadyPassed
                 || $locked->effort_status !== ProjectSubmission::EFFORT_INVALID;
             $feedback = $passed
-                ? 'استلمنا محاولة واضحة وفتحنا لك المقطع التالي\nهذا قبول للاستكمال وليس تقييمًا للعمل'
+                ? "استلمنا محاولة واضحة وفتحنا لك المقطع التالي\nهذا قبول للاستكمال وليس تقييمًا للعمل"
                 : "المحاولة غير واضحة بما يكفي للمراجعة\nارفع صورة أو ملفًا يوضح ما نفذته";
 
             return $this->applyReviewOutcome(

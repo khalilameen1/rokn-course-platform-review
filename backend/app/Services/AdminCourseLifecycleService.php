@@ -27,7 +27,7 @@ final class AdminCourseLifecycleService
             $course = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
             if ((int) $course->authoring_version !== $expectedVersion) {
                 throw ValidationException::withMessages([
-                    'authoring_version' => ['تغيّر الكورس منذ فتح الصفحة\nأعد تحميلها قبل الأرشفة'],
+                    'authoring_version' => ["تغيّر الكورس منذ فتح الصفحة\nأعد تحميلها قبل الأرشفة"],
                 ])->status(409);
             }
 

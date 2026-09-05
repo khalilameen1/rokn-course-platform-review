@@ -163,7 +163,7 @@ final class AdminCourseModuleApplicationService
                 ->values();
             if ($lockedIds->all() !== $submittedIds->all()) {
                 throw ValidationException::withMessages([
-                    'modules' => 'تغيّرت قائمة الوحدات منذ بدء السحب\nحدّث الصفحة ثم أعد الترتيب',
+                    'modules' => "تغيّرت قائمة الوحدات منذ بدء السحب\nحدّث الصفحة ثم أعد الترتيب",
                 ])->status(409);
             }
 

@@ -446,7 +446,7 @@ final class PortfolioController extends Controller
                 return $this->createdItemResponse($item, false);
             });
         } catch (LockTimeoutException) {
-            return $this->error('جارٍ حفظ هذا المشروع\nحاول بعد قليل', 409);
+            return $this->error("جارٍ حفظ هذا المشروع\nحاول بعد قليل", 409);
         }
     }
 

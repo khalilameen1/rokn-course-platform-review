@@ -181,7 +181,7 @@ final class FeedbackController extends Controller
                     && (string) $locked->priority === $validated['priority']
                     && ($locked->assigned_to === null ? null : (int) $locked->assigned_to) === $desiredAssignedTo
                     && ($locked->resolution_kind ?: null) === $desiredResolutionKind;
-                abort_unless($alreadyApplied, 409, 'عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة');
+                abort_unless($alreadyApplied, 409, "عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة");
                 return;
             }
             $statusChanged = $fromStatus !== $validated['status'];
@@ -258,7 +258,7 @@ final class FeedbackController extends Controller
                 }
                 $order = Order::query()->lockForUpdate()->findOrFail($feedback->order_id);
                 $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($feedback->id);
-                abort_if((int) $locked->version !== (int) $validated['version'], 409, 'تغيّرت الحالة\nحدّث الصفحة قبل تسجيل التعويض');
+                abort_if((int) $locked->version !== (int) $validated['version'], 409, "تغيّرت الحالة\nحدّث الصفحة قبل تسجيل التعويض");
                 abort_unless(
                     (int) $order->id === (int) $locked->order_id
                     && (int) $order->user_id === (int) $locked->user_id,
@@ -305,6 +305,6 @@ final class FeedbackController extends Controller
 
     public function destroy(FeedbackReport $feedback): RedirectResponse
     {
-        return back()->with('error', 'أغلق البلاغ بدل حذفه\nيُزال تلقائيًا بعد مدة الاحتفاظ');
+        return back()->with('error', "أغلق البلاغ بدل حذفه\nيُزال تلقائيًا بعد مدة الاحتفاظ");
     }
 }

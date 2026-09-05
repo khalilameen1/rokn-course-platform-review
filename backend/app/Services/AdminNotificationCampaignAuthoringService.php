@@ -242,7 +242,7 @@ final readonly class AdminNotificationCampaignAuthoringService
             ));
         if (!$samePayload) {
             throw ValidationException::withMessages([
-                'authoring_request_id' => ['تغيّرت بيانات الإشعار\nأعد فتح النموذج ثم أرسل'],
+                'authoring_request_id' => ["تغيّرت بيانات الإشعار\nأعد فتح النموذج ثم أرسل"],
             ]);
         }
     }

@@ -280,7 +280,7 @@ final class AdminCoursePdfApplicationService
             $submittedIds = collect($order)->sort()->values();
             if ($lockedIds->all() !== $submittedIds->all()) {
                 throw ValidationException::withMessages([
-                    'order' => 'تغيّرت قائمة المرفقات منذ بدء السحب\nحدّث الصفحة ثم أعد الترتيب',
+                    'order' => "تغيّرت قائمة المرفقات منذ بدء السحب\nحدّث الصفحة ثم أعد الترتيب",
                 ])->status(409);
             }
 

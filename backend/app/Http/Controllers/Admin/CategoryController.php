@@ -118,7 +118,7 @@ class CategoryController extends Controller
                 $locked = Category::query()->whereKey($category->id)->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'عدّل شخص آخر هذا القسم\nأعد تحميل الصفحة قبل الحفظ',
+                        'editor_version' => "عدّل شخص آخر هذا القسم\nأعد تحميل الصفحة قبل الحفظ",
                     ]);
                 }
                 $locked->update($request->safe()->except(['image', 'authoring_request_id']));

@@ -4,8 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\RequireProductFeature;
+use App\Models\Lesson;
+use App\Models\Order;
+use App\Models\Package;
 use App\Models\CourseAccessPlan;
+use App\Models\User;
+use App\Models\WalletTransaction;
 use App\Services\CourseAccessPlanService;
+use App\Services\FinancialProvenanceService;
+use App\Services\WalletService;
 use App\Support\CourseAccessPlanSnapshot;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -106,6 +114,163 @@ final class AccessPlanSnapshotMysqlConstraintTest extends TestCase
             'enrollments_access_plan_snapshot_check',
             fn () => $this->insertEnrollment($fixture, $orderId, $mismatched)
         );
+    }
+
+    public function test_wallet_course_purchase_and_same_key_replay_write_one_complete_financial_receipt(): void
+    {
+        $fixture = $this->commercialFixture('mentor');
+        $now = now();
+        DB::table('courses')->where('id', $fixture['course_id'])->update([
+            'is_catalog_visible' => true,
+            'is_coming_soon' => false,
+            'last_published_authoring_version' => 1,
+        ]);
+        $moduleId = (int) DB::table('course_modules')->insertGetId([
+            'course_id' => $fixture['course_id'],
+            'title' => 'Published module',
+            'order' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $lesson = Lesson::query()->create([
+            'list_id' => $fixture['course_id'],
+            'title' => 'Published lesson',
+            'is_opened' => true,
+        ]);
+        DB::table('course_sections')->insert([
+            'course_id' => $fixture['course_id'],
+            'module_id' => $moduleId,
+            'title' => 'Published lesson',
+            'section_type' => 'lesson',
+            'order' => 1,
+            'sectionable_id' => $lesson->id,
+            'sectionable_type' => Lesson::class,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $user = User::query()->findOrFail($fixture['user_id']);
+        $package = Package::query()->create([
+            'name_ar' => 'باقة اختبار عقد الشراء',
+            'name_en' => 'Purchase contract package',
+            'price' => 10,
+            'coins' => $fixture['price'],
+        ]);
+        $packageOrder = Order::query()->create([
+            'user_id' => $user->id,
+            'package_id' => $package->id,
+            'package_coins' => $fixture['price'],
+            'payment_method' => Order::PAYMENT_METHOD_KASHIER,
+            'amount' => 10,
+            'discount_amount' => 0,
+            'final_amount' => 10,
+            'status' => Order::STATUS_APPROVED,
+            'financial_status' => Order::FINANCIAL_SETTLED,
+            'approved_at' => $now,
+        ]);
+        $credit = app(WalletService::class)->credit(
+            (int) $user->id,
+            $fixture['price'],
+            'package_purchase',
+            'mysql-contract:package-credit:' . $packageOrder->id,
+            $packageOrder,
+            ['package_id' => (int) $package->id],
+            WalletTransaction::BUCKET_PAID
+        );
+        $paidLot = app(FinancialProvenanceService::class)
+            ->recordPaidPackageCredit($packageOrder, $credit);
+        app(WalletService::class)->credit(
+            (int) $user->id,
+            45,
+            'test_reward_refill',
+            'mysql-contract:reward-credit:' . $packageOrder->id,
+            null,
+            [],
+            WalletTransaction::BUCKET_REWARD
+        );
+
+        $checkoutKey = 'mysql-contract:course-purchase:' . bin2hex(random_bytes(12));
+        $request = [
+            'course_id' => $fixture['course_id'],
+            'access_plan_code' => 'mentor',
+            'expected_price' => $fixture['price'],
+            'expected_course_revision' => 1,
+            'idempotency_key' => $checkoutKey,
+        ];
+        $first = $this->withoutMiddleware(RequireProductFeature::class)
+            ->actingAs($user, 'api')
+            ->postJson('/api/v1/courses/authorize', $request);
+        $first->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.amount_deducted', $fixture['price'])
+            ->assertJsonPath('data.allocation.paid_coins', 855)
+            ->assertJsonPath('data.allocation.reward_coins', 45)
+            ->assertJsonPath('data.financial_review_required', false)
+            ->assertJsonPath('data.idempotent_replay', false);
+
+        $courseOrderId = (int) $first->json('data.order_id');
+        $billId = (int) $first->json('data.bill_id');
+        $enrollmentId = (int) $first->json('data.enrollment_id');
+        $debitId = (int) DB::table('orders')->where('id', $courseOrderId)
+            ->value('wallet_transaction_id');
+        $afterFirst = [
+            'balance' => (int) User::query()->findOrFail($user->id)->wallet_coins,
+            'paid_balance' => (int) User::query()->findOrFail($user->id)->wallet_purchased_coins,
+            'reward_balance' => (int) User::query()->findOrFail($user->id)->wallet_reward_coins,
+            'course_orders' => DB::table('orders')->where('course_id', $fixture['course_id'])->count(),
+            'bills' => DB::table('bills')->where('order_id', $courseOrderId)->count(),
+            'enrollments' => DB::table('course_enrollments')
+                ->where('user_id', $user->id)->where('course_id', $fixture['course_id'])->count(),
+            'debits' => DB::table('wallet_transactions')
+                ->where('user_id', $user->id)->where('category', 'course_purchase')->count(),
+            'allocations' => DB::table('wallet_debit_allocations')
+                ->where('wallet_transaction_id', $debitId)->count(),
+            'paid_lots' => DB::table('wallet_credit_lots')
+                ->where('source_order_id', $packageOrder->id)->count(),
+            'lot_remaining' => (int) DB::table('wallet_credit_lots')
+                ->where('id', $paidLot->id)->value('remaining_amount'),
+        ];
+        self::assertSame([
+            'balance' => 45,
+            'paid_balance' => 45,
+            'reward_balance' => 0,
+            'course_orders' => 1,
+            'bills' => 1,
+            'enrollments' => 1,
+            'debits' => 1,
+            'allocations' => 1,
+            'paid_lots' => 1,
+            'lot_remaining' => 45,
+        ], $afterFirst);
+
+        $replay = $this->withoutMiddleware(RequireProductFeature::class)
+            ->actingAs($user->fresh(), 'api')
+            ->postJson('/api/v1/courses/authorize', $request);
+        $replay->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.order_id', $courseOrderId)
+            ->assertJsonPath('data.bill_id', $billId)
+            ->assertJsonPath('data.enrollment_id', $enrollmentId)
+            ->assertJsonPath('data.amount_deducted', 0)
+            ->assertJsonPath('data.idempotent_replay', true);
+
+        self::assertSame($afterFirst, [
+            'balance' => (int) User::query()->findOrFail($user->id)->wallet_coins,
+            'paid_balance' => (int) User::query()->findOrFail($user->id)->wallet_purchased_coins,
+            'reward_balance' => (int) User::query()->findOrFail($user->id)->wallet_reward_coins,
+            'course_orders' => DB::table('orders')->where('course_id', $fixture['course_id'])->count(),
+            'bills' => DB::table('bills')->where('order_id', $courseOrderId)->count(),
+            'enrollments' => DB::table('course_enrollments')
+                ->where('user_id', $user->id)->where('course_id', $fixture['course_id'])->count(),
+            'debits' => DB::table('wallet_transactions')
+                ->where('user_id', $user->id)->where('category', 'course_purchase')->count(),
+            'allocations' => DB::table('wallet_debit_allocations')
+                ->where('wallet_transaction_id', $debitId)->count(),
+            'paid_lots' => DB::table('wallet_credit_lots')
+                ->where('source_order_id', $packageOrder->id)->count(),
+            'lot_remaining' => (int) DB::table('wallet_credit_lots')
+                ->where('id', $paidLot->id)->value('remaining_amount'),
+        ]);
     }
 
     /** @return array{user_id:int,course_id:int,plan_id:int,price:int} */

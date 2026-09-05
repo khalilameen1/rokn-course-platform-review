@@ -101,7 +101,7 @@ final class DesignSettingController extends Controller
                 $current = $locked ?: DesignSetting::getDefaultSettings();
                 if (!hash_equals($this->editorVersion($current), $submittedEditorVersion)) {
                     throw ValidationException::withMessages([
-                        'editor_version' => ['عدّل شخص آخر إعدادات التصميم\nأعد تحميل الصفحة قبل الحفظ'],
+                        'editor_version' => ["عدّل شخص آخر إعدادات التصميم\nأعد تحميل الصفحة قبل الحفظ"],
                     ]);
                 }
                 if ($locked) {

@@ -154,7 +154,7 @@ class CouponController extends Controller
                 $locked = Coupon::query()->whereKey($coupon->id)->lockForUpdate()->firstOrFail();
                 if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
                     throw ValidationException::withMessages([
-                        'editor_version' => 'تغيّر كود الخصم منذ فتح الصفحة\nأعد تحميله قبل الحفظ',
+                        'editor_version' => "تغيّر كود الخصم منذ فتح الصفحة\nأعد تحميله قبل الحفظ",
                     ]);
                 }
                 $locked->update($payload);
@@ -195,7 +195,7 @@ class CouponController extends Controller
             $locked = Coupon::query()->whereKey($coupon->id)->lockForUpdate()->firstOrFail();
             if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
                 throw ValidationException::withMessages([
-                    'editor_version' => 'تغيّر كود الخصم منذ فتح الصفحة\nأعد تحميله قبل الحذف',
+                    'editor_version' => "تغيّر كود الخصم منذ فتح الصفحة\nأعد تحميله قبل الحذف",
                 ]);
             }
             $locked->delete();
