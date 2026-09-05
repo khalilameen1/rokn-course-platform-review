@@ -27,6 +27,10 @@ type SavedGroup = {
   items: SavedLesson[];
 };
 
+type SavedMutationFlight = {
+  identityKey: string;
+};
+
 export function useSavedLibrary() {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
@@ -53,17 +57,17 @@ export function useSavedLibrary() {
   const loadGenerationRef = useRef(0);
   const loadingMoreRef = useRef(false);
   const screenActiveRef = useRef(false);
-  const createFolderFlightRef = useRef(false);
-  const deleteFolderFlightRef = useRef(false);
-  const removeFlightsRef = useRef(new Set<string>());
+  const createFolderFlightRef = useRef<SavedMutationFlight | null>(null);
+  const deleteFolderFlightRef = useRef<SavedMutationFlight | null>(null);
+  const removeFlightsRef = useRef(new Map<string, SavedMutationFlight>());
   const dataOwnerRef = useRef(identityKey);
   const savedRef = useRef<SavedLesson[]>([]);
 
   useEffect(() => {
     loadGenerationRef.current += 1;
     loadingMoreRef.current = false;
-    createFolderFlightRef.current = false;
-    deleteFolderFlightRef.current = false;
+    createFolderFlightRef.current = null;
+    deleteFolderFlightRef.current = null;
     removeFlightsRef.current.clear();
     savedRef.current = [];
     setSaved([]);
@@ -88,11 +92,22 @@ export function useSavedLibrary() {
     useCallback(() => {
       let active = true;
       screenActiveRef.current = true;
-      if (!createFolderFlightRef.current) setCreatingFolder(false);
-      if (!deleteFolderFlightRef.current) setDeletingFolder(false);
-      if (!removeFlightsRef.current.size) setRemovingSaved(new Set());
+      setCreatingFolder(
+        createFolderFlightRef.current?.identityKey === identityKey,
+      );
+      setDeletingFolder(
+        deleteFolderFlightRef.current?.identityKey === identityKey,
+      );
+      setRemovingSaved(
+        new Set(
+          [...removeFlightsRef.current]
+            .filter(([, flight]) => flight.identityKey === identityKey)
+            .map(([key]) => key),
+        ),
+      );
       const generation = ++loadGenerationRef.current;
       loadingMoreRef.current = false;
+      setLoadingMore(false);
       setLoading(true);
       setNextPage(null);
       setLoadMoreError('');
@@ -256,7 +271,8 @@ export function useSavedLibrary() {
     }
 
     const generation = loadGenerationRef.current;
-    createFolderFlightRef.current = true;
+    const flight = {identityKey};
+    createFolderFlightRef.current = flight;
     setCreatingFolder(true);
     setFolderError('');
     try {
@@ -275,19 +291,28 @@ export function useSavedLibrary() {
         setFolderError('تعذّر إنشاء القائمة\nتحقق من الاتصال ثم حاول مرة أخرى');
       }
     } finally {
-      createFolderFlightRef.current = false;
-      if (screenActiveRef.current && generation === loadGenerationRef.current) {
-        setCreatingFolder(false);
+      if (createFolderFlightRef.current === flight) {
+        createFolderFlightRef.current = null;
+        if (
+          screenActiveRef.current &&
+          dataOwnerRef.current === flight.identityKey
+        ) {
+          setCreatingFolder(false);
+          if (generation !== loadGenerationRef.current) {
+            setReload(value => value + 1);
+          }
+        }
       }
     }
-  }, [creatingFolder, folders, newFolderName]);
+  }, [creatingFolder, folders, identityKey, newFolderName]);
 
   const removeSaved = useCallback(
     async (item: SavedLesson) => {
       const key = `${item.folderId}:${item.id}`;
       if (removingSaved.has(key) || removeFlightsRef.current.has(key)) return;
       const generation = loadGenerationRef.current;
-      removeFlightsRef.current.add(key);
+      const flight = {identityKey};
+      removeFlightsRef.current.set(key, flight);
       setActionError('');
       setRemovingSaved(current => new Set(current).add(key));
       let optimisticIndex = -1;
@@ -352,16 +377,21 @@ export function useSavedLibrary() {
           setActionError('تعذّرت إزالة المقطع\nحاول مرة أخرى');
         }
       } finally {
-        removeFlightsRef.current.delete(key);
-        if (
-          screenActiveRef.current &&
-          generation === loadGenerationRef.current
-        ) {
-          setRemovingSaved(current => {
-            const next = new Set(current);
-            next.delete(key);
-            return next;
-          });
+        if (removeFlightsRef.current.get(key) === flight) {
+          removeFlightsRef.current.delete(key);
+          if (
+            screenActiveRef.current &&
+            dataOwnerRef.current === flight.identityKey
+          ) {
+            setRemovingSaved(current => {
+              const next = new Set(current);
+              next.delete(key);
+              return next;
+            });
+            if (generation !== loadGenerationRef.current) {
+              setReload(value => value + 1);
+            }
+          }
         }
       }
     },
@@ -382,7 +412,8 @@ export function useSavedLibrary() {
           onPress: () => {
             if (deleteFolderFlightRef.current) return;
             const generation = loadGenerationRef.current;
-            deleteFolderFlightRef.current = true;
+            const flight = {identityKey};
+            deleteFolderFlightRef.current = flight;
             setDeletingFolder(true);
             setFolderError('');
             void (async () => {
@@ -472,12 +503,17 @@ export function useSavedLibrary() {
                   );
                 }
               } finally {
-                deleteFolderFlightRef.current = false;
-                if (
-                  screenActiveRef.current &&
-                  generation === loadGenerationRef.current
-                ) {
-                  setDeletingFolder(false);
+                if (deleteFolderFlightRef.current === flight) {
+                  deleteFolderFlightRef.current = null;
+                  if (
+                    screenActiveRef.current &&
+                    dataOwnerRef.current === flight.identityKey
+                  ) {
+                    setDeletingFolder(false);
+                    if (generation !== loadGenerationRef.current) {
+                      setReload(value => value + 1);
+                    }
+                  }
                 }
               }
             })();

@@ -4,6 +4,29 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Keep saved-library reads and writes recoverable across navigation — 2026-09-05
+
+Leaving the saved library during pagination invalidated the old generation
+without resetting its visible `loadingMore` state. The stale request's guarded
+`finally` could no longer clear it, so returning left pagination permanently
+disabled. Focus now resets pagination state together with its request guard.
+
+The same focus/settlement mismatch could leave folder creation or deletion and
+saved-item removal visibly busy after returning. Mutation ownership is now an
+account-bound flight object rather than an unowned boolean/set. Navigation does
+not unlock a still-running write. Only its own completion releases the flight;
+the focused view derives busy state from those flights. Settlement across a
+different focus generation refreshes server data instead of applying an old
+snapshot, including a lost response after a successful server write. No new
+backend mutation or optimistic success contract was introduced.
+
+Six mounted-hook scenarios cover interrupted pagination, settlement before and
+after refocus, lost create/delete responses after simulated server commit, and
+failed removal. The focused five-suite scope passed 23 tests, including existing
+mapper/default-folder/recovery tests; TypeScript and scoped ESLint passed.
+This is source-level navigation coverage, not a claim of native-device acceptance
+or an update to the user's installed APK.
+
 ## Resume interrupted daily flows without treating an attempt as completion — 2026-09-05
 
 Three new defects were reproduced through mounted React hooks before their
