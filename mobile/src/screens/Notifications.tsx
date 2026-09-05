@@ -15,7 +15,10 @@ import {Container} from '../components/containers/Containers';
 import {SectionHeading, StatusView} from '../components/ui/PremiumUI';
 import {RoknCoinStack} from '../components/ui/RoknCoin';
 import HeaderWithBack from '../components/view/HeaderWithBack';
-import {formatArabicDisplayText} from '../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../constants/arabicFormatting';
 import {useResponsiveLayout} from '../constants/designSystem';
 import {openGuestLogin} from '../navigation/journeyNavigation';
 import type {RootNavigation} from '../navigation/types';
@@ -119,7 +122,7 @@ export default function Notifications() {
               <View style={styles.copy}>
                 <View style={styles.titleRow}>
                   <Text numberOfLines={2} style={styles.title}>
-                    {formatArabicDisplayText(item.title)}
+                    {formatAuthoredDisplayText(item.title)}
                   </Text>
                   {!read && (
                     <View
@@ -131,7 +134,7 @@ export default function Notifications() {
                 <Text
                   numberOfLines={compactLayout ? 4 : 3}
                   style={styles.description}>
-                  {formatArabicDisplayText(item.description)}
+                  {formatAuthoredDisplayText(item.description)}
                 </Text>
                 <View
                   style={[
@@ -141,7 +144,7 @@ export default function Notifications() {
                   {!!item.link && !!item.actionLabel && (
                     <View style={styles.actionPill}>
                       <Text style={styles.actionLabel}>
-                        {formatArabicDisplayText(item.actionLabel)}
+                        {formatAuthoredDisplayText(item.actionLabel)}
                       </Text>
                     </View>
                   )}

@@ -20,9 +20,9 @@ class StudentNotificationResource extends JsonResource
         $isArabic = $locale === RoknLocale::ARABIC;
 
         $presentationService = app(StudentNotificationPresentationService::class);
-        $titleAr = $presentationService->learnerArabicText($this->title_ar, 'إشعار من ركن');
+        $titleAr = $presentationService->learnerText($this->title_ar, 'إشعار من ركن');
         $titleEn = $presentationService->learnerText($this->title_en, 'Rokn notification');
-        $messageAr = $presentationService->learnerArabicText($this->message_ar, 'لديك إشعار جديد');
+        $messageAr = $presentationService->learnerText($this->message_ar, 'لديك إشعار جديد');
         $messageEn = $presentationService->learnerText(
             $this->message_en,
             'You have a new notification'
@@ -42,7 +42,7 @@ class StudentNotificationResource extends JsonResource
             'link' => $presentation['link'],
             'course_id' => $presentation['course_id'],
             'image_url' => $presentation['image_url'],
-            'action_label_ar' => $presentationService->learnerArabicText(
+            'action_label_ar' => $presentationService->learnerText(
                 $presentation['action_label_ar'],
                 'افتح ركن'
             ),

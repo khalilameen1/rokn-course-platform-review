@@ -14,26 +14,30 @@ use Tests\TestCase;
 
 final class StudentNotificationPresentationServiceTest extends TestCase
 {
-    public function test_learner_copy_filters_diagnostics_for_inbox_and_push(): void
+    public function test_authored_copy_keeps_its_language_words_and_formatting(): void
     {
         $service = app(StudentNotificationPresentationService::class);
 
-        self::assertSame(
-            'إشعار من ركن',
-            $service->learnerArabicText('SQLSTATE API_KEY فشل', 'إشعار من ركن')
-        );
-        self::assertSame(
-            'Rokn notification',
-            $service->learnerText('OAuth exception from Firebase', 'Rokn notification')
-        );
-        self::assertSame(
-            "وصل تقريرك\nافتحه الآن",
-            $service->learnerArabicText('وصل تقريرك، افتحه الآن', 'إشعار من ركن')
-        );
-        self::assertSame(
-            'Your certificate is ready',
-            $service->learnerText('Your certificate is ready', 'Rokn notification')
-        );
+        foreach ([
+            'دورة SQLSTATE وAPI_KEY',
+            'OAuth exception from Firebase',
+            'وصل تقريرك، افتحه الآن',
+            'Grease Pencil',
+            'وسم <html>',
+            "Blender: الرسم\nالأول\nالثاني\nالثالث\nالرابع",
+        ] as $copy) {
+            self::assertSame($copy, $service->learnerText($copy, 'إشعار من ركن'));
+        }
+    }
+
+    public function test_authored_copy_still_cleans_unicode_and_bounds_length(): void
+    {
+        $service = app(StudentNotificationPresentationService::class);
+        self::assertSame("دورة <html>\nالمقطع الأول", $service->learnerText(
+            "\u{200F}دورة\0 <html>\r\nالمقطع الأول\u{202E}", 'إشعار من ركن'
+        ));
+        self::assertSame('إشعار من ركن', $service->learnerText("\0\u{200F} ", 'إشعار من ركن'));
+        self::assertSame(str_repeat('أ', 240), $service->learnerText(str_repeat('أ', 250), 'إشعار من ركن'));
     }
 
     public function test_invalid_legacy_link_still_returns_a_complete_mobile_action(): void

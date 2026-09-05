@@ -4,8 +4,61 @@ import {
   parseAppVersionResponse,
   trustedUpdateUrl,
 } from '../src/services/appVersionPolicy';
+import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 describe('app update policy', () => {
+  it('preserves authored technical release copy without changing update gating or URLs', () => {
+    const message = 'New in Rokn 2: OAuth fixes and ريلز 2026';
+    const notes =
+      'SQLSTATE explanations\n\n  const limit = 3;\n<input required>';
+    const url = 'https://rokn.app/releases/Rokn.apk';
+    const notice = parseAppVersionResponse(
+      {
+        update_required: true,
+        is_force_update: true,
+        download_url: url,
+        update_message: message + '\u202e',
+        release_notes: notes + '\u0000',
+        latest_version_code: 42,
+        minimum_supported_version_code: 40,
+      },
+      'direct',
+    );
+
+    expect(cleanUnicodeText(notice?.message)).toBe(message);
+    expect(cleanUnicodeText(notice?.releaseNotes)).toBe(notes);
+    expect(notice).toMatchObject({
+      isBlocking: true,
+      downloadUrl: url,
+      hasUnsafeDownloadUrl: false,
+      latestVersionCode: 42,
+      minimumSupportedVersionCode: 40,
+    });
+  });
+
+  it('keeps authored copy bounds and uses the default only when update copy is missing', () => {
+    const notice = parseAppVersionResponse(
+      {
+        update_required: true,
+        update_message: 'Release '.repeat(50),
+        release_notes: 'Detail '.repeat(100),
+      },
+      'direct',
+    );
+    expect(cleanUnicodeText(notice?.message)).toBe(
+      'Release '.repeat(50).slice(0, 240).trim(),
+    );
+    expect(cleanUnicodeText(notice?.releaseNotes)).toBe(
+      'Detail '.repeat(100).slice(0, 600).trim(),
+    );
+    expect(
+      parseAppVersionResponse({update_required: true}, 'direct'),
+    ).toMatchObject({
+      message: 'نسخة أحدث من ركن جاهزة',
+      releaseNotes: null,
+      isBlocking: false,
+    });
+  });
   it('sends Android versionCode and iOS version plus build_number', () => {
     expect(
       createVersionCheckPayload({

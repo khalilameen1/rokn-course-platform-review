@@ -41,7 +41,8 @@ import {
   loginReturnResetState,
   savePendingLoginReturnTo,
 } from '../../navigation/authReturn';
-import {learnerFacingText} from '../../utils/errorPayload';
+import {cleanUnicodeText} from '../../utils/unicodeText';
+import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {serverNowMs} from '../../utils/serverClock';
 import {settleWithin} from '../../utils/settleWithin';
 import SocialAuthView from './SocialAuthView';
@@ -311,7 +312,9 @@ export default function SocialAuthShell() {
 
   const recommendedProvider = authMethods?.recommendedProvider;
   const recommendationText = authMethods?.recommendationText
-    ? learnerFacingText(authMethods.recommendationText)
+    ? formatAuthoredDisplayText(
+        cleanUnicodeText(authMethods.recommendationText).slice(0, 240),
+      )
     : null;
   const providerOrder = [
     ...(recommendedProvider ? [recommendedProvider] : []),

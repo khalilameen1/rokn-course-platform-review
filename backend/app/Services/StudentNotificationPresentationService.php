@@ -8,36 +8,17 @@ use App\Models\Course;
 use App\Models\Lesson;
 use App\Models\StudentNotification;
 use App\Support\RoknAppLink;
+use App\Support\UnicodeText;
 
 final class StudentNotificationPresentationService
 {
-    public function learnerArabicText(mixed $value, string $fallback): string
-    {
-        $text = $this->learnerText($value, $fallback);
-        if (preg_match('/[\x{0600}-\x{06FF}]/u', $text) !== 1) {
-            return $fallback;
-        }
-
-        $text = preg_replace('/\r\n?/', "\n", $text) ?? $fallback;
-        $text = preg_replace('/[,،;؛:]+/u', "\n", $text) ?? $fallback;
-        $text = preg_replace('/([^\d])\.(?=\s|$)/u', '${1}' . "\n", $text) ?? $fallback;
-        $lines = array_values(array_filter(array_map(
-            static fn (string $line): string => trim((string) preg_replace('/\s+/u', ' ', $line)),
-            explode("\n", $text)
-        )));
-
-        return mb_substr(implode("\n", array_slice($lines, 0, 3)), 0, 240) ?: $fallback;
-    }
-
     public function learnerText(mixed $value, string $fallback): string
     {
-        $text = trim(strip_tags((string) $value));
-        $diagnostic = preg_match(
-            '/(?:https?:\/\/|www\.|sqlstate|exception|stack\s*trace|openrouter|bunny(?:cdn)?|kashier|firebase|oauth|pkce|google\s*play|app\s*store|storekit|billingclient|authorization(?:signature|expire)?|access[_ -]?key|api[_ -]?key)/iu',
-            $text
-        ) === 1 || preg_match('/\b[A-Z][A-Z0-9]*_[A-Z0-9_]+\b/u', $text) === 1;
+        // These fields contain authored copy and course names. Delivery errors
+        // belong to failure_code, not a blacklist of words inside that copy.
+        $text = UnicodeText::clean($value);
 
-        return $text === '' || $diagnostic ? $fallback : mb_substr($text, 0, 240);
+        return $text === '' ? $fallback : mb_substr($text, 0, 240);
     }
 
     /** @return array{notification_type:string,course_id:?int,image_url:?string,action_label_ar:string,action_label_en:string,link:string} */

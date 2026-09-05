@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\SendUserPushNotification;
+use App\Http\Resources\StudentNotificationResource;
 use App\Models\StudentNotification;
 use App\Models\User;
 use App\Services\StudentNotificationPresentationService;
+use Illuminate\Http\Request;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +19,7 @@ use Illuminate\Support\Facades\Schema;
 use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Exception\Messaging\NotFound;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class NotificationDeliveryHardeningTest extends TestCase
@@ -144,6 +147,82 @@ final class NotificationDeliveryHardeningTest extends TestCase
         ]);
         self::assertNull($notification->fresh()->push_sent_at);
         self::assertNotNull($notification->fresh()->push_failed_at);
+    }
+
+    public static function authoredNotificationCopy(): array
+    {
+        return [
+            ['دورة SQLSTATE', 'تعلّم SQLSTATE وقراءة stack trace'],
+            ['وسم <html>', 'ابدأ من <html> ثم <body>'],
+            ['Grease Pencil', 'Grease Pencil'],
+            ['Blender: Grease Pencil', "الخطوط: التلوين، الإضاءة؛ الحركة\nالمشروع الأول\nراجع المثال\nثم طبّق"],
+            ['دورة Blender: Grease Pencil', "الأول\nالثاني\nالثالث\nالرابع"],
+            ['Firebase وOpenRouter', 'ربط Firebase مع OpenRouter باستخدام API_KEY'],
+            ['ريلز 2026', 'جرّب const limit=3 في المثال'],
+            ['مثال برمجي', 'const limit=3'],
+        ];
+    }
+
+    #[DataProvider('authoredNotificationCopy')]
+    public function test_inbox_resource_preserves_authored_course_names_and_message(string $title, string $message): void
+    {
+        $user = $this->user('authored-inbox@example.com');
+        $notification = $this->notification($user, 'authored:inbox', [
+            'title_ar' => $title,
+            'message_ar' => $message,
+            'title_en' => 'English title',
+            'message_en' => 'English message',
+        ]);
+
+        $request = Request::create('/api/v1/notifications');
+        $request->headers->set('Accept-Language', 'ar');
+        $payload = (new StudentNotificationResource($notification))->toArray($request);
+        self::assertSame($title, $payload['title']);
+        self::assertSame($message, $payload['message']);
+        self::assertSame($title, $payload['title_ar']);
+        self::assertSame($message, $payload['message_ar']);
+
+        $request->headers->set('Accept-Language', 'en');
+        $english = (new StudentNotificationResource($notification))->toArray($request);
+        self::assertSame('English title', $english['title']);
+        self::assertSame('English message', $english['message']);
+        self::assertSame($payload['link'], $english['link']);
+    }
+
+    #[DataProvider('authoredNotificationCopy')]
+    public function test_push_preserves_the_same_authored_copy_as_the_inbox(string $title, string $message): void
+    {
+        $user = $this->user('authored-push@example.com');
+        $this->token($user, 'authored-push-token');
+        $notification = $this->notification($user, 'authored:push', [
+            'title_ar' => $title,
+            'message_ar' => $message,
+            'title_en' => 'English title',
+            'message_en' => 'English message',
+        ]);
+        $sent = null;
+        $messaging = Mockery::mock(Messaging::class);
+        $messaging->shouldReceive('send')->once()->andReturnUsing(
+            static function ($push) use (&$sent): array {
+                $sent = $push->jsonSerialize();
+                return ['name' => 'authored-push'];
+            }
+        );
+        $this->app->instance(Messaging::class, $messaging);
+
+        (new SendUserPushNotification($notification->id))->handle(
+            app(StudentNotificationPresentationService::class)
+        );
+
+        self::assertNotNull($sent);
+        self::assertSame($title, $sent['data']['title_ar']);
+        self::assertSame($message, $sent['data']['message_ar']);
+        self::assertSame($title, str_replace(["\u{2068}", "\u{2069}"], '', $sent['notification']['title']));
+        self::assertSame($message, str_replace(["\u{2068}", "\u{2069}"], '', $sent['notification']['body']));
+        if ($title === 'Grease Pencil') {
+            self::assertSame("\u{2068}Grease Pencil\u{2069}", $sent['notification']['title']);
+        }
+        self::assertNotNull($notification->fresh()->push_sent_at);
     }
 
     private function user(string $email): User

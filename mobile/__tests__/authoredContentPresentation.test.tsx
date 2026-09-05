@@ -3,6 +3,8 @@ import TestRenderer, {act} from 'react-test-renderer';
 import {Text} from 'react-native';
 import FeedFooter from '../src/components/VideoPlayer/FeedFooter';
 import SearchAssist from '../src/components/search/SearchAssist';
+import CoursesSection from '../src/components/view/CoursesSection';
+import type {Course} from '../src/types/Course';
 import {PortfolioProjectGrid} from '../src/screens/Profile/gallery/PortfolioProjectGrid';
 import type {CourseReel} from '../src/components/VideoPlayer/types';
 import type {Project} from '../src/screens/Profile/gallery/portfolioModel';
@@ -36,6 +38,18 @@ const renderText = (
 };
 
 describe('authored text is not localized as interface copy', () => {
+  it('preserves an authored home row heading through the shared section component', () => {
+    const course = {id: 'course-1', title: 'Blender', image: 1} as Course;
+    renderText(
+      <CoursesSection
+        title={authoredTitle}
+        data={[course]}
+        onCoursePress={jest.fn()}
+      />,
+      (_renderer, texts) => expect(texts).toContain(authoredTitle),
+    );
+  });
+
   it('preserves lesson title and code caption while localizing the reel counter', () => {
     const reel = {
       id: 'lesson-1',

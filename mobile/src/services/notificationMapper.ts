@@ -6,8 +6,8 @@ import {
 } from './notificationCampaigns';
 import {parseRoknDestination} from '../navigation/deepLinks';
 import {firstBoolean} from './api/common';
-import {learnerFacingText} from '../utils/errorPayload';
-import {formatArabicDisplayText} from '../constants/arabicFormatting';
+import {cleanUnicodeText} from '../utils/unicodeText';
+import {formatAuthoredDisplayText} from '../constants/arabicFormatting';
 
 export type Notification = {
   id: string;
@@ -80,6 +80,13 @@ const safeDate = (value: unknown) => {
   return date && Number.isFinite(Date.parse(date)) ? date : '';
 };
 
+// Delivery copy may include authored course titles or code, not API errors.
+// Keep the existing display bound and let the API contract reject missing text.
+const notificationText = (value: unknown): string =>
+  typeof value === 'string'
+    ? formatAuthoredDisplayText(cleanUnicodeText(value).slice(0, 240))
+    : '';
+
 const firstValue = (item: Record<string, unknown>, keys: string[]): unknown => {
   for (const key of keys) {
     const value = item[key];
@@ -117,12 +124,8 @@ export const mapNotification = (
     id: String(item.id),
     campaignId: String(item.campaign_id || '').trim() || undefined,
     type,
-    title: formatArabicDisplayText(
-      learnerFacingText(item.title_ar || item.title),
-    ),
-    description: formatArabicDisplayText(
-      learnerFacingText(item.message_ar || item.message),
-    ),
+    title: notificationText(item.title_ar || item.title),
+    description: notificationText(item.message_ar || item.message),
     createdAt: safeDate(item.created_at),
     read:
       firstBoolean(item.is_read) ??
@@ -130,10 +133,8 @@ export const mapNotification = (
     link: explicitLink,
     courseId,
     imageUrl,
-    actionLabel: formatArabicDisplayText(
-      learnerFacingText(
-        firstValue(item, ['action_label_ar', 'cta_ar', 'action_label']),
-      ),
+    actionLabel: notificationText(
+      firstValue(item, ['action_label_ar', 'cta_ar', 'action_label']),
     ),
     kind,
     tone: notificationTone(kind),

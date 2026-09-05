@@ -4,8 +4,8 @@ import {
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
-import {learnerFacingText} from '../../utils/errorPayload';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {cleanUnicodeText} from '../../utils/unicodeText';
+import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {firstBoolean, payload} from './common';
 
 export type EngagementMessageKey =
@@ -51,7 +51,9 @@ const rawText = (value: unknown): string =>
   typeof value === 'string' ? value.trim() : '';
 
 const copyText = (value: unknown): string =>
-  formatArabicDisplayText(learnerFacingText(value));
+  typeof value === 'string'
+    ? formatAuthoredDisplayText(cleanUnicodeText(value).slice(0, 240))
+    : '';
 
 const imageUrl = (value: unknown) => {
   const url = rawText(value);

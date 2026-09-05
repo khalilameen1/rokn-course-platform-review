@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserDeviceToken;
-use App\Support\ArabicDisplayText;
+use App\Support\AuthoredDisplayText;
 use App\Support\RoknLocale;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -70,8 +70,8 @@ class FcmNotificationService
         $messageAr = self::firstText($messageAr, $messageEn);
         $messageEn = self::firstText($messageEn, $messageAr);
         $isEnglish = RoknLocale::normalize($user->preferred_locale) === RoknLocale::ENGLISH;
-        $title = $isEnglish ? $titleEn : ArabicDisplayText::format($titleAr);
-        $body = $isEnglish ? $messageEn : ArabicDisplayText::format($messageAr);
+        $title = $isEnglish ? $titleEn : AuthoredDisplayText::format($titleAr);
+        $body = $isEnglish ? $messageEn : AuthoredDisplayText::format($messageAr);
         $data = [
             'title_ar' => $titleAr,
             'title_en' => $titleEn,

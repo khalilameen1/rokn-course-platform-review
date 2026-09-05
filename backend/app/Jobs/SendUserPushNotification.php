@@ -213,9 +213,9 @@ final class SendUserPushNotification implements ShouldQueue, ShouldBeUnique
             $result = FcmNotificationService::sendToDeviceDetailed(
                 $currentUser,
                 $currentToken,
-                $presentations->learnerArabicText($notification->title_ar, 'إشعار من ركن'),
+                $presentations->learnerText($notification->title_ar, 'إشعار من ركن'),
                 $presentations->learnerText($notification->title_en, 'Rokn notification'),
-                $presentations->learnerArabicText($notification->message_ar, 'لديك إشعار جديد'),
+                $presentations->learnerText($notification->message_ar, 'لديك إشعار جديد'),
                 $presentations->learnerText($notification->message_en, 'You have a new notification'),
                 $presentation['link'],
                 [

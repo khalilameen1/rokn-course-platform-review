@@ -12,6 +12,7 @@ import {
 } from '../constants/helpers';
 import {
   formatArabicDisplayText,
+  formatAuthoredDisplayText,
   formatRoknCoins,
 } from '../constants/arabicFormatting';
 import {
@@ -325,15 +326,15 @@ export const scheduleNextLearningReminder = async (
   const reminderHour = safeReminderHour(preferredHour ?? storedHour);
   const kind: NotificationKind =
     streakDays > 1 ? 'streak_reminder' : 'learning_reminder';
-  const body = formatArabicDisplayText(
-    nextReelTitle
-      ? `${
-          courseTitle ? `${courseTitle}\n` : ''
-        }توقفت عند ${nextReelTitle}\nأكمل عندما يناسبك`
-      : streakDays > 1
-      ? `مقطع واحد يحافظ على استمرارية ${streakDays} أيام`
-      : 'مقطعك التالي جاهز',
-  );
+  const body = nextReelTitle
+    ? `${
+        courseTitle ? `${formatAuthoredDisplayText(courseTitle)}\n` : ''
+      }توقفت عند ${formatAuthoredDisplayText(nextReelTitle)}\nأكمل عندما يناسبك`
+    : formatArabicDisplayText(
+        streakDays > 1
+          ? `مقطع واحد يحافظ على استمرارية ${streakDays} أيام`
+          : 'مقطعك التالي جاهز',
+      );
   const title = formatArabicDisplayText(
     streakDays > 1 ? 'حافظ على استمراريتك اليوم' : 'أكمل من مكانك',
   );

@@ -1,4 +1,5 @@
 import {mapNotification} from '../src/services/notificationMapper';
+import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 describe('production notification language boundary', () => {
   it('prefers explicit Arabic copy over generic and English fields', () => {
@@ -24,13 +25,30 @@ describe('production notification language boundary', () => {
   it('does not invent learner copy when the delivery contract is incomplete', () => {
     const notification = mapNotification({
       id: 'n-1',
-      title: 'Fallback title',
-      message: 'Fallback message',
+      title: 'Grease Pencil 4',
     });
 
-    expect(notification.title).toBe('');
+    expect(cleanUnicodeText(notification.title)).toBe('Grease Pencil 4');
     expect(notification.description).toBe('');
     expect(notification.actionLabel).toBe('');
+  });
+
+  it('keeps explicit authored Arabic-field text and its display bounds without an error-copy filter', () => {
+    const body = 'SQLSTATE: <input required>\n'.repeat(20);
+    const notification = mapNotification({
+      id: 8,
+      title_ar: 'Grease Pencil 4\u202e',
+      title: 'عنوان عام',
+      message_ar: body + '\u0000',
+      message: 'رسالة عامة',
+      action_label_ar: 'افتح ريلز 2026',
+    });
+
+    expect(cleanUnicodeText(notification.title)).toBe('Grease Pencil 4');
+    expect(cleanUnicodeText(notification.description)).toBe(
+      body.slice(0, 240).trim(),
+    );
+    expect(cleanUnicodeText(notification.actionLabel)).toBe('افتح ريلز 2026');
   });
 
   it('maps a rich course campaign without changing its destination', () => {

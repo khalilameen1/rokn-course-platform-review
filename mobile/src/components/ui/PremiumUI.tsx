@@ -20,7 +20,10 @@ import {
   textDirection,
   useResponsiveLayout,
 } from '../../constants/designSystem';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../../constants/arabicFormatting';
 import {learnerFacingText} from '../../utils/errorPayload';
 
 export const ResponsiveFrame = ({
@@ -78,7 +81,7 @@ export const SectionHeading = ({
         <Text style={styles.eyebrow}>{formatArabicDisplayText(eyebrow)}</Text>
       )}
       <Text accessibilityRole="header" style={styles.headingTitle}>
-        {formatArabicDisplayText(title)}
+        {formatAuthoredDisplayText(title)}
       </Text>
     </View>
     {!!actionLabel && !!onAction && (

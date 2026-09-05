@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {
   Accessibility,
   Palette,
@@ -248,10 +248,10 @@ export const HomeOverlays = ({
               <Text style={styles.campaignCloseText}>×</Text>
             </Pressable>
             <Text accessibilityRole="header" style={styles.campaignTitle}>
-              {formatArabicDisplayText(campaign?.title)}
+              {formatAuthoredDisplayText(campaign?.title)}
             </Text>
             <Text style={styles.campaignText}>
-              {formatArabicDisplayText(campaign?.description)}
+              {formatAuthoredDisplayText(campaign?.description)}
             </Text>
             <Pressable
               accessibilityRole="button"

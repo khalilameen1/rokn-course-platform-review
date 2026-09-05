@@ -1,5 +1,6 @@
 import type {DistributionChannel} from '../constants/distribution';
-import {learnerFacingText} from '../utils/errorPayload';
+import {cleanUnicodeText} from '../utils/unicodeText';
+import {formatAuthoredDisplayText} from '../constants/arabicFormatting';
 
 export type AppUpdateNotice = {
   contractVersion: number;
@@ -59,14 +60,9 @@ const cleanText = (value: unknown, maxLength: number) =>
     : null;
 
 const cleanMultilineText = (value: unknown, maxLength: number) => {
-  if (typeof value !== 'string' || !value.trim()) return null;
-  return value
-    .replace(/\r\n?/g, '\n')
-    .split('\n')
-    .map(line => line.trim().replace(/[ \t]+/g, ' '))
-    .filter(Boolean)
-    .join('\n')
-    .slice(0, maxLength);
+  if (typeof value !== 'string') return null;
+  const text = cleanUnicodeText(value).slice(0, maxLength);
+  return text ? formatAuthoredDisplayText(text) : null;
 };
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
@@ -177,12 +173,9 @@ export const parseAppVersionResponse = (
     minimumSupportedBuildNumber: positiveInteger(
       data.minimum_supported_build_number,
     ),
-    message: learnerFacingText(
-      cleanMultilineText(data.update_message, 240),
-      'نسخة أحدث من ركن جاهزة',
-    ),
-    releaseNotes:
-      learnerFacingText(cleanMultilineText(data.release_notes, 600)) || null,
+    message:
+      cleanMultilineText(data.update_message, 240) || 'نسخة أحدث من ركن جاهزة',
+    releaseNotes: cleanMultilineText(data.release_notes, 600),
     downloadUrl,
     // Invalid download URLs cannot activate a blocking screen. The policy
     // remains visible as a recoverable configuration warning.
