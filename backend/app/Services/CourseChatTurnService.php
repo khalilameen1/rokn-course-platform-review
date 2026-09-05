@@ -591,9 +591,17 @@ final class CourseChatTurnService
                 ->where('feature', 'course_chat')
                 ->lockForUpdate()
                 ->first();
+            // Settlement precedes the turn's presentation write. A completed
+            // ledger event must remain recoverable by polling during that gap;
+            // cancellation cannot discard an answer whose quota was consumed.
+            if ($event?->status === 'completed') {
+                return trim((string) data_get($event->metadata, 'accepted_response', '')) !== ''
+                    ? 'not_cancellable'
+                    : 'terminal';
+            }
             if ($event?->status === 'reserved' && in_array(
                 data_get($event->metadata, 'provider_call_state'),
-                ['started', 'outcome_unknown'],
+                ['started', 'outcome_unknown', PaidAiCallExecutionService::LANDED],
                 true
             )) {
                 return 'provider_started';

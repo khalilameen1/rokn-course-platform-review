@@ -210,7 +210,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             6000
         );
         $submission = UnicodeText::limit(
-            UnicodeText::clean(strip_tags((string) $thread->submission?->submission_text)),
+            UnicodeText::clean((string) $thread->submission?->submission_text),
             6000
         );
         $courseTitle = UnicodeText::limit(UnicodeText::clean((string) (
@@ -596,7 +596,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         }
         foreach ($recent->flatten() as $item) {
             $content = UnicodeText::limit(
-                UnicodeText::clean(strip_tags((string) $item->body)),
+                UnicodeText::clean((string) $item->body),
                 4000
             );
             if ($content === '') continue;

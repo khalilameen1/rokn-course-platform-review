@@ -160,7 +160,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             return;
         }
         $text = UnicodeText::limit(
-            UnicodeText::clean(strip_tags((string) $submission->submission_text)),
+            UnicodeText::clean((string) $submission->submission_text),
             8000
         );
         $ownedAttachments = $attachments->forOwner(

@@ -410,7 +410,7 @@ final class CourseChatController extends Controller
 
         $attachmentIds = array_values($validated['attachment_ids'] ?? []);
         sort($attachmentIds);
-        $question = UnicodeText::clean(strip_tags((string) ($validated['message'] ?? '')));
+        $question = UnicodeText::clean((string) ($validated['message'] ?? ''));
         if ($question === '' && $attachmentIds !== []) {
             $question = 'راجع المرفق';
         }
@@ -608,10 +608,6 @@ final class CourseChatController extends Controller
                 $clientRequestId
             );
         }
-        $history = collect($history)
-            ->filter(fn (array $message): bool => $this->promptContext->historyMessageIsSafe($message))
-            ->values()
-            ->all();
         $messages = array_merge($messages, $history);
         $messages[] = ['role' => 'user', 'content' => $question];
 

@@ -4,6 +4,54 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Preserve paid chat delivery and technical lesson text — 2026-09-05
+
+Cancellation could discard a course-chat answer after provider landing or after
+ledger settlement but before the turn's presentation write. Those two states now
+refuse cancellation and remain recoverable through normal polling. Regressions
+exercise cancellation, repeated polling and entitlement accounting: one delivered
+answer, one consumed request, no repeated provider call. Already-completed turn
+cancellation was correct before this change and is not counted as a new fix.
+
+Valid technical answers containing SQLSTATE, stack trace, tool calls or literal
+HTML were mistaken for provider failures. The same content blacklist suppressed
+stream checkpoints, removed completed course-chat history and rejected project
+reports/follow-up questions. Validation now distinguishes the HTTP/error envelope
+from learner-visible text. Empty, malformed and tool-only provider replies remain
+failures; ordinary technical vocabulary is not a failure signal.
+
+Course-chat admission also stripped HTML out of learner questions, sometimes
+turning code-only questions into empty messages. It now preserves literal code
+with the existing Unicode cleanup and length limit. Behavioral cases reproduced
+both failures before the change and pass afterward, including same-request replay
+and refusal to reuse that identity for different markup. Text is rendered as
+native text or escaped Blade output, not executable HTML.
+
+The project follow-through now preserves learner markup at submission admission,
+in both report jobs, in recent exchanges and in older retained context. The
+admission estimate counts those characters instead of treating markup as free.
+Failed messages remain excluded and token/length bounds remain in place. Mobile
+response/history/copy paths were inspected; their technical-error copy filtering
+does not run on ordinary learner messages or generated answers.
+
+Final four-file verification passed 92 tests / 500 assertions. Provider HTTP was
+faked or prohibited in these regressions; no paid provider request, production
+update or APK rebuild was performed. The
+previous f1a64cb CI run 33979568767 completed successfully for Android, iOS and
+JavaScript; staging smoke was skipped, not passed.
+
+Known remaining transport gap was reproduced through the actual chat service and
+a loopback SSE server, with PHP 8.4.24, curl loaded and Guzzle 7.15.5. With a total
+timeout and read timeout both set to 5 seconds, a heartbeat response completed and
+landed at 8.278 seconds; delayed headers plus heartbeat data completed at 8.074
+seconds. In both cases the initial partial text was also delivered only at the
+end, despite having been sent earlier. Guzzle's stream handler/read(8192) path
+therefore needs a total deadline and genuinely progressive delivery. These are
+real local Windows observations, not a diagnosis of a particular production Linux
+incident. Reproduction fixtures are ignored artifacts under
+`mobile/artifacts/deadline-probe`; both local processes exited. No transport
+implementation has been changed in this batch.
+
 ## Keep terminal read-timeout diagnostics on the common transport path — 2026-09-05
 
 The installed cf7b7b0 / Android 42 candidate was revisited from sign-in through

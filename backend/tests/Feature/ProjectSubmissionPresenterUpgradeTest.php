@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\GenerateProjectFeedback;
+use App\Jobs\GenerateProjectFeedbackReply;
 use App\Models\AiEntitlementUsage;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
@@ -19,17 +20,225 @@ use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\CourseAccessPlanService;
+use App\Services\AiConversationContextService;
+use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionOrchestrator;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 final class ProjectSubmissionPresenterUpgradeTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_tag_only_project_submission_is_admitted_as_learner_work(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $fixture['project']->forceFill(['submission_text_enabled' => true])->save();
+        $fixture['submission']->forceFill([
+            'review_status' => ProjectSubmission::STATUS_NEEDS_RESUBMISSION,
+        ])->save();
+        $code = '<html><body><input type="email" required></body></html>';
+
+        $result = app(ProjectSubmissionOrchestrator::class)->submit(
+            $fixture['user'], $fixture['project'], $code, [], (string) Str::uuid(), []
+        );
+
+        self::assertSame('submitted', $result['state']);
+        self::assertSame($code, $result['submission']->submission_text);
+        self::assertSame(ProjectSubmission::EFFORT_VALID, $result['submission']->effort_status);
+        Http::assertNothingSent();
+    }
+
+    public function test_project_report_admission_counts_html_source_against_remaining_tokens(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $fixture['project']->forceFill(['submission_text_enabled' => true])->save();
+        AiEntitlementUsage::query()->create([
+            'enrollment_id' => $fixture['enrollment']->id,
+            'access_plan_id' => $fixture['enrollment']->access_plan_id,
+            'feature' => AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK,
+            'used_requests' => 1,
+            'used_tokens' => 3500,
+        ]);
+        $code = '<input data-example="'.str_repeat('code', 350).'">Learner notes about the form';
+
+        $result = app(ProjectSubmissionOrchestrator::class)->submit(
+            $fixture['user'], $fixture['project'], $code, [], (string) Str::uuid(), []
+        );
+
+        self::assertSame('invalid', $result['state']);
+        self::assertSame('submission_files', $result['field']);
+        self::assertSame(1, ProjectSubmission::query()->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_initial_report_provider_receives_literal_learner_html_submission(): void
+    {
+        $this->fakeProjectProvider();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $code = '<html><body><input type="text" required></body></html>';
+        $fixture['submission']->forceFill(['submission_text' => $code."\x00"])->save();
+
+        app()->call([new GenerateProjectFeedback($fixture['submission']->id), 'handle']);
+
+        Http::assertSentCount(1);
+        $request = Http::recorded()->first()[0];
+        self::assertSame(
+            "BEGIN LEARNER SUBMISSION\n{$code}\nEND LEARNER SUBMISSION",
+            $request['messages'][1]['content'][0]['text']
+        );
+        self::assertSame('ready', data_get($fixture['submission']->fresh()->submission_metadata, 'ai_feedback.status'));
+    }
+
+    public function test_followup_provider_keeps_submission_and_completed_html_exchanges(): void
+    {
+        Bus::fake();
+        $this->fakeProjectProvider();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $submissionCode = '<html><body><input required></body></html>';
+        $fixture['submission']->forceFill(['submission_text' => $submissionCode])->save();
+        $thread = $fixture['submission']->feedbackThread;
+        $prior = [
+            'user' => '<input type="email" required>',
+            'assistant' => '<label>Email <input type="email" required></label>',
+        ];
+        foreach ($prior as $role => $body) {
+            ProjectFeedbackMessage::query()->create([
+                'public_id' => (string) Str::uuid(),
+                'thread_id' => $thread->id,
+                'role' => $role,
+                'client_request_id' => (string) Str::uuid(),
+                'status' => ProjectFeedbackMessage::COMPLETED,
+                'body' => $body."\x00",
+                'completed_at' => now(),
+            ]);
+        }
+        $current = app(ProjectFeedbackThreadService::class)->queueReply(
+            $fixture['user'], $thread, 'Explain the input attributes.', (string) Str::uuid()
+        );
+
+        app()->call([new GenerateProjectFeedbackReply($current->id), 'handle']);
+
+        Http::assertSentCount(1);
+        $request = Http::recorded()->first()[0];
+        $messages = $request['messages'];
+        self::assertStringContainsString($submissionCode, $messages[0]['content']);
+        self::assertContains(['role' => 'user', 'content' => $prior['user']], $messages);
+        self::assertContains(['role' => 'assistant', 'content' => $prior['assistant']], $messages);
+        self::assertSame(ProjectFeedbackMessage::COMPLETED, $current->fresh()->status);
+    }
+
+    public function test_older_project_memory_preserves_html_and_excludes_failed_messages(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $code = '<input type="email" required>';
+        $completed = ProjectFeedbackMessage::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'thread_id' => $thread->id,
+            'role' => 'user',
+            'client_request_id' => (string) Str::uuid(),
+            'status' => ProjectFeedbackMessage::COMPLETED,
+            'body' => $code."\x00",
+            'completed_at' => now(),
+        ]);
+        $failed = ProjectFeedbackMessage::query()->create([
+            'public_id' => (string) Str::uuid(),
+            'thread_id' => $thread->id,
+            'role' => 'assistant',
+            'client_request_id' => (string) Str::uuid(),
+            'status' => ProjectFeedbackMessage::FAILED,
+            'body' => 'Failed response must not enter memory',
+        ]);
+
+        $memory = app(AiConversationContextService::class)->projectThread(
+            $thread, $failed->id + 1, 'report:'.$fixture['submission']->public_id, 1000, 'email'
+        );
+
+        self::assertSame('الطالب: '.$code, $memory);
+        self::assertStringNotContainsString((string) $failed->body, $memory);
+        Http::assertNothingSent();
+    }
+
+    private function fakeProjectProvider(): void
+    {
+        config([
+            'openrouter.api_key' => 'test-key',
+            'openrouter.endpoint' => 'https://openrouter.test/project',
+            'openrouter.default_model' => 'test/model',
+            'openrouter.project_model' => 'test/model',
+            'openrouter.allowed_models' => ['test/model'],
+            'openrouter.fallback_models' => [],
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['https://openrouter.test/project' => Http::response([
+            'id' => 'generation-project-html',
+            'choices' => [['message' => ['content' => 'The input is required.']]],
+            'usage' => [
+                'prompt_tokens' => 120,
+                'completion_tokens' => 20,
+                'total_tokens' => 140,
+                'cost' => 0.01,
+            ],
+        ])]);
+    }
+
+    public function test_initial_project_report_preserves_technical_explanations_and_html_code(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $report = "SQLSTATE identifies database errors; inspect the stack trace for an uncaught exception.\n"
+            ."A provider error can interrupt tool calls.\n```html\n<html><body>Example</body></html>\n```";
+        $thread = app(ProjectFeedbackThreadService::class)->storeInitialReport(
+            $fixture['submission'],
+            $fixture['enrollment'],
+            (int) $fixture['enrollment']->course_id,
+            app(CourseAccessPlanService::class)->termsForEnrollment($fixture['enrollment']),
+            $report
+        );
+
+        self::assertSame('ready', $thread->status);
+        self::assertCount(1, $thread->messages);
+        self::assertSame(ProjectFeedbackMessage::COMPLETED, $thread->messages->first()->status);
+        self::assertSame($report, $thread->messages->first()->body);
+        $payload = app(ProjectSubmissionPresenter::class)->present($fixture['submission']->fresh(), true);
+        self::assertSame($report, data_get($payload, 'feedback_thread.messages.0.text'));
+        Http::assertNothingSent();
+    }
+
+    public function test_project_followup_preserves_technical_question_and_idempotent_replay(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $question = "Why do tool calls produce a provider error and SQLSTATE in the stack trace?\n"
+            ."Is <html><body>Example</body></html> valid HTML?";
+        $requestId = (string) Str::uuid();
+        $threads = app(ProjectFeedbackThreadService::class);
+
+        $message = $threads->queueReply($fixture['user'], $thread, $question, $requestId);
+        $replay = $threads->queueReply($fixture['user'], $thread, $question, $requestId);
+
+        self::assertSame($message->id, $replay->id);
+        self::assertSame(ProjectFeedbackMessage::QUEUED, $message->status);
+        self::assertSame($question, $message->body);
+        self::assertSame(1, $thread->messages()->where('role', 'user')->count());
+        $payload = $threads->payload($thread->fresh());
+        self::assertSame($question, data_get($payload, 'messages.1.text'));
+        self::assertSame(9, $payload['remaining_messages']);
+        Http::assertNothingSent();
+    }
 
     public function test_report_submission_exposes_current_enhanced_reply_capability_after_paid_upgrade(): void
     {

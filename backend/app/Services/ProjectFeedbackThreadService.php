@@ -538,11 +538,9 @@ final class ProjectFeedbackThreadService
 
     private function safeBody(string $body, int $limit): string
     {
-        $body = UnicodeText::clean(strip_tags($body));
-        if (preg_match('/(?:sqlstate|stack\s+trace|uncaught\s+exception|provider\s+error|tool[_\s-]?calls?|<html\b)/iu', $body)) {
-            return '';
-        }
-
-        return UnicodeText::limit($body, $limit);
+        // Messages are displayed as text in mobile and escaped in Blade.
+        // Technical vocabulary and literal HTML belong to project discussion;
+        // neither identifies a transport failure or executable markup here.
+        return UnicodeText::limit(UnicodeText::clean($body), $limit);
     }
 }

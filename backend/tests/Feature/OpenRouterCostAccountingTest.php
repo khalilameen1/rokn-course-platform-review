@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Exceptions\AiProviderUnavailableException;
 use App\Services\OpenRouterService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -11,6 +12,75 @@ use Tests\TestCase;
 
 final class OpenRouterCostAccountingTest extends TestCase
 {
+    public function test_provider_error_pages_and_tool_only_envelopes_are_not_delivered_as_answers(): void
+    {
+        $bodies = [
+            '<html><body>upstream unavailable</body></html>',
+            ['error' => ['message' => 'provider error']],
+            ['choices' => [['message' => ['tool_calls' => [['id' => 'tool-1']]]]]],
+        ];
+        $sequence = Http::sequence();
+        foreach ($bodies as $body) {
+            $sequence->push($body);
+        }
+        Http::fake(['openrouter.test/*' => $sequence]);
+        foreach ($bodies as $body) {
+            $landed = false;
+            try {
+                app(OpenRouterService::class)->chat(
+                    'test/model',
+                    [['role' => 'user', 'content' => 'اشرح المثال']],
+                    0.2,
+                    100,
+                    landImmediately: function () use (&$landed): void {
+                        $landed = true;
+                    }
+                );
+                self::fail('An error envelope is not an educational answer.');
+            } catch (AiProviderUnavailableException $exception) {
+                self::assertTrue($exception->outcomeUnknown);
+                self::assertFalse($landed);
+            }
+        }
+    }
+
+    public function test_technical_lesson_answers_are_delivered_and_landed_not_mistaken_for_provider_errors(): void
+    {
+        $answers = [
+            'SQLSTATE يوضح فئة الخطأ الذي رجع من قاعدة البيانات',
+            'ابدأ من أول سطر في stack trace يخص كودك',
+            'uncaught exception يعني أن الخطأ وصل دون معالجة',
+            'provider error هنا اسم حقل في الرد وليس نص الإجابة',
+            'tool calls هي طلبات النموذج لتنفيذ أدوات خارجية',
+            '<html lang="ar"><body>مرحبا</body></html>',
+        ];
+        $sequence = Http::sequence();
+        foreach ($answers as $answer) {
+            $sequence->push([
+                'id' => 'generation-technical-answer',
+                'choices' => [['finish_reason' => 'stop', 'message' => ['content' => $answer]]],
+                'usage' => ['total_tokens' => 30, 'cost' => 0.001],
+            ]);
+        }
+        Http::fake(['openrouter.test/*' => $sequence]);
+        foreach ($answers as $answer) {
+            $landed = [];
+            $result = app(OpenRouterService::class)->chat(
+                'test/model',
+                [['role' => 'user', 'content' => 'اشرح المثال']],
+                0.2,
+                100,
+                landImmediately: function (array $result) use (&$landed): void {
+                    $landed[] = $result;
+                }
+            );
+            self::assertSame($answer, $result['message']);
+            self::assertSame([$result], $landed);
+            self::assertTrue($result['usage']['cost_reported']);
+            self::assertSame(0.001, $result['usage']['cost']);
+        }
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

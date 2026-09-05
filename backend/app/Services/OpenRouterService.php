@@ -292,15 +292,10 @@ final class OpenRouterService
                 outcomeUnknown: true
             );
         }
+        // Provider failures belong to the HTTP/error envelope. Technical terms
+        // and code inside message.content can be exactly what the lesson teaches.
         $content = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content));
-        if (
-            $content === ''
-            || mb_strlen($content) > 12000
-            || preg_match(
-                '/(?:sqlstate|stack\s+trace|uncaught\s+exception|provider\s+error|tool[_\s-]?calls?|<html\b)/iu',
-                $content
-            )
-        ) {
+        if ($content === '' || mb_strlen($content) > 12000) {
             throw new AiProviderUnavailableException(
                 false,
                 'AI provider returned an unusable response.',
@@ -642,10 +637,7 @@ final class OpenRouterService
             '',
             $content
         );
-        if ($partial === '' || preg_match(
-            '/(?:sqlstate|stack\s+trace|uncaught\s+exception|provider\s+error|tool[_\s-]?calls?|<html\b)/iu',
-            $partial
-        )) {
+        if ($partial === '') {
             return;
         }
         try {

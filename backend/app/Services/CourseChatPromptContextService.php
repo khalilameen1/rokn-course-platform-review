@@ -69,19 +69,6 @@ final readonly class CourseChatPromptContextService
         return $this->openRouter->configuredModel();
     }
 
-    public function historyMessageIsSafe(array $message): bool
-    {
-        $content = trim((string) ($message['content'] ?? ''));
-        if ($content === '') {
-            return false;
-        }
-
-        return !preg_match(
-            '/(?:sqlstate|stack\s+trace|uncaught\s+exception|provider\s+error|tool[_\s-]?calls?|openrouter\s+error|ركن\s*ai\s+غير\s+متاح|حاول\s+مرة\s+أخرى\s+بعد\s+قليل)/iu',
-            $content
-        );
-    }
-
     public function version(Course $course): string
     {
         return $this->promptPolicy->version('course-chat', [

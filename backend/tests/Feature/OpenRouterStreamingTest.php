@@ -27,7 +27,7 @@ final class OpenRouterStreamingTest extends TestCase
 
     public function test_streaming_chat_returns_one_final_envelope_and_progressive_text(): void
     {
-        $first = str_repeat('أ', 60);
+        $first = 'SQLSTATE يوضح فئة خطأ قاعدة البيانات '.str_repeat('أ', 60);
         $second = ' ثم الإجابة النهائية';
         Http::fake([
             'https://openrouter.test/chat' => Http::response(
@@ -106,7 +106,7 @@ final class OpenRouterStreamingTest extends TestCase
 
     public function test_interrupted_stream_checkpoints_the_last_visible_text_before_failing(): void
     {
-        $visible = 'جزء من الإجابة';
+        $visible = 'ابدأ من أول سطر في stack trace يخص كودك';
         Http::fake([
             'https://openrouter.test/chat' => Http::response(
                 $this->event(['id' => 'gen-3', 'choices' => [[

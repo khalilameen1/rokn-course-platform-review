@@ -9,6 +9,7 @@ use App\Models\CourseEnrollment;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Support\UnicodeText;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
@@ -48,7 +49,8 @@ final class ProjectSubmissionOrchestrator
             return ['state' => 'submitted', 'submission' => $replayed];
         }
 
-        $hasText = trim(strip_tags((string) $text)) !== '';
+        $learnerText = UnicodeText::clean((string) $text);
+        $hasText = $learnerText !== '';
         $maximumFiles = max(1, min(5, (int) ($project->submission_max_files ?: 3)));
         if ($hasText && !(bool) $project->submission_text_enabled) {
             return $this->invalid('submission_text', 'هذا المشروع يحتاج ملفًا من الأنواع المحددة');
@@ -83,7 +85,7 @@ final class ProjectSubmissionOrchestrator
             && $this->courseAccess->enrollmentAllowsVariableCostFeatures($enrollment)
             && (bool) $feedbackContract['project_report_enabled'];
 
-        if ($reportEnabled && $files === [] && mb_strlen(trim(strip_tags((string) $text))) < 10) {
+        if ($reportEnabled && $files === [] && mb_strlen($learnerText) < 10) {
             return ['state' => 'report_note_required'];
         }
         if ($reportEnabled) {
@@ -129,7 +131,10 @@ final class ProjectSubmissionOrchestrator
         }
 
         $maxOutputTokens = max(80, min((int) config('openrouter.max_tokens', 800), (int) ($terms['max_output_tokens'] ?? 320)));
-        $semanticText = trim(strip_tags(implode("\n", [(string) $text, (string) $project->requirements_text])));
+        $semanticText = implode("\n", [
+            UnicodeText::clean((string) $text),
+            UnicodeText::clean(strip_tags((string) $project->requirements_text)),
+        ]);
         $estimatedRequestTokens = $maxOutputTokens + (int) ceil(strlen($semanticText) / 4) + $attachmentTokens;
         $reportBudget = max(0, (int) ($terms['project_feedback_token_budget'] ?? 0));
         $usage = AiEntitlementUsage::query()

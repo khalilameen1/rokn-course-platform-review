@@ -1448,6 +1448,99 @@ final class BackendHardeningTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public static function technicalCourseChatQuestions(): array
+    {
+        return [
+            'code within question' => ['Explain <html><body>Example</body></html> using that stack trace.'],
+            'markup-only question' => ['<input type="email" required>'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('technicalCourseChatQuestions')]
+    public function test_course_chat_admission_keeps_completed_technical_context_and_excludes_failed_turns(
+        string $question
+    ): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        config([
+            'openrouter.default_model' => 'test/model',
+            'openrouter.allowed_models' => ['test/model'],
+            'openrouter.fallback_models' => [],
+        ]);
+        $user = $this->user();
+        $course = $this->course();
+        $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
+        $plan = $this->paidPlanTerms($course);
+        $enrollmentId = DB::table('course_enrollments')->insertGetId([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'order_id' => $order->id,
+            'access_plan_id' => $plan['id'],
+            'access_plan_snapshot' => json_encode($plan['snapshot'], JSON_THROW_ON_ERROR),
+            'is_active' => true,
+            'access_granted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $promptVersion = app(\App\Services\CourseChatPromptContextService::class)->version($course);
+        $turns = app(CourseChatTurnService::class);
+        $technicalQuestion = 'Why does SQLSTATE appear in the stack trace for <html> output?';
+        $technicalAnswer = 'SQLSTATE identifies a database error. Review the stack trace, then render <html><body>Example</body></html> as text.';
+        $completed = $turns->begin(
+            $user->id, $course->id, $enrollmentId, null,
+            (string) Str::uuid(), $technicalQuestion, 'ar', $promptVersion
+        );
+        self::assertTrue($turns->complete($completed, $technicalAnswer));
+        $failed = $turns->begin(
+            $user->id, $course->id, $enrollmentId, null,
+            (string) Str::uuid(), 'Failed question must stay out of context', 'ar', $promptVersion
+        );
+        $failed->forceFill([
+            'status' => CourseChatTurn::FAILED,
+            'answer' => 'Incomplete failed checkpoint must stay out of context',
+            'error_code' => 'chat_provider_outcome_unknown',
+            'completed_at' => now(),
+        ])->save();
+        $requestId = (string) Str::uuid();
+
+        $this->withHeader('Accept-Language', 'ar')
+            ->actingAs($user, 'api')
+            ->postJson('/api/v1/courses/'.$course->id.'/chat', [
+                'message' => $question,
+                'client_request_id' => $requestId,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.turn_status', CourseChatTurn::QUEUED);
+
+        $this->postJson('/api/v1/courses/'.$course->id.'/chat', [
+            'message' => $question,
+            'client_request_id' => $requestId,
+        ])->assertOk();
+        $this->postJson('/api/v1/courses/'.$course->id.'/chat', [
+            'message' => $question.'<br>',
+            'client_request_id' => $requestId,
+        ])->assertStatus(409)->assertJsonPath('code', 'chat_request_identity_conflict');
+
+        Bus::assertDispatched(\App\Jobs\GenerateCourseChatReply::class, function ($job) use (
+            $technicalQuestion, $technicalAnswer, $question
+        ): bool {
+            $conversation = array_values(array_filter(
+                $job->messages,
+                static fn (array $message): bool => $message['role'] !== 'system'
+            ));
+            self::assertSame([
+                ['role' => 'user', 'content' => $technicalQuestion],
+                ['role' => 'assistant', 'content' => $technicalAnswer],
+                ['role' => 'user', 'content' => $question],
+            ], $conversation);
+
+            return true;
+        });
+        Bus::assertDispatchedTimes(\App\Jobs\GenerateCourseChatReply::class, 1);
+        Http::assertNothingSent();
+    }
+
     public function test_stalled_course_chat_turns_are_closed_without_touching_live_turns(): void
     {
         $user = $this->user();
@@ -1780,6 +1873,116 @@ final class BackendHardeningTest extends TestCase
             ->assertJsonPath('data.turn_status', CourseChatTurn::CANCELLED)
             ->assertJsonPath('data.message', 'تم إيقاف الرد')
             ->assertJsonPath('data.can_retry', false);
+    }
+
+    public static function paidCourseChatCancellationStates(): array
+    {
+        return [
+            'landed provider answer' => [false, 'provider_call_in_progress'],
+            'settled answer awaiting presentation' => [true, 'chat_turn_completed'],
+        ];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('paidCourseChatCancellationStates')]
+    public function test_cancelling_a_paid_course_chat_answer_preserves_delivery_and_quota(
+        bool $settled,
+        string $expectedCode
+    ): void {
+        Http::preventStrayRequests();
+        $user = $this->user();
+        $course = $this->course();
+        $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
+        $enrollmentId = DB::table('course_enrollments')->insertGetId([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'order_id' => $order->id,
+            'is_active' => true,
+            'access_granted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_entitlement_usages')->insert([
+            'enrollment_id' => $enrollmentId,
+            'feature' => 'course_chat',
+            'used_requests' => 0,
+            'reserved_requests' => 1,
+            'used_tokens' => 0,
+            'reserved_tokens' => 320,
+            'used_cost_usd' => 0,
+            'reserved_cost_usd' => 0.02,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $requestId = (string) Str::uuid();
+        $turns = app(CourseChatTurnService::class);
+        $turn = $turns->begin(
+            $user->id, $course->id, $enrollmentId, null,
+            $requestId, 'Explain the next step', 'en', 'prompt-v1'
+        );
+        $turns->markStreaming($turn);
+        $event = AiUsageEvent::query()->create([
+            'request_id' => $requestId,
+            'enrollment_id' => $enrollmentId,
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'feature' => 'course_chat',
+            'status' => 'reserved',
+            'reserved_tokens' => 320,
+            'reserved_cost_usd' => 0.02,
+            'reservation_expires_at' => now()->addMinute(),
+        ]);
+        $paidCalls = app(PaidAiCallExecutionService::class);
+        $budget = app(AiEntitlementBudgetService::class);
+        $result = [
+            'message' => 'The paid answer is ready.',
+            'provider_request_id' => 'generation-cancel-race',
+            'usage' => [
+                'prompt_tokens' => 80,
+                'completion_tokens' => 40,
+                'total_tokens' => 120,
+                'cost' => 0.015,
+                'cost_reported' => true,
+            ],
+        ];
+        self::assertSame(PaidAiCallExecutionService::START,
+            $paidCalls->beginForActiveUser($event, 'cancel-race-worker', $user->id));
+        self::assertSame(PaidAiCallExecutionService::LANDED,
+            $paidCalls->landSuccessfulResultForActiveUser(
+                $event, 'cancel-race-worker', $user->id, $result
+            ));
+        if ($settled) {
+            self::assertSame(AiEntitlementBudgetService::SETTLEMENT_ACCEPTED,
+                $budget->settleForActiveUser($event, $result, $user->id));
+        }
+        $usageBefore = DB::table('ai_entitlement_usages')->where('enrollment_id', $enrollmentId)->first();
+
+        $this->actingAs($user, 'api')
+            ->deleteJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', $expectedCode);
+
+        self::assertSame(CourseChatTurn::STREAMING, $turn->fresh()->status);
+        self::assertSame($settled ? 'completed' : 'reserved', $event->fresh()->status);
+        self::assertEquals($usageBefore,
+            DB::table('ai_entitlement_usages')->where('enrollment_id', $enrollmentId)->first());
+        foreach ([1, 2] as $poll) {
+            $this->getJson('/api/v1/course-chat/turns/'.$requestId)
+                ->assertOk()
+                ->assertJsonPath('data.turn_status', CourseChatTurn::COMPLETED)
+                ->assertJsonPath('data.message', $result['message'])
+                ->assertJsonPath('data.unavailable', false);
+        }
+        $usage = DB::table('ai_entitlement_usages')->where('enrollment_id', $enrollmentId)->first();
+        self::assertSame(1, (int) $usage->used_requests);
+        self::assertSame(0, (int) $usage->reserved_requests);
+        self::assertSame(120, (int) $usage->used_tokens);
+        self::assertSame(0, (int) $usage->reserved_tokens);
+        self::assertSame(0.015, (float) $usage->used_cost_usd);
+        self::assertSame(0.0, (float) $usage->reserved_cost_usd);
+        self::assertSame('completed', $event->fresh()->status);
+        self::assertTrue((bool) data_get($event->fresh()->metadata, 'entitlement_delivered'));
+        Http::assertNothingSent();
     }
 
     public function test_failed_course_chat_turn_cannot_be_reopened_or_rewritten_as_cancelled(): void

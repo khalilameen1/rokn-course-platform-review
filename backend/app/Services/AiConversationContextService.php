@@ -48,7 +48,7 @@ final class AiConversationContextService
                 'kind' => (string) $message->role,
                 'text' => ($message->role === 'user' ? 'الطالب: ' : 'ركن: ')
                     . UnicodeText::limit(
-                        UnicodeText::clean(strip_tags((string) $message->body)),
+                        UnicodeText::clean((string) $message->body),
                         520
                     ),
             ],
