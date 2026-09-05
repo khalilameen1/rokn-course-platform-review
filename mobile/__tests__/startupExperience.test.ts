@@ -115,7 +115,9 @@ describe('first-launch experience', () => {
 
     expect(runtime).toContain("Linking.addEventListener('url', ({url}) =>");
     expect(runtime).toContain('androidAuthSessionOwnsCallback(url)');
-    expect(runtime).toContain('resumePendingSocialAuth(url)');
+    expect(runtime).toContain('resumePendingAuthentication(url)');
+    expect(runtime).not.toContain("from '../../services/socialAuth'");
+    expect(sessionBootstrap).toContain('resumePendingSocialAuth(callbackUrl)');
     expect(sessionBootstrap).toContain(
       'const initialUrlFlight = getInitialAppUrl()',
     );
@@ -134,9 +136,10 @@ describe('first-launch experience', () => {
       'src/navigation/useInterruptedJourneyRestore.ts',
     );
 
+    const applyRestoreStart = sessionBootstrap.indexOf('const applyRestore');
     const restoredSessionDecision = sessionBootstrap.slice(
-      sessionBootstrap.indexOf('const applyRestore'),
-      sessionBootstrap.indexOf('void (async () =>'),
+      applyRestoreStart,
+      sessionBootstrap.indexOf('void (async () =>', applyRestoreStart),
     );
     const guestRestoreDecision = sessionBootstrap.slice(
       sessionBootstrap.indexOf('const settleAsGuest'),

@@ -77,7 +77,8 @@ describe('profile recovery contracts', () => {
     expect(overview).toContain(
       'becameShareable && !publicPortfolioUrlRef.current',
     );
-    expect(profile).toContain('visible={showPortfolioQr && canSharePortfolio}');
+    expect(profile).toContain("activeTab === 'portfolio' && canSharePortfolio");
+    expect(profile).toContain('visible={showPortfolioQr && showPortfolioActions}');
     expect(profile).toContain('value={publicPortfolioUrl}');
     expect(profile).toContain(
       'onSharePortfolio={canSharePortfolio ? sharePortfolio : undefined}',

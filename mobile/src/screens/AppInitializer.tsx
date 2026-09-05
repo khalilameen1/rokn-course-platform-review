@@ -10,7 +10,11 @@ import {useAppRuntime} from './appInitializer/useAppRuntime';
 
 const AppInitializer: FC = () => {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
-  const {sessionReady, adoptAuthenticatedSession} = useSessionBootstrap();
+  const {
+    sessionReady,
+    adoptAuthenticatedSession,
+    resumePendingAuthentication,
+  } = useSessionBootstrap();
   const update = useAppUpdateNotice();
 
   useEffect(() => {
@@ -22,6 +26,7 @@ const AppInitializer: FC = () => {
     storedUser,
     refreshUpdateNotice: update.refresh,
     adoptAuthenticatedSession,
+    resumePendingAuthentication,
   });
 
   return (

@@ -112,6 +112,7 @@ export const useProjectFeedback = ({
     sendFlightRef.current = null;
     pickerFlightRef.current = null;
     setSending(false);
+    setHydrating(false);
     setError('');
     setDraft('');
     setAttachments([]);
@@ -139,7 +140,6 @@ export const useProjectFeedback = ({
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let attempts = 0;
-    hydratedThreadRef.current = threadId;
     setHydrating(true);
     const ownsThread = () =>
       !cancelled &&
@@ -152,6 +152,7 @@ export const useProjectFeedback = ({
         const next = await loadProjectFeedbackThread(projectId, threadId);
         if (!ownsThread()) return;
         if (next) {
+          hydratedThreadRef.current = threadId;
           setThread(next);
           setError('');
           setHydrating(false);

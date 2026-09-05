@@ -4,6 +4,47 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Resume interrupted daily flows without treating an attempt as completion — 2026-09-05
+
+Three new defects were reproduced through mounted React hooks before their
+source changes, not inferred from a search result or a source-string assertion:
+
+- Cold-start OAuth kept a recoverable callback after a transient failure but
+  silently returned to guest mode. Startup, foreground and unclaimed deep links
+  now use one resumption owner. A visible retry consumes the saved attempt
+  without reopening the provider. Session epoch, pending-attempt identity and
+  mounted-state checks prevent an old alert or delayed read from resuming or
+  reporting a newer account's attempt. Concurrent observers join one flight.
+  This is explicit retry while foregrounded, not automatic network monitoring.
+- Resubmitting a rejected project could receive `needs_changes` again without
+  changing the parent status. The hook closed its editor awaiting a hydration
+  effect that would never rerun. An accepted retry result now prepares the
+  empty next draft immediately; pending/passed outcomes still close editing.
+  Runtime coverage submits twice with the same rejected status and preserves
+  typed drafts when an unchanged API contract is remapped.
+- Closing a project report, or backgrounding the app while its report was
+  loading, cancelled the consumer but left a ref marking it already hydrated.
+  Returning never restarted the request. The ref now records successful
+  hydration only; ownership cleanup still rejects the interrupted response.
+  Both close/reopen and background/foreground cases failed before the fix and
+  passed afterward, including a late old response arriving before the new one.
+
+The combined focused scope passed 14 suites / 62 tests, including existing
+source-contract checks as well as the new runtime cases. An outdated profile
+source assertion was aligned with the already-shipped portfolio-tab-only QR
+visibility rule; no profile UI behavior was changed for that assertion.
+These source fixes are not present in the user's `123.apk` and do not prove a
+live social-provider login or a full native project journey. Backend payment
+settlement and enrollment remain separate acceptance steps.
+
+Two chat suspicions were deliberately not converted into changes. The queue's
+60-second admission deadline is an explicit SLA and already releases unused
+reservations with retry enabled. Account changes key/unmount the navigation
+tree, so a proposed same-mounted-chat cross-account render was not reachable
+through the actual composition. Source tracing also confirmed the existing
+background/restart recovery uses the same client request ID and merges terminal
+server replies authoritatively; it is not a new live-provider test.
+
 ## Stop production deployment from racing its checks — 2026-09-05
 
 Cloud production had **Push to deploy** enabled and its deploy hook disabled.

@@ -376,11 +376,15 @@ export const useProjectSubmission = ({
         if (!ownsProject(id, generation)) return;
         onOutcome(outcome);
         if (outcome.accepted) {
+          // Another rejected attempt can keep the same server status, so no
+          // hydration effect will run. Its empty replacement draft is ready
+          // here; only a pending or passed submission closes the editor.
+          const canEditNextAttempt = outcome.submissionStatus === 'needs_changes';
           setEditingRetry(false);
-          draftLifecycle.ready = false;
+          draftLifecycle.ready = canEditNextAttempt;
           draftLifecycle.status = outcome.submissionStatus;
           draftLifecycle.snapshot = {files: [], note: ''};
-          setDraftReady(false);
+          setDraftReady(canEditNextAttempt);
           setSelectedFiles([]);
           setNote('');
           void clearProjectSubmissionDraft(id, files, boundary).catch(

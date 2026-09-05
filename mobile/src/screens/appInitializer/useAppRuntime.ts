@@ -1,5 +1,5 @@
 import {useEffect} from 'react';
-import {Alert, AppState, Linking, Platform} from 'react-native';
+import {AppState, Linking, Platform} from 'react-native';
 import {extractUserProfile} from '../../constants/helpers';
 import {
   abandonPendingSecureSessionRestore,
@@ -26,11 +26,6 @@ import {flushOperationalTelemetry} from '../../services/operationalTelemetry';
 import {replayPendingPortfolioMediaUploads} from '../../services/portfolioMediaReplay';
 import {networkFailureKind} from '../../services/networkExperience';
 import {setSentryUserId} from '../../services/sentryTelemetry';
-import {resumePendingSocialAuth} from '../../services/socialAuth';
-import {
-  socialAuthFailureCode,
-  socialAuthMessage,
-} from '../../services/socialAuthErrors';
 import {androidAuthSessionOwnsCallback} from '../../services/androidAuthSession';
 import {resumeCompleteGuestAccountMigration} from '../../services/guestAccountMigration';
 
@@ -39,6 +34,7 @@ type RuntimeInput = {
   storedUser: unknown;
   refreshUpdateNotice: (force?: boolean) => Promise<void>;
   adoptAuthenticatedSession: (session: unknown) => Promise<boolean>;
+  resumePendingAuthentication: (url?: string | null) => Promise<void>;
 };
 
 export const useAppRuntime = ({
@@ -46,6 +42,7 @@ export const useAppRuntime = ({
   storedUser,
   refreshUpdateNotice,
   adoptAuthenticatedSession,
+  resumePendingAuthentication,
 }: RuntimeInput) => {
   const hasSession = Boolean(extractApiToken(storedUser));
 
@@ -158,25 +155,25 @@ export const useAppRuntime = ({
         });
     };
 
-    const adopt = async (session: unknown) => {
-      if (!active || !(await adoptAuthenticatedSession(session))) return;
-      void resumeCompleteGuestAccountMigration().catch(() => undefined);
-    };
-
     const restoreAfterUnlock = () => {
       if (hasSession || sessionFlight) return;
       abandonPendingSecureSessionRestore();
       sessionFlight = (async () => {
         const result = await restoreSecureAuthState();
         if (result.isAuthenticated) {
-          await adopt(result.session);
+          if (
+            active &&
+            (await adoptAuthenticatedSession(result.session)) &&
+            active
+          ) {
+            void resumeCompleteGuestAccountMigration().catch(() => undefined);
+          }
           return;
         }
         // A durable account always wins over an abandoned provider attempt.
         // Resume OAuth only after the secure store has confirmed this device
         // is still a guest, so a stale callback cannot switch an account.
-        const pendingSession = await resumePendingSocialAuth();
-        if (pendingSession) await adopt(pendingSession);
+        await resumePendingAuthentication();
       })()
         .catch(() => undefined)
         .finally(() => {
@@ -188,13 +185,7 @@ export const useAppRuntime = ({
       Platform.OS === 'android' && !hasSession
         ? Linking.addEventListener('url', ({url}) => {
             if (androidAuthSessionOwnsCallback(url)) return;
-            void resumePendingSocialAuth(url)
-              .then(session => (session ? adopt(session) : undefined))
-              .catch(error => {
-                if (!active) return;
-                const message = socialAuthMessage(socialAuthFailureCode(error));
-                if (message) Alert.alert('تعذّر تسجيل الدخول', message);
-              });
+            void resumePendingAuthentication(url);
           })
         : null;
 
@@ -229,6 +220,7 @@ export const useAppRuntime = ({
     adoptAuthenticatedSession,
     hasSession,
     refreshUpdateNotice,
+    resumePendingAuthentication,
     sessionReady,
   ]);
 };

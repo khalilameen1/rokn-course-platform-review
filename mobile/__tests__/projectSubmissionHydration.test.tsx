@@ -102,4 +102,54 @@ describe('project submission draft hydration', () => {
 
     act(() => renderer.unmount());
   });
+
+  it('opens a fresh editor after another submission receives the same retry result', async () => {
+    const rejected = {...project(), status: 'needs_changes' as const};
+    const onSubmit = jest.fn(async () => ({
+      accepted: true,
+      submissionStatus: 'needs_changes' as const,
+      canContinue: false,
+      reviewFeedback: 'أضف نتيجة التطبيق إلى التسليم',
+    }));
+    let current!: ReturnType<typeof useProjectSubmission>;
+    const Harness = ({value}: {value: CourseProject}) => {
+      current = useProjectSubmission({
+        appIsActive: true,
+        project: value,
+        status: value.status,
+        submissionAllowed: value.canSubmit === true,
+        onSubmit,
+        onOutcome: jest.fn(),
+      });
+      return null;
+    };
+
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness value={rejected} />);
+    });
+    act(() => current.editRetry());
+    act(() => current.changeNote('أضفت وصفًا جديدًا لمحاولة المشروع'));
+    expect(current.submitDisabled).toBe(false);
+
+    await act(async () => {
+      await current.submit();
+      // The parent remaps the server response without changing its status.
+      renderer.update(<Harness value={{...rejected}} />);
+    });
+    expect(current.journeyState).toBe('needs_changes');
+    expect(current.note).toBe('');
+    expect(current.selectedFiles).toEqual([]);
+
+    act(() => current.editRetry());
+    expect(current.journeyState).toBe('draft');
+    act(() => current.changeNote('أرفقت هذه المرة نتيجة تنفيذ المشروع'));
+    expect(current.submitDisabled).toBe(false);
+    await act(async () => {
+      await current.submit();
+    });
+    expect(onSubmit).toHaveBeenCalledTimes(2);
+
+    act(() => renderer.unmount());
+  });
 });
