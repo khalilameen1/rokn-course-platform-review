@@ -85,17 +85,19 @@ final class ModeratorController extends Controller
                 ]);
             }
 
-            $email = strtolower(trim((string) $data['email']));
             $updates = [
                 'name_ar' => trim((string) $data['name_ar']),
                 'name_en' => filled($data['name_en'] ?? null) ? trim((string) $data['name_en']) : null,
-                'email' => $email,
                 'phone' => filled($data['phone'] ?? null) ? trim((string) $data['phone']) : null,
                 'active' => $request->boolean('active'),
                 'profile_revision' => (int) $locked->profile_revision + 1,
             ];
-            if (!hash_equals(strtolower(trim((string) $locked->email)), $email)) {
-                $updates['email_verified_at'] = null;
+            if (array_key_exists('email', $data)) {
+                $email = strtolower(trim((string) $data['email']));
+                $updates['email'] = $email;
+                if (!hash_equals(strtolower(trim((string) $locked->email)), $email)) {
+                    $updates['email_verified_at'] = null;
+                }
             }
             if (filled($data['password'] ?? null)) {
                 $updates['password'] = Hash::make((string) $data['password']);
@@ -110,18 +112,26 @@ final class ModeratorController extends Controller
     /** @return array<string, mixed> */
     private function validated(Request $request, ?User $moderator = null): array
     {
+        $isEdit = $moderator !== null;
+        $manageCredentials = !$isEdit || $request->boolean('manage_credentials');
+
         return $request->validate([
             'name_ar' => ['required', 'string', 'max:255'],
             'name_en' => ['nullable', 'string', 'max:255'],
-            'email' => [
-                'required', 'email:rfc', 'max:255',
-                Rule::unique('users', 'email')->ignore($moderator?->id),
-            ],
+            'manage_credentials' => $isEdit ? ['nullable', 'boolean'] : ['prohibited'],
+            'email' => $manageCredentials
+                ? ['required', 'email:rfc', 'max:255', Rule::unique('users', 'email')->ignore($moderator?->id)]
+                : ['exclude'],
             'phone' => [
                 'nullable', 'string', 'max:20',
                 Rule::unique('users', 'phone')->ignore($moderator?->id),
             ],
-            'password' => [$moderator ? 'nullable' : 'required', 'string', 'min:10', 'confirmed'],
+            'password' => $manageCredentials
+                ? [$isEdit ? 'nullable' : 'required', 'string', 'min:10', 'confirmed']
+                : ['exclude'],
+            'password_confirmation' => $manageCredentials
+                ? [$isEdit ? 'nullable' : 'required', 'same:password']
+                : ['exclude'],
             'active' => ['nullable', 'boolean'],
             'authoring_request_id' => [$moderator ? 'nullable' : 'required', 'uuid'],
             'editor_version' => [$moderator ? 'required' : 'nullable', 'string', 'size:64'],

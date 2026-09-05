@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Support\PublicDiskUrl;
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Support\RoknLocale;
 use App\Services\BunnyService;
@@ -193,9 +192,7 @@ class BaseCourseResource extends JsonResource
                     'name' => $teacher->name,
                     'job_title' => $teacher->job_title,
                     'bio' => $teacher->bio,
-                    'image' => $teacher->photo
-                        ? PublicDiskUrl::from($teacher->photo->path)
-                        : ($teacher->profile_image_url ?: null),
+                    'image' => $teacher->profile_image_url ?: null,
                 ];
             }),
 

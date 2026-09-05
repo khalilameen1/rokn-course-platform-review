@@ -173,6 +173,7 @@ class TeacherController extends Controller
         $teacher = User::query()
             ->select($this->teacherColumns($canManageCredentials))
             ->where('role', 'teacher')
+            ->with('photo')
             ->findOrFail($id);
         $canViewEnrollmentCounts = $this->permissions->isAdministrator($request->user()?->role);
         $coursesQuery = $teacher->teachingCourses()
@@ -198,7 +199,7 @@ class TeacherController extends Controller
      */
     public function edit(Request $request, $id)
     {
-        $teacher = User::where('role', 'teacher')->findOrFail($id);
+        $teacher = User::query()->where('role', 'teacher')->with('photo')->findOrFail($id);
         return view('admin.teachers.edit', [
             'teacher' => $teacher,
             'canManageCredentials' => $this->canManageCredentials($request),
@@ -409,6 +410,7 @@ class TeacherController extends Controller
             'job_title',
             'bio_ar',
             'bio_en',
+            'profile_image',
             'active',
             'role',
             'created_at',

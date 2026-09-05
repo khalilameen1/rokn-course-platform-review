@@ -152,6 +152,31 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         }
     }
 
+    public function test_paired_boolean_controls_render_unique_ids_and_labels_target_the_checkbox(): void
+    {
+        $admin = $this->dashboardUser('admin');
+        $course = $this->course('كورس الحقول المنطقية');
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($admin, 'web');
+
+        $studio = $this->get(route('admin.courses.show', $course))->assertOk();
+        $studioDocument = new DOMDocument();
+        @$studioDocument->loadHTML('<?xml encoding="utf-8" ?>'.$studio->getContent());
+        $studioXPath = new DOMXPath($studioDocument);
+        $this->assertUniqueDomIds($studioXPath);
+        $this->assertPairedBooleanControl($studioXPath, 'is_main_course');
+        $this->assertPairedBooleanControl($studioXPath, 'is_catalog_visible');
+
+        $settings = $this->get(route('admin.settings'))->assertOk();
+        $settingsDocument = new DOMDocument();
+        @$settingsDocument->loadHTML('<?xml encoding="utf-8" ?>'.$settings->getContent());
+        $settingsXPath = new DOMXPath($settingsDocument);
+        $this->assertUniqueDomIds($settingsXPath);
+        $this->assertPairedBooleanControl($settingsXPath, 'english_translation');
+        $this->assertPairedBooleanControl($settingsXPath, 'enforce_course_section_order');
+        $this->assertPairedBooleanControl($settingsXPath, 'bunny_enabled');
+    }
+
     public function test_course_studio_restores_submitted_relationship_fields_after_validation_failure(): void
     {
         $moderator = $this->dashboardUser('moderator');
@@ -436,5 +461,33 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         return trim((string) $xpath->evaluate(
             'string(//form[@id="'.$formId.'"]//input[@name="'.$name.'"]/@value)'
         ));
+    }
+
+    private function assertPairedBooleanControl(DOMXPath $xpath, string $name): void
+    {
+        $checkbox = $xpath->query('//input[@id="'.$name.'" and @name="'.$name.'" and @type="checkbox"]');
+        self::assertNotFalse($checkbox);
+        self::assertSame(1, $checkbox->length, "Expected one checkbox for {$name}");
+
+        $fallback = $xpath->query('//input[@id="'.$name.'_fallback" and @name="'.$name.'" and @type="hidden" and @value="0"]');
+        self::assertNotFalse($fallback);
+        self::assertSame(1, $fallback->length, "Expected one false fallback for {$name}");
+
+        $labels = $xpath->query('//label[@for="'.$name.'"]');
+        self::assertNotFalse($labels);
+        self::assertSame(1, $labels->length, "Expected the label to target {$name} checkbox only");
+    }
+
+    private function assertUniqueDomIds(DOMXPath $xpath): void
+    {
+        $nodes = $xpath->query('//*[@id]');
+        self::assertNotFalse($nodes);
+        $ids = [];
+        foreach ($nodes as $node) {
+            $id = $node->attributes?->getNamedItem('id')?->nodeValue;
+            if (!is_string($id) || $id === '') continue;
+            self::assertArrayNotHasKey($id, $ids, "Duplicate DOM id {$id}");
+            $ids[$id] = true;
+        }
     }
 }

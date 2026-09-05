@@ -122,16 +122,39 @@ class User extends Authenticatable
      */
     public function getProfileImageUrlAttribute(): ?string
     {
-        if (!$this->profile_image) {
-            return null;
+        $storedProfileUrl = $this->storedProfileImageUrl();
+
+        // The teacher studio owns instructor portraits through HasPhoto so a
+        // replacement portrait must supersede an older imported/social value.
+        // Learner and social-account edits still own users.profile_image; an
+        // old featured relation must never replace their newer avatar.
+        if (strtolower((string) $this->role) === 'teacher') {
+            return $this->featuredPhotoUrl() ?? $storedProfileUrl;
         }
 
-        $raw = (string) $this->profile_image;
+        return $storedProfileUrl;
+    }
+
+    private function storedProfileImageUrl(): ?string
+    {
+        $raw = trim((string) ($this->attributes['profile_image'] ?? ''));
+        if ($raw === '') {
+            return null;
+        }
         if (filter_var($raw, FILTER_VALIDATE_URL)) {
             return str_starts_with(strtolower($raw), 'https://') ? $raw : null;
         }
 
         return PublicDiskUrl::from($raw);
+    }
+
+    private function featuredPhotoUrl(): ?string
+    {
+        $photo = $this->relationLoaded('photo')
+            ? $this->getRelation('photo')
+            : $this->photo()->first();
+
+        return $photo?->assetPath();
     }
 
     /**

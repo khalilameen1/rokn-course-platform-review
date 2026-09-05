@@ -48,6 +48,10 @@ final class FormCompatTest extends TestCase
             'checked="checked"',
             Form::checkbox('featured', 1)->toHtml()
         );
+        self::assertStringContainsString(
+            'type="url"',
+            Form::url('support_url', 'https://rokn.app/support')->toHtml()
+        );
         self::assertSame('</form>', Form::close()->toHtml());
     }
 

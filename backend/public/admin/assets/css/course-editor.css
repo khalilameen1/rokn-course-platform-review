@@ -142,6 +142,7 @@
 .course-editor .form-group-modern {
     display: flex;
     flex-direction: column;
+    min-width: 0;
     gap: .5rem;
 }
 

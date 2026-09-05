@@ -233,6 +233,54 @@ profile mode. Moderator prohibition remains unchanged. A single rule builder
 serves creation and update. Feature tests reproduce duplicate-email/mismatched-
 password payloads in profile mode and verify intentional opt-in separately.
 
+After `c1c31d7` was deployed, the real profile submission succeeded with all
+credential inputs disabled and no login-edit opt-in. Teacher 7 was then linked
+to course 3 through the studio; the server-backed readiness changed to ready
+for publication. The same unintended credential-write family was found in
+moderator editing and repaired there without changing intentional account
+creation. Student editing has no password field and prohibits that input, so
+it was not treated as the same defect.
+
+The final course layout fixture exposed a 360px min-content overflow from long
+selected labels. Adding `min-width: 0` to the existing editor field group kept
+the row and Select2 controls within x48..312 of the x12..348 panel. Controls and
+actions stay inside their actual ancestors at 360/768/992/1024/1440px; no extra
+Select2 override was necessary. This checks element bounds, not merely the
+document's clipped horizontal scrollbar.
+
+The complete Blender course was published through the dashboard as canonical
+course 3. Its staged visibility update was published back to that same course,
+and the Design home row was enabled with this course selected. Fresh guest API
+reads confirm catalogue membership, three modules, three plans, a populated
+teacher image, `is_main_course=true`, `is_coming_soon=false`, and
+`learning_started=false` at published revision 30. This is dashboard-to-public-
+API evidence, not signed-APK playback, checkout or project acceptance.
+
+The live visibility controls exposed duplicate IDs shared by a false-value
+hidden input and its checkbox. All five such pairs in dashboard templates now
+give the hidden fallback a distinct ID without changing submitted names or
+values. The rendered studio/settings DOM regression checks uniqueness and label
+targets. It also exposed a settings-page 500: the local Form compatibility
+package lacked the actively used `url()` method. The method and its contract are
+added; all 92 production call sites use 14 methods now implemented by the
+package. Only its Composer lock reference changed, and an install dry-run
+confirms that a cached mirrored vendor copy will be updated on deployment.
+
+The combined account-boundary, daily-page, Form and dashboard-theme checks pass
+64 tests / 1692 assertions. A separate settings layout fixture with real CSS and
+long Arabic URLs passes field/button bounds at 360/768/1024/1440px without any
+further CSS changes. These are bounded checks, not approval of every dashboard
+page or a substitute for the deployed-page check.
+
+The saved instructor portrait was present in `Photo` and already reached the
+course API, but dashboard views read only `users.profile_image`. The canonical
+profile-image accessor now uses the studio-owned featured photo first for
+teachers and retains the existing profile-image path for other roles. Teacher
+list/detail/edit, studio and course API consume it with targeted eager loading;
+no duplicate image write or global student-photo query was introduced. A real
+UploadedFile create/replace regression verifies the stored object and the
+rendered/API reads, including legacy-image fallback and empty profiles.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

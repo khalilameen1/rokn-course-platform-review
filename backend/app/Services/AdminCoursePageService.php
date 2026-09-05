@@ -123,7 +123,7 @@ final readonly class AdminCoursePageService
         $course = $this->stagedAuthoring->activeDraftFor($course) ?: $course;
         $course->load([
             'classifications',
-            'teachers',
+            'teachers.photo',
             'level',
             'photo',
             'accessPlans',
@@ -234,7 +234,8 @@ final readonly class AdminCoursePageService
             'classifications' => Classification::query()->orderBy('home_order')->orderBy('id')->get(),
             'levels' => Level::ordered()->get(),
             'designSettings' => DesignSetting::getDefaultSettings(),
-            'teachers' => User::query()->where('role', 'teacher')->orderBy('name_ar')->orderBy('id')->get(),
+            'teachers' => User::query()->where('role', 'teacher')->with('photo')
+                ->orderBy('name_ar')->orderBy('id')->get(),
             'paths' => Path::query()->orderBy('title_ar')->orderBy('id')->get(),
             'certificateTextTemplates' => $this->certificateTemplates->catalogue(),
         ];

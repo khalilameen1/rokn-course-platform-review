@@ -86,7 +86,7 @@
                     </div>
 
                     <div class="checkbox-modern">
-                        {!! Form::hidden('english_translation', 0) !!}
+                        {!! Form::hidden('english_translation', 0, ['id' => 'english_translation_fallback']) !!}
                         {!! Form::checkbox('english_translation', 1, null, ['id' => 'english_translation']) !!}
                         <label for="english_translation">
                             <i class="fa fa-language"></i> تفعيل الترجمة الإنجليزية للمنصة
@@ -185,7 +185,7 @@
                     </h2>
 
                     <div class="checkbox-modern">
-                        {!! Form::hidden('enforce_course_section_order', 0) !!}
+                        {!! Form::hidden('enforce_course_section_order', 0, ['id' => 'enforce_course_section_order_fallback']) !!}
                         {!! Form::checkbox('enforce_course_section_order', 1, null, ['id' => 'enforce_course_section_order']) !!}
                         <label for="enforce_course_section_order">
                             <i class="fa fa-sort-numeric-asc"></i> إجبار الطالب على مشاهدة أقسام الكورس بالترتيب
@@ -210,7 +210,7 @@
                     </div>
 
                     <div class="checkbox-modern settings-block-spacing" id="bunny-toggle-wrapper">
-                        {!! Form::hidden('bunny_enabled', 0) !!}
+                        {!! Form::hidden('bunny_enabled', 0, ['id' => 'bunny_enabled_fallback']) !!}
                         {!! Form::checkbox('bunny_enabled', 1, null, ['id' => 'bunny_enabled']) !!}
                         <label for="bunny_enabled">
                             <i class="fa fa-toggle-on"></i> تفعيل Bunny.net لاستضافة الفيديو

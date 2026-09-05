@@ -159,7 +159,7 @@
                                 <div class="course-editor__option-title">كورس رئيسي</div>
                                 <div class="course-editor__option-description">يظهر كبطل الصفحة الوحيد. اختياره يستبدل الكورس الرئيسي السابق تلقائيًا.</div>
                             </div>
-                            {!! Form::hidden('is_main_course', 0) !!}
+                            {!! Form::hidden('is_main_course', 0, ['id' => 'is_main_course_fallback']) !!}
                             {!! Form::checkbox('is_main_course', 1, old('is_main_course', $mainCourseDefault), ['id' => 'is_main_course', 'class' => 'course-editor__native-checkbox']) !!}
                         </label>
                     </div>
@@ -177,15 +177,15 @@
                             </div>
                             <div>
                                 <div class="course-editor__option-title">
-                                    {{ $hasPublishedRevision ? 'إظهار الكورس في التطبيق والبحث' : 'إظهار بطاقة «قريبًا» في التطبيق' }}
+                                    إظهار الكورس في التطبيق والبحث
                                 </div>
                                 <div class="course-editor__option-description">
                                     {{ $hasPublishedRevision
                                         ? 'يمكن إخفاؤه من الاكتشاف مع بقاء وصول الطلاب المسجلين'
-                                        : 'لن تظهر البطاقة قبل اكتمال الغلاف والمحاضر والتصنيف والوصف' }}
+                                        : 'قبل النشر تظهر بطاقة قريبًا بعد اكتمال بياناتها وبعد النشر يظهر الكورس للطلاب' }}
                                 </div>
                             </div>
-                            {!! Form::hidden('is_catalog_visible', 0) !!}
+                            {!! Form::hidden('is_catalog_visible', 0, ['id' => 'is_catalog_visible_fallback']) !!}
                             {!! Form::checkbox('is_catalog_visible', 1, old('is_catalog_visible', $catalogVisibilityDefault), ['id' => 'is_catalog_visible', 'class' => 'course-editor__native-checkbox']) !!}
                         </label>
                     </div>

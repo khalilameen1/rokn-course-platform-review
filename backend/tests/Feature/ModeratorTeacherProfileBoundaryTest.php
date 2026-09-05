@@ -9,6 +9,7 @@ use App\Http\Middleware\RequireAdminMfa;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -191,6 +192,63 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         self::assertTrue(Hash::check('intentional-password', (string) $account->password));
     }
 
+    public function test_profile_image_precedence_preserves_learner_avatar_and_empty_profiles_stay_empty(): void
+    {
+        Storage::fake('public');
+        $student = new User();
+        $student->forceFill([
+            'name_ar' => 'طالب بصورة حديثة',
+            'email' => 'student-avatar@example.test',
+            'password' => Hash::make('student-password'),
+            'role' => 'client',
+            'profile_image' => 'users/current-student-avatar.jpg',
+            'active' => true,
+        ])->save();
+        $student->allPhotos()->create([
+            'path' => 'users/legacy-featured-avatar.jpg',
+            'type' => 'featured',
+        ]);
+
+        self::assertSame(
+            Storage::disk('public')->url('users/current-student-avatar.jpg'),
+            $student->fresh()->profile_image_url
+        );
+
+        $legacyTeacher = new User();
+        $legacyTeacher->forceFill([
+            'name_ar' => 'محاضر بصورة قديمة',
+            'email' => 'teacher-with-legacy-avatar@example.test',
+            'password' => Hash::make('teacher-password'),
+            'role' => 'teacher',
+            'profile_image' => 'users/legacy-teacher-avatar.jpg',
+            'active' => true,
+        ])->save();
+        self::assertSame(
+            Storage::disk('public')->url('users/legacy-teacher-avatar.jpg'),
+            $legacyTeacher->fresh()->profile_image_url
+        );
+
+        $emptyStudent = new User();
+        $emptyStudent->forceFill([
+            'name_ar' => 'طالب بلا صورة',
+            'email' => 'student-without-avatar@example.test',
+            'password' => Hash::make('student-password'),
+            'role' => 'client',
+            'active' => true,
+        ])->save();
+        self::assertNull($emptyStudent->fresh()->profile_image_url);
+
+        $emptyTeacher = new User();
+        $emptyTeacher->forceFill([
+            'name_ar' => 'محاضر بلا صورة',
+            'email' => 'teacher-without-avatar@example.test',
+            'password' => Hash::make('teacher-password'),
+            'role' => 'teacher',
+            'active' => true,
+        ])->save();
+        self::assertNull($emptyTeacher->fresh()->profile_image_url);
+    }
+
     /** @return array<string, mixed> */
     private function publicProfilePayload(User $teacher): array
     {
@@ -247,4 +305,5 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
 
         return $user;
     }
+
 }

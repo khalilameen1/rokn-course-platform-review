@@ -76,6 +76,11 @@ class FormBuilder
         return $this->input('email', $name, $this->value($name, $value), $options);
     }
 
+    public function url(string $name, mixed $value = null, array $options = []): HtmlString
+    {
+        return $this->input('url', $name, $this->value($name, $value), $options);
+    }
+
     public function password(string $name, array $options = []): HtmlString
     {
         return $this->input('password', $name, null, $options);

@@ -6407,7 +6407,7 @@
             "dist": {
                 "type": "path",
                 "url": "packages/rokn/form-compat",
-                "reference": "83b614b51a35abf1c12da185989582013620741f"
+                "reference": "1155c26e164f81216c2e33d7a3fa5f7ba6f1c72b"
             },
             "require": {
                 "illuminate/contracts": "^12.0",

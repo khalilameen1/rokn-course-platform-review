@@ -129,6 +129,66 @@ final class AdminAccountConcurrencyTest extends TestCase
         self::assertSame(3, (int) $moderator->profile_revision);
     }
 
+    public function test_moderator_profile_update_ignores_unselected_credentials_and_explicit_edit_can_change_them(): void
+    {
+        $originalPassword = Hash::make('original-password');
+        $moderator = User::query()->forceCreate([
+            'name_ar' => 'مسؤول المحتوى',
+            'name_en' => 'Moderator',
+            'email' => 'moderator-profile@rokn.test',
+            'email_verified_at' => now(),
+            'phone' => '201000000004',
+            'password' => $originalPassword,
+            'role' => 'moderator',
+            'active' => true,
+            'profile_revision' => 1,
+        ]);
+
+        $page = $this->get(route('admin.moderators.edit', $moderator))->assertOk();
+        $document = new \DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
+        $xpath = new \DOMXPath($document);
+        self::assertSame(1, $xpath->query('//input[@name="email" and @disabled]')->length);
+        self::assertSame(1, $xpath->query('//input[@name="password" and @disabled]')->length);
+
+        $this->put(route('admin.moderators.update', $moderator), [
+            'name_ar' => 'مسؤول المحتوى الأول',
+            'name_en' => 'Moderator',
+            'phone' => '201000000005',
+            'active' => '1',
+            'editor_version' => $this->moderatorEditorVersion($moderator),
+            // Simulate credentials injected at submit time without the
+            // administrator choosing to edit the login.
+            'email' => $this->admin->email,
+            'password' => 'autofilled-password',
+            'password_confirmation' => 'different-autofill',
+        ])->assertSessionHasNoErrors()->assertRedirect(route('admin.moderators.index'));
+
+        $moderator->refresh();
+        self::assertSame('مسؤول المحتوى الأول', $moderator->name_ar);
+        self::assertSame('201000000005', $moderator->phone);
+        self::assertSame('moderator-profile@rokn.test', $moderator->email);
+        self::assertSame($originalPassword, $moderator->getRawOriginal('password'));
+        self::assertNotNull($moderator->email_verified_at);
+
+        $this->put(route('admin.moderators.update', $moderator), [
+            'name_ar' => $moderator->name_ar,
+            'name_en' => $moderator->name_en,
+            'phone' => $moderator->phone,
+            'active' => '1',
+            'manage_credentials' => '1',
+            'email' => 'moderator-new-login@rokn.test',
+            'password' => 'intentional-password',
+            'password_confirmation' => 'intentional-password',
+            'editor_version' => $this->moderatorEditorVersion($moderator),
+        ])->assertSessionHasNoErrors()->assertRedirect(route('admin.moderators.index'));
+
+        $moderator->refresh();
+        self::assertSame('moderator-new-login@rokn.test', $moderator->email);
+        self::assertTrue(Hash::check('intentional-password', (string) $moderator->password));
+        self::assertNull($moderator->email_verified_at);
+    }
+
     public function test_urgent_activation_rejects_an_aba_state_change(): void
     {
         $student = User::query()->forceCreate([

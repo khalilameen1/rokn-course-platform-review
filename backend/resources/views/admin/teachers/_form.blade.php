@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function () {
             @error('image')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror
-            @if(isset($teacher) && $teacher->profile_image)
+            @if(isset($teacher) && $teacher->profile_image_url)
                 <div class="mt-2">
                     <img src="{{ $teacher->profile_image_url }}" alt="Current Image" width="100" class="rounded">
                 </div>
