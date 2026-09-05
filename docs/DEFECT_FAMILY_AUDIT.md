@@ -4,6 +4,29 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Observe preview recovery on the delivered candidate — 2026-09-05
+
+On the installed cf7b7b0 / Android 42 candidate, opening the free preview first
+showed the course-load failure screen. Its retry entered playback. Playback then
+showed buffering failures around 3 and 6 seconds before recovering and reaching
+the end of the second free reel (75 seconds). The app displayed the two-reel
+preview-complete gate, not a project-submission gate. Choosing a course category
+then reached sign-in with Google and TikTok.
+
+Contemporaneous read-only probes returned HTTP 200 for course details and the
+Bunny master playlist. The first two segments of both the 240p and 720p variants
+returned HTTP 200 in approximately 0.44–0.60 seconds from the Windows host.
+Those host measurements do not establish Android transport or decoder health
+and do not explain away the observed buffering. No playback settings, retry
+limits, course permissions or source code were changed to manufacture a pass.
+
+Google entry opened Chrome's first-run setup on the emulator; no account was
+authenticated and no provider callback completed. Back returned to Rokn's
+usable sign-in screen without a stuck loading state. Browser setup and real
+provider authentication still separate this observation from a completed
+purchase or chat journey. The exact cause of the initial load/buffering failures
+remains unproven; successful recovery is not evidence of uninterrupted playback.
+
 ## Resolve the remaining dependency gate without changing learner flows — 2026-09-05
 
 Mobile CI 33975028743 on cf7b7b0 completed both native builds successfully,
