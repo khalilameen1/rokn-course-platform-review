@@ -6,7 +6,10 @@ import {
   PlaybackRuntimeMetrics,
 } from '../playbackTelemetry';
 import {createVideoEventHandlers} from './eventHandlers';
-import {useAppActiveState} from '../../../hooks/useAppActiveState';
+import {
+  useAppActiveState,
+  useAppForegroundState,
+} from '../../../hooks/useAppActiveState';
 import {usePlaybackInterruption} from './usePlaybackInterruption';
 import {usePlaybackRecovery} from './usePlaybackRecovery';
 import {usePlaybackStatus} from './usePlaybackStatus';
@@ -159,9 +162,10 @@ export const useVideoController = (
     isVisible,
     preferredQuality: selectedQuality,
   });
-  const appIsActive = useAppActiveState();
+  const windowIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const previousAppActiveRef = useRef(appIsActive);
-  const playbackEligible = isVisible && !playbackBlocked && appIsActive;
+  const playbackEligible = isVisible && !playbackBlocked && windowIsActive;
   const {
     clearTransientInterruption,
     handleAudioBecomingNoisy,

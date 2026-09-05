@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef} from 'react';
 
-import {useAppActiveState} from '../../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {
   isShareablePortfolioItem,
   portfolioNeedsPublicationRecovery,
@@ -25,7 +25,7 @@ export const usePortfolioGalleryController = ({
   onSharePortfolio,
   onShareablePortfolioChange,
 }: GalleryProps = {}) => {
-  const appActive = useAppActiveState();
+  const appActive = useAppForegroundState();
   const mountedRef = useRef(true);
   const createBusyRef = useRef(false);
   const detailMutationBlockedRef = useRef(false);

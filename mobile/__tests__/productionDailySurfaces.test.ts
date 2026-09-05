@@ -48,14 +48,29 @@ describe('production daily surfaces', () => {
     expect(entitlements).toContain('chatAvailable === true');
   });
 
-  it('stops hidden work and bounds daily list image cost', () => {
+  it('wires foreground catalogue reads separately from interactive carousel playback', () => {
     const home = source('src/screens/Home.tsx');
+    const feed = source('src/screens/home/HomeCatalogueFeed.tsx');
     const carousel = source('src/components/view/CourseCarousel.tsx');
+
+    // This is a wiring contract, not native acceptance: a modal blur must
+    // pause the carousel without making catalogue reads leave foreground.
+    expect(home).toContain('const appIsActive = useAppForegroundState()');
+    expect(home).toContain('const appIsInteractive = useAppActiveState()');
+    expect(home).toMatch(
+      /useHomeCatalogue\(\{\s*active: screenFocused,\s*appIsActive,/,
+    );
+    expect(home).toMatch(
+      /<HomeCatalogueFeed\s+active=\{screenFocused && appIsInteractive\}/,
+    );
+    expect(feed).toMatch(/<CourseCarousel\s+active=\{active\}/);
+    expect(carousel).toContain('autoPlay={active && data.length > 1}');
+  });
+
+  it('bounds daily list image cost and coalesces wallet refreshes', () => {
     const notifications = source('src/screens/Notifications.tsx');
     const wallet = source('src/screens/wallet/useWalletData.ts');
 
-    expect(home).toContain('active={screenFocused && appIsActive}');
-    expect(carousel).toContain('autoPlay={active && data.length > 1}');
     expect(notifications).toContain('resizeMethod="resize"');
     expect(notifications).toContain('removeClippedSubviews=');
     expect(wallet).toContain('refreshFlightRef.current');

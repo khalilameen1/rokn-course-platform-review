@@ -207,7 +207,7 @@ const CourseChatOverlay = ({
       onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.modal}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable
           accessible={false}
           importantForAccessibility="no-hide-descendants"

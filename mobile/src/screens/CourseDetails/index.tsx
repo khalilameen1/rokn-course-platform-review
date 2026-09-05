@@ -10,7 +10,7 @@ import {useSelector} from 'react-redux';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Palette, useResponsiveLayout} from '../../constants/designSystem';
 import {sessionIdentityKey} from '../../constants/helpers';
-import {useAppActiveState} from '../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
 import type {RootNavigation, RootRoute} from '../../navigation/types';
 import {trackProductEvent} from '../../services/productAnalytics';
@@ -36,7 +36,7 @@ export default function CourseDetails() {
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
   const layout = useResponsiveLayout();
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const screenFocused = useIsFocused();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);

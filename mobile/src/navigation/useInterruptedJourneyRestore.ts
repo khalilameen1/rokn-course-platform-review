@@ -208,8 +208,10 @@ export const useInterruptedJourneyRestore = () => {
 
   React.useEffect(() => {
     if (!isLogin || !navigationRef.isReady()) return;
+    const operationSessionKey = sessionKey;
     const passiveReturn = passiveSessionReturnRef.current;
     void run().then(restored => {
+      if (currentSessionKeyRef.current !== operationSessionKey) return;
       if (
         !restored &&
         passiveReturn &&
@@ -222,11 +224,28 @@ export const useInterruptedJourneyRestore = () => {
           ),
         );
       }
+      // Remounting Stacks under the same NavigationContainer can rehydrate
+      // its current Login route. A plain Google login has no durable return,
+      // so explicitly leave Login after the session has been adopted.
+      const currentRoute = navigationRef.isReady()
+        ? navigationRef.getCurrentRoute()
+        : undefined;
+      if (!restored && !passiveReturn && currentRoute?.name === 'Login') {
+        navigationRef.dispatch(
+          CommonActions.reset(
+            loginReturnResetState(
+              (currentRoute.params as {returnTo?: unknown} | undefined)
+                ?.returnTo,
+              'authenticated',
+            ),
+          ),
+        );
+      }
       if (passiveSessionReturnRef.current === passiveReturn) {
         passiveSessionReturnRef.current = undefined;
       }
     });
-  }, [isLogin, run]);
+  }, [isLogin, run, sessionKey]);
 
   return {run, sessionKey};
 };

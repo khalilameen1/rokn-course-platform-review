@@ -11,13 +11,11 @@ let androidWindowFocused = true;
 let nativeSubscriptions: NativeEventSubscription[] = [];
 const listeners = new Set<() => void>();
 
+const isForeground = () => currentState === 'active';
 const isInteractive = () =>
-  currentState === 'active' &&
-  (Platform.OS !== 'android' || androidWindowFocused);
+  isForeground() && (Platform.OS !== 'android' || androidWindowFocused);
 
-const notifyIfChanged = (previous: boolean) => {
-  if (previous !== isInteractive()) listeners.forEach(notify => notify());
-};
+const notify = () => listeners.forEach(listener => listener());
 
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
@@ -27,7 +25,6 @@ const subscribe = (listener: () => void) => {
     nativeSubscriptions.push(
       AppState.addEventListener('change', next => {
         if (currentState === next) return;
-        const previous = isInteractive();
         currentState = next;
         if (Platform.OS === 'android') {
           // Some Android versions do not emit a separate focus event after a
@@ -35,24 +32,23 @@ const subscribe = (listener: () => void) => {
           // authoritative reset; blur/focus then refine active-only overlays.
           androidWindowFocused = next === 'active';
         }
-        notifyIfChanged(previous);
+        notify();
       }),
     );
     if (Platform.OS === 'android') {
-      // Android keeps AppState as `active` while the notification shade,
-      // permission UI or another non-Activity system surface obscures the
-      // app. The blur/focus pair is therefore part of playback eligibility,
-      // otherwise video and polling continue behind that surface.
+      // Android keeps AppState as `active` while the notification shade or
+      // a native Modal takes focus. This gates playback, not foreground work
+      // such as receiving a reply inside that Modal.
       nativeSubscriptions.push(
         AppState.addEventListener('blur', () => {
-          const previous = isInteractive();
+          if (!androidWindowFocused) return;
           androidWindowFocused = false;
-          notifyIfChanged(previous);
+          notify();
         }),
         AppState.addEventListener('focus', () => {
-          const previous = isInteractive();
+          if (androidWindowFocused) return;
           androidWindowFocused = true;
-          notifyIfChanged(previous);
+          notify();
         }),
       );
     }
@@ -67,8 +63,8 @@ const subscribe = (listener: () => void) => {
 };
 
 export const useAppActiveState = () =>
-  useSyncExternalStore(
-    subscribe,
-    isInteractive,
-    () => true,
-  );
+  useSyncExternalStore(subscribe, isInteractive, () => true);
+
+/** Foreground data work continues inside native dialogs and sheets. */
+export const useAppForegroundState = () =>
+  useSyncExternalStore(subscribe, isForeground, () => true);

@@ -153,16 +153,23 @@ export const resumePendingSocialAuth = async (
       await deletePendingSocialAuthAttempt(pending);
       return null;
     }
-    const completed = validateSocialAuthSession(
-      pending.completedSession,
-      pending.provider,
-    );
-    if (purpose === 'login') {
-      if (!(await persistCompletedSocialLogin(pending, completed))) return null;
-    } else {
-      await deletePendingSocialAuthAttempt(pending);
-    }
-    return completed;
+    // The live exchange may already have staged this journal while finishing
+    // its session commit. Recovery must join that owner, not commit the same
+    // bearer again and invalidate reads started by the first login observer.
+    return runCompletion(pending, async () => {
+      const completed = validateSocialAuthSession(
+        pending.completedSession,
+        pending.provider,
+      );
+      if (purpose === 'login') {
+        if (!(await persistCompletedSocialLogin(pending, completed))) {
+          throw new Error('LOGIN_SESSION_INVALID');
+        }
+      } else {
+        await deletePendingSocialAuthAttempt(pending);
+      }
+      return completed;
+    });
   }
 
   const startedAt = Date.parse(pending.startedAt);

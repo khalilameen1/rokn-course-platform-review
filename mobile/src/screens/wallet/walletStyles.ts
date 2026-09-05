@@ -140,7 +140,6 @@ export const walletStyles = StyleSheet.create({
     height: StyleSheet.hairlineWidth,
     backgroundColor: Palette.lineSoft,
   },
-  transactionsCard: {paddingHorizontal: Spacing.md, marginBottom: Spacing.xl},
   transactionRow: {minHeight: 68, ...rtlRowStyle, alignItems: 'center'},
   transactionCopy: {flex: 1, minWidth: 0},
   transactionTitle: {...Type.bodyStrong, ...textDirection, color: Palette.text},

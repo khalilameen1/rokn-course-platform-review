@@ -4,9 +4,11 @@ import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 
 let mockAppActive = true;
+let mockWindowFocused = true;
 
 jest.mock('../src/hooks/useAppActiveState', () => ({
-  useAppActiveState: () => mockAppActive,
+  useAppActiveState: () => mockAppActive && mockWindowFocused,
+  useAppForegroundState: () => mockAppActive,
 }));
 jest.mock('../src/services/operationalTelemetry', () => ({
   reportClientError: jest.fn(),
@@ -50,12 +52,37 @@ const reel: CourseReel = {
 describe('reels native playback lifecycle', () => {
   beforeEach(() => {
     mockAppActive = true;
+    mockWindowFocused = true;
     jest.useFakeTimers();
   });
 
   afterEach(() => {
     jest.clearAllTimers();
     jest.useRealTimers();
+  });
+
+  it('keeps the same paused decoder when a dialog takes window focus', async () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    const renderVideo = () => (
+      <VideoComponent data={reel} width={390} height={844} isVisible />
+    );
+    await ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(renderVideo());
+    });
+    const player = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    await ReactTestRenderer.act(() => player.props.onLoad({duration: 60}));
+    mockWindowFocused = false;
+    await ReactTestRenderer.act(() => renderer.update(renderVideo()));
+    const obscured = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    expect(obscured).toBe(player);
+    expect(obscured.props.paused).toBe(true);
+    expect(obscured.props.muted).toBe(true);
+    mockWindowFocused = true;
+    await ReactTestRenderer.act(() => renderer.update(renderVideo()));
+    expect(renderer.root.findAllByProps({testID: 'native-video'})[0]).toBe(
+      player,
+    );
+    await ReactTestRenderer.act(() => renderer.unmount());
   });
 
   it.each([true, false])(

@@ -142,7 +142,7 @@ export const CourseChatConversation = ({
         ref={scrollRef}
         style={styles.messages}
         contentContainerStyle={styles.messagesContent}
-        keyboardShouldPersistTaps="handled"
+        keyboardShouldPersistTaps="always"
         showsVerticalScrollIndicator={false}
         scrollEventThrottle={32}
         onScroll={event => {

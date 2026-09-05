@@ -122,7 +122,7 @@ export const pollAcceptedCourseChatTurn = async ({
         ? latestPartialText
         : foregroundWaitExpired
         ? 'الرد مستمر\nاستعده بعد قليل'
-        : 'الرد قيد التجهيز\nسيظهر عند فتح الشات',
+        : '',
       unavailable: true,
       turnStatus: response.turnStatus || 'queued',
     };

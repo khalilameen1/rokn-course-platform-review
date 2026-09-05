@@ -1,7 +1,10 @@
 import {useEffect, useRef} from 'react';
 import type {MutableRefObject} from 'react';
 import {flushPendingPlaybackPositions} from '../../components/VideoPlayer/courseLearningApi';
-import {useAppActiveState} from '../../hooks/useAppActiveState';
+import {
+  useAppActiveState,
+  useAppForegroundState,
+} from '../../hooks/useAppActiveState';
 
 type ReelsLifecycleRefs = {
   delayedActions: MutableRefObject<Set<ReturnType<typeof setTimeout>>>;
@@ -17,7 +20,8 @@ export const useReelsLifecycle = (
   onBackground: () => void,
 ) => {
   const appIsActive = useAppActiveState();
-  const previouslyActiveRef = useRef(appIsActive);
+  const appIsForeground = useAppForegroundState();
+  const previouslyActiveRef = useRef(appIsForeground);
 
   useEffect(() => {
     const delayedActions = refs.delayedActions.current;
@@ -35,23 +39,25 @@ export const useReelsLifecycle = (
   }, [refs]);
 
   useEffect(() => {
+    if (appIsActive) return;
+    refs.delayedActions.current.forEach(clearTimeout);
+    refs.delayedActions.current.clear();
+  }, [appIsActive, refs]);
+
+  useEffect(() => {
     const wasActive = previouslyActiveRef.current;
-    previouslyActiveRef.current = appIsActive;
-    if (appIsActive) {
+    previouslyActiveRef.current = appIsForeground;
+    if (appIsForeground) {
       if (!wasActive) onForeground();
       return;
     }
     if (wasActive) {
-      // Autoplay advances, manifest retries and transition callbacks are only
-      // meaningful while the learner can see this screen. Let foreground
-      // reconciliation recreate current work instead of allowing an old timer
-      // to move the feed or touch an expired source behind the lock screen.
-      refs.delayedActions.current.forEach(clearTimeout);
-      refs.delayedActions.current.clear();
+      // A dialog only pauses playback. Refresh manifests and report app
+      // transitions when the app actually leaves or returns to foreground.
       onBackground();
       void flushPendingPlaybackPositions();
     }
-  }, [appIsActive, onBackground, onForeground, refs]);
+  }, [appIsForeground, onBackground, onForeground, refs]);
 
   return appIsActive;
 };

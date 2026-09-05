@@ -1,4 +1,4 @@
-import {useAppActiveState} from '../../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import type {ProjectSubmissionOutcome} from '../courseLearningApi';
 import type {CourseProject, SelectedProjectFile} from '../types';
 import {resolveProjectReportViewState} from '../courseLearning/projectJourney';
@@ -27,7 +27,7 @@ export const useProjectTransitionController = ({
   project,
   onSubmit,
 }: ControllerInput) => {
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const resolution = useProjectResolution({active, appIsActive, project});
   const submission = useProjectSubmission({
     appIsActive,

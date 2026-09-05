@@ -32,7 +32,7 @@ jest.mock('../src/constants/helpers', () => ({
   })),
 }));
 jest.mock('../src/hooks/useAppActiveState', () => ({
-  useAppActiveState: jest.fn(() => true),
+  useAppForegroundState: jest.fn(() => true),
 }));
 jest.mock('../src/screens/reels/presentation', () => ({
   buildAccessibleFeed: jest.fn(course =>

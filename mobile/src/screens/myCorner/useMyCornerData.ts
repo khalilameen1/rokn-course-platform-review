@@ -5,7 +5,7 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../constants/helpers';
-import {useAppActiveState} from '../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {friendlyNetworkMessage} from '../../services/networkExperience';
 import {
   getCachedLearningDashboard,
@@ -16,7 +16,7 @@ import {
 import {settleWithin} from '../../utils/settleWithin';
 
 export const useMyCornerData = (identityKey: string) => {
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const ownerRef = useRef(identityKey);
   const [serverSession, setServerSession] = useState<boolean | null>(null);
   const [dashboard, setDashboard] = useState<LearningDashboard | null>(null);

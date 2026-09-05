@@ -4,7 +4,7 @@ import {useSelector} from 'react-redux';
 import {courseIncludesAssistant} from '../courseLearningApi';
 import {isGrantCourseAccess} from '../courseEntitlements';
 import type {CourseLearningData, CourseReel} from '../types';
-import {useAppActiveState} from '../../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {sessionIdentityKey} from '../../../constants/helpers';
 import type {RootState} from '../../../store/store';
 import {assistantPresenceFor} from './conversation';
@@ -33,7 +33,7 @@ export const useCourseChat = ({
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const accountKey = sessionIdentityKey(storedUser);
   const conversationScope = `${accountKey}:${courseId}:${lessonId || 'course'}`;
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const interactive = visible && appIsActive;
   const inFlightAttachmentIdsRef = useRef(new Set<string>());
   const {scheduleScrollToEnd, scrollRef} = useCourseChatScroll(visible);

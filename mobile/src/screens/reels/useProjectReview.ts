@@ -6,7 +6,7 @@ import {
 } from '../../components/VideoPlayer/courseLearningApi';
 import type {CourseLearningData} from '../../components/VideoPlayer/types';
 import {buildAccessibleFeed} from './presentation';
-import {useAppActiveState} from '../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {captureAccountSessionBoundary} from '../../constants/helpers';
 import {
   loadProjectResolution,
@@ -37,7 +37,7 @@ export const useProjectReview = ({
   refs: ProjectReviewRefs;
   setCourse: Dispatch<SetStateAction<CourseLearningData | null>>;
 }) => {
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const reviewActive = active && appIsActive;
   const pendingMapRefreshRef = useRef<string | null>(null);
   const mapRefreshSequenceRef = useRef(0);

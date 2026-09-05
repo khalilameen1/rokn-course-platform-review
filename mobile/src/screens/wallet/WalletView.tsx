@@ -188,6 +188,16 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد؟</Text>
               <Text style={styles.rulesLinkArrow}>‹</Text>
             </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setWalletModal('transactions')}
+              style={({pressed}) => [
+                styles.rulesLink,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.rulesLinkLabel}>آخر العمليات</Text>
+              <Text style={styles.rulesLinkArrow}>‹</Text>
+            </Pressable>
           </PremiumCard>
 
           {CAN_START_COIN_CHECKOUT && (
@@ -324,46 +334,6 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               </>
             )}
           </PremiumCard>
-
-          {!!displayedTransactions.length && (
-            <>
-              <SectionHeading
-                style={styles.sectionHeading}
-                title="آخر العمليات"
-              />
-              <PremiumCard style={styles.transactionsCard}>
-                {displayedTransactions
-                  .slice(0, 5)
-                  .map((item, index, allTransactions) => (
-                    <View key={item.id}>
-                      <View style={styles.transactionRow}>
-                        <View style={styles.transactionCopy}>
-                          <Text style={styles.transactionTitle}>
-                            {formatArabicDisplayText(item.title)}
-                          </Text>
-                          <Text style={styles.transactionDate}>
-                            {toArabicDigits(
-                              formatRoknRelativeDate(item.createdAt),
-                            )}
-                          </Text>
-                        </View>
-                        <Text
-                          style={[
-                            styles.transactionValue,
-                            item.amount > 0 && styles.positive,
-                          ]}>
-                          {item.amount > 0 ? '+' : '−'}
-                          {formatArabicNumber(Math.abs(item.amount))}
-                        </Text>
-                      </View>
-                      {index < allTransactions.length - 1 && (
-                        <View style={styles.divider} />
-                      )}
-                    </View>
-                  ))}
-              </PremiumCard>
-            </>
-          )}
         </ResponsiveFrame>
       </Content>
       <TabBar />
@@ -375,7 +345,7 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
         visible={walletModal !== null}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="إغلاق تفاصيل الرصيد"
+          accessibilityLabel="إغلاق"
           onPress={() => setWalletModal(null)}
           style={styles.breakdownOverlay}>
           <Pressable
@@ -396,7 +366,56 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               contentContainerStyle={styles.breakdownContent}
               showsVerticalScrollIndicator={false}
               style={styles.breakdownScroll}>
-              {walletModal === 'rules' ? (
+              {walletModal === 'transactions' ? (
+                <>
+                  <Text style={styles.rulesTitle}>آخر العمليات</Text>
+                  {displayedTransactions.length ? (
+                    displayedTransactions.map((item, index) => (
+                      <View key={item.id}>
+                        <View style={styles.transactionRow}>
+                          <View style={styles.transactionCopy}>
+                            <Text style={styles.transactionTitle}>
+                              {formatArabicDisplayText(item.title)}
+                            </Text>
+                            <Text style={styles.transactionDate}>
+                              {toArabicDigits(
+                                formatRoknRelativeDate(item.createdAt),
+                              )}
+                            </Text>
+                          </View>
+                          <Text
+                            style={[
+                              styles.transactionValue,
+                              item.amount > 0 && styles.positive,
+                            ]}>
+                            {item.amount > 0 ? '+' : '−'}
+                            {formatArabicNumber(Math.abs(item.amount))}
+                          </Text>
+                        </View>
+                        {index < displayedTransactions.length - 1 && (
+                          <View style={styles.divider} />
+                        )}
+                      </View>
+                    ))
+                  ) : (
+                    <Text style={styles.remoteNote}>
+                      {walletStatus === 'loading' || walletStatus === 'idle'
+                        ? 'جارٍ تحميل العمليات'
+                        : walletStatus === 'error'
+                        ? 'تعذّر تحميل العمليات'
+                        : 'لا توجد عمليات بعد'}
+                    </Text>
+                  )}
+                  {walletStatus === 'error' && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => void refreshWallet()}
+                      style={styles.retryButton}>
+                      <Text style={styles.retryLabel}>إعادة المحاولة</Text>
+                    </Pressable>
+                  )}
+                </>
+              ) : walletModal === 'rules' ? (
                 <>
                   <Text style={styles.rulesTitle}>كيف يعمل الرصيد؟</Text>
                   <Text style={styles.rulesIntro}>

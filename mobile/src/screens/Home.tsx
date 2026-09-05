@@ -40,7 +40,10 @@ import {
 import {useHomeCatalogue} from './home/useHomeCatalogue';
 import HomeCatalogueFeed from './home/HomeCatalogueFeed';
 import {HomeOverlays} from './home/HomeOverlays';
-import {useAppActiveState} from '../hooks/useAppActiveState';
+import {
+  useAppActiveState,
+  useAppForegroundState,
+} from '../hooks/useAppActiveState';
 import {useSelector} from 'react-redux';
 import type {RootState} from '../store/store';
 import {useHomeScrollMemory} from './home/useHomeScrollMemory';
@@ -58,7 +61,8 @@ const QUICK_SEARCHES = [
 const Home = () => {
   const navigation = useNavigation<RootNavigation>();
   const screenFocused = useIsFocused();
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
+  const appIsInteractive = useAppActiveState();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
   const {t} = useTranslation();
@@ -259,7 +263,7 @@ const Home = () => {
         </ResponsiveFrame>
 
         <HomeCatalogueFeed
-          active={screenFocused && appIsActive}
+          active={screenFocused && appIsInteractive}
           error={catalogueError}
           hasSearchQuery={hasSearchQuery}
           heroCourses={heroCourses}

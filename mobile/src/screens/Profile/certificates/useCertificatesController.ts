@@ -22,11 +22,11 @@ import {
 import type {RootState} from '../../../store/store';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import {openCourseAttachment} from '../../../components/VideoPlayer/attachmentActions';
-import {useAppActiveState} from '../../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {settleWithin} from '../../../utils/settleWithin';
 
 export function useCertificatesController(resolvedDisplayName?: string) {
-  const appIsActive = useAppActiveState();
+  const appIsActive = useAppForegroundState();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const user = extractUserProfile(storedUser);
   const displayName = resolvedDisplayName || user?.name || '';

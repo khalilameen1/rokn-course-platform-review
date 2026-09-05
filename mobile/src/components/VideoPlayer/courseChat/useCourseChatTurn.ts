@@ -404,7 +404,6 @@ export const useCourseChatTurn = ({
           sendFlightRef.current = null;
           if (ownedConversationGeneration === conversationGeneration.current) {
             setSending(false);
-            scheduleScrollToEnd(true, 80);
             setRecoverySignal(value => value + 1);
           }
         }

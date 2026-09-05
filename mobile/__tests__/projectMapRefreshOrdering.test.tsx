@@ -18,7 +18,7 @@ jest.mock('../src/constants/helpers', () => ({
   captureAccountSessionBoundary: jest.fn(),
 }));
 jest.mock('../src/hooks/useAppActiveState', () => ({
-  useAppActiveState: jest.fn(() => true),
+  useAppForegroundState: jest.fn(() => true),
 }));
 jest.mock('../src/screens/reels/presentation', () => ({
   buildAccessibleFeed: jest.fn(() => []),

@@ -46,7 +46,7 @@ jest.mock('../src/components/VideoPlayer/attachmentActions', () => ({
 }));
 
 jest.mock('../src/hooks/useAppActiveState', () => ({
-  useAppActiveState: () => true,
+  useAppForegroundState: () => true,
 }));
 
 jest.mock('../src/utils/settleWithin', () => ({

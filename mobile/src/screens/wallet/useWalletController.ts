@@ -9,9 +9,9 @@ import {useWalletTasks} from './useWalletTasks';
 export const useWalletController = () => {
   const user = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(user);
-  const [walletModal, setWalletModal] = useState<'breakdown' | 'rules' | null>(
-    null,
-  );
+  const [walletModal, setWalletModal] = useState<
+    'breakdown' | 'rules' | 'transactions' | null
+  >(null);
   const showCoinRules = useCallback(() => setWalletModal('rules'), []);
   useEffect(() => setWalletModal(null), [identityKey]);
   const data = useWalletData(identityKey);

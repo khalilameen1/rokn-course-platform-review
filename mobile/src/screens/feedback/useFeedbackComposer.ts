@@ -6,7 +6,7 @@ import {
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
-import {useAppActiveState} from '../../hooks/useAppActiveState';
+import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {removeLearnerDraftFile} from '../../services/learnerDraftFiles';
 import {
   clearProductFeedbackDraft,
@@ -32,7 +32,7 @@ export const useFeedbackComposer = ({
   locale,
   sourceScreen,
 }: Options) => {
-  const appActive = useAppActiveState();
+  const appActive = useAppForegroundState();
   const [category, setCategory] = useState<ProductFeedbackCategory>('problem');
   const [message, setMessage] = useState('');
   const [attachment, setAttachment] = useState<FeedbackAttachment>();
