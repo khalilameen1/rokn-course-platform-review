@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class AiPromptPolicyTest extends TestCase
 {
-    public function test_all_experiences_share_the_same_voice_contract(): void
+    public function test_all_experiences_include_the_compact_voice_instructions(): void
     {
         $policy = new AiPromptPolicy();
         $prompts = [
@@ -19,23 +19,37 @@ final class AiPromptPolicyTest extends TestCase
         ];
 
         foreach ($prompts as $prompt) {
-            self::assertStringContainsString('ابدأ بالحكم أو الحل مباشرة', $prompt);
-            self::assertStringContainsString('اكتب بالعامية المصرية الطبيعية الواضحة حتى لو هو كتب بالفصحى', $prompt);
+            // These assert prompt assembly, not the quality or compliance of
+            // generated replies, which requires a separate provider probe.
+            self::assertStringContainsString('بالعامية المصرية الطبيعية الواضحة حتى لو كتب بالفصحى', $prompt);
+            self::assertStringContainsString('لو طلب الطالب لغة أخرى التزم بها', $prompt);
+            self::assertStringContainsString('ابدأ بالإجابة مباشرة بلا تحية أو مدح أو إعادة للسؤال', $prompt);
+            self::assertStringContainsString('لا تستبدل الحل بنصيحة عامة', $prompt);
+            self::assertStringContainsString('التحية أو التأكيد قد يحتاجان كلمة أو سطرا فقط', $prompt);
+            self::assertStringContainsString('لا تختم بعرض مساعدة أو سؤال لإطالة الكلام', $prompt);
+            self::assertStringContainsString('صحح الافتراض الخاطئ بمعيار واضح', $prompt);
+            self::assertStringContainsString('لا تخمن موضوعا لكلمة غامضة', $prompt);
             self::assertStringContainsString('لا تستخدم الفاصلة أو النقطة', $prompt);
-            self::assertStringContainsString('كل فقرة فكرة مكتملة غالبًا من جملة إلى ثلاث', $prompt);
-            self::assertStringContainsString('الأصل من فقرة إلى ثلاث فقرات قصيرة', $prompt);
-            self::assertStringContainsString('لا تجعل الرد شعرًا', $prompt);
-            self::assertStringContainsString('حافظ على علامات الكود والروابط والرياضيات كما هي', $prompt);
-            self::assertStringContainsString('لا تستخدم كليشيهات المساعد', $prompt);
-            self::assertStringContainsString('لا كصياغة مساعد شخصي', $prompt);
-            self::assertStringContainsString('ما يقبله المختص', $prompt);
-            self::assertStringContainsString('رجح بين البدائل بمعيار واضح', $prompt);
-            self::assertStringContainsString('ما يحتاج تحققًا', $prompt);
-            self::assertStringContainsString('لا تخمن', $prompt);
+            self::assertStringContainsString('ولا شرطات أو نجوما أو عناوين جاهزة', $prompt);
+            self::assertStringContainsString('بين الفكرتين سطر فارغ ولا تضع كل كلمة على سطر', $prompt);
+            self::assertStringContainsString('فقرة إلى ثلاث فقرات بفكرة مكتملة في كل فقرة', $prompt);
+            self::assertStringContainsString('حافظ على الكود والمصطلحات والروابط والمعادلات بعلاماتها الصحيحة', $prompt);
             self::assertStringContainsString('لا تدع أنك إنسان أو المحاضر', $prompt);
-            self::assertStringContainsString('إذا سئلت عن هويتك أجب بوضوح', $prompt);
-            self::assertStringContainsString('لا تقدم نفسك في كل رد', $prompt);
+            self::assertStringContainsString('مساعد ركن التعليمي بالذكاء الاصطناعي ولا تخمن اسم النموذج أو المزود', $prompt);
+            self::assertStringContainsString('الأمثلة التالية للنبرة والحجم لا للحفظ', $prompt);
+            self::assertStringContainsString("سؤال انت تمام؟\nرد تمام", $prompt);
+            self::assertStringContainsString("سؤال مش فاهم الكروب\nرد تقصد قص الصورة ولا تجميع العناصر؟", $prompt);
         }
+    }
+
+    public function test_project_prompts_do_not_delegate_grading_and_course_context_does_not_limit_general_answers(): void
+    {
+        $policy = new AiPromptPolicy();
+        foreach ([$policy->projectReport('متطلبات'), $policy->projectFollowup('متطلبات', 'محاولة')] as $prompt) {
+            self::assertStringContainsString('لا تغير قرار النجاح ولا تمنح درجة', $prompt);
+        }
+        self::assertStringContainsString('أجب عن السؤال العام أيضًا إن كنت تعرفه ولا تنسبه إلى الكورس', $policy->courseChat('التصميم'));
+        self::assertStringContainsString('ابحث عندما تكون المعلومة حديثة أو تحتاج تحققًا', $policy->courseChat('التصميم'));
     }
 
     public function test_project_context_uses_published_requirements_not_hidden_editor_policy(): void

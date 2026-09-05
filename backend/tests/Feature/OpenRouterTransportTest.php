@@ -10,6 +10,7 @@ use App\Services\OpenRouterCurlFactory;
 use GuzzleHttp\Handler\CurlFactory;
 use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\Psr7\Request;
+use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
@@ -17,6 +18,52 @@ use Tests\TestCase;
 final class OpenRouterTransportTest extends TestCase
 {
     private ?Process $server = null;
+
+    public static function sonnetReasoningPayloads(): array
+    {
+        return [
+            'standalone disabled without unsupported temperature' => ['none', ['enabled' => false, 'exclude' => true], ['anthropic/claude-sonnet-5'], false],
+            'disabled' => ['none', ['enabled' => false, 'exclude' => true], ['anthropic/claude-sonnet-5', 'openai/gpt-5.6-luna']],
+            'minimal maps to supported low' => ['minimal', ['effort' => 'low', 'exclude' => true], ['anthropic/claude-sonnet-5', 'openai/gpt-5-mini', 'openai/gpt-5.6-luna']],
+            'explicit low' => ['low', ['effort' => 'low', 'exclude' => true], ['anthropic/claude-sonnet-5', 'openai/gpt-5-mini', 'openai/gpt-5.6-luna']],
+        ];
+    }
+
+    #[DataProvider('sonnetReasoningPayloads')]
+    public function test_sonnet_five_payload_respects_advertised_parameters(
+        string $effort, array $reasoning, array $models, bool $withFallbacks = true
+    ): void {
+        config([
+            'openrouter.api_key' => 'local-test-only',
+            'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
+            'openrouter.allowed_models' => ['anthropic/claude-sonnet-5', 'openai/gpt-5-mini', 'openai/gpt-5.6-luna'],
+            'openrouter.fallback_models' => $withFallbacks ? ['openai/gpt-5-mini', 'openai/gpt-5.6-luna'] : [],
+            'openrouter.reasoning_effort' => $effort,
+            'openrouter.max_tokens' => 800,
+        ]);
+        Http::fake(['openrouter.test/*' => Http::response([
+            'id' => 'candidate-payload-test',
+            'model' => 'anthropic/claude-sonnet-5',
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => "أول فقرة\n\nثاني فقرة"]]],
+            'usage' => ['total_tokens' => 40, 'cost' => .001],
+        ])]);
+
+        $result = app(OpenRouterService::class)->chat(
+            'anthropic/claude-sonnet-5', [['role' => 'user', 'content' => 'اشرح المثال']], .3, 600
+        );
+
+        self::assertSame("أول فقرة\n\nثاني فقرة", $result['message']);
+        Http::assertSent(function ($request) use ($reasoning, $models): bool {
+            $payload = $request->data();
+            self::assertArrayNotHasKey('temperature', $payload);
+            self::assertSame($reasoning, $payload['reasoning']);
+            self::assertSame($models, $payload['models'] ?? [$payload['model']]);
+            self::assertSame(600, $payload['max_tokens']);
+            self::assertTrue($payload['provider']['require_parameters']);
+            return true;
+        });
+        Http::assertSentCount(1);
+    }
 
     protected function tearDown(): void
     {

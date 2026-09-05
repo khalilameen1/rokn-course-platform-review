@@ -86,6 +86,7 @@ final class OpenRouterService
         }
 
         $reasoningEffort = $this->reasoningEffort($model);
+        $disableSonnetReasoning = $reasoningEffort === 'none' && $this->isSonnetFive($model);
         $models = array_values(array_unique(array_filter([
             $model,
             ...array_values(array_filter(
@@ -101,6 +102,7 @@ final class OpenRouterService
             $models = array_values(array_filter(
                 $models,
                 fn (string $candidate): bool => $this->supportsNoReasoning($candidate)
+                    || ($disableSonnetReasoning && $this->isSonnetFive($candidate))
             ));
         }
         $payload = [
@@ -136,13 +138,17 @@ final class OpenRouterService
         } else {
             $payload['model'] = $model;
         }
-        if ($reasoningEffort !== null) {
+        if ($disableSonnetReasoning) {
+            // Sonnet 5 advertises optional thinking, but no `none` effort.
+            // Omission enables its high default; disable it explicitly.
+            $payload['reasoning'] = ['enabled' => false, 'exclude' => true];
+        } elseif ($reasoningEffort !== null) {
             $payload['reasoning'] = [
                 'effort' => $reasoningEffort,
                 'exclude' => true,
             ];
         }
-        // GPT-5 endpoints do not advertise temperature support. Sending it
+        // GPT-5 and Sonnet 5 do not advertise temperature support. Sending it
         // anyway can make an otherwise healthy provider reject the request
         // before generation starts. Keep sampling control for models that
         // support it instead of weakening every model to the same payload.
@@ -490,6 +496,10 @@ final class OpenRouterService
             true
         ) ? $effort : 'none';
 
+        if ($this->isSonnetFive($model)) {
+            return $effort === 'minimal' ? 'low' : $effort;
+        }
+
         // GPT-5.6 enables medium reasoning by default. That can consume half
         // a short learner-answer budget before any visible text is produced.
         // Its current production variants support disabling reasoning, which
@@ -532,11 +542,17 @@ final class OpenRouterService
         ) === 1;
     }
 
+    private function isSonnetFive(string $model): bool
+    {
+        return strtolower(trim($model)) === 'anthropic/claude-sonnet-5';
+    }
+
     private function supportsTemperature(string $model): bool
     {
         $normalized = strtolower(trim($model));
 
         return !str_starts_with($normalized, 'openai/gpt-5')
+            && !$this->isSonnetFive($normalized)
             && !preg_match('/^openai\/(?:o1|o3|o4)(?:-|$)/', $normalized);
     }
 

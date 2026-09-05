@@ -189,7 +189,6 @@ class SettingsController extends Controller
             'seo_meta_description_en' => 'nullable|string|max:500',
             'english_translation' => 'nullable|boolean',
             'device_login_policy' => 'nullable|in:multiple_devices,single_device,single_device_permanent',
-            'enforce_course_section_order' => 'nullable|boolean',
             'bunny_enabled' => 'nullable|boolean',
             'bunny_api_key' => 'nullable|string|max:4096',
             'bunny_library_id' => ['nullable', 'string', 'max:40', 'regex:/^\d+$/'],

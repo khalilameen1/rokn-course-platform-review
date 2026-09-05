@@ -101,6 +101,7 @@ export const CourseChatConversation = ({
   bottomInset,
   hasSendableInput,
   input,
+  inputMaxHeight = 110,
   messages,
   onCopy,
   onInputChange,
@@ -121,6 +122,7 @@ export const CourseChatConversation = ({
   bottomInset: number;
   hasSendableInput: boolean;
   input: string;
+  inputMaxHeight?: number;
   messages: ChatMessage[];
   onCopy: (text: string) => void;
   onInputChange: (text: string) => void;
@@ -153,6 +155,11 @@ export const CourseChatConversation = ({
             contentSize.height - 48;
         }}
         onContentSizeChange={() => {
+          if (stickToEndRef.current) {
+            scrollRef.current?.scrollToEnd({animated: false});
+          }
+        }}
+        onLayout={() => {
           if (stickToEndRef.current) {
             scrollRef.current?.scrollToEnd({animated: false});
           }
@@ -226,42 +233,42 @@ export const CourseChatConversation = ({
             )}
           </View>
         ))}
+        {attachments.length > 0 && (
+          <ScrollView
+            horizontal
+            keyboardShouldPersistTaps="always"
+            style={styles.attachmentStrip}
+            showsHorizontalScrollIndicator={false}>
+            {attachments.map(file => (
+              <View key={file.uploadId} style={styles.attachmentChip}>
+                {file.type.startsWith('image/') && file.uri !== '' && (
+                  <Image
+                    source={{uri: file.uri}}
+                    style={styles.attachmentPreview}
+                  />
+                )}
+                <Text numberOfLines={1} style={styles.attachmentName}>
+                  {cleanUnicodeText(file.name, false)}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`حذف ${file.name}`}
+                  onPress={() => onRemoveAttachment(file)}>
+                  <Text style={styles.attachmentRemove}>×</Text>
+                </Pressable>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+        {answerPending && (
+          <Pressable
+            accessibilityRole="button"
+            style={styles.stopButton}
+            onPress={onStop}>
+            <Text style={styles.stopButtonText}>إيقاف</Text>
+          </Pressable>
+        )}
       </ScrollView>
-
-      {attachments.length > 0 && (
-        <ScrollView
-          horizontal
-          style={styles.attachmentStrip}
-          showsHorizontalScrollIndicator={false}>
-          {attachments.map(file => (
-            <View key={file.uploadId} style={styles.attachmentChip}>
-              {file.type.startsWith('image/') && file.uri !== '' && (
-                <Image
-                  source={{uri: file.uri}}
-                  style={styles.attachmentPreview}
-                />
-              )}
-              <Text numberOfLines={1} style={styles.attachmentName}>
-                {cleanUnicodeText(file.name, false)}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`حذف ${file.name}`}
-                onPress={() => onRemoveAttachment(file)}>
-                <Text style={styles.attachmentRemove}>×</Text>
-              </Pressable>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-      {answerPending && (
-        <Pressable
-          accessibilityRole="button"
-          style={styles.stopButton}
-          onPress={onStop}>
-          <Text style={styles.stopButtonText}>إيقاف</Text>
-        </Pressable>
-      )}
       <View
         style={[
           styles.composer,
@@ -274,7 +281,7 @@ export const CourseChatConversation = ({
           placeholder="اكتب سؤالك"
           placeholderTextColor="rgba(255,255,255,.42)"
           multiline
-          style={styles.input}
+          style={[styles.input, {maxHeight: inputMaxHeight}]}
           onSubmitEditing={onSend}
           blurOnSubmit={false}
         />

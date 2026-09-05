@@ -13,7 +13,6 @@ class Setting extends Model
 {
     private const DERIVED_CACHE_KEYS = [
         'auth-methods:dynamic:v2',
-        'learning:sequence-settings:v2',
         'packages:direct-discount:v2',
         'public-packages:v2',
         'wallet:public-settings:v2',
@@ -37,7 +36,6 @@ class Setting extends Model
         'contact',
         'english_translation',
         'device_login_policy',
-        'enforce_course_section_order',
         'bunny_enabled',
         'bunny_library_id',
         'bunny_cdn_hostname',
@@ -84,7 +82,6 @@ class Setting extends Model
     protected $casts = [
         'english_translation' => 'boolean',
         'direct_checkout_discount_percent' => 'decimal:2',
-        'enforce_course_section_order' => 'boolean',
         'bunny_enabled' => 'boolean',
         'bunny_api_key_secret' => 'encrypted',
         'bunny_storage_password_secret' => 'encrypted',

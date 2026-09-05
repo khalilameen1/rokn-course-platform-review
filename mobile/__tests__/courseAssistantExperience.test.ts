@@ -416,9 +416,7 @@ describe('course assistant waiting experience', () => {
     expect(conversation).toContain(
       'accessibilityLabel="محادثة استفسارات الكورس"',
     );
-    expect(overlay).toContain(
-      '<Text style={styles.title}>استفسارات الكورس</Text>',
-    );
+    expect(overlay).toMatch(/<Text\b[^>]*>\s*استفسارات الكورس\s*<\/Text>/u);
     expect(overlay).not.toContain('مساعد تعليمي بالذكاء الاصطناعي');
     expect(overlay).toContain(
       "hardwareAccelerated={Platform.OS === 'android'}",

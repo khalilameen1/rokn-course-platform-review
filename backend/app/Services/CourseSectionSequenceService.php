@@ -92,7 +92,9 @@ final class CourseSectionSequenceService
         Collection $sections,
         Collection $moduleOrders
     ): Collection {
-        if ($moduleOrders->count() !== $sections->pluck('module_id')->unique()->count()) {
+        // Batch reads share the module-order map across courses. Extra modules
+        // from another course are valid; only a referenced missing one is not.
+        if ($sections->contains(fn ($section): bool => !$moduleOrders->has($section->module_id))) {
             throw new \LogicException('A learning section references a missing course module.');
         }
 

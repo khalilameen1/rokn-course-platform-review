@@ -1548,7 +1548,7 @@ final class BackendHardeningTest extends TestCase
         ): bool {
             self::assertSame('system', $job->messages[0]['role']);
             self::assertStringContainsString(
-                'اكتب بالعامية المصرية الطبيعية الواضحة حتى لو هو كتب بالفصحى',
+                'بالعامية المصرية الطبيعية الواضحة حتى لو كتب بالفصحى',
                 $job->messages[0]['content']
             );
             self::assertStringContainsString(
@@ -1556,11 +1556,11 @@ final class BackendHardeningTest extends TestCase
                 $job->messages[0]['content']
             );
             self::assertStringContainsString(
-                'الأصل من فقرة إلى ثلاث فقرات قصيرة',
+                'فقرة إلى ثلاث فقرات بفكرة مكتملة في كل فقرة',
                 $job->messages[0]['content']
             );
             self::assertStringContainsString(
-                'حافظ على علامات الكود والروابط والرياضيات كما هي',
+                'حافظ على الكود والمصطلحات والروابط والمعادلات بعلاماتها الصحيحة',
                 $job->messages[0]['content']
             );
             self::assertStringContainsString(

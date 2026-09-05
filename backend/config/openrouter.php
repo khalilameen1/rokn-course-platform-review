@@ -3,13 +3,13 @@
 return [
     'api_key' => env('OPENROUTER_API_KEY'),
     'endpoint' => env('OPENROUTER_ENDPOINT', 'https://openrouter.ai/api/v1/chat/completions'),
-    // The paid coach uses the flagship model. OpenRouter owns failover inside
-    // the same request so an outage never becomes a second billable call.
-    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-5.6-sol'),
-    'project_model' => env('OPENROUTER_PROJECT_MODEL', 'openai/gpt-5.6-sol'),
+    // Course and project replies share the same coach. Provider failover stays
+    // within this model unless an operator explicitly configures alternatives.
+    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-sonnet-5'),
+    'project_model' => env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5'),
     'fallback_models' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('OPENROUTER_FALLBACK_MODELS', 'openai/gpt-5.6-sol,openai/gpt-5.6-terra,openai/gpt-5.6-luna'))
+        explode(',', (string) env('OPENROUTER_FALLBACK_MODELS', ''))
     ))),
     // Course chat is deliberately direct. The prompt controls brevity; this
     // ceiling only prevents a useful answer from being cut in the middle.
@@ -68,12 +68,9 @@ return [
     'allowed_models' => (static function (): array {
         $explicit = trim((string) env('OPENROUTER_ALLOWED_MODELS', ''));
         $source = $explicit !== '' ? $explicit : implode(',', [
-            (string) env('OPENROUTER_DEFAULT_MODEL', 'openai/gpt-5.6-sol'),
-            (string) env('OPENROUTER_PROJECT_MODEL', 'openai/gpt-5.6-sol'),
-            (string) env(
-                'OPENROUTER_FALLBACK_MODELS',
-                'openai/gpt-5.6-sol,openai/gpt-5.6-terra,openai/gpt-5.6-luna'
-            ),
+            (string) env('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-sonnet-5'),
+            (string) env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5'),
+            (string) env('OPENROUTER_FALLBACK_MODELS', ''),
         ]);
 
         return array_values(array_unique(array_filter(array_map(

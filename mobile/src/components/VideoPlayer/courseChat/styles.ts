@@ -1,5 +1,9 @@
 import {Platform, StyleSheet} from 'react-native';
-import {Palette, rtlRowStyle, textDirection} from '../../../constants/designSystem';
+import {
+  Palette,
+  rtlRowStyle,
+  textDirection,
+} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 
 export const courseChatStyles = StyleSheet.create({
@@ -43,6 +47,9 @@ export const courseChatStyles = StyleSheet.create({
   headerCopy: {
     flex: 1,
     minWidth: 0,
+  },
+  compactHeader: {
+    minHeight: 56,
   },
   title: {
     ...textDirection,
@@ -91,6 +98,7 @@ export const courseChatStyles = StyleSheet.create({
   },
   messages: {
     flex: 1,
+    minHeight: 0,
   },
   messagesContent: {
     direction: 'rtl',
@@ -257,6 +265,7 @@ export const courseChatStyles = StyleSheet.create({
     marginTop: 12,
   },
   composer: {
+    flexShrink: 0,
     minHeight: 72,
     padding: 10,
     paddingBottom: Platform.OS === 'ios' ? 18 : 10,
@@ -315,6 +324,7 @@ export const courseChatStyles = StyleSheet.create({
   input: {
     ...textDirection,
     flex: 1,
+    minWidth: 0,
     minHeight: 48,
     maxHeight: 110,
     borderRadius: 18,

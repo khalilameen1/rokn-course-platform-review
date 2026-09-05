@@ -1,6 +1,6 @@
 {
   "name": "Rokn",
-  "version": "1.0.42",
+  "version": "1.0.43",
   "private": true,
   "main": "index.js",
   "packageManager": "npm@10.9.3",
@@ -104,7 +104,8 @@
     "jest": "^29.6.3",
     "prettier": "2.8.8",
     "react-test-renderer": "19.2.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "yoga-layout": "3.2.1"
   },
   "overrides": {
     "browserslist": "4.28.8",

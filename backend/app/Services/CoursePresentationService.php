@@ -8,13 +8,10 @@ use App\Http\Resources\BaseCourseResource;
 use App\Http\Resources\CourseResource;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
-use App\Models\Setting;
 use App\Models\User;
 use App\Support\RoknLocale;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Throwable;
 
 final readonly class CoursePresentationService
 {
@@ -234,17 +231,7 @@ final readonly class CoursePresentationService
         Collection $completedSectionIds,
         ?int $userId = null
     ): Collection {
-        $settings = $this->sequenceSettings();
-        $enforceSectionOrder = $settings
-            ? (bool) $settings->enforce_course_section_order
-            : true;
         $orderedSections = $this->sectionSequence->learning($sections);
-        $previousSections = [];
-        $previousSection = null;
-        foreach ($orderedSections as $orderedSection) {
-            $previousSections[(int) $orderedSection->id] = $previousSection;
-            $previousSection = $orderedSection;
-        }
 
         $projectIds = $orderedSections
             ->filter(fn ($section): bool => $section->getSectionType() === 'project')
@@ -258,9 +245,7 @@ final readonly class CoursePresentationService
         return $orderedSections->map(function ($section) use (
             &$hasUnpassedProjectGate,
             $completedSectionIds,
-            $enforceSectionOrder,
             $passedProjectIds,
-            $previousSections,
             $userId
         ): array {
             $isProject = $section->getSectionType() === 'project';
@@ -276,20 +261,9 @@ final readonly class CoursePresentationService
             $isLocked = false;
             $lockReason = null;
 
-            $previousSection = $previousSections[(int) $section->id] ?? null;
             if ($userId && $hasUnpassedProjectGate) {
                 $isLocked = true;
                 $lockReason = 'module_project_not_passed';
-            } elseif ($enforceSectionOrder && $previousSection) {
-                $previousCompleted = $previousSection->getSectionType() === 'project'
-                    ? $passedProjectIds->contains($previousSection->sectionable_id)
-                    : $completedSectionIds->contains($previousSection->id);
-                if (!$previousCompleted) {
-                    $isLocked = true;
-                    $lockReason = $previousSection->getSectionType() === 'project'
-                        ? 'module_project_not_passed'
-                        : 'previous_section_incomplete';
-                }
             }
 
             if ($userId && $isProject && !$projectPassed) {
@@ -308,55 +282,6 @@ final readonly class CoursePresentationService
                 'can_access' => !$isLocked,
             ];
         });
-    }
-
-    private function sequenceSettings(): ?Setting
-    {
-        $key = 'learning:sequence-settings:v2';
-        $load = fn (): Setting|false => Setting::query()->first() ?: false;
-
-        try {
-            $cached = Cache::get($key);
-            if ($cached instanceof Setting || $cached === false) {
-                return $cached ?: null;
-            }
-        } catch (Throwable) {
-            $settings = $load();
-
-            return $settings ?: null;
-        }
-
-        $loadStarted = false;
-        try {
-            $settings = Cache::lock("lock:{$key}", 10)->block(2, function () use (
-                $key,
-                $load,
-                &$loadStarted
-            ): Setting|false {
-                $cached = Cache::get($key);
-                if ($cached instanceof Setting || $cached === false) {
-                    return $cached;
-                }
-
-                $loadStarted = true;
-                $settings = $load();
-                try {
-                    Cache::put($key, $settings, 30);
-                } catch (Throwable) {
-                    // Keep the completed settings read if only Redis failed.
-                }
-
-                return $settings;
-            });
-        } catch (Throwable $exception) {
-            if ($loadStarted) {
-                throw $exception;
-            }
-
-            $settings = $load();
-        }
-
-        return $settings ?: null;
     }
 
     /** @return array<string,mixed> */

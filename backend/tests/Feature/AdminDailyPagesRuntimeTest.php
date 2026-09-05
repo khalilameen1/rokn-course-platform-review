@@ -173,7 +173,6 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $settingsXPath = new DOMXPath($settingsDocument);
         $this->assertUniqueDomIds($settingsXPath);
         $this->assertPairedBooleanControl($settingsXPath, 'english_translation');
-        $this->assertPairedBooleanControl($settingsXPath, 'enforce_course_section_order');
         $this->assertPairedBooleanControl($settingsXPath, 'bunny_enabled');
     }
 

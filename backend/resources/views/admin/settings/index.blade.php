@@ -179,22 +179,6 @@
                         </div>
                     </div>
 
-                    <h2 class="section-title settings-section-title--wide">
-                        <i class="fa fa-graduation-cap"></i>
-                        إعدادات الدورات التعليمية
-                    </h2>
-
-                    <div class="checkbox-modern">
-                        {!! Form::hidden('enforce_course_section_order', 0, ['id' => 'enforce_course_section_order_fallback']) !!}
-                        {!! Form::checkbox('enforce_course_section_order', 1, null, ['id' => 'enforce_course_section_order']) !!}
-                        <label for="enforce_course_section_order">
-                            <i class="fa fa-sort-numeric-asc"></i> إجبار الطالب على مشاهدة أقسام الكورس بالترتيب
-                        </label>
-                    </div>
-                    <div class="helper-text settings-help-panel settings-help-panel--info settings-help-panel--top">
-                        <i class="fa fa-info-circle"></i>
-                        <span>إذا كان مفعلاً، يجب على الطالب إكمال كل قسم قبل الانتقال للقسم التالي. إذا كان غير مفعل، يستطيع الطالب مشاهدة أي قسم بدون ترتيب.</span>
-                    </div>
                 </div>
 
                 <!-- Integrations Tab -->

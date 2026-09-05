@@ -69,3 +69,35 @@ Local validation: 172 mobile suites / 920 tests pass with TypeScript and release
 ESLint. Backend suite: 1174 tests, 11584 assertions, 5 skipped environment-specific
 cases. Targeted tests reproduced the new failures before their source changes.
 None of these results substitutes for signed-artifact authenticated acceptance.
+
+## Report after 123456 — 1.0.43
+
+- Production command 97 reproduced MyCorner's `LogicException` for the learner's
+  account. The shared module-order map contained modules from several courses;
+  comparing its total size with one course's module count incorrectly rejected
+  valid data. The check now rejects a missing referenced module, not extra valid
+  entries. HTTP regressions cover multiple courses, pagination and account scope.
+- Retired the old `enforce_course_section_order` policy and its dashboard control.
+  Lessons do not lock each other. Purchase access and unpassed projects still
+  gate later content, including across modules. Playback manifests use the same
+  access decision; completion tests cover advance, project and preview boundaries.
+- Android resizes the native Modal for the keyboard, but the sheet then took a
+  percentage of that already reduced space. The measured Modal viewport now caps
+  the sheet directly. History can shrink; the composer remains outside it, with
+  a bounded input height. Real Yoga layout tests reproduce the old clipping and
+  cover six sizes, enlarged text, multiline input and repeated IME transitions.
+  Yoga is a test-only dependency and does not enter the APK runtime.
+- Live production was using GPT-5 mini, not the repository's previous default.
+  Sonnet 5 with the old voice prompt still produced punctuation and stock prose.
+  A shorter voice with concrete examples produced direct Egyptian replies in
+  three live samples (1.28–6.36 seconds). Voice v10 adopts that structure and keeps
+  code/URL punctuation intact; it does not rewrite old replies or impersonate the
+  instructor. Course and project defaults now share Sonnet 5 without an automatic
+  lower-tier model fallback. Sonnet's optional thinking is explicitly disabled
+  for `none`, and its unsupported temperature parameter is not sent.
+
+Validation: 173 mobile suites / 930 tests, TypeScript and release ESLint passed.
+The complete local backend run had 1181 tests and five environment-specific skips;
+its only two failures were old prompt-text assertions, updated and rerun green
+(2 tests / 34 assertions). This is not a new authenticated device acceptance:
+Windows Computer Use initialization still fails with a missing kernel-asset path.
