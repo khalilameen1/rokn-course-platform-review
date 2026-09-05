@@ -309,6 +309,28 @@ export const pollCourseAssistantTurn = async (
         canRetry: true,
       };
     }
+    if (status >= 400 && status < 500 && ![408, 429].includes(status)) {
+      // The shared API layer has already handled an expired bearer before it
+      // rejects a 401. Re-labelling that (or another permanent 4xx contract
+      // rejection) as an offline queued turn keeps a spinner alive until the
+      // foreground deadline and makes every manual retry repeat the same
+      // impossible status read.
+      return {
+        text:
+          status === 401
+            ? 'انتهت جلسة الدخول\nسجّل الدخول ثم افتح المحادثة'
+            : 'تعذّر استعادة هذه الإجابة',
+        offline: false,
+        unavailable: true,
+        clientRequestId,
+        turnStatus: 'failed',
+        code:
+          status === 401
+            ? 'chat_auth_required'
+            : 'chat_status_request_rejected',
+        canRetry: false,
+      };
+    }
     // A status read cannot invalidate a turn already accepted by the server.
     // Keep the same logical id and let the bounded polling loop recover after
     // a mobile-network hand-off instead of showing a false failed answer.

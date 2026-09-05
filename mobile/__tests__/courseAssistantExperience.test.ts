@@ -339,6 +339,28 @@ describe('course assistant waiting experience', () => {
     );
   });
 
+  it.each([401, 403, 422])(
+    'does not poll a permanently rejected turn status after HTTP %s',
+    async status => {
+      jest.mocked(publicRequest.get).mockRejectedValue({status});
+
+      await expect(
+        pollCourseAssistantTurn(
+          'b1644f1f-21ff-4a52-bfc3-cf98fd87a388',
+        ),
+      ).resolves.toMatchObject({
+        offline: false,
+        unavailable: true,
+        turnStatus: 'failed',
+        canRetry: false,
+        code:
+          status === 401
+            ? 'chat_auth_required'
+            : 'chat_status_request_rejected',
+      });
+    },
+  );
+
   it('copies through an explicit action and freezes the reels behind overlays', () => {
     const overlay = fs.readFileSync(
       path.resolve(

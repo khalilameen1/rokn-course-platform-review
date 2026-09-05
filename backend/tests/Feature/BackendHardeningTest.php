@@ -1548,6 +1548,67 @@ final class BackendHardeningTest extends TestCase
         self::assertSame('streaming', $turn->fresh()->status);
     }
 
+    public function test_unknown_course_chat_provider_outcome_releases_the_reservation_without_using_a_message(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
+        $enrollmentId = DB::table('course_enrollments')->insertGetId([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'order_id' => $order->id,
+            'is_active' => true,
+            'access_granted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('ai_entitlement_usages')->insert([
+            'enrollment_id' => $enrollmentId,
+            'feature' => 'course_chat',
+            'used_requests' => 0,
+            'reserved_requests' => 1,
+            'used_tokens' => 0,
+            'reserved_tokens' => 320,
+            'used_cost_usd' => 0,
+            'reserved_cost_usd' => 0.02,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $event = AiUsageEvent::query()->create([
+            'request_id' => 'f1a86104-3287-4497-af62-f02c773795e2',
+            'enrollment_id' => $enrollmentId,
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'feature' => 'course_chat',
+            'status' => 'reserved',
+            'reserved_tokens' => 320,
+            'reserved_cost_usd' => 0.02,
+            'reservation_expires_at' => now()->addMinute(),
+            'metadata' => [
+                'provider_call_state' => 'started',
+                'provider_call_started_at' => now()->toIso8601String(),
+            ],
+        ]);
+
+        app(PaidAiCallExecutionService::class)->settleUnknown(
+            app(AiEntitlementBudgetService::class),
+            $event,
+            ['course_id' => $course->id],
+            'stream_disconnected_after_provider_start'
+        );
+
+        $usage = DB::table('ai_entitlement_usages')
+            ->where('enrollment_id', $enrollmentId)
+            ->where('feature', 'course_chat')
+            ->first();
+        self::assertSame(0, (int) $usage->used_requests);
+        self::assertSame(0, (int) $usage->reserved_requests);
+        self::assertSame(0, (int) $usage->used_tokens);
+        self::assertSame(0, (int) $usage->reserved_tokens);
+        self::assertSame('completed', $event->fresh()->status);
+        self::assertFalse((bool) data_get($event->fresh()->metadata, 'entitlement_delivered'));
+    }
+
     public function test_cancelled_course_chat_status_remains_a_clean_terminal_result(): void
     {
         $user = $this->user();
