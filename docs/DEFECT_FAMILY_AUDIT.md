@@ -4,6 +4,33 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Close the existing payment path before changing it again — 2026-09-05
+
+Re-read Kashier settlement, wallet credit, course purchase/replay, the mobile
+checkout return and the entitlement reload on source 47029dac. No further
+defect was reproduced in that scope, so no payment implementation was changed.
+The targeted backend scope passed 75 tests / 449 assertions and the mobile
+scope passed seven suites / 37 tests. This does not replace a native paid
+purchase with the deployed service.
+
+A fresh read-only production query confirmed the reported package checkout is
+settled, its 900-coin credit exists once, the wallet remains 945 (900 paid and
+45 reward), and no enrollment or new debit exists for the trial course. No
+manual credit, enrollment, replayed charge or other financial repair was made.
+The learner has not yet demonstrated a successful course-purchase retry after
+the already-deployed schema repairs. Do not label that live journey complete.
+
+Backend CI 33973207780 passed against exact commit 47029dac0072c3327d36c22679c21449e727f1f9
+before manual Cloud deployment 173. Cloud then reported Deployed. Post-deploy
+GET /api/health/live and /api/v1/courses/3/details both returned HTTP 200; the
+course retained revision 30, three modules and its 400/650/900-coin plans.
+Its public share URL points at the current Cloud host, not the old domain.
+
+On the existing installed Android 123 artifact, choosing a plan after completing
+the free preview reached sign-in and displayed Google and TikTok. That observes
+the native entry/return boundary only: no provider authentication or purchase
+was performed. Source changes after 123 remain absent from that installed APK.
+
 The integrated September 5 batch below passed 107 targeted backend tests / 669
 assertions and five mobile suites / 17 tests, plus TypeScript and scoped ESLint.
 The combined local PHP run needed 144 MB (its default 128 MB was insufficient);
