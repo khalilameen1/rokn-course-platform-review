@@ -22,7 +22,8 @@ final class RecoverPendingLessonMedia extends Command
 {
     protected $signature = 'media:recover-pending
         {--limit=200 : Maximum lessons to inspect}
-        {--stale-minutes=2 : Minimum age before a pending state is retried}';
+        {--stale-minutes=2 : Minimum age before a pending state is retried}
+        {--readiness-window-minutes=90 : Maximum age of a new media generation eligible for automatic recovery}';
 
     protected $description = 'Re-dispatch Bunny probes for stalled or unreconciled lesson media';
 
@@ -35,7 +36,15 @@ final class RecoverPendingLessonMedia extends Command
 
         $limit = max(1, min(1000, (int) $this->option('limit')));
         $staleMinutes = max(1, min(60, (int) $this->option('stale-minutes')));
-        $cutoff = now()->subMinutes($staleMinutes);
+        // A released job waits at most five minutes. Ten minutes avoids
+        // dispatching a second job while that bounded retry is still alive,
+        // for processing and ready-but-not-yet-playable states alike.
+        $recoveryCutoff = now()->subMinutes(max(10, $staleMinutes));
+        $readinessWindow = max(
+            15,
+            min(360, (int) $this->option('readiness-window-minutes'))
+        );
+        $newMediaCutoff = now()->subMinutes($readinessWindow);
         $dispatched = 0;
         $failed = 0;
 
@@ -44,16 +53,53 @@ final class RecoverPendingLessonMedia extends Command
             ->where('video_source_type', 'bunny')
             ->whereNotNull('bunny_video_id')
             ->where('bunny_video_id', '!=', '')
-            ->whereHas('mediaState', function ($state) use ($cutoff): void {
-                $state->where(function ($pending) use ($cutoff): void {
-                    $pending->whereIn('status', ['unknown', 'processing'])
-                        ->where(function ($age) use ($cutoff): void {
-                            $age->whereNull('last_probe_at')
-                                ->orWhere('last_probe_at', '<=', $cutoff);
-                        });
-                })->orWhere(function ($unreconciled): void {
-                    $unreconciled->where('status', 'ready')
-                        ->whereNull('last_reconciled_at');
+            ->where('lessons.updated_at', '>=', $newMediaCutoff)
+            ->whereHas('mediaState', function ($state) use (
+                $recoveryCutoff
+            ): void {
+                $state->where(function ($recoverable) use (
+                    $recoveryCutoff
+                ): void {
+                    $recoverable->where(function ($pending) use ($recoveryCutoff): void {
+                        $pending->whereIn('status', ['unknown', 'processing'])
+                            ->where(function ($errors): void {
+                                $errors->whereNull('last_error_code')
+                                    ->orWhereIn('last_error_code', [
+                                        'provider_unreachable',
+                                        'provider_rate_limited',
+                                    ]);
+                            })
+                            ->where(function ($age) use ($recoveryCutoff): void {
+                                $age->whereNull('last_probe_at')
+                                    ->where('created_at', '<=', $recoveryCutoff)
+                                    ->orWhere('last_probe_at', '<=', $recoveryCutoff);
+                            });
+                    })->orWhere(function ($unreconciled) use ($recoveryCutoff): void {
+                        $unreconciled->where('status', 'ready')
+                            ->whereNull('last_reconciled_at')
+                            ->where(function ($age) use ($recoveryCutoff): void {
+                                $age->whereNull('last_probe_at')
+                                    ->where('created_at', '<=', $recoveryCutoff)
+                                    ->orWhere('last_probe_at', '<=', $recoveryCutoff);
+                            });
+                    })->orWhere(function ($transient) use ($recoveryCutoff): void {
+                        $transient->where('status', 'ready')
+                            ->where('integrity_status', 'attention')
+                            ->where(function ($errors): void {
+                                $errors->whereNull('last_error_code')
+                                    ->orWhereIn('last_error_code', [
+                                        'provider_unreachable',
+                                        'provider_rate_limited',
+                                    ]);
+                            })
+                            ->whereNotNull('last_reconciled_at')
+                            ->where('last_reconciled_at', '<=', $recoveryCutoff)
+                            ->where(function ($issues): void {
+                                foreach (ProbeLessonMedia::TRANSIENT_READINESS_ISSUES as $code) {
+                                    $issues->orWhere('integrity_issues', 'like', "%{$code}%");
+                                }
+                            });
+                    });
                 });
             })
             ->orderBy('lessons.id')

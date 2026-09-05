@@ -56,6 +56,7 @@ final class AdminPermissionMatrix
         'admin.courses.sections.reorder' => ['POST'],
         'admin.courses.sections.video-uploads.store' => ['POST'],
         'admin.courses.sections.video-uploads.renew' => ['POST'],
+        'admin.courses.sections.create-intents.show' => ['GET'],
         'admin.courses.modules.create' => ['GET'],
         'admin.courses.modules.store' => ['POST'],
         'admin.courses.modules.edit' => ['GET'],

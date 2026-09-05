@@ -16,6 +16,53 @@ final class AdminAuthoringCreateIntentService
 {
     private const TABLE = 'admin_authoring_create_intents';
 
+    /**
+     * Read a create receipt without repeating the original multipart request.
+     *
+     * The caller supplies the exact route, parent scope and resource type it
+     * owns. This keeps the lookup bound to the same actor and course while a
+     * browser still holds file inputs that cannot survive a page reload.
+     *
+     * @param array<string, string|int> $parents
+     * @return array{state: string, resource_id?: string, payload?: array<string, mixed>}
+     */
+    public function resourceReceipt(
+        Request $request,
+        string $intentId,
+        string $routeName,
+        array $parents,
+        string $resourceType
+    ): array {
+        if (!$request->user() || !Str::isUuid($intentId) || !Schema::hasTable(self::TABLE)) {
+            return ['state' => 'absent'];
+        }
+
+        $row = DB::table(self::TABLE)->where([
+            'actor_id' => $request->user()->id,
+            'route_name' => $routeName,
+            'parent_scope' => $this->parentScope($parents),
+            'intent_id' => $intentId,
+        ])->first();
+        if (!$row) return ['state' => 'absent'];
+
+        $state = (string) $row->status;
+        if ($state !== 'completed') {
+            return ['state' => in_array($state, ['processing', 'failed'], true) ? $state : 'absent'];
+        }
+        if ((string) ($row->resource_type ?? '') !== $resourceType || empty($row->resource_id)) {
+            return ['state' => 'superseded'];
+        }
+
+        $payload = json_decode((string) ($row->response_body ?? ''), true);
+        if (!is_array($payload)) return ['state' => 'superseded'];
+
+        return [
+            'state' => 'completed',
+            'resource_id' => (string) $row->resource_id,
+            'payload' => $payload,
+        ];
+    }
+
     public function claim(Request $request): array|Response|null
     {
         $identity = $this->identity($request);
@@ -307,19 +354,27 @@ final class AdminAuthoringCreateIntentService
         $routeName = (string) ($request->route()?->getName() ?: $request->path());
         if (!str_ends_with($routeName, '.store')) return null;
 
-        $parents = collect($request->route()?->parameters() ?? [])->map(
-            fn ($value) => is_object($value) && method_exists($value, 'getKey')
-                ? (string) $value->getKey()
-                : (string) $value
-        )->all();
-        ksort($parents);
+        $parents = $request->route()?->parameters() ?? [];
 
         return [
             'actor_id' => $request->user()->id,
             'route_name' => $routeName,
-            'parent_scope' => hash('sha256', json_encode($parents)),
+            'parent_scope' => $this->parentScope($parents),
             'intent_id' => $intent,
         ];
+    }
+
+    /** @param array<string, mixed> $parents */
+    private function parentScope(array $parents): string
+    {
+        $normalized = collect($parents)->map(
+            fn ($value) => is_object($value) && method_exists($value, 'getKey')
+                ? (string) $value->getKey()
+                : (string) $value
+        )->all();
+        ksort($normalized);
+
+        return hash('sha256', json_encode($normalized));
     }
 
     private function fingerprint(Request $request): string

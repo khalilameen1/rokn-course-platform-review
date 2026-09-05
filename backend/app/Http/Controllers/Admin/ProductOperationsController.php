@@ -145,29 +145,64 @@ class ProductOperationsController extends Controller
         $mediaAttentionQuery = Lesson::query()
             ->where(function ($lessons) use ($hasIntegrityState): void {
                 $lessons
-                    ->where('video_source_type', '<>', 'bunny')
+                    ->whereNull('video_source_type')
+                    ->orWhere('video_source_type', '<>', 'bunny')
                     ->orWhereNull('bunny_video_id')
                     ->orWhere('bunny_video_id', '')
+                    ->orWhereRaw("TRIM(COALESCE(lessons.bunny_video_id, '')) = ''")
                     ->orWhereDoesntHave('mediaState')
                     ->orWhereHas('mediaState', function ($state) use ($hasIntegrityState): void {
-                        $state->whereIn('status', ['unknown', 'processing', 'failed']);
-                        if ($hasIntegrityState) {
-                            $state->orWhereIn('integrity_status', ['attention', 'quarantined']);
-                        }
+                        $state->where(function ($health) use ($hasIntegrityState): void {
+                            $health
+                                ->whereIn('status', ['unknown', 'processing', 'failed'])
+                                ->orWhereNull('last_reconciled_at')
+                                ->orWhereNull('duration_seconds')
+                                ->orWhere('duration_seconds', '<=', 0)
+                                ->orWhereNotNull('quarantined_at')
+                                ->orWhereRaw(
+                                    "LOWER(TRIM(COALESCE(lesson_media_states.provider_media_id, ''))) <> LOWER(TRIM(COALESCE(lessons.bunny_video_id, '')))"
+                                );
+                            if ($hasIntegrityState) {
+                                $health->orWhereIn('integrity_status', ['attention', 'quarantined']);
+                            }
+                        });
                     });
             });
-        $mediaReadyQuery = Lesson::query()
+        $mediaReadyCount = 0;
+        Lesson::query()
+            ->select(['id', 'video_source_type', 'bunny_video_id'])
             ->where('video_source_type', 'bunny')
             ->whereNotNull('bunny_video_id')
             ->where('bunny_video_id', '<>', '')
+            ->whereRaw("TRIM(COALESCE(lessons.bunny_video_id, '')) <> ''")
+            ->with(['mediaState' => fn ($state) => $state->select([
+                'id',
+                'lesson_id',
+                'provider_media_id',
+                'status',
+                'duration_seconds',
+                'integrity_status',
+                'integrity_issues',
+                'last_reconciled_at',
+                'quarantined_at',
+            ])])
             ->whereHas('mediaState', function ($state) use ($hasIntegrityState): void {
-                $state->where('status', 'ready');
+                $state->where('status', 'ready')
+                    ->whereNotNull('last_reconciled_at')
+                    ->whereRaw(
+                        "LOWER(TRIM(COALESCE(lesson_media_states.provider_media_id, ''))) = LOWER(TRIM(COALESCE(lessons.bunny_video_id, '')))"
+                    );
                 if ($hasIntegrityState) {
                     $state->where(function ($integrity): void {
                         $integrity->whereNull('integrity_status')
-                            ->orWhereNotIn('integrity_status', ['attention', 'quarantined']);
+                            ->orWhere('integrity_status', '<>', 'quarantined');
                     });
                 }
+            })
+            ->chunkById(250, function ($lessons) use (&$mediaReadyCount): void {
+                $mediaReadyCount += $lessons
+                    ->filter(fn (Lesson $lesson): bool => $this->mediaIsVerifiedForPlayback($lesson))
+                    ->count();
             });
 
         $issuedCertificates = Certificate::query()
@@ -209,7 +244,7 @@ class ProductOperationsController extends Controller
             'certificates_revoked' => $revokedCertificates->count(),
             'portfolio_items' => PortfolioItem::query()->count(),
             'notifications' => StudentNotification::query()->count(),
-            'media_ready' => $mediaReadyQuery->count(),
+            'media_ready' => $mediaReadyCount,
             'media_attention' => (clone $mediaAttentionQuery)->count(),
             'playback_sessions_today' => PlaybackSession::query()
                 ->where('started_at', '>=', $todayStart)
@@ -251,6 +286,21 @@ class ProductOperationsController extends Controller
             ->orderByDesc('updated_at')
             ->limit(20)
             ->get();
+        $mediaAttention->each(function (Lesson $lesson): void {
+            $state = $lesson->mediaState;
+            $playbackStatus = match (true) {
+                $this->mediaIsVerifiedForPlayback($lesson) => 'ready',
+                !$lesson->usesBunnyVideo() => 'misconfigured',
+                $state?->integrity_status === 'quarantined', $state?->quarantined_at !== null => 'quarantined',
+                in_array((string) $state?->status, ['processing', 'failed'], true) => (string) $state->status,
+                default => 'not_ready',
+            };
+            $lesson->setAttribute('operations_playback_status', $playbackStatus);
+            $lesson->setAttribute(
+                'operations_attention_reasons',
+                $this->mediaAttentionReasons($lesson)
+            );
+        });
 
         $paymentChannelReport = $paymentChannels->summary();
         $finance = [
@@ -322,6 +372,63 @@ class ProductOperationsController extends Controller
             'runtime', 'operationalIncidents', 'runtimeHeartbeatFailures', 'launchReady',
             'mobileReleaseCapability', 'recentClientFailures', 'clientFailuresLastDay'
         ));
+    }
+
+    private function mediaIsVerifiedForPlayback(Lesson $lesson): bool
+    {
+        $state = $lesson->mediaState;
+
+        return $lesson->hasReadyMediaState()
+            && $state !== null
+            && $state->quarantined_at === null
+            && (int) $state->duration_seconds > 0
+            && !$state->hasBlockingIntegrityIssue();
+    }
+
+    /** @return array<int, string> */
+    private function mediaAttentionReasons(Lesson $lesson): array
+    {
+        $labels = [
+            'course_cover_missing' => 'غلاف الكورس غير مكتمل',
+            'course_missing' => 'الكورس المرتبط غير موجود',
+            'missing_secure_source' => 'مصدر الفيديو غير مكتمل',
+            'media_generation_changed_during_probe' => 'تم استبدال الفيديو أثناء الفحص',
+            'provider_media_missing' => 'الفيديو غير موجود لدى مزود البث',
+            'provider_guid_mismatch' => 'هوية الفيديو لا تطابق المقطع',
+            'provider_library_mismatch' => 'الفيديو مرتبط بمكتبة أخرى',
+            'provider_encode_failed' => 'فشلت معالجة الفيديو',
+            'provider_unreachable' => 'تعذر الوصول إلى مزود البث',
+            'provider_still_processing' => 'الفيديو ما زال قيد المعالجة',
+            'duration_missing' => 'مدة الفيديو غير متاحة',
+            'duration_mismatch' => 'مدة الفيديو تحتاج مراجعة',
+            'quality_ladder_missing' => 'جودات العرض لم تكتمل',
+            'thumbnail_unverified' => 'صورة المقطع غير متاحة',
+            'thumbnail_delivery_unavailable' => 'تعذر تحميل صورة المقطع',
+            'signed_manifest_unavailable' => 'رابط تشغيل الفيديو غير متاح',
+            'manifest_http_error' => 'ملف تشغيل الفيديو غير متاح',
+            'manifest_invalid' => 'ملف تشغيل الفيديو غير صالح',
+            'manifest_unreachable' => 'تعذر فحص ملف تشغيل الفيديو',
+        ];
+
+        $reasons = collect((array) $lesson->mediaState?->integrity_issues)
+            ->map(fn ($issue): ?string => is_array($issue)
+                ? ($labels[(string) ($issue['code'] ?? '')] ?? null)
+                : null)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($reasons->isEmpty()) {
+            $fallback = match ((string) $lesson->getAttribute('operations_playback_status')) {
+                'misconfigured' => 'مصدر الفيديو غير مكتمل',
+                'processing' => 'الفيديو ما زال قيد المعالجة',
+                'failed' => 'فشل تجهيز الفيديو',
+                default => 'تفاصيل التشغيل تحتاج مراجعة',
+            };
+            $reasons->push($fallback);
+        }
+
+        return $reasons->all();
     }
 
     public function retryOutbox(Request $request, OutboxEvent $outboxEvent): RedirectResponse

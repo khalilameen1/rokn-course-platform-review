@@ -164,6 +164,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
         ->middleware(['course.draft', 'throttle:30,1'])->name('courses.sections.video-uploads.store');
     Route::post('courses/{course}/sections/video-uploads/renew', 'CourseSectionVideoUploadController@renew')
         ->middleware(['course.draft', 'throttle:60,1'])->name('courses.sections.video-uploads.renew');
+    Route::get('courses/{course}/sections/create-intents/{intent}', 'CourseSectionController@createIntentReceipt')
+        ->middleware('course.draft')->name('courses.sections.create-intents.show');
     Route::resource('courses.sections', 'CourseSectionController')->except(['index', 'show'])->middleware('course.draft');
 
     // Course Modules routes

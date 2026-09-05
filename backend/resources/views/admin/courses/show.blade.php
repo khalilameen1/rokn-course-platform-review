@@ -19,7 +19,7 @@
         ->flatMap(fn (array $module) => $module['sections'] ?? [])
         ->keyBy(fn (array $section) => (int) $section['id']);
 @endphp
-<div class="admin-page course-studio" id="courseStudio" data-course-id="{{ $course->id }}" data-summary-url="{{ route('admin.courses.show', [$course, 'summary' => 1]) }}" data-authoring-version="{{ $course->authoring_version }}" data-can-author="{{ $course->is_coming_soon ? '1' : '0' }}">
+<div class="admin-page course-studio" id="courseStudio" data-course-id="{{ $course->id }}" data-actor-id="{{ auth()->id() }}" data-summary-url="{{ route('admin.courses.show', [$course, 'summary' => 1]) }}" data-authoring-version="{{ $course->authoring_version }}" data-can-author="{{ $course->is_coming_soon ? '1' : '0' }}">
     <script type="application/json" id="courseAuthoringGraph">@json($authoringGraph, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)</script>
     @include('admin.courses.partials.workspace-header', ['course' => $course])
     <div class="studio-inline-feedback is-error" id="courseStudioSummaryStatus" role="status" hidden>

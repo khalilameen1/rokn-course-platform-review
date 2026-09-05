@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Lesson;
-use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
@@ -27,6 +26,14 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessi
     public int $uniqueFor = 3600;
     public bool $failOnTimeout = true;
 
+    /** @var list<string> */
+    public const TRANSIENT_READINESS_ISSUES = [
+        'quality_ladder_missing',
+        'manifest_http_error',
+        'manifest_invalid',
+        'manifest_unreachable',
+    ];
+
     public string $expectedVideoGuid;
 
     public function __construct(public int $lessonId, string $expectedVideoGuid)
@@ -46,10 +53,8 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessi
             . $this->expectedVideoGuid;
     }
 
-    public function handle(
-        MediaHealthService $health,
-        MediaReconciliationService $reconciliation
-    ): void {
+    public function handle(MediaReconciliationService $reconciliation): void
+    {
         $lesson = Lesson::query()->with('course')->find($this->lessonId);
         if (!$lesson || !$lesson->usesBunnyVideo() || !$lesson->course) {
             return;
@@ -63,18 +68,45 @@ final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessi
             return;
         }
 
-        $state = $health->probe($lesson);
-        if ($state->status === 'ready') {
-            // Verify the signed HLS document, poster, duration, renditions and
-            // private attachments without rescanning every video in the course.
-            $reconciliation->reconcileLesson($lesson, true, true);
-            return;
-        }
-        if ($state->status === 'failed' || $this->attempts() >= $this->tries) {
+        // One reconciliation performs both the control-plane probe and the
+        // signed data-plane check. Calling MediaHealthService first duplicated
+        // Bunny requests and, more importantly, treated the first `ready`
+        // status as terminal even when renditions or the HLS document had not
+        // propagated yet.
+        $result = $reconciliation->reconcileLesson($lesson, true, true);
+        $playbackStatus = (string) ($result['playback_status'] ?? 'unknown');
+        $hasTransientReadinessIssue = self::hasTransientReadinessIssue(
+            (array) ($result['issues'] ?? [])
+        );
+        $providerError = (string) $lesson->mediaState()
+            ->value('last_error_code');
+        $hasTransientReadinessIssue = $hasTransientReadinessIssue
+            || in_array($providerError, [
+                'provider_unreachable',
+                'provider_rate_limited',
+            ], true);
+        if (
+            $playbackStatus === 'failed'
+            || ($playbackStatus === 'ready' && !$hasTransientReadinessIssue)
+            || $this->attempts() >= $this->tries
+        ) {
             return;
         }
 
         $delays = [15, 30, 60, 120, 180, 300, 300, 300, 300, 300, 300];
         $this->release($delays[min(count($delays) - 1, max(0, $this->attempts() - 1))]);
+    }
+
+    /** @param array<int, mixed> $issues */
+    public static function hasTransientReadinessIssue(array $issues): bool
+    {
+        return collect($issues)->contains(
+            static fn (mixed $issue): bool => is_array($issue)
+                && in_array(
+                    (string) ($issue['code'] ?? ''),
+                    self::TRANSIENT_READINESS_ISSUES,
+                    true
+                )
+        );
     }
 }

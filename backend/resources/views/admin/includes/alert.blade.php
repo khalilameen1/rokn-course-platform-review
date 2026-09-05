@@ -28,6 +28,19 @@
             <i class="fa fa-times"></i>
         </button>
     </div>
+@elseif(session()->has('warning'))
+    <div class="enhanced-alert enhanced-alert-warning" role="alert">
+        <div class="alert-icon">
+            <i class="fa fa-exclamation-triangle"></i>
+        </div>
+        <div class="alert-content">
+            <h6 class="alert-title">يحتاج متابعة</h6>
+            <p class="alert-message">{{ session('warning') }}</p>
+        </div>
+        <button type="button" class="alert-close" data-close-alert aria-label="إغلاق رسالة التنبيه">
+            <i class="fa fa-times"></i>
+        </button>
+    </div>
 @elseif(session()->has('success'))
     <div class="enhanced-alert enhanced-alert-success" role="alert">
         <div class="alert-icon">

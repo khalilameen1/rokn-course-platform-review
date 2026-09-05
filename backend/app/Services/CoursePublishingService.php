@@ -236,7 +236,7 @@ class CoursePublishingService
                         )
                         || $mediaState->integrity_status === 'quarantined'
                         || $mediaState->quarantined_at !== null
-                        || $this->hasBlockingMediaIssue((array) $mediaState->integrity_issues)
+                        || $mediaState->hasBlockingIntegrityIssue()
                     ) {
                         $issues[] = "{$moduleLabel}: الفيديو «{$reelTitle}» غير جاهز للمشاهدة";
                     } elseif ((int) $mediaState->duration_seconds < 1) {
@@ -402,26 +402,6 @@ class CoursePublishingService
             // absent from the course editor.
         }
 
-    }
-
-    /** @param array<int, mixed> $integrityIssues */
-    private function hasBlockingMediaIssue(array $integrityIssues): bool
-    {
-        $blockingCodes = [
-            'missing_secure_source',
-            'provider_unreachable',
-            'provider_encode_failed',
-            'provider_still_processing',
-            'signed_manifest_unavailable',
-            'manifest_http_error',
-            'manifest_invalid',
-            'manifest_unreachable',
-        ];
-
-        return collect($integrityIssues)->contains(
-            fn ($issue) => is_array($issue)
-                && in_array((string) ($issue['code'] ?? ''), $blockingCodes, true)
-        );
     }
 
     /**

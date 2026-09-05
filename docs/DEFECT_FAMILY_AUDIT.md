@@ -39,7 +39,7 @@ at 0 percent with `Failed to fetch`. After this deployment, the same second vide
 and thumbnail were uploaded through the studio UI, saved inside the first module,
 and the next inline editor opened automatically. This proves one real upload and
 save, not decoder/playback acceptance or completion of the 15-reel sample course.
-The first module now has five saved reels and its image-submission project,
+The first module has five saved reels and its image-submission project,
 all entered one by one through the studio. Course 3 remains an incomplete draft;
 readiness still requests its cover, teacher, classification and video readiness.
 The first reel's edit form confirms its free-preview flag is already enabled.
@@ -93,6 +93,72 @@ load. The live home-row index and create form render, with no production row
 mutation used for verification. Both existing rows are currently hidden; manual
 row configuration is still required before a new APK should use this feed.
 No new APK is built and no whole-project acceptance is claimed.
+
+### Live follow-up at `e0c7c52`
+
+Laravel Cloud displayed this commit as deployed. The draft now contains two
+modules, ten reels and two image-submission projects entered through the studio.
+A fresh GET confirms those counts. Reel nine encountered an unknown save outcome;
+the upload-resume action recovered it once without duplicating the outline row.
+The third-module attempt did not appear in a fresh GET. Its title disappeared
+after the automatic reload; module-create recovery is a separate repair, not
+evidence that the third module was saved. Five remaining reels, course metadata,
+manual home placement and publication remain unfinished.
+
+The deployment also preserves rejected form input for course classifications,
+teachers and individual reward cards without bleeding one card's input into
+another. Failed chat streams retain their saved partial answer in status/history
+with an incomplete-response marker; they remain failed and excluded from the
+next model context. The combined backend check passed 85 tests / 467 assertions.
+No live AI response or native-chat acceptance was established by those tests.
+
+Media readiness was inspected in production rather than inferred from the
+aggregate `attention` label. After manual checks, lessons 33 and 40 were ready
+with readable HLS and their only remaining issue was the draft's missing cover.
+Lesson 40's earlier `quality_ladder_missing` and `manifest_http_error` cleared
+without changing provider configuration. The initial probe had stopped at the
+provider's ready state before the CDN was ready; bounded draft-media recovery
+needs to cover that transition. Queue heartbeats were current and no failed jobs
+were listed. These observations do not prove playback on the Android device.
+
+The latest coin-rule layout fixture still passes 360/768/1024/1440px. A fresh
+production reload at 1024px again showed approximately 301px fields and contained
+actions. No additional instance of the original form-height/sibling defect was
+proved in the checked reward/package templates, so those templates were not
+rewritten speculatively.
+
+### Follow-up source repairs after `e0c7c52`
+
+The lost-save-result family is handled using the existing authoring intent
+ledger, not a second draft store. Module creation preserves the title and
+original request identity across automatic reconciliation. Section creation
+queries a read-only receipt before repeating a multipart request, retaining the
+selected files when the outcome is not yet known. Receipt reads are actor- and
+course-scoped and resolve the current resource; deleted or moved resources are
+not recreated from stale responses. Browser fixtures cover committed saves with
+lost replies for modules, lesson thumbnails and projects. This is source-level
+evidence, not a claim that a production network interruption was reproduced.
+
+Media probes now reconcile both provider readiness and the HLS document in one
+attempt. Temporary CDN/rendition failures keep the bounded retry alive. Recovery
+waits at least ten minutes, does not duplicate a still-queued job, and can
+redispatch after a processing worker crashes. Its ninety-minute eligibility
+window is anchored to the lesson generation update, not extended by every
+probe. Older media still needs an explicit recheck; automatic recovery of that
+old production sample is not claimed.
+
+The operations dashboard now separates verified video playback from incomplete
+course metadata, excludes invalid HLS and obsolete media generations from the
+ready count, and uses bounded database chunks without loading manifest bodies.
+The shared alert component also renders warning flashes previously dropped by
+media, notification and playback actions. These repairs do not certify the
+remaining operational alerts or the full student journey.
+
+The final integrated backend check passed 58 tests / 1350 assertions. The
+authoring browser fixture additionally covers a truncated success response and
+a newer concurrent course version: a confirmed create reloads the complete
+canonical outline rather than promoting a partially stale local graph. Public
+asset inventory verification and the changed JavaScript syntax checks passed.
 
 ## Attribution boundary
 

@@ -43,6 +43,57 @@ class CourseSectionController extends Controller
     }
 
     /**
+     * Resolve an uncertain section create without resending its multipart
+     * body. File inputs remain in the browser while the server confirms
+     * whether the original request committed.
+     */
+    public function createIntentReceipt(Request $request, Course $course, string $intent)
+    {
+        $this->assertDraftForStagedAuthoring($course);
+        $receipt = $this->createIntents->resourceReceipt(
+            $request,
+            $intent,
+            'admin.courses.sections.store',
+            ['course' => $course],
+            CourseSection::class
+        );
+        $course->refresh();
+
+        if ($receipt['state'] !== 'completed') {
+            return response()->json([
+                'state' => $receipt['state'],
+                'authoring_version' => (int) $course->authoring_version,
+            ])->header('Cache-Control', 'no-store');
+        }
+
+        $original = data_get($receipt, 'payload.section');
+        $receiptAuthoringVersion = (int) data_get($receipt, 'payload.authoring_version', 0);
+        $section = $course->sections()->with('sectionable')->find($receipt['resource_id']);
+        $sameCommittedResource = $section
+            && is_array($original)
+            && $receiptAuthoringVersion > 0
+            && $receiptAuthoringVersion <= (int) $course->authoring_version
+            && (int) ($original['id'] ?? 0) === (int) $section->id
+            && (int) ($original['module_id'] ?? 0) === (int) $section->module_id
+            && (string) ($original['type'] ?? '') === $section->getSectionType();
+
+        if (!$sameCommittedResource) {
+            return response()->json([
+                'state' => 'superseded',
+                'authoring_version' => (int) $course->authoring_version,
+            ])->header('Cache-Control', 'no-store');
+        }
+
+        return response()->json([
+            'state' => 'completed',
+            'success' => true,
+            'section' => $this->outline->section($course, $section),
+            'receipt_authoring_version' => $receiptAuthoringVersion,
+            'authoring_version' => (int) $course->authoring_version,
+        ])->header('Cache-Control', 'no-store');
+    }
+
+    /**
      * Store a newly created section
      */
     public function store(Request $request, Course $course)

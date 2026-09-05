@@ -164,6 +164,7 @@ header#header .user-dropdown-item:last-child { border-bottom: 0; }
     box-shadow: var(--rokn-admin-shadow);
 }
 .enhanced-alert-success { --alert-color: var(--rokn-admin-success); }
+.enhanced-alert-warning { --alert-color: var(--rokn-admin-warning); }
 .enhanced-alert-error { --alert-color: var(--rokn-admin-danger); }
 .alert-icon { color: var(--alert-color); font-size: 20px; }
 .alert-content { flex: 1; min-width: 0; }

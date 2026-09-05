@@ -11,6 +11,17 @@ final class LessonMediaState extends Model
 {
     use InvalidatesCourseCatalogue;
 
+    public const BLOCKING_INTEGRITY_CODES = [
+        'missing_secure_source',
+        'provider_unreachable',
+        'provider_encode_failed',
+        'provider_still_processing',
+        'signed_manifest_unavailable',
+        'manifest_http_error',
+        'manifest_invalid',
+        'manifest_unreachable',
+    ];
+
     protected $fillable = [
         'lesson_id', 'provider', 'provider_media_id', 'status', 'protocol',
         'duration_seconds', 'available_qualities', 'manifest', 'last_probe_at',
@@ -64,5 +75,17 @@ final class LessonMediaState extends Model
             'last_reconciled_at',
             'quarantined_at',
         ]);
+    }
+
+    public function hasBlockingIntegrityIssue(): bool
+    {
+        return collect((array) $this->integrity_issues)->contains(
+            fn ($issue): bool => is_array($issue)
+                && in_array(
+                    (string) ($issue['code'] ?? ''),
+                    self::BLOCKING_INTEGRITY_CODES,
+                    true
+                )
+        );
     }
 }

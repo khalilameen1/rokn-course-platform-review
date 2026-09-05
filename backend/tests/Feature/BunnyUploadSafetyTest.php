@@ -7,7 +7,6 @@ namespace Tests\Feature;
 use App\Models\Lesson;
 use App\Models\Setting;
 use App\Jobs\ProbeLessonMedia;
-use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use App\Services\BunnyService;
 use Illuminate\Database\Schema\Blueprint;
@@ -132,7 +131,7 @@ final class BunnyUploadSafetyTest extends TestCase
 
         self::assertNotSame($oldJob->uniqueId(), $newJob->uniqueId());
         Http::preventStrayRequests();
-        $oldJob->handle(app(MediaHealthService::class), app(MediaReconciliationService::class));
+        $oldJob->handle(app(MediaReconciliationService::class));
         Http::assertNothingSent();
     }
 

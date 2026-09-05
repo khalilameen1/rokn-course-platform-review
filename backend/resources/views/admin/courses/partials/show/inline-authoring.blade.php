@@ -12,6 +12,7 @@
             enctype="multipart/form-data"
             data-course-id="{{ $course->id }}"
             data-section-id=""
+            data-create-receipt-url="{{ route('admin.courses.sections.create-intents.show', [$course, '__INTENT__']) }}"
             data-bunny-upload-init="{{ route('admin.courses.sections.video-uploads.store', $course) }}"
             data-bunny-upload-renew="{{ route('admin.courses.sections.video-uploads.renew', $course) }}">
             @csrf

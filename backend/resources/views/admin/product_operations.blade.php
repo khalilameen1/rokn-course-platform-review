@@ -246,10 +246,10 @@
 
     <div class="card admin-card mb-4"><div class="card-body">
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 admin-gap">
-            <div><h2 class="h5 mb-1">جاهزية الوسائط</h2><small class="text-muted">حالة تجهيز الفيديو قبل النشر، لا مجرد وجود رابط.</small></div>
+            <div><h2 class="h5 mb-1">جاهزية الوسائط</h2><small class="text-muted">صلاحية المشاهدة منفصلة عن تنبيهات بيانات الكورس والمقطع.</small></div>
             <div>
-                <span class="badge badge-success p-2 ml-2">جاهز {{ number_format($counts['media_ready']) }}</span>
-                <span class="badge badge-warning p-2 ml-2">يحتاج متابعة {{ number_format($counts['media_attention']) }}</span>
+                <span class="badge badge-success p-2 ml-2">صالح للمشاهدة {{ number_format($counts['media_ready']) }}</span>
+                <span class="badge badge-warning p-2 ml-2">تنبيهات {{ number_format($counts['media_attention']) }}</span>
                 <span class="badge badge-primary p-2">جلسات اليوم {{ number_format($counts['playback_sessions_today']) }}</span>
             </div>
         </div>
@@ -257,21 +257,17 @@
             <div class="alert alert-success mb-0">كل الفيديوهات المسجلة جاهزة.</div>
         @else
             <div class="table-responsive"><table class="table table-sm admin-table mb-0">
-                <thead><tr><th>الكورس</th><th>المقطع</th><th>الحالة</th><th>آخر فحص</th><th></th></tr></thead>
+                <thead><tr><th>الكورس</th><th>المقطع</th><th>التشغيل</th><th>سبب المتابعة</th><th>آخر فحص</th><th></th></tr></thead>
                 <tbody>@foreach($mediaAttention as $lesson)
                     <tr>
                         <td>{{ $lesson->course?->name_ar ?: $lesson->course?->name_en }}</td>
                         <td>{{ $lesson->title }}</td>
                         @php
-                            $runtimeStatus = $lesson->mediaState?->status ?: 'unknown';
-                            $integrityStatus = $lesson->mediaState?->integrity_status;
-                            $displayStatus = $lesson->video_source_type !== 'bunny' || blank($lesson->bunny_video_id)
-                                ? 'misconfigured'
-                                : (in_array($integrityStatus, ['attention', 'quarantined'], true)
-                                    ? $integrityStatus
-                                    : $runtimeStatus);
+                            $playbackStatus = $lesson->getAttribute('operations_playback_status');
+                            $playbackLabel = $playbackStatus === 'not_ready' ? 'غير جاهز' : null;
                         @endphp
-                        <td>@include('admin.partials.status-badge', ['badgeStatus' => $displayStatus, 'badgeTone' => in_array($displayStatus, ['failed', 'quarantined', 'misconfigured'], true) ? 'danger' : 'warning'])</td>
+                        <td>@include('admin.partials.status-badge', ['badgeStatus' => $playbackStatus, 'badgeLabel' => $playbackLabel, 'badgeTone' => in_array($playbackStatus, ['failed', 'quarantined', 'misconfigured'], true) ? 'danger' : ($playbackStatus === 'ready' ? 'success' : 'warning')])</td>
+                        <td>{{ implode(' · ', (array) $lesson->operations_attention_reasons) }}</td>
                         <td>{{ \App\Support\BusinessClock::relative($lesson->mediaState?->last_probe_at) ?: '—' }}</td>
                         <td><form method="POST" action="{{ route('admin.media-health.probe', $lesson) }}">@csrf<button class="btn btn-sm btn-outline-primary">فحص الآن</button></form></td>
                     </tr>

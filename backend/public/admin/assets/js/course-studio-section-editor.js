@@ -21,7 +21,9 @@
         const deleteButton = document.getElementById('studioInlineDeleteSection');
         const feedback = document.getElementById('studioInlineFeedback');
         const createUrl = form.action;
+        const createReceiptUrl = String(form.dataset.createReceiptUrl || '');
         let editing = null;
+        let pendingCreateVersion = null;
 
         core.registerBusySource(() => Boolean(window.RoknCourseVideoUpload?.isBusy()));
         new MutationObserver(core.refreshBusy).observe(form, {attributes: true, attributeFilter: ['aria-busy']});
@@ -65,6 +67,7 @@
             form.dataset.sectionId = '';
             setMethod('POST');
             editing = null;
+            pendingCreateVersion = null;
             form.elements.authoring_request_id.value = core.uuid();
             form.elements.authoring_version.value = String(core.authoringVersion);
             form.elements.module_id.value = String(moduleId);
@@ -164,6 +167,49 @@
                 && typeof section?.update_url === 'string' && section.update_url !== ''
                 && typeof section?.delete_url === 'string' && section.delete_url !== '';
         };
+        const retryableCreateError = message => new window.RoknAdminRequest.AdminRequestError(
+            message,
+            409,
+            'section_create_retry_available'
+        );
+        const resolveUncertainCreate = async (error, intentId, expectedVersion, expectedSection) => {
+            if (!['mutation_outcome_unknown', 'invalid_authoring_response'].includes(error?.code)
+                || !createReceiptUrl || !intentId) throw error;
+
+            let receipt;
+            try {
+                receipt = await core.request(createReceiptUrl.replace('__INTENT__', encodeURIComponent(intentId)), {
+                    headers: core.mutationHeaders(form),
+                    timeout: 10000,
+                });
+            } catch (_) {
+                pendingCreateVersion = expectedVersion;
+                throw retryableCreateError('لم يصل تأكيد الحفظ\nاضغط حفظ مرة أخرى لاستكمال نفس المحاولة');
+            }
+
+            if (receipt?.state === 'completed') {
+                const receiptVersion = Number(receipt.receipt_authoring_version);
+                const currentVersion = Number(receipt.authoring_version);
+                if (!validSection(receipt, expectedSection)
+                    || !Number.isSafeInteger(receiptVersion) || receiptVersion !== expectedVersion + 1
+                    || !Number.isSafeInteger(currentVersion) || currentVersion < receiptVersion) {
+                    throw core.invalid('تعذر مطابقة نتيجة الحفظ\nنعيد تحميل آخر نسخة');
+                }
+                return receipt;
+            }
+            if (receipt?.state === 'superseded') {
+                throw new window.RoknAdminRequest.AdminRequestError(
+                    'حُفظ العنصر ثم تغيّر في نسخة أحدث\nنعيد تحميل آخر نسخة',
+                    409,
+                    'authoring_replay_superseded'
+                );
+            }
+
+            pendingCreateVersion = expectedVersion;
+            throw retryableCreateError(receipt?.state === 'processing'
+                ? 'الحفظ ما زال قيد التنفيذ\nانتظر قليلًا ثم اضغط حفظ'
+                : 'لم يكتمل الحفظ\nاضغط حفظ مرة أخرى بنفس البيانات');
+        };
 
         form.addEventListener('submit', event => {
             event.preventDefault();
@@ -175,19 +221,53 @@
             if (claimRequired && !String(form.elements.bunny_video_claim?.value || '').trim()) return;
             const moduleId = Number(form.elements.module_id.value);
             const order = Number(form.elements.order.value);
+            const createIntentId = creating ? String(form.elements.authoring_request_id.value || '').trim() : '';
             let focusNextLesson = false;
+            let refreshAfterRecoveredCreate = false;
             void core.mutate(async () => {
-                const expectedVersion = core.authoringVersion;
+                const expectedVersion = creating && pendingCreateVersion !== null
+                    ? pendingCreateVersion
+                    : core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
-                const response = await core.request(form.action, {
-                    method: 'POST', headers: core.mutationHeaders(form), body, timeout: 30000,
-                });
-                const nextVersion = core.requireMutation(response, expectedVersion);
-                if (!validSection(response, {id: previous?.id, moduleId, type})) throw core.invalid();
+                let response;
+                let nextVersion;
+                try {
+                    response = await core.request(form.action, {
+                        method: 'POST', headers: core.mutationHeaders(form), body, timeout: 30000,
+                    });
+                    nextVersion = core.requireMutation(response, expectedVersion);
+                    if (!validSection(response, {id: previous?.id, moduleId, type})) throw core.invalid();
+                } catch (error) {
+                    if (!creating) throw error;
+                    response = await resolveUncertainCreate(
+                        error,
+                        createIntentId,
+                        expectedVersion,
+                        {moduleId, type}
+                    );
+                    nextVersion = core.requireMutation(response, expectedVersion);
+                }
+                const receiptVersion = Number(response.receipt_authoring_version || nextVersion);
+                if (creating && receiptVersion < nextVersion) {
+                    // The create committed, then another tab advanced the
+                    // course. The one-section payload cannot safely promote a
+                    // stale local graph to that newer version. Clear the
+                    // committed upload and fetch the complete canonical graph.
+                    if (type === 'lesson') {
+                        if (!window.RoknCourseVideoUpload?.resetAfterCommit) throw core.invalid();
+                        window.RoknCourseVideoUpload.resetAfterCommit();
+                    }
+                    pendingCreateVersion = null;
+                    try {
+                        window.sessionStorage.setItem('rokn-course-studio-save-message', 'تم حفظ العنصر');
+                    } catch (_) {}
+                    refreshAfterRecoveredCreate = true;
+                    return;
+                }
                 core.syncVersion(nextVersion);
                 const canonical = response.section;
                 const list = listFor(canonical.module_id);
-                const oldNode = creating ? null : document.querySelector(`.outline-item[data-section-id="${canonical.id}"]`);
+                const oldNode = document.querySelector(`.outline-item[data-section-id="${canonical.id}"]`);
                 const node = sectionNode(canonical);
                 if (oldNode) oldNode.replaceWith(node); else outline.host.before(node);
                 outline.putSection(canonical);
@@ -202,6 +282,7 @@
                     core.notify('تم حفظ التعديل');
                     return;
                 }
+                pendingCreateVersion = null;
                 if (type === 'project') {
                     const actions = list?.querySelector(':scope > .outline-item-actions');
                     actions?.querySelector('[data-inline-editor-open="project"]')?.remove();
@@ -220,7 +301,15 @@
                 editor.hidden = false;
                 focusNextLesson = true;
                 core.notify('تم حفظ المقطع\nيمكنك إضافة المقطع التالي');
-            }, {feedback, form}).then(() => {
+            }, {
+                feedback,
+                form,
+                recoverableConflictCodes: creating ? ['authoring_in_progress', 'section_create_retry_available'] : [],
+            }).then(() => {
+                if (refreshAfterRecoveredCreate) {
+                    window.location.reload();
+                    return;
+                }
                 // resetForCreate runs while the studio is inert. Restore focus
                 // only after the save gate is gone so keyboard authoring can
                 // continue without a second click.

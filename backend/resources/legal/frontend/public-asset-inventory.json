@@ -14,7 +14,7 @@
     },
     {
       "path": "public/admin/assets/css/admin-shell.css",
-      "sha256": "acee37a4b1b02602a439416f0b146f1b8737f0e6a8176e83e0b072c668e582d3",
+      "sha256": "5dca0785c879d415bc05e516bebd591ccc933e7559c195cf806ff7ebc7c02258",
       "classification": "first_party"
     },
     {
@@ -325,7 +325,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-core.js",
-      "sha256": "4253c1660a7d990dc2cbb6058776867375aa5557985734ba4e399adf99f2f2bf",
+      "sha256": "555fc650cc40cf615e311d5f133aeb8d50440bf55e9f86d4eea436a213aa2303",
       "classification": "first_party"
     },
     {
@@ -340,7 +340,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-module-editor.js",
-      "sha256": "e3e39cf62f2cd3904781f138a534636f24e5aac10b488f4cae7ed46fb269a526",
+      "sha256": "ad266e9e5b414b4256af5102c6d076a25ba69f191848f685207d490db46d9250",
       "classification": "first_party"
     },
     {
@@ -350,7 +350,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-section-editor.js",
-      "sha256": "ccb4c138f6d45fd3aa9ce661dfdc48d3810c76d87109b8bfc33f7d81f5ef08f3",
+      "sha256": "75ecce2339d4eb976c2c92d7a68d81f5f21708869dbcf946af58c94bbe13bd64",
       "classification": "first_party"
     },
     {

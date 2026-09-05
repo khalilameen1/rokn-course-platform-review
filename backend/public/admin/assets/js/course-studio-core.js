@@ -113,10 +113,13 @@
             if (!Number.isSafeInteger(parsed) || parsed < 1) {
                 throw new window.RoknAdminRequest.AdminRequestError('', 200, 'invalid_authoring_response');
             }
-            authoringVersion = parsed;
-            studio.dataset.authoringVersion = String(parsed);
-            document.querySelectorAll('input[name="authoring_version"]').forEach(input => input.value = String(parsed));
-            return parsed;
+            // A completed create receipt is immutable. If another tab has
+            // advanced this course since that receipt was written, replaying
+            // it must not move the live editor back to the older version.
+            authoringVersion = Math.max(authoringVersion, parsed);
+            studio.dataset.authoringVersion = String(authoringVersion);
+            document.querySelectorAll('input[name="authoring_version"]').forEach(input => input.value = String(authoringVersion));
+            return authoringVersion;
         };
 
         const requireMutation = (response, expectedVersion, requireAdvance = true) => {
@@ -148,7 +151,13 @@
         };
 
         const mutate = (operation, options = {}) => {
-            const {feedback = null, form = null, reloadOnError = false} = options;
+            const {
+                feedback = null,
+                form = null,
+                reloadOnError = false,
+                recoverableConflictCodes = [],
+                onReconcile = null,
+            } = options;
             const versionBeforeSave = authoringVersion;
             showFeedback(feedback);
             setFormBusy(form, true);
@@ -164,7 +173,13 @@
                 })
                 .catch(error => {
                     if (error?.code === 'cancelled') return null;
-                    if (reloadOnError || error?.status === 409 || ['mutation_outcome_unknown', 'invalid_authoring_response'].includes(error?.code)) {
+                    const recoverableConflict = error?.status === 409
+                        && recoverableConflictCodes.includes(error?.code);
+                    if (reloadOnError || (error?.status === 409 && !recoverableConflict)
+                        || ['mutation_outcome_unknown', 'invalid_authoring_response'].includes(error?.code)) {
+                        try {
+                            onReconcile?.(error);
+                        } catch (_) {}
                         reconcile(error);
                         return null;
                     }
