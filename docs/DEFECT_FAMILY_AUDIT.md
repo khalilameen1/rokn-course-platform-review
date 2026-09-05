@@ -147,6 +147,16 @@ against the lock instead of filtering away stale entries. The 23 focused
 native/workflow tests pass. No generated output or lock checksum was fabricated;
 the full installed-source generator still must complete on macOS.
 
+The subsequent exact run `33970159396` succeeded in 10m7s and published bot
+commit `f7f2672`. Installed-source checks covered 241 Android Maven coordinates
+and 127 CocoaPods roots, including `RNSentry@7.11.0` and `Sentry@8.58.0` with
+their MIT documents and lock-matched podspec checksums. Generated iOS provenance
+has 125 installed-source entries plus two generated first-party roots and
+manifest SHA-256 `1b12d3b8395d485bdb90ef2aabb1ef3b874ea068ecdc6e4fafc7c7adf10bd685`.
+The generated artifacts were fetched and integrated without replacing the
+concurrent source fixes. This closes notice regeneration, not native-app or
+production-journey acceptance.
+
 ## Refresh purchased course capabilities together — 2026-09-05
 
 The chat upgrade previously unlocked only its local chat flag. The loaded
