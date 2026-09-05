@@ -66,7 +66,7 @@ jest.mock('../src/services/androidAuthSession', () => ({}));
 jest.mock('../src/services/guestAccountMigration', () => ({}));
 
 import {useAppRuntime} from '../src/screens/appInitializer/useAppRuntime';
-import {useWalletCheckout} from '../src/screens/Wallet/useWalletCheckout';
+import {useWalletCheckout} from '../src/screens/wallet/useWalletCheckout';
 import {runCoinCheckoutSingleFlight} from '../src/services/coinCheckoutCoordinator';
 import type {CoinCheckoutResult} from '../src/services/coinCheckoutTypes';
 
