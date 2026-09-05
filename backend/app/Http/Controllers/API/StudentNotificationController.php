@@ -187,11 +187,9 @@ final class StudentNotificationController extends Controller
             ? $notifications
             : new \Illuminate\Database\Eloquent\Collection($notifications->all());
         $models->loadMorph('notifiable', [
-            Course::class => ['courseSection'],
             Lesson::class => [
                 'course' => fn ($query) => $query
-                    ->withCount('sections')
-                    ->with('courseSection'),
+                    ->withCount('sections'),
             ],
         ]);
         $models->loadMorphCount('notifiable', [

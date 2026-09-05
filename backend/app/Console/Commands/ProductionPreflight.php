@@ -335,6 +335,7 @@ class ProductionPreflight extends Command
             ],
             'settings' => ['ai_plan_policy', 'direct_checkout_discount_percent'],
             'orders' => [
+                'coupon_code',
                 'gateway_gross_amount', 'gateway_fee_amount', 'gateway_net_amount',
             ],
             'api_tokens' => [

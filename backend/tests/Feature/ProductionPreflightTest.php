@@ -14,6 +14,31 @@ use Tests\TestCase;
 
 class ProductionPreflightTest extends TestCase
 {
+    public function test_schema_preflight_rejects_orders_without_coupon_code(): void
+    {
+        Schema::create('orders', function (Blueprint $table): void {
+            $table->id();
+            $table->decimal('gateway_gross_amount', 12, 2)->nullable();
+            $table->decimal('gateway_fee_amount', 12, 2)->nullable();
+            $table->decimal('gateway_net_amount', 12, 2)->nullable();
+        });
+
+        try {
+            $method = new \ReflectionMethod(
+                ProductionPreflight::class,
+                'requiredProductSchemaFailures'
+            );
+            $failures = $method->invoke(app(ProductionPreflight::class));
+
+            self::assertContains(
+                'The orders schema is stale. Missing columns: coupon_code. Run all forward migrations before release.',
+                $failures
+            );
+        } finally {
+            Schema::dropIfExists('orders');
+        }
+    }
+
     public function test_preflight_fails_closed_for_placeholder_runtime_configuration(): void
     {
         config([

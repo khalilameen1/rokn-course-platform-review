@@ -4,6 +4,31 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Live top-up succeeded but course purchase failed — 2026-09-05
+
+Production deployment 166 (`3c30789`) accepted Kashier order 7 for EGP 10.
+The verified webhook credited 900 coins exactly once. Read-only production
+inspection confirmed a 945-coin balance (900 paid / 45 reward), no course 3
+enrollment and no course debit from the failed attempts. No compensating
+credit, enrollment or repeat payment was performed.
+
+The failing order insert reported MySQL error 1054: `orders.coupon_code` was
+missing. A frozen legacy cleanup migration removed that column on MySQL but
+not SQLite; a later nullable migration skipped the absent column. The API
+test fixture also created it manually. This made the tested schema differ
+from the deployed schema. The forward-only repair restores the nullable
+column without rewriting existing orders. An upgrade regression starts with
+the actual missing-column shape, and the release preflight now rejects it.
+
+The same production log exposed notification inbox failures: the presenter
+requested `courseSection` on Course although that relation belongs to Lesson.
+Both invalid eager loads are removed, with a regression for course and lesson
+notifications. These source fixes await deployment and live verification.
+
+The administrator completed MFA. The global mentor chat allowance was saved
+successfully through dashboard settings and read back as 50 messages (guided
+also remains 50). Existing purchase snapshots are not rewritten by this change.
+
 ## Internal APK 123 native acceptance — 2026-09-05
 
 Internal direct APK 1.0.40 / Android 41 was built from clean commit `a2b6861`.
@@ -25,8 +50,8 @@ not authenticated checkout, project processing or all-device acceptance.
 Drive file `1Iq_ndZeiylQtDk51XpndXd_N7LH8xyEW` contains the final `123.apk`
 as its current version, with anyone-with-link Viewer access. The private
 1.0.39 candidate remains a recoverable older revision, and delivered `12.apk`
-was left unchanged. The EGP 10 package is live; saving the global 50-message
-allowance still awaits the administrator's two-factor challenge.
+was left unchanged. The EGP 10 package is live. The global 50-message allowance
+was subsequently saved and verified as recorded in the live incident above.
 
 Separate release work remains: the iOS CI job for `dda9598` reached native
 license checking but found a generated CocoaPods-notice snapshot that no
