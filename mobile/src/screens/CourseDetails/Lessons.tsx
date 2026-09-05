@@ -119,7 +119,7 @@ export default function CourseOutline({
         }
         accessibilityLabel={
           grantAccess
-            ? 'عرض خيارات Rokn AI والشهادة'
+            ? 'عرض خيارات الاستفسارات والشهادة'
             : certificateReady
             ? 'فتح شهادتك'
             : undefined
@@ -150,7 +150,7 @@ export default function CourseOutline({
           </Text>
           <Text style={styles.certificateDescription}>
             {grantAccess
-              ? 'منحتك تفتح محتوى الكورس كاملًا\nأضف Rokn AI والشهادة عند الحاجة'
+              ? 'منحتك تفتح محتوى الكورس كاملًا\nأضف الاستفسارات والشهادة عند الحاجة'
               : certificateReady
               ? 'ستظهر في بورتفوليوك ويصل رمز QR إلى صفحة المشاركة'
               : hasProjects

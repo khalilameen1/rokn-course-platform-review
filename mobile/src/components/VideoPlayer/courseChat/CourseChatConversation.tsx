@@ -138,7 +138,7 @@ export const CourseChatConversation = ({
   return (
     <>
       <ScrollView
-        accessibilityLabel="محادثة Rokn AI"
+        accessibilityLabel="استفسارات الكورس"
         ref={scrollRef}
         style={styles.messages}
         contentContainerStyle={styles.messagesContent}
@@ -268,7 +268,7 @@ export const CourseChatConversation = ({
           {paddingBottom: Math.max(10, bottomInset + 6)},
         ]}>
         <TextInput
-          accessibilityLabel="اكتب سؤالك إلى Rokn AI"
+          accessibilityLabel="اكتب سؤالك عن الكورس"
           value={input}
           onChangeText={onInputChange}
           placeholder="اكتب سؤالك"

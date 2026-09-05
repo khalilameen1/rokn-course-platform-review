@@ -45,7 +45,7 @@ const presenceLabel = (presence: AssistantPresence): string => {
     case 'working':
       return 'يكتب الآن';
     case 'connected':
-      return 'متصل الآن';
+      return 'جاهز لسؤالك';
     case 'submitting':
       return 'نرسل سؤالك';
     case 'checking':
@@ -134,9 +134,7 @@ const CourseChatOverlay = ({
     const courseChanged = previousCourseIdRef.current !== String(course.id);
     const opened = visible && !previousVisibleRef.current;
     const becameGated =
-      visible &&
-      previousAssistantIncludedRef.current &&
-      !assistantIncluded;
+      visible && previousAssistantIncludedRef.current && !assistantIncluded;
     previousCourseIdRef.current = String(course.id);
     previousVisibleRef.current = visible;
     previousAssistantIncludedRef.current = assistantIncluded;
@@ -215,7 +213,10 @@ const CourseChatOverlay = ({
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={styles.title}>Rokn AI</Text>
+              <Text style={styles.title}>استفسارات</Text>
+              <Text style={styles.presenceText}>
+                مساعد تعليمي بالذكاء الاصطناعي
+              </Text>
               <View style={styles.presenceRow}>
                 <View
                   style={[

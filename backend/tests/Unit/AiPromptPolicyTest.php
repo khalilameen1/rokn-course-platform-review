@@ -27,6 +27,9 @@ final class AiPromptPolicyTest extends TestCase
             self::assertStringContainsString('رجح بين البدائل بمعيار واضح', $prompt);
             self::assertStringContainsString('ما يحتاج تحققًا', $prompt);
             self::assertStringContainsString('لا تخمن', $prompt);
+            self::assertStringContainsString('لا تدع أنك إنسان أو المحاضر', $prompt);
+            self::assertStringContainsString('إذا سئلت عن هويتك أجب بوضوح', $prompt);
+            self::assertStringContainsString('لا تقدم نفسك في كل رد', $prompt);
         }
     }
 

@@ -80,7 +80,7 @@ export const useCourseChatUpgrade = ({
           code === 'full_track_upgrade_not_priced'
           ? 'الترقية غير متاحة لهذا الكورس الآن'
           : code === 'course_access_required'
-          ? 'افتح الكورس أولًا ثم عد إلى Rokn AI'
+          ? 'افتح الكورس أولًا ثم عد إلى الاستفسارات'
           : 'تعذّر تحميل تفاصيل الترقية\nحاول مرة أخرى',
       );
     } finally {

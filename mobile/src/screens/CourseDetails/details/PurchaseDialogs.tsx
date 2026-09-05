@@ -34,6 +34,7 @@ type CoursePurchaseDialogProps = {
   busy: boolean;
   codeBusy?: boolean;
   courseTitle: string;
+  projectCount?: number;
   courseCode?: string;
   courseCodeEnabled?: boolean;
   couponApplied?: boolean;
@@ -72,6 +73,7 @@ export const CoursePurchaseDialog = ({
   busy,
   codeBusy = false,
   courseTitle,
+  projectCount = 0,
   courseCode = '',
   courseCodeEnabled = false,
   couponApplied = false,
@@ -154,6 +156,7 @@ export const CoursePurchaseDialog = ({
                 courseCode={courseCode}
                 courseCodeEnabled={courseCodeEnabled}
                 couponBusy={couponBusy}
+                hasProjects={projectCount > 0}
                 onCourseCodeChange={onCourseCodeChange}
                 onRedeemCourseCode={onRedeemCourseCode}
                 onSelectPlan={onSelectPlan}
@@ -214,7 +217,7 @@ export const CoursePurchaseDialog = ({
                 {busy ? (
                   <ActivityIndicator color={Palette.text} />
                 ) : (
-                  <Text style={styles.sheetPrimaryText}>تأكيد فتح الكورس</Text>
+                  <Text style={styles.sheetPrimaryText}>تأكيد الشراء</Text>
                 )}
               </Pressable>
             )}

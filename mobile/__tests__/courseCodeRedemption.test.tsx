@@ -228,7 +228,7 @@ describe('course-code redemption UI', () => {
     });
 
     const tree = JSON.stringify(renderer!.toJSON());
-    expect(tree).toContain('الاختيار السريع');
+    expect(tree).toContain('تغطي المبلغ الناقص');
     expect(tree).toContain('٩٩');
     expect(tree).toContain('١٣٩');
     expect(tree).toContain('جنيه');

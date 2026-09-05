@@ -374,7 +374,7 @@ final class CourseChatController extends Controller
                 'status' => 403,
                 'success' => false,
                 'code' => 'course_access_required',
-                'message' => 'افتح الكورس أولًا لاستخدام Rokn AI',
+                'message' => 'افتح الكورس أولًا لإرسال سؤالك',
                 'data' => null,
             ], 403);
         }
@@ -387,7 +387,7 @@ final class CourseChatController extends Controller
                 'status' => 403,
                 'success' => false,
                 'code' => 'chat_upgrade_required',
-                'message' => "ركن AI غير متاح في فئتك الحالية\nيمكنك الترقية إذا احتجت إلى أسئلة أكثر",
+                'message' => "الاستفسارات غير مشمولة في فئتك\nيمكنك إضافتها بالترقية",
                 'data' => null,
             ], 403);
         }
@@ -463,7 +463,7 @@ final class CourseChatController extends Controller
                 'status' => 403,
                 'success' => false,
                 'code' => 'chat_upgrade_required',
-                'message' => 'ركن AI غير متاح في وصولك الحالي',
+                'message' => 'الاستفسارات غير مشمولة في فئتك',
                 'data' => null,
             ], 403);
         }
@@ -562,7 +562,7 @@ final class CourseChatController extends Controller
 
             return $this->gracefulUnavailable(
                 $turn,
-                "ركن AI غير متاح الآن\nأكمل المشاهدة وحاول لاحقًا",
+                "تعذّر الرد الآن\nحاول لاحقًا",
                 0,
                 $code,
                 $clientRequestId
@@ -586,7 +586,7 @@ final class CourseChatController extends Controller
 
             return $this->gracefulUnavailable(
                 $turn,
-                "ركن AI غير متاح الآن\nأكمل المشاهدة وحاول لاحقًا",
+                "تعذّر الرد الآن\nحاول لاحقًا",
                 45,
                 'ai_temporarily_unavailable',
                 $clientRequestId
@@ -663,7 +663,7 @@ final class CourseChatController extends Controller
 
             return $this->gracefulUnavailable(
                 $turn,
-                "ركن AI غير متاح الآن\nأكمل المشاهدة وحاول لاحقًا",
+                "تعذّر الرد الآن\nحاول لاحقًا",
                 0,
                 $code,
                 $clientRequestId
@@ -735,7 +735,7 @@ final class CourseChatController extends Controller
             'status' => 200,
             'success' => true,
             'code' => $code,
-            'message' => $inProgress ? 'نجهز إجابتك الآن' : 'ركن AI غير متاح الآن',
+            'message' => $inProgress ? 'نجهز إجابتك الآن' : 'تعذّر الرد الآن',
             'data' => [
                 'message' => $message,
                 'unavailable' => !$inProgress,

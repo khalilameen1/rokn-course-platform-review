@@ -29,12 +29,12 @@ export const CourseChatGate = ({
     showsVerticalScrollIndicator={false}>
     <Text style={styles.entitlementTitle}>
       {accessUnavailable
-        ? 'Rokn AI غير متاح الآن'
+        ? 'الاستفسارات غير متاحة الآن'
         : planLimitReached
         ? 'استخدمت مساحة الأسئلة في اختيارك الحالي'
         : scholarshipAccess
         ? 'الكورس كامل متاح بمنحتك'
-        : 'Rokn AI غير متاح مع هذا الوصول'}
+        : 'الاستفسارات غير مشمولة في فئتك'}
     </Text>
     <Text style={styles.entitlementText}>
       {accessUnavailable
@@ -42,14 +42,14 @@ export const CourseChatGate = ({
         : planLimitReached
         ? 'تقدمك وإجاباتك محفوظة\nانتقل إلى الفئة التالية وادفع فرق السعر فقط'
         : scholarshipAccess
-        ? 'محتوى الكورس متاح لك كاملًا\nيمكنك إضافة Rokn AI أو الشهادة دون أن تخسر منحتك'
-        : 'محتوى الكورس متاح لك\nراجع فئات الكورس لإضافة Rokn AI'}
+        ? 'محتوى الكورس متاح لك كاملًا\nيمكنك إضافة الاستفسارات أو الشهادة دون أن تخسر منحتك'
+        : 'محتوى الكورس متاح لك\nراجع الفئات التي تشمل الاستفسارات'}
     </Text>
     {!accessUnavailable && quote && (
       <View style={styles.upgradeCard}>
         <View style={styles.upgradeRow}>
           <Text style={styles.upgradeLabel}>
-            {quote.targetPlanName || 'إضافة Rokn AI'}
+            {quote.targetPlanName || 'إضافة الاستفسارات'}
           </Text>
           <Text style={styles.upgradeValue}>
             {formatArabicNumber(quote.price)} رصيد
@@ -100,7 +100,7 @@ export const CourseChatGate = ({
                 : `انتقل إلى ${
                     quote.targetPlanName || 'الاختيار التالي'
                   }`
-              : 'راجع خيارات Rokn AI'}
+              : 'عرض الفئات'}
           </Text>
         )}
       </Pressable>

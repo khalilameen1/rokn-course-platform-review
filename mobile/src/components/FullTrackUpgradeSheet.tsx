@@ -301,25 +301,22 @@ export default function FullTrackUpgradeSheet({
             <Text numberOfLines={2} style={styles.courseTitle}>
               {courseTitle}
             </Text>
-            <Text style={styles.description}>
-              محتوى الكورس متاح لك كاملًا دون مقابل
-            </Text>
 
             <View style={styles.includedCard}>
               <Text style={styles.includedTitle}>
-                {quote?.targetPlanName || 'الاختيار المدفوع'} يضيف لك
+                {quote?.targetPlanName || 'الترقية'} تشمل
               </Text>
               {quote?.aiIncluded !== false && (
                 <Text style={styles.includedLine}>
-                  Rokn AI تسأله عند الحاجة
+                  استفسارات عن الكورس عند الحاجة
                 </Text>
               )}
               <Text style={styles.includedLine}>
-                شهادة موثقة تظهر في بورتفوليوك
+                شهادة إتمام يمكنك تحميلها ومشاركتها
               </Text>
               {completed && (
                 <Text style={styles.completedLine}>
-                  أنت أنهيت الكورس بالفعل وشهادتك تنتظر التفعيل
+                  أنهيت الكورس ويمكنك إصدار الشهادة بعد الترقية
                 </Text>
               )}
             </View>

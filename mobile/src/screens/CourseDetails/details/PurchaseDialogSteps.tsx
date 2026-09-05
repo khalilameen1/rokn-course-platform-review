@@ -1,5 +1,11 @@
 import React from 'react';
-import {ActivityIndicator, Pressable, Text, TextInput, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {CoinAmount} from '../../../components/ui/RoknCoin';
 import {
   formatArabicDisplayText,
@@ -70,6 +76,7 @@ export const PlansStep = ({
   courseCode,
   courseCodeEnabled,
   couponBusy,
+  hasProjects,
   onCourseCodeChange,
   onRedeemCourseCode,
   onSelectPlan,
@@ -81,17 +88,16 @@ export const PlansStep = ({
   courseCode: string;
   courseCodeEnabled: boolean;
   couponBusy: boolean;
+  hasProjects: boolean;
   onCourseCodeChange: (value: string) => void;
   onRedeemCourseCode: () => void | Promise<void>;
   onSelectPlan: (plan: CourseAccessPlan) => void;
   selectedPlan?: CourseAccessPlan;
 }) => (
   <>
-    <Text style={styles.sheetEyebrow}>اختر مستوى الدعم</Text>
-    <Text style={styles.sheetTitle}>الكورس واحد والدعم حسب احتياجك</Text>
+    <Text style={styles.sheetTitle}>اختر الفئة المناسبة لك</Text>
     <Text style={styles.sheetDescription}>
-      ادفع مقابل الدعم الذي ستستخدمه فعلًا
-      {'\n'}محتوى الكورس موجود في كل اختيار
+      محتوى الكورس كامل في جميع الفئات
     </Text>
     <View style={styles.planList}>
       {accessPlans.map(plan => (
@@ -115,7 +121,7 @@ export const PlansStep = ({
             <CoinAmount size={17} value={plan.priceCoins} />
           </View>
           <View style={styles.planBenefits}>
-            {planBenefits(plan).map(item => (
+            {planBenefits(plan, hasProjects).map(item => (
               <View key={item} style={styles.planBenefitRow}>
                 <View style={styles.planCheck} />
                 <Text style={styles.planBenefitText}>{item}</Text>
@@ -164,13 +170,13 @@ export const TopupStep = ({
   usableCurrentBalance: number;
 }) => (
   <>
-    <Text style={styles.sheetEyebrow}>دفعة واحدة</Text>
-    <Text style={styles.sheetTitle}>
-      افتح {selectedPlan?.name || 'الفئة المختارة'} الآن
+    <Text style={styles.sheetEyebrow}>
+      {selectedPlan?.name || 'شحن الرصيد'}
     </Text>
+    <Text style={styles.sheetTitle}>أكمل رصيدك</Text>
     <Text style={styles.sheetDescription}>
       اختر باقة تغطي الرصيد الناقص
-      {'\n'}ثم راجع الإجمالي وأكد الشراء
+      {'\n'}ثم أكد شراء الكورس
     </Text>
     <View style={styles.topupSummary}>
       <View style={styles.topupMetric}>
@@ -184,7 +190,7 @@ export const TopupStep = ({
         <CoinAmount size={18} value={balance} />
       </View>
       <View style={styles.topupMetric}>
-        <Text style={styles.summaryLabel}>سنستخدم الآن</Text>
+        <Text style={styles.summaryLabel}>المتاح للشراء</Text>
         <CoinAmount size={18} value={usableCurrentBalance} />
       </View>
     </View>
@@ -228,12 +234,17 @@ export const TopupStep = ({
                 <View style={styles.planHeader}>
                   <CoinAmount size={18} value={item.coins} />
                   {isQuickChoice && (
-                    <Text style={styles.sheetEyebrow}>الاختيار السريع</Text>
+                    <Text style={styles.sheetEyebrow}>تغطي المبلغ الناقص</Text>
                   )}
                 </View>
                 <Text style={styles.packageRemainder}>
-                  يتبقى {formatArabicNumber(remainingAfterPurchase)} عملة ركن بعد
-                  فتح الفئة
+                  {item.coins < shortfall
+                    ? `تحتاج بعدها ${formatArabicNumber(
+                        shortfall - item.coins,
+                      )} عملة لإكمال الشراء`
+                    : `يتبقى ${formatArabicNumber(
+                        remainingAfterPurchase,
+                      )} عملة بعد شراء الكورس`}
                 </Text>
               </View>
               <Text style={styles.packagePrice}>
@@ -244,8 +255,7 @@ export const TopupStep = ({
         })
       ) : (
         <Text style={styles.packageUnavailable}>
-          لا توجد باقة تغطي هذه الفئة الآن
-          {'\n'}لم يبدأ الدفع ولم يتغير رصيدك
+          باقات الشحن غير متاحة الآن
         </Text>
       )}
     </View>
@@ -302,7 +312,9 @@ export const CouponEntry = ({
         {busy ? (
           <ActivityIndicator color={Palette.text} size="small" />
         ) : (
-          <Text style={styles.codeButtonText}>{applied ? 'مطبق' : 'تطبيق'}</Text>
+          <Text style={styles.codeButtonText}>
+            {applied ? 'مطبق' : 'تطبيق'}
+          </Text>
         )}
       </Pressable>
     </View>
@@ -336,7 +348,7 @@ export const ConfirmStep = ({
   selectedPlan?: CourseAccessPlan;
 }) => (
   <>
-    <Text style={styles.sheetEyebrow}>تأكيد الفتح</Text>
+    <Text style={styles.sheetEyebrow}>تأكيد الشراء</Text>
     <Text style={styles.sheetTitle}>
       {formatArabicDisplayText(courseTitle)}
     </Text>
@@ -345,10 +357,10 @@ export const ConfirmStep = ({
         <Text style={styles.selectedPlanName}>{selectedPlan.name}</Text>
         <Text style={styles.selectedPlanDetail}>
           {selectedPlan.chatEnabled
-            ? `حتى ${formatArabicNumber(
+            ? `${formatArabicNumber(
                 selectedPlan.chatMessageLimit,
-              )} رسالة مع Rokn AI`
-            : 'محتوى الكورس دون Rokn AI'}
+              )} رسالة للاستفسارات`
+            : 'محتوى الكورس دون استفسارات'}
         </Text>
       </View>
     )}
@@ -374,9 +386,9 @@ export const ConfirmStep = ({
     )}
     {rewardContributionLimit < purchasePrice && (
       <Text style={styles.packageUnavailable}>
-        المتاح من عملات المكافآت لهذه الفئة{' '}
-        {formatArabicNumber(rewardContributionLimit)} عملة ركن
-        {'\n'}يعادل {formatArabicNumber(rewardContributionPercent)}٪ من السعر
+        يمكنك استخدام المكافآت حتى{' '}
+        {formatArabicNumber(rewardContributionPercent)}٪ من السعر
+        {'\n'}بحد أقصى {formatArabicNumber(rewardContributionLimit)} عملة
       </Text>
     )}
   </>
@@ -394,12 +406,12 @@ export const SuccessStep = ({
       <Text style={styles.successMarkText}>✓</Text>
     </View>
     <Text style={[styles.sheetTitle, styles.centerText]}>
-      {grantActivated ? 'تم تفعيل المنحة' : 'تم فتح الكورس'}
+      {grantActivated ? 'تم تفعيل المنحة' : 'أصبح الكورس لك'}
     </Text>
     <Text style={[styles.sheetDescription, styles.centerText]}>
       {grantActivated
-        ? 'محتوى الكورس متاح لك كاملًا\nيمكنك إضافة Rokn AI والشهادة لاحقًا'
-        : 'الكورس جاهز\nابدأ الآن أو استكمل من الرئيسية'}
+        ? 'محتوى الكورس متاح لك كاملًا\nيمكنك إضافة الاستفسارات والشهادة لاحقًا'
+        : 'يمكنك البدء الآن والعودة إليه في أي وقت'}
     </Text>
     <Pressable
       accessibilityRole="button"

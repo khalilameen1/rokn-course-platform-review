@@ -7,36 +7,36 @@ import type {
 } from '../../../services/roknApi';
 import {derivePurchaseTerms} from './purchaseTerms';
 
-export const planBenefits = (plan: CourseAccessPlan): string[] => {
-  const items = ['محتوى الكورس كامل'];
+export const planBenefits = (
+  plan: CourseAccessPlan,
+  hasProjects: boolean,
+): string[] => {
+  const items = ['الكورس كامل'];
   if (!plan.chatEnabled) {
-    items.push('من غير Rokn AI');
+    items.push('دون استفسارات');
   } else {
     items.push(
-      `حتى ${formatArabicNumber(plan.chatMessageLimit)} رسالة مع Rokn AI`,
+      `${formatArabicNumber(plan.chatMessageLimit)} رسالة للاستفسارات`,
     );
   }
-  if (plan.projectFeedbackLevel === 'report') {
-    items.push('تقرير المشروع داخل شات ركن');
-  } else if (plan.projectFeedbackLevel === 'enhanced') {
+  if (hasProjects) {
     items.push(
-      plan.projectFollowupEnabled && (plan.projectFollowupMessageLimit ?? 0) > 0
-        ? `تقرير ومتابعة داخل شات ركن حتى ${formatArabicNumber(
-            plan.projectFollowupMessageLimit ?? 0,
-          )} رسالة`
-        : 'تقرير المشروع داخل شات ركن',
+      plan.projectReportEnabled
+        ? 'تقرير بملاحظات على كل مشروع'
+        : 'مشروعات دون تقرير',
     );
-  } else {
-    items.push('العبور بعد قبول المشروع');
+    if (
+      plan.projectFollowupEnabled &&
+      (plan.projectFollowupMessageLimit ?? 0) > 0
+    ) {
+      items.push(
+        `${formatArabicNumber(
+          plan.projectFollowupMessageLimit ?? 0,
+        )} رسالة لمناقشة مشروعاتك`,
+      );
+    }
   }
-  if (plan.certificateEnabled) items.push('إصدار الشهادة عند استيفاء شروطها');
-  if ((plan.minimumPaidCoins ?? 0) > 0) {
-    items.push(
-      `يمكن استخدام عملات المكافآت حتى ${formatArabicNumber(
-        Math.max(0, plan.priceCoins - (plan.minimumPaidCoins ?? 0)),
-      )} عملة ركن من السعر`,
-    );
-  }
+  if (plan.certificateEnabled) items.push('شهادة عند إتمام الكورس');
   return items;
 };
 

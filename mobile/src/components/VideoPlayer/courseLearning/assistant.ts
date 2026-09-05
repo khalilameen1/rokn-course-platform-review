@@ -300,7 +300,7 @@ export const pollCourseAssistantTurn = async (
     const status = Number(errorResponse.status || failure.status || 0);
     if (status === 404 || status === 410) {
       return {
-        text: 'لم يصل السؤال إلى Rokn AI\nأرسله مرة أخرى',
+        text: 'لم يصل سؤالك\nأرسله مرة أخرى',
         offline: false,
         unavailable: true,
         clientRequestId,
@@ -378,7 +378,7 @@ export const askCourseAssistant = async ({
 }): Promise<CourseAssistantTurnResponse> => {
   if (!courseIncludesAssistant(course)) {
     return {
-      text: 'Rokn AI غير مشمول في وصولك الحالي',
+      text: 'الاستفسارات غير مشمولة في فئتك',
       offline: true,
       blocked: true,
       code: 'chat_upgrade_required',
@@ -387,7 +387,7 @@ export const askCourseAssistant = async ({
   const courseId = requireServerCourseId(course.id);
   if (!(await isProductFeatureEnabled('ai_chat'))) {
     return {
-      text: 'Rokn AI متوقف مؤقتًا للصيانة\nتقدمك محفوظ\nحاول لاحقًا',
+      text: 'الاستفسارات متوقفة مؤقتًا للصيانة\nحاول لاحقًا',
       offline: true,
       unavailable: true,
       code: 'ai_feature_unavailable',
@@ -416,7 +416,7 @@ export const askCourseAssistant = async ({
     ).toLowerCase();
     if (errorCode === 'chat_upgrade_required') {
       return {
-        text: 'Rokn AI غير مشمول في المنحة\nيمكنك إضافته بالترقية',
+        text: 'الاستفسارات غير مشمولة في المنحة\nيمكنك إضافتها بالترقية',
         offline: false,
         blocked: true,
         code: errorCode,
@@ -442,8 +442,8 @@ export const askCourseAssistant = async ({
           errorCode === 'course_not_available'
             ? 'هذا الكورس غير متاح الآن'
             : errorCode === 'course_access_required'
-            ? 'افتح الكورس أولًا لاستخدام Rokn AI'
-            : 'Rokn AI غير متاح في هذا الكورس',
+            ? 'افتح الكورس أولًا لإرسال سؤالك'
+            : 'الاستفسارات غير متاحة في هذا الكورس',
         offline: false,
         blocked: true,
         code: errorCode,
@@ -489,7 +489,7 @@ export const askCourseAssistant = async ({
     }
 
     return {
-      text: 'Rokn AI غير متاح الآن\nأكمل المقطع ومكانك محفوظ\nحاول لاحقًا',
+      text: 'تعذّر الرد الآن\nحاول لاحقًا',
       offline: true,
       unavailable: true,
       clientRequestId,

@@ -240,7 +240,7 @@ export default function Certificates({
               <Text style={styles.lockedHeading}>شهادات تنتظر التفعيل</Text>
               <Text style={styles.lockedIntro}>
                 أنهيت الكورس بمنحتك كاملة
-                {'\n'}يمكنك إضافة الشهادة وRokn AI من هنا
+                {'\n'}يمكنك إضافة الشهادة والاستفسارات من هنا
               </Text>
               {grantCourses.map(course => (
                 <Pressable

@@ -266,6 +266,7 @@ export default function CourseDetails() {
         {...purchase.dialog}
         bottomInset={insets.bottom}
         courseTitle={courseTitle}
+        projectCount={course.value?.projectCount ?? 0}
         isTablet={layout.isTablet}
         notice={notice}
         onSuccessStart={() => {
