@@ -192,7 +192,71 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         Http::assertNothingSent();
     }
 
-    private function fakeProjectProvider(): void
+    public function test_interrupted_initial_report_keeps_partial_visible_without_completing_report(): void
+    {
+        $partial = 'Check <input required>: this explanation is incomplete.';
+        $this->fakeProjectProvider($partial);
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $thread = $fixture['submission']->feedbackThread;
+        $thread->forceFill(['status' => 'processing'])->save();
+        $report = $thread->messages()->firstOrFail();
+        $report->forceFill(['status' => ProjectFeedbackMessage::STREAMING, 'body' => null])->save();
+        $review = $fixture['submission']->only(['review_status', 'score', 'feedback', 'reviewed_at']);
+
+        app()->call([new GenerateProjectFeedback($fixture['submission']->id), 'handle']);
+
+        Http::assertSentCount(1);
+        self::assertSame(ProjectFeedbackMessage::FAILED, $report->fresh()->status);
+        self::assertSame($partial, $report->fresh()->body);
+        self::assertSame('failed', $thread->fresh()->status);
+        self::assertEquals($review, $fixture['submission']->fresh()->only(array_keys($review)));
+        $presented = app(ProjectSubmissionPresenter::class)->present($fixture['submission']->fresh());
+        self::assertSame('failed', $presented['report_status']);
+        self::assertSame('provider_outcome_unknown', $report->fresh()->error_code);
+        self::assertSame('failed', $presented['feedback_thread']['messages'][0]['status']);
+        self::assertSame($partial, $presented['feedback_thread']['messages'][0]['text']);
+        $this->actingAs($fixture['user'], 'api')
+            ->getJson('/api/v1/project-feedback-threads/'.$thread->public_id)
+            ->assertOk()
+            ->assertJsonPath('data.messages.0.status', 'failed')
+            ->assertJsonPath('data.messages.0.text', $partial);
+        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->firstOrFail();
+        self::assertSame('', (string) data_get($event->metadata, 'accepted_response', ''));
+        self::assertSame('provider_outcome_unknown', data_get($event->metadata, 'provider_outcome_reason'));
+        self::assertFalse(data_get($event->metadata, 'entitlement_delivered'));
+    }
+
+    public function test_interrupted_followup_keeps_partial_visible_without_completing_reply(): void
+    {
+        Bus::fake();
+        $partial = 'SQLSTATE is diagnostic context; the explanation is incomplete.';
+        $this->fakeProjectProvider($partial);
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $message = app(ProjectFeedbackThreadService::class)->queueReply(
+            $fixture['user'], $thread, 'Explain this error.', (string) Str::uuid()
+        );
+
+        app()->call([new GenerateProjectFeedbackReply($message->id), 'handle']);
+
+        Http::assertSentCount(1);
+        $reply = $thread->messages()->where('client_request_id', 'reply:'.$message->public_id)->firstOrFail();
+        self::assertSame(ProjectFeedbackMessage::FAILED, $message->fresh()->status);
+        self::assertSame(ProjectFeedbackMessage::FAILED, $reply->status);
+        self::assertSame($partial, $reply->body);
+        self::assertSame('provider_outcome_unknown', $reply->error_code);
+        $this->actingAs($fixture['user'], 'api')
+            ->getJson('/api/v1/project-feedback-threads/'.$thread->public_id)
+            ->assertOk()
+            ->assertJsonPath('data.messages.2.status', 'failed')
+            ->assertJsonPath('data.messages.2.text', $partial);
+        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_followup')->firstOrFail();
+        self::assertSame('', (string) data_get($event->metadata, 'accepted_response', ''));
+        self::assertSame('provider_outcome_unknown', data_get($event->metadata, 'provider_outcome_reason'));
+        self::assertFalse(data_get($event->metadata, 'entitlement_delivered'));
+    }
+
+    private function fakeProjectProvider(?string $interruptedPartial = null): void
     {
         config([
             'openrouter.api_key' => 'test-key',
@@ -203,7 +267,12 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             'openrouter.fallback_models' => [],
         ]);
         Http::preventStrayRequests();
-        Http::fake(['https://openrouter.test/project' => Http::response([
+        Http::fake(['https://openrouter.test/project' => $interruptedPartial !== null
+            ? Http::response('data: '.json_encode([
+                'id' => 'generation-project-interrupted',
+                'choices' => [['delta' => ['content' => $interruptedPartial]]],
+            ], JSON_THROW_ON_ERROR)."\n\n", 200, ['Content-Type' => 'text/event-stream'])
+            : Http::response([
             'id' => 'generation-project-html',
             'choices' => [['message' => ['content' => 'The input is required.']]],
             'usage' => [

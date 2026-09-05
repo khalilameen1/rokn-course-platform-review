@@ -54,8 +54,14 @@ const ProjectTransition = ({
     onSubmit,
   });
 
+  const hasInterruptedReport =
+    ['failed', 'failed_retryable'].includes(controller.reportViewState) &&
+    controller.feedbackThread?.messages.some(
+      message => message.role === 'assistant' && Boolean(message.text?.trim()),
+    );
   const feedbackPanel =
-    controller.reportViewState === 'ready' && controller.feedbackThread ? (
+    (controller.reportViewState === 'ready' || hasInterruptedReport) &&
+    controller.feedbackThread ? (
       <ProjectFeedbackPanel
         attachments={controller.feedbackAttachments}
         canReply={controller.canReplyToFeedback}

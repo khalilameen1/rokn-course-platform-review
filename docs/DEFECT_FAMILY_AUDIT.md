@@ -4,6 +4,43 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Preserve interrupted project reports across API and screen — 2026-09-05
+
+Actual streamed text was discarded by initial-report failure handling and hidden
+by the project message presenter for failed follow-up replies. Initial reports
+also disappeared at the mobile panel boundary, and reopening a failed report
+from a transcript-free course summary never hydrated its messages.
+
+The existing body/text field now survives with status `failed`. The screen shows
+received text with an incomplete-response label, while an empty failed report
+does not create an empty conversation panel. Failed report summaries can hydrate
+through the existing owned, bounded read path. Reply admission on the client also
+requires report status `ready`; a retained fragment grants no new capability.
+No new report status, success marker, provider retry or evaluation decision was
+introduced. Completed-only AI history remains unchanged.
+
+Two backend job/API regressions failed before the service correction, then the
+project presenter suite passed 14 tests / 101 assertions. Mobile screen tests
+reproduced the hidden panel and lifecycle tests reproduced the skipped failed
+report read; the five related suites now pass 27 tests. TypeScript and targeted
+ESLint pass. These are intercepted-provider and rendered-component checks, not
+native acceptance or paid production calls. This batch is not in APK 1234.
+
+## Production handoff of bounded chat transport — 2026-09-05
+
+Backend CI 33983731096 succeeded for exact commit
+`88333ed1e7bbfecb21020f7a4c327eaad330d348`. Laravel Cloud deployment 174 then
+deployed that commit successfully, including runtime preflight before and after
+the migration check (nothing to migrate) and completed traffic routing. This
+supersedes the no-deployment status of the earlier source-only sections below.
+
+After deployment, public readiness, course list, course 3 details, auth methods
+and packages all returned HTTP 200 with success=true. Course 3 remained revision
+30 with three modules and guest access_type=none / learning_started=false.
+Auth methods currently advertise Google and TikTok, not Facebook. These reads do
+not prove completion of either OAuth flow, a purchase or a real paid chat. APK
+1234 is unchanged and still represents its earlier native source revision.
+
 ## Bound one provider request and deliver small fragments promptly — 2026-09-05
 
 Replaced the blocking streamed-body read with an explicit cURL-backed request and

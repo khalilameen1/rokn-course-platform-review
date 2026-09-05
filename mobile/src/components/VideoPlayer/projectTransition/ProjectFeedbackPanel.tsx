@@ -107,7 +107,9 @@ const FeedbackMessage = ({
     )}
     {message.role === 'assistant' && message.status === 'failed' && (
       <Text style={styles.state}>
-        {projectFeedbackFailureText(message.errorCode, message.canRetry)}
+        {message.text?.trim()
+          ? 'لم يكتمل الرد'
+          : projectFeedbackFailureText(message.errorCode, message.canRetry)}
       </Text>
     )}
     {message.role === 'user' && message.status === 'queued' && (

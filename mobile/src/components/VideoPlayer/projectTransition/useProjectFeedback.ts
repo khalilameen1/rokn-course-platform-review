@@ -89,13 +89,14 @@ export const useProjectFeedback = ({
   const normalizedDraft = cleanUnicodeText(draft);
   const threadHydrating =
     hydrating ||
-    (reportStatus === 'ready' &&
+    (['ready', 'failed'].includes(reportStatus) &&
       Boolean(thread) &&
       (thread?.messages.length || 0) === 0 &&
       hydratedThreadRef.current !== thread?.id &&
       !error);
   const canReply =
     !threadHydrating &&
+    reportStatus === 'ready' &&
     feedbackLevel === 'enhanced' &&
     replyEnabled &&
     thread?.canReply === true;
@@ -132,7 +133,7 @@ export const useProjectFeedback = ({
       !threadId ||
       (thread?.messages.length || 0) > 0 ||
       hydratedThreadRef.current === threadId ||
-      reportStatus !== 'ready'
+      !['ready', 'failed'].includes(reportStatus)
     ) {
       return;
     }

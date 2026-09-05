@@ -187,7 +187,8 @@ final class ProjectFeedbackThreadService
                 ->where('status', '<>', ProjectFeedbackMessage::COMPLETED)
                 ->update([
                     'status' => ProjectFeedbackMessage::FAILED,
-                    'body' => null,
+                    // Keep streamed recovery text. FAILED remains authoritative:
+                    // this is not a completed report or a review decision.
                     'error_code' => substr($code, 0, 64),
                     'completed_at' => now(),
                     'updated_at' => now(),
@@ -438,6 +439,7 @@ final class ProjectFeedbackThreadService
                     'retry_after_seconds' => $failure['retry_after_seconds'] ?? null,
                     'text' => $message->status === ProjectFeedbackMessage::COMPLETED
                         || $message->status === ProjectFeedbackMessage::STREAMING
+                        || $message->status === ProjectFeedbackMessage::FAILED
                         || $message->role === 'user'
                         ? $message->body
                         : null,

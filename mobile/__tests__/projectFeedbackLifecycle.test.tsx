@@ -64,9 +64,14 @@ describe('project feedback interrupted hydration', () => {
     mockLoadThread.mockReset();
   });
 
-  it.each(['background', 'close'] as const)(
-    'resumes report loading after %s without accepting the interrupted response',
-    async interruption => {
+  it.each([
+    ['background', 'ready'],
+    ['close', 'ready'],
+    ['background', 'failed'],
+    ['close', 'failed'],
+  ] as const)(
+    'resumes report loading after %s with status %s without accepting the interrupted response',
+    async (interruption, reportStatus) => {
       const interrupted = deferred<ProjectFeedbackThread>();
       const resumed = deferred<ProjectFeedbackThread>();
       mockLoadThread
@@ -81,7 +86,7 @@ describe('project feedback interrupted hydration', () => {
           seedThread: emptyThread,
           feedbackLevel: 'enhanced',
           replyEnabled: true,
-          reportStatus: 'ready',
+          reportStatus,
         });
         return null;
       };
@@ -120,7 +125,7 @@ describe('project feedback interrupted hydration', () => {
         });
         expect(current.thread).toEqual(loadedThread);
         expect(current.hydrating).toBe(false);
-        expect(current.canReply).toBe(true);
+        expect(current.canReply).toBe(reportStatus === 'ready');
       } finally {
         if (renderer) act(() => renderer.unmount());
       }
