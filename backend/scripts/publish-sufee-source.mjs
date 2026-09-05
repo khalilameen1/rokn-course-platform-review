@@ -1,7 +1,7 @@
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { hashPublicAsset as sha256 } from './public-asset-hash.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceRoot = resolve(root, 'resources/vendor/sufee');
@@ -15,10 +15,6 @@ const sourceFiles = [
     'COPYING.GPL-2.0.txt',
     'LICENSE.upstream-MIT.txt',
 ];
-
-function sha256(path) {
-    return createHash('sha256').update(readFileSync(path)).digest('hex');
-}
 
 mkdirSync(publicRoot, { recursive: true });
 for (const file of sourceFiles) {

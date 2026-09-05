@@ -419,6 +419,15 @@ and four rendered shell cases; the coin page also has a rendered regression for
 one success message, unique label targets and event-specific form fields. These
 checks do not change live reward values or prove every dashboard page accepted.
 
+Deployment attempt `824fe63` failed before traffic switched because the new
+first-party reward form script was not entered in the public-asset inventory.
+That omission was corrected explicitly, keeping the deployment gate intact.
+Running the complete frontend production build on Windows also reproduced a
+separate publisher/validator disagreement over CRLF source hashes. The source
+publisher now uses the existing canonical asset-hash helper, matching the
+validator and Linux output. The complete production build and all six asset-policy
+tests then passed; generated distributed files have no content changes.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

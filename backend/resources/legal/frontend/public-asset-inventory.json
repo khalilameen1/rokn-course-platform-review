@@ -375,6 +375,11 @@
       "classification": "first_party"
     },
     {
+      "path": "public/admin/assets/js/reward-rule-form.js",
+      "sha256": "483b638f507aba9aa86df08fc90acd12116d47c1d6af198c278d2b2cee09d934",
+      "classification": "first_party"
+    },
+    {
       "path": "public/admin/assets/js/users-index.js",
       "sha256": "e14f39c75cdad36baebed0956ab3a63ce49bf2ecaf33c508d877f5b1357a20a9",
       "classification": "first_party"
