@@ -1,4 +1,4 @@
-import {useFocusEffect} from '@react-navigation/native';
+import {useFocusEffect, useIsFocused} from '@react-navigation/native';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {Alert} from 'react-native';
 import {useSelector} from 'react-redux';
@@ -26,6 +26,7 @@ import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {settleWithin} from '../../../utils/settleWithin';
 
 export function useCertificatesController(resolvedDisplayName?: string) {
+  const screenFocused = useIsFocused();
   const appIsActive = useAppForegroundState();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const user = extractUserProfile(storedUser);
@@ -80,6 +81,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
       const boundary = await captureAccountSessionBoundary();
       const sessionAvailable = await hasSession();
       assertAccountSessionBoundary(boundary);
+      if (!isCurrent()) return;
       if (isCurrent()) setServerSession(sessionAvailable);
       if (sessionAvailable) {
         const certificatesFlight = getCertificates(boundary);
@@ -103,6 +105,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         }
         const [certificatesResult, learningResult] = await remoteReads;
         assertAccountSessionBoundary(boundary);
+        if (!isCurrent()) return;
         if (
           certificatesResult.status === 'rejected' &&
           learningResult.status === 'rejected'
@@ -250,6 +253,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
 
   useEffect(() => {
     if (
+      !screenFocused ||
       !appIsActive ||
       !certificatePending ||
       loading ||
@@ -268,7 +272,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
       void loadCertificates();
     }, delayMs);
     return () => clearTimeout(timer);
-  }, [appIsActive, certificatePending, loadCertificates, loading]);
+  }, [appIsActive, certificatePending, loadCertificates, loading, screenFocused]);
 
   const selectedCertificate =
     certificates.find(certificate => certificate.publicId === selectedId) ||

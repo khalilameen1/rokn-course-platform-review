@@ -155,6 +155,7 @@ export const useCourseChatTurn = ({
       retryClientRequestId?: string,
       retryMessage?: string,
       retryAttachments?: ChatAttachmentDraft[],
+      retryIntent: 'recover' | 'retry' = 'recover',
     ) => {
       const cleanMessage = cleanUnicodeText(retryMessage ?? input);
       const selectedAttachments = retryAttachments ?? attachmentsRef.current;
@@ -249,8 +250,20 @@ export const useCourseChatTurn = ({
           turnBoundary,
         );
 
+        let attemptStartedAt = Date.now();
+        let response = retryClientRequestId
+          ? await pollCourseAssistantTurn(retryClientRequestId)
+          : undefined;
+        if (!ownsTurn()) return;
+        const freshRetryAllowed = Boolean(
+          retryClientRequestId &&
+          retryIntent === 'retry' &&
+          !recoveryOnly &&
+          response?.turnStatus === 'failed' &&
+          courseChatFailureCanStartFreshTurn(response.canRetry),
+        );
         let uploadedAttachments = selectedAttachments;
-        if (!recoveryOnly) {
+        if (!recoveryOnly && (!retryClientRequestId || freshRetryAllowed)) {
           const uploadedWithLocalFiles = await Promise.all(
             selectedAttachments.map(async file => ({
               ...file,
@@ -291,24 +304,7 @@ export const useCourseChatTurn = ({
         const requestCourse = upgraded
           ? {...course, accessType: 'paid', chatAvailable: true}
           : course;
-        let attemptStartedAt = Date.now();
-        let response = retryClientRequestId
-          ? await pollCourseAssistantTurn(retryClientRequestId)
-          : await askCourseAssistant({
-              course: requestCourse,
-              reel,
-              message: cleanMessage,
-              clientRequestId,
-              attachmentIds,
-            });
-        if (!ownsTurn()) return;
-
-        if (
-          retryClientRequestId &&
-          !recoveryOnly &&
-          response.turnStatus === 'failed' &&
-          courseChatFailureCanStartFreshTurn(response.canRetry)
-        ) {
+        if (freshRetryAllowed) {
           clientRequestId = secureRandomUuid();
           queuedMessages = replaceTurnClientRequestId(
             queuedMessages,
@@ -324,6 +320,9 @@ export const useCourseChatTurn = ({
             turnBoundary,
           );
           assertAccountSessionBoundary(turnBoundary);
+        }
+        if (!response || freshRetryAllowed) {
+          if (!ownsTurn()) return;
           attemptStartedAt = Date.now();
           response = await askCourseAssistant({
             course: requestCourse,
@@ -446,6 +445,7 @@ export const useCourseChatTurn = ({
         clientRequestId,
         userMessage?.text || '',
         userMessage?.attachments || [],
+        'retry',
       );
     },
     [messagesRef, runTurn],
@@ -468,6 +468,7 @@ export const useCourseChatTurn = ({
       flight: stopFlight,
     };
     const stoppedRequestId = pending.clientRequestId;
+    const stoppedSendFlight = sendFlightRef.current;
     const stopConversationGeneration = conversationGeneration.current;
     sendGenerationRef.current += 1;
     setSending(false);
@@ -478,12 +479,15 @@ export const useCourseChatTurn = ({
       const cancelledAtServer = await cancelCourseAssistantTurn(
         stoppedRequestId,
       );
-      resumeInterruptedTurnRef.current = !cancelledAtServer;
       if (
         stopConversationGeneration !== conversationGeneration.current ||
         activeConversation.current !== conversationScope
       ) {
         return;
+      }
+      resumeInterruptedTurnRef.current = !cancelledAtServer;
+      if (cancelledAtServer && sendFlightRef.current === stoppedSendFlight) {
+        sendFlightRef.current = null;
       }
       commitMessages(current =>
         settleCourseChatCancellation(

@@ -6,6 +6,7 @@ namespace Tests\Feature\API;
 
 use App\Models\RewardRule;
 use App\Services\LearningRewardService;
+use App\Support\BusinessClock;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -61,6 +62,8 @@ final class LearningRewardEndpointTest extends ApiTestCase
 
     public function test_study_day_finishes_its_frozen_contract_after_the_rule_is_disabled(): void
     {
+        $firstStudyDay = Carbon::parse('2026-08-01 12:00:00', 'UTC');
+        Carbon::setTestNow($firstStudyDay);
         DB::table('settings')->update(['reward_balance_cap' => 1000]);
         $rule = RewardRule::query()->where('event_key', 'study_session')->firstOrFail();
         $rule->forceFill([
@@ -94,12 +97,12 @@ final class LearningRewardEndpointTest extends ApiTestCase
             'amount' => 10,
         ]);
 
-        Carbon::setTestNow(now()->addDay());
+        Carbon::setTestNow($firstStudyDay->copy()->addDay());
         $nextDay = $rewards->recordStudy($this->user, 60);
         self::assertSame(0, $nextDay['awarded']);
         $this->assertDatabaseMissing('user_daily_learning_activities', [
             'user_id' => $this->user->id,
-            'activity_date' => now()->toDateString(),
+            'activity_date' => BusinessClock::now()->toDateString(),
         ]);
     }
 }

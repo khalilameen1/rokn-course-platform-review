@@ -45,3 +45,27 @@ that the installed artifact or production deployment contains them.
   real Google login, MyCorner, open-chat response/copy with keyboard and video,
   and actual model output. No claim that every reported visual shake is closed
   without that device check. No new APK was built during this source batch.
+
+## Second source batch — 1.0.42 candidate
+
+- Recovery of an existing chat turn now reads its status without automatically
+  generating a new paid reply or uploading its attachments again. An explicit
+  retry reads status first and uploads only when a fresh attempt is permitted.
+- A confirmed server cancellation releases the matching send lock even when the
+  old HTTP request has not returned. Unconfirmed cancellation retains recovery;
+  late replies cannot overwrite the cancelled conversation.
+- Certificate polling stops when its screen is not focused. Results from an
+  older read cannot replace an error/success or accepted-issuance state owned by
+  a newer read or another account.
+- A wallet read started before confirmed top-up or course purchase cannot
+  overwrite that newer balance. The next read remains authoritative, including
+  a lower balance. No synthetic credit, maximum-balance shortcut or server-ledger
+  change was introduced.
+- Backend CI's reward-date assertion used UTC while rewards use Cairo's business
+  day. The test now controls its clock and asserts against the business clock;
+  the production reward service was not changed.
+
+Local validation: 172 mobile suites / 920 tests pass with TypeScript and release
+ESLint. Backend suite: 1174 tests, 11584 assertions, 5 skipped environment-specific
+cases. Targeted tests reproduced the new failures before their source changes.
+None of these results substitutes for signed-artifact authenticated acceptance.

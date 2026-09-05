@@ -67,6 +67,7 @@ export const useCourseDetailsData = ({
   const [remoteCommerceLoading, setRemoteCommerceLoading] = useState(false);
   const loadedCourseRef = useRef<CourseDetailsDto | null>(null);
   const ownershipWriteEpochRef = useRef(0);
+  const walletWriteEpochRef = useRef(0);
   const loadedOwnerRef = useRef(identityKey);
   const displayScopeRef = useRef({courseId, identityKey});
   const [remoteLoading, setRemoteLoading] = useState(true);
@@ -231,19 +232,24 @@ export const useCourseDetailsData = ({
       );
       if (needsCommerce) {
         setRemoteCommerceLoading(true);
+        const walletWriteEpoch = walletWriteEpochRef.current;
         const [walletResult, packagesResult] = await Promise.allSettled([
           getWallet(),
           getCoinPackages(),
         ]);
         if (!stillOwned()) return;
-        if (walletResult.status === 'fulfilled') {
+        // A foreground read started before top-up/purchase confirmation must
+        // not overwrite that newer wallet. Later reads are authoritative again.
+        const walletReadIsCurrent =
+          walletWriteEpochRef.current === walletWriteEpoch;
+        if (walletReadIsCurrent && walletResult.status === 'fulfilled') {
           setRemoteWallet(walletResult.value);
         }
         if (packagesResult.status === 'fulfilled') {
           setRemotePackages(packagesResult.value);
         }
         if (
-          walletResult.status === 'rejected' ||
+          (walletReadIsCurrent && walletResult.status === 'rejected') ||
           packagesResult.status === 'rejected'
         ) {
           setRemoteNotice(
@@ -319,6 +325,7 @@ export const useCourseDetailsData = ({
   );
 
   const updateRemoteWallet = useCallback((next: CourseWalletUpdate) => {
+    walletWriteEpochRef.current += 1;
     setRemoteWallet(current => ({
       balance: next.balance,
       paidBalance: next.paidBalance,

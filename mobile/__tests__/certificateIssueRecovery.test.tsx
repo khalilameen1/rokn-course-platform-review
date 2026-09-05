@@ -7,6 +7,7 @@ const mockIssueCertificate = jest.fn();
 const mockRecoverCertificate = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => true,
   useFocusEffect: (effect: () => void | (() => void)) => {
     const ReactModule = require('react') as typeof React;
     ReactModule.useEffect(effect, [effect]);

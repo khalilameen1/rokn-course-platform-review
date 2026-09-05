@@ -56,7 +56,10 @@ describe('learning async ownership contracts', () => {
       chat.indexOf('const stop = useCallback'),
       chat.indexOf('runTurnRef.current = runTurn'),
     );
-    expect(stopBlock).not.toContain('sendFlightRef.current = null');
+    expect(stopBlock).toContain(
+      'if (cancelledAtServer && sendFlightRef.current === stoppedSendFlight)',
+    );
+    expect(stopBlock).toContain('resumeInterruptedTurnRef.current = !cancelledAtServer');
     expect(chat).toContain('setRecoverySignal(value => value + 1)');
     expect(chatPolling).toContain(
       'response = await pollCourseAssistantTurn(clientRequestId)',
