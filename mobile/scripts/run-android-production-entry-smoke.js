@@ -3,13 +3,12 @@
 /*
  * Exercises the public production entry journeys from the installed release
  * artifact. It intentionally needs no learner credentials: cold start, guest
- * catalogue, course details and the hand-off to every advertised OAuth
- * provider must work before a build is allowed to reach manual acceptance.
+ * catalogue, course details and the configured Google/TikTok browser hand-off
+ * must work before a build is allowed to reach manual acceptance. App data is
+ * cleared only when ROKN_SMOKE_DISPOSABLE_EMULATOR=1 and Android confirms QEMU.
  */
-const {existsSync, mkdtempSync, rmSync} = require('fs');
+const {existsSync} = require('fs');
 const {execFileSync, spawnSync} = require('child_process');
-const {tmpdir} = require('os');
-const path = require('path');
 const {isCourseDuration} = require('./production-entry-contract');
 
 const appId = process.env.ROKN_SMOKE_APP_ID || 'com.rokn';
@@ -17,7 +16,6 @@ const serial = process.env.ANDROID_SERIAL || 'emulator-5554';
 const timeoutMs = Number(process.env.ROKN_SMOKE_TIMEOUT_MS || 25_000);
 const apk = process.env.ROKN_SMOKE_APK;
 const remoteDump = '/sdcard/rokn-production-entry.xml';
-const workingDirectory = mkdtempSync(path.join(tmpdir(), 'rokn-entry-smoke-'));
 
 const fail = message => {
   const error = new Error(message);
@@ -38,9 +36,9 @@ const findAdb = () => {
   return candidate.trim();
 };
 
-const adbBinary = findAdb();
+let adbBinary;
 const adb = (args, options = {}) =>
-  execFileSync(adbBinary, ['-s', serial, ...args], {
+  execFileSync((adbBinary ??= findAdb()), ['-s', serial, ...args], {
     encoding: 'utf8',
     stdio: options.silent ? ['ignore', 'pipe', 'pipe'] : ['ignore', 'pipe', 'pipe'],
     timeout: options.timeout || 30_000,
@@ -92,6 +90,26 @@ const waitForUi = async predicate => {
 const textOrDescription = (node, value) =>
   node.text === value || node['content-desc'] === value;
 
+const isActionableLabel = (node, value) =>
+  textOrDescription(node, value) &&
+  node.enabled !== 'false' &&
+  node.clickable !== 'false';
+
+const shouldResetAppData = environment =>
+  environment.ROKN_SMOKE_DISPOSABLE_EMULATOR === '1';
+
+const isAndroidEmulator = qemuProperty =>
+  String(qemuProperty || '').trim() === '1';
+
+const productionEntryKind = nodes => {
+  if (nodes.some(node => isActionableLabel(node, 'المتابعة كزائر'))) {
+    return 'guest-prompt';
+  }
+  return nodes.some(node => textOrDescription(node, 'الرئيسية'))
+    ? 'home'
+    : null;
+};
+
 const boundsCenter = rawBounds => {
   const match = String(rawBounds || '').match(
     /^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/,
@@ -108,12 +126,46 @@ const tapNode = node => {
 
 const tapLabel = async label => {
   const {match} = await waitForUi(
-    node =>
-      textOrDescription(node, label) &&
-      node.enabled !== 'false' &&
-      node.clickable !== 'false',
+    node => isActionableLabel(node, label),
   );
   tapNode(match);
+};
+
+const tapMatchingLabel = async pattern => {
+  const {match} = await waitForUi(
+    node =>
+      node.enabled !== 'false' &&
+      node.clickable !== 'false' &&
+      pattern.test(`${node.text || ''} ${node['content-desc'] || ''}`.trim()),
+  );
+  tapNode(match);
+};
+
+const waitForUnobscuredHomeAction = async predicate => {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const state = await waitForUi(
+      node =>
+        predicate(node) || isActionableLabel(node, 'المتابعة كزائر'),
+    );
+    const guestAction = state.nodes.find(node =>
+      isActionableLabel(node, 'المتابعة كزائر'),
+    );
+    if (guestAction) {
+      tapNode(guestAction);
+      await delay(250);
+      continue;
+    }
+    const action = state.nodes.find(predicate);
+    if (action) return action;
+  }
+  fail('A guest prompt kept the requested Home action blocked.');
+};
+
+const tapUnobscuredHomeLabel = async label => {
+  const action = await waitForUnobscuredHomeAction(node =>
+    isActionableLabel(node, label),
+  );
+  tapNode(action);
 };
 
 const assertNoPublicBlocker = nodes => {
@@ -125,8 +177,22 @@ const assertNoPublicBlocker = nodes => {
   if (blocker) fail(`Production UI displayed a blocker: ${blocker.text || blocker['content-desc']}`);
 };
 
-const launchFresh = async () => {
-  adb(['shell', 'pm', 'clear', appId]);
+const resetDisposableEmulator = () => {
+  if (!shouldResetAppData(process.env)) return;
+  const qemuProperty = adb(['shell', 'getprop', 'ro.kernel.qemu'], {
+    silent: true,
+  });
+  if (!isAndroidEmulator(qemuProperty)) {
+    fail(
+      'ROKN_SMOKE_DISPOSABLE_EMULATOR=1 may only clear an Android emulator.',
+    );
+  }
+  const result = adb(['shell', 'pm', 'clear', appId], {silent: true}).trim();
+  if (result !== 'Success') fail(`Could not clear ${appId} on the disposable emulator.`);
+};
+
+const launchToHome = async () => {
+  adb(['shell', 'am', 'force-stop', appId], {silent: true});
   adb([
     'shell',
     'monkey',
@@ -136,16 +202,34 @@ const launchFresh = async () => {
     'android.intent.category.LAUNCHER',
     '1',
   ]);
-  return waitForUi(node => textOrDescription(node, 'المتابعة كزائر'));
+  const entry = await waitForUi(
+    node =>
+      textOrDescription(node, 'الرئيسية') ||
+      isActionableLabel(node, 'المتابعة كزائر'),
+  );
+  assertNoPublicBlocker(entry.nodes);
+  if (productionEntryKind(entry.nodes) === 'guest-prompt') {
+    const guestAction = entry.nodes.find(node =>
+      isActionableLabel(node, 'المتابعة كزائر'),
+    );
+    tapNode(guestAction);
+    await delay(250);
+  }
+  const home = await waitForUi(node => textOrDescription(node, 'الرئيسية'));
+  assertNoPublicBlocker(home.nodes);
+  return home;
 };
 
 const verifyGuestJourney = async () => {
-  await launchFresh();
-  await tapLabel('المتابعة كزائر');
-  const home = await waitForUi(node => node['content-desc'] === 'الرئيسية');
-  assertNoPublicBlocker(home.nodes);
+  await launchToHome();
+  await tapUnobscuredHomeLabel('أنا');
+  const guestProfile = await waitForUi(node =>
+    textOrDescription(node, 'تصفّح كضيف'),
+  );
+  assertNoPublicBlocker(guestProfile.nodes);
+  await tapUnobscuredHomeLabel('الرئيسية');
 
-  const courseAction = home.nodes.find(
+  const courseAction = await waitForUnobscuredHomeAction(
     node =>
       node.class === 'android.widget.Button' &&
       /^عرض\s+\S/.test(node['content-desc'] || ''),
@@ -172,6 +256,9 @@ const verifyGuestJourney = async () => {
 const topActivity = () => adb(['shell', 'dumpsys', 'activity', 'activities']);
 
 const verifyProviderHandoff = async ({label, expectedDomain, finalProvider = false}) => {
+  // This proves the app opens the expected provider origin and returns safely
+  // when the browser is dismissed. It intentionally never submits credentials
+  // and therefore does not claim to prove callback exchange or session commit.
   await tapLabel(label);
   const deadline = Date.now() + timeoutMs;
   let xml = '';
@@ -198,8 +285,9 @@ const verifyProviderHandoff = async ({label, expectedDomain, finalProvider = fal
 };
 
 const verifyAuthEntry = async () => {
-  await launchFresh();
-  await tapLabel('تسجيل الدخول');
+  await launchToHome();
+  await tapUnobscuredHomeLabel('أنا');
+  await tapMatchingLabel(/^تسجيل الدخول(?:\s|$)/);
   const auth = await waitForUi(node => textOrDescription(node, 'المتابعة بحساب Google'));
   assertNoPublicBlocker(auth.nodes);
   if (!auth.nodes.some(node => textOrDescription(node, 'المتابعة بحساب TikTok'))) {
@@ -217,21 +305,18 @@ const verifyAuthEntry = async () => {
 };
 
 const main = async () => {
-  try {
-    adb(['get-state']);
-    if (apk) {
-      if (!existsSync(apk)) fail(`ROKN_SMOKE_APK does not exist: ${apk}`);
-      adb(['install', '-r', apk], {timeout: 120_000});
-    }
-    if (!adb(['shell', 'pm', 'path', appId]).includes('package:')) {
-      fail(`${appId} is not installed. Set ROKN_SMOKE_APK or install it first.`);
-    }
-    await verifyGuestJourney();
-    await verifyAuthEntry();
-    process.stdout.write('Production Android entry smoke passed.\n');
-  } finally {
-    rmSync(workingDirectory, {recursive: true, force: true});
+  adb(['get-state']);
+  if (apk) {
+    if (!existsSync(apk)) fail(`ROKN_SMOKE_APK does not exist: ${apk}`);
+    adb(['install', '-r', apk], {timeout: 120_000});
   }
+  if (!adb(['shell', 'pm', 'path', appId]).includes('package:')) {
+    fail(`${appId} is not installed. Set ROKN_SMOKE_APK or install it first.`);
+  }
+  resetDisposableEmulator();
+  await verifyGuestJourney();
+  await verifyAuthEntry();
+  process.stdout.write('Production Android entry smoke passed.\n');
 };
 
 if (require.main === module) {
@@ -242,4 +327,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = {boundsCenter, decodeXml, nodesFromXml};
+module.exports = {
+  boundsCenter,
+  decodeXml,
+  isAndroidEmulator,
+  nodesFromXml,
+  productionEntryKind,
+  shouldResetAppData,
+};

@@ -80,3 +80,8 @@ the artifact, its JSON file, and the symbol directory together for each release.
 JDK 17 is required by the React Native Gradle plugin. The script uses the local
 `.jdk17` cache when present, then `JAVA_HOME`. It never rewrites installed files
 inside `node_modules`.
+
+Build temporary files use the ignored workspace `.cache/android-tmp` directory;
+Jest uses `.cache/jest`. Moving the workspace to an SSD therefore moves these
+caches with it instead of continuing to fill the Windows system drive. The build
+script changes `TEMP` and `TMP` only for its own process and child processes.

@@ -15,6 +15,10 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$buildTemporaryDirectory = Join-Path $projectRoot '.cache\android-tmp'
+New-Item -ItemType Directory -Path $buildTemporaryDirectory -Force | Out-Null
+$env:TEMP = $buildTemporaryDirectory
+$env:TMP = $buildTemporaryDirectory
 $androidRoot = Join-Path $projectRoot 'android'
 $checkedInGradleWrapper = Join-Path $androidRoot 'gradlew.bat'
 $wrapperPropertiesPath = Join-Path $androidRoot 'gradle\wrapper\gradle-wrapper.properties'

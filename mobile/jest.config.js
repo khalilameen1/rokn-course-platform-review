@@ -1,5 +1,6 @@
 module.exports = {
   preset: 'react-native',
+  cacheDirectory: '<rootDir>/.cache/jest',
   setupFiles: ['./jest.setup.js'],
   // The desktop recorder owns a separate `node:test` suite. Let Jest run only
   // the React Native app tests instead of treating those files as empty suites.

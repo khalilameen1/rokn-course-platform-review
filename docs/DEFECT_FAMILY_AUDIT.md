@@ -4,6 +4,33 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Internal release candidate 1.0.38 — 2026-09-05
+
+This checkpoint supersedes the course-upload status in earlier checkpoints.
+Production course 3 is published: 15 reels, three modules, three project gates,
+two free previews and three purchase plans. Its dashboard was reloaded to verify
+the saved state. Upload completion does not prove native playback, purchase,
+project processing or certificate acceptance.
+
+The first full mobile test run exhausted C: while writing Jest transforms.
+The workspace now owns its Jest cache and Android build temporary directory on
+the SSD. After moving only the identified Rokn transform cache, the complete
+rerun passed 146 suites / 762 tests; configuration, TypeScript and release ESLint
+also passed. Reapplying the existing RNFirebase postinstall patch restored all
+60 release-script tests without changing application source.
+
+The Android entry harness now follows the actual direct-to-Home guest journey.
+It never clears app data by default. Reset requires an explicitly disposable
+device and Android's QEMU marker. Its OAuth checks prove Google/TikTok browser
+handoff and cancellation only, not authentication or durable session creation.
+
+Version 1.0.38 (Android 39, iOS 36) is prepared for an internal APK using the
+previous test signing identity and the explicit production public environment.
+The previous APK and its metadata/symbols are retained before building. At this
+checkpoint the new artifact has not yet been built or installed. Public release
+signing is not configured locally. Sentry configuration is present, but matching
+Hermes/R8 symbol upload and readable external stack traces remain unverified.
+
 ## Current acceptance boundary — 2026-09-05
 
 The latest user-installed APK failed Arabic alignment and course assistant
