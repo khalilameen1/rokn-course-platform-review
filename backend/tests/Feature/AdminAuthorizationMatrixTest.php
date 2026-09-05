@@ -21,6 +21,9 @@ final class AdminAuthorizationMatrixTest extends TestCase
         self::assertTrue($matrix->allows('moderator', 'admin.courses.draft.start', 'POST'));
         self::assertTrue($matrix->allows('moderator', 'admin.courses.update', 'PATCH'));
         self::assertTrue($matrix->allows('moderator', 'admin.courses.sections.update', 'PATCH'));
+        self::assertTrue($matrix->allows('moderator', 'admin.classifications.index', 'GET'));
+        self::assertTrue($matrix->allows('moderator', 'admin.classifications.update', 'PATCH'));
+        self::assertFalse($matrix->allows('moderator', 'admin.classifications.destroy', 'DELETE'));
         self::assertTrue($matrix->allows('moderator', 'admin.admin_data', 'GET'));
         self::assertTrue($matrix->allows('moderator', 'admin.update_admin_data', 'POST'));
 
@@ -36,6 +39,11 @@ final class AdminAuthorizationMatrixTest extends TestCase
         self::assertFalse($matrix->allows('client', 'admin.courses.index', 'GET'));
 
         self::assertTrue($matrix->allows('admin', 'admin.future-route', 'DELETE'));
+        self::assertTrue($matrix->allowsCapability('admin', AdminPermissionMatrix::CONTENT_CURATION));
+        self::assertTrue($matrix->allowsCapability('moderator', AdminPermissionMatrix::CONTENT_CURATION));
+        self::assertFalse($matrix->allowsCapability('client', AdminPermissionMatrix::CONTENT_CURATION));
+        self::assertFalse($matrix->allowsCapability('moderator', AdminPermissionMatrix::ACCOUNT_CREDENTIALS));
+        self::assertFalse($matrix->allowsCapability('admin', 'unknown.capability'));
     }
 
     public function test_sensitive_routes_require_an_administrator_and_all_dashboard_routes_require_mfa(): void
@@ -145,7 +153,8 @@ final class AdminAuthorizationMatrixTest extends TestCase
         self::assertStringContainsString('مساحة المحتوى', $html);
         self::assertStringContainsString('صناعة الكورس', $html);
         self::assertStringContainsString(route('admin.teachers.index'), $html);
-        self::assertStringNotContainsString(route('admin.classifications.index'), $html);
+        self::assertStringContainsString(route('admin.classifications.index'), $html);
+        self::assertStringContainsString('صفوف الرئيسية', $html);
         self::assertStringNotContainsString(route('admin.levels.index'), $html);
         self::assertStringNotContainsString(route('admin.paths.index'), $html);
         self::assertStringNotContainsString(route('admin.settings'), $html);

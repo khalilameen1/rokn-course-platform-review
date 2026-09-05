@@ -239,13 +239,13 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     // evidence even though the dashboard does not render a delete button.
     Route::resource('users', 'UsersController')->except(['destroy'])->middleware('admin.only');
     Route::resource('packages', 'PackageController')->middleware('admin.only');
-    // Moderators may select platform taxonomy while authoring courses, but
-    // changing homepage rows or the learner path catalogue is global product
-    // configuration and therefore administrator-only.
+    // Home rows are editorial content. Moderators can arrange and rename
+    // them, while physical taxonomy deletion remains owner-only.
     Route::resource('classifications', 'ClassificationController')
-        ->only(['create', 'store', 'edit', 'update', 'destroy'])
+        ->only(['index', 'create', 'store', 'edit', 'update']);
+    Route::resource('classifications', 'ClassificationController')
+        ->only(['destroy'])
         ->middleware('admin.only');
-    Route::resource('classifications', 'ClassificationController')->only(['index'])->middleware('admin.only');
     Route::resource('paths', 'PathController')
         ->only(['create', 'store', 'edit', 'update', 'destroy'])
         ->middleware('admin.only');

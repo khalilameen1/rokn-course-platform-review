@@ -21,31 +21,37 @@ const course = (
 });
 
 describe('home catalogue presentation', () => {
-  test('builds configured, continuation, and upcoming rows', () => {
+  test('builds only manually configured rows and keeps a course in every selected row', () => {
     const learning = course('learning', {
       owned: true,
       progress: 35,
       started: true,
     });
     const classified = course('classified', {
+      homeRows: [
+        {id: 'design', title: 'التصميم', order: 2},
+        {id: 'popular', title: 'الأكثر طلبًا', order: 1},
+      ],
+    });
+    const upcoming = course('upcoming', {
+      published: false,
       homeRows: [{id: 'design', title: 'التصميم', order: 2}],
     });
-    const upcoming = course('upcoming', {published: false});
 
     const rows = buildHomeSections({
       catalogue: [upcoming, classified, learning],
     });
 
     expect(rows.map(row => row.id)).toEqual([
-      'continue-learning',
+      'classification-popular',
       'classification-design',
-      'published',
-      'upcoming',
     ]);
-    expect(rows[0].data).toEqual([learning]);
+    expect(rows[0].data).toEqual([classified]);
+    expect(rows[1].data).toEqual([classified, upcoming]);
+    expect(rows.flatMap(row => row.data)).not.toContain(learning);
   });
 
-  test('does not invent continuation from ownership or progress without canonical start', () => {
+  test('does not invent home rows from ownership, progress, publication, or coming soon state', () => {
     const staleProgress = course('stale-progress', {
       owned: true,
       progress: 35,
@@ -57,14 +63,17 @@ describe('home catalogue presentation', () => {
       started: false,
     });
 
+    const published = course('published');
+    const upcoming = course('upcoming', {published: false});
+
     expect(
-      buildHomeSections({catalogue: [staleProgress, ownedNotStarted]}).some(
-        row => row.id === 'continue-learning',
-      ),
-    ).toBe(false);
+      buildHomeSections({
+        catalogue: [staleProgress, ownedNotStarted, published, upcoming],
+      }),
+    ).toEqual([]);
   });
 
-  test('selects a published hero and searches normalized Arabic text', () => {
+  test('selects only an explicitly chosen published hero and searches normalized Arabic text', () => {
     const hidden = course('hidden', {published: false, isMainCourse: true});
     const hero = course('hero', {
       title: 'صناعة المحتوى',
@@ -72,6 +81,7 @@ describe('home catalogue presentation', () => {
     });
 
     expect(selectHeroCourses([hidden, hero])).toEqual([hero]);
+    expect(selectHeroCourses([course('ordinary')])).toEqual([]);
     expect(
       searchHomeCatalogue({
         catalogue: [hero],

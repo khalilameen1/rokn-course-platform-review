@@ -113,6 +113,7 @@ final readonly class AdminCoursePageService
     public function show(
         Course $course,
         bool $administrator,
+        bool $canManageHero,
         int $commercialPage = 1,
         bool $loadCommercialReport = true
     ): array {
@@ -168,11 +169,12 @@ final readonly class AdminCoursePageService
                 ? (bool) $reportCourse->is_catalog_visible
                 : (bool) $course->is_catalog_visible,
             'mainCourseDefault' => $managedDraft
-                ? (bool) $reportCourse->is_main_course
+                ? ($this->stagedAuthoring->explicitHeroSelection($course)
+                    ?? (bool) $reportCourse->is_main_course)
                 : (bool) $course->is_main_course,
             'hasPublishedRevision' => (int) ($reportCourse->last_published_authoring_version ?? 0) > 0
                 || $reportCourse->published_at !== null,
-            'canManageHero' => $administrator,
+            'canManageHero' => $canManageHero,
             'authoringGraph' => $this->outline->graph($course),
             'coursePdfs' => $course->pdfs
                 ->map(fn ($pdf): array => $this->pdfPresenter->one($course, $pdf))

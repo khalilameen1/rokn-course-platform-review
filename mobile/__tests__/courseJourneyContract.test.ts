@@ -198,7 +198,7 @@ describe('course journey contract', () => {
     }
   });
 
-  it('shows continuation only from canonical owned and started learning state', () => {
+  it('keeps canonical continuation in My Corner without inventing a Home row', () => {
     const catalogue = source('src/screens/home/homeCatalogue.ts');
     const overlay = source('src/screens/home/useHomeCatalogue.ts');
     const learningMapper = source(
@@ -210,7 +210,7 @@ describe('course journey contract', () => {
       'started: valueAsBoolean(item.learning_started)',
     );
     expect(overlay).toContain('started: access.started');
-    expect(catalogue).toContain('course.started === true');
+    expect(catalogue).not.toContain('course.started === true');
     expect(myCornerModel).toContain('!course.started');
   });
 

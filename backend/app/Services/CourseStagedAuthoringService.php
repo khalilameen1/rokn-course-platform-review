@@ -22,6 +22,10 @@ use Illuminate\Validation\ValidationException;
 /** Isolates moderator work from the immutable learner-facing revision. */
 final class CourseStagedAuthoringService
 {
+    private const CLASSIFICATION_SNAPSHOT = 'authoring:classification';
+    private const CLASSIFICATION_SNAPSHOT_MARKER = 'authoring:classification-snapshot';
+    private const HERO_SELECTION_MARKER = 'authoring:hero-selection';
+
     public function __construct(
         private readonly CoursePublishingService $publishing
     ) {}
@@ -100,6 +104,81 @@ final class CourseStagedAuthoringService
             ->exists();
     }
 
+    /**
+     * Upgrade a legacy draft once its editor explicitly reviews the complete
+     * classification selection. The concurrency service already holds the
+     * canonical, revision and draft locks when this is called.
+     */
+    public function confirmClassificationSelection(Course $draft): void
+    {
+        $revision = CourseAuthoringRevision::query()
+            ->where('revision_course_id', $draft->id)
+            ->where('status', CourseAuthoringRevision::DRAFT)
+            ->first();
+        if (!$revision) return;
+
+        $entities = DB::table('course_authoring_revision_entities')
+            ->where('course_authoring_revision_id', $revision->id);
+        if ((clone $entities)->where('entity_type', self::CLASSIFICATION_SNAPSHOT_MARKER)->exists()) {
+            return;
+        }
+
+        (clone $entities)->whereIn('entity_type', [
+            self::CLASSIFICATION_SNAPSHOT,
+            self::CLASSIFICATION_SNAPSHOT_MARKER,
+        ])->delete();
+        DB::table('classification_course')
+            ->where('course_id', $revision->canonical_course_id)
+            ->pluck('classification_id')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->each(fn (int $id) => DB::table('course_authoring_revision_entities')->insert([
+                'course_authoring_revision_id' => $revision->id,
+                'entity_type' => self::CLASSIFICATION_SNAPSHOT,
+                'source_entity_id' => $id,
+                'revision_entity_id' => $id,
+            ]));
+        DB::table('course_authoring_revision_entities')->insert([
+            'course_authoring_revision_id' => $revision->id,
+            'entity_type' => self::CLASSIFICATION_SNAPSHOT_MARKER,
+            'source_entity_id' => (int) $revision->canonical_course_id,
+            'revision_entity_id' => (int) $revision->revision_course_id,
+        ]);
+    }
+
+    public function explicitHeroSelection(Course $draft): ?bool
+    {
+        $revisionId = CourseAuthoringRevision::query()
+            ->where('revision_course_id', $draft->id)
+            ->where('status', CourseAuthoringRevision::DRAFT)
+            ->value('id');
+        if (!$revisionId) return null;
+
+        $explicit = DB::table('course_authoring_revision_entities')
+            ->where('course_authoring_revision_id', $revisionId)
+            ->where('entity_type', self::HERO_SELECTION_MARKER)
+            ->exists();
+
+        return $explicit ? (bool) $draft->is_main_course : null;
+    }
+
+    /** Called under the canonical -> revision -> draft authoring locks. */
+    public function confirmHeroSelection(Course $draft): void
+    {
+        $revision = CourseAuthoringRevision::query()
+            ->where('revision_course_id', $draft->id)
+            ->where('status', CourseAuthoringRevision::DRAFT)
+            ->first(['id', 'canonical_course_id', 'revision_course_id']);
+        if (!$revision) return;
+
+        DB::table('course_authoring_revision_entities')->insertOrIgnore([
+            'course_authoring_revision_id' => $revision->id,
+            'entity_type' => self::HERO_SELECTION_MARKER,
+            'source_entity_id' => (int) $revision->canonical_course_id,
+            'revision_entity_id' => (int) $revision->revision_course_id,
+        ]);
+    }
+
     /** @return array{course:Course,archive:Course,previous_revision:int,published_revision:int} */
     public function publish(
         Course $draft,
@@ -163,7 +242,7 @@ final class CourseStagedAuthoringService
                 (int) $lockedDraft->authoring_version
             ) + 1;
 
-            $this->swapGraphs($canonical, $lockedDraft);
+            $this->swapGraphs($revision, $canonical, $lockedDraft);
             $oldCanonical = $this->editableAttributes($canonical);
             $newCanonical = $this->editableAttributes($lockedDraft);
 
@@ -350,11 +429,24 @@ final class CourseStagedAuthoringService
         ])->saveQuietly();
 
         $source->classifications()->pluck('classifications.id')->each(
-            fn ($id) => DB::table('classification_course')->insert([
-                'classification_id' => $id, 'course_id' => $draft->id,
-                'created_at' => now(), 'updated_at' => now(),
-            ])
+            function ($id) use ($draft, &$entityMappings): void {
+                DB::table('classification_course')->insert([
+                    'classification_id' => $id, 'course_id' => $draft->id,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+                // The same relation is edited both from the course studio and
+                // from home-row curation. Keep the clone-time state so publish
+                // can merge both editors instead of silently replacing either.
+                $entityMappings[] = [self::CLASSIFICATION_SNAPSHOT, (int) $id, (int) $id];
+            }
         );
+        // An empty base is meaningful and must remain distinguishable from a
+        // legacy revision created before snapshots were recorded.
+        $entityMappings[] = [
+            self::CLASSIFICATION_SNAPSHOT_MARKER,
+            (int) $source->id,
+            (int) $draft->id,
+        ];
         $source->teachers()->pluck('users.id')->each(
             fn ($id) => DB::table('course_teacher')->insert([
                 'teacher_id' => $id, 'course_id' => $draft->id,
@@ -454,7 +546,11 @@ final class CourseStagedAuthoringService
         return $copy;
     }
 
-    private function swapGraphs(Course $canonical, Course $archive): void
+    private function swapGraphs(
+        CourseAuthoringRevision $revision,
+        Course $canonical,
+        Course $archive
+    ): void
     {
         $liveSections = CourseSection::query()->where('course_id', $canonical->id)->get(['sectionable_type', 'sectionable_id']);
         $draftSections = CourseSection::query()->where('course_id', $archive->id)->get(['sectionable_type', 'sectionable_id']);
@@ -476,7 +572,7 @@ final class CourseStagedAuthoringService
             DB::table($table)->where('course_id', $buffer->id)->update(['course_id' => $archive->id]);
         }
 
-        $this->swapPivot('classification_course', 'classification_id', $canonical, $archive);
+        $this->mergeClassificationPivot($revision, $canonical, $archive);
         $this->swapPivot('course_teacher', 'teacher_id', $canonical, $archive);
         DB::table('photos')->where('photoable_type', Course::class)
             ->where('photoable_id', $canonical->id)->update(['photoable_id' => $buffer->id]);
@@ -786,6 +882,62 @@ final class CourseStagedAuthoringService
         ]);
         foreach ($live as $id) DB::table($table)->insert([
             'course_id' => $archive->id, $relatedColumn => $id, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    /**
+     * Classification membership has two legitimate editors: the course draft
+     * and home-row curation on the live course. Resolve their boolean changes
+     * against the clone-time snapshot, while the archive keeps the exact live
+     * membership that belonged to the previous published revision.
+     */
+    private function mergeClassificationPivot(
+        CourseAuthoringRevision $revision,
+        Course $canonical,
+        Course $archive
+    ): void {
+        $live = DB::table('classification_course')->where('course_id', $canonical->id)
+            ->pluck('classification_id')->map(fn ($id): int => (int) $id)->unique()->values();
+        $draft = DB::table('classification_course')->where('course_id', $archive->id)
+            ->pluck('classification_id')->map(fn ($id): int => (int) $id)->unique()->values();
+        $base = DB::table('course_authoring_revision_entities')
+            ->where('course_authoring_revision_id', $revision->id)
+            ->where('entity_type', self::CLASSIFICATION_SNAPSHOT)
+            ->pluck('source_entity_id')->map(fn ($id): int => (int) $id)->unique()->values();
+        $hasSnapshot = DB::table('course_authoring_revision_entities')
+            ->where('course_authoring_revision_id', $revision->id)
+            ->where('entity_type', self::CLASSIFICATION_SNAPSHOT_MARKER)
+            ->exists();
+
+        // A legacy draft with two different copies has no recoverable base.
+        // Stop instead of silently discarding either editor's selection; new
+        // drafts and unchanged legacy drafts continue without interruption.
+        if (!$hasSnapshot && $live->sort()->values()->all() !== $draft->sort()->values()->all()) {
+            throw ValidationException::withMessages([
+                'authoring_version' => ['تغيّرت صفوف الكورس منذ بدء هذه المسودة\nأعد فتح المسودة ثم راجع التصنيفات'],
+            ])->status(409);
+        }
+
+        $merged = $live->merge($draft)->merge($base)->unique()
+            ->filter(function (int $id) use ($base, $draft, $live): bool {
+                $baseHas = $base->contains($id);
+                $draftHas = $draft->contains($id);
+
+                return $draftHas !== $baseHas ? $draftHas : $live->contains($id);
+            })->values();
+
+        DB::table('classification_course')->whereIn('course_id', [$canonical->id, $archive->id])->delete();
+        $this->insertPivotIds('classification_course', 'classification_id', (int) $canonical->id, $merged);
+        $this->insertPivotIds('classification_course', 'classification_id', (int) $archive->id, $live);
+    }
+
+    private function insertPivotIds(string $table, string $relatedColumn, int $courseId, $ids): void
+    {
+        foreach ($ids as $id) DB::table($table)->insert([
+            'course_id' => $courseId,
+            $relatedColumn => (int) $id,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 

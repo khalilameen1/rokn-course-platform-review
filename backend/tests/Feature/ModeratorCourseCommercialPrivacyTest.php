@@ -10,6 +10,7 @@ use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
+use App\Services\CourseStagedAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
@@ -49,6 +50,9 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
         $this->actingAs($moderator)
             ->get(route('admin.courses.show', $course))
             ->assertOk()
+            ->assertSee('name="is_main_course"', false)
+            ->assertDontSee('تكلفة OpenRouter')
+            ->assertDontSee('عمليات الشراء')
             ->assertDontSee('ai_budget_usd')
             ->assertDontSee('project_feedback_budget_usd')
             ->assertDontSee('project_followup_budget_usd')
@@ -68,6 +72,63 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
             ->assertDontSee('project_followup_budget_usd')
             ->assertDontSee('chat_message_limit')
             ->assertDontSee('project_feedback_level');
+    }
+
+    public function test_moderator_can_choose_the_home_hero_without_financial_privileges(): void
+    {
+        $moderator = $this->dashboardUser('moderator', 'hero-editor@example.test');
+        $oldHero = $this->publishedCourse('الكورس الرئيسي', true, 3);
+        $newHero = $this->publishedCourse('الكورس الجديد', false, 5);
+        $draft = app(CourseStagedAuthoringService::class)->draftFor($newHero);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $this->actingAs($moderator)
+            ->patch(route('admin.courses.update', $draft), [
+                'authoring_version' => (int) $draft->authoring_version,
+                'is_main_course' => '1',
+            ])
+            ->assertRedirect(route('admin.courses.show', $draft));
+
+        // The public hero is immutable until this draft passes publication;
+        // the selected intent travels with the draft and is copied atomically
+        // during the existing publish swap.
+        self::assertTrue((bool) $oldHero->fresh()->is_main_course);
+        self::assertTrue((bool) $draft->fresh()->is_main_course);
+
+        $this->patch(route('admin.courses.update', $draft), [
+            'authoring_version' => (int) $draft->fresh()->authoring_version,
+            'description_ar' => 'تعديل مستقل بعد اختيار الكورس الرئيسي',
+        ])->assertRedirect(route('admin.courses.show', $draft));
+
+        self::assertTrue((bool) $draft->fresh()->is_main_course);
+        $studio = $this->get(route('admin.courses.show', $draft))
+            ->assertOk()
+            ->assertSee('name="is_main_course"', false);
+        self::assertTrue((bool) $studio->original->getData()['mainCourseDefault']);
+    }
+
+    public function test_an_explicit_hero_uncheck_survives_later_partial_draft_saves(): void
+    {
+        $moderator = $this->dashboardUser('moderator', 'hero-uncheck@example.test');
+        $currentHero = $this->publishedCourse('الرئيسي الحالي', true, 8);
+        $draft = app(CourseStagedAuthoringService::class)->draftFor($currentHero);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($moderator);
+
+        $this->patch(route('admin.courses.update', $draft), [
+            'authoring_version' => (int) $draft->authoring_version,
+            'is_main_course' => '0',
+        ])->assertRedirect(route('admin.courses.show', $draft));
+        self::assertFalse((bool) $draft->fresh()->is_main_course);
+
+        $this->patch(route('admin.courses.update', $draft), [
+            'authoring_version' => (int) $draft->fresh()->authoring_version,
+            'description_ar' => 'حفظ جزئي بعد إلغاء الاختيار',
+        ])->assertRedirect(route('admin.courses.show', $draft));
+
+        self::assertFalse((bool) $draft->fresh()->is_main_course);
+        $studio = $this->get(route('admin.courses.show', $draft))->assertOk();
+        self::assertFalse((bool) $studio->original->getData()['mainCourseDefault']);
     }
 
     public function test_crafted_course_request_cannot_replace_global_ai_policy(): void
@@ -166,5 +227,20 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
         ])->save();
 
         return $user;
+    }
+
+    private function publishedCourse(string $name, bool $isMain, int $version): Course
+    {
+        $course = new Course();
+        $course->forceFill([
+            'tenant_id' => 1,
+            'name_ar' => $name,
+            'is_coming_soon' => false,
+            'is_catalog_visible' => true,
+            'is_main_course' => $isMain,
+            'authoring_version' => $version,
+        ])->save();
+
+        return $course;
     }
 }

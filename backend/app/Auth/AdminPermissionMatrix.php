@@ -14,6 +14,7 @@ namespace App\Auth;
 final class AdminPermissionMatrix
 {
     public const ACCOUNT_CREDENTIALS = 'account.credentials';
+    public const CONTENT_CURATION = 'content.curation';
 
     /** @var array<string, list<string>> */
     private const MODERATOR_RULES = [
@@ -37,6 +38,14 @@ final class AdminPermissionMatrix
         'admin.courses.update' => ['PUT', 'PATCH'],
         'admin.courses.student-preview' => ['GET'],
         'admin.courses.media-health.probe' => ['POST'],
+
+        // Learner-home rows are editorial content, not platform taxonomy
+        // ownership. Physical deletion remains administrator-only.
+        'admin.classifications.index' => ['GET'],
+        'admin.classifications.create' => ['GET'],
+        'admin.classifications.store' => ['POST'],
+        'admin.classifications.edit' => ['GET'],
+        'admin.classifications.update' => ['PUT', 'PATCH'],
 
         // Educational content authoring and review workflows.
         'admin.courses.sections.create' => ['GET'],
@@ -105,8 +114,15 @@ final class AdminPermissionMatrix
      */
     public function allowsCapability(?string $role, string $capability): bool
     {
-        return $capability === self::ACCOUNT_CREDENTIALS
-            && $this->isAdministrator($role);
+        return match ($capability) {
+            self::ACCOUNT_CREDENTIALS => $this->isAdministrator($role),
+            self::CONTENT_CURATION => in_array(
+                $this->normalizedRole($role),
+                ['admin', 'moderator'],
+                true
+            ),
+            default => false,
+        };
     }
 
     public function isAdministrator(?string $role): bool

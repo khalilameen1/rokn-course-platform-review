@@ -48,8 +48,6 @@ const CourseCard = memo<CourseCardProps>(
         }
         accessibilityLabel={formatArabicDisplayText(accessibilitySummary)}
         accessibilityRole="button"
-        accessibilityState={{disabled: !isAvailable}}
-        disabled={!isAvailable}
         onPress={() => onPress(item)}
         style={({pressed}) => [
           styles.courseItem,

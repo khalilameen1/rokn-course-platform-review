@@ -1,5 +1,5 @@
 @php
-    $isAdministrator = $canManageHero;
+    $isAdministrator = $canViewCommercialReport;
     $accessPlansByCode = $course->accessPlans->keyBy('code');
     $planLabels = [
         'basic' => 'التعلّم',

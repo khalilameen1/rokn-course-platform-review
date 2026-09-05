@@ -2,6 +2,7 @@ import {useIsFocused, useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
 import React, {useCallback, useEffect, useMemo, useRef} from 'react';
 import {
+  Alert,
   Image,
   Pressable,
   StyleSheet,
@@ -35,7 +36,6 @@ import {
   buildQuickSearches,
   searchHomeCatalogue,
   selectHeroCourses,
-  selectHomeRecommendations,
 } from './home/homeCatalogue';
 import {useHomeCatalogue} from './home/useHomeCatalogue';
 import HomeCatalogueFeed from './home/HomeCatalogueFeed';
@@ -127,11 +127,6 @@ const Home = () => {
 
   const heroCourses = useMemo(() => selectHeroCourses(catalogue), [catalogue]);
 
-  const recommendations = useMemo(
-    () => selectHomeRecommendations(catalogue, heroCourses),
-    [catalogue, heroCourses],
-  );
-
   const quickSearches = useMemo(
     () => buildQuickSearches(catalogue, QUICK_SEARCHES),
     [catalogue],
@@ -181,7 +176,10 @@ const Home = () => {
 
   const openCourse = useCallback(
     (course: Course) => {
-      if (course.published === false) return;
+      if (course.published === false) {
+        Alert.alert('قريبًا', 'هذا الكورس قيد الإعداد');
+        return;
+      }
       if (!openCourseDetailsOnce(course)) return;
       void trackProductEvent({
         event_name: 'course_opened',
@@ -262,7 +260,6 @@ const Home = () => {
 
         <HomeCatalogueFeed
           active={screenFocused && appIsActive}
-          catalogue={catalogue}
           error={catalogueError}
           hasSearchQuery={hasSearchQuery}
           heroCourses={heroCourses}
@@ -272,7 +269,6 @@ const Home = () => {
           onLoadMore={loadMoreCatalogue}
           onOpenCourse={openCourse}
           onRefresh={refreshCatalogue}
-          recommendations={recommendations}
           searchMatches={searchMatches}
           sections={homeSections}
           staleNotice={staleNotice}

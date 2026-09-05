@@ -1,6 +1,5 @@
 import {normalizeText} from '../../utils/searchText';
 import type {Course} from '../../types/Course';
-import {recommendCourses} from '../../services/courseRecommendations';
 
 export type HomeCourseSection = {
   id: string;
@@ -18,25 +17,12 @@ export const buildHomeSections = ({
 }: {
   catalogue: Course[];
 }): HomeCourseSection[] => {
-  const ownedCourses = catalogue
-    .filter(course => course.owned && course.published !== false)
-    .sort((first, second) => {
-      const progressOrder =
-        Number(second.progress || 0) - Number(first.progress || 0);
-      return progressOrder || byHomeOrder(first, second);
-    });
-  const continueCourses = ownedCourses.filter(
-    course =>
-      course.started === true &&
-      Number(course.progress || 0) < 100,
-  );
   const rowMap = new Map<
     string,
     {id: string; title: string; order: number; data: Course[]}
   >();
 
   catalogue.forEach(course => {
-    if (course.published === false) return;
     course.homeRows?.forEach(row => {
       const current = rowMap.get(row.id) ?? {
         id: `classification-${row.id}`,
@@ -59,52 +45,14 @@ export const buildHomeSections = ({
         first.order - second.order ||
         first.title.localeCompare(second.title, 'ar'),
     );
-  const unassigned = catalogue.filter(course => !course.homeRows?.length);
-  const unassignedPublished = unassigned
-    .filter(course => course.published !== false)
-    .sort(byHomeOrder);
-  const upcoming = catalogue
-    .filter(course => course.published === false)
-    .sort(byHomeOrder);
 
-  return [
-    continueCourses.length
-      ? {
-          id: 'continue-learning',
-          title: 'أكمل من مكانك',
-          data: continueCourses,
-        }
-      : null,
-    ...configuredRows,
-    unassignedPublished.length
-      ? {id: 'published', title: 'كورسات مختارة لك', data: unassignedPublished}
-      : null,
-    upcoming.length
-      ? {id: 'upcoming', title: 'قريبًا في ركن', data: upcoming}
-      : null,
-  ].filter((section): section is HomeCourseSection => Boolean(section));
+  return configuredRows;
 };
 
 export const selectHeroCourses = (catalogue: Course[]): Course[] =>
-  [
-    catalogue.find(
-      course => course.published !== false && course.isMainCourse === true,
-    ) ?? catalogue.find(course => course.published !== false),
-  ].filter((course): course is Course => Boolean(course));
-
-export const selectHomeRecommendations = (
-  catalogue: Course[],
-  heroCourses: Course[],
-): Course[] => {
-  const preferredCategories = catalogue
-    .filter(course => course.owned === true || Number(course.progress || 0) > 0)
-    .map(course => course.category);
-
-  return recommendCourses(catalogue, {
-    excludedCourseIds: heroCourses.map(course => course.id),
-    preferredCategories,
-  });
-};
+  catalogue.filter(
+    course => course.published !== false && course.isMainCourse === true,
+  ).slice(0, 1);
 
 export const buildQuickSearches = (
   catalogue: Course[],

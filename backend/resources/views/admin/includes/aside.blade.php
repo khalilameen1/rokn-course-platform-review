@@ -35,14 +35,14 @@
                     </a>
                 </li>
                 <li class="menu-divider"><span>{{ $isAdministrator ? 'إدارة المحتوى' : 'صناعة الكورس' }}</span></li>
-                @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.classifications.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.classifications.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-tags"></i>
-                        <span class="menu-text">التصنيفات</span>
+                        <span class="menu-text">صفوف الرئيسية</span>
                     </a>
                 </li>
 
+                @if($isAdministrator)
                 <li class="nav-item{{ isRouteActive('admin.levels.*') ? ' active' : '' }}">
                     <a href="{{ route('admin.levels.index') }}" class="nav-link">
                         <i class="menu-icon fa fa-trophy"></i>

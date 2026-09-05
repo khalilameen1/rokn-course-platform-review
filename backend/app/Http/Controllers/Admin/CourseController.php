@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
+use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
@@ -41,7 +42,7 @@ final class CourseController extends Controller
 
     public function store(CourseRequest $request, AdminCourseAuthoringService $authoring)
     {
-        $result = $authoring->create($request, $this->isAdministrator());
+        $result = $authoring->create($request);
         if ($result['status'] === 'failed') {
             return redirect()->back()
                 ->withInput()
@@ -67,6 +68,7 @@ final class CourseController extends Controller
         $data = $pages->show(
             $course,
             $this->isAdministrator(),
+            $this->canCurateHome(),
             max(1, $request->integer('commercial_page', 1)),
             !$summaryOnly && ($request->query('tab') === 'commercial-report'
                 || $request->has('commercial_page'))
@@ -155,7 +157,12 @@ final class CourseController extends Controller
         AdminCourseAuthoringService $authoring,
         AdminCourseEditorStatePresenter $editorState
     ) {
-        $result = $authoring->update($request, $course, $this->isAdministrator());
+        $result = $authoring->update(
+            $request,
+            $course,
+            $this->isAdministrator(),
+            $this->canCurateHome()
+        );
         $course = $result['course'];
 
         if ($request->expectsJson()) {
@@ -258,5 +265,13 @@ final class CourseController extends Controller
     private function isAdministrator(): bool
     {
         return strtolower(trim((string) optional(auth()->user())->role)) === 'admin';
+    }
+
+    private function canCurateHome(): bool
+    {
+        return app(AdminPermissionMatrix::class)->allowsCapability(
+            auth()->user()?->role,
+            AdminPermissionMatrix::CONTENT_CURATION
+        );
     }
 }

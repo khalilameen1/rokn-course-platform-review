@@ -17,14 +17,12 @@ import type {HomeCourseSection} from './homeCatalogue';
 
 type HomeCatalogueFeedProps = {
   active: boolean;
-  catalogue: Course[];
   error: string;
   hasSearchQuery: boolean;
   heroCourses: Course[];
   loadMoreError: string;
   loading: boolean;
   loadingMore: boolean;
-  recommendations: Course[];
   searchMatches: Course[];
   sections: HomeCourseSection[];
   staleNotice: string;
@@ -54,14 +52,12 @@ const RetryNotice = ({
 const HomeCatalogueFeed = memo<HomeCatalogueFeedProps>(
   ({
     active,
-    catalogue,
     error,
     hasSearchQuery,
     heroCourses,
     loadMoreError,
     loading,
     loadingMore,
-    recommendations,
     searchMatches,
     sections,
     staleNotice,
@@ -82,7 +78,7 @@ const HomeCatalogueFeed = memo<HomeCatalogueFeedProps>(
             title="تعذّر تحميل الكورسات"
           />
         </ResponsiveFrame>
-      ) : !catalogue.length && !hasSearchQuery ? (
+      ) : !heroCourses.length && !sections.length && !hasSearchQuery ? (
         <ResponsiveFrame>
           <StatusView
             description="ستظهر الكورسات هنا فور نشرها"
@@ -104,13 +100,6 @@ const HomeCatalogueFeed = memo<HomeCatalogueFeedProps>(
 
       {!loading && !error && !hasSearchQuery ? (
         <>
-          {!!recommendations.length && (
-            <CoursesSection
-              data={recommendations}
-              onCoursePress={onOpenCourse}
-              title="مقترحات لك"
-            />
-          )}
           {sections.map(section => (
             <CoursesSection
               data={section.data}

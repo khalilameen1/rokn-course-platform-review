@@ -1815,6 +1815,36 @@ final class BackendHardeningTest extends TestCase
         $this->assertDatabaseHas('user_level', ['user_id' => $user->id, 'course_id' => $second->id]);
     }
 
+    public function test_badges_are_never_inferred_without_the_explicit_course_policy(): void
+    {
+        $user = $this->user();
+        $levelId = DB::table('levels')->insertGetId([
+            'name_ar' => 'متقدم',
+            'name_en' => 'Advanced',
+            'order' => 2,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $disabled = $this->course([
+            'name_ar' => 'كورس نظري بلا درع',
+            'level_id' => $levelId,
+            'awards_badge' => false,
+            'badge_track' => 'professional',
+        ]);
+        $missingTrack = $this->course([
+            'name_ar' => 'كورس بلا مسار مهني',
+            'level_id' => $levelId,
+            'awards_badge' => true,
+            'badge_track' => null,
+        ]);
+        $listener = new AwardLevelBadge();
+
+        $listener->handle(new CourseCompleted($user, $disabled));
+        $listener->handle(new CourseCompleted($user, $missingTrack));
+
+        self::assertSame(0, DB::table('user_level')->where('user_id', $user->id)->count());
+    }
+
     public function test_guest_catalogue_is_real_and_bounded(): void
     {
         $classificationId = DB::table('classifications')->insertGetId([

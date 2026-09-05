@@ -24,7 +24,7 @@ final readonly class AdminCourseAuthoringService
     }
 
     /** @return array{status:string, course:?Course} */
-    public function create(CourseRequest $request, bool $administrator): array
+    public function create(CourseRequest $request): array
     {
         $requestId = (string) $request->validated('authoring_request_id');
         $existing = Course::query()->where('authoring_request_id', $requestId)->first();
@@ -37,7 +37,9 @@ final readonly class AdminCourseAuthoringService
             'authoring_request_id' => $requestId,
             'is_coming_soon' => true,
             'is_catalog_visible' => false,
-            'is_main_course' => $administrator && $request->boolean('is_main_course'),
+            // A draft cannot be the public hero. The explicit choice is made
+            // in the studio and becomes public only with a successful publish.
+            'is_main_course' => false,
             // A new course has no downloadable material yet. Enabling the
             // discovery prompt here makes an otherwise complete course fail
             // publication until the moderator finds and disables an unrelated
@@ -92,7 +94,12 @@ final readonly class AdminCourseAuthoringService
     }
 
     /** @return array{status:string, course:Course, issues?:array} */
-    public function update(CourseRequest $request, Course $course, bool $administrator): array
+    public function update(
+        CourseRequest $request,
+        Course $course,
+        bool $administrator,
+        bool $canCurateHome
+    ): array
     {
         $validated = $request->validated();
         $wasDraft = (bool) $course->is_coming_soon;
@@ -118,10 +125,16 @@ final readonly class AdminCourseAuthoringService
         $ownedVersion = null;
         $managedDraft = $this->stagedAuthoring->isManagedDraft($course);
         $canonical = $this->stagedAuthoring->canonicalFor($course);
+        $explicitHero = $managedDraft
+            ? $this->stagedAuthoring->explicitHeroSelection($course)
+            : null;
         $preservedHero = $managedDraft
-            ? (bool) $canonical->is_main_course
+            // A fresh clone clears its implementation flag. Once the editor
+            // explicitly checks or unchecks the control, the draft owns that
+            // intent across every later partial save.
+            ? ($explicitHero ?? (bool) $canonical->is_main_course)
             : (!(bool) $course->is_coming_soon && (bool) $course->is_main_course);
-        $heroRequested = $administrator && $request->has('is_main_course')
+        $heroRequested = $canCurateHome && $request->has('is_main_course')
             ? $request->boolean('is_main_course')
             : $preservedHero;
 
@@ -139,6 +152,7 @@ final readonly class AdminCourseAuthoringService
                 $imagePath,
                 $oldPhotos,
                 $managedDraft,
+                $canCurateHome,
                 $wasDraft,
                 $publishingRequested,
                 $heroRequested,
@@ -149,6 +163,9 @@ final readonly class AdminCourseAuthoringService
                 $locked->update($data);
                 if ($wasDraft) {
                     $locked->updateQuietly(['is_main_course' => $heroRequested]);
+                    if ($managedDraft && $canCurateHome && $request->has('is_main_course')) {
+                        $this->stagedAuthoring->confirmHeroSelection($locked);
+                    }
                 }
                 if ($request->has('access_plans')) {
                     $this->accessPlans->syncAdminPlans(
@@ -169,6 +186,7 @@ final readonly class AdminCourseAuthoringService
                 if (array_key_exists('classification_ids', $validated)
                     || $request->boolean('classification_ids_present')) {
                     $locked->classifications()->sync((array) $request->input('classification_ids', []));
+                    $this->stagedAuthoring->confirmClassificationSelection($locked);
                 }
                 if (array_key_exists('teacher_ids', $validated)
                     || $request->boolean('teacher_ids_present')) {
