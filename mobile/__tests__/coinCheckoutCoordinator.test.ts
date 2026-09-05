@@ -5,6 +5,56 @@ import {
 import type {CoinCheckoutResult} from '../src/services/coinCheckoutTypes';
 
 describe('coin checkout operation ownership', () => {
+  it('preserves pending checkout state for foreground retry without racing recovery', async () => {
+    let finishCheckout!: (value: CoinCheckoutResult) => void;
+    const recoveryOperation = jest.fn(async () => null);
+    const checkout = runCoinCheckoutSingleFlight(
+      'owner-pending',
+      'intent-course-52',
+      () =>
+        new Promise(resolve => {
+          finishCheckout = resolve;
+        }),
+    );
+    const recovery = runCoinCheckoutReconciliationSingleFlight(
+      'owner-pending',
+      recoveryOperation,
+    );
+    const pending = {
+      success: false,
+      pending: true,
+      cancelled: false,
+      coinsAdded: 0,
+      orderRef: 'PKG-PENDING-52',
+    };
+    finishCheckout(pending);
+    await checkout;
+    await expect(recovery).resolves.toEqual(pending);
+    expect(recoveryOperation).not.toHaveBeenCalled();
+  });
+
+  it('preserves a checkout failure so foreground recovery can retry it', async () => {
+    let failCheckout!: (error: unknown) => void;
+    const recoveryOperation = jest.fn(async () => null);
+    const checkout = runCoinCheckoutSingleFlight(
+      'owner-network-failure',
+      'intent-course-52',
+      () =>
+        new Promise((_resolve, reject) => {
+          failCheckout = reject;
+        }),
+    );
+    const recovery = runCoinCheckoutReconciliationSingleFlight(
+      'owner-network-failure',
+      recoveryOperation,
+    );
+    const error = new Error('Network request failed');
+    failCheckout(error);
+    await expect(checkout).rejects.toBe(error);
+    await expect(recovery).rejects.toBe(error);
+    expect(recoveryOperation).not.toHaveBeenCalled();
+  });
+
   it('does not run recovery while the provider checkout owns the account', async () => {
     let finishCheckout: ((value: CoinCheckoutResult) => void) | undefined;
     const checkoutOperation = jest.fn(

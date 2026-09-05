@@ -4,6 +4,48 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Recover confirmed and still-pending checkout outcomes — 2026-09-05
+
+Two distinct mobile boundaries were dropping valid server/payment outcomes:
+
+- Foreground recovery joined an in-flight checkout but converted both pending
+  results and failures to null. The runtime therefore stopped scheduling its
+  next reconciliation, leaving a later settlement unnoticed until another user
+  action. The coordinator now propagates pending and rejected results while
+  keeping terminal screen-owned results from being emitted twice.
+- Payment initiation can legitimately return `checkout_state=paid` without a
+  payable URL or a new idempotency key. The backend does this for a settled replay
+  or an older capture recovered before opening another package. Mobile required
+  a new checkout URL for every initiation and rejected that successful response.
+  Initiation is now an explicit paid/payable union. Paid requires an approved,
+  settled order, a valid reference and positive integer coins from that order;
+  it clears the local attempt without opening the gateway or using the newly
+  selected package's coin count. Account boundaries remain enforced.
+
+The existing course consumer reloads wallet and quote, then asks the learner to
+confirm the course purchase; a recovered top-up does not itself buy a course.
+The existing top-up-to-confirm effect also handles a later balance refresh.
+Backend wallet credit and course enrollment remain separate transactions; the
+course debit, order, bill and enrollment are atomic within course authorization.
+No new backend financial defect was established by this bounded review.
+
+Before/after regressions reproduce both dropped outcomes. The foreground test
+uses the real runtime, coordinator, reconciliation entry and wallet credit
+subscriber, asserting one refresh request after settlement and no second provider
+dispatch. It does not claim a real wallet HTTP response or native UI acceptance.
+The paid-initiation tests use the backend's actual response shape, including an
+older, differently sized package and financially ineffective negative cases.
+Nine combined mobile suites pass 78 tests; TypeScript and scoped ESLint pass.
+The existing backend paid-replay endpoint regression passes 1 test / 8 assertions.
+No real charge, credit, enrollment or new APK was created for this verification.
+
+Deployment 176 published exact `99f3eec89caab3a9f91ef7328481b7c357d1cb8b` after
+backend CI 33986546280 succeeded. The post-deploy readiness endpoint returned
+HTTP 200 with database, schema, identity and cache checks true. That deployment
+carries the previous authored-notification fix, not these newer mobile changes.
+Mobile CI 33986546218 for that same SHA is still running; its staging smoke is
+skipped, not passed. APK `1234.apk` remains unchanged.
+
 ## Deliver authored notifications without mistaking them for failures — 2026-09-05
 
 A valid notification mentioning `Grease Pencil` or `SQLSTATE` was passed through

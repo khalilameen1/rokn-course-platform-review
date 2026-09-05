@@ -243,6 +243,17 @@ const runCoinCheckout = async (
       },
       boundary,
     );
+    if (initiation.state === 'paid') {
+      await clearCoinCheckoutAttempt(attempt.idempotencyKey, boundary);
+      assertAccountSessionBoundary(boundary);
+      return {
+        success: true,
+        pending: false,
+        cancelled: false,
+        coinsAdded: initiation.coinsAdded,
+        orderRef: initiation.orderRef,
+      };
+    }
     paymentUrl = initiation.paymentUrl;
     orderRef = initiation.orderRef;
     const remembered = await rememberCoinCheckoutOrder(

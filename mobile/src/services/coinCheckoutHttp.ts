@@ -7,9 +7,14 @@ import {asRecord, errorCode, errorPayload, errorStatus} from '../utils/errorPayl
 import type {CoinCheckoutOrderStatus} from './coinCheckoutTypes';
 
 type CheckoutInitiation = {
+  state: 'payable';
   paymentUrl: string;
   orderRef: string;
   idempotencyKey: string;
+} | {
+  state: 'paid';
+  orderRef: string;
+  coinsAdded: number;
 };
 
 export type CheckoutFailure = {
@@ -79,8 +84,21 @@ export const initiateCoinCheckout = async (
   );
   assertAccountSessionBoundary(boundary);
   const data = responseData(response, 'PAYMENT_SESSION_CONTRACT_INVALID');
-  const paymentUrl = String(data.payment_url || '').trim();
   const orderRef = String(data.order_ref || '').trim();
+  if (data.checkout_state === 'paid') {
+    if (
+      data.order_status !== 'approved' ||
+      data.financial_status !== 'settled' ||
+      !ORDER_REFERENCE_PATTERN.test(orderRef) ||
+      typeof data.coins_added !== 'number' ||
+      !Number.isSafeInteger(data.coins_added) ||
+      data.coins_added <= 0
+    ) {
+      throw new Error('PAYMENT_SESSION_CONTRACT_INVALID');
+    }
+    return {state: 'paid', orderRef, coinsAdded: data.coins_added};
+  }
+  const paymentUrl = String(data.payment_url || '').trim();
   const idempotencyKey = String(data.idempotency_key || '').toLowerCase();
   if (
     !/^https:\/\/checkout\.kashier\.io(?:\/|\?|$)/i.test(paymentUrl) ||
@@ -89,7 +107,7 @@ export const initiateCoinCheckout = async (
   ) {
     throw new Error('PAYMENT_SESSION_CONTRACT_INVALID');
   }
-  return {paymentUrl, orderRef, idempotencyKey};
+  return {state: 'payable', paymentUrl, orderRef, idempotencyKey};
 };
 
 export const reconcileCoinCheckoutOrder = async (

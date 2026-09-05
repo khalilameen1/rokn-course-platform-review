@@ -57,12 +57,10 @@ export const runCoinCheckoutReconciliationSingleFlight = (
   const checkout = checkoutFlights.get(ownerKey);
   if (checkout) {
     // Foreground recovery must not race the checkout which owns the provider
-    // surface. Its screen already handles the terminal result, so observing
-    // the same promise here would also emit a duplicate credit event.
-    return checkout.promise.then(
-      () => null,
-      () => null,
-    );
+    // surface. Its screen handles terminal results; pending state and failures
+    // must still reach the runtime so it can schedule a later recovery pass.
+    // Do not replay the checkout or emit its successful credit a second time.
+    return checkout.promise.then(result => (result.pending ? result : null));
   }
 
   let flight: Promise<CoinCheckoutResult | null>;

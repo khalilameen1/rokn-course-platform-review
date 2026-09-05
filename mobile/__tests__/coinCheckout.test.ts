@@ -89,6 +89,64 @@ describe('coin checkout boundary', () => {
     expect(publicRequest.post).not.toHaveBeenCalled();
   });
 
+  it('finishes a server-recovered older payment without opening or charging the selected package', async () => {
+    jest.resetModules();
+    const {publicRequest} = require('../src/constants/api');
+    const WebBrowser = require('expo-web-browser');
+    const {removeItem} = require('../src/constants/helpers');
+    const {openCoinCheckout} = require('../src/services/coinCheckout');
+    publicRequest.post.mockResolvedValueOnce({
+      data: {data: {
+        order_ref: 'PKG-OLDER-PAID',
+        order_status: 'approved',
+        checkout_state: 'paid',
+        financial_status: 'settled',
+        transaction_id: 'TXN-OLDER',
+        coins_added: 300,
+        package: {id: 2, coins: 300},
+      }},
+    });
+
+    await expect(
+      openCoinCheckout({id: '7', coins: 600, price: 49, label: 'باقة'}),
+    ).resolves.toEqual({
+      success: true,
+      pending: false,
+      cancelled: false,
+      coinsAdded: 300,
+      orderRef: 'PKG-OLDER-PAID',
+    });
+    expect(publicRequest.post).toHaveBeenCalledTimes(1);
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(removeItem).toHaveBeenCalled();
+  });
+
+  it('does not clear or complete a paid response for an account that changed during initiation', async () => {
+    jest.resetModules();
+    const {publicRequest} = require('../src/constants/api');
+    const WebBrowser = require('expo-web-browser');
+    const {removeItem} = require('../src/constants/helpers');
+    const {openCoinCheckout} = require('../src/services/coinCheckout');
+    publicRequest.post.mockImplementationOnce(async () => {
+      mockCoinAccountEpoch = 2;
+      mockCoinAccountScope = 'user-b';
+      return {data: {data: {
+        order_ref: 'PKG-OLDER-PAID',
+        order_status: 'approved',
+        checkout_state: 'paid',
+        financial_status: 'settled',
+        coins_added: 300,
+        package: {id: 2, coins: 300},
+      }}};
+    });
+
+    await expect(
+      openCoinCheckout({id: '7', coins: 600, price: 49, label: 'باقة'}),
+    ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(removeItem).not.toHaveBeenCalled();
+  });
+
   it('keeps the same payment intent when the checkout browser is closed', async () => {
     process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
     jest.resetModules();
