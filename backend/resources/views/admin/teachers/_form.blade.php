@@ -20,23 +20,49 @@
 </div>
 
 @if($canManageCredentials)
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label for="email">البريد الإلكتروني <span class="text-muted">(اختياري)</span></label>
-            <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $teacher->email ?? '') }}">
-            @error('email')
-                <span class="invalid-feedback">{{ $message }}</span>
-            @enderror
+@php($manageCredentials = (bool) old('manage_credentials', false))
+<div class="form-group">
+    <div class="custom-control custom-checkbox">
+        <input type="checkbox" name="manage_credentials" value="1" class="custom-control-input" id="manage_credentials" autocomplete="off" {{ $manageCredentials ? 'checked' : '' }}>
+        <label class="custom-control-label" for="manage_credentials">تعديل بيانات حساب الدخول</label>
+    </div>
+</div>
+<div id="teacherCredentialFields" {{ $manageCredentials ? '' : 'hidden' }}>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="email">البريد الإلكتروني <span class="text-muted">(اختياري)</span></label>
+                <input type="email" name="email" id="email" autocomplete="off" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $teacher->email ?? '') }}" {{ $manageCredentials ? '' : 'disabled' }}>
+                @error('email')
+                    <span class="invalid-feedback">{{ $message }}</span>
+                @enderror
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="phone">رقم الهاتف <span class="text-muted">(اختياري)</span></label>
+                <input type="text" name="phone" id="phone" autocomplete="off" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $teacher->phone ?? '') }}" {{ $manageCredentials ? '' : 'disabled' }}>
+                @error('phone')
+                    <span class="invalid-feedback">{{ $message }}</span>
+                @enderror
+            </div>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="form-group">
-            <label for="phone">رقم الهاتف <span class="text-muted">(اختياري)</span></label>
-            <input type="text" name="phone" id="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $teacher->phone ?? '') }}">
-            @error('phone')
-                <span class="invalid-feedback">{{ $message }}</span>
-            @enderror
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="password">كلمة المرور <span class="text-muted">(اختياري)</span></label>
+                <input type="password" name="password" id="password" autocomplete="new-password" class="form-control @error('password') is-invalid @enderror" {{ $manageCredentials ? '' : 'disabled' }}>
+                @error('password')
+                    <span class="invalid-feedback">{{ $message }}</span>
+                @enderror
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="password_confirmation">تأكيد كلمة المرور</label>
+                <input type="password" name="password_confirmation" id="password_confirmation" autocomplete="new-password" class="form-control" {{ $manageCredentials ? '' : 'disabled' }}>
+            </div>
         </div>
     </div>
 </div>
@@ -52,32 +78,7 @@
             @enderror
         </div>
     </div>
-    @if($canManageCredentials)
-    <div class="col-md-6">
-        <div class="form-group">
-            <label for="password">
-                كلمة المرور
-                <span class="text-muted">(اختياري)</span>
-            </label>
-            <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror">
-            @error('password')
-                <span class="invalid-feedback">{{ $message }}</span>
-            @enderror
-        </div>
-    </div>
-    @endif
 </div>
-
-@if($canManageCredentials)
-<div class="row">
-    <div class="col-md-6">
-        <div class="form-group">
-            <label for="password_confirmation">تأكيد كلمة المرور</label>
-            <input type="password" name="password_confirmation" id="password_confirmation" class="form-control">
-        </div>
-    </div>
-</div>
-@endif
 
 <div class="row">
     <div class="col-md-6">
@@ -99,6 +100,25 @@
         </div>
     </div>
 </div>
+
+@if($canManageCredentials)
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const toggle = document.getElementById('manage_credentials');
+    const fields = document.getElementById('teacherCredentialFields');
+    if (!toggle || !fields) return;
+
+    const sync = () => {
+        fields.hidden = !toggle.checked;
+        fields.querySelectorAll('input').forEach(input => {
+            input.disabled = !toggle.checked;
+        });
+    };
+    toggle.addEventListener('change', sync);
+    sync();
+});
+</script>
+@endif
 
 <div class="row">
     <div class="col-md-6">

@@ -126,6 +126,10 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         self::assertSame(0, $xpath->query('//input[@name="email" and @required]')->length);
         self::assertSame(0, $xpath->query('//input[@name="phone" and @required]')->length);
         self::assertSame(0, $xpath->query('//input[@name="password" and @required]')->length);
+        self::assertSame(1, $xpath->query('//input[@name="email" and @disabled]')->length);
+        self::assertSame(1, $xpath->query('//input[@name="phone" and @disabled]')->length);
+        self::assertSame(1, $xpath->query('//input[@name="password" and @disabled]')->length);
+        self::assertSame(0, $xpath->query('//input[@name="manage_credentials" and @checked]')->length);
 
         $this->actingAs($administrator)
             ->post(route('admin.teachers.store'), [
@@ -134,6 +138,12 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
                 'bio_ar' => 'نبذة تظهر للطالب',
                 'active' => '1',
                 'authoring_request_id' => (string) Str::uuid(),
+                // Password managers may populate fields at submit time. No
+                // credential mutation is intentional without the opt-in.
+                'email' => 'owner@example.test',
+                'phone' => '01099999999',
+                'password' => 'autofilled-password',
+                'password_confirmation' => 'different-autofill',
             ])
             ->assertRedirect(route('admin.teachers.index'));
 
@@ -150,10 +160,10 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
             ->patch(route('admin.teachers.update', $teacher), [
                 ...$this->publicProfilePayload($teacher),
                 'job_title' => 'محاضر أول',
-                'email' => '',
-                'phone' => '',
-                'password' => '',
-                'password_confirmation' => '',
+                'email' => 'owner@example.test',
+                'phone' => '01099999999',
+                'password' => 'autofilled-password',
+                'password_confirmation' => 'different-autofill',
             ])
             ->assertRedirect(route('admin.teachers.index'));
 
@@ -162,6 +172,23 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         self::assertSame('teacher@example.test', $teacher->email);
         self::assertSame('01012345678', $teacher->phone);
         self::assertTrue(Hash::check('original-password', (string) $teacher->password));
+
+        $this->actingAs($administrator)
+            ->post(route('admin.teachers.store'), [
+                'name_ar' => 'محاضر له حساب',
+                'active' => '1',
+                'manage_credentials' => '1',
+                'email' => 'new-teacher@example.test',
+                'phone' => '01088888888',
+                'password' => 'intentional-password',
+                'password_confirmation' => 'intentional-password',
+                'authoring_request_id' => (string) Str::uuid(),
+            ])
+            ->assertRedirect(route('admin.teachers.index'));
+
+        $account = User::query()->where('email', 'new-teacher@example.test')->firstOrFail();
+        self::assertSame('01088888888', $account->phone);
+        self::assertTrue(Hash::check('intentional-password', (string) $account->password));
     }
 
     /** @return array<string, mixed> */

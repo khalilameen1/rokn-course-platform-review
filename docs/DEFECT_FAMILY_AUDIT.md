@@ -214,6 +214,25 @@ checks passed 13 suites / 65 tests before the additional stale-cover-mutation
 regression; the portfolio follow-up passed 19 tests and full TypeScript checks.
 These checks do not establish native-device acceptance or live AI replies.
 
+Laravel Cloud showed `6dcdc0c` as deployed. The live studio now saves the cover,
+two classifications, project certificate template and three test prices for
+course 3. Its readiness list now contains only the missing teacher. The live
+editor uses the intended grid and the student search actions no longer clip at
+their actual desktop widths. The current browser viewport override did not
+change these existing tabs' rendered width, so that attempt is not evidence of
+five distinct live breakpoints; the named-size evidence remains the CSS fixture.
+
+The first live teacher-profile submission after that deployment still failed
+on duplicate email and password confirmation, although credentials were left
+untouched and appeared blank after the validation response. The submitted
+payload was not captured, so browser autofill is a hypothesis, not established
+attribution. The follow-up repair explicitly separates profile editing from
+login editing: credential controls are disabled unless the administrator opts
+in, and the server ignores unsolicited administrator credential values in
+profile mode. Moderator prohibition remains unchanged. A single rule builder
+serves creation and update. Feature tests reproduce duplicate-email/mismatched-
+password payloads in profile mode and verify intentional opt-in separately.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

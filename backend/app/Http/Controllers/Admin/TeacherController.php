@@ -82,22 +82,14 @@ class TeacherController extends Controller
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
         $canManageCredentials = $this->canManageCredentials($request);
+        $manageCredentials = $canManageCredentials && $request->boolean('manage_credentials');
         $intentTeacherId = User::withTrashed()
             ->where('authoring_request_id', (string) $request->input('authoring_request_id'))
             ->value('id');
         $request->validate([
             'name_ar' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'email' => $canManageCredentials
-                ? ['nullable', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($intentTeacherId)]
-                : ['prohibited'],
-            'phone' => $canManageCredentials
-                ? ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($intentTeacherId)]
-                : ['prohibited'],
-            'password' => $canManageCredentials
-                ? ['nullable', 'string', 'min:10', 'max:72', 'confirmed']
-                : ['prohibited'],
-            'password_confirmation' => $canManageCredentials ? ['nullable', 'same:password'] : ['prohibited'],
+            ...$this->credentialRules($request, $intentTeacherId),
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'job_title' => 'nullable|string|max:255',
             'bio_ar' => 'nullable|string',
@@ -120,7 +112,7 @@ class TeacherController extends Controller
             throw new \RuntimeException('Teacher image storage failed');
         }
         try {
-            DB::transaction(function () use ($request, $imagePath, $requestId, $createIntents, $canManageCredentials): void {
+            DB::transaction(function () use ($request, $imagePath, $requestId, $createIntents, $manageCredentials): void {
                 $teacher = User::withTrashed()->where('authoring_request_id', $requestId)
                     ->lockForUpdate()->first();
                 if (!$teacher) {
@@ -128,13 +120,13 @@ class TeacherController extends Controller
                     $teacher->fill([
                         'name_ar' => $request->string('name_ar')->trim(),
                         'name_en' => $request->filled('name_en') ? $request->string('name_en')->trim() : null,
-                        'email' => $canManageCredentials && $request->filled('email')
+                        'email' => $manageCredentials && $request->filled('email')
                             ? strtolower($request->string('email')->trim())
                             : null,
-                        'phone' => $canManageCredentials && $request->filled('phone')
+                        'phone' => $manageCredentials && $request->filled('phone')
                             ? (string) $request->string('phone')->trim()
                             : null,
-                        'password' => $canManageCredentials && $request->filled('password')
+                        'password' => $manageCredentials && $request->filled('password')
                             ? Hash::make((string) $request->input('password'))
                             : null,
                         'job_title' => $request->input('job_title'),
@@ -224,20 +216,12 @@ class TeacherController extends Controller
     {
         $teacher = User::where('role', 'teacher')->findOrFail($id);
         $canManageCredentials = $this->canManageCredentials($request);
+        $manageCredentials = $canManageCredentials && $request->boolean('manage_credentials');
 
         $request->validate([
             'name_ar' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
-            'email' => $canManageCredentials
-                ? ['nullable', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($teacher->id)]
-                : ['prohibited'],
-            'phone' => $canManageCredentials
-                ? ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($teacher->id)]
-                : ['prohibited'],
-            'password' => $canManageCredentials
-                ? ['nullable', 'string', 'min:10', 'max:72', 'confirmed']
-                : ['prohibited'],
-            'password_confirmation' => $canManageCredentials ? ['nullable', 'same:password'] : ['prohibited'],
+            ...$this->credentialRules($request, $teacher->id),
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'job_title' => 'nullable|string|max:255',
             'bio_ar' => 'nullable|string',
@@ -246,13 +230,13 @@ class TeacherController extends Controller
         ]);
 
         $userData = $request->only(['name_ar', 'name_en', 'job_title', 'bio_ar', 'bio_en']);
-        if ($canManageCredentials && $request->filled('email')) {
+        if ($manageCredentials && $request->filled('email')) {
             $userData['email'] = strtolower(trim((string) $request->input('email')));
         }
-        if ($canManageCredentials && $request->filled('phone')) {
+        if ($manageCredentials && $request->filled('phone')) {
             $userData['phone'] = trim((string) $request->input('phone'));
         }
-        if ($canManageCredentials && $request->filled('password')) {
+        if ($manageCredentials && $request->filled('password')) {
             $userData['password'] = Hash::make($request->password);
         }
 
@@ -381,6 +365,38 @@ class TeacherController extends Controller
             $request->user()?->role,
             AdminPermissionMatrix::ACCOUNT_CREDENTIALS
         );
+    }
+
+    /** @return array<string, list<mixed>> */
+    private function credentialRules(Request $request, ?int $teacherId = null): array
+    {
+        if (!$this->canManageCredentials($request)) {
+            return [
+                'manage_credentials' => ['prohibited'],
+                'email' => ['prohibited'],
+                'phone' => ['prohibited'],
+                'password' => ['prohibited'],
+                'password_confirmation' => ['prohibited'],
+            ];
+        }
+
+        if (!$request->boolean('manage_credentials')) {
+            return [
+                'manage_credentials' => ['nullable', 'boolean'],
+                'email' => ['exclude'],
+                'phone' => ['exclude'],
+                'password' => ['exclude'],
+                'password_confirmation' => ['exclude'],
+            ];
+        }
+
+        return [
+            'manage_credentials' => ['nullable', 'boolean'],
+            'email' => ['nullable', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($teacherId)],
+            'phone' => ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($teacherId)],
+            'password' => ['nullable', 'string', 'min:10', 'max:72', 'confirmed'],
+            'password_confirmation' => ['nullable', 'same:password'],
+        ];
     }
 
     /** @return list<string> */
