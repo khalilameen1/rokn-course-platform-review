@@ -72,6 +72,17 @@ No unreviewed ambiguous classification remained in that complete metadata
 inventory. The 23 focused tests passed; installed-source provenance generation
 still requires the subsequent macOS workflow to succeed.
 
+Run `33968910951` restored the exact locks successfully, then failed generation
+on a stale `EXApplication@55.0.17` upstream-source review. This was not another
+ambiguous license: 11 old Expo coordinates had been retained beside their
+current replacements. Removed only those absent from the current lock. The
+remaining 17 upstream-source reviews, five exact-license exceptions and two
+first-party generated Pods all belong to the 127-root inventory; the absence
+allowlist is empty. The regression test now checks the entire review map
+against the lock instead of filtering away stale entries. The 23 focused
+native/workflow tests pass. No generated output or lock checksum was fabricated;
+the full installed-source generator still must complete on macOS.
+
 ## Refresh purchased course capabilities together — 2026-09-05
 
 The chat upgrade previously unlocked only its local chat flag. The loaded
