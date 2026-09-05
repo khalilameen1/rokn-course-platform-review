@@ -330,6 +330,7 @@ export const uploadPortfolioVideo = async (
   if (!Number.isFinite(offset) || offset < 0 || offset > size) {
     throw new Error('PORTFOLIO_VIDEO_UPLOAD_STATE_INVALID');
   }
+  let authorizationRefreshes = 0;
   while (offset < size) {
     assertAccountSessionBoundary(boundary);
     const length = Math.min(CHUNK_BYTES, size - offset);
@@ -341,9 +342,16 @@ export const uploadPortfolioVideo = async (
       if (nextOffset <= offset)
         throw new Error('PORTFOLIO_VIDEO_UPLOAD_STALLED');
       offset = nextOffset;
+      authorizationRefreshes = 0;
     } catch (error: unknown) {
       const status = Number((error as {status?: unknown})?.status || 0);
       if (status === 401 || status === 403) {
+        // A fresh Bunny authorization may legitimately be needed once while a
+        // long upload is in flight. If Bunny rejects the renewed credentials
+        // too, stop this delivery attempt and leave the durable outbox entry
+        // for a later replay instead of spinning forever on the same chunk.
+        if (authorizationRefreshes >= 1) throw error;
+        authorizationRefreshes += 1;
         if (await renew(record, key, boundary)) {
           offset = size;
         }
