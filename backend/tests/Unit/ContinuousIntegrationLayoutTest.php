@@ -34,7 +34,7 @@ final class ContinuousIntegrationLayoutTest extends TestCase
         );
         $snapshotContract = strpos(
             $contents,
-            'php artisan test --filter=AccessPlanSnapshotMysqlConstraintTest'
+            'php artisan test --configuration=phpunit.mysql.xml'
         );
         $sqliteSuite = strpos($contents, '- name: Run full test suite');
         self::assertIsInt($mysqlReplay);
@@ -45,6 +45,10 @@ final class ContinuousIntegrationLayoutTest extends TestCase
         self::assertGreaterThan($schemaContract, $snapshotContract);
         self::assertGreaterThan($snapshotContract, $sqliteSuite);
         self::assertStringContainsString('ROKN_REQUIRE_MYSQL_CONTRACT_TEST: "true"', $contents);
+        $mysqlConfiguration = (string) file_get_contents($backend.'/phpunit.mysql.xml');
+        self::assertStringContainsString('AccessPlanSnapshotMysqlConstraintTest.php', $mysqlConfiguration);
+        self::assertStringContainsString('name="DB_CONNECTION" value="mysql"', $mysqlConfiguration);
+        self::assertStringNotContainsString(':memory:', $mysqlConfiguration);
 
         $composer = json_decode(
             (string) file_get_contents($backend.'/composer.json'),

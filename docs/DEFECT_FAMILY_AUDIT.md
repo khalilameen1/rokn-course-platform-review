@@ -27,7 +27,12 @@ constraint in one ALTER, retains historical versions and preserves plan/order
 identity requirements. The new MySQL CI insert test uses the actual current
 writer for all three tiers, tests historical snapshots and rejects incomplete
 or mismatched receipts. It fails rather than silently skipping when the CI
-job requires MySQL. Its real MySQL execution remains pending publication.
+job requires MySQL. Deployment 169 (`32453aa`) applied the new constraints.
+The identical production probe then accepted all six real tier/schema pairs
+and still rejected version 999. It did not debit coins or create enrollments.
+CI run `33965327061` migrated successfully but correctly failed closed because
+the default PHPUnit XML selected SQLite. The dedicated MySQL configuration
+fixes that test-runner mismatch; actual insert-test execution is still pending.
 
 The live OpenRouter provider catalog exposed another request-contract gap:
 `max_completion_tokens` with `require_parameters=true` restricted the configured

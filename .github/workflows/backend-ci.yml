@@ -144,7 +144,7 @@ jobs:
       - name: Verify current purchase snapshots against MySQL constraints
         env:
           ROKN_REQUIRE_MYSQL_CONTRACT_TEST: "true"
-        run: php artisan test --filter=AccessPlanSnapshotMysqlConstraintTest
+        run: php artisan test --configuration=phpunit.mysql.xml
 
       - name: Verify disaster-recovery cutover prerequisite contract
         run: php scripts/verify-dr-runbook.php

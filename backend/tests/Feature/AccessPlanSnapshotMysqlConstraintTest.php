@@ -8,27 +8,43 @@ use App\Models\CourseAccessPlan;
 use App\Services\CourseAccessPlanService;
 use App\Support\CourseAccessPlanSnapshot;
 use Illuminate\Database\QueryException;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 final class AccessPlanSnapshotMysqlConstraintTest extends TestCase
 {
-    use DatabaseTransactions;
+    private bool $mysqlTransactionStarted = false;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (DB::connection()->getDriverName() === 'mysql') {
-            return;
+        $required = filter_var(
+            env('ROKN_REQUIRE_MYSQL_CONTRACT_TEST'),
+            FILTER_VALIDATE_BOOL
+        );
+        if (!$required) {
+            self::markTestSkipped('MySQL enforces the production JSON CHECK constraints.');
         }
 
-        if (filter_var(env('ROKN_REQUIRE_MYSQL_CONTRACT_TEST'), FILTER_VALIDATE_BOOL)) {
+        $connection = DB::connection();
+        $database = $connection->getDatabaseName();
+        if ($connection->getDriverName() !== 'mysql') {
             self::fail('The access-plan snapshot contract test requires the actual MySQL schema.');
         }
+        self::assertSame('testing', app()->environment());
+        self::assertMatchesRegularExpression('/(?:^|_)test(?:_|$)/i', $database);
 
-        self::markTestSkipped('MySQL enforces the production JSON CHECK constraints.');
+        DB::beginTransaction();
+        $this->mysqlTransactionStarted = true;
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->mysqlTransactionStarted && DB::transactionLevel() > 0) {
+            DB::rollBack();
+        }
+        parent::tearDown();
     }
 
     public function test_orders_and_enrollments_accept_historical_and_current_snapshots(): void
