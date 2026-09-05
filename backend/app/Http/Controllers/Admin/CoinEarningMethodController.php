@@ -42,8 +42,11 @@ class CoinEarningMethodController extends Controller
     public function updateSettings(Request $request)
     {
         $validated = $request->validate([
-            'how_to_use_coins_ar' => 'nullable|string',
-            'how_to_use_coins_en' => 'nullable|string',
+            // Both columns are MySQL TEXT. A 12k-character ceiling remains
+            // below 65,535 bytes even when every character uses four UTF-8
+            // bytes, so oversized Arabic copy is rejected before the write.
+            'how_to_use_coins_ar' => 'nullable|string|max:12000',
+            'how_to_use_coins_en' => 'nullable|string|max:12000',
             'reward_balance_cap' => 'required|integer|min:0|max:1000000',
             'max_reward_contribution_per_course' => 'required|integer|min:0|max:1000000',
             'recommended_social_provider' => [
@@ -74,6 +77,18 @@ class CoinEarningMethodController extends Controller
                     'editor_version' => 'تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
                 ]);
             }
+            $proposed = clone $setting;
+            $proposed->forceFill($validated);
+            $activeRules = RewardRule::query()->active()->orderBy('id')->lockForUpdate()->get();
+            $activeMethods = CoinEarningMethod::query()
+                ->where('is_active', true)
+                ->where(function ($query): void {
+                    $query->whereNull('action_key')->orWhere('action_key', '!=', 'register');
+                })
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+            $this->ensureRewardsFitProposedBalanceCap($proposed, $activeRules, $activeMethods);
             $setting->update($validated);
         }, 3);
         return redirect()->route('admin.coin-earning-methods.index')
@@ -89,6 +104,8 @@ class CoinEarningMethodController extends Controller
     {
         $payload = $this->methodPayload($request);
         DB::transaction(function () use ($request, $payload, $createIntents): void {
+            AdminSingletonLock::acquire('settings');
+            $this->ensureExecutableCoinMethod($payload, $this->lockedSettings());
             $method = CoinEarningMethod::create($payload);
             $createIntents->completeRedirect(
                 $request,
@@ -115,6 +132,8 @@ class CoinEarningMethodController extends Controller
         $editorVersion = (string) $request->input('editor_version');
         try {
             DB::transaction(function () use ($coinEarningMethod, $payload, $editorVersion): void {
+                AdminSingletonLock::acquire('settings');
+                $settings = $this->lockedSettings();
                 $locked = CoinEarningMethod::query()
                     ->whereKey($coinEarningMethod->id)
                     ->lockForUpdate()
@@ -124,6 +143,7 @@ class CoinEarningMethodController extends Controller
                         'editor_version' => 'تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
                     ]);
                 }
+                $this->ensureExecutableCoinMethod($payload, $settings);
                 $locked->update($payload);
             }, 3);
         } catch (\DomainException $exception) {
@@ -163,6 +183,9 @@ class CoinEarningMethodController extends Controller
     {
         $payload = $this->rewardRulePayload($request);
         DB::transaction(function () use ($request, $payload, $createIntents): void {
+            AdminSingletonLock::acquire('settings');
+            $settings = $this->lockedSettings();
+            $this->ensureExecutableRewardRule($payload, $settings);
             $rule = RewardRule::create($payload);
             $createIntents->completeRedirect(
                 $request,
@@ -182,6 +205,8 @@ class CoinEarningMethodController extends Controller
         $request->validate(['editor_version' => 'required|string|size:64']);
         $payload = $this->rewardRulePayload($request, $rewardRule);
         DB::transaction(function () use ($request, $rewardRule, $payload): void {
+            AdminSingletonLock::acquire('settings');
+            $settings = $this->lockedSettings();
             $locked = RewardRule::query()->whereKey($rewardRule->id)
                 ->lockForUpdate()->firstOrFail();
             if (!hash_equals(
@@ -192,6 +217,7 @@ class CoinEarningMethodController extends Controller
                     'editor_version' => 'تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ',
                 ]);
             }
+            $this->ensureExecutableRewardRule($payload, $settings);
             $locked->update($payload);
         }, 3);
 
@@ -305,7 +331,7 @@ class CoinEarningMethodController extends Controller
             'title_ar' => 'required|string|max:255',
             'title_en' => 'nullable|string|max:255',
             'coins_amount' => 'required|integer|min:0|max:1000000',
-            'interval_count' => 'required|integer|min:1|max:1440',
+            'interval_count' => 'nullable|integer|min:1|max:1440',
             'daily_cap' => 'nullable|integer|min:0|max:1000000',
             'rolling_30_day_cap' => 'nullable|integer|min:0|max:1000000',
             'sort_order' => 'nullable|integer|min:0|max:10000',
@@ -315,10 +341,37 @@ class CoinEarningMethodController extends Controller
         unset($validated['authoring_request_id']);
         $validated['is_active'] = $request->boolean('is_active');
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
+        $validated['coins_amount'] = (int) $validated['coins_amount'];
+
+        $event = (string) $validated['event_key'];
+        $usesInterval = in_array($event, ['streak_milestone', 'study_session'], true);
+        if ($usesInterval && !filled($validated['interval_count'] ?? null)) {
+            throw ValidationException::withMessages([
+                'interval_count' => ['أدخل مدة الاستمرارية أو الدراسة لهذه القاعدة.'],
+            ]);
+        }
+        if ($event === 'streak_milestone' && (int) $validated['interval_count'] < 2) {
+            throw ValidationException::withMessages([
+                'interval_count' => ['مدة الاستمرارية تبدأ من يومين.'],
+            ]);
+        }
+        $validated['interval_count'] = $usesInterval
+            ? (int) $validated['interval_count']
+            : 1;
+        $validated['daily_cap'] = $event === 'study_session'
+            && filled($validated['daily_cap'] ?? null)
+                ? (int) $validated['daily_cap']
+                : null;
+        $validated['rolling_30_day_cap'] = $event !== 'welcome_bonus'
+            && filled($validated['rolling_30_day_cap'] ?? null)
+                ? (int) $validated['rolling_30_day_cap']
+                : null;
 
         if (
-            in_array($validated['event_key'], ['daily_checkin', 'streak_milestone', 'study_session', 'course_completed'], true)
-            && empty($validated['rolling_30_day_cap'])
+            $validated['is_active']
+            && $validated['coins_amount'] > 0
+            && in_array($event, ['daily_checkin', 'streak_milestone', 'study_session', 'course_completed'], true)
+            && $validated['rolling_30_day_cap'] === null
         ) {
             throw ValidationException::withMessages([
                 'rolling_30_day_cap' => ['أدخل حدًا خلال 30 يومًا حتى تظل تكلفة المكافأة منضبطة.'],
@@ -326,6 +379,140 @@ class CoinEarningMethodController extends Controller
         }
 
         return $validated;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function ensureExecutableRewardRule(array $payload, ?Setting $settings): void
+    {
+        if (!(bool) ($payload['is_active'] ?? false)) return;
+
+        $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
+        if ($amount === 0) return;
+
+        $event = (string) ($payload['event_key'] ?? '');
+        $rollingCap = array_key_exists('rolling_30_day_cap', $payload)
+            && $payload['rolling_30_day_cap'] !== null
+                ? max(0, (int) $payload['rolling_30_day_cap'])
+                : null;
+        $dailyCap = array_key_exists('daily_cap', $payload) && $payload['daily_cap'] !== null
+            ? max(0, (int) $payload['daily_cap'])
+            : null;
+
+        // A zero cap is an explicit kill switch. Positive caps, however, must
+        // be large enough to fund one indivisible configured reward.
+        $this->ensurePositiveCapFundsAmount(
+            $amount,
+            $rollingCap,
+            'rolling_30_day_cap',
+            'الحد لا يكفي لمنح المكافأة مرة واحدة.'
+        );
+        if ($event === 'study_session') {
+            $this->ensurePositiveCapFundsAmount(
+                $amount,
+                $dailyCap,
+                'daily_cap',
+                'الحد اليومي لا يكفي لمنح مكافأة دراسة واحدة.'
+            );
+        }
+
+        $disabledByEventCap = $event === 'study_session'
+            ? $rollingCap === 0 || $dailyCap === 0
+            : $event !== 'welcome_bonus' && $rollingCap === 0;
+        if ($disabledByEventCap) return;
+
+        $promised = $amount;
+        if ($event === 'welcome_bonus') {
+            $promised += max(0, (int) ($settings?->recommended_provider_bonus_coins ?? 0));
+        }
+        $balanceCap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
+        $this->ensurePositiveCapFundsAmount(
+            $promised,
+            $balanceCap,
+            'coins_amount',
+            'المكافأة أكبر من أقصى رصيد مكافآت ولن يمكن صرفها.'
+        );
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function ensureExecutableCoinMethod(array $payload, ?Setting $settings): void
+    {
+        if (!(bool) ($payload['is_active'] ?? false)) return;
+
+        $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
+        $balanceCap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
+        $this->ensurePositiveCapFundsAmount(
+            $amount,
+            $balanceCap,
+            'coins_amount',
+            'مكافأة المهمة أكبر من أقصى رصيد مكافآت ولن يمكن صرفها.'
+        );
+    }
+
+    private function lockedSettings(): ?Setting
+    {
+        return Setting::query()->lockForUpdate()->first();
+    }
+
+    private function ensurePositiveCapFundsAmount(
+        int $amount,
+        ?int $cap,
+        string $field,
+        string $message
+    ): void {
+        if ($cap !== null && $cap > 0 && $cap < $amount) {
+            throw ValidationException::withMessages([$field => [$message]]);
+        }
+    }
+
+    private function ensureRewardsFitProposedBalanceCap(
+        Setting $settings,
+        iterable $rules,
+        iterable $methods
+    ): void {
+        $balanceCap = max(0, (int) $settings->reward_balance_cap);
+        if ($balanceCap === 0) return;
+
+        foreach ($rules as $rule) {
+            $payload = $rule->toArray();
+            $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
+            if ($amount === 0 || $this->rewardIsDisabledByEventCap($payload)) continue;
+
+            $promised = $amount + ((string) $rule->event_key === 'welcome_bonus'
+                ? max(0, (int) $settings->recommended_provider_bonus_coins)
+                : 0);
+            if ($promised <= $balanceCap) continue;
+
+            $field = (string) $rule->event_key === 'welcome_bonus' && $amount <= $balanceCap
+                ? 'recommended_provider_bonus_coins'
+                : 'reward_balance_cap';
+            throw ValidationException::withMessages([
+                $field => ['أقصى رصيد المكافآت لا يكفي لقاعدة «'.(string) $rule->title_ar.'».'],
+            ]);
+        }
+
+        foreach ($methods as $method) {
+            $amount = max(0, (int) $method->coins_amount);
+            if ($amount > $balanceCap) {
+                throw ValidationException::withMessages([
+                    'reward_balance_cap' => [
+                        'أقصى رصيد المكافآت لا يكفي لمهمة «'.(string) $method->title_ar.'».',
+                    ],
+                ]);
+            }
+        }
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function rewardIsDisabledByEventCap(array $payload): bool
+    {
+        $event = (string) ($payload['event_key'] ?? '');
+        $rollingCap = $payload['rolling_30_day_cap'] ?? null;
+        $dailyCap = $payload['daily_cap'] ?? null;
+
+        return $event === 'study_session'
+            ? ($rollingCap !== null && (int) $rollingCap === 0)
+                || ($dailyCap !== null && (int) $dailyCap === 0)
+            : $event !== 'welcome_bonus' && $rollingCap !== null && (int) $rollingCap === 0;
     }
 
     private function settingsEditorVersion(?Setting $setting): string

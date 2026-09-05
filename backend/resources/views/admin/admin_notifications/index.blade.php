@@ -12,7 +12,6 @@
             <a class="btn btn-primary" href="{{ route('admin.admin_notifications.create') }}"><i class="fa fa-plus ml-1"></i> إضافة قالب أو إعلان</a>
         </div>
     </div>
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
     <div class="notification-template-grid">
         @forelse($admin_notifications as $notification)
             <article class="notification-template-card {{ !$notification->is_active ? 'is-disabled' : '' }}">

@@ -21,18 +21,6 @@
                     <strong class="card-title pr-2">{{ $targetStudent ? 'إرسال إشعار للطالب' : 'إرسال إشعار للطلاب' }}</strong>
                 </div>
                 <div class="card-body card-block">
-                    @if(session('success'))
-                        <div class="alert alert-success">{{ session('success') }}</div>
-                    @endif
-                    @if($errors->any())
-                        <div class="alert alert-danger">
-                            <ul class="mb-0">
-                                @foreach($errors->all() as $error)
-                                    <li>{{ $error }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
                     <form method="GET" action="{{ route('admin.notifications.create') }}" class="mb-4">
                         @if($targetStudent)<input type="hidden" name="user_id" value="{{ $targetStudent->id }}">@endif
                         <label for="course-search">ابحث عن كورس</label>

@@ -17,8 +17,6 @@
 
     @include('admin.partials.support-inbox-tabs', ['supportSource' => 'app'])
 
-    @if(session('success'))<div class="alert alert-success">{{ session('success') }}</div>@endif
-
     <div class="card admin-card mb-4">
         <div class="card-header d-flex justify-content-between align-items-center">
             <strong>تصفية الملاحظات</strong>

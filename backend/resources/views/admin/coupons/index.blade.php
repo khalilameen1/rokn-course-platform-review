@@ -12,28 +12,24 @@
                 </div>
                 <div class="card-body card-block">
                     @foreach($coupons as $coupon)
-                        <div class="row connection-block">
-                        <div class="col-sm-2 col-xs-4 text-right">
-                            
-                            {{ $coupon->name_ar }}
+                        <div class="row connection-block align-items-start py-3 border-bottom">
+                        <div class="col-12 col-md-2 mb-2 mb-md-0 text-right">
+                            <strong>{{ $coupon->name_ar }}</strong>
                         </div>
-                        <div class="col-sm-2 col-xs-4 text-right">
-                            
-                           <span title="كود الكوبون"  >{{ $coupon->code }}</span>
+                        <div class="col-12 col-sm-6 col-md-2 mb-2 mb-md-0 text-right">
+                           <span class="d-block admin-value--ltr" title="كود الكوبون">{{ $coupon->code }}</span>
                         </div>
-                        <div class="col-sm-2 col-xs-4 text-right">
-                            
-                           <span title="نسبة الخصم">{{ (int) $coupon->balance }}٪</span>
-                           <span title="مرات الاستخدام">{{ (int) $coupon->redemptions_count }} استخدام</span>
-                           <span title="النطاق">{{ $coupon->course?->name_ar ?: 'كل الكورسات' }}</span>
-                           <span title="الحد">{{ $coupon->max_redemptions ? $coupon->redemptions_count . ' / ' . $coupon->max_redemptions : 'بلا حد كلي' }}</span>
-                           <span title="تاريخ الانتهاء">{{ optional($coupon->expiry_date)->format("Y-m-d") ?: 'بلا تاريخ' }}</span>
-                        </div> 
-                        <div class="col-sm-2 col-xs-4 text-right">
-                            
-                           <span title="حالو الكوبون"  >{{ ($coupon->active)?"مفعل": "غير مفعل" }}</span>
-                        </div>                       
-                        <div class="col-sm-3 col-xs-6 text-left">
+                        <div class="col-12 col-md-4 mb-2 mb-md-0 text-right">
+                           <span class="d-block" title="نسبة الخصم">{{ (int) $coupon->balance }}٪ خصم</span>
+                           <span class="d-block" title="مرات الاستخدام">{{ (int) $coupon->redemptions_count }} استخدام</span>
+                           <span class="d-block" title="النطاق">{{ $coupon->course?->name_ar ?: 'كل الكورسات' }}</span>
+                           <span class="d-block" title="الحد">{{ $coupon->max_redemptions ? $coupon->redemptions_count . ' / ' . $coupon->max_redemptions : 'بلا حد كلي' }}</span>
+                           <span class="d-block" title="تاريخ الانتهاء">{{ optional($coupon->expiry_date)->format("Y-m-d") ?: 'بلا تاريخ' }}</span>
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-1 mb-2 mb-md-0 text-right">
+                           <span title="حالة الكوبون">{{ $coupon->active ? 'مفعل' : 'غير مفعل' }}</span>
+                        </div>
+                        <div class="col-12 col-md-3 admin-actions justify-content-md-end">
                             <a href="{{ route('admin.coupons.edit', $coupon->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-pencil-square"></i>&nbsp; تعديل</a>
                             <button type="submit" form="deleteForm{{$coupon->id}}" class="btn btn-sm btn-danger"><i class="fa fa-close"></i>&nbsp; حذف</button>
                         </div>

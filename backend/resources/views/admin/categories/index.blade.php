@@ -15,13 +15,17 @@
                 </div>
                 <div class="card-body card-block">
                     @foreach($categories as $categoriy)
-                        <div class="row connection-block">
-                        <div class="col-sm-9 col-xs-6 text-right">
-                            <img class="ico_cat" src="{{ $categoriy->image ? $categoriy->image : '/images/cars/car-1.png' }}" />
-                            {{ $categoriy->name }}
+                        <div class="row connection-block align-items-center py-3 border-bottom">
+                        <div class="col-12 col-sm-7 col-md-9 d-flex align-items-center text-right">
+                            @if($categoriy->image)
+                                <img src="{{ $categoriy->image }}" alt="" width="44" height="44" class="rounded ml-2" />
+                            @else
+                                <span class="admin-page__icon ml-2" aria-hidden="true"><i class="fa fa-folder-open-o"></i></span>
+                            @endif
+                            <strong>{{ $categoriy->name }}</strong>
                         </div>
                         @if($isAdministrator)
-                            <div class="col-sm-3 col-xs-6 text-left">
+                            <div class="col-12 col-sm-5 col-md-3 admin-actions justify-content-sm-end mt-2 mt-sm-0">
                                 <a href="{{ route('admin.categories.edit', $categoriy->id) }}" class="btn btn-sm btn-primary"><i class="fa fa-pencil-square"></i>&nbsp; تعديل</a>
                                 <button type="submit" form="deleteForm{{$categoriy->id}}" class="btn btn-sm btn-danger" onclick="return confirm('حذف هذا القسم؟')"><i class="fa fa-close"></i>&nbsp; حذف</button>
                             </div>

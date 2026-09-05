@@ -41,6 +41,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         Schema::dropIfExists('course_codes');
         Schema::dropIfExists('coupons');
         Schema::dropIfExists('admin_singleton_locks');
+        Schema::dropIfExists('settings');
         Schema::create('reward_rules', function (Blueprint $table): void {
             $table->id();
             $table->string('event_key', 64)->unique();
@@ -142,6 +143,16 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             $table->string('lock_key', 80)->primary();
             $table->timestamps();
         });
+        Schema::create('settings', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedInteger('reward_balance_cap')->default(1200);
+            $table->unsignedInteger('recommended_provider_bonus_coins')->default(0);
+            $table->timestamps();
+        });
+        Setting::query()->create([
+            'reward_balance_cap' => 1200,
+            'recommended_provider_bonus_coins' => 0,
+        ]);
     }
 
     protected function tearDown(): void
@@ -154,6 +165,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         Schema::dropIfExists('course_codes');
         Schema::dropIfExists('coupons');
         Schema::dropIfExists('admin_singleton_locks');
+        Schema::dropIfExists('settings');
         parent::tearDown();
     }
 

@@ -89,14 +89,6 @@
                             </div>
                         @endif
 
-                        <!-- Success Message (if any) -->
-                        @if(session('success'))
-                            <div class="success-message">
-                                <i class="fa fa-check-circle"></i>
-                                <span>{{ session('success') }}</span>
-                            </div>
-                        @endif
-
                         <!-- Form -->
                         <form action="{{ route('admin.grades.update', $grade->id) }}" method="post" id="gradeEditForm">
                             @csrf

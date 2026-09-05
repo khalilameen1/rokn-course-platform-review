@@ -66,7 +66,6 @@
             <button class="btn btn-primary" type="submit">{{ $editPool ? 'حفظ التعديل' : 'إضافة وحساب أثرها' }}</button>
             @if($editPool)<a class="btn btn-light" href="{{ route('admin.operating-costs.index') }}">إلغاء التعديل</a>@endif
         </form>
-        @if($errors->any())<div class="alert alert-danger mt-3"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     </div></div>
 
     <div class="card admin-card"><div class="table-responsive"><table class="table table-hover mb-0">

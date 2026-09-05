@@ -42,10 +42,6 @@
 <input type="hidden" name="active" value="0">
 <label class="mb-3"><input type="checkbox" name="active" value="1" {{ old('active', $moderator->active ?? true) ? 'checked' : '' }}> الحساب نشط</label>
 
-@if($errors->any())
-    <div class="alert alert-danger"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-@endif
-
 @if(isset($moderator))
 <script>
 document.addEventListener('DOMContentLoaded', function () {

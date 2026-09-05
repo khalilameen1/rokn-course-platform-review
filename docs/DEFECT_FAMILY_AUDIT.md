@@ -344,6 +344,81 @@ They are not yet in a replacement signed APK and have not been accepted on a
 phone against the live providers. No AI model, reward amount or credential was
 changed during this batch.
 
+### Project completion, replay and certificate recovery — 2026-09-05
+
+A required project's latest canonical submission now supplies its progress
+projection for both single-student and batch readers. Previously, a passed
+submission without a progress row could unlock the next module but fail course
+completion and certificate eligibility; a stale completed progress row could do
+the reverse. Ten behavioral cases reproduced both failures before the repair.
+Fourteen cases now cover learning summaries, scalar/batch certificate eligibility,
+earned completion, student progress and dashboard learning health. Project rows
+are projected in memory without a backfill or per-user query. Ordinary lesson
+progress and existing earned-revision behavior are preserved. The projection
+iterates actual submissions rather than every student/project combination.
+
+A repeated project POST with the same owner, logical project, idempotency key and
+body fingerprint now resolves its committed submission before mutable report
+budget admission. A changed body remains a conflict. After entitlement removal,
+finalizing a committed pass cannot spend on AI; an unavailable captured report is
+terminal instead of remaining queued forever, and its inputs follow retention.
+The initially suspected supported-plan report downgrade was ruled out and was
+not changed.
+
+Mobile project draft hydration now compares the allowed MIME contract by content,
+so a course refresh cannot erase text typed before the debounce saves it. A
+certificate request accepted with HTTP 202 remains pending while its read endpoint
+has not observed the row; recovery retries the accepted course, and account changes
+clear that local ownership. These are source changes, not an updated installed APK.
+
+Verification: the relevant broad backend suite passed 266 tests / 2141 assertions.
+The final progress-projection/dashboard check passed 37 tests / 482 assertions.
+Nine targeted mobile suites passed 31 tests; TypeScript and changed-file ESLint
+passed. No paid-provider request or native end-to-end acceptance was performed.
+
+### Dashboard coin authoring and compact layouts — 2026-09-05
+
+The deployed coin-card repair was inspected again on the real page. In this
+session the viewport override did work: actual `innerWidth` was measured at
+360, 768 and 1024 pixels. At 360px the page had no out-of-viewport form controls.
+This is new evidence and does not retroactively turn the earlier isolated fixture
+checks into live viewport checks.
+
+Remaining defects found during that review:
+
+- The create-rule form remained visible with no available event. It now appears
+  only when an event can actually be added.
+- Interval and daily-limit fields appeared for events that ignored them. Only
+  effective fields are submitted; streak days, study minutes and the first-project
+  cap have explicit labels. Rule names identify admin rules, not historical wallet
+  transaction descriptions.
+- Active positive rewards could be saved above their usable event or wallet cap.
+  Authoring now rejects impossible full payouts for both event rules and earning
+  tasks; intentional zero limits and inactive drafts remain available. Settings
+  errors identify the offending rule/task on the relevant settings field. Shared
+  settings/rule/method writes use the same lock order. Streak intervals below two
+  days are rejected instead of being silently coerced by reward execution.
+- Coin-use text had no length limit despite MySQL TEXT storage. The 12,000-character
+  server and form limit fits even four-byte UTF-8 and produces validation feedback
+  rather than a database error.
+- Success, error and validation summaries were duplicated by page templates and
+  the shared shell. Their shared owner is now the shell. Field-specific and
+  interactive studio feedback remain in place.
+- Coupon/category lists used Bootstrap 3 `col-xs-*` classes absent from Bootstrap 4.
+  Their actual grid classes and wrapping actions are corrected, and the unrelated
+  car-image fallback for a category is replaced by the existing category icon.
+
+The coin fixture uses the real field-toggle script and checks disabled-field
+submission isolation as well as 360/768/1024/1440px layout. A separate compact-list
+fixture includes a 280px content area. Both passed; they remain isolated layout
+fixtures, not claims of populated live coupon/category acceptance.
+
+The final admin/reward/coin/wallet suite passed 285 tests / 5649 assertions.
+Flash checks comprise ten static page-ownership cases, one shared-partial check
+and four rendered shell cases; the coin page also has a rendered regression for
+one success message, unique label targets and event-specific form fields. These
+checks do not change live reward values or prove every dashboard page accepted.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

@@ -15,12 +15,6 @@
         <a class="contact-back" href="{{ route('admin.contacts.index') }}"><i class="fa fa-arrow-right"></i> رسائل الموقع</a>
     </div>
 
-    @if(session('success'))<div class="flash flash-success">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="flash flash-error">{{ session('error') }}</div>@endif
-    @if($errors->any())
-        <div class="flash flash-error"><ul class="mb-0">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>
-    @endif
-
     @unless($contact->read)
         <form method="POST" action="{{ route('admin.contacts.read', $contact) }}" class="mb-3">
             @csrf

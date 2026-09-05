@@ -308,7 +308,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
                 'event_key' => $failedRule->event_key,
                 'title_ar' => 'اسم التعديل غير المحفوظ',
                 'title_en' => '',
-                'coins_amount' => 175,
+                'coins_amount' => -1,
                 'interval_count' => 2,
                 'daily_cap' => 10,
                 'rolling_30_day_cap' => '',
@@ -321,10 +321,51 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
         $xpath = new DOMXPath($document);
         self::assertSame('اسم التعديل غير المحفوظ', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'title_ar'));
-        self::assertSame('175', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'coins_amount'));
+        self::assertSame('-1', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'coins_amount'));
         self::assertSame(0, $xpath->query('//form[@id="reward-rule-'.$failedRule->id.'"]//input[@name="is_active" and @type="checkbox" and @checked]')->length);
         self::assertSame('هدية التسجيل', $this->inputValue($xpath, 'reward-rule-'.$otherRule->id, 'title_ar'));
-        self::assertSame('', $this->inputValue($xpath, 'reward-rule-create', 'title_ar'));
+        self::assertSame(0, $xpath->query('//form[@id="reward-rule-create"]')->length);
+    }
+
+    public function test_reward_rule_form_only_offers_available_events_and_effective_fields(): void
+    {
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($this->dashboardUser('admin'), 'web');
+        $response = $this->withSession(['success' => 'تم حفظ قاعدة الاختبار'])
+            ->get(route('admin.coin-earning-methods.index'))->assertOk();
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$response->getContent());
+        $xpath = new DOMXPath($document);
+        $this->assertUniqueDomIds($xpath);
+        self::assertSame(1, substr_count($response->getContent(), 'تم حفظ قاعدة الاختبار'));
+        self::assertSame(0, $xpath->query('//form[@id="reward-rule-create"]')->length);
+
+        foreach (RewardRule::query()->get() as $rule) {
+            $form = '//form[@id="reward-rule-'.$rule->id.'"]';
+            self::assertSame(
+                in_array($rule->event_key, ['streak_milestone', 'study_session'], true) ? 1 : 0,
+                $xpath->query($form.'//input[@name="interval_count"]')->length
+            );
+            self::assertSame(
+                $rule->event_key === 'study_session' ? 1 : 0,
+                $xpath->query($form.'//input[@name="daily_cap"]')->length
+            );
+            self::assertSame(
+                $rule->event_key === 'welcome_bonus' ? 0 : 1,
+                $xpath->query($form.'//input[@name="rolling_30_day_cap"]')->length
+            );
+            foreach ($xpath->query($form.'//label[@for]') as $label) {
+                self::assertSame(1, $xpath->query($form.'//input[@id="'.$label->getAttribute('for').'"]')->length);
+            }
+        }
+
+        RewardRule::query()->where('event_key', 'study_session')->delete();
+        $response = $this->get(route('admin.coin-earning-methods.index'))->assertOk();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$response->getContent());
+        $xpath = new DOMXPath($document);
+        self::assertSame(1, $xpath->query('//form[@id="reward-rule-create"]')->length);
+        self::assertSame(1, $xpath->query('//select[@name="event_key"]/option[@value!=""]')->length);
+        self::assertSame('study_session', $xpath->evaluate('string(//select[@name="event_key"]/option[@value!=""]/@value)'));
     }
 
     public function test_failed_reward_rule_create_restores_only_the_create_form(): void
