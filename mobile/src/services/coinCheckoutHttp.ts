@@ -141,10 +141,12 @@ export const reconcileCoinCheckoutOrder = async (
       if (!coinsAdded) throw new Error('PAYMENT_STATUS_CONTRACT_INVALID');
       return {approved: true, pending: false, coinsAdded};
     }
+    if (status === 'approved' && financialStatus === 'review_required') {
+      return {approved: false, pending: true, coinsAdded: 0};
+    }
     if (
       (status === 'approved' &&
         [
-          'review_required',
           'refunded',
           'chargeback',
           'reversed',

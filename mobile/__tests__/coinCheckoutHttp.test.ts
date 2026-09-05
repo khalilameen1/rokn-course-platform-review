@@ -6,7 +6,10 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
-import {abandonCoinCheckoutOrder} from '../src/services/coinCheckoutHttp';
+import {
+  abandonCoinCheckoutOrder,
+  reconcileCoinCheckoutOrder,
+} from '../src/services/coinCheckoutHttp';
 
 const boundary = {epoch: 1, scope: 'user-a'};
 
@@ -31,6 +34,22 @@ describe('coin checkout HTTP contract', () => {
 
     await expect(
       abandonCoinCheckoutOrder('PKG-RECOVERABLE', boundary),
+    ).resolves.toEqual({approved: false, pending: true, coinsAdded: 0});
+  });
+
+  it('keeps financially reviewed approval pending instead of opening a retry', async () => {
+    (publicRequest.post as jest.Mock).mockResolvedValueOnce({
+      data: {
+        data: {
+          status: 'approved',
+          financial_status: 'review_required',
+          package: {coins: 600},
+        },
+      },
+    });
+
+    await expect(
+      reconcileCoinCheckoutOrder('PKG-UNDER-REVIEW', boundary, 1),
     ).resolves.toEqual({approved: false, pending: true, coinsAdded: 0});
   });
 });

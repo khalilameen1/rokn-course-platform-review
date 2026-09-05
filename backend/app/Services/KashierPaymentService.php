@@ -533,7 +533,6 @@ final readonly class KashierPaymentService
                 $order->payment_method !== Order::PAYMENT_METHOD_KASHIER
                 || !$order->package_id
                 || !$order->package
-                || !$order->user
                 || $this->coinAmount($order) <= 0
                 || (float) $order->final_amount <= 0
             ) {

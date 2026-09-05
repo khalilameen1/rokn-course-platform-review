@@ -329,6 +329,62 @@ describe('coin checkout boundary', () => {
     unsubscribe();
   });
 
+  it('recovers a settled sibling when an older checkout cannot be read', async () => {
+    process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
+    jest.resetModules();
+
+    const {publicRequest} = require('../src/constants/api') as {
+      publicRequest: {post: jest.Mock};
+    };
+    const helpers = require('../src/constants/helpers') as {getItem: jest.Mock};
+    helpers.getItem.mockResolvedValue({
+      attempts: [
+        {
+          idempotencyKey: '22222222-2222-4222-8222-222222222222',
+          packageId: 2,
+          expectedPrice: 99,
+          expectedCoins: 1200,
+          createdAt: new Date().toISOString(),
+          orderRef: 'PKG-UNREADABLE-OLDER',
+        },
+        {
+          idempotencyKey: '33333333-3333-4333-8333-333333333333',
+          packageId: 3,
+          expectedPrice: 149,
+          expectedCoins: 2400,
+          createdAt: new Date().toISOString(),
+          orderRef: 'PKG-SETTLED-SIBLING',
+        },
+      ],
+    });
+    publicRequest.post
+      .mockRejectedValueOnce({status: 422, data: {code: 'invalid_order_state'}})
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            status: 'approved',
+            financial_status: 'settled',
+            package: {coins: 2400},
+          },
+        },
+      });
+
+    const {reconcilePendingCoinCheckout} =
+      require('../src/services/coinCheckout') as {
+        reconcilePendingCoinCheckout: () => Promise<unknown>;
+      };
+
+    await expect(reconcilePendingCoinCheckout()).resolves.toMatchObject({
+      success: true,
+      coinsAdded: 2400,
+      orderRef: 'PKG-SETTLED-SIBLING',
+    });
+    expect(publicRequest.post.mock.calls.map(call => call[0])).toEqual([
+      'payment/reconcile/PKG-UNREADABLE-OLDER',
+      'payment/reconcile/PKG-SETTLED-SIBLING',
+    ]);
+  });
+
   it('does not manufacture a pending payment from a client-only intent during recovery', async () => {
     process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
     jest.resetModules();
@@ -705,6 +761,73 @@ describe('coin checkout boundary', () => {
           packageId: 2,
           expectedCoins: 1200,
           orderRef: 'PKG-OLDER-SERVER-CHECKOUT',
+        }),
+      ],
+    });
+  });
+
+  it('preserves a reviewed payment under its server package without opening checkout again', async () => {
+    process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
+    jest.resetModules();
+
+    const WebBrowser = require('expo-web-browser') as {
+      openAuthSessionAsync: jest.Mock;
+    };
+    const {publicRequest} = require('../src/constants/api') as {
+      publicRequest: {post: jest.Mock};
+    };
+    const helpers = require('../src/constants/helpers') as {
+      getItem: jest.Mock;
+      saveItem: jest.Mock;
+    };
+    let stored: unknown = null;
+    helpers.getItem.mockImplementation(async () => stored);
+    helpers.saveItem.mockImplementation(
+      async (_key: string, value: unknown) => {
+        stored = value;
+        return true;
+      },
+    );
+    publicRequest.post.mockRejectedValueOnce({
+      response: {
+        data: {
+          code: 'payment_under_review',
+          data: {
+            order_ref: 'PKG-FINANCIAL-REVIEW',
+            order_status: 'approved',
+            checkout_state: 'payment_under_review',
+            financial_status: 'review_required',
+            amount: 99,
+            package: {id: 2, coins: 1200},
+          },
+        },
+      },
+    });
+
+    const {openCoinCheckout} = require('../src/services/coinCheckout') as {
+      openCoinCheckout: (coinPackage: {
+        id: string;
+        coins: number;
+        price: number;
+        label: string;
+      }) => Promise<{pending: boolean; cancelled: boolean; orderRef?: string}>;
+    };
+
+    await expect(
+      openCoinCheckout({id: '3', coins: 2400, price: 149, label: 'الثانية'}),
+    ).resolves.toMatchObject({
+      pending: true,
+      cancelled: false,
+      orderRef: 'PKG-FINANCIAL-REVIEW',
+    });
+    expect(WebBrowser.openAuthSessionAsync).not.toHaveBeenCalled();
+    expect(stored).toMatchObject({
+      attempts: [
+        expect.objectContaining({
+          packageId: 2,
+          expectedPrice: 99,
+          expectedCoins: 1200,
+          orderRef: 'PKG-FINANCIAL-REVIEW',
         }),
       ],
     });

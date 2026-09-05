@@ -62,22 +62,30 @@ export const reconcilePendingCoinCheckoutAttempts = async (
 
   let pending: CoinCheckoutResult | null = null;
   let approved: CoinCheckoutResult | null = null;
+  let firstFailure: unknown;
   for (const attempt of attempts) {
     assertAccountSessionBoundary(boundary);
-    const result = await reconcileCoinCheckoutAttempt(attempt, boundary);
-    if (result.success) approved = result;
-    else if (result.pending && !pending) pending = result;
+    try {
+      const result = await reconcileCoinCheckoutAttempt(attempt, boundary);
+      if (result.success) approved = result;
+      else if (result.pending && !pending) pending = result;
+    } catch (error: unknown) {
+      // A damaged or temporarily unavailable older order must not hide a
+      // settled sibling. Account changes still escape through this assertion.
+      assertAccountSessionBoundary(boundary);
+      firstFailure ??= error;
+    }
   }
 
-  return (
-    approved ??
-    pending ?? {
-      success: false,
-      pending: false,
-      cancelled: false,
-      coinsAdded: 0,
-    }
-  );
+  if (approved) return approved;
+  if (pending) return pending;
+  if (firstFailure) throw firstFailure;
+  return {
+    success: false,
+    pending: false,
+    cancelled: false,
+    coinsAdded: 0,
+  };
 };
 
 export const retireCoinCheckoutAttempt = async (

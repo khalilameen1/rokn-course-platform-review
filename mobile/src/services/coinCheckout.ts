@@ -232,6 +232,32 @@ const runCoinCheckout = async (
       return runCoinCheckout(coinPackage, boundary, false);
     }
 
+    if (failure.code === 'payment_under_review' && failure.orderRef) {
+      if (!failure.packageId || !failure.packageCoins || !failure.amount) {
+        throw new Error('PAYMENT_PENDING_CONTRACT_INVALID');
+      }
+      const remembered = await reassociateCoinCheckoutAttempt(
+        attempt,
+        {
+          packageId: failure.packageId,
+          orderRef: failure.orderRef,
+          expectedPrice: failure.amount,
+          expectedCoins: failure.packageCoins,
+        },
+        boundary,
+      );
+      if (!remembered) {
+        throw new Error('CHECKOUT_ORDER_REFERENCE_UNAVAILABLE');
+      }
+      return {
+        success: false,
+        pending: true,
+        cancelled: false,
+        coinsAdded: 0,
+        orderRef: failure.orderRef,
+      };
+    }
+
     if (failure.code === 'pending_checkout_exists' && failure.orderRef) {
       if (!failure.packageId || !failure.packageCoins || !failure.amount) {
         throw new Error('PAYMENT_PENDING_CONTRACT_INVALID');

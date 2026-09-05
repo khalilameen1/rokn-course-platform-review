@@ -191,6 +191,11 @@ final readonly class KashierCheckoutFlowService
                             'order_status' => (string) $pendingOrder->status,
                             'checkout_state' => 'payment_under_review',
                             'financial_status' => (string) $pendingOrder->financial_status,
+                            'amount' => (float) $pendingOrder->final_amount,
+                            'package' => [
+                                'id' => (int) $pendingOrder->package_id,
+                                'coins' => $this->payments->coinAmount($pendingOrder),
+                            ],
                         ],
                         409,
                         'payment_under_review'

@@ -329,10 +329,33 @@ class KashierPaymentTest extends TestCase
                 ->default('featured');
             $table->timestamps();
         });
+
+        Schema::create('payment_reconciliation_findings', function (Blueprint $table) {
+            $table->id();
+            $table->string('provider', 32);
+            $table->unsignedBigInteger('order_id')->nullable();
+            $table->string('order_ref', 191);
+            $table->char('fingerprint', 64)->unique();
+            $table->string('kind', 64);
+            $table->string('local_status', 32)->nullable();
+            $table->string('local_financial_status', 32)->nullable();
+            $table->string('provider_status', 32)->nullable();
+            $table->string('provider_transaction_id', 191)->nullable();
+            $table->string('state', 16)->default('open');
+            $table->unsignedInteger('attempts')->default(1);
+            $table->timestamp('first_seen_at');
+            $table->timestamp('last_seen_at');
+            $table->timestamp('resolved_at')->nullable();
+            $table->unsignedBigInteger('resolved_by')->nullable();
+            $table->text('resolution_note')->nullable();
+            $table->json('evidence')->nullable();
+            $table->timestamps();
+        });
     }
 
     private function tearDownSchema(): void
     {
+        Schema::dropIfExists('payment_reconciliation_findings');
         Schema::dropIfExists('product_feature_flags');
         Schema::dropIfExists('financial_entitlement_holds');
         Schema::dropIfExists('wallet_debit_allocations');
@@ -825,6 +848,107 @@ class KashierPaymentTest extends TestCase
 
         self::assertSame(Order::STATUS_PENDING, $pending->fresh()->status);
         self::assertSame(1, Order::query()->where('user_id', $this->user->id)->count());
+    }
+
+    public function test_a_payment_under_review_returns_its_original_terms_without_a_payable_url(): void
+    {
+        $pending = $this->createPendingOrder('PKG-CAPTURE-AFTER-ACCOUNT-CLOSE');
+        $pending->forceFill([
+            'checkout_request_key' => 'server-original-checkout-key',
+            'checkout_expires_at' => now()->addMinutes(20),
+        ])->save();
+        Http::fake(function () use ($pending) {
+            // The learner may close the account after opening checkout while
+            // Kashier still captures it. This capture is real but must be held
+            // for review and must never expose another payable URL.
+            $this->user->delete();
+
+            return Http::response([
+                'response' => [
+                    'status' => 'CAPTURED',
+                    'transactionId' => 'TXN-AFTER-ACCOUNT-CLOSE',
+                    'merchantOrderId' => $pending->order_ref,
+                    'amount' => self::PACKAGE_PRICE,
+                    'currency' => 'EGP',
+                ],
+            ], 200);
+        });
+
+        $key = '96e07193-d6a9-4b62-9976-b652b4e4f8a7';
+        $response = $this->actingAs($this->user, 'api')
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+                'expected_amount' => self::PACKAGE_PRICE,
+                'expected_coins' => self::PACKAGE_COINS,
+                'idempotency_key' => $key,
+            ]);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('code', 'payment_under_review')
+            ->assertJsonPath('order_ref', $pending->order_ref)
+            ->assertJsonPath('checkout_state', 'payment_under_review')
+            ->assertJsonPath('financial_status', Order::FINANCIAL_REVIEW_REQUIRED)
+            ->assertJsonPath('amount', (int) self::PACKAGE_PRICE)
+            ->assertJsonPath('package.id', $this->package->id)
+            ->assertJsonPath('package.coins', self::PACKAGE_COINS);
+        self::assertArrayNotHasKey('payment_url', (array) $response->json());
+        $this->assertDatabaseHas('orders', [
+            'id' => $pending->id,
+            'status' => Order::STATUS_APPROVED,
+            'financial_status' => Order::FINANCIAL_REVIEW_REQUIRED,
+            'transaction_id' => 'TXN-AFTER-ACCOUNT-CLOSE',
+            'checkout_request_key' => 'server-original-checkout-key',
+            'final_amount' => self::PACKAGE_PRICE,
+        ]);
+        self::assertSame(1, Order::query()->where('user_id', $this->user->id)->count());
+        self::assertSame(
+            0,
+            (int) User::withTrashed()->findOrFail($this->user->id)->wallet_coins
+        );
+    }
+
+    public function test_provider_capture_with_wrong_amount_cannot_credit_or_release_a_second_checkout(): void
+    {
+        $pending = $this->createPendingOrder('PKG-CAPTURE-WRONG-AMOUNT');
+        $pending->forceFill([
+            'checkout_request_key' => 'server-original-checkout-key',
+            'checkout_expires_at' => now()->addMinutes(20),
+        ])->save();
+        Http::fake([
+            'https://test-api.kashier.io/*' => Http::response([
+                'response' => [
+                    'status' => 'CAPTURED',
+                    'transactionId' => 'TXN-WRONG-AMOUNT',
+                    'merchantOrderId' => $pending->order_ref,
+                    'amount' => 1,
+                    'currency' => 'EGP',
+                ],
+            ], 200),
+        ]);
+
+        $key = '96e07193-d6a9-4b62-9976-b652b4e4f8a7';
+        $this->actingAs($this->user, 'api')
+            ->withHeader('Idempotency-Key', $key)
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+                'expected_amount' => self::PACKAGE_PRICE,
+                'expected_coins' => self::PACKAGE_COINS,
+                'idempotency_key' => $key,
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'pending_checkout_exists')
+            ->assertJsonPath('order_ref', $pending->order_ref);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $pending->id,
+            'status' => Order::STATUS_PENDING,
+            'financial_status' => Order::FINANCIAL_PENDING,
+            'transaction_id' => null,
+            'checkout_request_key' => 'server-original-checkout-key',
+        ]);
+        self::assertSame(1, Order::query()->where('user_id', $this->user->id)->count());
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
     }
 
     public function test_expired_authorized_checkout_replay_keeps_the_original_attempt_open(): void
