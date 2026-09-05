@@ -1,4 +1,4 @@
-import {useCallback, useEffect, type MutableRefObject} from 'react';
+import {useCallback, useEffect, useRef, type MutableRefObject} from 'react';
 import type {CourseReel, VideoQuality} from '../types';
 import type {
   PlaybackPlayerEvent,
@@ -39,6 +39,7 @@ type PlaybackRecoveryOptions = {
   lifecycleGeneration: MutableValue<number>;
   longBufferTimer: MutableValue<ReturnType<typeof setTimeout> | null>;
   manualRetryFlight: MutableValue<symbol | null>;
+  markStatusHealthy: () => void;
   onRefreshSource?: () => void | Promise<void>;
   playbackEligible: boolean;
   playerOwner: string;
@@ -85,6 +86,7 @@ export const usePlaybackRecovery = ({
   lifecycleGeneration,
   longBufferTimer,
   manualRetryFlight,
+  markStatusHealthy,
   onRefreshSource,
   playbackEligible,
   playerOwner,
@@ -107,6 +109,7 @@ export const usePlaybackRecovery = ({
   sourceUri,
   unsupportedSource,
 }: PlaybackRecoveryOptions) => {
+  const refreshGeneration = useRef(0);
   const restartPlayback = useCallback(
     (message: string, delayMs = 650) => {
       const generation = lifecycleGeneration.current;
@@ -202,10 +205,13 @@ export const usePlaybackRecovery = ({
         setRecoveryMessage('نحاول الوصول إلى الفيديو');
         const generation = lifecycleGeneration.current;
         const reelId = data.id;
-        void Promise.resolve(onRefreshSource?.())
+        const refresh = ++refreshGeneration.current;
+        void Promise.resolve()
+          .then(() => onRefreshSource?.())
           .catch(() => undefined)
           .then(() => {
             if (
+              refresh !== refreshGeneration.current ||
               generation !== lifecycleGeneration.current ||
               reelIdentity.current !== reelId
             ) {
@@ -333,6 +339,7 @@ export const usePlaybackRecovery = ({
     manualRetryFlight.current = flight;
     const generation = lifecycleGeneration.current;
     const reelId = data.id;
+    const refresh = ++refreshGeneration.current;
     retryPosition.current = lastPosition.current;
     hasRestored.current = false;
     recoveryAttempts.current = 0;
@@ -345,6 +352,7 @@ export const usePlaybackRecovery = ({
       .catch(() => undefined)
       .then(() => {
         if (
+          refresh !== refreshGeneration.current ||
           generation !== lifecycleGeneration.current ||
           reelIdentity.current !== reelId
         ) {
@@ -376,15 +384,33 @@ export const usePlaybackRecovery = ({
   ]);
 
   const markPlaybackHealthy = useCallback(() => {
+    // Native progress can resume without another load event. Retire recovery
+    // work for the old stall instead of restarting a decoder that is playing.
+    refreshGeneration.current += 1;
+    diagnosticRequest.current += 1;
+    manualRetryFlight.current = null;
+    if (recoveryTimer.current) {
+      clearTimeout(recoveryTimer.current);
+      recoveryTimer.current = null;
+    }
+    retryPosition.current = null;
+    hasRestored.current = true;
+    deferredPreloadFailure.current = false;
+    markStatusHealthy();
     if (recoveryAttempts.current === 0 && !sameSourceRetryUsed.current) return;
     recoveryAttempts.current = 0;
     sameSourceRetryUsed.current = false;
-    deferredPreloadFailure.current = false;
     publishRuntimeMetrics({});
   }, [
     deferredPreloadFailure,
+    diagnosticRequest,
+    hasRestored,
+    manualRetryFlight,
+    markStatusHealthy,
     publishRuntimeMetrics,
     recoveryAttempts,
+    recoveryTimer,
+    retryPosition,
     sameSourceRetryUsed,
   ]);
 

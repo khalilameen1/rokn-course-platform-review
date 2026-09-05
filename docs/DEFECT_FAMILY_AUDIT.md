@@ -4,6 +4,33 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Retire obsolete playback recovery after real native progress — 2026-09-05
+
+Code inspection after the candidate observation exposed a separate, reproducible
+recovery defect: `markPlaybackHealthy` only reset retry counters. It neither
+cleared a terminal error nor cancelled a queued remount, pending source-refresh
+completion or late diagnostic. An already-playing decoder could therefore be
+restarted and a failure message could remain above working video.
+
+Five behavioral cases failed before the change. Recovery now retires those
+obsolete operations when the current native owner advances the timeline, clears
+the stale failure/loading presentation and retains the actual viewing position.
+An obsolete manual-refresh flight cannot block a later manual attempt or clear
+that later attempt's ownership. No retry limits, access gates or quality policy
+were loosened. Existing lifecycle/reel guards still reject old-owner callbacks.
+
+Verification: 31 tests across playback recovery, native-component lifecycle and
+video event policy pass. The component-level cases prove advancing progress
+cancels the queued remount while a stationary progress event does not. Persistent
+failure still remounts with the saved position. TypeScript and scoped ESLint pass.
+The previous dependency revision's CI 33977104125 also finished successfully in
+JavaScript, Android and iOS; its staging smoke was skipped, not passed.
+
+This source fix is not in the unchanged `1234.apk` and has not yet been exercised
+in a newly installed native build. It closes the reproduced stale-recovery
+behavior, not the still-unproven cause of the initial course-load/buffering
+failures. Authentication, real purchase and chat acceptance remain open.
+
 ## Observe preview recovery on the delivered candidate — 2026-09-05
 
 On the installed cf7b7b0 / Android 42 candidate, opening the free preview first

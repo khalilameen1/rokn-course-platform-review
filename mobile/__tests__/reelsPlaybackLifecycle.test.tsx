@@ -58,6 +58,38 @@ describe('reels native playback lifecycle', () => {
     jest.useRealTimers();
   });
 
+  it.each([true, false])(
+    'only cancels recovery when the native timeline advances (advances: %s)',
+    async advances => {
+      let renderer!: ReactTestRenderer.ReactTestRenderer;
+      await ReactTestRenderer.act(() => {
+        renderer = ReactTestRenderer.create(
+          <VideoComponent data={reel} width={390} height={844} isVisible />,
+        );
+      });
+      const native = () =>
+        renderer.root.findAllByProps({testID: 'native-video'})[0];
+      await ReactTestRenderer.act(() => native().props.onLoad({duration: 60}));
+      await ReactTestRenderer.act(() =>
+        native().props.onProgress({currentTime: 7, seekableDuration: 60}),
+      );
+      await ReactTestRenderer.act(() =>
+        native().props.onError({error: {errorString: 'temporary failure'}}),
+      );
+      const before = native();
+      await ReactTestRenderer.act(() =>
+        native().props.onProgress({
+          currentTime: advances ? 8 : 7,
+          seekableDuration: 60,
+        }),
+      );
+      await ReactTestRenderer.act(() => jest.advanceTimersByTime(120));
+      if (advances) expect(native()).toBe(before);
+      else expect(native()).not.toBe(before);
+      await ReactTestRenderer.act(() => renderer.unmount());
+    },
+  );
+
   it('closes a visible playback owner when FlatList removes its row', async () => {
     const onPlaybackEvent = jest.fn();
     let renderer: ReactTestRenderer.ReactTestRenderer;

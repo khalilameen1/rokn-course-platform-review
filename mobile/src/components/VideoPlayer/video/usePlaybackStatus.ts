@@ -72,9 +72,27 @@ export const usePlaybackStatus = () => {
     }));
   }, []);
 
+  const markStatusHealthy = useCallback(() => {
+    setStatus(current =>
+      !current.error &&
+      !current.isBuffering &&
+      current.isLoaded &&
+      current.recoveryMessage === ''
+        ? current
+        : {
+            ...current,
+            error: false,
+            isBuffering: false,
+            isLoaded: true,
+            recoveryMessage: '',
+          },
+    );
+  }, []);
+
   return {
     ...status,
     failPlayback,
+    markStatusHealthy,
     resetStatus,
     setError,
     setFailureKind,
