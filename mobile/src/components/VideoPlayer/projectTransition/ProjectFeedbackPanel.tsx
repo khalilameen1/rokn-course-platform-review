@@ -13,8 +13,9 @@ import {rtlRowStyle, textDirection} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 import {openProjectInputAttachment} from '../courseLearningApi';
 import {
-  projectFeedbackFailureHasRetryAction,
   projectFeedbackFailureText,
+  projectFeedbackMessageCanRetry,
+  projectFeedbackMessageRequiresFreshAttachments,
 } from '../projectFeedback/policy';
 import type {
   ChatAttachmentDraft,
@@ -106,7 +107,7 @@ const FeedbackMessage = ({
     )}
     {message.role === 'assistant' && message.status === 'failed' && (
       <Text style={styles.state}>
-        {projectFeedbackFailureText(message.errorCode)}
+        {projectFeedbackFailureText(message.errorCode, message.canRetry)}
       </Text>
     )}
     {message.role === 'user' && message.status === 'queued' && (
@@ -114,8 +115,7 @@ const FeedbackMessage = ({
     )}
     {message.status === 'failed' &&
       message.role === 'user' &&
-      !message.attachments?.length &&
-      projectFeedbackFailureHasRetryAction(message.errorCode) && (
+      projectFeedbackMessageCanRetry(message) && (
         <Pressable
           accessibilityRole="button"
           disabled={sending}
@@ -125,7 +125,7 @@ const FeedbackMessage = ({
       )}
     {message.status === 'failed' &&
       message.role === 'user' &&
-      Boolean(message.attachments?.length) && (
+      projectFeedbackMessageRequiresFreshAttachments(message) && (
         <Text style={styles.state}>أضف الملف مرة أخرى ثم أرسل الرسالة</Text>
       )}
   </View>

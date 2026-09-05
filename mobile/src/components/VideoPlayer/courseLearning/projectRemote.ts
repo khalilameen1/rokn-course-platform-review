@@ -14,12 +14,12 @@ import type {
   ProjectStatus,
 } from '../types';
 import {
-  asArray,
   asRecord,
   type DataRecord,
   valueAsBoolean,
   valueAsString,
 } from './shared';
+import {mapProjectFeedbackThread} from './projectFeedbackMapping';
 
 const PUBLIC_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -77,71 +77,6 @@ export const parseProjectReportStatus = (
   throw new Error('PROJECT_REPORT_CONTRACT_INVALID');
 };
 
-const feedbackThreadFrom = (value: unknown): ProjectFeedbackThread | null => {
-  const thread = asRecord(value);
-  const level = valueAsString(thread.feedback_level);
-  if (!thread.id || !['report', 'enhanced'].includes(level)) return null;
-
-  return {
-    id: valueAsString(thread.id),
-    feedbackLevel: level as 'report' | 'enhanced',
-    canReply: valueAsBoolean(thread.can_reply),
-    status: valueAsString(thread.status, 'ready'),
-    remainingMessages: Math.max(0, Number(thread.remaining_messages) || 0),
-    attachmentsEnabled: valueAsBoolean(thread.attachments_enabled),
-    attachmentMaxFiles: Math.min(
-      5,
-      Math.max(0, Number(thread.attachment_max_files) || 0),
-    ),
-    messages: asArray<DataRecord>(thread.messages).flatMap(message => {
-      const role = valueAsString(message.role);
-      const status = valueAsString(message.status);
-      if (
-        !['assistant', 'user'].includes(role) ||
-        ![
-          'queued',
-          'sent',
-          'streaming',
-          'completed',
-          'failed',
-          'cancelled',
-        ].includes(status)
-      ) {
-        return [];
-      }
-      return [
-        {
-          id: valueAsString(message.id),
-          clientRequestId:
-            valueAsString(message.client_request_id) || undefined,
-          role: role as 'assistant' | 'user',
-          status: status as
-            | 'queued'
-            | 'sent'
-            | 'streaming'
-            | 'completed'
-            | 'failed'
-            | 'cancelled',
-          errorCode: valueAsString(message.error_code) || undefined,
-          text: valueAsString(message.text) || undefined,
-          createdAt: valueAsString(message.created_at) || undefined,
-          attachments: asArray<DataRecord>(message.attachments).map(file => ({
-            uri: '',
-            name: valueAsString(file.name, 'مرفق'),
-            type: valueAsString(file.mime_type, 'application/octet-stream'),
-            size: Number(file.size_bytes) || undefined,
-            uploadId: valueAsString(file.id),
-            serverId: valueAsString(file.id),
-            downloadUrl: valueAsString(file.download_url) || undefined,
-            downloadExpiresAt:
-              valueAsString(file.download_url_expires_at) || undefined,
-          })),
-        },
-      ];
-    }),
-  };
-};
-
 export const loadProjectFeedbackThread = async (
   projectId: string,
   threadId?: string,
@@ -154,7 +89,7 @@ export const loadProjectFeedbackThread = async (
     : await publicRequest.get(`projects/${numericProjectId(projectId)}`);
   assertAccountSessionBoundary(boundary);
   const payload = payloadFrom(response);
-  return feedbackThreadFrom(
+  return mapProjectFeedbackThread(
     threadId ? payload : asRecord(payload.latest_submission).feedback_thread,
   );
 };
@@ -184,7 +119,7 @@ export const loadProjectResolution = async (projectId: string) => {
     canRetryReport: valueAsBoolean(submission.can_retry_report),
     reportRetryEndpoint:
       valueAsString(submission.report_retry_endpoint) || undefined,
-    feedbackThread: feedbackThreadFrom(submission.feedback_thread),
+    feedbackThread: mapProjectFeedbackThread(submission.feedback_thread),
   };
 };
 
@@ -348,7 +283,7 @@ export const sendProjectFeedbackMessage = async (
     {headers: {'Idempotency-Key': clientRequestId}, timeout: 30000},
   );
   assertAccountSessionBoundary(boundary);
-  const thread = feedbackThreadFrom(payloadFrom(response));
+  const thread = mapProjectFeedbackThread(payloadFrom(response));
   if (!thread) throw new Error('PROJECT_FEEDBACK_THREAD_UNAVAILABLE');
   return thread;
 };

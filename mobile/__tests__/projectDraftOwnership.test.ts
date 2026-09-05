@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let mockActiveBoundary = {epoch: 1, scope: 'user-a'};
 const mockCaptureBoundary = jest.fn(async () => ({...mockActiveBoundary}));
+const mockLearnerDraftFileIsReadable = jest.fn(async (_file?: unknown) => true);
 
 jest.mock('../src/constants/helpers', () => ({
   accountScopedStorageKey: jest.fn(
@@ -21,7 +22,8 @@ jest.mock('../src/constants/helpers', () => ({
 
 jest.mock('../src/services/learnerDraftFiles', () => ({
   cacheLearnerDraftFile: jest.fn(),
-  learnerDraftFileIsReadable: jest.fn(async () => true),
+  learnerDraftFileIsReadable: (file?: unknown) =>
+    mockLearnerDraftFileIsReadable(file),
   removeLearnerDraftFile: jest.fn(async () => undefined),
   retainLearnerDraftFiles: jest.fn(async () => undefined),
 }));
@@ -39,6 +41,7 @@ describe('project draft ownership', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     mockActiveBoundary = {epoch: 1, scope: 'user-a'};
+    mockLearnerDraftFileIsReadable.mockResolvedValue(true);
     await AsyncStorage.clear();
   });
 
@@ -79,5 +82,30 @@ describe('project draft ownership', () => {
     );
     await expect(loadProjectSubmissionDraft('42', owner)).resolves.toBeNull();
     expect(mockCaptureBoundary).not.toHaveBeenCalled();
+  });
+
+  it('keeps an uploaded feedback attachment after restart without a local file', async () => {
+    const owner = {...mockActiveBoundary};
+    const threadId = '22222222-2222-4222-8222-222222222222';
+    const attachment = {
+      uri: '',
+      name: 'المشروع.pdf',
+      type: 'application/pdf',
+      size: 1024,
+      uploadId: 'local-upload',
+      serverId: 'server-attachment',
+    };
+    mockLearnerDraftFileIsReadable.mockResolvedValue(false);
+
+    await saveProjectFeedbackDraft(
+      threadId,
+      {text: 'راجع المرفق', attachments: [attachment], updatedAt: Date.now()},
+      owner,
+    );
+
+    await expect(loadProjectFeedbackDraft(threadId, owner)).resolves.toEqual(
+      expect.objectContaining({attachments: [attachment]}),
+    );
+    expect(mockLearnerDraftFileIsReadable).not.toHaveBeenCalled();
   });
 });

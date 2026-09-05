@@ -129,6 +129,10 @@ describe('course gate contracts', () => {
     );
     expect(feedback).toContain('projectFeedbackThreadIsPending');
 
+    const projectReview = source('src/screens/reels/useProjectReview.ts');
+    expect(projectReview).toContain('refreshProjectState(outcome.projectId)');
+    expect(projectReview).not.toContain('updateProjectStatusOnly');
+
     const reelsController = source('src/screens/reels/useReelsController.tsx');
     expect(reelsController).toContain(
       "else if (result.submissionStatus === 'needs_changes')",
@@ -157,6 +161,7 @@ describe('course gate contracts', () => {
     ]) {
       expect(projectMapping).toContain(field);
     }
+    expect(projectMapping).toContain('mapProjectFeedbackThread(');
     expect(projectMapping).not.toContain('submissionAttachments:');
     expect(projectMapping).not.toContain('can_resubmit');
     expect(projectMapping).not.toContain('submission.status');

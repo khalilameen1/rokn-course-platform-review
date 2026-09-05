@@ -48,6 +48,15 @@ final readonly class ProjectSubmissionPresenter
                 ? $this->feedbackThreads->payload($thread)
                 : $this->threadSummary($thread, $contract, $reportStatus);
         }
+        // The report belongs to the captured submission contract, while a
+        // later plan upgrade may legitimately unlock replies on its existing
+        // thread. Never let the frozen report tier hide that current server
+        // capability from the mobile client.
+        $replyAvailable = (bool) ($threadPayload['can_reply'] ?? false);
+        $effectiveFeedbackLevel = $replyAvailable
+            ? 'enhanced'
+            : (string) $contract['project_feedback_level'];
+        $effectiveReplyEnabled = $replyAvailable || $replyEnabled;
         $canRetryReport = $this->canRetryInitialReport($submission, $reportStatus);
         $reportFailure = $reportStatus === ProjectSubmissionLifecycle::REPORT_FAILED
             ? $this->failurePolicy->describe((string) data_get($metadata, 'ai_feedback.reason'))
@@ -62,7 +71,7 @@ final readonly class ProjectSubmissionPresenter
             'can_continue' => $reviewStatus === ProjectSubmission::STATUS_PASSED,
             'assessment_type' => $outcome['assessment_type'],
             'skill_verified' => $outcome['skill_verified'],
-            'feedback_level' => (string) $contract['project_feedback_level'],
+            'feedback_level' => $effectiveFeedbackLevel,
             'report_enabled' => $reportEnabled,
             'report_status' => $reportStatus,
             'can_retry_report' => $canRetryReport,
@@ -73,7 +82,7 @@ final readonly class ProjectSubmissionPresenter
             'report_retry_endpoint' => $canRetryReport
                 ? "/api/v1/project-submissions/{$submission->public_id}/report/retry"
                 : null,
-            'reply_enabled' => $replyEnabled,
+            'reply_enabled' => $effectiveReplyEnabled,
             'can_reply' => (bool) ($threadPayload['can_reply'] ?? false),
             'feedback' => $outcome['feedback'],
             'attachments' => $submission->aiInputAttachments->map(
@@ -119,11 +128,15 @@ final readonly class ProjectSubmissionPresenter
         string $reportStatus
     ): array
     {
+        $replyContract = $this->feedbackThreads->activeReplyContract($thread);
         return [
             'id' => (string) $thread->public_id,
-            'feedback_level' => (string) $contract['project_feedback_level'],
-            'can_reply' => $this->feedbackThreads->activeReplyContract($thread) !== null,
-            'reply_enabled' => (bool) $contract['project_thread_reply_enabled'],
+            'feedback_level' => $replyContract
+                ? 'enhanced'
+                : (string) $contract['project_feedback_level'],
+            'can_reply' => $replyContract !== null,
+            'reply_enabled' => $replyContract !== null
+                || (bool) $contract['project_thread_reply_enabled'],
             'status' => (string) $thread->status,
             'report_status' => $reportStatus,
             'remaining_messages' => 0,

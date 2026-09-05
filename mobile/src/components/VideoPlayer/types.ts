@@ -86,6 +86,8 @@ export interface ProjectFeedbackMessage {
     | 'failed'
     | 'cancelled';
   errorCode?: string;
+  /** Server-owned decision for retrying this exact paid follow-up. */
+  canRetry?: boolean;
   text?: string;
   createdAt?: string;
   attachments?: ChatAttachmentDraft[];

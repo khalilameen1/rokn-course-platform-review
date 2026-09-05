@@ -1,4 +1,5 @@
 import {requireProductFeature} from '../../../services/productFeatures';
+import type {AccountSessionBoundary} from '../../../constants/helpers';
 import type {SelectedProjectFile} from '../types';
 import {
   assertProjectSubmissionOwner,
@@ -29,6 +30,68 @@ export type {
   ProjectSubmissionOutcome,
   ProjectSubmissionRetryOutcome,
 } from './projectSubmissionTypes';
+
+type ProjectSubmissionRecoveryListener = (
+  outcomes: readonly ProjectSubmissionRetryOutcome[],
+) => void;
+
+const recoveryListeners = new Map<
+  ProjectSubmissionRecoveryListener,
+  AccountSessionBoundary
+>();
+let latestRecovery:
+  | {
+      boundary: AccountSessionBoundary;
+      outcomes: readonly ProjectSubmissionRetryOutcome[];
+      publishedAt: number;
+    }
+  | undefined;
+const RECOVERY_REPLAY_WINDOW_MS = 60_000;
+
+const sameBoundary = (
+  left: AccountSessionBoundary,
+  right: AccountSessionBoundary,
+) => left.scope === right.scope && left.epoch === right.epoch;
+
+const publishRecoveryOutcomes = (
+  outcomes: readonly ProjectSubmissionRetryOutcome[],
+  boundary: AccountSessionBoundary,
+) => {
+  if (!outcomes.length) return;
+  latestRecovery = {boundary, outcomes, publishedAt: Date.now()};
+  recoveryListeners.forEach((ownerBoundary, listener) => {
+    if (!sameBoundary(ownerBoundary, boundary)) return;
+    try {
+      listener(outcomes);
+    } catch {
+      // Presentation failures cannot invalidate a completed transport retry.
+    }
+  });
+};
+
+/**
+ * The outbox owns transport recovery; the open course owns presentation.
+ * Replay the last in-process result so a course that mounted one tick after
+ * startup recovery still refreshes its map instead of keeping a stale draft.
+ */
+export const subscribeProjectSubmissionRecovery = (
+  listener: ProjectSubmissionRecoveryListener,
+  ownerBoundary: AccountSessionBoundary,
+) => {
+  recoveryListeners.set(listener, ownerBoundary);
+  if (
+    latestRecovery &&
+    Date.now() - latestRecovery.publishedAt <= RECOVERY_REPLAY_WINDOW_MS &&
+    sameBoundary(latestRecovery.boundary, ownerBoundary)
+  ) {
+    try {
+      listener(latestRecovery.outcomes);
+    } catch {
+      // The listener owns its UI failure; the durable outbox stays recovered.
+    }
+  }
+  return () => recoveryListeners.delete(listener);
+};
 
 const outcomeFromSync = async (
   result: SubmissionSyncResult,
@@ -160,11 +223,15 @@ export const retryPendingProjectSubmissions = async (): Promise<
   ProjectSubmissionRetryOutcome[]
 > => {
   const operation = await beginProjectSubmissionOperation();
-  return runPendingSubmissionRetry(operation, () =>
-    performPendingProjectSubmissionRetry(operation),
-  );
+  return runPendingSubmissionRetry(operation, async () => {
+    const outcomes = await performPendingProjectSubmissionRetry(operation);
+    assertProjectSubmissionOwner(operation);
+    publishRecoveryOutcomes(outcomes, operation.boundary);
+    return outcomes;
+  });
 };
 
 export const quiesceProjectSubmissionRuntime = () => {
+  latestRecovery = undefined;
   quiesceProjectSubmissionOwnership();
 };

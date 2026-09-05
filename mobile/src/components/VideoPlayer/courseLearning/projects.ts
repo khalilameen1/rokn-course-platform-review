@@ -5,6 +5,7 @@ export {
 } from './learningRuntime';
 export {
   retryPendingProjectSubmissions,
+  subscribeProjectSubmissionRecovery,
   submitProjectAttempt,
 } from './projectSubmissionOutbox';
 export type {

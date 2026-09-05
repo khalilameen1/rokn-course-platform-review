@@ -1,8 +1,5 @@
 import type {CourseProject, ProjectStatus} from '../types';
-import {
-  courseRecord,
-  type CoursePayloadDto,
-} from './coursePayload';
+import {courseRecord, type CoursePayloadDto} from './coursePayload';
 import {
   parseProjectReportStatus,
   parseProjectSubmissionStatus,
@@ -13,6 +10,7 @@ import {
   valueAsBoolean,
   valueAsString,
 } from './shared';
+import {mapProjectFeedbackThread} from './projectFeedbackMapping';
 
 export const mapCourseProject = (
   section: CoursePayloadDto,
@@ -33,8 +31,6 @@ export const mapCourseProject = (
   const rawStatus: ProjectStatus = hasSubmission
     ? parseProjectSubmissionStatus(submission.submission_status, true)
     : 'draft';
-  const rawThread = courseRecord(submission.feedback_thread);
-  const feedbackLevel = valueAsString(rawThread.feedback_level);
   const projectFeedback = courseRecord(content.project_feedback);
   const projectFeedbackLevel = valueAsString(
     hasSubmission ? submission.feedback_level : projectFeedback.level,
@@ -44,72 +40,8 @@ export const mapCourseProject = (
     ? valueAsBoolean(submission.report_enabled)
     : valueAsBoolean(projectFeedback.report_enabled);
   const feedbackThread =
-    reportEnabled &&
-    ['report', 'enhanced'].includes(projectFeedbackLevel) &&
-    rawThread.id &&
-    ['report', 'enhanced'].includes(feedbackLevel)
-      ? {
-          id: valueAsString(rawThread.id),
-          feedbackLevel: feedbackLevel as 'report' | 'enhanced',
-          canReply: valueAsBoolean(rawThread.can_reply),
-          status: valueAsString(rawThread.status, 'ready'),
-          remainingMessages: Math.max(
-            0,
-            Number(rawThread.remaining_messages) || 0,
-          ),
-          messages: asArray<CoursePayloadDto>(rawThread.messages).flatMap(
-            message => {
-              const role = valueAsString(message.role);
-              const status = valueAsString(message.status);
-              if (
-                !['assistant', 'user'].includes(role) ||
-                ![
-                  'queued',
-                  'sent',
-                  'streaming',
-                  'completed',
-                  'failed',
-                  'cancelled',
-                ].includes(status)
-              ) {
-                return [];
-              }
-              return [
-                {
-                  id: valueAsString(message.id),
-                  clientRequestId:
-                    valueAsString(message.client_request_id) || undefined,
-                  role: role as 'assistant' | 'user',
-                  status: status as
-                    | 'queued'
-                    | 'sent'
-                    | 'streaming'
-                    | 'completed'
-                    | 'failed'
-                    | 'cancelled',
-                  text: valueAsString(message.text) || undefined,
-                  createdAt: valueAsString(message.created_at) || undefined,
-                  attachments: asArray<CoursePayloadDto>(
-                    message.attachments,
-                  ).map(file => ({
-                    uri: '',
-                    name: valueAsString(file.name, 'مرفق'),
-                    type: valueAsString(
-                      file.mime_type,
-                      'application/octet-stream',
-                    ),
-                    size: Number(file.size_bytes) || undefined,
-                    uploadId: valueAsString(file.id),
-                    serverId: valueAsString(file.id),
-                    downloadUrl: valueAsString(file.download_url) || undefined,
-                    downloadExpiresAt:
-                      valueAsString(file.download_url_expires_at) || undefined,
-                  })),
-                },
-              ];
-            },
-          ),
-        }
+    reportEnabled && ['report', 'enhanced'].includes(projectFeedbackLevel)
+      ? mapProjectFeedbackThread(submission.feedback_thread) || undefined
       : undefined;
 
   return {

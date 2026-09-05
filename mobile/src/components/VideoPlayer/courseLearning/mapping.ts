@@ -18,7 +18,6 @@ import {
 } from './coursePayload';
 import {retryPendingSectionCompletions} from './playback';
 import {mapCourseProject} from './projectMapping';
-import {retryPendingProjectSubmissions} from './projects';
 import {
   asArray,
   explicitBoolean,
@@ -178,7 +177,6 @@ export const loadCourseLearningData = async (
   }
 
   if (options.reconcilePending !== false) {
-    void retryPendingProjectSubmissions().catch(() => undefined);
     void retryPendingSectionCompletions().catch(() => undefined);
   }
 

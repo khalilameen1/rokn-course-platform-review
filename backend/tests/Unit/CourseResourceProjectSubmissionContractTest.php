@@ -41,4 +41,29 @@ final class CourseResourceProjectSubmissionContractTest extends TestCase
         self::assertStringContainsString("['aiInputAttachments', 'feedbackThread.enrollment']", $presenter);
         self::assertStringNotContainsString("->with(['aiInputAttachments', 'feedbackThread.messages'])", $presenter);
     }
+
+    public function test_an_existing_report_uses_the_current_reply_capability_after_a_plan_upgrade(): void
+    {
+        $presenter = file_get_contents(
+            dirname(__DIR__, 2).'/app/Services/ProjectSubmissionPresenter.php'
+        );
+
+        self::assertIsString($presenter);
+        self::assertStringContainsString(
+            "\$replyAvailable = (bool) (\$threadPayload['can_reply'] ?? false)",
+            $presenter
+        );
+        self::assertStringContainsString(
+            "\$effectiveFeedbackLevel = \$replyAvailable",
+            $presenter
+        );
+        self::assertStringContainsString(
+            "'reply_enabled' => \$effectiveReplyEnabled",
+            $presenter
+        );
+        self::assertStringContainsString(
+            "\$replyContract = \$this->feedbackThreads->activeReplyContract(\$thread)",
+            $presenter
+        );
+    }
 }

@@ -7,8 +7,12 @@ import {
 import type {CourseLearningData} from '../../components/VideoPlayer/types';
 import {buildAccessibleFeed} from './presentation';
 import {useAppActiveState} from '../../hooks/useAppActiveState';
+import {captureAccountSessionBoundary} from '../../constants/helpers';
 import {
   loadProjectResolution,
+  retryPendingProjectSubmissions,
+  subscribeProjectSubmissionRecovery,
+  type ProjectSubmissionRetryOutcome,
   watchProjectResolution,
 } from '../../components/VideoPlayer/courseLearning/projects';
 
@@ -36,6 +40,12 @@ export const useProjectReview = ({
   const appIsActive = useAppActiveState();
   const reviewActive = active && appIsActive;
   const pendingMapRefreshRef = useRef<string | null>(null);
+  const courseProjectIds =
+    course?.modules
+      .flatMap(module => module.projects || [])
+      .map(project => project.id) || [];
+  const courseProjectKey = courseProjectIds.join(':');
+  const recoveryCourseId = course?.id;
 
   useEffect(() => {
     pendingMapRefreshRef.current = null;
@@ -151,6 +161,66 @@ export const useProjectReview = ({
           .find(project => project?.status === 'evaluating');
     if (reviewingProject) watchProjectUntilResolved(reviewingProject.id);
   }, [course, previewMode, reviewActive, watchProjectUntilResolved]);
+
+  useEffect(() => {
+    if (!recoveryCourseId || previewMode || !reviewActive) return;
+    const courseId = recoveryCourseId;
+    const projectIds = new Set(courseProjectKey.split(':').filter(Boolean));
+    let activeOwner = true;
+    const refreshingProjects = new Set<string>();
+    const applyRecovered = (
+      outcomes: readonly ProjectSubmissionRetryOutcome[],
+    ) => {
+      if (!activeOwner || refs.loadedCourse.current?.id !== courseId) return;
+      const recovered = outcomes.filter(
+        outcome =>
+          outcome.accepted &&
+          outcome.submissionStatus !== 'draft' &&
+          projectIds.has(outcome.projectId),
+      );
+      if (!recovered.length) return;
+
+      recovered.forEach(outcome => {
+        if (refreshingProjects.has(outcome.projectId)) return;
+        refreshingProjects.add(outcome.projectId);
+        // Recovery is only a freshness signal. The server map remains the
+        // sole decision for pass/retry and for unlocking the next section.
+        void refreshProjectState(outcome.projectId)
+          .then(refreshed => {
+            if (!refreshed && activeOwner) {
+              watchProjectUntilResolved(outcome.projectId);
+            }
+          })
+          .finally(() => refreshingProjects.delete(outcome.projectId));
+      });
+    };
+
+    let unsubscribe: () => void = () => undefined;
+    void captureAccountSessionBoundary()
+      .then(boundary => {
+        if (!activeOwner) return;
+        unsubscribe = subscribeProjectSubmissionRecovery(
+          applyRecovered,
+          boundary,
+        );
+        // Joins the startup flight when one exists. The course stays
+        // interactive; its owner receives the durable result above.
+        return retryPendingProjectSubmissions();
+      })
+      .catch(() => undefined);
+    return () => {
+      activeOwner = false;
+      unsubscribe();
+    };
+  }, [
+    recoveryCourseId,
+    courseProjectKey,
+    previewMode,
+    refs.loadedCourse,
+    refreshProjectState,
+    reviewActive,
+    watchProjectUntilResolved,
+  ]);
 
   return {refreshProjectState, watchProjectUntilResolved};
 };

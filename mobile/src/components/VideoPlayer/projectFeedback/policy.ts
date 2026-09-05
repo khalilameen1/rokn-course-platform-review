@@ -1,8 +1,8 @@
-const RETRYABLE_PROJECT_FEEDBACK_FAILURES = new Set([
-  'provider_unavailable',
-  'request_interrupted',
-  'attachment_unavailable',
-]);
+type RetryableProjectFeedbackMessage = {
+  errorCode?: string;
+  canRetry?: boolean;
+  attachments?: ReadonlyArray<{serverId?: string}>;
+};
 
 export const projectFeedbackThreadIsPending = (
   messages: ReadonlyArray<{status: string}>,
@@ -11,14 +11,22 @@ export const projectFeedbackThreadIsPending = (
     ['queued', 'sent', 'streaming'].includes(message.status),
   );
 
-export const projectFeedbackFailureHasRetryAction = (code?: string): boolean =>
-  RETRYABLE_PROJECT_FEEDBACK_FAILURES.has(
-    String(code || '')
-      .trim()
-      .toLowerCase(),
-  );
+export const projectFeedbackMessageCanRetry = (
+  message: RetryableProjectFeedbackMessage,
+): boolean =>
+  message.canRetry === true &&
+  (message.attachments || []).every(file => Boolean(file.serverId));
 
-export const projectFeedbackFailureText = (code?: string): string => {
+export const projectFeedbackMessageRequiresFreshAttachments = (
+  message: RetryableProjectFeedbackMessage,
+): boolean =>
+  message.canRetry === true &&
+  Boolean(message.attachments?.some(file => !file.serverId));
+
+export const projectFeedbackFailureText = (
+  code?: string,
+  canRetry?: boolean,
+): string => {
   const normalized = String(code || '')
     .trim()
     .toLowerCase();
@@ -28,5 +36,6 @@ export const projectFeedbackFailureText = (code?: string): string => {
   if (normalized === 'provider_outcome_unknown') {
     return 'تعذّر تأكيد الرد الآن';
   }
+  if (canRetry === false) return 'تعذّر الرد الآن';
   return 'تعذّر الرد الآن\nأرسل رسالتك مرة أخرى';
 };

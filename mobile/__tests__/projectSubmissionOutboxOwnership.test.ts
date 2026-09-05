@@ -44,6 +44,7 @@ jest.mock('../src/services/learnerDraftFiles', () => ({
 import {
   quiesceProjectSubmissionRuntime,
   retryPendingProjectSubmissions,
+  subscribeProjectSubmissionRecovery,
   submitProjectAttempt,
 } from '../src/components/VideoPlayer/courseLearning/projectSubmissionOutbox';
 
@@ -192,5 +193,111 @@ describe('project submission outbox ownership', () => {
     expect(await AsyncStorage.getItem(oldAccountKey!)).toContain(
       'يُستكمل عند العودة',
     );
+  });
+
+  it('hands a recovered submission to the course owner even when it mounts after recovery', async () => {
+    mockPost.mockRejectedValueOnce(new Error('offline'));
+    await expect(
+      submitProjectAttempt('42', null, 'محاولة محفوظة للعودة'),
+    ).resolves.toEqual({
+      submissionStatus: 'draft',
+      accepted: false,
+      canContinue: false,
+    });
+
+    mockPost.mockResolvedValueOnce(passedResponse);
+    const ownerBoundary = {...mockActiveBoundary};
+    const liveOwner = jest.fn();
+    const stopLiveOwner = subscribeProjectSubmissionRecovery(
+      liveOwner,
+      ownerBoundary,
+    );
+    await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+      {
+        projectId: '42',
+        submissionStatus: 'passed',
+        accepted: true,
+        canContinue: true,
+      },
+    ]);
+    expect(liveOwner).toHaveBeenLastCalledWith([
+      expect.objectContaining({projectId: '42', submissionStatus: 'passed'}),
+    ]);
+    stopLiveOwner();
+
+    const lateCourseOwner = jest.fn();
+    const stopLateOwner = subscribeProjectSubmissionRecovery(
+      lateCourseOwner,
+      ownerBoundary,
+    );
+    expect(lateCourseOwner).toHaveBeenCalledTimes(1);
+    expect(lateCourseOwner).toHaveBeenCalledWith([
+      expect.objectContaining({projectId: '42', submissionStatus: 'passed'}),
+    ]);
+    stopLateOwner();
+
+    const afterReplayWindow = Date.now() + 60_001;
+    jest.spyOn(Date, 'now').mockReturnValue(afterReplayWindow);
+    const staleOwner = jest.fn();
+    subscribeProjectSubmissionRecovery(staleOwner, ownerBoundary)();
+    expect(staleOwner).not.toHaveBeenCalled();
+    jest.restoreAllMocks();
+
+    const anotherAccount = jest.fn();
+    subscribeProjectSubmissionRecovery(anotherAccount, {
+      epoch: ownerBoundary.epoch + 1,
+      scope: 'user-b',
+    })();
+    expect(anotherAccount).not.toHaveBeenCalled();
+  });
+
+  it('resumes the same durable submission when the upload response is lost', async () => {
+    mockPost.mockRejectedValueOnce(new Error('connection closed'));
+    await expect(
+      submitProjectAttempt('42', null, 'محاولة وصلت ولم يصل ردها'),
+    ).resolves.toEqual({
+      submissionStatus: 'draft',
+      accepted: false,
+      canContinue: false,
+    });
+
+    const pendingKey = (await AsyncStorage.getAllKeys()).find(key =>
+      key.includes(':user-a:42'),
+    );
+    expect(pendingKey).toBeDefined();
+    const pending = JSON.parse((await AsyncStorage.getItem(pendingKey!))!);
+    const submissionId = '33333333-3333-4333-8333-333333333333';
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          id: submissionId,
+          submission_status: 'evaluating',
+          can_continue: false,
+          poll_after_seconds: 1,
+        },
+      },
+    });
+    mockGet.mockResolvedValueOnce(passedResponse);
+
+    await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+      {
+        projectId: '42',
+        submissionStatus: 'passed',
+        accepted: true,
+        canContinue: true,
+      },
+    ]);
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost.mock.calls[0][2].headers['Idempotency-Key']).toBe(
+      pending.clientSubmissionId,
+    );
+    expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
+      pending.clientSubmissionId,
+    );
+    expect(mockGet).toHaveBeenCalledWith(
+      `project-submissions/${submissionId}`,
+      {timeout: 12000},
+    );
+    expect(await AsyncStorage.getItem(pendingKey!)).toBeNull();
   });
 });

@@ -653,6 +653,88 @@ describe('course progression boundaries', () => {
     expect(course?.modules[0].projects?.[0]?.status).toBe('evaluating');
   });
 
+  it('maps the server retry decision and durable files for project feedback', () => {
+    const course = mapCoursePayload({
+      data: {
+        course: {
+          id: 'feedback-retry-course',
+          title: 'Course',
+          modules: [
+            {
+              id: 'module-1',
+              title: 'Module',
+              sections: [
+                {
+                  id: 'feedback-retry-lesson-section',
+                  type: 'lesson',
+                  content: {
+                    id: 'feedback-retry-lesson',
+                    bunny_video_url:
+                      'https://cdn.example/feedback-retry.m3u8',
+                  },
+                },
+                {
+                  id: 'project-section',
+                  type: 'project',
+                  content: {
+                    id: 'project-1',
+                    latest_submission: {
+                      id: 'submission-1',
+                      submission_status: 'passed',
+                      can_submit: false,
+                      can_continue: true,
+                      feedback_level: 'enhanced',
+                      report_enabled: true,
+                      report_status: 'ready',
+                      reply_enabled: true,
+                      feedback_thread: {
+                        id: 'thread-1',
+                        feedback_level: 'enhanced',
+                        can_reply: true,
+                        remaining_messages: 3,
+                        messages: [
+                          {
+                            id: 'message-1',
+                            role: 'user',
+                            status: 'failed',
+                            error_code: 'provider_unavailable',
+                            can_retry: true,
+                            text: 'راجع المرفق',
+                            attachments: [
+                              {
+                                id: 'attachment-1',
+                                name: 'project.pdf',
+                                mime_type: 'application/pdf',
+                                size_bytes: 1200,
+                              },
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    const mappedProject = course?.modules[0].projects?.[0];
+    expect(mappedProject).toBeDefined();
+    expect(mappedProject?.feedbackThread?.messages[0]).toMatchObject({
+      errorCode: 'provider_unavailable',
+      canRetry: true,
+      attachments: [
+        expect.objectContaining({
+          serverId: 'attachment-1',
+          uri: '',
+        }),
+      ],
+    });
+  });
+
   it('rejects an accepted submission whose canonical decision is absent', () => {
     expect(() =>
       mapCoursePayload({
