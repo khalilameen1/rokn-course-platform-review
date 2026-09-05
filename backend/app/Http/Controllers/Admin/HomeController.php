@@ -29,9 +29,6 @@ class HomeController extends Controller
 
     public function index(
         CoursePublishingService $publishingService,
-        PaymentChannelReportService $paymentChannels,
-        AdminPaymentOperationsReadService $paymentOperations,
-        CourseFinancialLedgerReportService $financialLedger,
         AdminPermissionMatrix $permissions
     )
     {
@@ -96,6 +93,19 @@ class HomeController extends Controller
 
             return view('admin.home.moderator', compact('courses', 'publishingAudits', 'contentSummary'));
         }
+
+        return $this->administratorDashboard(
+            resolve(PaymentChannelReportService::class),
+            resolve(AdminPaymentOperationsReadService::class),
+            resolve(CourseFinancialLedgerReportService::class)
+        );
+    }
+
+    private function administratorDashboard(
+        PaymentChannelReportService $paymentChannels,
+        AdminPaymentOperationsReadService $paymentOperations,
+        CourseFinancialLedgerReportService $financialLedger
+    ) {
 
         // Cash-channel totals exclude sandbox/test transactions. Wallet totals
         // remain virtual units and are reported independently below.

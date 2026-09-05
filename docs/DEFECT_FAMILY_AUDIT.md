@@ -4,6 +4,30 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Built internal artifact and dashboard-role clarification — 2026-09-05
+
+The internal direct APK 1.0.38 / Android 39 was built successfully from mobile
+source at `6f9e456`. Its canonical artifact and the delivery copy `12.apk` both
+have SHA-256 `7eaf0f3603db321a8f649b5dd143ce67fe8f2c2ea25e78fdd43b944edce0dd69`.
+It uses the explicit production public environment and the prior internal
+signer. The metadata correctly records a dirty repository because an unrelated
+backend dependency-isolation edit was in progress when the build finished.
+There were no uncommitted mobile-source edits. This is an internal test artifact,
+not a public-release signing or native-acceptance approval.
+
+The reported revenue card was seen using the Rokn administrator account, as the
+user clarified. It was not evidence of a moderator disclosure. The existing
+header names the role, the permission matrix restricts financial routes, and
+Home already returns the separate moderator workspace. A small dependency
+isolation improvement additionally resolves financial reports only inside the
+administrator branch. Focused moderator and administrator checks passed three
+tests / 17 assertions. The sample course was uploaded using the administrator;
+that does not prove the production moderator authoring journey.
+
+Native acceptance remains pending: the disposable emulator booted but the ADB
+server and emulator used different host keys. No successful app installation,
+guest journey, OAuth completion, payment or project acceptance is claimed here.
+
 ## Internal release candidate 1.0.38 — 2026-09-05
 
 This checkpoint supersedes the course-upload status in earlier checkpoints.
