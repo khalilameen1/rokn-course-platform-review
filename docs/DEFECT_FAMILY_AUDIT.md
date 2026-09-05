@@ -4,6 +4,32 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Share fresh course-read recovery between details and playback — 2026-09-05
+
+The backend details action can return `409 course_revision_changed` when a
+publication changes during the read. The commercial details reader already
+handled this with one re-read, but the learning reader (also used to refresh
+attachment access) failed immediately. These were the only two direct details
+GET call sites in mobile source.
+
+Both now use `requestCourseDetails`, with the original signal and one shared
+transport deadline across at most two publication attempts. The details page
+keeps its existing optional-auth and guest-cache presentation policy; playback
+still requires a fresh response and never falls back to cached entitlements or
+media. Cancellation prevents the publication re-read. Other 409s, denials,
+missing courses and server errors are not treated as publication races.
+
+The previously failing learning-read case now succeeds after one revision
+conflict; persistent revision conflicts still surface. Fifty tests across five
+course reading/cache/progression/contract suites pass, including both readers,
+account changes, cancellation and the existing progression rules. TypeScript
+and scoped ESLint pass. The new helper replaces the duplicate read loop rather
+than layering another retry around it.
+
+This is a proven inconsistent recovery policy, not a confirmed diagnosis of the
+emulator's initial load failure. Native reproduction and correlated production
+evidence for that failure remain outstanding. `1234.apk` is still unchanged.
+
 ## Retire obsolete playback recovery after real native progress — 2026-09-05
 
 Code inspection after the candidate observation exposed a separate, reproducible

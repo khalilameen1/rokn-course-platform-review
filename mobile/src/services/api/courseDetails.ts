@@ -1,8 +1,8 @@
 import {
-  DEFAULT_READ_RECOVERY_BUDGET_MS,
-  publicRequest,
-  type RoknRequestConfig,
-} from '../../constants/api';
+  courseReadFailureStatus as errorStatus,
+  isCourseRevisionChangedError,
+  requestCourseDetails,
+} from './courseDetailsRequest';
 import {
   accountScopedStorageKey,
   assertAccountSessionBoundary,
@@ -22,32 +22,6 @@ import {
 } from './courseCache';
 import {mapCourseDetailsPayload, type CourseDetails} from './courseContracts';
 import {numericRouteId} from './courseFields';
-
-const errorStatus = (error: unknown): number => {
-  const failure = error as {status?: unknown; response?: {status?: unknown}};
-  return Number(failure.status ?? failure.response?.status ?? 0) || 0;
-};
-
-const errorCode = (error: unknown): string => {
-  const failure = error as {
-    code?: unknown;
-    data?: {code?: unknown; data?: {code?: unknown}};
-    response?: {data?: {code?: unknown; data?: {code?: unknown}}};
-  };
-  return String(
-    failure.data?.code ??
-      failure.data?.data?.code ??
-      failure.response?.data?.code ??
-      failure.response?.data?.data?.code ??
-      failure.code ??
-      '',
-  )
-    .trim()
-    .toLowerCase();
-};
-
-const isCourseRevisionChangedError = (error: unknown): boolean =>
-  errorStatus(error) === 409 && errorCode(error) === 'course_revision_changed';
 
 export const isCourseUnavailableError = (error: unknown): boolean =>
   [403, 404, 410].includes(errorStatus(error));
@@ -73,26 +47,13 @@ export const getCourseDetailsSnapshot = async (
     COURSE_DETAILS_CACHE_KEY,
     account,
   );
-  const retryDeadlineAt = Date.now() + DEFAULT_READ_RECOVERY_BUDGET_MS;
-
   try {
-    let data: unknown;
-    let responsePayload: unknown = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const response = await publicRequest.get(`courses/${id}/details`, {
-          optionalAuthorization: true,
-          roknNetworkRetryDeadlineAt: retryDeadlineAt,
-          signal: options.signal,
-        } as RoknRequestConfig);
-        responsePayload = response.data;
-        data = payload(response);
-        break;
-      } catch (error) {
-        if (attempt === 0 && isCourseRevisionChangedError(error)) continue;
-        throw error;
-      }
-    }
+    const response = await requestCourseDetails(id, {
+      optionalAuthorization: true,
+      signal: options.signal,
+    });
+    const responsePayload: unknown = response.data;
+    const data = payload(response);
     if (!data) throw new Error('API_CONTRACT_INVALID_COURSE_DETAILS');
     assertAccountSessionBoundary(account);
     const course = {...mapCourseDetailsPayload(data), fromCache: false};

@@ -13,6 +13,7 @@ jest.mock('expo-crypto', () => ({
   CryptoDigestAlgorithm: {SHA256: 'SHA-256'},
 }));
 jest.mock('../src/constants/api', () => ({
+  DEFAULT_READ_RECOVERY_BUDGET_MS: 12_000,
   publicRequest: {get: (...args: unknown[]) => mockGet(...args)},
 }));
 jest.mock('../src/services/secureSession', () => {
@@ -27,7 +28,7 @@ import {
   getPublishedCoursesPage,
 } from '../src/services/api/courses';
 
-const deferred = <T,>() => {
+const deferred = <T>() => {
   let resolve!: (value: T) => void;
   let reject!: (reason: unknown) => void;
   const promise = new Promise<T>((resolvePromise, rejectPromise) => {
@@ -47,32 +48,47 @@ describe('account-scoped course cache boundary', () => {
     [
       'guest to user',
       {ready: false, session: null, epoch: 1},
-      {ready: true, session: {user: {id: 7}, api_token: 'token-seven'}, epoch: 2},
+      {
+        ready: true,
+        session: {user: {id: 7}, api_token: 'token-seven'},
+        epoch: 2,
+      },
     ],
     [
       'user to user',
-      {ready: true, session: {user: {id: 7}, api_token: 'token-seven'}, epoch: 4},
-      {ready: true, session: {user: {id: 8}, api_token: 'token-eight'}, epoch: 5},
+      {
+        ready: true,
+        session: {user: {id: 7}, api_token: 'token-seven'},
+        epoch: 4,
+      },
+      {
+        ready: true,
+        session: {user: {id: 8}, api_token: 'token-eight'},
+        epoch: 5,
+      },
     ],
-  ])('does not return the captured owner cache after a %s switch', async (_label, before, after) => {
-    mockSessionSnapshot = before;
-    const request = deferred<never>();
-    let started!: () => void;
-    const requestStarted = new Promise<void>(resolve => {
-      started = resolve;
-    });
-    mockGet.mockImplementation(() => {
-      started();
-      return request.promise;
-    });
+  ])(
+    'does not return the captured owner cache after a %s switch',
+    async (_label, before, after) => {
+      mockSessionSnapshot = before;
+      const request = deferred<never>();
+      let started!: () => void;
+      const requestStarted = new Promise<void>(resolve => {
+        started = resolve;
+      });
+      mockGet.mockImplementation(() => {
+        started();
+        return request.promise;
+      });
 
-    const flight = getCourseDetails('52');
-    await requestStarted;
-    mockSessionSnapshot = after;
-    request.reject(new Error('offline'));
+      const flight = getCourseDetails('52');
+      await requestStarted;
+      mockSessionSnapshot = after;
+      request.reject(new Error('offline'));
 
-    await expect(flight).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
-  });
+      await expect(flight).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
+    },
+  );
 
   it('keeps the guest course response when slow session restore settles empty', async () => {
     mockSessionSnapshot = {ready: false, session: null, epoch: 10};
@@ -176,9 +192,7 @@ describe('account-scoped course cache boundary', () => {
             {
               id: 1,
               title: 'وحدة',
-              sections: [
-                {id: 1, content_id: 1, title: 'درس', type: 'lesson'},
-              ],
+              sections: [{id: 1, content_id: 1, title: 'درس', type: 'lesson'}],
             },
           ],
         },
@@ -192,51 +206,64 @@ describe('account-scoped course cache boundary', () => {
     });
   });
 
-  it('returns the exact details envelope for a single learning projection', async () => {
-    mockSessionSnapshot = {ready: true, session: null, epoch: 21};
-    const plan = (code: string, feedback: string) => ({
-      code,
-      name: code,
-      price_coins: 20,
-      minimum_paid_coins: 0,
-      chat_enabled: false,
-      project_report_enabled: false,
-      project_thread_reply_enabled: false,
-      project_output_enabled: false,
-      certificate_enabled: true,
-      project_feedback_level: feedback,
-    });
-    const responsePayload = {
-      data: {
-        id: 7,
-        title: 'كورس ركن',
-        is_coming_soon: false,
-        ratings_count: 0,
-        average_rating: null,
-        published_revision: 1,
-        metadata: {students_count: 2, duration_minutes: 1},
-        access_plans: [
-          plan('basic', 'pass_only'),
-          plan('guided', 'report'),
-          plan('mentor', 'enhanced'),
-        ],
-        modules: [
-          {
-            id: 1,
-            title: 'وحدة',
-            sections: [
-              {id: 1, content_id: 1, title: 'درس', type: 'lesson'},
-            ],
-          },
-        ],
-      },
-    };
-    mockGet.mockResolvedValue({data: responsePayload});
+  it.each([false, true])(
+    'returns the exact details envelope for a single learning projection (publication changed: %s)',
+    async publicationChanged => {
+      mockSessionSnapshot = {ready: true, session: null, epoch: 21};
+      const plan = (code: string, feedback: string) => ({
+        code,
+        name: code,
+        price_coins: 20,
+        minimum_paid_coins: 0,
+        chat_enabled: false,
+        project_report_enabled: false,
+        project_thread_reply_enabled: false,
+        project_output_enabled: false,
+        certificate_enabled: true,
+        project_feedback_level: feedback,
+      });
+      const responsePayload = {
+        data: {
+          id: 7,
+          title: 'كورس ركن',
+          is_coming_soon: false,
+          ratings_count: 0,
+          average_rating: null,
+          published_revision: 1,
+          metadata: {students_count: 2, duration_minutes: 1},
+          access_plans: [
+            plan('basic', 'pass_only'),
+            plan('guided', 'report'),
+            plan('mentor', 'enhanced'),
+          ],
+          modules: [
+            {
+              id: 1,
+              title: 'وحدة',
+              sections: [{id: 1, content_id: 1, title: 'درس', type: 'lesson'}],
+            },
+          ],
+        },
+      };
+      if (publicationChanged) {
+        mockGet.mockRejectedValueOnce({
+          status: 409,
+          data: {code: 'course_revision_changed'},
+        });
+      }
+      mockGet.mockResolvedValue({data: responsePayload});
 
-    await expect(getCourseDetailsSnapshot('7')).resolves.toEqual({
-      course: expect.objectContaining({id: '7'}),
-      responsePayload,
-    });
-    expect(mockGet).toHaveBeenCalledTimes(1);
-  });
+      await expect(getCourseDetailsSnapshot('7')).resolves.toEqual({
+        course: expect.objectContaining({id: '7'}),
+        responsePayload,
+      });
+      expect(mockGet).toHaveBeenCalledTimes(publicationChanged ? 2 : 1);
+      for (const [, config] of mockGet.mock.calls) {
+        expect(config.optionalAuthorization).toBe(true);
+        expect(config.roknNetworkRetryDeadlineAt).toBe(
+          mockGet.mock.calls[0][1].roknNetworkRetryDeadlineAt,
+        );
+      }
+    },
+  );
 });

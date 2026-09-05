@@ -1,4 +1,4 @@
-import {publicRequest} from '../../../constants/api';
+import {requestCourseDetails} from '../../../services/api/courseDetailsRequest';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import type {
   CourseLearningData,
@@ -181,10 +181,9 @@ export const loadCourseLearningData = async (
   }
 
   try {
-    const response = await publicRequest.get(
-      `courses/${requestedCourseId}/details`,
-      {signal: options.signal},
-    );
+    const response = await requestCourseDetails(requestedCourseId, {
+      signal: options.signal,
+    });
     const course = mapCoursePayload(response.data);
     if (!course) throw new Error('COURSE_CONTENT_UNPUBLISHED');
     return {course};
