@@ -20601,13 +20601,13 @@ OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 PERFORMANCE OF THIS SOFTWARE.
 ```
 
-### @xmldom/xmldom@0.8.13
+### @xmldom/xmldom@0.8.15
 
 - Selected license: `MIT`
 - Declared license: `MIT`
 - Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.8.13)
-- Integrity: `sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==`
+- Exact source: [npm](https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.8.15)
+- Integrity: `sha512-/5NV/vDALVFDXgLmfsy9TRCBlKwO2LNBFzpzvb9iIj+jR+eSc6DLYYvVOdivT/jm7MtU6TebYuRmzEOI7w40UA==`
 
 #### LICENSE
 
@@ -20624,13 +20624,13 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### @xmldom/xmldom@0.9.10
+### @xmldom/xmldom@0.9.12
 
 - Selected license: `MIT`
 - Declared license: `MIT`
 - Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.9.10)
-- Integrity: `sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==`
+- Exact source: [npm](https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.9.12)
+- Integrity: `sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==`
 
 #### LICENSE
 

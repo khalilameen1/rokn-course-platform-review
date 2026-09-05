@@ -4,6 +4,41 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Resolve the remaining dependency gate without changing learner flows — 2026-09-05
+
+Mobile CI 33975028743 on cf7b7b0 completed both native builds successfully,
+including the corrected Swift RTL selector. All 156 JavaScript suites / 818
+tests and the accessibility source scan passed. The final dependency audit alone
+failed on new advisories for `@xmldom/xmldom` and `qs`; this was not a failed
+checkout, login or chat test.
+
+The exact lockfile now updates both installed xmldom branches (0.8.13 to 0.8.15
+and 0.9.10 to 0.9.12) and qs (6.15.3 to 6.16.0), within their existing parent
+dependency ranges. No overrides, audit exceptions or learner-flow changes were
+added. The backend npm lock contains neither package. The affected mobile paths
+are Expo/Xcode plist tooling and the React Native CLI server, not direct imports
+from learner screens. `npm run audit:release` passes after the update; the
+previously reviewed navigation advisory remains explicit, not silently removed.
+
+The updated JavaScript legal inventory and unchanged native legal inventory
+both pass (734 npm packages, 241 Maven coordinates, 127 Pod roots). The 18
+targeted legal/toolchain tests pass and release configuration remains consistent.
+Direct probes confirm both xmldom branches reject invalid entity names while
+retaining valid references, both plist callers round-trip their values, and qs
+preserves ordinary queries while rejecting the documented array-limit bypass.
+
+References: [xmldom advisory](https://github.com/advisories/GHSA-6gmq-8vp8-gcm6),
+[qs array limit advisory](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx),
+[qs isBuffer advisory](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g).
+
+The existing `1234.apk` is an internal-test artifact built from cf7b7b0
+(1.0.41 / Android 42), SHA-256
+`0263502515fb4ef5db59fbb3c658cb5e1fec9d3bd7196f2e9d1fcd72ae2723b3`.
+It was installed as an update on emulator-5560; guest home and the production
+course detail page loaded. That does not establish successful authentication,
+paid course purchase, project submission or AI replies. This dependency update
+does not alter that already-built file and must not be attributed to it.
+
 ## Make deployment-sensitive fixtures test the configured deployment — 2026-09-05
 
 Mobile run 33973207771 completed Android successfully but failed five JavaScript

@@ -3,7 +3,7 @@
   "generatedFrom": "package-lock.json production dependency closure",
   "packageCount": 734,
   "packagePathCount": 817,
-  "inventoryHash": "460d48c71df23c21af070a8b69428003fad923f5ade22678b71f72d60c7277a2",
+  "inventoryHash": "7003751621d25fee879ac30b646ee8818ce51a5d48f4b9c47512823d34343bd1",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -2627,20 +2627,20 @@
     },
     {
       "name": "@xmldom/xmldom",
-      "version": "0.8.13",
+      "version": "0.8.15",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.8.13",
+      "sourceUrl": "https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.8.15",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
     {
       "name": "@xmldom/xmldom",
-      "version": "0.9.10",
+      "version": "0.9.12",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.9.10",
+      "sourceUrl": "https://www.npmjs.com/package/%40xmldom%2Fxmldom/v/0.9.12",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
