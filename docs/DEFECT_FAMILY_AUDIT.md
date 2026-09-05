@@ -6,6 +6,48 @@ exists against the deployed backend and the signed mobile artifact.
 
 ## Daily checkout, reply and project state closure — 2026-09-05
 
+Backend CI run `33964361469` for `fcd30f2` passed the migrated MySQL product
+schema preflight and the full backend suite. Cloud deployment 168 deployed
+that commit. This only verified schema shape, not that its CHECK constraints
+accepted the current payload. A later production-log read found new purchase
+attempts at 11:52 UTC failing MySQL 3819: both order and enrollment snapshot
+constraints still accepted v1–v3 while the application wrote v5. The previous
+claim that the schema gap was closed was too broad. The forward repair must
+update both constraints, and CI must exercise actual inserts against MySQL
+rather than accepting SQLite application validation as equivalent evidence.
+The read-only production check after these failures still found 945 coins
+(900 paid / 45 reward) and no course 3 enrollment. No repeat debit occurred.
+Native checkout acceptance and a successful paid-provider reply remain
+separate evidence requirements.
+
+The next read-only production probe generated all three course 3 plans through
+the real snapshot writer and evaluated each against both installed JSON
+schemas: all six were rejected. The new forward migration replaces each
+constraint in one ALTER, retains historical versions and preserves plan/order
+identity requirements. The new MySQL CI insert test uses the actual current
+writer for all three tiers, tests historical snapshots and rejects incomplete
+or mismatched receipts. It fails rather than silently skipping when the CI
+job requires MySQL. Its real MySQL execution remains pending publication.
+
+The live OpenRouter provider catalog exposed another request-contract gap:
+`max_completion_tokens` with `require_parameters=true` restricted the configured
+GPT/Claude route to Azure endpoints. The shared `max_tokens` ceiling keeps two
+OpenAI endpoints eligible for GPT-5 Mini and all nine listed Claude Sonnet 5
+endpoints eligible across its providers. The primary no longer uses Azure's
+two legacy-parameter endpoints. No model, output budget or production setting
+was changed. Course replies and project feedback use the same service.
+
+The request regression verifies the actual primary/fallback pair, strict
+parameter support, the shared output ceiling and minimal reasoning together.
+Focused OpenRouter tests passed 12 tests / 25 assertions and course-chat
+hardening passed 12 / 68. Catalog eligibility is not proof of a successful
+production reply or the cause of every earlier failed turn.
+
+Primary evidence checked on 2026-09-05:
+[GPT-5 Mini endpoints](https://openrouter.ai/api/v1/models/openai/gpt-5-mini/endpoints),
+[Claude Sonnet 5 endpoints](https://openrouter.ai/api/v1/models/anthropic/claude-sonnet-5/endpoints)
+and [provider parameter routing](https://openrouter.ai/docs/guides/routing/provider-selection).
+
 The source changes following the live purchase hotfix close three state-loss
 paths. They are not included in the previously delivered `123.apk`.
 

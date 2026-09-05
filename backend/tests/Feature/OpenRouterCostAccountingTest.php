@@ -89,8 +89,8 @@ final class OpenRouterCostAccountingTest extends TestCase
             $payload = $request->data();
 
             return $request->url() === 'https://openrouter.test/chat'
-                && ($payload['max_completion_tokens'] ?? null) === 100
-                && !array_key_exists('max_tokens', $payload)
+                && ($payload['max_tokens'] ?? null) === 100
+                && !array_key_exists('max_completion_tokens', $payload)
                 && ($payload['temperature'] ?? null) === 0.2
                 && ($payload['provider']['require_parameters'] ?? null) === true
                 && ($payload['provider']['data_collection'] ?? null) === 'allow'
@@ -122,9 +122,15 @@ final class OpenRouterCostAccountingTest extends TestCase
         );
     }
 
-    public function test_gpt_five_request_omits_unsupported_temperature(): void
+    public function test_gpt_five_request_keeps_the_production_fallback_on_the_shared_parameter_contract(): void
     {
-        config()->set('openrouter.allowed_models', ['openai/gpt-5-mini']);
+        config()->set('openrouter.allowed_models', [
+            'openai/gpt-5-mini',
+            'anthropic/claude-sonnet-5',
+        ]);
+        config()->set('openrouter.fallback_models', [
+            'anthropic/claude-sonnet-5',
+        ]);
         Http::fake(['openrouter.test/*' => Http::response([
             'id' => 'generation-gpt-five',
             'choices' => [['message' => ['content' => 'answer']]],
@@ -138,10 +144,19 @@ final class OpenRouterCostAccountingTest extends TestCase
             100
         );
 
-        Http::assertSent(static fn ($request): bool =>
-            !array_key_exists('temperature', $request->data())
-            && ($request['reasoning']['effort'] ?? null) === 'minimal'
-        );
+        Http::assertSent(static function ($request): bool {
+            $payload = $request->data();
+
+            return ($payload['models'] ?? null) === [
+                'openai/gpt-5-mini',
+                'anthropic/claude-sonnet-5',
+            ]
+                && ($payload['max_tokens'] ?? null) === 100
+                && !array_key_exists('max_completion_tokens', $payload)
+                && ($payload['provider']['require_parameters'] ?? null) === true
+                && !array_key_exists('temperature', $payload)
+                && ($payload['reasoning']['effort'] ?? null) === 'minimal';
+        });
     }
 
     public function test_realtime_gpt_five_six_disables_default_reasoning_and_drops_incompatible_fallback(): void

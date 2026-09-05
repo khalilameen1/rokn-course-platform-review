@@ -93,7 +93,9 @@ final class OpenRouterService
         }
         $payload = [
             'messages' => $messages,
-            'max_completion_tokens' => max(
+            // Use OpenRouter's shared output ceiling so strict parameter
+            // routing retains the configured provider fallbacks.
+            'max_tokens' => max(
                 80,
                 min((int) config('openrouter.max_tokens', 800), $maxTokens)
             ),

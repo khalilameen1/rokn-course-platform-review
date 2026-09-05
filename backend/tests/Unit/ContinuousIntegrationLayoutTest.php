@@ -32,12 +32,19 @@ final class ContinuousIntegrationLayoutTest extends TestCase
             $contents,
             'php artisan rokn:preflight --schema-only --allow-mixed-release --no-interaction'
         );
-        $sqliteSuite = strpos($contents, 'run: php artisan test');
+        $snapshotContract = strpos(
+            $contents,
+            'php artisan test --filter=AccessPlanSnapshotMysqlConstraintTest'
+        );
+        $sqliteSuite = strpos($contents, '- name: Run full test suite');
         self::assertIsInt($mysqlReplay);
         self::assertIsInt($schemaContract);
+        self::assertIsInt($snapshotContract);
         self::assertIsInt($sqliteSuite);
         self::assertGreaterThan($mysqlReplay, $schemaContract);
-        self::assertGreaterThan($schemaContract, $sqliteSuite);
+        self::assertGreaterThan($schemaContract, $snapshotContract);
+        self::assertGreaterThan($snapshotContract, $sqliteSuite);
+        self::assertStringContainsString('ROKN_REQUIRE_MYSQL_CONTRACT_TEST: "true"', $contents);
 
         $composer = json_decode(
             (string) file_get_contents($backend.'/composer.json'),
