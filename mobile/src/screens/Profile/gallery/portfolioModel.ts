@@ -20,6 +20,18 @@ export type Project = {
 
 export const fallbackPortfolioCover = require('../../../assets/images/courseSliderBackground.jpg');
 
+export const portfolioProjectCoverUri = (
+  project: Pick<Project, 'cover'>,
+): string | undefined => {
+  const source = project.cover;
+  if (!source || typeof source === 'number') return undefined;
+  const candidate = Array.isArray(source)
+    ? source.find(item => typeof item?.uri === 'string' && item.uri.trim())
+    : source;
+  const uri = typeof candidate?.uri === 'string' ? candidate.uri.trim() : '';
+  return uri || undefined;
+};
+
 export const toPortfolioProject = (item: PortfolioItem): Project => ({
   id: item.id,
   title: item.title,

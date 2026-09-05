@@ -55,13 +55,13 @@
                     <!-- Search Section -->
                     <div class="search-section">
                         <form method="GET" action="{{ route('admin.users.index') }}">
-                            <div class="row">
-                                <div class="col-lg-4 col-md-12 mb-2">
+                            <div class="users-filter-grid">
+                                <div class="users-filter-control users-filter-control--search">
                                     <div class="search-input-group">
                                         <input type="text" name="search" class="form-control" placeholder="🔍 البحث بالاسم، البريد، أو الجوال..." value="{{ request('search') }}">
                                     </div>
                                 </div>
-                                <div class="col-lg-2 col-md-6 col-sm-6 mb-2">
+                                <div class="users-filter-control">
                                     <div class="search-input-group">
                                         <select name="active" class="form-control">
                                             <option value="">جميع الحالات</option>
@@ -70,16 +70,14 @@
                                         </select>
                                     </div>
                                 </div>
-                                
-
-                                <div class="col-lg-1 col-md-6 col-sm-6 mb-2">
+                                <div class="users-filter-action">
                                     <button type="submit" class="btn btn-modern btn-modern-primary">
-                                        <i class="fa fa-search"></i> <span class="d-none d-lg-inline">بحث</span>
+                                        <i class="fa fa-search"></i> <span>بحث</span>
                                     </button>
                                 </div>
-                                <div class="col-lg-2 col-md-6 col-sm-6 mb-2">
+                                <div class="users-filter-action">
                                     <a href="{{ route('admin.users.index') }}" class="btn btn-modern btn-modern-secondary">
-                                        <i class="fa fa-refresh"></i> <span class="d-none d-lg-inline">إعادة تعيين</span>
+                                        <i class="fa fa-refresh"></i> <span>إعادة تعيين</span>
                                     </a>
                                 </div>
                             </div>

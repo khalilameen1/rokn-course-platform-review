@@ -69,6 +69,8 @@ export const PortfolioGalleryView = ({
     finalizeSelectedProject,
     handleMediaDeliveryError,
     handleMediaDeliverySuccess,
+    handleProjectCoverError,
+    handleProjectCoverLoad,
     loadError,
     loading,
     loadProjects,
@@ -140,6 +142,8 @@ export const PortfolioGalleryView = ({
           <PortfolioProjectGrid
             cardWidth={cardWidth}
             gap={gridGap}
+            onCoverError={handleProjectCoverError}
+            onCoverLoad={handleProjectCoverLoad}
             onOpen={openProject}
             projects={projects}
           />

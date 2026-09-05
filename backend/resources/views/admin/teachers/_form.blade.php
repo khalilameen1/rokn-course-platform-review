@@ -23,8 +23,8 @@
 <div class="row">
     <div class="col-md-6">
         <div class="form-group">
-            <label for="email">البريد الإلكتروني <span class="text-danger">*</span></label>
-            <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $teacher->email ?? '') }}" required>
+            <label for="email">البريد الإلكتروني <span class="text-muted">(اختياري)</span></label>
+            <input type="email" name="email" id="email" class="form-control @error('email') is-invalid @enderror" value="{{ old('email', $teacher->email ?? '') }}">
             @error('email')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror
@@ -32,8 +32,8 @@
     </div>
     <div class="col-md-6">
         <div class="form-group">
-            <label for="phone">رقم الهاتف <span class="text-danger">*</span></label>
-            <input type="text" name="phone" id="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $teacher->phone ?? '') }}" required>
+            <label for="phone">رقم الهاتف <span class="text-muted">(اختياري)</span></label>
+            <input type="text" name="phone" id="phone" class="form-control @error('phone') is-invalid @enderror" value="{{ old('phone', $teacher->phone ?? '') }}">
             @error('phone')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror
@@ -57,13 +57,9 @@
         <div class="form-group">
             <label for="password">
                 كلمة المرور
-                @if(isset($teacher))
-                    <span class="text-muted">(اختياري)</span>
-                @else
-                    <span class="text-danger">*</span>
-                @endif
+                <span class="text-muted">(اختياري)</span>
             </label>
-            <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror" {{ isset($teacher) ? '' : 'required' }}>
+            <input type="password" name="password" id="password" class="form-control @error('password') is-invalid @enderror">
             @error('password')
                 <span class="invalid-feedback">{{ $message }}</span>
             @enderror

@@ -41,6 +41,10 @@ class AdminDashboardViewTest extends TestCase
         ];
 
         self::assertStringContainsString('admin/assets/css/course-editor.css', $editor);
+        self::assertMatchesRegularExpression(
+            '/<section\b[^>]*class="[^"]*\bcourse-editor\b[^"]*"[^>]*id="studioCoursePanel"/',
+            $settingsPanel
+        );
         self::assertLessThanOrEqual(350, substr_count($editor, "\n") + 1);
 
         $formSource = $editor.$settingsPanel.$behavior;

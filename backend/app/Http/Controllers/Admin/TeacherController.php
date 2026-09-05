@@ -89,15 +89,15 @@ class TeacherController extends Controller
             'name_ar' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
             'email' => $canManageCredentials
-                ? ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($intentTeacherId)]
+                ? ['nullable', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($intentTeacherId)]
                 : ['prohibited'],
             'phone' => $canManageCredentials
-                ? ['required', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($intentTeacherId)]
+                ? ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($intentTeacherId)]
                 : ['prohibited'],
             'password' => $canManageCredentials
-                ? ['required', 'string', 'min:10', 'max:72', 'confirmed']
+                ? ['nullable', 'string', 'min:10', 'max:72', 'confirmed']
                 : ['prohibited'],
-            'password_confirmation' => $canManageCredentials ? ['required', 'same:password'] : ['prohibited'],
+            'password_confirmation' => $canManageCredentials ? ['nullable', 'same:password'] : ['prohibited'],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'job_title' => 'nullable|string|max:255',
             'bio_ar' => 'nullable|string',
@@ -128,9 +128,15 @@ class TeacherController extends Controller
                     $teacher->fill([
                         'name_ar' => $request->string('name_ar')->trim(),
                         'name_en' => $request->filled('name_en') ? $request->string('name_en')->trim() : null,
-                        'email' => $canManageCredentials ? strtolower($request->string('email')->trim()) : null,
-                        'phone' => $canManageCredentials ? (string) $request->string('phone')->trim() : null,
-                        'password' => $canManageCredentials ? Hash::make((string) $request->input('password')) : null,
+                        'email' => $canManageCredentials && $request->filled('email')
+                            ? strtolower($request->string('email')->trim())
+                            : null,
+                        'phone' => $canManageCredentials && $request->filled('phone')
+                            ? (string) $request->string('phone')->trim()
+                            : null,
+                        'password' => $canManageCredentials && $request->filled('password')
+                            ? Hash::make((string) $request->input('password'))
+                            : null,
                         'job_title' => $request->input('job_title'),
                         'bio_ar' => $request->input('bio_ar'),
                         'bio_en' => $request->input('bio_en'),
@@ -223,10 +229,10 @@ class TeacherController extends Controller
             'name_ar' => 'required|string|max:255',
             'name_en' => 'nullable|string|max:255',
             'email' => $canManageCredentials
-                ? ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($teacher->id)]
+                ? ['nullable', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($teacher->id)]
                 : ['prohibited'],
             'phone' => $canManageCredentials
-                ? ['required', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($teacher->id)]
+                ? ['nullable', 'string', 'max:20', Rule::unique('users', 'phone')->ignore($teacher->id)]
                 : ['prohibited'],
             'password' => $canManageCredentials
                 ? ['nullable', 'string', 'min:10', 'max:72', 'confirmed']
@@ -240,8 +246,10 @@ class TeacherController extends Controller
         ]);
 
         $userData = $request->only(['name_ar', 'name_en', 'job_title', 'bio_ar', 'bio_en']);
-        if ($canManageCredentials) {
+        if ($canManageCredentials && $request->filled('email')) {
             $userData['email'] = strtolower(trim((string) $request->input('email')));
+        }
+        if ($canManageCredentials && $request->filled('phone')) {
             $userData['phone'] = trim((string) $request->input('phone'));
         }
         if ($canManageCredentials && $request->filled('password')) {

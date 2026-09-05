@@ -667,9 +667,37 @@ final class ProjectSubmissionService
                 else rewind($handle);
                 $tail = fread($handle, 16384);
 
-                return str_contains($head, '/Type /Page')
-                    && is_string($tail)
-                    && str_contains($tail, '%%EOF');
+                if (!is_string($tail) || preg_match('/%%EOF\s*\z/s', $tail) !== 1) {
+                    return false;
+                }
+
+                // Page dictionaries may be stored in compressed object
+                // streams, so their text is not a reliable validity test.
+                // Accept the cheap visible-page case, otherwise verify the
+                // required cross-reference pointer and the object it names.
+                if (preg_match('/\/Type\s*\/Page\b/', $head) === 1) {
+                    return true;
+                }
+                if (preg_match('/startxref\s+(\d+)\s+%%EOF\s*\z/s', $tail, $match) !== 1) {
+                    return false;
+                }
+
+                $xrefOffset = (int) $match[1];
+                if ($xrefOffset < 1 || $xrefOffset >= $size
+                    || fseek($handle, $xrefOffset, SEEK_SET) !== 0) {
+                    return false;
+                }
+                $xref = fread($handle, 2048);
+                if (!is_string($xref)) {
+                    return false;
+                }
+                $xref = ltrim($xref);
+
+                return str_starts_with($xref, 'xref')
+                    || (
+                        preg_match('/^\d+\s+\d+\s+obj\b/', $xref) === 1
+                        && preg_match('/\/Type\s*\/XRef\b/', $xref) === 1
+                    );
             } finally {
                 fclose($handle);
             }

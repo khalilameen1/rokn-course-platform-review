@@ -62,6 +62,21 @@ final class CourseSectionVideoUploadController extends Controller
                 ),
             ]);
         } catch (ValidationException $exception) {
+            $errors = $exception->errors();
+            if (array_key_exists('bunny_upload_allocation_in_progress', $errors)) {
+                unset($errors['bunny_upload_allocation_in_progress']);
+                $message = collect($errors)->flatten()->first(
+                    fn ($value) => is_string($value) && trim($value) !== ''
+                );
+
+                return response()->json([
+                    'success' => false,
+                    'code' => 'bunny_upload_allocation_in_progress',
+                    'message' => $message ?: "ما زال تجهيز الرفع جاريًا\nحاول بعد لحظات",
+                    'errors' => $errors,
+                ], 409);
+            }
+
             return $this->terminalUploadResponse($exception, 'bunny_upload_operation_terminal', 'bunny_upload_operation_unavailable');
         }
     }

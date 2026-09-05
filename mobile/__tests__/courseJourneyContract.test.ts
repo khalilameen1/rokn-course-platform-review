@@ -201,9 +201,7 @@ describe('course journey contract', () => {
   it('keeps canonical continuation in My Corner without inventing a Home row', () => {
     const catalogue = source('src/screens/home/homeCatalogue.ts');
     const overlay = source('src/screens/home/useHomeCatalogue.ts');
-    const learningMapper = source(
-      'src/services/api/learningCourseContract.ts',
-    );
+    const learningMapper = source('src/services/api/learningCourseContract.ts');
     const myCornerModel = source('src/screens/myCorner/model.ts');
 
     expect(learningMapper).toContain(
@@ -329,9 +327,7 @@ describe('course journey contract', () => {
     expect(details).not.toContain('commerceInFlightRef');
     expect(purchase).toContain('} = useCoursePurchaseFlow();');
     expect(flow).toMatch(/useReducer\(\s*coursePurchaseFlowReducer/);
-    expect(`${purchase}\n${entry}\n${checkout}`).not.toContain(
-      'setDialogStep',
-    );
+    expect(`${purchase}\n${entry}\n${checkout}`).not.toContain('setDialogStep');
     expect(purchase).toContain('usePurchaseEntry({');
     expect(purchase).toContain('useCourseCheckout({');
     expect(entry).toContain('const runPrimaryAction = useCallback(');
@@ -353,26 +349,42 @@ describe('course journey contract', () => {
     expect(outline).not.toContain('publicRequest');
   });
 
-  it('keeps the assistant entry reachable when the purchased plan needs an upgrade', () => {
+  it('keeps the assistant entry visible while entitlement decides its action', () => {
     const sidebar = source('src/components/VideoPlayer/FeedSideBar.tsx');
+    const actions = source(
+      'src/components/VideoPlayer/feedSideBar/FeedActions.tsx',
+    );
     const controller = source('src/screens/reels/useReelsController.tsx');
+    const renderer = source('src/screens/reels/useReelsFeedRenderer.tsx');
     const surface = source('src/screens/reels/ReelsSurface.tsx');
-    const overlay = source(
-      'src/components/VideoPlayer/CourseChatOverlay.tsx',
+    const overlay = source('src/components/VideoPlayer/CourseChatOverlay.tsx');
+    const chat = source(
+      'src/components/VideoPlayer/courseChat/useCourseChat.ts',
+    );
+    const conversation = source(
+      'src/components/VideoPlayer/courseChat/useCourseChatConversation.ts',
     );
 
-    expect(sidebar).toContain(
-      'showChat={hasCourseLearningAccess(course.accessType)}',
-    );
+    expect(sidebar).not.toContain('showChat=');
+    expect(actions).toContain('<FeedActionButton label="اسأل"');
     expect(controller).toContain(
       'if (hasCourseLearningAccess(course.accessType)) setChatVisible(true);',
     );
-    expect(controller).toContain('canOpenCourseAssistant: Boolean(');
+    expect(controller).toContain('canOpenCourseAssistant: Boolean(course)');
     expect(surface).toContain('controller.canOpenCourseAssistant');
-    expect(sidebar).not.toContain('showChat={includesCourseAssistant(course)}');
+    expect(surface).toContain('onOpenCourseAccess={() =>');
+    expect(renderer).toContain('onOpenChat={() => setChatVisible(true)}');
+    expect(renderer).not.toMatch(
+      /onOpenChat=\{\(\) => \{[\s\S]{0,220}openGuestLogin/,
+    );
     expect(overlay).toContain(
       'const opened = visible && !previousVisibleRef.current;',
     );
+    expect(overlay).toContain('courseAssistantEntryMode(course)');
+    expect(overlay).toContain('!courseAccessRequired');
+    expect(overlay).toContain('!courseChatUnavailable');
+    expect(chat).toContain('remoteEnabled: assistantEntitled');
+    expect(conversation).toContain('if (!remoteEnabled) return;');
     expect(overlay).toContain(
       '(opened || becameGated || (visible && courseChanged))',
     );

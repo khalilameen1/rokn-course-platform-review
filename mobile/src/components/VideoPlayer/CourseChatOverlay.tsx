@@ -25,12 +25,14 @@ import {useCourseChatAttachments} from './courseChat/useCourseChatAttachments';
 import {courseChatStyles as styles} from './courseChat/styles';
 import {CourseChatGate} from './courseChat/CourseChatGate';
 import {CourseChatConversation} from './courseChat/CourseChatConversation';
+import {courseAssistantEntryMode} from './courseEntitlements';
 
 interface CourseChatOverlayProps {
   visible: boolean;
   course: CourseLearningData;
   reel?: CourseReel;
   onClose: () => void;
+  onOpenCourseAccess: () => void;
 }
 
 type CourseChatNavigation = {
@@ -62,6 +64,7 @@ const CourseChatOverlay = ({
   course,
   reel,
   onClose,
+  onOpenCourseAccess,
 }: CourseChatOverlayProps) => {
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
@@ -115,6 +118,9 @@ const CourseChatOverlay = ({
       });
     },
   });
+  const entryMode = courseAssistantEntryMode(course);
+  const courseAccessRequired = entryMode === 'course_access';
+  const courseChatUnavailable = entryMode === 'unavailable';
   const hasSendableInput =
     cleanUnicodeText(input).length > 0 || attachments.length > 0;
   const turnBusy = sending || isSendInFlight();
@@ -145,6 +151,8 @@ const CourseChatOverlay = ({
     if (
       (opened || becameGated || (visible && courseChanged)) &&
       !assistantIncluded &&
+      !courseAccessRequired &&
+      !courseChatUnavailable &&
       !chatAccessUnavailable &&
       !upgradeLoading
     ) {
@@ -153,6 +161,8 @@ const CourseChatOverlay = ({
   }, [
     assistantIncluded,
     chatAccessUnavailable,
+    courseAccessRequired,
+    courseChatUnavailable,
     course.id,
     loadUpgradeQuote,
     upgradeLoading,
@@ -250,10 +260,16 @@ const CourseChatOverlay = ({
           {!assistantIncluded ? (
             <CourseChatGate
               accessUnavailable={chatAccessUnavailable}
+              courseAccessRequired={courseAccessRequired}
+              courseChatUnavailable={courseChatUnavailable}
               error={upgradeError}
               loading={upgradeLoading}
               onConfirm={() => void confirmUpgrade()}
               onLoadQuote={() => void loadUpgradeQuote()}
+              onOpenCourseAccess={() => {
+                onClose();
+                onOpenCourseAccess();
+              }}
               planLimitReached={planLimitReached}
               quote={upgradeQuote}
               scholarshipAccess={scholarshipAccess}

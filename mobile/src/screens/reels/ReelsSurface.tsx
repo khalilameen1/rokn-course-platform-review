@@ -11,14 +11,7 @@ import {
 import type {ReelsController} from './useReelsController';
 
 const ReelsSurface = (controller: ReelsController) => {
-  const {
-    course,
-    feedItems,
-    insets,
-    layout,
-    loadError,
-    loading,
-  } = controller;
+  const {course, feedItems, insets, layout, loadError, loading} = controller;
 
   return (
     <View style={styles.screen} onLayout={controller.onLayout}>
@@ -104,20 +97,20 @@ const ReelsSurface = (controller: ReelsController) => {
               topInset={insets.top}
             />
           )}
-          {!!controller.connectionNote &&
-            !controller.previewGateVisible && (
-              <ReelsConnectionNote
-                message={controller.connectionNote}
-                onPress={controller.onConnectionNotePress}
-                topInset={insets.top}
-              />
-            )}
+          {!!controller.connectionNote && !controller.previewGateVisible && (
+            <ReelsConnectionNote
+              message={controller.connectionNote}
+              onPress={controller.onConnectionNotePress}
+              topInset={insets.top}
+            />
+          )}
           {controller.canOpenCourseAssistant && (
             <CourseChatOverlay
               visible={controller.chatVisible}
               course={course}
               reel={controller.currentReel}
               onClose={controller.closeChat}
+              onOpenCourseAccess={() => controller.showCourseDetails(true)}
             />
           )}
           <NotificationPermissionPrimer

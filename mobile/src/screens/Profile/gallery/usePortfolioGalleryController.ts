@@ -145,6 +145,8 @@ export const usePortfolioGalleryController = ({
     loadError: library.loadError,
     loading: library.loading,
     loadProjects,
+    handleProjectCoverError: library.handleProjectCoverError,
+    handleProjectCoverLoad: library.handleProjectCoverLoad,
     onSharePortfolio,
     openProject,
     projects: library.projects,

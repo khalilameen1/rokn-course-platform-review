@@ -20,7 +20,6 @@ import {openCourseAttachment} from './attachmentActions';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
 import {courseLearningProgress} from './courseLearning/sequence';
-import {hasCourseLearningAccess} from './courseEntitlements';
 import FeedActions, {AttachmentIcon} from './feedSideBar/FeedActions';
 import CourseIndexModule from './feedSideBar/CourseIndexModule';
 import {feedSideBarStyles as styles} from './feedSideBar/styles';
@@ -150,7 +149,6 @@ const FeedSideBar = ({
         isSaved={isSaved}
         savePending={savePending}
         showAttachments={attachments.length > 0}
-        showChat={hasCourseLearningAccess(course.accessType)}
         totalReels={course.totalReels}
         onOpenAttachments={openAttachments}
         onOpenChat={onOpenChat}

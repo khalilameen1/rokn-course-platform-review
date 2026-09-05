@@ -1,4 +1,5 @@
 import {
+  courseAssistantEntryMode,
   hasCourseLearningAccess,
   includesCourseAssistant,
   includesCourseCertificate,
@@ -13,9 +14,39 @@ describe('course AI entitlement', () => {
     },
   );
 
-  it('does not expose the assistant entry in a guest preview', () => {
+  it('distinguishes a guest sample from an owned learning entitlement', () => {
     expect(hasCourseLearningAccess('none')).toBe(false);
     expect(hasCourseLearningAccess('preview')).toBe(false);
+    expect(
+      courseAssistantEntryMode({accessType: 'preview', chatAvailable: false}),
+    ).toBe('course_access');
+    expect(
+      courseAssistantEntryMode({accessType: 'none', chatAvailable: true}),
+    ).toBe('course_access');
+  });
+
+  it('does not invent a paid upgrade for a wholly free course', () => {
+    expect(
+      courseAssistantEntryMode({accessType: 'free', chatAvailable: false}),
+    ).toBe('unavailable');
+    expect(
+      courseAssistantEntryMode({accessType: 'free', chatAvailable: true}),
+    ).toBe('included');
+  });
+
+  it('uses the backend entitlement to distinguish included chat from an upgrade', () => {
+    expect(
+      courseAssistantEntryMode({accessType: 'paid', chatAvailable: true}),
+    ).toBe('included');
+    expect(
+      courseAssistantEntryMode({accessType: 'paid', chatAvailable: false}),
+    ).toBe('upgrade');
+    expect(
+      courseAssistantEntryMode({
+        accessType: 'scholarship',
+        chatAvailable: true,
+      }),
+    ).toBe('upgrade');
   });
 
   it.each(['scholarship', 'institutional_grant'])(

@@ -100,6 +100,21 @@
     margin: 20px 25px;
 }
 
+.users-filter-grid {
+    display: grid;
+    grid-template-columns:
+        minmax(16rem, 2fr)
+        minmax(9rem, 1fr)
+        minmax(5.5rem, 0.55fr)
+        minmax(9rem, 1fr);
+    gap: 8px 12px;
+    align-items: start;
+}
+
+.users-filter-grid > * {
+    min-width: 0;
+}
+
 .search-input-group {
     position: relative;
     margin-bottom: 0;
@@ -688,18 +703,13 @@
     .modern-table tbody td {
         padding: 12px 8px;
     }
-}
 
-@media (max-width: 992px) {
-    .search-section .col-md-4,
-    .search-section .col-md-2,
-    .search-section .col-md-3,
-    .search-section .col-md-1 {
-        margin-bottom: 10px;
+    .users-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .btn-modern {
-        width: 100%;
+    .users-filter-control--search {
+        grid-column: 1 / -1;
     }
 }
 
@@ -738,7 +748,9 @@
     .student-count-badge {
         width: 100%;
         justify-content: center;
-    }    .search-section {
+    }
+
+    .search-section {
         padding: 15px;
         margin: 15px;
     }
@@ -780,6 +792,14 @@
 }
 
 @media (max-width: 576px) {
+    .users-filter-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .users-filter-control--search {
+        grid-column: auto;
+    }
+
     .card-header-modern h4 {
         font-size: 16px;
     }

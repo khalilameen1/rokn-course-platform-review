@@ -45,6 +45,28 @@ export const includesCourseAssistant = ({
 }: CourseAssistantEntitlement) =>
   chatAvailable === true && !isGrantCourseAccess(accessType);
 
+export type CourseAssistantEntryMode =
+  | 'included'
+  | 'upgrade'
+  | 'course_access'
+  | 'unavailable';
+
+/**
+ * The player always exposes the enquiries entry point, while this server-fed
+ * entitlement snapshot decides what opening it may do. A public sample must
+ * return to course access, and a wholly free course must not invent a paid
+ * upgrade when chat was not included by the backend.
+ */
+export const courseAssistantEntryMode = (
+  entitlement: CourseAssistantEntitlement,
+): CourseAssistantEntryMode => {
+  if (!hasCourseLearningAccess(entitlement.accessType)) return 'course_access';
+  if (includesCourseAssistant(entitlement)) return 'included';
+  return normalizeCourseAccessType(entitlement.accessType) === 'free'
+    ? 'unavailable'
+    : 'upgrade';
+};
+
 export const includesCourseCertificate = ({
   accessType,
   certificateAvailable,

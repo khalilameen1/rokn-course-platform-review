@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\RequireAdminMfa;
 use App\Models\BunnyDirectUpload;
 use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\Course;
@@ -42,6 +43,40 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             null,
             (int) $course->authoring_version
         );
+    }
+
+    public function test_http_allocation_retry_returns_a_resumable_conflict_without_creating_another_video(): void
+    {
+        [$admin, $course] = $this->authoringContext();
+        $key = '96e07193-d6a9-4b62-9976-b652b4e4f8a7';
+        $session = $this->allocation($admin, $course, $key, now());
+        $originalUpdatedAt = $session->updated_at?->toISOString();
+
+        $bunny = Mockery::mock(BunnyService::class);
+        $bunny->shouldNotReceive('createVideo');
+        $this->app->instance(BunnyService::class, $bunny);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $this->actingAs($admin)
+            ->postJson(route('admin.courses.sections.video-uploads.store', $course), [
+                'title' => 'الدرس الأول',
+                'size' => 1024,
+                'mime' => 'video/mp4',
+                'original_name' => 'lesson.mp4',
+                'idempotency_key' => $key,
+                'authoring_version' => (int) $course->authoring_version,
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('code', 'bunny_upload_allocation_in_progress')
+            ->assertJsonPath('errors.idempotency_key.0', "ما زال تجهيز الرفع جاريًا\nحاول بعد لحظات");
+
+        self::assertSame(1, BunnyDirectUpload::query()->count());
+        $preserved = BunnyDirectUpload::query()->sole();
+        self::assertSame($session->id, $preserved->id);
+        self::assertSame('allocating', $preserved->status);
+        self::assertSame($session->allocation_token, $preserved->allocation_token);
+        self::assertSame($originalUpdatedAt, $preserved->updated_at?->toISOString());
     }
 
     public function test_a_stale_allocation_is_reclaimed_and_the_remote_guid_is_persisted_before_cleanup(): void

@@ -117,7 +117,8 @@ export const useReelsFeedRenderer = ({
     ({item, index}: {item: CourseFeedItem; index: number}) => {
       if (!course || !layout.height || !frameWidth) return null;
       const reel = item.type === 'reel' ? item.reel : undefined;
-      const signedSourceExpired = Boolean(reel?.playbackSessionId) &&
+      const signedSourceExpired =
+        Boolean(reel?.playbackSessionId) &&
         manifestRefreshDelayMs(reel?.playbackExpiresAt) === 0;
       return (
         <FeedRow
@@ -164,21 +165,7 @@ export const useReelsFeedRenderer = ({
             });
             return false;
           }}
-          onOpenChat={() => {
-            if (serverSession === true) {
-              setChatVisible(true);
-              return;
-            }
-            openGuestLogin(navigation, {
-              name: 'Reels',
-              params: {
-                courseId: course.id,
-                reelId: reel?.id,
-                preview,
-                previewCount,
-              },
-            });
-          }}
+          onOpenChat={() => setChatVisible(true)}
           onOverlayVisibilityChange={onContentOverlayVisibilityChange}
           onSelectFeedItem={scrollToKey}
           onProgress={(time, duration) =>

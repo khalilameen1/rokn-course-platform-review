@@ -89,6 +89,12 @@ document.addEventListener('DOMContentLoaded', function () {
         'bunny_upload_claim_unavailable',
         'bunny_upload_operation_unavailable',
     ]);
+    const resumablePreparationCodes = new Set([
+        'mutation_outcome_unknown',
+        'network_unavailable',
+        'request_timeout',
+        'bunny_upload_allocation_in_progress',
+    ]);
     const serverRejectedClaim = @json($errors->has('bunny_video_claim_terminal'));
     let currentFile = null;
     let currentRecord = null;
@@ -199,15 +205,28 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const postJson = async (url, body) => {
-        const data = await window.RoknAdminRequest.request(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrf,
-            },
-            body: JSON.stringify(body),
-        });
-        return data.data || data;
+        const requestBody = JSON.stringify(body);
+        return withTransportRetry(async () => {
+            try {
+                const data = await window.RoknAdminRequest.request(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                    },
+                    body: requestBody,
+                });
+                return data.data || data;
+            } catch (error) {
+                const status = Number(error?.status || 0);
+                if (resumablePreparationCodes.has(String(error?.code || ''))
+                    || status === 408 || status === 425 || status === 429 || status >= 500) {
+                    error.retryable = true;
+                    error.resumablePreparation = true;
+                }
+                throw error;
+            }
+        }, "انقطع الاتصال أثناء تجهيز الرفع\nنحاول متابعة نفس العملية");
     };
 
     const fingerprint = file => [
@@ -596,6 +615,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (lastSubmitter) form.requestSubmit(lastSubmitter);
             else form.requestSubmit();
         } catch (error) {
+            if (error?.resumablePreparation || resumablePreparationCodes.has(String(error?.code || ''))) {
+                show(
+                    "تعذر تأكيد تجهيز الرفع\nاضغط متابعة الرفع لنكمل نفس المحاولة",
+                    Number(progressBar?.getAttribute('aria-valuenow') || 0),
+                    true
+                );
+                return;
+            }
             if (Number(error?.status || 0) === 409) {
                 clearRecord();
                 reconciliationRequired = true;

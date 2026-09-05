@@ -28,15 +28,30 @@ const fixture = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="u
 <div id="bunny_upload_progress" class="is-hidden"><div class="progress-bar" aria-valuenow="0"></div></div>
 <div id="bunny_upload_status"></div>
 <button id="bunny_upload_cancel" type="button">إيقاف</button>
-<button id="bunny_upload_retry" type="button" class="is-hidden">إعادة المحاولة</button>
+<button id="bunny_upload_retry" type="button" class="is-hidden">متابعة الرفع</button>
 <script>
 window.__initCalls = [];
+window.__initAttempts = [];
+window.__initFailureMode = 'none';
 window.__renewCalls = 0;
 window.__submittedClaim = null;
+window.__blockedMutations = 0;
 window.RoknAdminRequest = {
  request: async (url, options) => {
   if (url === '/init') {
    const body = JSON.parse(options.body);
+   window.__initAttempts.push(body);
+   const attempt = window.__initAttempts.length;
+   if (window.__initFailureMode === 'mutation-once' && attempt === 1) {
+    throw Object.assign(new Error('lost response'), {status: 408, code: 'mutation_outcome_unknown'});
+   }
+   if ((window.__initFailureMode === 'allocation-progress-once' && attempt === 1)
+       || window.__initFailureMode === 'allocation-progress-always') {
+    throw Object.assign(new Error('ما زال تجهيز الرفع جاريًا'), {
+     status: 409,
+     code: 'bunny_upload_allocation_in_progress',
+    });
+   }
    window.__initCalls.push(body);
    return {data: {
     upload_endpoint: 'https://video.bunnycdn.com/tusupload',
@@ -56,10 +71,10 @@ window.RoknAdminRequest = {
     authorization_expires_at: '2099-01-01T00:00:00Z',
     headers: {AuthorizationSignature: 'signature', AuthorizationExpire: '4102444800', VideoId: 'video-1', LibraryId: 'library-1'},
    }};
-  }
-  throw new Error('Unexpected app request ' + url);
+ }
+ throw new Error('Unexpected app request ' + url);
  },
- blockMutationsUntilReload: () => {},
+ blockMutationsUntilReload: () => { window.__blockedMutations += 1; },
 };
 document.getElementById('sectionForm').addEventListener('submit', event => {
  const claim = document.getElementById('bunny_video_claim').value;
@@ -92,7 +107,7 @@ const corsHeaders = {
     'Tus-Resumable': '1.0.0',
 };
 
-const openScenario = async mode => {
+const openScenario = async (mode, initFailureMode = 'none') => {
     const context = await browser.newContext();
     const page = await context.newPage();
     const calls = {post: 0, head: 0, patch: 0, metadata: []};
@@ -142,6 +157,7 @@ const openScenario = async mode => {
         await route.abort();
     });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.evaluate(value => { window.__initFailureMode = value; }, initFailureMode);
     await page.locator('#bunny_video').setInputFiles({
         name: mode === 'transport-retry' ? 'retry.mp4' : 'cancel.mp4',
         mimeType: 'video/mp4',
@@ -157,6 +173,50 @@ const openScenario = async mode => {
 
 try {
     browser = await chromium.launch({channel: 'chrome', headless: true});
+
+    const lostAllocationResponse = await openScenario('normal', 'mutation-once');
+    await lostAllocationResponse.page.locator('#save').click();
+    await lostAllocationResponse.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
+    const lostResponseAttempts = await lostAllocationResponse.page.evaluate(() => window.__initAttempts);
+    assert.equal(lostResponseAttempts.length, 2, 'a lost allocation response should be retried automatically');
+    assert.equal(new Set(lostResponseAttempts.map(value => value.idempotency_key)).size, 1,
+        'the allocation retry must reuse the persisted operation identity');
+    assert.equal(await lostAllocationResponse.page.evaluate(() => window.__initCalls.length), 1);
+    assert.equal(lostAllocationResponse.calls.post, 1, 'one recovered allocation must create one TUS upload');
+    assert.equal(await lostAllocationResponse.page.evaluate(() => window.__blockedMutations), 0);
+    await lostAllocationResponse.context.close();
+
+    const allocationInProgress = await openScenario('normal', 'allocation-progress-once');
+    await allocationInProgress.page.locator('#save').click();
+    await allocationInProgress.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
+    const inProgressAttempts = await allocationInProgress.page.evaluate(() => window.__initAttempts);
+    assert.equal(inProgressAttempts.length, 2, 'an active allocation should continue automatically');
+    assert.equal(new Set(inProgressAttempts.map(value => value.idempotency_key)).size, 1);
+    assert.equal(await allocationInProgress.page.evaluate(() => window.__blockedMutations), 0,
+        'allocation-in-progress is not a draft conflict');
+    await allocationInProgress.context.close();
+
+    const boundedAllocation = await openScenario('normal', 'allocation-progress-always');
+    await boundedAllocation.page.locator('#save').click();
+    await boundedAllocation.page.waitForFunction(() =>
+        document.getElementById('bunny_upload_status').textContent.includes('اضغط متابعة الرفع'));
+    assert.equal(await boundedAllocation.page.evaluate(() => window.__initAttempts.length), 4,
+        'automatic allocation continuation must remain bounded');
+    assert.equal(await boundedAllocation.page.evaluate(() => window.__blockedMutations), 0);
+    assert.equal(await boundedAllocation.page.locator('#bunny_upload_retry').textContent(), 'متابعة الرفع');
+    assert.equal((await boundedAllocation.page.locator('#bunny_upload_status').textContent()).includes('نعيد تحميل'), false);
+    assert.equal(await boundedAllocation.page.evaluate(() => Object.keys(localStorage)
+        .some(key => key.startsWith('rokn:bunny-upload:admin-1:3:new:'))), true,
+    'an unresolved allocation must retain its resumable record');
+    await boundedAllocation.page.evaluate(() => { window.__initFailureMode = 'none'; });
+    await boundedAllocation.page.locator('#bunny_upload_retry').click();
+    await boundedAllocation.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
+    const resumedAttempts = await boundedAllocation.page.evaluate(() => window.__initAttempts);
+    assert.equal(new Set(resumedAttempts.map(value => value.idempotency_key)).size, 1,
+        'manual continuation must keep the original allocation identity');
+    assert.equal(await boundedAllocation.page.evaluate(() => window.__initCalls.length), 1);
+    assert.equal(boundedAllocation.calls.post, 1);
+    await boundedAllocation.context.close();
 
     const retry = await openScenario('transport-retry');
     await retry.page.locator('#save').click();
@@ -221,7 +281,7 @@ try {
     assert.equal(chunkBackoff.calls.patch, 2);
     await chunkBackoff.context.close();
 
-    console.log('PASS Bunny transport recovery, claim reuse, and cancellation during HEAD and retry backoff');
+    console.log('PASS Bunny allocation continuation, transport recovery, claim reuse, and cancellation');
 } finally {
     await browser?.close();
     await new Promise(done => server.close(done));

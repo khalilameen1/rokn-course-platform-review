@@ -1,5 +1,11 @@
 import React from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
 import {Accessibility} from '../../../constants/designSystem';
@@ -99,7 +105,6 @@ type FeedActionsProps = {
   isSaved: boolean;
   savePending: boolean;
   showAttachments: boolean;
-  showChat: boolean;
   totalReels: number;
   onOpenAttachments: () => void;
   onOpenChat: () => void;
@@ -114,7 +119,6 @@ const FeedActions = ({
   isSaved,
   savePending,
   showAttachments,
-  showChat,
   totalReels,
   onOpenAttachments,
   onOpenChat,
@@ -127,11 +131,9 @@ const FeedActions = ({
       compact && styles.containerCompact,
       {bottom: (compact ? 42 : 56) + bottomInset},
     ]}>
-    {showChat && (
-      <FeedActionButton label="اسأل" compact={compact} onPress={onOpenChat}>
-        <ChatIcon />
-      </FeedActionButton>
-    )}
+    <FeedActionButton label="اسأل" compact={compact} onPress={onOpenChat}>
+      <ChatIcon />
+    </FeedActionButton>
     <FeedActionButton
       label={savePending ? 'جارٍ الحفظ' : isSaved ? 'محفوظ' : 'احفظ'}
       active={isSaved}
@@ -154,8 +156,7 @@ const FeedActions = ({
     )}
     <FeedActionButton label="الفهرس" compact={compact} onPress={onOpenIndex}>
       <Text style={styles.counter} maxFontSizeMultiplier={1.1}>
-        {formatArabicNumber(currentReelNumber)}/
-        {formatArabicNumber(totalReels)}
+        {formatArabicNumber(currentReelNumber)}/{formatArabicNumber(totalReels)}
       </Text>
     </FeedActionButton>
   </View>

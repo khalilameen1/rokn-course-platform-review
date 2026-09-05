@@ -42,14 +42,14 @@ export const useCourseChat = ({
     courseId,
     onOpenWallet,
   });
-  const assistantIncluded =
-    (courseIncludesAssistant(course) || upgrade.upgraded) &&
-    !upgrade.serverBlockCode;
+  const assistantEntitled = courseIncludesAssistant(course) || upgrade.upgraded;
+  const assistantIncluded = assistantEntitled && !upgrade.serverBlockCode;
   const conversation = useCourseChatConversation({
     courseId,
     lessonId,
     conversationScope,
     inFlightAttachmentIds: inFlightAttachmentIdsRef,
+    remoteEnabled: assistantEntitled,
   });
   const turn = useCourseChatTurn({
     activeAccountScope: conversation.activeAccountScopeRef,

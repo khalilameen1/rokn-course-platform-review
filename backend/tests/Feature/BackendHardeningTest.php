@@ -753,6 +753,27 @@ final class BackendHardeningTest extends TestCase
             $detect->invoke($service, null, [$brokenPdf])
         );
 
+        $writer = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir()]);
+        $writer->WriteHTML('<h1>Project evidence</h1><p>A completed piece of work.</p>');
+        $validPdfBody = $writer->Output('', 'S');
+
+        // PDF whitespace is interchangeable. Keep every byte offset intact
+        // while producing a valid document that the former literal check
+        // (`/Type /Page`) rejected.
+        $validPdfBody = str_replace('/Type /Page', "/Type\t/Page", $validPdfBody);
+        self::assertStringNotContainsString('/Type /Page', substr($validPdfBody, 0, 262144));
+
+        $compactValidPdf = UploadedFile::fake()->createWithContent(
+            'valid-project.pdf',
+            $validPdfBody
+        );
+        $reader = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir()]);
+        self::assertSame(1, $reader->SetSourceFile($compactValidPdf->getRealPath()));
+        self::assertSame(
+            ProjectSubmission::EFFORT_VALID,
+            $detect->invoke($service, null, [$compactValidPdf])
+        );
+
         $realNote = UploadedFile::fake()->createWithContent(
             'work.txt',
             str_repeat('شرحت ما نفذته في المشروع والنتيجة التي وصلت إليها ', 20)

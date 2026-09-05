@@ -25,6 +25,7 @@ type Params = {
   lessonId?: string;
   conversationScope: string;
   inFlightAttachmentIds: MutableRefObject<Set<string>>;
+  remoteEnabled: boolean;
 };
 
 const hasRecoverableTurn = (messages: ChatMessage[]) =>
@@ -44,6 +45,7 @@ export const useCourseChatConversation = ({
   lessonId,
   conversationScope,
   inFlightAttachmentIds,
+  remoteEnabled,
 }: Params) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     welcomeMessage(courseId),
@@ -131,6 +133,7 @@ export const useCourseChatConversation = ({
       if (hasRecoverableTurn(initialMessages)) {
         setRecoveryRevision(value => value + 1);
       }
+      if (!remoteEnabled) return;
 
       try {
         const remoteHistory = await loadCourseAssistantHistory(
@@ -169,6 +172,7 @@ export const useCourseChatConversation = ({
     courseId,
     inFlightAttachmentIds,
     lessonId,
+    remoteEnabled,
   ]);
 
   useEffect(() => {

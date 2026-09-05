@@ -102,10 +102,6 @@ export const useReelsController = () => {
     navigation.setParams({openCourseChatUpgrade: false});
   }, [course, isScreenFocused, navigation, params.openCourseChatUpgrade]);
 
-  useEffect(() => {
-    if (course && !hasCourseLearningAccess(course.accessType))
-      setChatVisible(false);
-  }, [course]);
   const [contentOverlayVisible, setContentOverlayVisible] = useState(false);
   const contentOverlayScopesRef = useRef(new Set<string>());
   const handleContentOverlayVisibility = useCallback(
@@ -551,9 +547,7 @@ export const useReelsController = () => {
   );
 
   return {
-    canOpenCourseAssistant: Boolean(
-      course && hasCourseLearningAccess(course.accessType),
-    ),
+    canOpenCourseAssistant: Boolean(course),
     chatVisible,
     closeChat: () => setChatVisible(false),
     closeReminderNudge,

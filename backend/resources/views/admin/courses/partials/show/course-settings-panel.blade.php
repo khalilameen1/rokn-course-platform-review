@@ -1,5 +1,5 @@
 @if($course->is_coming_soon)
-<section class="studio-course-panel studio-authoring-control" id="studioCoursePanel" hidden aria-labelledby="studioCoursePanelTitle">
+<section class="studio-course-panel course-editor studio-authoring-control" id="studioCoursePanel" hidden aria-labelledby="studioCoursePanelTitle">
     <header class="studio-course-panel__header">
         <div>
             <span>إعداد الكورس</span>

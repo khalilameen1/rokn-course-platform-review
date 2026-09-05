@@ -139,7 +139,8 @@ final readonly class BunnyDirectUploadService
                 if ($session->updated_at && $session->updated_at->gt(now()->subSeconds($allocationLease))) {
                     throw ValidationException::withMessages([
                         'idempotency_key' => "ما زال تجهيز الرفع جاريًا\nحاول بعد لحظات",
-                    ]);
+                        'bunny_upload_allocation_in_progress' => 'allocation_in_progress',
+                    ])->status(409);
                 }
 
                 $this->retireStaleAllocation($session, $admin);

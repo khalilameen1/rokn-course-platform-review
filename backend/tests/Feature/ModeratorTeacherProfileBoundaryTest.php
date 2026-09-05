@@ -112,6 +112,58 @@ final class ModeratorTeacherProfileBoundaryTest extends TestCase
         self::assertFalse($permissions->allowsCapability('moderator', AdminPermissionMatrix::ACCOUNT_CREDENTIALS));
     }
 
+    public function test_administrator_can_save_a_profile_without_credentials_and_blank_fields_preserve_an_existing_account(): void
+    {
+        $administrator = $this->dashboardUser('admin', 'owner@example.test');
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $createPage = $this->actingAs($administrator)
+            ->get(route('admin.teachers.create'))
+            ->assertOk();
+        $document = new \DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$createPage->getContent());
+        $xpath = new \DOMXPath($document);
+        self::assertSame(0, $xpath->query('//input[@name="email" and @required]')->length);
+        self::assertSame(0, $xpath->query('//input[@name="phone" and @required]')->length);
+        self::assertSame(0, $xpath->query('//input[@name="password" and @required]')->length);
+
+        $this->actingAs($administrator)
+            ->post(route('admin.teachers.store'), [
+                'name_ar' => 'محاضر بملف فقط',
+                'job_title' => 'محاضر تصميم',
+                'bio_ar' => 'نبذة تظهر للطالب',
+                'active' => '1',
+                'authoring_request_id' => (string) Str::uuid(),
+            ])
+            ->assertRedirect(route('admin.teachers.index'));
+
+        $profile = User::query()
+            ->where('role', 'teacher')
+            ->where('name_ar', 'محاضر بملف فقط')
+            ->firstOrFail();
+        self::assertNull($profile->email);
+        self::assertNull($profile->phone);
+        self::assertNull($profile->password);
+
+        $teacher = $this->teacher();
+        $this->actingAs($administrator)
+            ->patch(route('admin.teachers.update', $teacher), [
+                ...$this->publicProfilePayload($teacher),
+                'job_title' => 'محاضر أول',
+                'email' => '',
+                'phone' => '',
+                'password' => '',
+                'password_confirmation' => '',
+            ])
+            ->assertRedirect(route('admin.teachers.index'));
+
+        $teacher->refresh();
+        self::assertSame('محاضر أول', $teacher->job_title);
+        self::assertSame('teacher@example.test', $teacher->email);
+        self::assertSame('01012345678', $teacher->phone);
+        self::assertTrue(Hash::check('original-password', (string) $teacher->password));
+    }
+
     /** @return array<string, mixed> */
     private function publicProfilePayload(User $teacher): array
     {
