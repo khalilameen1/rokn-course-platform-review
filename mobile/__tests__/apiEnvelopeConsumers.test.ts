@@ -53,6 +53,12 @@ describe('API envelope consumers', () => {
           verification_url: `https://rokn.app/c/${credential}`,
           certificate_url: `https://rokn.app/c/${credential}/artifact`,
           certificate_pdf_url: `https://rokn.app/c/${credential}/download`,
+          qr_destination: {
+            type: 'portfolio',
+            url: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+            title: 'شاهد الأعمال',
+            hint: 'امسح الرمز لعرضها',
+          },
         },
       },
     });
@@ -63,11 +69,14 @@ describe('API envelope consumers', () => {
       certificatePdfUrl: `https://rokn.app/c/${credential}/download`,
       certificateTextTemplateKey: 'projects',
       certificateText: 'تقديرًا لإنجاز مشروعات كورس',
+      qrDestination: {
+        type: 'portfolio',
+        url: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      },
     });
-    expect(mockedRequest.post).toHaveBeenCalledWith(
-      'certificates/52/issue',
-      {holder_name: 'طالب ركن'},
-    );
+    expect(mockedRequest.post).toHaveBeenCalledWith('certificates/52/issue', {
+      holder_name: 'طالب ركن',
+    });
   });
 
   it('does not invent one generic certificate sentence when the snapshot is missing', async () => {
@@ -87,12 +96,84 @@ describe('API envelope consumers', () => {
           verification_url: `https://rokn.app/c/${credential}`,
           certificate_url: `https://rokn.app/c/${credential}/artifact`,
           certificate_pdf_url: `https://rokn.app/c/${credential}/download`,
+          qr_destination: {
+            type: 'certificate',
+            url: `https://rokn.app/c/${credential}`,
+            title: 'تحقق من الشهادة',
+            hint: 'امسح الرمز لعرض بياناتها',
+          },
         },
       },
     });
 
     await expect(issueCertificate('52', 'طالب ركن')).rejects.toThrow(
       'CERTIFICATE_TEXT_CONTRACT_INVALID',
+    );
+  });
+
+  it('keeps a theoretical certificate QR on its verification route', async () => {
+    const credential = '44444444-4444-4444-8444-444444444444';
+    mockedRequest.post.mockResolvedValue({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          public_id: credential,
+          course_id: 53,
+          holder_name: 'طالب ركن',
+          course_name: 'كورس نظري',
+          certificate_text_template_key: 'knowledge',
+          certificate_text: 'تقديرًا لإتمام الدراسة في كورس',
+          status: 'active',
+          verification_level: 'completion',
+          verification_label: 'إتمام الكورس',
+          verification_url: `https://rokn.app/c/${credential}`,
+          certificate_url: `https://rokn.app/c/${credential}/artifact`,
+          certificate_pdf_url: `https://rokn.app/c/${credential}/download`,
+          qr_destination: {
+            type: 'certificate',
+            url: `https://rokn.app/c/${credential}`,
+            title: 'تحقق من الشهادة',
+            hint: 'امسح الرمز لعرض بياناتها',
+          },
+        },
+      },
+    });
+
+    await expect(issueCertificate('53', 'طالب ركن')).resolves.toMatchObject({
+      verificationUrl: `https://rokn.app/c/${credential}`,
+      qrDestination: {
+        type: 'certificate',
+        url: `https://rokn.app/c/${credential}`,
+      },
+    });
+  });
+
+  it('requires the server-owned QR destination on a current certificate response', async () => {
+    const credential = '33333333-3333-4333-8333-333333333333';
+    mockedRequest.post.mockResolvedValue({
+      data: {
+        status: 200,
+        success: true,
+        data: {
+          public_id: credential,
+          course_id: 52,
+          holder_name: 'طالب ركن',
+          course_name: 'كورس تجريبي',
+          certificate_text_template_key: 'knowledge',
+          certificate_text: 'تقديرًا لإتمام الدراسة في كورس',
+          status: 'active',
+          verification_level: 'completion',
+          verification_label: 'إتمام الكورس',
+          verification_url: `https://rokn.app/c/${credential}`,
+          certificate_url: `https://rokn.app/c/${credential}/artifact`,
+          certificate_pdf_url: `https://rokn.app/c/${credential}/download`,
+        },
+      },
+    });
+
+    await expect(issueCertificate('52', 'طالب ركن')).rejects.toThrow(
+      'CERTIFICATE_QR_DESTINATION_INVALID',
     );
   });
 

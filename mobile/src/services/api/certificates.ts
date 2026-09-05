@@ -2,6 +2,7 @@ import {publicRequest} from '../../constants/api';
 import {
   trustedCertificateFileUrl,
   trustedCertificateVerificationUrl,
+  trustedPortfolioShareUrl,
 } from '../publicLinks';
 import {
   accountScopedStorageKey,
@@ -32,13 +33,19 @@ export type Certificate = {
   verificationLabel: string;
   certificateTextTemplateKey: string;
   certificateText: string;
+  qrDestination: {
+    type: 'certificate' | 'portfolio';
+    url: string;
+    title: string;
+    hint: string;
+  } | null;
 };
 
 const CERTIFICATES_CACHE_KEY = '@rokn/certificates-cache/v2';
 
 type CertificatesCache = {
   version: 2;
-  certificates: Certificate[];
+  certificates: unknown[];
 };
 
 const isCachedCertificate = (value: unknown): value is Certificate => {
@@ -76,8 +83,25 @@ const isCachedCertificate = (value: unknown): value is Certificate => {
     typeof value.certificateTextTemplateKey === 'string' &&
     value.certificateTextTemplateKey.trim().length > 0 &&
     typeof value.certificateText === 'string' &&
-    value.certificateText.trim().length > 0
+    value.certificateText.trim().length > 0 &&
+    (value.qrDestination === null ||
+      isQrDestination(value.qrDestination, publicId))
   );
+};
+
+const migrateLegacyCachedCertificate = (value: unknown): Certificate | null => {
+  if (!isApiRecord(value) || 'qrDestination' in value) return null;
+  const migrated = {
+    ...value,
+    // Cache v2 predates the server-owned destination. Its UI always used the
+    // verification URL, but that would be wrong for a practical certificate.
+    // Keep the credential available offline and hide only its QR until a
+    // current response supplies the canonical destination. A current API
+    // response missing qr_destination still fails in mapCertificate.
+    qrDestination: null,
+  };
+
+  return isCachedCertificate(migrated) ? migrated : null;
 };
 
 export const getCachedCertificates = async (
@@ -87,14 +111,17 @@ export const getCachedCertificates = async (
   const key = await accountScopedStorageKey(CERTIFICATES_CACHE_KEY, boundary);
   const cached = await getItem<Partial<CertificatesCache>>(key);
   assertAccountSessionBoundary(boundary);
-  if (
-    cached?.version !== 2 ||
-    !Array.isArray(cached.certificates) ||
-    !cached.certificates.every(isCachedCertificate)
-  ) {
+  if (cached?.version !== 2 || !Array.isArray(cached.certificates)) {
     return [];
   }
-  return cached.certificates;
+  const certificates = cached.certificates.map(value =>
+    isCachedCertificate(value) ? value : migrateLegacyCachedCertificate(value),
+  );
+  return certificates.every(
+    (certificate): certificate is Certificate => certificate !== null,
+  )
+    ? certificates
+    : [];
 };
 
 type CertificateDto = {
@@ -110,6 +137,44 @@ type CertificateDto = {
   verification_label?: unknown;
   certificate_text_template_key?: unknown;
   certificate_text?: unknown;
+  qr_destination?: unknown;
+};
+
+const mapQrDestination = (
+  value: unknown,
+  publicId: string,
+): NonNullable<Certificate['qrDestination']> => {
+  if (!isApiRecord(value)) {
+    throw new Error('CERTIFICATE_QR_DESTINATION_INVALID');
+  }
+  const type = String(value.type || '');
+  const url =
+    type === 'portfolio'
+      ? trustedPortfolioShareUrl(value.url)
+      : type === 'certificate'
+      ? trustedCertificateVerificationUrl(value.url, publicId)
+      : null;
+  const title = String(value.title || '').trim();
+  const hint = String(value.hint || '').trim();
+  if (!url || !title || !hint) {
+    throw new Error('CERTIFICATE_QR_DESTINATION_INVALID');
+  }
+
+  return {
+    type: type as NonNullable<Certificate['qrDestination']>['type'],
+    url,
+    title,
+    hint,
+  };
+};
+
+const isQrDestination = (value: unknown, publicId: string): boolean => {
+  try {
+    mapQrDestination(value, publicId);
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 const mapCertificate = (value: unknown): Certificate => {
@@ -172,6 +237,10 @@ const mapCertificate = (value: unknown): Certificate => {
   if (status === 'active' && (!certificateUrl || !certificatePdfUrl)) {
     throw new Error('CERTIFICATE_ARTIFACT_CONTRACT_INVALID');
   }
+  const qrDestination =
+    status === 'revoked' && item.qr_destination == null
+      ? null
+      : mapQrDestination(item.qr_destination, publicId);
   return {
     publicId,
     courseId,
@@ -185,6 +254,7 @@ const mapCertificate = (value: unknown): Certificate => {
     verificationLabel,
     certificateTextTemplateKey,
     certificateText,
+    qrDestination,
   };
 };
 

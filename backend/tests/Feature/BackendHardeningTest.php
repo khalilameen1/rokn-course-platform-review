@@ -784,6 +784,70 @@ final class BackendHardeningTest extends TestCase
         );
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('projectImageContentCases')]
+    public function test_project_image_submission_judges_visible_colours_not_png_encoding(
+        bool $palette,
+        array $background,
+        array $foreground,
+        bool $hasContent
+    ): void {
+        self::assertTrue(function_exists('imagecreatefromstring'), 'Project image acceptance requires GD.');
+        Storage::fake('local');
+        $student = $this->user();
+        $project = Project::query()->create([
+            'requirements_text' => 'ارفع التصميم الذي نفذته',
+            'fallback_review_delay_seconds' => 30,
+            'is_graduation_project' => false,
+        ]);
+        $this->grantProjectAccess($student, $project);
+
+        $image = $palette ? imagecreate(160, 160) : imagecreatetruecolor(160, 160);
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
+        $paper = imagecolorallocatealpha($image, ...array_pad($background, 4, 0));
+        $ink = imagecolorallocatealpha($image, ...array_pad($foreground, 4, 0));
+        imagefill($image, 0, 0, $paper);
+        imagefilledrectangle($image, 24, 24, 135, 72, $ink);
+        imagefilledellipse($image, 80, 112, 70, 48, $ink);
+        ob_start();
+        imagepng($image, null, 0);
+        $bytes = (string) ob_get_clean();
+        imagedestroy($image);
+        $file = UploadedFile::fake()->createWithContent('project.png', $bytes);
+        self::assertGreaterThan(512, $file->getSize());
+
+        $submission = app(ProjectSubmissionService::class)->submit(
+            $student, $project, null, [$file], 'image-content-check'
+        );
+
+        self::assertSame(
+            $hasContent ? ProjectSubmission::EFFORT_VALID : ProjectSubmission::EFFORT_INVALID,
+            $submission->effort_status
+        );
+        self::assertSame(
+            $hasContent ? ProjectSubmission::STATUS_PENDING : ProjectSubmission::STATUS_NEEDS_RESUBMISSION,
+            $submission->review_status
+        );
+    }
+
+    public static function projectImageContentCases(): array
+    {
+        return [
+            'indexed PNG artwork' => [true, [250, 250, 250], [0, 80, 180], true],
+            'truecolor artwork' => [false, [250, 250, 250], [0, 80, 180], true],
+            'different hues with the same mean brightness' => [false, [240, 0, 0], [0, 0, 240], true],
+            'indexed black logo on transparent background' => [true, [0, 0, 0, 127], [0, 0, 0, 0], true],
+            'white logo on transparent background' => [false, [255, 255, 255, 127], [255, 255, 255, 0], true],
+            'invisible colours are not visible work' => [false, [240, 0, 0, 127], [0, 0, 240, 127], false],
+            'near-transparent colours are not visible work' => [false, [240, 0, 0, 126], [0, 0, 240, 126], false],
+            'near-transparent mask is not visible work' => [false, [240, 0, 0, 127], [0, 0, 240, 126], false],
+            'visibly translucent artwork remains valid' => [false, [240, 0, 0, 127], [0, 0, 240, 110], true],
+            'uniform dark PNG' => [true, [0, 0, 0], [0, 0, 0], false],
+            'uniform white PNG' => [false, [255, 255, 255], [255, 255, 255], false],
+            'uniform coloured PNG' => [false, [0, 120, 220], [0, 120, 220], false],
+        ];
+    }
+
     public function test_admin_downloads_project_file_from_private_submission_path(): void
     {
         Storage::fake('local');

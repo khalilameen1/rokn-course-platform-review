@@ -4,6 +4,89 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+The integrated September 5 batch below passed 107 targeted backend tests / 669
+assertions and five mobile suites / 17 tests, plus TypeScript and scoped ESLint.
+The combined local PHP run needed 144 MB (its default 128 MB was insufficient);
+it passed with a 512 MB test-process limit. No production memory setting changed.
+Native CI and deployed acceptance remain separate evidence.
+
+## Keep authoring responses aligned with the committed graph — 2026-09-05
+
+Staged publication prepared its notification campaign in an after-commit
+callback. A preparation exception therefore reported failure after the new
+course graph had already committed and prevented the following catalogue-cache
+callback. Campaign preparation now belongs to the graph transaction. Its
+existing durable dispatch still runs after commit and contains broker failures.
+A preparation failure rolls back the graph and leaves the draft available.
+
+Photo replacement had the same boundary error: it created the old-file cleanup
+ledger after commit, so a ledger exception could make a successful save appear
+failed. Cleanup reservation now participates in the owning transaction. Only
+the existing durable job dispatch is deferred, and its worker rechecks file
+references before deleting bytes. No synchronous remote deletion was added.
+
+The three new regressions use actual commits without an enclosing test
+transaction. They cover publication rollback, failed cleanup reservation during
+the real moderator update route, and successful replacement with deferred
+cleanup. All three passed with 27 assertions. This is local database/storage
+proof, not a browser upload or a production publishing acceptance result.
+
+## Use the same certificate QR destination in the artifact and app — 2026-09-05
+
+The generated certificate already used the selected template to direct practical
+certificates to the portfolio and theoretical certificates to verification.
+The mobile screen instead always rendered verification. The API now exposes
+`qr_destination` from the existing destination service, and the app uses its URL,
+title and hint rather than reimplementing template rules. Opening or sharing an
+individual certificate remains a verification link. Portfolio sharing still
+exposes works, not the owner's certificates or saved library.
+
+Legacy offline cache entries retain the credential with QR hidden until refresh;
+they do not guess a destination. Malformed current responses remain explicit
+contract errors. Deploy the additive backend field before shipping this mobile
+consumer. Server-resource, API-mapper, cache-migration and rendered-screen cases
+passed independently; they do not prove a QR scan on the installed native app.
+
+## Separate native-build evidence by platform — 2026-09-05
+
+Mobile CI run 33970773053 built Android successfully. iOS passed installed legal
+provenance but failed actual Swift compilation because `RCTI18nUtil.sharedInstance()`
+is optional. Its three existing RTL settings now use one optional binding before
+React startup, preserving their values. Compilation awaits the next CI run.
+
+The JavaScript job in that run exhausted its 20-minute job budget while checking
+native provenance, not on a test assertion. Its budget is now 35 minutes; no
+release gate was removed. A successful Android build is not evidence of iOS
+compilation, full JavaScript completion, or a new APK delivered to the learner.
+
+## Judge submitted image content independently of PNG encoding — 2026-09-05
+
+The project effort guard rejected genuine indexed PNG artwork because it read
+the palette index as packed RGB. It also mistook differently coloured artwork
+for a solid image when the colours had identical mean brightness, and ignored
+transparency masks used by one-colour logos. These are file interpretation
+errors, not a new quality threshold for student work.
+
+The guard now resolves the actual RGBA channels for both image encodings using
+the [documented GD colour lookup](https://www.php.net/manual/en/function.imagecolorsforindex.php),
+compares visible channel variation after alpha composition on both black and
+white surfaces rather than average brightness alone, and recognizes genuine
+transparency-mask detail without accepting colours hidden at near-total
+transparency. Entirely transparent images and solid dark, white or coloured
+canvases remain invalid. Existing decode byte/pixel limits remain intact. The
+uniformity setting now names its per-channel meaning and accepts the previous
+environment name as a fallback.
+
+Twelve real GD-generated PNGs were submitted through ProjectSubmissionService,
+including indexed/truecolor artwork, equal-brightness hues, black/white transparent
+logos, near-transparent hidden colour/mask cases, visibly translucent artwork,
+and invisible/solid images. Two near-transparent cases were accepted before the
+alpha-composition repair; all twelve now receive the intended persisted
+effort/review state. The focused image and document effort scope passed 13 tests
+/ 54 assertions. This uses a local test database and storage; it is not a
+production submission or proof that the heuristic can semantically grade every
+possible project.
+
 ## Keep saved-library reads and writes recoverable across navigation — 2026-09-05
 
 Leaving the saved library during pagination invalidated the old generation

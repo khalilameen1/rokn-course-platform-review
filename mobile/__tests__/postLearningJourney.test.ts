@@ -55,7 +55,6 @@ describe('post-learning journey contract', () => {
     expect(api).not.toContain('download_url');
     expect(api).not.toContain('portfolio_url');
     expect(api).not.toContain('share_url');
-    expect(certificates).toContain('<QRCode value={activeCertificateLink}');
     expect(certificates).toContain(
       'certificateUrl={certificate.certificateUrl}',
     );

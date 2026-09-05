@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\CertificateQrDestinationService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,10 +23,14 @@ class CertificateResource extends JsonResource
         $certificateText = trim((string) $this->certificate_text);
         $publicId = trim((string) $this->public_id);
         $verificationUrl = $publicId !== '' ? RoknPublicUrl::certificate($publicId) : '';
+        $qrDestination = !$revoked
+            ? app(CertificateQrDestinationService::class)->for($this->resource)
+            : null;
 
         return [
-            // The printed number, QR target and API identity are one public
-            // UUID. The database sequence is not a learner-facing credential.
+            // The printed number, verification route and API identity share
+            // one public UUID. QR navigation is the separate server-owned
+            // destination below because practical certificates open works.
             'public_id' => $publicId,
             'course_id' => (int) $this->course_id,
             'holder_name' => $holderName !== '' ? $holderName : null,
@@ -39,6 +44,7 @@ class CertificateResource extends JsonResource
                 ? RoknPublicUrl::certificatePdf($publicId)
                 : '',
             'verification_url' => $verificationUrl,
+            'qr_destination' => $qrDestination,
             'status' => $status,
             'verification_level' => $this->verification_level ?? 'completion',
             'verification_label' => ($this->verification_level ?? 'completion') === 'reviewed_project'

@@ -280,6 +280,8 @@ export function useCertificatesController(resolvedDisplayName?: string) {
   const activeCourseTitle = selectedCertificate?.courseName || '';
   const activeCredential = selectedCertificate?.publicId || '';
   const activeCertificateLink = selectedCertificate?.verificationUrl || '';
+  const activeCertificateQrDestination =
+    selectedCertificate?.qrDestination || null;
   const openCertificate = async () => {
     if (!selectedCertificate || !activeCertificateLink) return;
     try {
@@ -432,7 +434,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
   };
 
   return {
-    activeCertificateLink,
+    activeCertificateQrDestination,
     activeCourseTitle,
     activeCredential,
     certificatePending,

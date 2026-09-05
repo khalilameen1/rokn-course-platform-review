@@ -56,5 +56,8 @@ return [
     'dark_image_ratio' => (float) env('PROJECT_DARK_IMAGE_RATIO', 0.97),
     'white_image_threshold' => (int) env('PROJECT_WHITE_IMAGE_THRESHOLD', 248),
     'white_image_ratio' => (float) env('PROJECT_WHITE_IMAGE_RATIO', 0.985),
-    'solid_image_luminance_range' => (int) env('PROJECT_SOLID_IMAGE_LUMINANCE_RANGE', 3),
+    'solid_image_channel_range' => (int) env(
+        'PROJECT_SOLID_IMAGE_CHANNEL_RANGE',
+        env('PROJECT_SOLID_IMAGE_LUMINANCE_RANGE', 3)
+    ),
 ];

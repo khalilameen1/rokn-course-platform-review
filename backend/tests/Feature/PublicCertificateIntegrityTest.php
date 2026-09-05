@@ -87,6 +87,11 @@ final class PublicCertificateIntegrityTest extends TestCase
         self::assertArrayNotHasKey('download_url', $payload);
         self::assertArrayNotHasKey('portfolio_url', $payload);
         self::assertArrayNotHasKey('share_url', $payload);
+        self::assertSame('portfolio', $payload['qr_destination']['type']);
+        self::assertSame(
+            RoknPublicUrl::portfolio((string) $user->fresh()->portfolio_slug),
+            $payload['qr_destination']['url']
+        );
         self::assertSame('applied', $payload['certificate_text_template_key']);
         self::assertSame(
             'تقديرًا لإتمام المتطلبات التطبيقية لكورس',
@@ -248,6 +253,23 @@ final class PublicCertificateIntegrityTest extends TestCase
             RoknPublicUrl::portfolio((string) $user->fresh()->portfolio_slug),
             $practicalDestination['url']
         );
+        foreach (['applied', 'skills', 'projects'] as $templateKey) {
+            $practicalVariant = new Certificate();
+            $practicalVariant->forceFill([
+                'public_id' => (string) Str::uuid(),
+                'user_id' => $user->id,
+                'certificate_text_template_key' => $templateKey,
+            ]);
+            $practicalVariant->setRelation('user', $user->fresh());
+            $resourceDestination = (new CertificateResource($practicalVariant))
+                ->resolve()['qr_destination'];
+
+            self::assertSame('portfolio', $resourceDestination['type']);
+            self::assertSame(
+                RoknPublicUrl::portfolio((string) $user->fresh()->portfolio_slug),
+                $resourceDestination['url']
+            );
+        }
 
         $theoretical = new Certificate();
         $theoretical->forceFill([
@@ -261,6 +283,10 @@ final class PublicCertificateIntegrityTest extends TestCase
         self::assertSame(
             RoknPublicUrl::certificate((string) $theoretical->public_id),
             $theoreticalDestination['url']
+        );
+        self::assertSame(
+            $theoreticalDestination,
+            (new CertificateResource($theoretical))->resolve()['qr_destination']
         );
     }
 

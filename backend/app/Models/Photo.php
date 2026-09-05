@@ -20,13 +20,12 @@ class Photo extends Model
         parent::boot();
         static::deleted(function (Photo $photo): void {
             $path = (string) $photo->path;
-            $delete = static function () use ($path): void {
-                // The database pointer is gone before the object is retired.
-                if (!Photo::query()->where('path', $path)->exists()) {
-                    app(StoredFileDeletionService::class)->deleteOrQueue('public', $path);
-                }
-            };
-            DB::transactionLevel() > 0 ? DB::afterCommit($delete) : $delete();
+            // Reserve cleanup while the owner deletion can still roll back.
+            // StoredFileDeletionService defers only the broker dispatch until
+            // commit and its worker checks references again before deleting.
+            if (!Photo::query()->where('path', $path)->exists()) {
+                app(StoredFileDeletionService::class)->deleteOrQueue('public', $path);
+            }
         });
         static::saved(fn (Photo $photo) => $photo->invalidateCourseCatalogue());
         static::deleted(fn (Photo $photo) => $photo->invalidateCourseCatalogue());

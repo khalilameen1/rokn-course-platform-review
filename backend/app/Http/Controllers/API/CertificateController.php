@@ -47,7 +47,10 @@ final class CertificateController extends Controller
         $certificates = Certificate::where('user_id', $user->id)
             ->orderBy('generated_at', 'desc')
             ->orderByDesc('id')
-            ->get();
+            ->get()
+            ->each(fn (Certificate $certificate) =>
+                $certificate->setRelation('user', $user)
+            );
 
         return response()->json([
             'status'  => 200,
@@ -74,6 +77,7 @@ final class CertificateController extends Controller
             ->where('user_id', $user->id)
             ->where('course_id', $courseId)
             ->first();
+        $certificate?->setRelation('user', $user);
         if (!$certificate) {
             return response()->json([
                 'status' => 404,
@@ -126,6 +130,7 @@ final class CertificateController extends Controller
         $certificate = Certificate::where('user_id', $user->id)
             ->where('course_id', $courseId)
             ->first();
+        $certificate?->setRelation('user', $user);
 
         if ($certificate) {
             if (!$certificate->isActiveCredential()) {

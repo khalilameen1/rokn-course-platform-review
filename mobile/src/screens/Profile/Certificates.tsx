@@ -40,7 +40,7 @@ export default function Certificates({
   const reducedMotion = useReducedMotion();
   const {contentWidth} = useResponsiveLayout();
   const {
-    activeCertificateLink,
+    activeCertificateQrDestination,
     activeCourseTitle,
     activeCredential,
     certificatePending,
@@ -387,18 +387,27 @@ export default function Certificates({
                   tone="success"
                   style={styles.badge}
                 />
-                <View style={styles.qrDestination}>
-                  <QRCode value={activeCertificateLink} size={148} />
-                  <View style={styles.qrCopy}>
-                    <Text style={styles.qrTitle}>امسح للتحقق</Text>
-                    <Text numberOfLines={2} style={styles.qrLink}>
-                      {isolateBidirectionalText(activeCertificateLink)}
-                    </Text>
-                    <Text style={styles.qrHint}>
-                      يفتح صفحة التحقق من الشهادة
-                    </Text>
+                {activeCertificateQrDestination && (
+                  <View style={styles.qrDestination}>
+                    <QRCode
+                      value={activeCertificateQrDestination.url}
+                      size={148}
+                    />
+                    <View style={styles.qrCopy}>
+                      <Text style={styles.qrTitle}>
+                        {activeCertificateQrDestination.title}
+                      </Text>
+                      <Text numberOfLines={2} style={styles.qrLink}>
+                        {isolateBidirectionalText(
+                          activeCertificateQrDestination.url,
+                        )}
+                      </Text>
+                      <Text style={styles.qrHint}>
+                        {activeCertificateQrDestination.hint}
+                      </Text>
+                    </View>
                   </View>
-                </View>
+                )}
                 <Button
                   onPress={() => void openCertificate()}
                   title="فتح صفحة التحقق"

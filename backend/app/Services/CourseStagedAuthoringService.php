@@ -275,6 +275,17 @@ final class CourseStagedAuthoringService
                 'retain_until' => now()->addDays(max(7, (int) config('playback.revision_grace_days', 7))),
             ])->save();
 
+            // Persist the notification campaign in the same transaction as
+            // the published graph. NotificationCampaignService dispatches its
+            // durable row after commit and contains broker failures itself.
+            // Preparing it after commit could report this request as failed
+            // even though the learner-facing revision was already permanent.
+            NotificationService::notifyCourseUpdate(
+                $canonical->fresh(),
+                'published_changes',
+                'course-published:' . $canonical->id . ':v' . $publishedRevision
+            );
+
             $canonicalId = (int) $canonical->id;
             if ($grantChatAttachments || $grantProjectAttachments) {
                 app(InternalSignalService::class)->record(
@@ -295,20 +306,6 @@ final class CourseStagedAuthoringService
                     $canonicalId
                 );
             }
-            DB::afterCommit(function () use (
-                $canonicalId,
-                $publishedRevision
-            ): void {
-                $publishedCourse = Course::query()->find($canonicalId);
-                if ($publishedCourse) {
-                    NotificationService::notifyCourseUpdate(
-                        $publishedCourse,
-                        'published_changes',
-                        'course-published:' . $canonicalId . ':v' . $publishedRevision
-                    );
-                }
-            });
-
             DB::afterCommit(function (): void {
                 try {
                     cache()->add(

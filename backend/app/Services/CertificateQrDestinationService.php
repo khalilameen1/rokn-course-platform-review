@@ -22,7 +22,9 @@ final class CertificateQrDestinationService
         if ($this->templates->qrDestination(
             (string) $certificate->certificate_text_template_key
         ) === 'portfolio') {
-            $user = User::query()->find($certificate->user_id);
+            $user = $certificate->relationLoaded('user')
+                ? $certificate->user
+                : User::query()->find($certificate->user_id);
             if (!$user) {
                 return null;
             }

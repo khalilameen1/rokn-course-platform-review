@@ -971,8 +971,16 @@ final class ProjectSubmissionService
         $samples = 0;
         $dark = 0;
         $white = 0;
-        $minimumLuminance = 255;
-        $maximumLuminance = 0;
+        $minimumAlpha = 127;
+        $maximumAlpha = 0;
+        $minimumVisible = [
+            'black' => ['red' => 255, 'green' => 255, 'blue' => 255],
+            'white' => ['red' => 255, 'green' => 255, 'blue' => 255],
+        ];
+        $maximumVisible = [
+            'black' => ['red' => 0, 'green' => 0, 'blue' => 0],
+            'white' => ['red' => 0, 'green' => 0, 'blue' => 0],
+        ];
         $stepX = max(1, (int) floor($width / 20));
         $stepY = max(1, (int) floor($height / 20));
         $threshold = (int) config('projects.dark_image_threshold', 12);
@@ -980,14 +988,30 @@ final class ProjectSubmissionService
 
         for ($x = 0; $x < $width; $x += $stepX) {
             for ($y = 0; $y < $height; $y += $stepY) {
-                $rgb = imagecolorat($image, $x, $y);
-                $red = ($rgb >> 16) & 0xFF;
-                $green = ($rgb >> 8) & 0xFF;
-                $blue = $rgb & 0xFF;
-                $luminance = (int) round(($red + $green + $blue) / 3);
+                // Indexed PNGs return a palette index, not packed RGB.
+                // Resolve both encodings before judging the visible content.
+                $colour = imagecolorsforindex($image, imagecolorat($image, $x, $y));
+                $red = $colour['red'];
+                $green = $colour['green'];
+                $blue = $colour['blue'];
+                $alpha = (int) ($colour['alpha'] ?? 0);
                 $samples++;
-                $minimumLuminance = min($minimumLuminance, $luminance);
-                $maximumLuminance = max($maximumLuminance, $luminance);
+                $minimumAlpha = min($minimumAlpha, $alpha);
+                $maximumAlpha = max($maximumAlpha, $alpha);
+                $opacity = (127 - $alpha) / 127;
+                foreach (['black' => 0, 'white' => 255] as $surface => $background) {
+                    foreach (['red' => $red, 'green' => $green, 'blue' => $blue] as $channel => $value) {
+                        $visible = (int) round(($value * $opacity) + ($background * (1 - $opacity)));
+                        $minimumVisible[$surface][$channel] = min(
+                            $minimumVisible[$surface][$channel],
+                            $visible
+                        );
+                        $maximumVisible[$surface][$channel] = max(
+                            $maximumVisible[$surface][$channel],
+                            $visible
+                        );
+                    }
+                }
                 if (max($red, $green, $blue) <= $threshold) {
                     $dark++;
                 }
@@ -999,12 +1023,30 @@ final class ProjectSubmissionService
 
         imagedestroy($image);
 
-        if ($samples === 0) {
+        if ($samples === 0 || $minimumAlpha === 127) {
             return true;
+        }
+
+        $uniformityTolerance = (int) config('projects.solid_image_channel_range', 3);
+        $visibleColourRange = 0;
+        foreach (['black', 'white'] as $surface) {
+            foreach (['red', 'green', 'blue'] as $channel) {
+                $visibleColourRange = max(
+                    $visibleColourRange,
+                    $maximumVisible[$surface][$channel] - $minimumVisible[$surface][$channel]
+                );
+            }
+        }
+        // A one-colour logo can be drawn entirely by its transparency mask.
+        // Compare its rendered contrast on both light and dark surfaces so
+        // barely-visible alpha or hidden RGB cannot masquerade as real work.
+        if (($maximumAlpha - $minimumAlpha) > $uniformityTolerance
+            && $visibleColourRange > $uniformityTolerance) {
+            return false;
         }
 
         return ($dark / $samples) >= (float) config('projects.dark_image_ratio', 0.97)
             || ($white / $samples) >= (float) config('projects.white_image_ratio', 0.985)
-            || ($maximumLuminance - $minimumLuminance) <= (int) config('projects.solid_image_luminance_range', 3);
+            || $visibleColourRange <= $uniformityTolerance;
     }
 }
