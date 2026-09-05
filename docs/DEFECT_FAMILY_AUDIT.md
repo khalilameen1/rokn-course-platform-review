@@ -4,6 +4,35 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Internal APK 123 native acceptance — 2026-09-05
+
+Internal direct APK 1.0.40 / Android 41 was built from clean commit `a2b6861`.
+The canonical artifact and delivery copy `123.apk` are 79,628,283 bytes with
+SHA-256 `4ede999c73198c151e7d8818ba92fd6a21d622a19403cda9dffc30487a173281`.
+It uses the explicit production API environment and the existing internal
+debug signer; it is not a store-release signing approval.
+
+The exact artifact was installed over the previous candidate without clearing
+emulator data. Native screenshots confirm right-aligned Arabic and the authored
+order of Grease Pencil, Blender Studio and CC BY. After dismissing the optional
+notification primer, two screenshots seven seconds apart showed different reel
+frames, advancing playback and a decreasing remaining time. The initial
+restoration indicator was transient. Evidence is under
+`mobile/.cache/rtl-acceptance-1.0.40/` (`course3.png`, `reel1.png`,
+`reel-play-t0.png`, `reel-play-t7.png`). This proves this guest course/reel scope,
+not authenticated checkout, project processing or all-device acceptance.
+
+Drive file `1Iq_ndZeiylQtDk51XpndXd_N7LH8xyEW` contains the final `123.apk`
+as its current version, with anyone-with-link Viewer access. The private
+1.0.39 candidate remains a recoverable older revision, and delivered `12.apk`
+was left unchanged. The EGP 10 package is live; saving the global 50-message
+allowance still awaits the administrator's two-factor challenge.
+
+Separate release work remains: the iOS CI job for `dda9598` reached native
+license checking but found a generated CocoaPods-notice snapshot that no
+longer matches Podfile.lock. This was not fixed by hand or hidden by relaxing
+the check. It does not change the Android artifact verified above.
+
 ## Native mixed-direction text checkpoint — 2026-09-05
 
 The rebuilt internal candidate 1.0.39 / 40 at `dda9598` was installed without
