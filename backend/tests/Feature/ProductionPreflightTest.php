@@ -14,6 +14,17 @@ use Tests\TestCase;
 
 class ProductionPreflightTest extends TestCase
 {
+    public function test_preflight_checks_the_actual_curl_runtime_capability(): void
+    {
+        $method = new \ReflectionMethod(ProductionPreflight::class, 'configurationFailures');
+        $failures = $method->invoke(app(ProductionPreflight::class));
+
+        self::assertSame(
+            !extension_loaded('curl'),
+            in_array('PHP cURL is required for bounded AI streaming.', $failures, true)
+        );
+    }
+
     public function test_schema_preflight_rejects_incomplete_daily_financial_write_contracts(): void
     {
         foreach (['orders', 'bills', 'course_enrollments', 'wallet_transactions'] as $table) {

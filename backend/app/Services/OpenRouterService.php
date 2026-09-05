@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\AiProviderUnavailableException;
+use GuzzleHttp\Handler\CurlHandler;
+use GuzzleHttp\Promise\PromiseInterface;
+use GuzzleHttp\Psr7\FnStream;
+use GuzzleHttp\Psr7\Utils;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use JsonException;
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
 use Throwable;
 
 final class OpenRouterService
@@ -70,6 +74,14 @@ final class OpenRouterService
             throw new AiProviderUnavailableException(
                 false,
                 providerCode: 'configuration_circuit_open'
+            );
+        }
+
+        if (!extension_loaded('curl')) {
+            throw new AiProviderUnavailableException(
+                false,
+                'AI generation requires the cURL extension.',
+                providerCode: 'transport_not_configured'
             );
         }
 
@@ -180,9 +192,12 @@ final class OpenRouterService
             $payload['stream_options'] = ['include_usage' => true];
         }
 
+        $eventStream = $onPartial !== null ? new OpenRouterEventStream($onPartial, $model) : null;
         try {
             $request = Http::withToken($apiKey)
                 ->acceptJson()
+                // A 307/308 redirect must not replay a billable generation.
+                ->withOptions(['allow_redirects' => false])
                 ->withHeaders([
                     'HTTP-Referer' => (string) config('app.url'),
                     'X-Title' => (string) config('app.name', 'Rokn'),
@@ -196,26 +211,15 @@ final class OpenRouterService
                     ),
                 ])
                 ->connectTimeout(max(1, (int) config('openrouter.connect_timeout_seconds', 5)))
-                // The ai-chat job owns the slow call and still needs a full
-                // landing window after the stream closes. Cap accidental env
-                // overrides so the HTTP client can never outlive that worker
-                // contract and strand a paid answer between provider and DB.
+                // Keep the network budget below the worker timeout, leaving
+                // time to land and settle the result after the response closes.
                 ->timeout(max(5, min(
                     50,
                     (int) config('openrouter.timeout_seconds', 45)
                 )));
-            if ($onPartial !== null) {
-                // Guzzle returns after the response headers and exposes the
-                // provider body as a PSR stream. The API key never crosses the
-                // backend boundary and the job keeps one paid request open.
-                $request = $request->withOptions([
-                    'stream' => true,
-                    'read_timeout' => max(5, min(
-                        50,
-                        (int) config('openrouter.stream_read_timeout_seconds', 45)
-                    )),
-                ]);
-            }
+            // cURL owns the whole connect/headers/body deadline. When streaming,
+            // its sink delivers small SSE fragments without a blocking body read.
+            $request->setHandler($this->generationHandler($eventStream));
             $response = $request->post((string) config('openrouter.endpoint'), $payload);
         } catch (ConnectionException $exception) {
             // A timeout may happen after the provider accepted and billed the
@@ -225,6 +229,8 @@ final class OpenRouterService
                 previous: $exception,
                 outcomeUnknown: true
             );
+        } finally {
+            $eventStream?->flush();
         }
 
         if (!$response->successful()) {
@@ -266,9 +272,20 @@ final class OpenRouterService
             strtolower((string) $response->header('Content-Type')),
             'text/event-stream'
         );
-        $body = $onPartial !== null && $isEventStream
-            ? $this->consumeEventStream($response, $onPartial, $model)
-            : $response->json();
+        if ($eventStream !== null && $isEventStream) {
+            // Buffered responses (including Laravel HTTP fakes) use the same
+            // decoder. Live cURL responses have already delivered each frame.
+            try {
+                if (!$eventStream->receivedFragments()) {
+                    $eventStream->append($response->body());
+                }
+                $body = $eventStream->finish();
+            } finally {
+                $eventStream->flush();
+            }
+        } else {
+            $body = $response->json();
+        }
         $content = $this->learnerVisibleContent(
             data_get($body, 'choices.0.message.content')
         );
@@ -362,297 +379,60 @@ final class OpenRouterService
         return $result;
     }
 
-    /**
-     * Convert OpenRouter's SSE frames into the same result envelope used by
-     * non-streaming calls. Partial delivery is presentation only: the caller
-     * still lands and settles the final envelope exactly once.
-     *
-     * @return array<string,mixed>
-     */
-    private function consumeEventStream(
-        Response $response,
-        callable $onPartial,
-        string $fallbackModel
-    ): array {
-        $stream = $response->toPsrResponse()->getBody();
-        $buffer = '';
-        $content = '';
-        $providerRequestId = (string) ($response->header('X-Generation-Id') ?: '');
-        $model = $fallbackModel;
-        $finishReason = null;
-        $nativeFinishReason = null;
-        $usage = [];
-        $annotations = [];
-        $lastEmittedLength = 0;
-        $lastEmittedAt = hrtime(true);
-        $callback = $onPartial;
-        $streamCompleted = false;
 
-        try {
-            while (!$stream->eof()) {
-                $chunk = $stream->read(8192);
-                if ($chunk === '') {
-                    continue;
-                }
-                $buffer .= $chunk;
-                foreach ($this->takeCompleteSseEvents($buffer) as $event) {
-                    if ($this->consumeSseEvent(
-                        $event,
-                        $content,
-                        $providerRequestId,
-                        $model,
-                        $finishReason,
-                        $nativeFinishReason,
-                        $usage,
-                        $annotations
-                    )) {
-                        $streamCompleted = true;
-                        break 2;
+    private function generationHandler(?OpenRouterEventStream $stream): callable
+    {
+        $handler = new CurlHandler(['handle_factory' => new OpenRouterCurlFactory()]);
+        if ($stream === null) {
+            return $handler;
+        }
+
+        return static function (RequestInterface $request, array $options) use ($stream, $handler): PromiseInterface {
+            $body = Utils::streamFor();
+            $headers = null;
+            $isEventStream = false;
+            $decoderFailure = null;
+            $options['on_headers'] = static function (ResponseInterface $response) use (&$headers, &$isEventStream): void {
+                $headers = $response;
+                $isEventStream = $response->getStatusCode() >= 200
+                    && $response->getStatusCode() < 300
+                    && str_contains(strtolower($response->getHeaderLine('Content-Type')), 'text/event-stream');
+            };
+            $options['sink'] = FnStream::decorate($body, [
+                'write' => static function (string $chunk) use ($stream, $body, &$isEventStream, &$decoderFailure): int {
+                    if (!$isEventStream) {
+                        return $body->write($chunk);
                     }
-                    $this->emitPartial(
-                        $callback,
-                        $content,
-                        $lastEmittedLength,
-                        $lastEmittedAt
+                    try {
+                        $stream->append($chunk);
+                    } catch (Throwable $exception) {
+                        $decoderFailure = $exception;
+                        return 0;
+                    }
+                    // A terminal SSE marker is enough. Do not wait for a
+                    // provider to close a keep-alive connection after DONE.
+                    return $stream->completed() ? 0 : strlen($chunk);
+                },
+            ]);
+
+            return $handler($request, $options)->then(
+                null,
+                static function (Throwable $exception) use ($stream, &$headers, &$decoderFailure): ResponseInterface {
+                    if ($decoderFailure !== null) {
+                        throw $decoderFailure;
+                    }
+                    if ($stream->completed() && $headers !== null) {
+                        return $headers;
+                    }
+                    throw new AiProviderUnavailableException(
+                        false,
+                        'AI provider stream was interrupted.',
+                        previous: $exception,
+                        outcomeUnknown: true
                     );
                 }
-            }
-            if (trim($buffer) !== '') {
-                $streamCompleted = $this->consumeSseEvent(
-                    $buffer,
-                    $content,
-                    $providerRequestId,
-                    $model,
-                    $finishReason,
-                    $nativeFinishReason,
-                    $usage,
-                    $annotations
-                ) || $streamCompleted;
-            }
-            if (!$streamCompleted && !filled($finishReason)) {
-                throw new AiProviderUnavailableException(
-                    false,
-                    'AI provider stream ended before completion.',
-                    outcomeUnknown: true
-                );
-            }
-        } catch (AiProviderUnavailableException $exception) {
-            throw $exception;
-        } catch (Throwable $exception) {
-            throw new AiProviderUnavailableException(
-                false,
-                'AI provider stream was interrupted.',
-                previous: $exception,
-                outcomeUnknown: true
             );
-        } finally {
-            // The last SSE fragment is still learner-visible recovery data
-            // when the provider disconnects before a terminal frame. Persist
-            // it before propagating the unknown outcome; this never upgrades
-            // the turn to completed or authorizes another provider call.
-            if (mb_strlen($content) > $lastEmittedLength) {
-                $this->emitPartial(
-                    $callback,
-                    $content,
-                    $lastEmittedLength,
-                    $lastEmittedAt,
-                    true
-                );
-            }
-            $stream->close();
-        }
-
-        return [
-            'id' => $providerRequestId,
-            'model' => $model,
-            'choices' => [[
-                'message' => [
-                    'content' => $content,
-                    'annotations' => $annotations,
-                ],
-                'finish_reason' => $finishReason,
-                'native_finish_reason' => $nativeFinishReason,
-            ]],
-            'usage' => $usage,
-        ];
-    }
-
-    /** @return list<string> */
-    private function takeCompleteSseEvents(string &$buffer): array
-    {
-        $events = [];
-        while (preg_match('/\r\n\r\n|\n\n|\r\r/', $buffer, $match, PREG_OFFSET_CAPTURE)) {
-            $delimiter = (string) $match[0][0];
-            $offset = (int) $match[0][1];
-            $events[] = substr($buffer, 0, $offset);
-            $buffer = substr($buffer, $offset + strlen($delimiter));
-        }
-
-        return $events;
-    }
-
-    /**
-     * @param array<string,mixed> $usage
-     * @param list<array<string,mixed>> $annotations
-     */
-    private function consumeSseEvent(
-        string $event,
-        string &$content,
-        string &$providerRequestId,
-        string &$model,
-        mixed &$finishReason,
-        mixed &$nativeFinishReason,
-        array &$usage,
-        array &$annotations
-    ): bool {
-        $dataLines = [];
-        foreach (preg_split('/\r\n|\n|\r/', $event) ?: [] as $line) {
-            if (!str_starts_with($line, 'data:')) {
-                continue;
-            }
-            $dataLines[] = ltrim(substr($line, 5), ' ');
-        }
-        if ($dataLines === []) {
-            return false;
-        }
-
-        $payload = implode("\n", $dataLines);
-        if (trim($payload) === '[DONE]') {
-            return true;
-        }
-
-        try {
-            $frame = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new AiProviderUnavailableException(
-                false,
-                'AI provider returned a malformed stream.',
-                previous: $exception,
-                outcomeUnknown: true
-            );
-        }
-        if (!is_array($frame)) {
-            return false;
-        }
-        if (isset($frame['error'])) {
-            $rawCode = trim((string) data_get($frame, 'error.code', ''));
-            $providerStatus = ctype_digit($rawCode) ? (int) $rawCode : null;
-            $outcomeUnknown = $content !== '';
-            throw new AiProviderUnavailableException(
-                !$outcomeUnknown && (
-                    in_array($providerStatus, [408, 429], true)
-                    || ($providerStatus !== null && $providerStatus >= 500)
-                ),
-                'AI provider stream returned an error.',
-                fileAnnotations: is_array(data_get($frame, 'error.metadata.file_annotations'))
-                    ? data_get($frame, 'error.metadata.file_annotations') : [],
-                outcomeUnknown: $outcomeUnknown,
-                providerStatus: $providerStatus,
-                providerCode: $rawCode !== '' ? substr($rawCode, 0, 80) : null
-            );
-        }
-
-        $providerRequestId = (string) ($frame['id'] ?? $providerRequestId);
-        $model = (string) ($frame['model'] ?? $model);
-        $delta = data_get($frame, 'choices.0.delta.content');
-        $content .= $this->streamVisibleContent($delta);
-        if (mb_strlen($content) > 12000) {
-            throw new AiProviderUnavailableException(
-                false,
-                'AI provider stream exceeded the answer limit.',
-                outcomeUnknown: true
-            );
-        }
-        $finishReason = data_get($frame, 'choices.0.finish_reason', $finishReason);
-        $nativeFinishReason = data_get(
-            $frame,
-            'choices.0.native_finish_reason',
-            $nativeFinishReason
-        );
-        if (is_array($frame['usage'] ?? null)) {
-            $usage = $frame['usage'];
-        }
-        $frameAnnotations = data_get($frame, 'choices.0.delta.annotations');
-        if (!is_array($frameAnnotations)) {
-            $frameAnnotations = data_get($frame, 'choices.0.message.annotations');
-        }
-        if (is_array($frameAnnotations) && $frameAnnotations !== []) {
-            $annotations = array_values(array_merge($annotations, $frameAnnotations));
-        }
-
-        return false;
-    }
-
-    private function streamVisibleContent(mixed $content): string
-    {
-        if (is_string($content)) {
-            return $content;
-        }
-        if (!is_array($content)) {
-            return '';
-        }
-
-        $text = '';
-        foreach ($content as $part) {
-            if (is_string($part)) {
-                $text .= $part;
-                continue;
-            }
-            if (!is_array($part)) {
-                continue;
-            }
-            $type = strtolower(trim((string) ($part['type'] ?? '')));
-            if ($type !== '' && !in_array($type, ['text', 'output_text'], true)) {
-                continue;
-            }
-            if (is_string($part['text'] ?? null)) {
-                $text .= $part['text'];
-            }
-        }
-
-        return $text;
-    }
-
-    private function emitPartial(
-        ?callable &$callback,
-        string $content,
-        int &$lastEmittedLength,
-        int &$lastEmittedAt,
-        bool $force = false
-    ): void {
-        if ($callback === null || $content === '') {
-            return;
-        }
-        $length = mb_strlen($content);
-        $now = hrtime(true);
-        if (
-            !$force
-            && $length - $lastEmittedLength < 48
-            && $now - $lastEmittedAt < 250_000_000
-        ) {
-            return;
-        }
-        $partial = (string) preg_replace(
-            '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u',
-            '',
-            $content
-        );
-        if ($partial === '') {
-            return;
-        }
-        try {
-            $callback($partial);
-            $lastEmittedLength = $length;
-            $lastEmittedAt = $now;
-        } catch (Throwable $exception) {
-            // A progress checkpoint is deliberately non-authoritative. Losing
-            // it must not abort a paid provider call whose final result can
-            // still be landed and settled safely.
-            Log::warning('AI partial response checkpoint failed.', [
-                'exception' => $exception::class,
-            ]);
-            $callback = null;
-        }
+        };
     }
 
     private function containsPdf(array $messages): bool

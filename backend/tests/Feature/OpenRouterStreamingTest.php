@@ -139,6 +139,31 @@ final class OpenRouterStreamingTest extends TestCase
         self::assertSame([$visible], $partials);
     }
 
+    public function test_buffered_malformed_stream_preserves_short_visible_checkpoint(): void
+    {
+        $visible = 'إجابة قصيرة';
+        Http::fake([
+            'https://openrouter.test/chat' => Http::response(
+                $this->event(['choices' => [['delta' => ['content' => $visible]]]])
+                ."data: {broken json}\n\n",
+                200,
+                ['Content-Type' => 'text/event-stream']
+            ),
+        ]);
+        $partials = [];
+        try {
+            app(OpenRouterService::class)->chat(
+                'test/model', [['role' => 'user', 'content' => 'السؤال']], .3, 200,
+                null, null,
+                function (string $text) use (&$partials): void { $partials[] = $text; }
+            );
+            self::fail('Malformed frames cannot complete a generation.');
+        } catch (AiProviderUnavailableException $exception) {
+            self::assertTrue($exception->outcomeUnknown);
+        }
+        self::assertSame([$visible], $partials);
+    }
+
     /** @param array<string,mixed> $payload */
     private function event(array $payload): string
     {

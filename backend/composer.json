@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4.24",
+        "ext-curl": "*",
         "barryvdh/laravel-dompdf": "^3.1.2",
         "endroid/qr-code": "^6.0",
         "firebase/php-jwt": "^7.0.3",

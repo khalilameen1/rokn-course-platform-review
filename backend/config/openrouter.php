@@ -18,7 +18,6 @@ return [
     'temperature' => (float) env('OPENROUTER_TEMPERATURE', 0.35),
     'timeout_seconds' => (int) env('OPENROUTER_TIMEOUT_SECONDS', 45),
     'connect_timeout_seconds' => (int) env('OPENROUTER_CONNECT_TIMEOUT_SECONDS', 5),
-    'stream_read_timeout_seconds' => (int) env('OPENROUTER_STREAM_READ_TIMEOUT_SECONDS', 45),
     'provider_sort' => env('OPENROUTER_PROVIDER_SORT', 'latency'),
     // Do not reduce the live-chat provider pool unless compliance explicitly
     // requires it. The public policy already describes provider processing;

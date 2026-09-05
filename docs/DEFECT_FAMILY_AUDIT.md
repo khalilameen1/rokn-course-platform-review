@@ -4,6 +4,40 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Bound one provider request and deliver small fragments promptly — 2026-09-05
+
+Replaced the blocking streamed-body read with an explicit cURL-backed request and
+incremental SSE decoder. The same decoder handles live fragments and buffered
+test responses. One network timeout covers connection, headers and response body.
+The first nonempty fragment is emitted immediately; subsequent updates retain
+throttling and unchanged heartbeat text no longer causes repeated checkpoints.
+DONE closes delivery without waiting for the server to close its socket. Failed
+or malformed streams flush visible recovery text without landing a final answer.
+
+JSON answers, structured provider errors, token/cost usage and annotations retain
+their existing final-result path. Both JSON and streaming generation requests
+disable redirects. A small factory using Guzzle's public create/release interface
+prevents its internal rewind recovery from creating a second transport attempt;
+no private retry counter, second paid request or vendor patch is used.
+
+cURL is now an explicit root Composer/runtime preflight requirement. The obsolete
+per-read timeout setting is removed. Composer strict validation passed with an
+unchanged dependency graph; the capability check passed both with and without
+cURL loaded, and the complete preflight test file passed.
+
+Verification: 125 tests / 744 assertions passed across admission, cancellation,
+project feedback, provider accounting, streaming, real loopback transport and
+preflight. Actual local socket cases prove early partial delivery and a 5-second
+network deadline within the 4.5-6.5-second test tolerance, including heartbeat,
+slow-header and silent-body scenarios. Redirect/rewind replay, JSON fallback and
+known versus unknown provider outcomes are covered. Independent read-only review
+found no concrete blocker. The deadline does not preempt arbitrary blocking PHP
+work inside the progress callback; production callback/database latency and the
+installed mobile experience remain separate acceptance work.
+
+No production deployment or APK rebuild was performed. During validation C: had
+zero free bytes; PHP temporary work was directed to E: without deleting user data.
+
 ## Keep authored course context identical to the student's plain text — 2026-09-05
 
 The studio's course description, lesson caption and project requirements are

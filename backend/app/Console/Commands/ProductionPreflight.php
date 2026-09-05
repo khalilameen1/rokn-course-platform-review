@@ -451,6 +451,8 @@ class ProductionPreflight extends Command
             }
         };
 
+        $require(extension_loaded('curl'), 'PHP cURL is required for bounded AI streaming.');
+
         $appUrl = trim((string) config('app.url'));
         $appHost = strtolower((string) parse_url($appUrl, PHP_URL_HOST));
         $appDomain = strtolower(trim((string) config('app.app_domain')));
