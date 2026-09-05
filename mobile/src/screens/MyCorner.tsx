@@ -14,17 +14,11 @@ import {useResponsiveLayout} from '../constants/designSystem';
 import {sessionIdentityKey} from '../constants/helpers';
 import {openGuestLogin} from '../navigation/journeyNavigation';
 import type {RootNavigation} from '../navigation/types';
-import type {WatchHistoryItem} from '../services/roknApi';
 import type {RootState} from '../store/store';
 import {CourseShelf} from './myCorner/CourseShelf';
-import {
-  buildMyCornerModel,
-  ownedWatchHistory,
-  type LearningResumeTarget,
-} from './myCorner/model';
+import {buildMyCornerModel, type LearningResumeTarget} from './myCorner/model';
 import {ProfessionalProgress} from './myCorner/ProfessionalProgress';
 import {useMyCornerData} from './myCorner/useMyCornerData';
-import {WatchHistorySection} from './myCorner/WatchHistorySection';
 import {WeeklyRhythm} from './myCorner/WeeklyRhythm';
 
 export default function MyCorner() {
@@ -46,20 +40,6 @@ export default function MyCorner() {
       }),
     [data.dashboard, data.serverSession, selectedPathId],
   );
-  const visibleWatchHistory = useMemo(
-    () =>
-      ownedWatchHistory(
-        data.watchHistory?.items || [],
-        model.courses,
-        data.learningOwnershipFresh && data.watchHistoryFresh,
-      ),
-    [
-      data.learningOwnershipFresh,
-      data.watchHistory?.items,
-      data.watchHistoryFresh,
-      model.courses,
-    ],
-  );
 
   useEffect(() => {
     if (!model.learningPaths.length) {
@@ -75,15 +55,6 @@ export default function MyCorner() {
   );
   const resumeCourse = useCallback(
     (target: LearningResumeTarget) => navigation.navigate('Reels', target),
-    [navigation],
-  );
-  const resumeHistory = useCallback(
-    (item: WatchHistoryItem) =>
-      navigation.navigate('Reels', {
-        courseId: item.courseId,
-        lessonId: item.lessonId,
-        initialPositionSeconds: item.positionSeconds,
-      }),
     [navigation],
   );
 
@@ -167,17 +138,6 @@ export default function MyCorner() {
               onResume={resumeCourse}
               orderedCourses={model.orderedCourses}
               primaryResumeId={model.primaryResumeId}
-            />
-          )}
-
-          {data.serverSession === true && data.learningOwnershipFresh && (
-            <WatchHistorySection
-              error={data.watchHistoryError}
-              fresh={data.watchHistoryFresh}
-              items={visibleWatchHistory}
-              largeText={largeText}
-              loading={data.watchHistoryLoading}
-              onResume={resumeHistory}
             />
           )}
 

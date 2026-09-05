@@ -2,11 +2,7 @@ import {
   roknCalendarDay,
   shiftRoknCalendarDay,
 } from '../../constants/roknCalendar';
-import type {
-  LearningCourse,
-  LearningDashboard,
-  WatchHistoryItem,
-} from '../../services/roknApi';
+import type {LearningCourse, LearningDashboard} from '../../services/roknApi';
 import {serverNow} from '../../utils/serverClock';
 
 export type LearningBadge = LearningDashboard['badges'][number];
@@ -51,18 +47,6 @@ export const learningResumeTarget = (
     lessonId: course.nextSectionId,
     initialPositionSeconds: position,
   };
-};
-
-export const ownedWatchHistory = (
-  items: WatchHistoryItem[],
-  courses: LearningCourse[],
-  ownershipIsFresh: boolean,
-) => {
-  if (!ownershipIsFresh) return [];
-  const ownedCourseIds = new Set(
-    courses.filter(course => course.started).map(course => course.id),
-  );
-  return items.filter(item => ownedCourseIds.has(item.courseId));
 };
 
 const lastSevenDays = (activeDays: string[]) =>

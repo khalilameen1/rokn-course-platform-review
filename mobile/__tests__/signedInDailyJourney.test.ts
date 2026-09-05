@@ -23,11 +23,8 @@ jest.mock('../src/services/secureSession', () => {
 
 import {getLearningCourses} from '../src/services/api/courses';
 import {getProfile} from '../src/services/api/profile';
-import {
-  learningResumeTarget,
-  ownedWatchHistory,
-} from '../src/screens/myCorner/model';
-import type {LearningCourse, WatchHistoryItem} from '../src/services/roknApi';
+import {learningResumeTarget} from '../src/screens/myCorner/model';
+import type {LearningCourse} from '../src/services/roknApi';
 
 const source = (relativePath: string) =>
   fs.readFileSync(path.resolve(__dirname, '..', relativePath), 'utf8');
@@ -183,19 +180,15 @@ describe('signed-in daily journey', () => {
   it('reloads My Corner on account change and keeps resume separate from course details', () => {
     const myCorner = source('src/screens/MyCorner.tsx');
     const courseShelf = source('src/screens/myCorner/CourseShelf.tsx');
-    const watchHistory = source('src/screens/myCorner/WatchHistorySection.tsx');
     const myCornerData = source('src/screens/myCorner/useMyCornerData.ts');
 
     expect(myCornerData).toContain('}, [appIsActive, identityKey]),');
     expect(myCornerData).toContain('ownerRef.current !== identityKey');
     expect(myCorner).toContain("navigation.navigate('CourseDetails'");
     expect(courseShelf).toContain('`عرض تفاصيل ${course.title}');
-    expect(watchHistory).toContain('`استكمال ${item.lessonTitle}`');
-    expect(myCorner).toContain('initialPositionSeconds: item.positionSeconds');
     expect(myCorner).toContain("navigation.navigate('Reels', target)");
-    expect(myCorner).toContain(
-      'data.learningOwnershipFresh && data.watchHistoryFresh',
-    );
+    expect(myCorner).not.toContain('WatchHistorySection');
+    expect(myCornerData).not.toContain('getWatchHistory');
   });
 
   it('uses the canonical next section and only reuses position for that lesson', () => {
@@ -245,41 +238,6 @@ describe('signed-in daily journey', () => {
     expect(learningResumeTarget(course, false)).toBeNull();
     expect(learningResumeTarget({...course, started: false}, true)).toBeNull();
     expect(learningResumeTarget({...course, progress: 100}, true)).toBeNull();
-  });
-
-  it('never offers stale or no-longer-owned watch history as continue', () => {
-    const courses: LearningCourse[] = [
-      {
-        id: '52',
-        title: 'كورس ركن',
-        progress: 20,
-        started: true,
-        completedSections: 1,
-        totalSections: 5,
-        category: 'freelance',
-        accessType: 'paid',
-        chatAvailable: true,
-        certificateAvailable: false,
-      },
-    ];
-    const item = (courseId: string): WatchHistoryItem => ({
-      id: `history-${courseId}`,
-      courseId,
-      courseTitle: 'كورس',
-      lessonId: '11',
-      lessonTitle: 'مقطع',
-      positionSeconds: 8,
-      progress: 20,
-      completed: false,
-    });
-
-    expect(ownedWatchHistory([item('52'), item('99')], courses, true)).toEqual([
-      item('52'),
-    ]);
-    expect(ownedWatchHistory([item('52')], courses, false)).toEqual([]);
-    expect(
-      ownedWatchHistory([item('52')], [{...courses[0], started: false}], true),
-    ).toEqual([]);
   });
 
   it('uses the session epoch for profile and certificate reads', () => {

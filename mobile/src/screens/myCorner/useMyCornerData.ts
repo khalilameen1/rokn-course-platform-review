@@ -10,10 +10,8 @@ import {friendlyNetworkMessage} from '../../services/networkExperience';
 import {
   getCachedLearningDashboard,
   getLearningDashboard,
-  getWatchHistory,
   hasSession,
   type LearningDashboard,
-  type WatchHistory,
 } from '../../services/roknApi';
 import {settleWithin} from '../../utils/settleWithin';
 
@@ -25,10 +23,6 @@ export const useMyCornerData = (identityKey: string) => {
   const [learningOwnershipFresh, setLearningOwnershipFresh] = useState(false);
   const [dashboardError, setDashboardError] = useState('');
   const [dashboardLoading, setDashboardLoading] = useState(false);
-  const [watchHistory, setWatchHistory] = useState<WatchHistory | null>(null);
-  const [watchHistoryFresh, setWatchHistoryFresh] = useState(false);
-  const [watchHistoryLoading, setWatchHistoryLoading] = useState(false);
-  const [watchHistoryError, setWatchHistoryError] = useState('');
 
   useEffect(() => {
     ownerRef.current = identityKey;
@@ -37,10 +31,6 @@ export const useMyCornerData = (identityKey: string) => {
     setLearningOwnershipFresh(false);
     setDashboardError('');
     setDashboardLoading(false);
-    setWatchHistory(null);
-    setWatchHistoryFresh(false);
-    setWatchHistoryError('');
-    setWatchHistoryLoading(false);
   }, [identityKey]);
 
   useFocusEffect(
@@ -56,9 +46,7 @@ export const useMyCornerData = (identityKey: string) => {
           return true;
         } catch {
           setLearningOwnershipFresh(false);
-          setWatchHistoryFresh(false);
           setDashboardLoading(false);
-          setWatchHistoryLoading(false);
           setDashboardError('تغيّر الحساب\nافتح ركني من جديد');
           return false;
         }
@@ -66,7 +54,6 @@ export const useMyCornerData = (identityKey: string) => {
 
       void (async () => {
         setLearningOwnershipFresh(false);
-        setWatchHistoryFresh(false);
         const boundary = await captureAccountSessionBoundary().catch(
           () => null,
         );
@@ -75,12 +62,9 @@ export const useMyCornerData = (identityKey: string) => {
         if (!boundary) {
           setServerSession(sessionAvailable);
           setDashboardLoading(false);
-          setWatchHistoryLoading(false);
           setLearningOwnershipFresh(false);
-          setWatchHistoryFresh(false);
           if (sessionAvailable) {
             setDashboardError('تعذّر تجهيز بيانات ركني\nحاول مرة أخرى');
-            setWatchHistoryError('تعذّر تجهيز سجل المشاهدة');
           }
           return;
         }
@@ -90,32 +74,8 @@ export const useMyCornerData = (identityKey: string) => {
           setDashboard(null);
           setLearningOwnershipFresh(false);
           setDashboardError('');
-          setWatchHistory(null);
-          setWatchHistoryFresh(false);
-          setWatchHistoryError('');
-          setWatchHistoryLoading(false);
           return;
         }
-
-        setWatchHistoryLoading(true);
-        void getWatchHistory(6)
-          .then(history => {
-            if (!stillOwned(boundary)) return;
-            setWatchHistory(history);
-            setWatchHistoryFresh(true);
-            setWatchHistoryError('');
-          })
-          .catch(error => {
-            if (stillOwned(boundary)) {
-              setWatchHistoryFresh(false);
-              setWatchHistoryError(
-                friendlyNetworkMessage(error, 'سجل المشاهدة'),
-              );
-            }
-          })
-          .finally(() => {
-            if (stillOwned(boundary)) setWatchHistoryLoading(false);
-          });
 
         // Start the authoritative network read before touching device storage.
         // A slow or damaged cache may improve first paint but never owns it.
@@ -151,9 +111,7 @@ export const useMyCornerData = (identityKey: string) => {
       })().catch(error => {
         if (!active) return;
         setLearningOwnershipFresh(false);
-        setWatchHistoryFresh(false);
         setDashboardLoading(false);
-        setWatchHistoryLoading(false);
         setDashboardError(
           `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
         );
@@ -172,9 +130,5 @@ export const useMyCornerData = (identityKey: string) => {
     learningOwnershipFresh,
     owned: ownerRef.current === identityKey,
     serverSession,
-    watchHistory,
-    watchHistoryError,
-    watchHistoryFresh,
-    watchHistoryLoading,
   };
 };
