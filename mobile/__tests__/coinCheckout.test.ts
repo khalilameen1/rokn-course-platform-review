@@ -279,6 +279,130 @@ describe('coin checkout boundary', () => {
     expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledTimes(1);
   });
 
+  it('does not deliver one course checkout result to a competing return intent', async () => {
+    process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
+    jest.resetModules();
+
+    const WebBrowser = require('expo-web-browser') as {
+      openAuthSessionAsync: jest.Mock;
+    };
+    const {publicRequest} = require('../src/constants/api') as {
+      publicRequest: {post: jest.Mock};
+    };
+    const AsyncStorage = require('@react-native-async-storage/async-storage') as {
+      setItem: jest.Mock;
+    };
+    let finishSurface:
+      | ((value: {type: 'success'; url: string}) => void)
+      | undefined;
+    WebBrowser.openAuthSessionAsync.mockReturnValueOnce(
+      new Promise(resolve => {
+        finishSurface = resolve;
+      }),
+    );
+    publicRequest.post
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            payment_url: 'https://checkout.kashier.io/intent-a',
+            order_ref: 'PKG-INTENT-A',
+            idempotency_key: '11111111-1111-4111-8111-111111111111',
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            status: 'approved',
+            financial_status: 'settled',
+            package: {coins: 600},
+          },
+        },
+      });
+
+    const {openCoinCheckout} = require('../src/services/coinCheckout') as {
+      openCoinCheckout: (
+        coinPackage: {
+          id: string;
+          coins: number;
+          price: number;
+          label: string;
+        },
+        options: {
+          returnTo: {
+            name: 'CourseDetails';
+            params: {
+              courseId: string;
+              openPurchase: true;
+              purchasePlanCode: string;
+            };
+          };
+        },
+      ) => Promise<{success: boolean; orderRef?: string}>;
+    };
+    const selected = {id: '7', coins: 600, price: 49, label: 'باقة'};
+    const first = openCoinCheckout(selected, {
+      returnTo: {
+        name: 'CourseDetails',
+        params: {
+          courseId: '52',
+          openPurchase: true,
+          purchasePlanCode: 'guided',
+        },
+      },
+    });
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(WebBrowser.openAuthSessionAsync).toHaveBeenCalledTimes(1);
+
+    const duplicate = openCoinCheckout(selected, {
+      returnTo: {
+        name: 'CourseDetails',
+        params: {
+          purchasePlanCode: 'guided',
+          openPurchase: true,
+          courseId: '52',
+        },
+      },
+    });
+
+    const competing = openCoinCheckout(selected, {
+      returnTo: {
+        name: 'CourseDetails',
+        params: {
+          courseId: '71',
+          openPurchase: true,
+          purchasePlanCode: 'mentor',
+        },
+      },
+    });
+    await expect(competing).rejects.toMatchObject({
+      code: 'coin_checkout_in_progress',
+    });
+
+    finishSurface?.({
+      type: 'success',
+      url: 'rokn://payment-result?status=success&order_ref=PKG-INTENT-A&coins=600',
+    });
+    await expect(first).resolves.toMatchObject({
+      success: true,
+      orderRef: 'PKG-INTENT-A',
+    });
+    await expect(duplicate).resolves.toMatchObject({
+      success: true,
+      orderRef: 'PKG-INTENT-A',
+    });
+    expect(
+      AsyncStorage.setItem.mock.calls
+        .map(call => String(call[1] || ''))
+        .join('\n'),
+    ).toContain('"courseId":"52"');
+    expect(
+      AsyncStorage.setItem.mock.calls
+        .map(call => String(call[1] || ''))
+        .join('\n'),
+    ).not.toContain('"courseId":"71"');
+  });
+
   it('notifies the mounted wallet/course after foreground reconciliation credits coins', async () => {
     process.env.EXPO_PUBLIC_BUILD_PROFILE = 'production';
     jest.resetModules();

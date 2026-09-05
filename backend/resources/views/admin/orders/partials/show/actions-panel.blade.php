@@ -15,7 +15,7 @@
                         </div>
                     @endif
                     @if(
-                        $order->status === \App\Models\Order::STATUS_APPROVED
+                        $order->isFinanciallyEffective()
                         && $order->package_id
                         && in_array($order->payment_method, ['kashier', 'google_play', 'app_store'], true)
                         && $order->gateway_settlement_status !== 'test_purchase'

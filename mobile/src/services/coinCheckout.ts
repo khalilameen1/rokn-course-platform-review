@@ -7,6 +7,7 @@ import type {CoinPackage} from './api/coinPackageMapper';
 import {
   CAN_START_EXTERNAL_CHECKOUT,
   CAN_START_NATIVE_CHECKOUT,
+  DISTRIBUTION_CHANNEL,
 } from '../constants/distribution';
 import {reportClientError} from './operationalTelemetry';
 import {requireProductFeature} from './productFeatures';
@@ -16,6 +17,7 @@ import {
   savePendingCheckoutReturn,
 } from '../navigation/checkoutReturn';
 import type {LoginReturnTo} from '../navigation/types';
+import {safeLoginReturnTo} from '../navigation/authReturn';
 import {
   clearCoinCheckoutAttempt,
   coinCheckoutOwnerKey,
@@ -54,6 +56,68 @@ export type {CoinCheckoutResult} from './coinCheckoutTypes';
 export {subscribeCoinCheckoutCredits};
 
 const CHECKOUT_ATTEMPT_TTL_MS = 30 * 60 * 1000;
+
+const intentPart = (value: unknown) =>
+  encodeURIComponent(value === undefined ? '' : String(value));
+
+const checkoutReturnIntentParts = (value?: LoginReturnTo): unknown[] => {
+  const returnTo = safeLoginReturnTo(value);
+  if (!returnTo) return ['none'];
+  if (returnTo.name === 'CourseDetails') {
+    const params = returnTo.params;
+    return [
+      returnTo.name,
+      params.courseId,
+      params.openCodeRedemption ? '1' : '0',
+      params.openFullTrackUpgrade ? '1' : '0',
+      params.openPurchase ? '1' : '0',
+      params.purchasePlanCode,
+      params.purchaseCouponCode,
+      params.resumeAfterPreview ? '1' : '0',
+      params.resumeReelId,
+    ];
+  }
+  if (returnTo.name === 'Reels') {
+    const params = returnTo.params;
+    return [
+      returnTo.name,
+      params.courseId,
+      params.reelId,
+      params.lessonId,
+      params.projectId,
+      params.preview ? '1' : '0',
+      params.previewCount,
+      params.openCourseChatUpgrade ? '1' : '0',
+    ];
+  }
+  if (returnTo.name === 'Profile') {
+    return [returnTo.name, returnTo.params?.tab];
+  }
+  return [returnTo.name];
+};
+
+const checkoutProviderSnapshot = (coinPackage: CoinPackage) => {
+  if (DISTRIBUTION_CHANNEL === 'direct') return ['kashier', 'EGP', ''];
+  if (DISTRIBUTION_CHANNEL === 'play') {
+    return ['google_play', 'store', coinPackage.storeProductIds?.google];
+  }
+  return ['apple_app_store', 'store', coinPackage.storeProductIds?.apple];
+};
+
+const coinCheckoutIntentKey = (
+  coinPackage: CoinPackage,
+  returnTo?: LoginReturnTo,
+) =>
+  [
+    'v1',
+    coinPackage.id,
+    coinPackage.coins,
+    Math.round(coinPackage.price * 100),
+    ...checkoutProviderSnapshot(coinPackage),
+    ...checkoutReturnIntentParts(returnTo),
+  ]
+    .map(intentPart)
+    .join('|');
 
 const validCoinPackage = (coinPackage: CoinPackage) => {
   const packageId = Number(coinPackage.id);
@@ -439,7 +503,8 @@ export const openCoinCheckout = async (
 ): Promise<CoinCheckoutResult> => {
   const boundary = await captureAccountSessionBoundary();
   const ownerKey = `${await coinCheckoutOwnerKey(boundary)}:${boundary.epoch}`;
-  return runCoinCheckoutSingleFlight(ownerKey, async () => {
+  const intentKey = coinCheckoutIntentKey(coinPackage, options.returnTo);
+  return runCoinCheckoutSingleFlight(ownerKey, intentKey, async () => {
     const returnClaim = options.returnTo
       ? await savePendingCheckoutReturn(options.returnTo, boundary).catch(
           () => undefined,

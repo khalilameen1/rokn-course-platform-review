@@ -1,6 +1,11 @@
 import type {CoinCheckoutResult} from './coinCheckoutTypes';
 
-const checkoutFlights = new Map<string, Promise<CoinCheckoutResult>>();
+type CoinCheckoutFlight = {
+  intentKey: string;
+  promise: Promise<CoinCheckoutResult>;
+};
+
+const checkoutFlights = new Map<string, CoinCheckoutFlight>();
 const reconciliationFlights = new Map<
   string,
   Promise<CoinCheckoutResult | null>
@@ -15,10 +20,18 @@ const creditListeners = new Set<CoinCheckoutCreditListener>();
 
 export const runCoinCheckoutSingleFlight = (
   ownerKey: string,
+  intentKey: string,
   operation: () => Promise<CoinCheckoutResult>,
 ) => {
   const current = checkoutFlights.get(ownerKey);
-  if (current) return current;
+  if (current) {
+    if (current.intentKey === intentKey) return current.promise;
+    const error = new Error('Coin checkout already in progress') as Error & {
+      code?: string;
+    };
+    error.code = 'coin_checkout_in_progress';
+    return Promise.reject(error);
+  }
 
   const reconciliation = reconciliationFlights.get(ownerKey);
   let flight: Promise<CoinCheckoutResult>;
@@ -27,11 +40,11 @@ export const runCoinCheckoutSingleFlight = (
       ? reconciliation.catch(() => null).then(operation)
       : operation()
   ).finally(() => {
-    if (checkoutFlights.get(ownerKey) === flight) {
+    if (checkoutFlights.get(ownerKey)?.promise === flight) {
       checkoutFlights.delete(ownerKey);
     }
   });
-  checkoutFlights.set(ownerKey, flight);
+  checkoutFlights.set(ownerKey, {intentKey, promise: flight});
   return flight;
 };
 
@@ -46,7 +59,7 @@ export const runCoinCheckoutReconciliationSingleFlight = (
     // Foreground recovery must not race the checkout which owns the provider
     // surface. Its screen already handles the terminal result, so observing
     // the same promise here would also emit a duplicate credit event.
-    return checkout.then(
+    return checkout.promise.then(
       () => null,
       () => null,
     );

@@ -161,6 +161,7 @@ export const useCoursePurchase = ({
 
   const purchaseRestoreStatus = coupon.restoreStatus;
   const checkout = useCourseCheckout({
+    closePurchase,
     couponApplied: appliedCoupon,
     couponCode: couponQuote?.couponCode,
     courseId,

@@ -378,6 +378,104 @@ final class CourseRewardContributionCapTest extends TestCase
         self::assertSame(100, (int) $user->fresh()->wallet_coins);
     }
 
+    public function test_stale_purchase_plan_never_reports_an_unperformed_upgrade_or_downgrade(): void
+    {
+        $course = $this->course(true);
+        $this->plans($course);
+
+        $basicOwner = $this->user();
+        $this->creditPaid($basicOwner, 300);
+        $basicKey = 'stale-plan-basic-purchase-0001';
+        $this->actingAs($basicOwner, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 40,
+                'idempotency_key' => $basicKey,
+            ])
+            ->assertOk();
+
+        $basicBalance = (int) $basicOwner->fresh()->wallet_coins;
+        $basicOrders = Order::query()
+            ->where('user_id', $basicOwner->id)
+            ->where('course_id', $course->id)
+            ->count();
+
+        $this->actingAs($basicOwner, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::MENTOR,
+                'expected_price' => 230,
+                'idempotency_key' => 'stale-plan-false-upgrade-0001',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'course_access_changed')
+            ->assertJsonPath('data.requested_access_plan_code', CourseAccessPlan::MENTOR)
+            ->assertJsonPath('data.current_access_plan.code', CourseAccessPlan::BASIC)
+            ->assertJsonPath('data.already_enrolled', true);
+
+        self::assertSame($basicBalance, (int) $basicOwner->fresh()->wallet_coins);
+        self::assertSame($basicOrders, Order::query()
+            ->where('user_id', $basicOwner->id)
+            ->where('course_id', $course->id)
+            ->count());
+
+        // A real completed receipt wins over later catalogue edits. Retrying
+        // that exact operation remains a replay, not a stale-plan failure.
+        $course->accessPlans()->where('code', CourseAccessPlan::BASIC)
+            ->update(['price_coins' => 60]);
+        $course->forceFill([
+            'authoring_version' => 2,
+            'last_published_authoring_version' => 2,
+        ])->save();
+        $this->actingAs($basicOwner, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 40,
+                'expected_course_revision' => 1,
+                'idempotency_key' => $basicKey,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.idempotent_replay', true)
+            ->assertJsonPath('data.amount_deducted', 0);
+
+        $mentorOwner = $this->user();
+        $this->creditPaid($mentorOwner, 300);
+        $this->actingAs($mentorOwner, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::MENTOR,
+                'expected_price' => 230,
+                'idempotency_key' => 'stale-plan-mentor-purchase-0001',
+            ])
+            ->assertOk();
+
+        $mentorBalance = (int) $mentorOwner->fresh()->wallet_coins;
+        $mentorOrders = Order::query()
+            ->where('user_id', $mentorOwner->id)
+            ->where('course_id', $course->id)
+            ->count();
+
+        $this->actingAs($mentorOwner, 'api')
+            ->postJson('/api/v1/courses/authorize', [
+                'course_id' => $course->id,
+                'access_plan_code' => CourseAccessPlan::BASIC,
+                'expected_price' => 60,
+                'idempotency_key' => 'stale-plan-false-downgrade-0001',
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('code', 'course_access_changed')
+            ->assertJsonPath('data.requested_access_plan_code', CourseAccessPlan::BASIC)
+            ->assertJsonPath('data.current_access_plan.code', CourseAccessPlan::MENTOR);
+
+        self::assertSame($mentorBalance, (int) $mentorOwner->fresh()->wallet_coins);
+        self::assertSame($mentorOrders, Order::query()
+            ->where('user_id', $mentorOwner->id)
+            ->where('course_id', $course->id)
+            ->count());
+    }
+
     private function user(): User
     {
         return User::query()->forceCreate([

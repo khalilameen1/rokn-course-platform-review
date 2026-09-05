@@ -18,6 +18,7 @@ import {derivePurchaseTerms} from './purchaseTerms';
 import type {CourseWalletUpdate} from './useCourseDetailsData';
 
 type Params = {
+  closePurchase: () => void;
   couponApplied: boolean;
   couponCode?: string;
   courseId: string;
@@ -42,6 +43,7 @@ type Params = {
 };
 
 export function useCourseCheckout({
+  closePurchase,
   couponApplied,
   couponCode,
   courseId,
@@ -276,11 +278,12 @@ export function useCourseCheckout({
         ) {
           return;
         }
-        if (
-          ['package_terms_changed', 'package_not_available'].includes(
-            errorCode(error),
-          )
-        ) {
+        const code = errorCode(error);
+        if (code === 'coin_checkout_in_progress') {
+          setNotice('هناك عملية شحن مفتوحة\nأكملها أو أغلقها ثم حاول مرة أخرى');
+          return;
+        }
+        if (['package_terms_changed', 'package_not_available'].includes(code)) {
           const operationCouponCode =
             couponApplied && couponCode ? couponCode : '';
           setPackages([]);
@@ -395,12 +398,16 @@ export function useCourseCheckout({
       ) {
         return;
       }
+      const code = errorCode(error);
+      if (code === 'course_access_changed') {
+        closePurchase();
+        replaceCouponQuote(null);
+        setNotice('تغيّر وصولك للكورس\nنحدّث تفاصيل فئتك الحالية');
+        reload();
+        return;
+      }
       reload();
-      if (
-        ['course_terms_changed', 'course_plan_unavailable'].includes(
-          errorCode(error),
-        )
-      ) {
+      if (['course_terms_changed', 'course_plan_unavailable'].includes(code)) {
         replaceCouponQuote(null);
         showPlans();
         setNotice('تغيّرت تفاصيل الفئة\nراجعها قبل الشراء');
@@ -417,6 +424,7 @@ export function useCourseCheckout({
     }
   }, [
     activate,
+    closePurchase,
     courseId,
     identityKey,
     ownsOperation,

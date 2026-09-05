@@ -465,6 +465,58 @@ were first observed failing before their fixes. No live prices, balances or
 settings were changed, and no already-handled historical reward signals were
 replayed. These checks do not substitute for an installed-APK acceptance pass.
 
+## Checkout intent and current course access — 2026-09-05
+
+The next daily-journey pass closed these demonstrated failures:
+
+- Mobile checkout single-flight was keyed only by account. A second course or
+  package could receive the first checkout's result without owning its return
+  destination. Only identical package/provider/return intents now share a flight;
+  a different intent receives a distinct checkout-in-progress result before any
+  return destination is saved. Foreground recovery still follows the real flight.
+- Course purchase treated any existing active enrollment as successful purchase
+  of the requested tier. A different captured tier now returns
+  `course_access_changed` without an order or debit. Exact completed idempotency
+  receipts still win before live terms checks. Mobile closes confirmation before
+  reloading ownership, so it cannot turn the conflict into a success screen.
+  Late replies from an old account remain unable to mutate the current screen.
+- Course details and catalogue used separate entitlement implementations, with
+  repeated financial reads and ranking among enrollment candidates that cannot
+  coexist under the database's unique student/course constraint. They now resolve
+  the same current enrollment and captured plan in one batched path. Playback's
+  learning-only check does not load AI budgets. Captured project work and earned
+  certificate checks remain independent of temporary curriculum draft state.
+- Dashboard paid badges/filters included approved-but-refunded or reversed
+  orders. They now use the existing financially-effective predicate, and those
+  orders no longer offer settlement documentation. Pending cash counts share the
+  operations checkout filter: local expiry excludes abandoned attempts without
+  hiding provider-authorized/processing payments that may still settle. Direct
+  payment-status fields precede generic response status in filters as in the row
+  reader. Provider expiry, financial closure and cancellation retain distinct
+  daily behavior rather than contradictory badges and filter membership.
+
+The last item is not a claim that every historic provider payload is normalized.
+SQL filters still do not interpret transaction-only reversal arrays or malformed
+status strings exactly like the gateway parser. Normal settlement/reversal writes
+make financial/order state authoritative; unusual still-pending payloads and
+store-only evidence require a separate demonstrated case before further changes.
+Optional revision fields for older purchase clients were not made mandatory in
+this pass; current mobile already sends the revision.
+
+Verification: three non-overlapping backend groups passed 274 tests / 2190
+assertions. Nine checkout/mobile suites passed 41 tests; full TypeScript and
+changed-file ESLint passed. The new entitlement matrix uses production migrations
+and paid-credit/debit provenance, including grant upgrades, holds, invalid receipts,
+drafted courses and non-contiguous course IDs. The previously reproduced detail
+query duplication is guarded by a scalar/batch query comparison. No live balance,
+price, provider credentials or payment was changed and no APK was built.
+
+The deployed coin-rules page was also reloaded and inspected at actual widths
+360 and 1024px. All 58 rendered form controls stayed inside the viewport; rule
+name fields measured about 249px and 301px respectively. Screenshots confirmed
+contained save/delete actions. Temporary viewport overrides were reset afterward.
+This confirms that page's responsive repair, not every dashboard page.
+
 ## Attribution boundary
 
 - Original mobile developer baseline: `70d869d` in the team mobile repository.

@@ -235,6 +235,19 @@ final class CoursePurchaseController extends Controller
                     ) {
                         throw new \DomainException('course_access_under_review');
                     }
+                    $currentTerms = $planService->termsForEnrollment($existingEnrollment);
+                    $currentPlanCode = strtolower(trim((string) ($currentTerms['code'] ?? '')));
+                    if (
+                        $currentPlanCode === ''
+                        || !hash_equals($currentPlanCode, $requestedPlanCode)
+                    ) {
+                        return [
+                            'access_changed' => true,
+                            'course_id' => (int) $lockedCourse->id,
+                            'requested_plan_code' => $requestedPlanCode,
+                            'current_plan_terms' => $currentTerms,
+                        ];
+                    }
                     return [
                         'enrollment' => $existingEnrollment,
                         'order' => $existingEnrollment->order,
@@ -242,7 +255,7 @@ final class CoursePurchaseController extends Controller
                         'amount' => 0,
                         'already_enrolled' => true,
                         'idempotent_replay' => false,
-                        'plan_terms' => $planService->termsForEnrollment($existingEnrollment),
+                        'plan_terms' => $currentTerms,
                     ];
                 }
 
@@ -536,6 +549,27 @@ final class CoursePurchaseController extends Controller
                 'message' => "تعذّر إكمال الشراء\nحاول مرة أخرى",
                 'data' => null,
             ], 500);
+        }
+
+        if (($result['access_changed'] ?? false) === true) {
+            $currentTerms = is_array($result['current_plan_terms'] ?? null)
+                ? $result['current_plan_terms']
+                : null;
+
+            return response()->json([
+                'status' => 409,
+                'success' => false,
+                'code' => 'course_access_changed',
+                'message' => "تغيّر وصولك إلى الكورس\nحدّث الصفحة قبل المتابعة",
+                'data' => [
+                    'course_id' => (int) $result['course_id'],
+                    'requested_access_plan_code' => (string) $result['requested_plan_code'],
+                    'current_access_plan' => $currentTerms
+                        ? $planService->publicPayloadFromTerms($currentTerms)
+                        : null,
+                    'already_enrolled' => true,
+                ],
+            ], 409);
         }
 
         if (!$result['already_enrolled']) {

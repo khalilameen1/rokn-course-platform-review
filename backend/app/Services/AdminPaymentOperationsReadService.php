@@ -26,15 +26,29 @@ final readonly class AdminPaymentOperationsReadService
 
     private const CREATED_STATUSES = ['NOT_FOUND', 'UNPAID', 'INITIATED'];
 
+    /**
+     * Provider states that may still settle without another learner action.
+     * A local HPP deadline must not hide these attempts from operations.
+     */
+    private const CAPTURABLE_STATUSES = [
+        'AUTHORIZED', 'PROCESSING', 'SUCCESS', 'CAPTURED', 'PAID',
+    ];
+
+    /** Same first-non-null precedence as KashierGatewayEvidenceService::status(). */
     private const EVIDENCE_STATUS_PATHS = [
-        'payment_gateway_response->paymentStatus',
-        'payment_gateway_response->payment_status',
-        'payment_gateway_response->status',
         'payment_gateway_response->response->paymentStatus',
         'payment_gateway_response->response->payment_status',
-        'payment_gateway_response->response->status',
+        'payment_gateway_response->response->order->paymentStatus',
+        'payment_gateway_response->response->order->payment_status',
+        'payment_gateway_response->response->data->0->paymentStatus',
+        'payment_gateway_response->response->data->0->payment_status',
         'payment_gateway_response->data->paymentStatus',
+        'payment_gateway_response->data->payment_status',
+        'payment_gateway_response->paymentStatus',
+        'payment_gateway_response->payment_status',
+        'payment_gateway_response->response->status',
         'payment_gateway_response->data->status',
+        'payment_gateway_response->status',
     ];
 
     public function __construct(
@@ -114,6 +128,16 @@ final readonly class AdminPaymentOperationsReadService
         $this->decorate($orders->getCollection());
 
         return $orders;
+    }
+
+    /** Provider checkout attempts that still need operational follow-up. */
+    public function openProviderCheckouts(): Builder
+    {
+        return Order::query()
+            ->whereIn('payment_method', self::PROVIDER_METHODS)
+            ->whereNotNull('package_id')
+            ->where('status', Order::STATUS_PENDING)
+            ->where(fn (Builder $open) => $this->whereOperationallyOpen($open));
     }
 
     /** @return array<string, string> */
@@ -204,20 +228,11 @@ final readonly class AdminPaymentOperationsReadService
     private function applyOperationState(Builder $query, string $state): void
     {
         if ($state === 'paid') {
-            $query->where('status', Order::STATUS_APPROVED);
+            $query->financiallyEffective();
             return;
         }
         if ($state === 'expired') {
-            $query->whereIn('payment_method', self::PROVIDER_METHODS)
-                ->where(function (Builder $expired): void {
-                    $expired->where(function (Builder $open): void {
-                        $open->where('status', Order::STATUS_PENDING)
-                            ->where(fn (Builder $deadline) => $this->whereExpiredDeadline($deadline));
-                    })->orWhere(function (Builder $closed): void {
-                        $closed->where('status', Order::STATUS_CANCELLED)
-                            ->where(fn (Builder $evidence) => $this->whereKnownProviderStatus($evidence, ['EXPIRED']));
-                    });
-                });
+            $this->whereOperationallyExpired($query);
             return;
         }
         if ($state === 'created') {
@@ -234,7 +249,7 @@ final readonly class AdminPaymentOperationsReadService
                         fn (Builder $known) => $this->whereKnownProviderStatus($known, self::CREATED_STATUSES)
                     );
                 })
-                ->whereNot(fn (Builder $expired) => $this->whereExpiredDeadline($expired));
+                ->where(fn (Builder $open) => $this->whereOperationallyOpen($open));
             return;
         }
         if ($state === 'pending') {
@@ -251,7 +266,7 @@ final readonly class AdminPaymentOperationsReadService
                                         );
                                 })
                                 ->where(fn (Builder $known) => $this->whereNoKnownProviderStatus($known, self::CREATED_STATUSES))
-                                ->whereNot(fn (Builder $expired) => $this->whereExpiredDeadline($expired));
+                                ->where(fn (Builder $open) => $this->whereOperationallyOpen($open));
                         });
                 });
             return;
@@ -267,11 +282,22 @@ final readonly class AdminPaymentOperationsReadService
             return;
         }
 
-        $query->where('status', Order::STATUS_CANCELLED)
-            ->where(fn (Builder $evidence) => $this->whereNoKnownProviderStatus(
-                $evidence,
-                array_merge(['EXPIRED'], self::FAILURE_STATUSES)
-            ));
+        $query->where(function (Builder $closed): void {
+            $closed->where(function (Builder $financiallyClosed): void {
+                $financiallyClosed->where('status', Order::STATUS_APPROVED)
+                    ->where(function (Builder $ineffective): void {
+                        $ineffective->whereNull('financial_status')
+                            ->orWhere('financial_status', '!=', Order::FINANCIAL_SETTLED)
+                            ->orWhereNotNull('reversed_at');
+                    });
+            })->orWhere(function (Builder $cancelled): void {
+                $cancelled->where('status', Order::STATUS_CANCELLED)
+                    ->where(fn (Builder $evidence) => $this->whereNoKnownProviderStatus(
+                        $evidence,
+                        array_merge(['EXPIRED'], self::FAILURE_STATUSES)
+                    ));
+            });
+        });
     }
 
     private function whereExpiredDeadline(Builder $query): void
@@ -286,6 +312,42 @@ final readonly class AdminPaymentOperationsReadService
         });
     }
 
+    private function whereOperationallyExpired(Builder $query): void
+    {
+        $query->whereIn('payment_method', self::PROVIDER_METHODS)
+            ->where(function (Builder $expired): void {
+                $expired->where(function (Builder $providerExpired): void {
+                    $providerExpired
+                        ->whereIn('status', [Order::STATUS_PENDING, Order::STATUS_CANCELLED])
+                        ->where(fn (Builder $provider) => $this->whereKnownProviderStatus(
+                            $provider,
+                            ['EXPIRED']
+                        ));
+                })->orWhere(function (Builder $localExpiry): void {
+                    $localExpiry->where('status', Order::STATUS_PENDING)
+                        ->where(fn (Builder $deadline) => $this->whereExpiredDeadline($deadline))
+                        ->where(fn (Builder $provider) => $this->whereNoKnownProviderStatus(
+                            $provider,
+                            self::CAPTURABLE_STATUSES
+                        ));
+                });
+            });
+    }
+
+    private function whereOperationallyOpen(Builder $query): void
+    {
+        $query->where(fn (Builder $provider) => $this->whereNoKnownProviderStatus(
+            $provider,
+            ['EXPIRED']
+        ))->where(function (Builder $open): void {
+            $open->whereNot(fn (Builder $deadline) => $this->whereExpiredDeadline($deadline))
+                ->orWhere(fn (Builder $provider) => $this->whereKnownProviderStatus(
+                    $provider,
+                    self::CAPTURABLE_STATUSES
+                ));
+        });
+    }
+
     private function whereFailureEvidence(Builder $query): void
     {
         $this->whereKnownProviderStatus($query, self::FAILURE_STATUSES);
@@ -294,70 +356,75 @@ final readonly class AdminPaymentOperationsReadService
     /** @param list<string> $statuses */
     private function whereKnownProviderStatus(Builder $query, array $statuses): void
     {
-        $statuses = array_values(array_unique(array_merge(
-            $statuses,
-            array_map('strtolower', $statuses)
-        )));
-        $query->where(function (Builder $known) use ($statuses): void {
-            $known->where(fn (Builder $evidence) => $this->whereEvidenceStatus($evidence, $statuses))
-                ->orWhereHas(
-                    'latestPaymentReconciliationFinding',
-                    static fn (Builder $finding) => $finding->whereIn('provider_status', $statuses)
-                );
-        });
-    }
-
-    /** @param list<string> $statuses */
-    private function whereEvidenceStatus(Builder $query, array $statuses): void
-    {
-        $statuses = array_values(array_unique(array_merge(
-            $statuses,
-            array_map('strtolower', $statuses)
-        )));
-        $query->where(function (Builder $evidence) use ($statuses): void {
-            foreach (self::EVIDENCE_STATUS_PATHS as $index => $path) {
-                $method = $index === 0 ? 'whereIn' : 'orWhereIn';
-                $evidence->{$method}($path, $statuses);
-            }
-        });
-    }
-
-    /** @param list<string> $statuses */
-    private function whereEvidenceExcludes(Builder $query, array $statuses): void
-    {
-        $statuses = array_values(array_unique(array_merge(
-            $statuses,
-            array_map('strtolower', $statuses)
-        )));
-        foreach (self::EVIDENCE_STATUS_PATHS as $path) {
-            $query->where(function (Builder $value) use ($path, $statuses): void {
-                $value->whereNull($path)->orWhereNotIn($path, $statuses);
-            });
-        }
+        $this->whereProviderStatusMatches($query, $statuses, true);
     }
 
     /** @param list<string> $statuses */
     private function whereNoKnownProviderStatus(Builder $query, array $statuses): void
     {
+        $this->whereProviderStatusMatches($query, $statuses, false);
+    }
+
+    /** @param list<string> $statuses */
+    private function whereProviderStatusMatches(Builder $query, array $statuses, bool $matches): void
+    {
         $statuses = array_values(array_unique(array_merge(
             $statuses,
             array_map('strtolower', $statuses)
         )));
-        $query->where(fn (Builder $evidence) => $this->whereEvidenceExcludes($evidence, $statuses))
-            ->whereDoesntHave(
-                'latestPaymentReconciliationFinding',
-                static fn (Builder $finding) => $finding->whereIn('provider_status', $statuses)
-            );
+        $query->where(function (Builder $status) use ($statuses, $matches): void {
+            foreach (self::EVIDENCE_STATUS_PATHS as $index => $path) {
+                $method = $index === 0 ? 'where' : 'orWhere';
+                $earlierPaths = array_slice(self::EVIDENCE_STATUS_PATHS, 0, $index);
+                $status->{$method}(function (Builder $candidate) use (
+                    $earlierPaths,
+                    $path,
+                    $statuses,
+                    $matches
+                ): void {
+                    foreach ($earlierPaths as $earlierPath) {
+                        $candidate->whereNull($earlierPath);
+                    }
+                    if ($matches) {
+                        $candidate->whereIn($path, $statuses);
+                    } else {
+                        $candidate->whereNotNull($path)->whereNotIn($path, $statuses);
+                    }
+                });
+            }
+            $status->orWhere(function (Builder $fallback) use ($statuses, $matches): void {
+                foreach (self::EVIDENCE_STATUS_PATHS as $path) {
+                    $fallback->whereNull($path);
+                }
+                $relation = static fn (Builder $finding) => $finding->whereIn('provider_status', $statuses);
+                if ($matches) {
+                    $fallback->whereHas('latestPaymentReconciliationFinding', $relation);
+                } else {
+                    $fallback->whereDoesntHave('latestPaymentReconciliationFinding', $relation);
+                }
+            });
+        });
     }
 
     private function operationState(Order $order, ?string $providerStatus): string
     {
-        if ($order->status === Order::STATUS_APPROVED) return 'paid';
+        if ($order->isFinanciallyEffective()) return 'paid';
+        if ($order->status === Order::STATUS_APPROVED) return 'cancelled';
         if (
             $order->requiresProviderVerification()
             && (
-                ($order->status === Order::STATUS_PENDING && $order->isCheckoutExpired())
-                || $providerStatus === 'EXPIRED'
+                (
+                    $order->status === Order::STATUS_PENDING
+                    && $order->isCheckoutExpired()
+                    && !(
+                        $providerStatus !== null
+                        && in_array($providerStatus, self::CAPTURABLE_STATUSES, true)
+                    )
+                )
+                || (
+                    in_array($order->status, [Order::STATUS_PENDING, Order::STATUS_CANCELLED], true)
+                    && $providerStatus === 'EXPIRED'
+                )
             )
         ) return 'expired';
         if ($order->status === Order::STATUS_REJECTED) return 'failed';
@@ -398,7 +465,7 @@ final readonly class AdminPaymentOperationsReadService
             'paid' => 'مدفوع',
             'failed' => 'فشل الدفع',
             'expired' => 'انتهت المحاولة',
-            'cancelled' => 'أُغلقت المحاولة',
+            'cancelled' => 'أُغلقت العملية',
         ];
     }
 

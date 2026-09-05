@@ -11,6 +11,7 @@ use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Services\CoursePublishingService;
 use App\Services\CourseFinancialLedgerReportService;
+use App\Services\AdminPaymentOperationsReadService;
 use App\Services\PaymentChannelReportService;
 use App\Support\BusinessClock;
 
@@ -29,6 +30,7 @@ class HomeController extends Controller
     public function index(
         CoursePublishingService $publishingService,
         PaymentChannelReportService $paymentChannels,
+        AdminPaymentOperationsReadService $paymentOperations,
         CourseFinancialLedgerReportService $financialLedger,
         AdminPermissionMatrix $permissions
     )
@@ -99,7 +101,9 @@ class HomeController extends Controller
         // remain virtual units and are reported independently below.
         $paymentChannelReport = $paymentChannels->summary();
         $totalRevenue = (float) $paymentChannelReport['egp']['confirmed_gross_amount'];
-        $pendingCash = $paymentChannels->pendingCheckoutSummary();
+        $pendingCash = $paymentChannels->pendingCheckoutSummary(
+            $paymentOperations->openProviderCheckouts()
+        );
 
         $businessNow = BusinessClock::now();
         $chartStart = $businessNow->subMonths(5)->startOfMonth()->utc();
