@@ -40,6 +40,7 @@ export const useProjectReview = ({
   const appIsActive = useAppActiveState();
   const reviewActive = active && appIsActive;
   const pendingMapRefreshRef = useRef<string | null>(null);
+  const mapRefreshSequenceRef = useRef(0);
   const courseProjectIds =
     course?.modules
       .flatMap(module => module.projects || [])
@@ -56,6 +57,7 @@ export const useProjectReview = ({
       const activeCourseId = course?.id;
       const ownerGeneration = refs.ownerGeneration.current;
       if (!activeCourseId) return null;
+      const refreshSequence = ++mapRefreshSequenceRef.current;
       try {
         const result = await loadCourseLearningData(activeCourseId, {
           reconcilePending: false,
@@ -63,6 +65,7 @@ export const useProjectReview = ({
         const refreshed = await applyLocalLearningState(result.course);
         if (
           !refs.mounted.current ||
+          mapRefreshSequenceRef.current !== refreshSequence ||
           refs.ownerGeneration.current !== ownerGeneration ||
           refs.loadedCourse.current?.id !== activeCourseId
         ) {
