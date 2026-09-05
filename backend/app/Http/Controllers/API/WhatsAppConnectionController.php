@@ -15,6 +15,7 @@ use App\Services\StudentNotificationService;
 use App\Services\WhatsAppLinkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 final class WhatsAppConnectionController extends Controller
 {
@@ -99,7 +100,33 @@ final class WhatsAppConnectionController extends Controller
         }
 
         try {
-            $result = $this->links->consumeInbound($sender, $message);
+            $result = DB::transaction(function () use ($sender, $message): array {
+                $result = $this->links->consumeInbound($sender, $message);
+
+                if ($result['matched'] && $result['user'] && $result['earned_coins'] > 0) {
+                    // The token identifies the exact campaign even when a newer
+                    // WhatsApp campaign exists or the original was retired.
+                    $methodId = $result['method_id'];
+                    $method = $methodId
+                        ? CoinEarningMethod::withTrashed()->find($methodId)
+                        : null;
+                    StudentNotificationService::notifyUser(
+                        $result['user'],
+                        StudentNotificationService::TYPE_WHATSAPP_CONNECTED,
+                        'تم ربط واتساب',
+                        'WhatsApp Connected',
+                        'أضفنا ' . $result['earned_coins'] . " عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
+                        $result['earned_coins'] . ' Rokn coins were added to your wallet.',
+                        null,
+                        $method ? CoinEarningMethod::class : null,
+                        $method?->id,
+                        'whatsapp-linked:' . $result['user']->id,
+                        ['coins' => (int) $result['earned_coins']]
+                    );
+                }
+
+                return $result;
+            }, 3);
         } catch (\DomainException $exception) {
             if ($exception->getMessage() === 'whatsapp_phone_in_use') {
                 $this->sendReply(
@@ -116,30 +143,6 @@ final class WhatsAppConnectionController extends Controller
                 200,
                 $data
             );
-        }
-
-        // A provider retry also repairs the inbox receipt when the first
-        // request committed the wallet entry but stopped before this point.
-        // delivery_key makes this safe across duplicate webhooks.
-        if ($result['matched'] && $result['user'] && $result['earned_coins'] > 0) {
-            $method = CoinEarningMethod::query()->where('action_key', 'link_whatsapp')->first();
-            try {
-                StudentNotificationService::notifyUser(
-                    $result['user'],
-                    StudentNotificationService::TYPE_WHATSAPP_CONNECTED,
-                    'تم ربط واتساب',
-                    'WhatsApp Connected',
-                    'أضفنا ' . $result['earned_coins'] . " عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
-                    $result['earned_coins'] . ' Rokn coins were added to your wallet.',
-                    null,
-                    $method ? CoinEarningMethod::class : null,
-                    $method?->id,
-                    'whatsapp-linked:' . $result['user']->id,
-                    ['coins' => (int) $result['earned_coins']]
-                );
-            } catch (\Throwable $exception) {
-                report($exception);
-            }
         }
 
         if ($result['matched'] && ($result['reward_deferred'] ?? false)) {

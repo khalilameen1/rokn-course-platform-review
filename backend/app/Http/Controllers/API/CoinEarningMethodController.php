@@ -194,7 +194,18 @@ final class CoinEarningMethodController extends Controller
         ]);
 
         $user = auth('api')->user();
-        $method = CoinEarningMethod::learnerTask()->findOrFail($request->integer('method_id'));
+        // A successful claim is an immutable receipt. Resolve retired campaigns
+        // too so a retry after a lost HTTP response can still acknowledge the
+        // committed reward instead of turning it into a misleading 404.
+        $method = CoinEarningMethod::withTrashed()->findOrFail($request->integer('method_id'));
+        $historicalActionKey = trim((string) $method->action_key);
+        if (
+            $historicalActionKey === ''
+            || $historicalActionKey === 'register'
+            || (int) $method->coins_amount <= 0
+        ) {
+            abort(404);
+        }
         if ($this->tombstones->userHasConsumedMethod($user, $method)) {
             $freshUser = $user->fresh();
             return response()->json([
@@ -209,25 +220,32 @@ final class CoinEarningMethodController extends Controller
                 ],
             ]);
         }
-        if (
-            $method->action_key === 'link_whatsapp'
-            && !$user->whatsappConnection()
-                ->where('ownership_verified', true)
-                ->whereNotNull('verified_at')
-                ->exists()
-        ) {
-            return $this->error(
-                'لم يكتمل ربط واتساب بعد',
-                409,
-                'whatsapp_not_verified'
-            );
-        }
-
         try {
             $result = DB::transaction(function () use ($user, $method, $walletService): array {
                 // Serializes two rapid claim taps even before an attempt row exists.
                 \App\Models\User::query()->lockForUpdate()->findOrFail($user->id);
-                $methodQuery = CoinEarningMethod::query();
+
+                $attempt = UserCoinTaskAttempt::query()
+                    ->where('user_id', $user->id)
+                    ->where('coin_earning_method_id', $method->id)
+                    ->lockForUpdate()
+                    ->first();
+                $earning = $user->coinEarnings()
+                    ->where('coin_earning_method_id', $method->id)
+                    ->first();
+
+                // Historical success wins over today's catalogue state and
+                // current verification settings. This is the recovery path for
+                // a response lost just before a campaign was stopped or retired.
+                if ($earning || $attempt?->status === UserCoinTaskAttempt::STATUS_CLAIMED) {
+                    return [
+                        'already_claimed' => true,
+                        'earned_amount' => (int) ($earning?->amount ?? $method->coins_amount),
+                        'new_balance' => $walletService->balances($user->fresh())['total'],
+                    ];
+                }
+
+                $methodQuery = CoinEarningMethod::withTrashed();
                 // Unlimited campaigns have no shared financial aggregate.
                 // Only a finite global quota needs the campaign-row lock;
                 // otherwise every learner claiming the same task would queue
@@ -236,25 +254,17 @@ final class CoinEarningMethodController extends Controller
                     $methodQuery->lockForUpdate();
                 }
                 $lockedMethod = $methodQuery->findOrFail($method->id);
-                if (!$lockedMethod->isAvailableNow()) {
+                if ($lockedMethod->trashed() || !$lockedMethod->isLearnerTask()) {
                     throw new \DomainException('task_unavailable');
                 }
-
-                $attempt = UserCoinTaskAttempt::query()
-                    ->where('user_id', $user->id)
-                    ->where('coin_earning_method_id', $method->id)
-                    ->lockForUpdate()
-                    ->first();
-
-                $earning = $user->coinEarnings()
-                    ->where('coin_earning_method_id', $method->id)
-                    ->first();
-                if ($earning || $attempt?->status === UserCoinTaskAttempt::STATUS_CLAIMED) {
-                    return [
-                        'already_claimed' => true,
-                        'earned_amount' => (int) ($earning?->amount ?? $method->coins_amount),
-                        'new_balance' => $walletService->balances($user->fresh())['total'],
-                    ];
+                if (
+                    $lockedMethod->action_key === 'link_whatsapp'
+                    && !$user->whatsappConnection()
+                        ->where('ownership_verified', true)
+                        ->whereNotNull('verified_at')
+                        ->exists()
+                ) {
+                    throw new \DomainException('whatsapp_not_verified');
                 }
                 if (!$lockedMethod->hasClaimCapacity()) {
                     throw new \DomainException('task_quota_reached');
@@ -303,6 +313,28 @@ final class CoinEarningMethodController extends Controller
                     'claimed_at' => now(),
                 ]);
 
+                // The inbox receipt belongs to the same durable operation as
+                // the wallet credit. Push delivery remains an after-commit side
+                // effect inside StudentNotificationService, but there is no
+                // crash window that can leave a credited task without its inbox
+                // notification forever.
+                StudentNotificationService::notifyUser(
+                    $user->fresh(),
+                    StudentNotificationService::TYPE_COINS_CLAIMED,
+                    'وصلت مكافأتك',
+                    'Coins Claimed',
+                    'أضفنا ' . $transaction->amount . " عملة إلى محفظتك\nافتح المحفظة لمعرفة التفاصيل",
+                    $transaction->amount . ' coins have been added to your wallet',
+                    null,
+                    CoinEarningMethod::class,
+                    $lockedMethod->id,
+                    'coins-claimed:' . $user->id . ':' . $lockedMethod->id,
+                    [
+                        'coins' => (int) $transaction->amount,
+                        'task' => (string) ($lockedMethod->title_ar ?: $lockedMethod->title_en),
+                    ]
+                );
+
                 return [
                     'already_claimed' => false,
                     'earned_amount' => (int) $transaction->amount,
@@ -316,36 +348,13 @@ final class CoinEarningMethodController extends Controller
                     'task_not_started' => 'لم تبدأ المهمة بعد',
                     'task_quota_reached' => 'انتهت مكافآت هذه الحملة',
                     'task_unavailable' => 'هذه المهمة غير متاحة الآن',
+                    'whatsapp_not_verified' => 'لم يكتمل ربط واتساب بعد',
                     'reward_balance_full' => "استخدم بعض عملات المكافآت أولًا\nثم استلم هذه المكافأة",
                     default => 'لم تكتمل المهمة بعد',
                 },
                 409,
                 $code
             );
-        }
-
-        if (!$result['already_claimed']) {
-            try {
-                StudentNotificationService::notifyUser(
-                    $user->fresh(),
-                    StudentNotificationService::TYPE_COINS_CLAIMED,
-                    'وصلت مكافأتك',
-                    'Coins Claimed',
-                    'أضفنا ' . $result['earned_amount'] . " عملة إلى محفظتك\nافتح المحفظة لمعرفة التفاصيل",
-                    $result['earned_amount'] . ' coins have been added to your wallet',
-                    null,
-                    CoinEarningMethod::class,
-                    $method->id,
-                    'coins-claimed:' . $user->id . ':' . $method->id,
-                    [
-                        'coins' => (int) $result['earned_amount'],
-                        'task' => (string) ($method->title_ar ?: $method->title_en),
-                    ]
-                );
-            } catch (\Throwable $exception) {
-                // Reward delivery is complete even if the optional push service is down.
-                report($exception);
-            }
         }
 
         return response()->json([

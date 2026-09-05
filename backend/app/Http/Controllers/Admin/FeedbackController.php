@@ -165,15 +165,31 @@ final class FeedbackController extends Controller
                 User::withTrashed()->whereKey($feedback->user_id)->lockForUpdate()->first();
             }
             $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($feedback->id);
-            abort_if((int) $locked->version !== (int) $validated['version'], 409, 'عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة');
             $fromStatus = (string) $locked->status;
-            $statusChanged = $fromStatus !== $validated['status'];
             $closed = in_array($validated['status'], ['resolved', 'closed', 'dismissed'], true);
+            $desiredAssignedTo = isset($validated['assigned_to'])
+                ? (int) $validated['assigned_to']
+                : null;
+            $desiredResolutionKind = $closed
+                ? ($validated['resolution_kind'] ?? null)
+                : null;
+            if ((int) $locked->version !== (int) $validated['version']) {
+                // A browser may retry the same form after the first response was
+                // lost. Treat an already-applied desired state as success, while
+                // retaining optimistic locking for every genuinely stale edit.
+                $alreadyApplied = $fromStatus === $validated['status']
+                    && (string) $locked->priority === $validated['priority']
+                    && ($locked->assigned_to === null ? null : (int) $locked->assigned_to) === $desiredAssignedTo
+                    && ($locked->resolution_kind ?: null) === $desiredResolutionKind;
+                abort_unless($alreadyApplied, 409, 'عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة');
+                return;
+            }
+            $statusChanged = $fromStatus !== $validated['status'];
             $updates = [
                 'status' => $validated['status'],
                 'priority' => $validated['priority'],
-                'assigned_to' => $validated['assigned_to'] ?? null,
-                'resolution_kind' => $closed ? ($validated['resolution_kind'] ?? null) : null,
+                'assigned_to' => $desiredAssignedTo,
+                'resolution_kind' => $desiredResolutionKind,
                 'resolved_at' => $validated['status'] === 'resolved' ? ($locked->resolved_at ?: now()) : null,
                 'closed_at' => in_array($validated['status'], ['closed', 'dismissed'], true)
                     ? ($locked->closed_at ?: now()) : null,

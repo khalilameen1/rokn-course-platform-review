@@ -646,9 +646,11 @@ export const loadProductFeedbackCases = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<ProductFeedbackCase[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  const accountOwned = boundary.scope.startsWith('user-');
   const cases = new Map<string, ProductFeedbackCase>();
   let loadError: unknown;
-  if (boundary.scope.startsWith('user-')) {
+  let accountIndexError: unknown;
+  if (accountOwned) {
     try {
       assertAccountSessionBoundary(boundary);
       const response = await publicRequest.get('feedback');
@@ -663,6 +665,7 @@ export const loadProductFeedbackCases = async (
       data.items.map(parseCase).forEach(item => cases.set(item.publicId, item));
     } catch (error) {
       loadError = error;
+      accountIndexError = error;
     }
   }
 
@@ -693,6 +696,11 @@ export const loadProductFeedbackCases = async (
       loadError = result.reason;
     }
   });
+  // The account index is authoritative. Returning only this installation's
+  // receipts after that request failed turns a refresh into apparent data loss:
+  // cases created on another device disappear even though they still exist.
+  // Reject the partial snapshot so the screen keeps its last complete list.
+  if (accountOwned && accountIndexError) throw accountIndexError;
   if (!cases.size && loadError) throw loadError;
   return [...cases.values()].sort(
     (a, b) =>

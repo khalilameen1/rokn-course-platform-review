@@ -39,6 +39,7 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   extractApiToken,
+  sessionIdentityKey,
 } from '../constants/helpers';
 import {
   currentDeviceClass,
@@ -97,6 +98,7 @@ export default function DeviceSessions() {
   const insets = useSafeAreaInsets();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const authenticated = Boolean(extractApiToken(storedUser));
+  const accountIdentity = sessionIdentityKey(storedUser);
   const [sessions, setSessions] = useState<DeviceSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -105,8 +107,13 @@ export default function DeviceSessions() {
   const loadGenerationRef = useRef(0);
   const mutationFlightRef = useRef(false);
   const screenActiveRef = useRef(false);
+  const accountIdentityRef = useRef(accountIdentity);
+  accountIdentityRef.current = accountIdentity;
 
-  const load = useCallback(async (refresh = false) => {
+  const load = useCallback(async (
+    refresh = false,
+    requestedIdentity = accountIdentityRef.current,
+  ) => {
     const generation = ++loadGenerationRef.current;
     refresh ? setRefreshing(true) : setLoading(true);
     setError('');
@@ -114,10 +121,18 @@ export default function DeviceSessions() {
       const boundary = await captureAccountSessionBoundary();
       const nextSessions = await getDeviceSessions();
       assertAccountSessionBoundary(boundary);
-      if (generation !== loadGenerationRef.current) return;
+      if (
+        generation !== loadGenerationRef.current ||
+        requestedIdentity !== accountIdentityRef.current
+      )
+        return;
       setSessions(nextSessions);
     } catch (requestError) {
-      if (generation !== loadGenerationRef.current) return;
+      if (
+        generation !== loadGenerationRef.current ||
+        requestedIdentity !== accountIdentityRef.current
+      )
+        return;
       if (
         requestError instanceof Error &&
         requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -127,7 +142,10 @@ export default function DeviceSessions() {
       }
       setError('تعذّر تحميل الأجهزة الآن');
     } finally {
-      if (generation === loadGenerationRef.current) {
+      if (
+        generation === loadGenerationRef.current &&
+        requestedIdentity === accountIdentityRef.current
+      ) {
         setLoading(false);
         setRefreshing(false);
       }
@@ -139,7 +157,7 @@ export default function DeviceSessions() {
       screenActiveRef.current = true;
       if (!mutationFlightRef.current) setRemoving(null);
       if (authenticated) {
-        void load();
+        void load(false, accountIdentity);
       } else {
         loadGenerationRef.current += 1;
         setSessions([]);
@@ -151,7 +169,7 @@ export default function DeviceSessions() {
         screenActiveRef.current = false;
         loadGenerationRef.current += 1;
       };
-    }, [authenticated, load]),
+    }, [accountIdentity, authenticated, load]),
   );
 
   const revoke = (session: DeviceSession) => {
@@ -166,6 +184,7 @@ export default function DeviceSessions() {
           style: 'destructive',
           onPress: async () => {
             if (mutationFlightRef.current) return;
+            const requestedIdentity = accountIdentityRef.current;
             mutationFlightRef.current = true;
             loadGenerationRef.current += 1;
             setRemoving(session.id);
@@ -173,13 +192,19 @@ export default function DeviceSessions() {
               const boundary = await captureAccountSessionBoundary();
               await revokeDeviceSession(session.id);
               assertAccountSessionBoundary(boundary);
-              if (screenActiveRef.current) {
+              if (
+                screenActiveRef.current &&
+                requestedIdentity === accountIdentityRef.current
+              ) {
                 setSessions(current =>
                   current.filter(item => item.id !== session.id),
                 );
               }
             } catch (requestError) {
-              if (screenActiveRef.current) {
+              if (
+                screenActiveRef.current &&
+                requestedIdentity === accountIdentityRef.current
+              ) {
                 if (
                   requestError instanceof Error &&
                   requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -191,7 +216,11 @@ export default function DeviceSessions() {
               }
             } finally {
               mutationFlightRef.current = false;
-              if (screenActiveRef.current) setRemoving(null);
+              if (
+                screenActiveRef.current &&
+                requestedIdentity === accountIdentityRef.current
+              )
+                setRemoving(null);
             }
           },
         },
@@ -216,6 +245,7 @@ export default function DeviceSessions() {
           style: 'destructive',
           onPress: async () => {
             if (mutationFlightRef.current) return;
+            const requestedIdentity = accountIdentityRef.current;
             mutationFlightRef.current = true;
             loadGenerationRef.current += 1;
             setRemoving('all');
@@ -223,13 +253,19 @@ export default function DeviceSessions() {
               const boundary = await captureAccountSessionBoundary();
               await revokeOtherDeviceSessions();
               assertAccountSessionBoundary(boundary);
-              if (screenActiveRef.current) {
+              if (
+                screenActiveRef.current &&
+                requestedIdentity === accountIdentityRef.current
+              ) {
                 setSessions(current =>
                   current.filter(session => session.current),
                 );
               }
             } catch (requestError) {
-              if (screenActiveRef.current) {
+              if (
+                screenActiveRef.current &&
+                requestedIdentity === accountIdentityRef.current
+              ) {
                 if (
                   requestError instanceof Error &&
                   requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -241,7 +277,11 @@ export default function DeviceSessions() {
               }
             } finally {
               mutationFlightRef.current = false;
-              if (screenActiveRef.current) setRemoving(null);
+              if (
+                screenActiveRef.current &&
+                requestedIdentity === accountIdentityRef.current
+              )
+                setRemoving(null);
             }
           },
         },

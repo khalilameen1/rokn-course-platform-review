@@ -108,7 +108,7 @@ final readonly class WhatsAppLinkService
         ];
     }
 
-    /** @return array{matched:bool,already_claimed:bool,user:?User,coins:int,earned_coins:int,balance:int,reward_deferred:bool,reward_unavailable:bool} */
+    /** @return array{matched:bool,already_claimed:bool,user:?User,method_id:?int,coins:int,earned_coins:int,balance:int,reward_deferred:bool,reward_unavailable:bool} */
     public function consumeInbound(string $sender, string $message): array
     {
         $rawToken = $this->extractToken($message);
@@ -167,6 +167,7 @@ final readonly class WhatsAppLinkService
                     'matched' => true,
                     'already_claimed' => $alreadyClaimed,
                     'user' => $user,
+                    'method_id' => (int) $method->id,
                     'coins' => 0,
                     // Allows the idempotent notification receipt to be repaired
                     // if the first webhook committed the wallet credit but the
@@ -291,6 +292,7 @@ final readonly class WhatsAppLinkService
                 'matched' => true,
                 'already_claimed' => $alreadyClaimed,
                 'user' => $user->fresh(),
+                'method_id' => (int) $method->id,
                 'coins' => $coins,
                 'earned_coins' => $earnedCoins,
                 'balance' => $balance,
@@ -331,13 +333,14 @@ final readonly class WhatsAppLinkService
         return preg_match('/^[1-9][0-9]{9,14}$/', $digits) ? '+' . $digits : null;
     }
 
-    /** @return array{matched:false,already_claimed:false,user:null,coins:0,earned_coins:0,balance:0,reward_deferred:false,reward_unavailable:false} */
+    /** @return array{matched:false,already_claimed:false,user:null,method_id:null,coins:0,earned_coins:0,balance:0,reward_deferred:false,reward_unavailable:false} */
     private function unmatched(): array
     {
         return [
             'matched' => false,
             'already_claimed' => false,
             'user' => null,
+            'method_id' => null,
             'coins' => 0,
             'earned_coins' => 0,
             'balance' => 0,

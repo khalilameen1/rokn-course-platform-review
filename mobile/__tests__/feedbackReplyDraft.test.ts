@@ -281,4 +281,53 @@ describe('support case ownership and response contract', () => {
     expect(publicRequest.get).toHaveBeenCalledTimes(1);
     expect(publicRequest.get).toHaveBeenCalledWith('feedback');
   });
+
+  it('rejects a partial receipt fallback when the account index fails', async () => {
+    const publicId = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
+    const boundary = {epoch: 0, scope: 'user-a'} as const;
+    jest.mocked(publicRequest.post).mockResolvedValue({
+      data: {
+        data: {
+          attachments: [],
+          case_number: 'RKN12345',
+          created_at: '2026-09-04T12:00:00.000Z',
+          messages: [],
+          public_id: publicId,
+          status: 'new',
+        },
+      },
+    } as never);
+    await submitProductFeedback(
+      {
+        category: 'problem',
+        clientRequestId: '63efe954-8f6d-4d9e-8859-1bb02108b166',
+        message: 'يتوقف الفيديو عند الانتقال إلى المقطع التالي',
+      },
+      boundary,
+    );
+
+    jest
+      .mocked(publicRequest.get)
+      .mockRejectedValueOnce(new Error('ACCOUNT_INDEX_UNAVAILABLE'))
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            attachments: [],
+            case_number: 'RKN12345',
+            category: 'bug',
+            created_at: '2026-09-04T12:00:00.000Z',
+            message: 'يتوقف الفيديو عند الانتقال إلى المقطع التالي',
+            messages: [],
+            public_id: publicId,
+            status: 'received',
+            updated_at: '2026-09-04T12:00:00.000Z',
+          },
+        },
+      } as never);
+
+    await expect(loadProductFeedbackCases(boundary)).rejects.toThrow(
+      'ACCOUNT_INDEX_UNAVAILABLE',
+    );
+    expect(publicRequest.get).toHaveBeenCalledTimes(2);
+  });
 });
