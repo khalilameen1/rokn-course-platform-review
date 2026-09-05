@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "androidDependencyCount": 241,
   "androidProjectComponentCount": 23,
-  "podDependencyCount": 113,
+  "podDependencyCount": 127,
   "android": [
     {
       "coordinate": "androidx.activity:activity-ktx:1.9.3",
@@ -2121,6 +2121,22 @@
   ],
   "pods": [
     {
+      "coordinate": "AppAuth@2.1.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "AppCheckCore@11.3.1",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "BVLinearGradient@2.8.3",
       "licenses": [
         "MIT"
@@ -2137,7 +2153,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "EXApplication@55.0.17",
+      "coordinate": "EXApplication@55.0.19",
       "licenses": [
         "MIT"
       ],
@@ -2153,7 +2169,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "Expo@55.0.28",
+      "coordinate": "Expo@55.0.31",
       "licenses": [
         "MIT"
       ],
@@ -2161,7 +2177,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoAppleAuthentication@55.0.15",
+      "coordinate": "ExpoAdapterGoogleSignIn@16.1.2",
       "licenses": [
         "MIT"
       ],
@@ -2169,7 +2185,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoAsset@55.0.18",
+      "coordinate": "ExpoAppleAuthentication@55.0.17",
       "licenses": [
         "MIT"
       ],
@@ -2177,7 +2193,23 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoCrypto@55.0.17",
+      "coordinate": "ExpoAsset@55.0.20",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "ExpoCrypto@55.0.19",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "ExpoDocumentPicker@55.0.17",
       "licenses": [
         "MIT"
       ],
@@ -2193,7 +2225,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoFileSystem@55.0.24",
+      "coordinate": "ExpoFileSystem@55.0.26",
       "licenses": [
         "MIT"
       ],
@@ -2233,7 +2265,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoModulesCore@55.0.25",
+      "coordinate": "ExpoModulesCore@55.0.26",
       "licenses": [
         "MIT"
       ],
@@ -2241,7 +2273,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoModulesJSI@55.0.25",
+      "coordinate": "ExpoModulesJSI@55.0.26",
       "licenses": [
         "MIT"
       ],
@@ -2249,7 +2281,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoNotifications@55.0.25",
+      "coordinate": "ExpoNotifications@55.0.27",
       "licenses": [
         "MIT"
       ],
@@ -2257,7 +2289,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoSecureStore@55.0.16",
+      "coordinate": "ExpoSecureStore@55.0.18",
       "licenses": [
         "MIT"
       ],
@@ -2265,7 +2297,7 @@
       "firstPartyGenerated": false
     },
     {
-      "coordinate": "ExpoWebBrowser@55.0.18",
+      "coordinate": "ExpoWebBrowser@55.0.20",
       "licenses": [
         "MIT"
       ],
@@ -2278,6 +2310,54 @@
         "MIT"
       ],
       "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "GTMAppAuth@5.0.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "GTMSessionFetcher@3.5.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "GoogleSignIn@9.2.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "GoogleUtilities@8.1.3",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "PromisesObjC@2.4.1",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "PromisesSwift@2.4.1",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
       "firstPartyGenerated": false
     },
     {
@@ -2377,6 +2457,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "RNGoogleSignin@16.1.2",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "RNReanimated@4.2.1",
       "licenses": [
         "MIT"
@@ -2394,6 +2482,14 @@
     },
     {
       "coordinate": "RNScreens@4.23.0",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "RNSentry@7.11.0",
       "licenses": [
         "MIT"
       ],
@@ -2925,6 +3021,22 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "RecaptchaInterop@101.0.0",
+      "licenses": [
+        "Apache-2.0"
+      ],
+      "legalDocumentCount": 1,
+      "firstPartyGenerated": false
+    },
+    {
+      "coordinate": "Sentry@8.58.0",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "SocketRocket@0.7.1",
       "licenses": [
         "BSD-3-Clause"
@@ -3075,5 +3187,5 @@
       ]
     }
   ],
-  "inventoryHash": "4c3745d8c89bd1a4ccacf0f5c65d5b478818b1e7465eef2c29b75631dd8bafcc"
+  "inventoryHash": "89037565c5b17dac36bfb2679ebf1339e034c85dfa0d02893fff4300da7a0f5a"
 }

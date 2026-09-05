@@ -6,10 +6,10 @@
 
 This artifact is bound to the resolved Android releaseRuntimeClasspath and the exact Podfile.lock roots/checksums. Package-specific legal files and NOTICE files take precedence; standard terms are used only for an explicitly declared standard license when no package-specific text is published.
 
-- Android Maven coordinates: 233
-- CocoaPods roots: 113
-- Android retained legal texts: 22
-- CocoaPods retained legal texts: 24
+- Android Maven coordinates: 241
+- CocoaPods roots: 127
+- Android retained legal texts: 24
+- CocoaPods retained legal texts: 28
 
 ## Android release dependencies
 
@@ -21,7 +21,7 @@ This artifact is bound to the resolved Android releaseRuntimeClasspath and the e
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -235,7 +235,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -449,7 +449,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -663,7 +663,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -1060,7 +1060,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -1274,7 +1274,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -1488,7 +1488,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -1702,7 +1702,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -1916,7 +1916,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -2130,7 +2130,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -2344,7 +2344,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -2558,7 +2558,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -2772,7 +2772,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -2986,7 +2986,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -3200,7 +3200,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -3597,7 +3597,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -3994,7 +3994,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -4208,7 +4208,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -4605,7 +4605,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -5002,7 +5002,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -5216,7 +5216,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -5613,7 +5613,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -5827,7 +5827,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -6224,7 +6224,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -6438,7 +6438,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -6652,7 +6652,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -7049,7 +7049,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -7446,7 +7446,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -7660,7 +7660,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -8057,7 +8057,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -8271,7 +8271,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -8668,7 +8668,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -8882,7 +8882,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -9279,7 +9279,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -9493,7 +9493,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -9890,7 +9890,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -10104,7 +10104,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -10318,7 +10318,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -10532,7 +10532,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -10746,7 +10746,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -10960,7 +10960,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -11174,7 +11174,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -11571,7 +11571,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -11968,7 +11968,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -12365,7 +12365,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -12579,7 +12579,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -12793,7 +12793,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -13007,7 +13007,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -13221,7 +13221,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -13435,7 +13435,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -13649,7 +13649,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -13863,7 +13863,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -14077,7 +14077,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -14291,7 +14291,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -14505,7 +14505,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -14761,7 +14761,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -14975,7 +14975,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -15189,7 +15189,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -15403,7 +15403,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -15800,7 +15800,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -16014,7 +16014,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -16411,7 +16411,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -16625,7 +16625,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -16839,7 +16839,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -17053,7 +17053,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -17267,7 +17267,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -17481,7 +17481,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -17695,7 +17695,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -18092,7 +18092,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -18306,7 +18306,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -18520,7 +18520,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -18734,7 +18734,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -18948,7 +18948,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -19162,7 +19162,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -19559,7 +19559,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -19956,7 +19956,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -20170,7 +20170,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -20567,7 +20567,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -20964,7 +20964,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -21361,7 +21361,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -21758,7 +21758,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -22155,7 +22155,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -22369,7 +22369,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -22766,7 +22766,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -22980,7 +22980,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -23194,7 +23194,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -23591,7 +23591,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -23988,7 +23988,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -24385,7 +24385,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -24599,7 +24599,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -24996,7 +24996,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -25210,7 +25210,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -25424,7 +25424,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -25638,7 +25638,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -25852,7 +25852,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -26066,7 +26066,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -26280,7 +26280,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -26494,7 +26494,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -26708,7 +26708,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -26922,7 +26922,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -27136,7 +27136,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -27350,7 +27350,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -27564,7 +27564,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -27778,7 +27778,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -27992,7 +27992,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -28206,7 +28206,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -28420,7 +28420,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -28634,7 +28634,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -29031,7 +29031,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -29245,7 +29245,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -29459,7 +29459,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -29856,7 +29856,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -30253,7 +30253,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -30467,7 +30467,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -30864,7 +30864,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -31078,7 +31078,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -31292,7 +31292,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -31506,7 +31506,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -31720,7 +31720,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -31934,7 +31934,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -32148,7 +32148,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -32545,7 +32545,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -32759,7 +32759,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -32973,7 +32973,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -33187,7 +33187,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -33401,7 +33401,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -33615,7 +33615,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -34012,7 +34012,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -34226,7 +34226,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -34637,7 +34637,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -35621,7 +35621,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -35835,7 +35835,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -36049,7 +36049,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -36298,7 +36298,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -36512,7 +36512,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -36726,7 +36726,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -37017,7 +37017,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -37231,7 +37231,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -37445,7 +37445,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -37659,7 +37659,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -37873,7 +37873,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -38087,7 +38087,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -38301,7 +38301,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -38515,7 +38515,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -38729,7 +38729,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -38943,7 +38943,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -39157,7 +39157,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -39371,7 +39371,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -39592,7 +39592,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -39806,7 +39806,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -40027,7 +40027,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -40242,7 +40242,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -40457,7 +40457,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -40672,7 +40672,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -40878,6 +40878,49 @@ Apache License
    limitations under the License.
 ```
 
+### com.google.protobuf:protobuf-javalite:3.25.8
+
+- Platform: Android
+- Selected license(s): BSD-3-Clause
+- POM SHA-256: `953cfbe5c61bb66858cfcb5806262cc3ac09f0ec4252ca39dc6cce3fe188b8e8`
+- Exact license review: The exact protobuf-javalite coordinate inherits the protobuf BSD-3-Clause license; its published child POM and JAR omit the inherited legal file.
+
+#### Retained legal document 5fe5599c080ef8e9ddcf73795b8facb3852bef1ba7dd14c7e8f66a221ac93505
+
+Source(s): `canonical:BSD-3-Clause/node_modules/@sinonjs/commons/LICENSE`
+
+```text
+BSD 3-Clause License
+
+Copyright (c) 2018, Sinon.JS
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the copyright holder nor the names of its
+  contributors may be used to endorse or promote products derived from
+  this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
 ### com.jakewharton:process-phoenix:2.1.2
 
 - Platform: Android
@@ -40886,7 +40929,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -41142,7 +41185,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -41356,7 +41399,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -41582,7 +41625,7 @@ https://mozilla.org/MPL/2.0/
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -41796,7 +41839,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -42011,7 +42054,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -42241,28 +42284,28 @@ Original source copyright:
 Copyright (c) 2008 Alexander Beider & Stephen P. Morse.
 ```
 
-### commons-io:commons-io:1.4
+### commons-io:commons-io:2.6
 
 - Platform: Android
 - Selected license(s): Apache-2.0
-- POM SHA-256: `2dae496a19c82b8e9985a1246aa80cf98082b1ae2217cf4b2d4d5ff13a365af2`
+- POM SHA-256: `0c23863893a2291f5a7afdbd8d15923b3948afd87e563fa341cdcf6eae338a60`
 - Exact license review: The exact Commons IO JAR contains Apache-2.0 LICENSE and NOTICE files while its child POM omits inherited metadata.
 
-#### Retained legal document 2180a3969e69f9e931d8e58da7bae5e604d6bec34fc5a4f40535505eed37c61e
+#### Retained legal document 04caed11bcb1929847055fe6868c38489bd0b6d95957704d2a3aef4b56c0df7c
 
-Source(s): `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/NOTICE.txt`
+Source(s): `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/NOTICE.txt`
 
 ```text
 Apache Commons IO
-Copyright 2001-2008 The Apache Software Foundation
+Copyright 2002-2017 The Apache Software Foundation
 
-This product includes software developed by
+This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 ```
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -42468,12 +42511,12 @@ Apache License
    limitations under the License.
 ```
 
-### expo.modules.asset:expo.modules.asset:55.0.18
+### expo.modules.asset:expo.modules.asset:55.0.20
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `09c9efb69fa15979eea2098eddbc01e2f17a01e54c92b8f4201aa2260fa8d0ea`
-- Owning npm source: `expo-asset@55.0.18`
+- POM SHA-256: `5ff2f83c1e10658f95079e04e7666224cdac588604d786d4524dc4df3c1e43b9`
+- Owning npm source: `expo-asset@55.0.20`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42540,12 +42583,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### host.exp.exponent:expo.modules.application:55.0.17
+### host.exp.exponent:expo.modules.application:55.0.19
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `076fd8b1367dd265ccad9fd4499a275ba910f94e02b17fcbc1b1499dd25d6483`
-- Owning npm source: `expo-application@55.0.17`
+- POM SHA-256: `d03c3e55d67831cd5cbe96b47162872d376a7bed2bd2048782e5f01ed5396136`
+- Owning npm source: `expo-application@55.0.19`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42576,12 +42619,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### host.exp.exponent:expo.modules.crypto:55.0.17
+### host.exp.exponent:expo.modules.crypto:55.0.19
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `93db5411ebcac602e23eba40bc0597f4b210ce290f59184d045573cfd576e4e1`
-- Owning npm source: `expo-crypto@55.0.17`
+- POM SHA-256: `cbec96c4ad1d7c1bc5888b892c0505414dda5813d08c5e2bd8ef6bd629ecd119`
+- Owning npm source: `expo-crypto@55.0.19`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42612,12 +42655,48 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### host.exp.exponent:expo.modules.filesystem:55.0.24
+### host.exp.exponent:expo.modules.documentpicker:55.0.17
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `716a3e2957a8ee861b4ff3d0782d5890f2205d7c9c6708fe698679a67703065b`
-- Owning npm source: `expo-file-system@55.0.24`
+- POM SHA-256: `e8f3771339b2875d31e5ed4bfcd28779d77d9f3a0efa7f9b96f27c2f248ebceb`
+- Owning npm source: `expo-document-picker@55.0.17`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### host.exp.exponent:expo.modules.filesystem:55.0.26
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `2c0361883d0eaa1cd28a419e90bc95595b34dfb7f3079ea91294ce0ad1f2df6d`
+- Owning npm source: `expo-file-system@55.0.26`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42720,12 +42799,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### host.exp.exponent:expo.modules.notifications:55.0.25
+### host.exp.exponent:expo.modules.notifications:55.0.27
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `d35e1f71377a6c87c43547b21401f96bcd4cb7012788384bcf13ed3dedb30396`
-- Owning npm source: `expo-notifications@55.0.25`
+- POM SHA-256: `f919ebaa74955b87eb8b05fb3c94b424c409cab27dd646e99fb663bb4d498bdb`
+- Owning npm source: `expo-notifications@55.0.27`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42756,12 +42835,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### host.exp.exponent:expo.modules.securestore:55.0.16
+### host.exp.exponent:expo.modules.securestore:55.0.18
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `6861d1b0f11b1b325baee46798c8c62892690db33f9eb5825979733c80e11b95`
-- Owning npm source: `expo-secure-store@55.0.16`
+- POM SHA-256: `15cca07640efaaea790f33c616299cdba6f5addfaae0ed1fc7047f8d0f335a49`
+- Owning npm source: `expo-secure-store@55.0.18`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42792,12 +42871,12 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### host.exp.exponent:expo.modules.webbrowser:55.0.18
+### host.exp.exponent:expo.modules.webbrowser:55.0.20
 
 - Platform: Android
 - Selected license(s): MIT
-- POM SHA-256: `227b53ad4572193199ee83a4ca129e633830b9fca4074b51a7b2b48000fe4949`
-- Owning npm source: `expo-web-browser@55.0.18`
+- POM SHA-256: `eecc9d5d4f38f27a39d0007b60ad92fc972e3f980c0ef3f295d9a972e67c3b97`
+- Owning npm source: `expo-web-browser@55.0.20`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -42863,6 +42942,216 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### io.sentry:sentry-android-core:8.31.0
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `45e504e73154ab70bda1dcdbd44378970f77daf3d151bc1aa0f051c6c148af85`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### io.sentry:sentry-android-ndk:8.31.0
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `4dc58bbd5207ee4912c93845d142069fc61130e458948d2305fc31bb7e2e7500`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### io.sentry:sentry-android-replay:8.31.0
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `6d6c5951d3244a676e053dd3d18992534148e3dbd34bb1a107c095996d878162`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### io.sentry:sentry-android:8.31.0
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `9850c278ebfd2b20f63776e6a0807b3c6eb0108c408e154c8366ed3c543fa766`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### io.sentry:sentry-native-ndk:0.12.3
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `41dbeda68418cc7e7bc8445d99948d62eb3be0e99ae5b9bf7d6a4b7a6d7106ec`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### io.sentry:sentry:8.31.0
+
+- Platform: Android
+- Selected license(s): MIT
+- POM SHA-256: `3ee85911e6fd2edd104ddaa2a49519cfe6c76aa4fe9812b5869e7ebc7ada5da6`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### javax.inject:javax.inject:1
 
 - Platform: Android
@@ -42871,7 +43160,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -43085,7 +43374,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -43299,7 +43588,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -43513,7 +43802,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -43727,7 +44016,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -43941,7 +44230,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -44155,7 +44444,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -44369,7 +44658,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -44583,7 +44872,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -44789,15 +45078,15 @@ Apache License
    limitations under the License.
 ```
 
-### org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.10
+### org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.24
 
 - Platform: Android
 - Selected license(s): Apache-2.0
-- POM SHA-256: `5f4b94dd3065a7764c37fa15de2ad6d81f40d59f8cb33f17d181c6384fb7a72e`
+- POM SHA-256: `06e06def49f96aaf6e5c3ec42836ae59d6e2da6254700914281675679dc9f2a5`
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -45011,7 +45300,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -45225,7 +45514,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -45439,7 +45728,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -45653,7 +45942,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -45867,7 +46156,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -46081,7 +46370,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -46295,7 +46584,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -46509,7 +46798,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -46723,7 +47012,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -46937,7 +47226,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -47151,7 +47440,7 @@ Apache License
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -47363,7 +47652,7 @@ Apache License
 
 - Platform: Android project
 - Selected license(s): MIT
-- Classified npm production source: `expo@55.0.28`
+- Classified npm production source: `expo@55.0.31`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -47531,7 +47820,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 - Platform: Android project
 - Selected license(s): MIT
-- Classified npm production source: `expo-modules-core@55.0.25`
+- Classified npm production source: `expo-modules-core@55.0.26`
 
 #### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
@@ -47696,7 +47985,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -48164,7 +48453,7 @@ APPENDIX: How to apply the Apache License to your work
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:1.4/commons-io-1.4.jar/META-INF/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `commons-codec:commons-codec:1.10/commons-codec-1.10.jar/META-INF/LICENSE.txt`, `commons-io:commons-io:2.6/commons-io-2.6.jar/META-INF/LICENSE.txt`
 
 ```text
 Apache License
@@ -48515,6 +48804,69 @@ Source(s): `npm:react-native-gesture-handler@2.30.0/LICENSE`, `npm:react-native-
 The MIT License (MIT)
 
 Copyright (c) 2016 Software Mansion <swmansion.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### gradle-project:::react-native-google-signin_google-signin
+
+- Platform: Android project
+- Selected license(s): MIT
+- Classified npm production source: `@react-native-google-signin/google-signin@16.1.2`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+#### Retained legal document f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32
+
+Source(s): `npm:@react-native-google-signin/google-signin@16.1.2/LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015 Apptailor
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -49165,7 +49517,498 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### gradle-project:::sentry_react-native
+
+- Platform: Android project
+- Selected license(s): MIT
+- Classified npm production source: `@sentry/react-native@7.11.0`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+#### Retained legal document f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d
+
+Source(s): `npm:@sentry/react-native@7.11.0/LICENSE.md`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017-2024 Sentry
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ## CocoaPods dependencies
+
+### AppAuth@2.1.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### AppCheckCore@11.3.1
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `e215d35177a9cf469927863e69c13e220df32a8b`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
 
 ### BVLinearGradient@2.8.3
 
@@ -49295,16 +50138,16 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### EXApplication@55.0.17
+### EXApplication@55.0.19
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `7e3ad9ea3ff92cef0659550b9cdade542e04408c`
-- Owning npm source: `expo-application@55.0.17`
+- Podspec checksum: `093f79372a8ebd9ef65a5255d25818ce2feb0492`
+- Owning npm source: `expo-application@55.0.19`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49368,7 +50211,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49423,16 +50266,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### Expo@55.0.28
+### Expo@55.0.31
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `0009020ac82815d6c3ddaec92f84397e35a3ff46`
-- Owning npm source: `expo@55.0.28`
+- Podspec checksum: `cd74e48f2decdaa4a2410f8c261247b4cfa100ec`
+- Owning npm source: `expo@55.0.31`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49487,16 +50330,80 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoAppleAuthentication@55.0.15
+### ExpoAdapterGoogleSignIn@16.1.2
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `0a2b509c556b3313c57598d179c8561659650e44`
-- Owning npm source: `expo-apple-authentication@55.0.15`
+- Podspec checksum: `3332ac2d96d803350f53f84047244b35e2efc994`
+- Owning npm source: `@react-native-google-signin/google-signin@16.1.2`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+#### Retained legal document f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32
+
+Source(s): `installed-pod:ExpoAdapterGoogleSignIn@16.1.2/LICENSE`, `installed-pod:RNGoogleSignin@16.1.2/LICENSE`, `npm:@react-native-google-signin/google-signin@16.1.2/LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015 Apptailor
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### ExpoAppleAuthentication@55.0.17
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `ab3d5d027724c02652f5be78bf81e43ac0e684c6`
+- Owning npm source: `expo-apple-authentication@55.0.17`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49551,16 +50458,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoAsset@55.0.18
+### ExpoAsset@55.0.20
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `5f5b3905cf09f567a66d43870e07c8e60ac468cc`
-- Owning npm source: `expo-asset@55.0.18`
+- Podspec checksum: `64ff088f684d008431f518c0d40fccefb9cda593`
+- Owning npm source: `expo-asset@55.0.20`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49615,16 +50522,80 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoCrypto@55.0.17
+### ExpoCrypto@55.0.19
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `60378601fbd5a2762cbfbdc56906ed1aafa82d94`
-- Owning npm source: `expo-crypto@55.0.17`
+- Podspec checksum: `139bf434edb3c2a94267c70e306b04a7ceb8dc50`
+- Owning npm source: `expo-crypto@55.0.19`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015-present 650 Industries, Inc. (aka Expo)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### ExpoDocumentPicker@55.0.17
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `e471276f75d4767740ad1a3929db6996c4c5aef8`
+- Owning npm source: `expo-document-picker@55.0.17`
+
+#### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
+
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49688,7 +50659,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49743,16 +50714,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoFileSystem@55.0.24
+### ExpoFileSystem@55.0.26
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `2e9515a04c0e4143f2a728d773389d315e2d50da`
-- Owning npm source: `expo-file-system@55.0.24`
+- Podspec checksum: `7874fb1de3cd3f866cb8dd7dbe05361c5c278ef6`
+- Owning npm source: `expo-file-system@55.0.26`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49816,7 +50787,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -49944,7 +50915,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50008,7 +50979,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50063,16 +51034,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoModulesCore@55.0.25
+### ExpoModulesCore@55.0.26
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `15eec5b2cf902fc4f9d64c71adf279bf4e538b8d`
-- Owning npm source: `expo-modules-core@55.0.25`
+- Podspec checksum: `9aabd1a060f905848cac6f42baf658921db697d4`
+- Owning npm source: `expo-modules-core@55.0.26`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50127,16 +51098,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoModulesJSI@55.0.25
+### ExpoModulesJSI@55.0.26
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `ae8ebeef19be77aeaf25f2655a5303755ef7178d`
-- Owning npm source: `expo-modules-core@55.0.25`
+- Podspec checksum: `483d791904bf8579a384c2bf5f6265bf6e8362cb`
+- Owning npm source: `expo-modules-core@55.0.26`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50191,16 +51162,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoNotifications@55.0.25
+### ExpoNotifications@55.0.27
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `4f296c070cf5abfde08f3e0e5b1e3ba9d9c9dcc2`
-- Owning npm source: `expo-notifications@55.0.25`
+- Podspec checksum: `793cb016faf9ee414ed9ae94e8951c95ca31d619`
+- Owning npm source: `expo-notifications@55.0.27`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50255,16 +51226,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoSecureStore@55.0.16
+### ExpoSecureStore@55.0.18
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `267fc7f3d7a4b9163fc12445acf3db4fa5c87b7a`
-- Owning npm source: `expo-secure-store@55.0.16`
+- Podspec checksum: `93300a260cf19518f78afc7a114fbf2c287eef70`
+- Owning npm source: `expo-secure-store@55.0.18`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50319,16 +51290,16 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### ExpoWebBrowser@55.0.18
+### ExpoWebBrowser@55.0.20
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `1018c67e8370e523b4f30c4be249fd32d23a76ca`
-- Owning npm source: `expo-web-browser@55.0.18`
+- Podspec checksum: `d8f05a76ddf8aded64ca5972b577f6a8ccc0be2d`
+- Owning npm source: `expo-web-browser@55.0.20`
 
 #### Retained legal document 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -50447,6 +51418,1523 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### GTMAppAuth@5.0.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `217a876b249c3c585a54fd6f73e6b58c4f5c4238`
+- Exact license review: The exact GTMAppAuth 5.0.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### GTMSessionFetcher@3.5.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `5aea5ba6bd522a239e236100971f10cb71b96ab6`
+- Exact license review: The exact GTMSessionFetcher 3.5.0 podspec abbreviates its license as 'Apache'; the installed LICENSE contains the reviewed Apache License 2.0 terms.
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### GoogleSignIn@9.2.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `e449a40a92e9f2eea56e98b5214d13725dc5a00a`
+- Exact license review: The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### GoogleUtilities@8.1.3
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+#### Retained legal document d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77
+
+Source(s): `installed-pod:GoogleUtilities@8.1.3/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+================================================================================
+
+Copyright (c) 2017 Landon J. Fuller <landon@landonf.org>
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### PromisesObjC@2.4.1
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `752c3227f599e3467650e47ea36f433eeb10c273`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### PromisesSwift@2.4.1
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `217dea0fd5d2ad65222a109c48698add13cc1c5b`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
 ### RCT-Folly@2024.11.18.00
 
 - Platform: iOS
@@ -50456,7 +52944,7 @@ SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -51147,7 +53635,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -51616,7 +54104,7 @@ APPENDIX: How to apply the Apache License to your work
 
 #### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -51989,6 +54477,70 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### RNGoogleSignin@16.1.2
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `ca05a4eb8b125c8a7bf93e1679f008faa0e5090c`
+- Owning npm source: `@react-native-google-signin/google-signin@16.1.2`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+#### Retained legal document f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32
+
+Source(s): `installed-pod:ExpoAdapterGoogleSignIn@16.1.2/LICENSE`, `installed-pod:RNGoogleSignin@16.1.2/LICENSE`, `npm:@react-native-google-signin/google-signin@16.1.2/LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015 Apptailor
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### RNReanimated@4.2.1
 
 - Platform: iOS
@@ -52161,6 +54713,70 @@ Source(s): `installed-pod:RNScreens@4.23.0/LICENSE`, `npm:react-native-screens@4
 The MIT License (MIT)
 
 Copyright (c) 2018 Software Mansion <swmansion.com>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### RNSentry@7.11.0
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `ce98ae2e5496ce41a9b9f8a4e1c16d045592788d`
+- Owning npm source: `@sentry/react-native@7.11.0`
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+#### Retained legal document f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d
+
+Source(s): `installed-pod:RNSentry@7.11.0/LICENSE.md`, `npm:@sentry/react-native@7.11.0/LICENSE.md`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017-2024 Sentry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -56286,6 +58902,283 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+### RecaptchaInterop@101.0.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `11e0b637842dfb48308d242afc3f448062325aba`
+
+#### Retained legal document 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
+
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+```
+
+### Sentry@8.58.0
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `d587a8fe91ca13503ecd69a1905f3e8a0fcf61be`
+
+#### Retained legal document 832f09d22fbd73f61f9ecf1b127e0513f5afa2e47b1367aaa24e4333c0563094
+
+Source(s): `installed-pod:Sentry@8.58.0/LICENSE.md`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015 Sentry
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
 ### SocketRocket@0.7.1

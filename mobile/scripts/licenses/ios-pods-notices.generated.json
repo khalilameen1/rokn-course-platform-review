@@ -3,10 +3,86 @@
   "generatedFrom": "Podfile.lock exact roots, CocoaPods SPEC CHECKSUMS, Pods/Manifest.lock, and installed source bytes",
   "podfileChecksum": "bc486f7163589e6fd01f35b3c3bd18386b55b0b9",
   "cocoapodsVersion": "1.16.2",
-  "manifestSha256": "7858e3b179d528afda3159615cbd81ee384d58e8d3d6c2bbcba249cb1fb754c8",
-  "installedSourceCount": 111,
-  "dependencyCount": 113,
+  "manifestSha256": "1b12d3b8395d485bdb90ef2aabb1ef3b874ea068ecdc6e4fafc7c7adf10bd685",
+  "installedSourceCount": 125,
+  "dependencyCount": 127,
   "dependencies": [
+    {
+      "name": "AppAuth",
+      "version": "2.1.0",
+      "coordinate": "AppAuth@2.1.0",
+      "specChecksum": "ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/b/b/9/AppAuth/2.1.0/AppAuth.podspec.json",
+      "specSha256": "011f41b89dbe0f9fd7479a0d401c3500b5749fdf11d2abc67b4749971f90aac6",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache License, Version 2.0",
+        "file": null
+      },
+      "homepage": "https://openid.github.io/AppAuth-iOS",
+      "source": {
+        "git": "https://github.com/openid/AppAuth-iOS.git",
+        "tag": "2.1.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 69,
+        "sourceLocation": "Pods/AppAuth",
+        "treeSha256": "90a796b829b23e323b46c13766986258e96845ee1eaa0bd14afe4c590603109e"
+      }
+    },
+    {
+      "name": "AppCheckCore",
+      "version": "11.3.1",
+      "coordinate": "AppCheckCore@11.3.1",
+      "specChecksum": "e215d35177a9cf469927863e69c13e220df32a8b",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/3/b/6/AppCheckCore/11.3.1/AppCheckCore.podspec.json",
+      "specSha256": "5fec37f620ddf9f0a26948425f8f693c616cdaf67034a257f6e4baf38a000526",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache-2.0",
+        "file": "LICENSE"
+      },
+      "homepage": "https://firebase.google.com",
+      "source": {
+        "git": "https://github.com/google/app-check.git",
+        "tag": "CocoaPods-11.3.1"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 80,
+        "sourceLocation": "Pods/AppCheckCore",
+        "treeSha256": "b001eb91e498f4b1311a971b869ef24bd3bb6308325c4775fef4692ea3e67e1d"
+      }
+    },
     {
       "name": "BVLinearGradient",
       "version": "2.8.3",
@@ -93,9 +169,9 @@
     },
     {
       "name": "EXApplication",
-      "version": "55.0.17",
-      "coordinate": "EXApplication@55.0.17",
-      "specChecksum": "7e3ad9ea3ff92cef0659550b9cdade542e04408c",
+      "version": "55.0.19",
+      "coordinate": "EXApplication@55.0.19",
+      "specChecksum": "093f79372a8ebd9ef65a5255d25818ce2feb0492",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -113,15 +189,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-application@55.0.17",
+        "coordinate": "expo-application@55.0.19",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-application@55.0.17",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-application@55.0.19",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -132,9 +208,9 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-application@55.0.17",
-        "npmIntegrity": "sha512-ASuZe+Sl8ax+0pQOjd8L5cz5xpxW0F1VSorRKFr9LHxDSQwH929nYjbMrvW6KlRIIWZBIAQQsYqWiowytCLMRA==",
-        "sourceLocation": "npm:expo-application@55.0.17"
+        "npmCoordinate": "expo-application@55.0.19",
+        "npmIntegrity": "sha512-RFer4T46/OaIkNQEweA9PQj6xlXKor71IPNydWxlupx/XG05Yv/269HJJ3Q9zejdY9M7R3jTeTlAYYmXwbLBgA==",
+        "sourceLocation": "npm:expo-application@55.0.19"
       }
     },
     {
@@ -185,9 +261,9 @@
     },
     {
       "name": "Expo",
-      "version": "55.0.28",
-      "coordinate": "Expo@55.0.28",
-      "specChecksum": "0009020ac82815d6c3ddaec92f84397e35a3ff46",
+      "version": "55.0.31",
+      "coordinate": "Expo@55.0.31",
+      "specChecksum": "cd74e48f2decdaa4a2410f8c261247b4cfa100ec",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -205,15 +281,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo@55.0.28",
+        "coordinate": "expo@55.0.31",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo@55.0.28",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo@55.0.31",
+        "gitHead": "30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -224,16 +300,58 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo@55.0.28",
-        "npmIntegrity": "sha512-rKWG+gjM4e+nJ6UUXn+jhs1+2lkzwLHjUZL9U4ejN3mLtqU9sOYvX925tOaD/lu3847LoZ8i5GJiyqu3tmK7Lg==",
-        "sourceLocation": "npm:expo@55.0.28"
+        "npmCoordinate": "expo@55.0.31",
+        "npmIntegrity": "sha512-ZqV6jniU7twd18ADh1xP7moVrgP/BO1OTJwF2OzYnfJI9ak5cXDk+8DrV2jlgj33pMrLKqlnUvNz11zxyhwo7w==",
+        "sourceLocation": "npm:expo@55.0.31"
+      }
+    },
+    {
+      "name": "ExpoAdapterGoogleSignIn",
+      "version": "16.1.2",
+      "coordinate": "ExpoAdapterGoogleSignIn@16.1.2",
+      "specChecksum": "3332ac2d96d803350f53f84047244b35e2efc994",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/@react-native-google-signin/google-signin/expo/ios"
+      },
+      "sourceReference": {
+        "path": "../node_modules/@react-native-google-signin/google-signin/expo/ios"
+      },
+      "specSha256": "2cca3e2cf29c730a23813d43dd3a914c3ceda4788cd1e39eae4d4f358e729375",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": null,
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "@react-native-google-signin/google-signin@16.1.2",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2",
+        "f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32"
+      ],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "@react-native-google-signin/google-signin@16.1.2",
+        "npmIntegrity": "sha512-1hf4pRmpnS5t0dHtqU72Q1FmWzsCZR2Sm3uVQbbfMKeNPl5TKjpAsP6F8QTZ9L+Q6Cnn9tL9BXpDCb1nyutdCQ==",
+        "sourceLocation": "npm:@react-native-google-signin/google-signin@16.1.2"
       }
     },
     {
       "name": "ExpoAppleAuthentication",
-      "version": "55.0.15",
-      "coordinate": "ExpoAppleAuthentication@55.0.15",
-      "specChecksum": "0a2b509c556b3313c57598d179c8561659650e44",
+      "version": "55.0.17",
+      "coordinate": "ExpoAppleAuthentication@55.0.17",
+      "specChecksum": "ab3d5d027724c02652f5be78bf81e43ac0e684c6",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -251,15 +369,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-apple-authentication@55.0.15",
+        "coordinate": "expo-apple-authentication@55.0.17",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-apple-authentication@55.0.15",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-apple-authentication@55.0.17",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -270,16 +388,16 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-apple-authentication@55.0.15",
-        "npmIntegrity": "sha512-wfl/qsJZwI3N19hftmu53VFeGiRO5K1Rkf0csuoCmqiCmVfonFgg5ONPA2JeuEuryqeLpbCcoDg1t6mdGpvxMQ==",
-        "sourceLocation": "npm:expo-apple-authentication@55.0.15"
+        "npmCoordinate": "expo-apple-authentication@55.0.17",
+        "npmIntegrity": "sha512-ErPcEyLGsrXDOXdIuCc2MZNf/YZB2NZGBb/I9XtUYEsoO8cwWIfDE9AiLpSOxhv9p59gMtFRzdE1UR8jTBAhYA==",
+        "sourceLocation": "npm:expo-apple-authentication@55.0.17"
       }
     },
     {
       "name": "ExpoAsset",
-      "version": "55.0.18",
-      "coordinate": "ExpoAsset@55.0.18",
-      "specChecksum": "5f5b3905cf09f567a66d43870e07c8e60ac468cc",
+      "version": "55.0.20",
+      "coordinate": "ExpoAsset@55.0.20",
+      "specChecksum": "64ff088f684d008431f518c0d40fccefb9cda593",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -297,15 +415,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-asset@55.0.18",
+        "coordinate": "expo-asset@55.0.20",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-asset@55.0.18",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-asset@55.0.20",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -316,16 +434,16 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-asset@55.0.18",
-        "npmIntegrity": "sha512-dbNMcBE0AaFbdxjBSRgDLdtOi8PHt9CQOg+J3EdeXNPKZCDO88kvaHcXaYUMmkbN2KJYQlfu1GxfUVAIoi7iVQ==",
-        "sourceLocation": "npm:expo-asset@55.0.18"
+        "npmCoordinate": "expo-asset@55.0.20",
+        "npmIntegrity": "sha512-BpybBESZj8WxW/WXuQhiY8D1azkJtxLuteIfprokJw0uU5r/g7cD+vzrzKJSlE4hhUlKeUGsoKzSK0nSJJ2sMQ==",
+        "sourceLocation": "npm:expo-asset@55.0.20"
       }
     },
     {
       "name": "ExpoCrypto",
-      "version": "55.0.17",
-      "coordinate": "ExpoCrypto@55.0.17",
-      "specChecksum": "60378601fbd5a2762cbfbdc56906ed1aafa82d94",
+      "version": "55.0.19",
+      "coordinate": "ExpoCrypto@55.0.19",
+      "specChecksum": "139bf434edb3c2a94267c70e306b04a7ceb8dc50",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -343,15 +461,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-crypto@55.0.17",
+        "coordinate": "expo-crypto@55.0.19",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-crypto@55.0.17",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-crypto@55.0.19",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -362,9 +480,55 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-crypto@55.0.17",
-        "npmIntegrity": "sha512-MWe1IsAzPzKGfTqoOKDef5vFvTj2uke6FzcrtbNsy5I9Kvj3JH+DNxEDcVO/wc9gMO5AEUMWK/LC0J5+NkQsEw==",
-        "sourceLocation": "npm:expo-crypto@55.0.17"
+        "npmCoordinate": "expo-crypto@55.0.19",
+        "npmIntegrity": "sha512-Ip1jQ5GphvrC4Ls5osAmIapi+JZXOqRJYaaMxTFWpkhssNUq88oP45pWGv2uU2K/Ci6j7iLDJzU8eN3v+B7jrA==",
+        "sourceLocation": "npm:expo-crypto@55.0.19"
+      }
+    },
+    {
+      "name": "ExpoDocumentPicker",
+      "version": "55.0.17",
+      "coordinate": "ExpoDocumentPicker@55.0.17",
+      "specChecksum": "e471276f75d4767740ad1a3929db6996c4c5aef8",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/expo-document-picker/ios"
+      },
+      "sourceReference": {
+        "path": "../node_modules/expo-document-picker/ios"
+      },
+      "specSha256": "1d1a1da31a01dd0f407e1f2153e6353ac858cc9b091a00983865f7725d5a290d",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": null,
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "expo-document-picker@55.0.17",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": {
+        "npmCoordinate": "expo-document-picker@55.0.17",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
+        "path": "scripts/licenses/upstream/expo-expo-LICENSE",
+        "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
+      },
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "expo-document-picker@55.0.17",
+        "npmIntegrity": "sha512-tyrPB+k3lTI03umNP8cc912yZF7tgyo9v/+rEeW9h/u0fmMJAvegyaQl/YNW2MeKpjYa4+WwiLBGXVj54XHDog==",
+        "sourceLocation": "npm:expo-document-picker@55.0.17"
       }
     },
     {
@@ -415,9 +579,9 @@
     },
     {
       "name": "ExpoFileSystem",
-      "version": "55.0.24",
-      "coordinate": "ExpoFileSystem@55.0.24",
-      "specChecksum": "2e9515a04c0e4143f2a728d773389d315e2d50da",
+      "version": "55.0.26",
+      "coordinate": "ExpoFileSystem@55.0.26",
+      "specChecksum": "7874fb1de3cd3f866cb8dd7dbe05361c5c278ef6",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -435,15 +599,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-file-system@55.0.24",
+        "coordinate": "expo-file-system@55.0.26",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-file-system@55.0.24",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-file-system@55.0.26",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -454,9 +618,9 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-file-system@55.0.24",
-        "npmIntegrity": "sha512-7/HJdvaaf3kP5T3atd+6Q0/QexrGio4Fs2GVtp7G8d/xQCSu01yeGReu7tGQo9VAM67Snq+ujGlL8q2wbMXLkQ==",
-        "sourceLocation": "npm:expo-file-system@55.0.24"
+        "npmCoordinate": "expo-file-system@55.0.26",
+        "npmIntegrity": "sha512-KBOQWqxumCxJBN29Lu13QpccwAhcjsgDYCJSVVjfGydaK/UbEkH/1rT/WZmdfoZ4G8mUJlfRbWfnJtfHUXxsdw==",
+        "sourceLocation": "npm:expo-file-system@55.0.26"
       }
     },
     {
@@ -641,16 +805,16 @@
     },
     {
       "name": "ExpoModulesCore",
-      "version": "55.0.25",
-      "coordinate": "ExpoModulesCore@55.0.25",
-      "specChecksum": "15eec5b2cf902fc4f9d64c71adf279bf4e538b8d",
+      "version": "55.0.26",
+      "coordinate": "ExpoModulesCore@55.0.26",
+      "specChecksum": "9aabd1a060f905848cac6f42baf658921db697d4",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
-        "path": "../node_modules/expo/node_modules/expo-modules-core"
+        "path": "../node_modules/expo-modules-core"
       },
       "sourceReference": {
-        "path": "../node_modules/expo/node_modules/expo-modules-core"
+        "path": "../node_modules/expo-modules-core"
       },
       "specSha256": "48615fbd6ce70077be1cb06796e7be780fcfde8cad133707d286aab2221f0221",
       "selectedLicenses": [
@@ -661,15 +825,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-modules-core@55.0.25",
+        "coordinate": "expo-modules-core@55.0.26",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-modules-core@55.0.25",
-        "gitHead": "7c081282cf88968f81732feb67a71840e769a40f",
+        "npmCoordinate": "expo-modules-core@55.0.26",
+        "gitHead": "30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -680,23 +844,23 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-modules-core@55.0.25",
-        "npmIntegrity": "sha512-yXpfg7aHLbuqoXocK34Vua6Aey5SCyqLygAsXAMbul9P8vfBjLpaOPiTJ5cLVF7Drfq8ownqVJO6qpGEtZ6GOw==",
-        "sourceLocation": "npm:expo-modules-core@55.0.25"
+        "npmCoordinate": "expo-modules-core@55.0.26",
+        "npmIntegrity": "sha512-nyQMIlNuAEif2kZEjaRiWxZsGyT8/pFm7VPwlYI92a0hyRxXrw3jG04I1OgfKy6oDFqMLn17D5C2zIGPP/fPLQ==",
+        "sourceLocation": "npm:expo-modules-core@55.0.26"
       }
     },
     {
       "name": "ExpoModulesJSI",
-      "version": "55.0.25",
-      "coordinate": "ExpoModulesJSI@55.0.25",
-      "specChecksum": "ae8ebeef19be77aeaf25f2655a5303755ef7178d",
+      "version": "55.0.26",
+      "coordinate": "ExpoModulesJSI@55.0.26",
+      "specChecksum": "483d791904bf8579a384c2bf5f6265bf6e8362cb",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
-        "path": "../node_modules/expo/node_modules/expo-modules-core"
+        "path": "../node_modules/expo-modules-core"
       },
       "sourceReference": {
-        "path": "../node_modules/expo/node_modules/expo-modules-core"
+        "path": "../node_modules/expo-modules-core"
       },
       "specSha256": "eff12eb7973743c9ee23fa5f606f7c2f30d06048aa3053106666db9726c4df62",
       "selectedLicenses": [
@@ -707,15 +871,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-modules-core@55.0.25",
+        "coordinate": "expo-modules-core@55.0.26",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-modules-core@55.0.25",
-        "gitHead": "7c081282cf88968f81732feb67a71840e769a40f",
+        "npmCoordinate": "expo-modules-core@55.0.26",
+        "gitHead": "30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -726,16 +890,16 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-modules-core@55.0.25",
-        "npmIntegrity": "sha512-yXpfg7aHLbuqoXocK34Vua6Aey5SCyqLygAsXAMbul9P8vfBjLpaOPiTJ5cLVF7Drfq8ownqVJO6qpGEtZ6GOw==",
-        "sourceLocation": "npm:expo-modules-core@55.0.25"
+        "npmCoordinate": "expo-modules-core@55.0.26",
+        "npmIntegrity": "sha512-nyQMIlNuAEif2kZEjaRiWxZsGyT8/pFm7VPwlYI92a0hyRxXrw3jG04I1OgfKy6oDFqMLn17D5C2zIGPP/fPLQ==",
+        "sourceLocation": "npm:expo-modules-core@55.0.26"
       }
     },
     {
       "name": "ExpoNotifications",
-      "version": "55.0.25",
-      "coordinate": "ExpoNotifications@55.0.25",
-      "specChecksum": "4f296c070cf5abfde08f3e0e5b1e3ba9d9c9dcc2",
+      "version": "55.0.27",
+      "coordinate": "ExpoNotifications@55.0.27",
+      "specChecksum": "793cb016faf9ee414ed9ae94e8951c95ca31d619",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -753,15 +917,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-notifications@55.0.25",
+        "coordinate": "expo-notifications@55.0.27",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-notifications@55.0.25",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-notifications@55.0.27",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -772,16 +936,16 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-notifications@55.0.25",
-        "npmIntegrity": "sha512-yCbZElqHLvGommwMXJn0ZS/8kJ8wbf7Ujn5or4lVGthRUhaRZfTrN/UJlc9FnQmuKJ35I4rSzo1fqeQjxb+XOw==",
-        "sourceLocation": "npm:expo-notifications@55.0.25"
+        "npmCoordinate": "expo-notifications@55.0.27",
+        "npmIntegrity": "sha512-Qquo8zytHPR4Rj819KwghUqvdf2RJG8+S8Y3DQ+4wUZgRFdWqNnh8IX9IhcdITTGr/Ei0I9LzI0BKG4qyO9ubw==",
+        "sourceLocation": "npm:expo-notifications@55.0.27"
       }
     },
     {
       "name": "ExpoSecureStore",
-      "version": "55.0.16",
-      "coordinate": "ExpoSecureStore@55.0.16",
-      "specChecksum": "267fc7f3d7a4b9163fc12445acf3db4fa5c87b7a",
+      "version": "55.0.18",
+      "coordinate": "ExpoSecureStore@55.0.18",
+      "specChecksum": "93300a260cf19518f78afc7a114fbf2c287eef70",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -799,15 +963,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-secure-store@55.0.16",
+        "coordinate": "expo-secure-store@55.0.18",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-secure-store@55.0.16",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-secure-store@55.0.18",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -818,16 +982,16 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-secure-store@55.0.16",
-        "npmIntegrity": "sha512-4DkdluBLJnqndKMpvg4bTVoyi1D5p3V7nxyYvlzLvuqMVrUzXPTGTyIw347H3wVU1jp+sfGNX5xqtpQCY3hF+A==",
-        "sourceLocation": "npm:expo-secure-store@55.0.16"
+        "npmCoordinate": "expo-secure-store@55.0.18",
+        "npmIntegrity": "sha512-shKZYQf7/KA45Z3oEIXUkXdrfRNFxsc+fJC182bbpuKqS4nLPZslsJUqruQ937Zkkbev126N/QJv+zmd6FpZjA==",
+        "sourceLocation": "npm:expo-secure-store@55.0.18"
       }
     },
     {
       "name": "ExpoWebBrowser",
-      "version": "55.0.18",
-      "coordinate": "ExpoWebBrowser@55.0.18",
-      "specChecksum": "1018c67e8370e523b4f30c4be249fd32d23a76ca",
+      "version": "55.0.20",
+      "coordinate": "ExpoWebBrowser@55.0.20",
+      "specChecksum": "d8f05a76ddf8aded64ca5972b577f6a8ccc0be2d",
       "firstPartyGenerated": false,
       "sourceKind": "external",
       "externalSource": {
@@ -845,15 +1009,15 @@
         "file": null
       },
       "owningNpmPackage": {
-        "coordinate": "expo-web-browser@55.0.18",
+        "coordinate": "expo-web-browser@55.0.20",
         "license": "MIT"
       },
       "upstreamLegalDocument": {
-        "npmCoordinate": "expo-web-browser@55.0.18",
-        "gitHead": "c8f16914a2713c37fe446c46d613004626b3e6b3",
+        "npmCoordinate": "expo-web-browser@55.0.20",
+        "gitHead": "856b99321eeb04bd528b33f90c0e7fa2859a1fcb",
         "path": "scripts/licenses/upstream/expo-expo-LICENSE",
         "sha256": "371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa",
-        "sourceUrl": "https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE"
+        "sourceUrl": "https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE"
       },
       "exactLicenseSelection": null,
       "legalDocumentSha256s": [
@@ -864,9 +1028,9 @@
       "installedLegalDocumentSha256s": [],
       "installedSource": {
         "kind": "npm-lock-sri",
-        "npmCoordinate": "expo-web-browser@55.0.18",
-        "npmIntegrity": "sha512-7b6N47OZ/TEArHAoSeq86pWzZvqdITlf9Zd+e520bKUXVRd1WxkyskZekJbcwusBpyhSqgWRupITZeF+adlddQ==",
-        "sourceLocation": "npm:expo-web-browser@55.0.18"
+        "npmCoordinate": "expo-web-browser@55.0.20",
+        "npmIntegrity": "sha512-masGrfbi/jqMezm/8cHHZ8chW+ifxumzt7QOCPiL+9aix0BSwuwDIBryEm2QPVmqJX51jckS0n245vWhwheQuQ==",
+        "sourceLocation": "npm:expo-web-browser@55.0.20"
       }
     },
     {
@@ -909,6 +1073,244 @@
         "npmCoordinate": "react-native@0.83.10",
         "npmIntegrity": "sha512-4gbmtAyfC0F4jU2hl/l/HZbRIfRl0d5RdHNpJLf7sT/0zhYDEhiFcFk7ii2utl7O8BIHRUmGe/anfWP3DNPTZw==",
         "sourceLocation": "npm:react-native@0.83.10"
+      }
+    },
+    {
+      "name": "GTMAppAuth",
+      "version": "5.0.0",
+      "coordinate": "GTMAppAuth@5.0.0",
+      "specChecksum": "217a876b249c3c585a54fd6f73e6b58c4f5c4238",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/2/c/c/GTMAppAuth/5.0.0/GTMAppAuth.podspec.json",
+      "specSha256": "2f6e6e2049b64effa3d939f76ca9d9f94090ec8cb237af2780691bdebab130a2",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/google/GTMAppAuth",
+      "source": {
+        "git": "https://github.com/google/GTMAppAuth.git",
+        "tag": "5.0.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": {
+        "license": "Apache-2.0",
+        "reason": "The exact GTMAppAuth 5.0.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms."
+      },
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 10,
+        "sourceLocation": "Pods/GTMAppAuth",
+        "treeSha256": "0dd74df4d21fc1c1a21bbbf504df36a4591eaca29d1c0f9aa77448e09370510b"
+      }
+    },
+    {
+      "name": "GTMSessionFetcher",
+      "version": "3.5.0",
+      "coordinate": "GTMSessionFetcher@3.5.0",
+      "specChecksum": "5aea5ba6bd522a239e236100971f10cb71b96ab6",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/c/e/3/GTMSessionFetcher/3.5.0/GTMSessionFetcher.podspec.json",
+      "specSha256": "b31045e7ac33570d99b3cf01a8a27926726201070b6c19909f9a9bdb6de89db5",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/google/gtm-session-fetcher",
+      "source": {
+        "git": "https://github.com/google/gtm-session-fetcher.git",
+        "tag": "v3.5.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": {
+        "license": "Apache-2.0",
+        "reason": "The exact GTMSessionFetcher 3.5.0 podspec abbreviates its license as 'Apache'; the installed LICENSE contains the reviewed Apache License 2.0 terms."
+      },
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 12,
+        "sourceLocation": "Pods/GTMSessionFetcher",
+        "treeSha256": "0a72b5d5a43044ec2151a51bd6e87225380d0074e89fbf5966a22b2334caa30a"
+      }
+    },
+    {
+      "name": "GoogleSignIn",
+      "version": "9.2.0",
+      "coordinate": "GoogleSignIn@9.2.0",
+      "specChecksum": "e449a40a92e9f2eea56e98b5214d13725dc5a00a",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/d/4/0/GoogleSignIn/9.2.0/GoogleSignIn.podspec.json",
+      "specSha256": "abb19e1c60acecaf74e2b3494834b1e5c3acec6dc1e771d8deb091bfac624faa",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache",
+        "file": "LICENSE"
+      },
+      "homepage": "https://developers.google.com/identity/sign-in/ios/",
+      "source": {
+        "git": "https://github.com/google/GoogleSignIn-iOS.git",
+        "tag": "9.2.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": {
+        "license": "Apache-2.0",
+        "reason": "The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms."
+      },
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 112,
+        "sourceLocation": "Pods/GoogleSignIn",
+        "treeSha256": "8d70c5438cf959891faeb7fa38fe580761774ab0adbd6e7fc78179ec05d25d97"
+      }
+    },
+    {
+      "name": "GoogleUtilities",
+      "version": "8.1.3",
+      "coordinate": "GoogleUtilities@8.1.3",
+      "specChecksum": "4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/0/8/4/GoogleUtilities/8.1.3/GoogleUtilities.podspec.json",
+      "specSha256": "f70a3c6caa2cbd5edcb8b6244da2b682753db7e13ab6474e0dbbe21bac2b540a",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache-2.0",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/google/GoogleUtilities",
+      "source": {
+        "git": "https://github.com/google/GoogleUtilities.git",
+        "tag": "CocoaPods-8.1.3"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b",
+        "d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 18,
+        "sourceLocation": "Pods/GoogleUtilities",
+        "treeSha256": "4571d5ec5eceb52f7999c84b9c1dad32f49eb01d9d35009b1f66d5d3923cd458"
+      }
+    },
+    {
+      "name": "PromisesObjC",
+      "version": "2.4.1",
+      "coordinate": "PromisesObjC@2.4.1",
+      "specChecksum": "752c3227f599e3467650e47ea36f433eeb10c273",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/0/b/5/PromisesObjC/2.4.1/PromisesObjC.podspec.json",
+      "specSha256": "4dea22040db52e0b720b16795ac72dbea72bdaa31828f00bf9960cb1d0c9978d",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache-2.0",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/google/promises",
+      "source": {
+        "git": "https://github.com/google/promises.git",
+        "tag": "2.4.1"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 43,
+        "sourceLocation": "Pods/PromisesObjC",
+        "treeSha256": "38eae6b85f89bcb3c8ea96499ebd8b7654813cdecc01c2d2bdba36dcdf1916a0"
+      }
+    },
+    {
+      "name": "PromisesSwift",
+      "version": "2.4.1",
+      "coordinate": "PromisesSwift@2.4.1",
+      "specChecksum": "217dea0fd5d2ad65222a109c48698add13cc1c5b",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/e/d/4/PromisesSwift/2.4.1/PromisesSwift.podspec.json",
+      "specSha256": "3713c3c00a6ac9a1bc7b6db5ea80d8052218bb48cc3de4e9c4a668713bcfcc3d",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache-2.0",
+        "file": "LICENSE"
+      },
+      "homepage": "https://github.com/google/promises",
+      "source": {
+        "git": "https://github.com/google/promises.git",
+        "tag": "2.4.1"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 22,
+        "sourceLocation": "Pods/PromisesSwift",
+        "treeSha256": "7d3592cf3787f8b6a61809a951cc54a6080b80c213d2cbfe356e68f29bc2544b"
       }
     },
     {
@@ -1418,6 +1820,48 @@
       }
     },
     {
+      "name": "RNGoogleSignin",
+      "version": "16.1.2",
+      "coordinate": "RNGoogleSignin@16.1.2",
+      "specChecksum": "ca05a4eb8b125c8a7bf93e1679f008faa0e5090c",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/@react-native-google-signin/google-signin"
+      },
+      "sourceReference": {
+        "path": "../node_modules/@react-native-google-signin/google-signin"
+      },
+      "specSha256": "50e4c8ec91bb448f4cb5d7dd291b0baea940607a5d3cb6230a96958cb9bb6493",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": null,
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "@react-native-google-signin/google-signin@16.1.2",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2",
+        "f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32"
+      ],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "@react-native-google-signin/google-signin@16.1.2",
+        "npmIntegrity": "sha512-1hf4pRmpnS5t0dHtqU72Q1FmWzsCZR2Sm3uVQbbfMKeNPl5TKjpAsP6F8QTZ9L+Q6Cnn9tL9BXpDCb1nyutdCQ==",
+        "sourceLocation": "npm:@react-native-google-signin/google-signin@16.1.2"
+      }
+    },
+    {
       "name": "RNReanimated",
       "version": "4.2.1",
       "coordinate": "RNReanimated@4.2.1",
@@ -1541,6 +1985,48 @@
         "npmCoordinate": "react-native-screens@4.23.0",
         "npmIntegrity": "sha512-XhO3aK0UeLpBn4kLecd+J+EDeRRJlI/Ro9Fze06vo1q163VeYtzfU9QS09/VyDFMWR1qxDC1iazCArTPSFFiPw==",
         "sourceLocation": "npm:react-native-screens@4.23.0"
+      }
+    },
+    {
+      "name": "RNSentry",
+      "version": "7.11.0",
+      "coordinate": "RNSentry@7.11.0",
+      "specChecksum": "ce98ae2e5496ce41a9b9f8a4e1c16d045592788d",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/@sentry/react-native"
+      },
+      "sourceReference": {
+        "path": "../node_modules/@sentry/react-native"
+      },
+      "specSha256": "e90383c60cf96f4029c6be604769a9ba26e1ff18bf5616ee90dc238adf7fb4b1",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": "MIT",
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "@sentry/react-native@7.11.0",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2",
+        "f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d"
+      ],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "@sentry/react-native@7.11.0",
+        "npmIntegrity": "sha512-OiDaLCAGpRN18YG/o7IIwLhU0Xpb0tYKQ5QxkGHiwb+L3VHn+MqGCGfITYNdhqr06HHMvu9Lysm+UJxaNmGaJg==",
+        "sourceLocation": "npm:@sentry/react-native@7.11.0"
       }
     },
     {
@@ -4290,6 +4776,83 @@
       }
     },
     {
+      "name": "RecaptchaInterop",
+      "version": "101.0.0",
+      "coordinate": "RecaptchaInterop@101.0.0",
+      "specChecksum": "11e0b637842dfb48308d242afc3f448062325aba",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/c/1/1/RecaptchaInterop/101.0.0/RecaptchaInterop.podspec.json",
+      "specSha256": "85a30bf8eea0b8ebcf70558cc470b0bef50f891f8f4113acc55d224f079c1797",
+      "selectedLicenses": [
+        "Apache-2.0"
+      ],
+      "licenseMetadata": {
+        "type": "Apache-2.0",
+        "file": "LICENSE"
+      },
+      "homepage": "https://cloud.google.com/recaptcha-enterprise",
+      "source": {
+        "git": "https://github.com/google/interop-ios-for-google-sdks.git",
+        "tag": "CocoaPods-101.0.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 7,
+        "sourceLocation": "Pods/RecaptchaInterop",
+        "treeSha256": "fe81d56e7570c16086d2e53adfbcaf66168599294593202eb1f8e67dc08efc5c"
+      }
+    },
+    {
+      "name": "Sentry",
+      "version": "8.58.0",
+      "coordinate": "Sentry@8.58.0",
+      "specChecksum": "d587a8fe91ca13503ecd69a1905f3e8a0fcf61be",
+      "firstPartyGenerated": false,
+      "sourceKind": "cocoapods-trunk",
+      "externalSource": null,
+      "sourceReference": "https://cdn.cocoapods.org/Specs/a/b/d/Sentry/8.58.0/Sentry.podspec.json",
+      "specSha256": "92ae621f626beb26384011c012649b93d3b51a8e1339f65f406a49ae453f50bd",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": "mit",
+        "file": null
+      },
+      "homepage": "https://github.com/getsentry/sentry-cocoa",
+      "source": {
+        "git": "https://github.com/getsentry/sentry-cocoa.git",
+        "tag": "8.58.0"
+      },
+      "owningNpmPackage": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "832f09d22fbd73f61f9ecf1b127e0513f5afa2e47b1367aaa24e4333c0563094",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "832f09d22fbd73f61f9ecf1b127e0513f5afa2e47b1367aaa24e4333c0563094"
+      ],
+      "installedSource": {
+        "kind": "pod-sandbox-source-tree",
+        "fileCount": 723,
+        "sourceLocation": "Pods/Sentry",
+        "treeSha256": "6843d26540b51a751ce5e7906319cafc7387f423ae551bda2c8b8232f86fec65"
+      }
+    },
+    {
       "name": "SocketRocket",
       "version": "0.7.1",
       "coordinate": "SocketRocket@0.7.1",
@@ -4862,6 +5425,38 @@
         {
           "source": "canonical:Apache-2.0",
           "path": "node_modules/baseline-browser-mapping/LICENSE.txt"
+        },
+        {
+          "source": "installed-pod:AppAuth@2.1.0",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:AppCheckCore@11.3.1",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:GTMAppAuth@5.0.0",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:GTMSessionFetcher@3.5.0",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:GoogleSignIn@9.2.0",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:PromisesObjC@2.4.1",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:PromisesSwift@2.4.1",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:RecaptchaInterop@101.0.0",
+          "path": "LICENSE"
         }
       ]
     },
@@ -4884,7 +5479,15 @@
       "text": "The MIT License (MIT)\n\nCopyright (c) 2015-present 650 Industries, Inc. (aka Expo)\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
       "sources": [
         {
+          "source": "upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE",
+          "path": "scripts/licenses/upstream/expo-expo-LICENSE"
+        },
+        {
           "source": "upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE",
+          "path": "scripts/licenses/upstream/expo-expo-LICENSE"
+        },
+        {
+          "source": "upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE",
           "path": "scripts/licenses/upstream/expo-expo-LICENSE"
         },
         {
@@ -4988,6 +5591,16 @@
         {
           "source": "canonical:Boost-1.0",
           "path": "scripts/licenses/canonical/Boost-1.0.txt"
+        }
+      ]
+    },
+    {
+      "sha256": "832f09d22fbd73f61f9ecf1b127e0513f5afa2e47b1367aaa24e4333c0563094",
+      "text": "The MIT License (MIT)\n\nCopyright (c) 2015 Sentry\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:Sentry@8.58.0",
+          "path": "LICENSE.md"
         }
       ]
     },
@@ -5418,6 +6031,16 @@
       ]
     },
     {
+      "sha256": "d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77",
+      "text": "Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n\n      \"License\" shall mean the terms and conditions for use, reproduction,\n      and distribution as defined by Sections 1 through 9 of this document.\n\n      \"Licensor\" shall mean the copyright owner or entity authorized by\n      the copyright owner that is granting the License.\n\n      \"Legal Entity\" shall mean the union of the acting entity and all\n      other entities that control, are controlled by, or are under common\n      control with that entity. For the purposes of this definition,\n      \"control\" means (i) the power, direct or indirect, to cause the\n      direction or management of such entity, whether by contract or\n      otherwise, or (ii) ownership of fifty percent (50%) or more of the\n      outstanding shares, or (iii) beneficial ownership of such entity.\n\n      \"You\" (or \"Your\") shall mean an individual or Legal Entity\n      exercising permissions granted by this License.\n\n      \"Source\" form shall mean the preferred form for making modifications,\n      including but not limited to software source code, documentation\n      source, and configuration files.\n\n      \"Object\" form shall mean any form resulting from mechanical\n      transformation or translation of a Source form, including but\n      not limited to compiled object code, generated documentation,\n      and conversions to other media types.\n\n      \"Work\" shall mean the work of authorship, whether in Source or\n      Object form, made available under the License, as indicated by a\n      copyright notice that is included in or attached to the work\n      (an example is provided in the Appendix below).\n\n      \"Derivative Works\" shall mean any work, whether in Source or Object\n      form, that is based on (or derived from) the Work and for which the\n      editorial revisions, annotations, elaborations, or other modifications\n      represent, as a whole, an original work of authorship. For the purposes\n      of this License, Derivative Works shall not include works that remain\n      separable from, or merely link (or bind by name) to the interfaces of,\n      the Work and Derivative Works thereof.\n\n      \"Contribution\" shall mean any work of authorship, including\n      the original version of the Work and any modifications or additions\n      to that Work or Derivative Works thereof, that is intentionally\n      submitted to Licensor for inclusion in the Work by the copyright owner\n      or by an individual or Legal Entity authorized to submit on behalf of\n      the copyright owner. For the purposes of this definition, \"submitted\"\n      means any form of electronic, verbal, or written communication sent\n      to the Licensor or its representatives, including but not limited to\n      communication on electronic mailing lists, source code control systems,\n      and issue tracking systems that are managed by, or on behalf of, the\n      Licensor for the purpose of discussing and improving the Work, but\n      excluding communication that is conspicuously marked or otherwise\n      designated in writing by the copyright owner as \"Not a Contribution.\"\n\n      \"Contributor\" shall mean Licensor and any individual or Legal Entity\n      on behalf of whom a Contribution has been received by Licensor and\n      subsequently incorporated within the Work.\n\n   2. Grant of Copyright License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      copyright license to reproduce, prepare Derivative Works of,\n      publicly display, publicly perform, sublicense, and distribute the\n      Work and such Derivative Works in Source or Object form.\n\n   3. Grant of Patent License. Subject to the terms and conditions of\n      this License, each Contributor hereby grants to You a perpetual,\n      worldwide, non-exclusive, no-charge, royalty-free, irrevocable\n      (except as stated in this section) patent license to make, have made,\n      use, offer to sell, sell, import, and otherwise transfer the Work,\n      where such license applies only to those patent claims licensable\n      by such Contributor that are necessarily infringed by their\n      Contribution(s) alone or by combination of their Contribution(s)\n      with the Work to which such Contribution(s) was submitted. If You\n      institute patent litigation against any entity (including a\n      cross-claim or counterclaim in a lawsuit) alleging that the Work\n      or a Contribution incorporated within the Work constitutes direct\n      or contributory patent infringement, then any patent licenses\n      granted to You under this License for that Work shall terminate\n      as of the date such litigation is filed.\n\n   4. Redistribution. You may reproduce and distribute copies of the\n      Work or Derivative Works thereof in any medium, with or without\n      modifications, and in Source or Object form, provided that You\n      meet the following conditions:\n\n      (a) You must give any other recipients of the Work or\n          Derivative Works a copy of this License; and\n\n      (b) You must cause any modified files to carry prominent notices\n          stating that You changed the files; and\n\n      (c) You must retain, in the Source form of any Derivative Works\n          that You distribute, all copyright, patent, trademark, and\n          attribution notices from the Source form of the Work,\n          excluding those notices that do not pertain to any part of\n          the Derivative Works; and\n\n      (d) If the Work includes a \"NOTICE\" text file as part of its\n          distribution, then any Derivative Works that You distribute must\n          include a readable copy of the attribution notices contained\n          within such NOTICE file, excluding those notices that do not\n          pertain to any part of the Derivative Works, in at least one\n          of the following places: within a NOTICE text file distributed\n          as part of the Derivative Works; within the Source form or\n          documentation, if provided along with the Derivative Works; or,\n          within a display generated by the Derivative Works, if and\n          wherever such third-party notices normally appear. The contents\n          of the NOTICE file are for informational purposes only and\n          do not modify the License. You may add Your own attribution\n          notices within Derivative Works that You distribute, alongside\n          or as an addendum to the NOTICE text from the Work, provided\n          that such additional attribution notices cannot be construed\n          as modifying the License.\n\n      You may add Your own copyright statement to Your modifications and\n      may provide additional or different license terms and conditions\n      for use, reproduction, or distribution of Your modifications, or\n      for any such Derivative Works as a whole, provided Your use,\n      reproduction, and distribution of the Work otherwise complies with\n      the conditions stated in this License.\n\n   5. Submission of Contributions. Unless You explicitly state otherwise,\n      any Contribution intentionally submitted for inclusion in the Work\n      by You to the Licensor shall be under the terms and conditions of\n      this License, without any additional terms or conditions.\n      Notwithstanding the above, nothing herein shall supersede or modify\n      the terms of any separate license agreement you may have executed\n      with Licensor regarding such Contributions.\n\n   6. Trademarks. This License does not grant permission to use the trade\n      names, trademarks, service marks, or product names of the Licensor,\n      except as required for reasonable and customary use in describing the\n      origin of the Work and reproducing the content of the NOTICE file.\n\n   7. Disclaimer of Warranty. Unless required by applicable law or\n      agreed to in writing, Licensor provides the Work (and each\n      Contributor provides its Contributions) on an \"AS IS\" BASIS,\n      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or\n      implied, including, without limitation, any warranties or conditions\n      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A\n      PARTICULAR PURPOSE. You are solely responsible for determining the\n      appropriateness of using or redistributing the Work and assume any\n      risks associated with Your exercise of permissions under this License.\n\n   8. Limitation of Liability. In no event and under no legal theory,\n      whether in tort (including negligence), contract, or otherwise,\n      unless required by applicable law (such as deliberate and grossly\n      negligent acts) or agreed to in writing, shall any Contributor be\n      liable to You for damages, including any direct, indirect, special,\n      incidental, or consequential damages of any character arising as a\n      result of this License or out of the use or inability to use the\n      Work (including but not limited to damages for loss of goodwill,\n      work stoppage, computer failure or malfunction, or any and all\n      other commercial damages or losses), even if such Contributor\n      has been advised of the possibility of such damages.\n\n   9. Accepting Warranty or Additional Liability. While redistributing\n      the Work or Derivative Works thereof, You may choose to offer,\n      and charge a fee for, acceptance of support, warranty, indemnity,\n      or other liability obligations and/or rights consistent with this\n      License. However, in accepting such obligations, You may act only\n      on Your own behalf and on Your sole responsibility, not on behalf\n      of any other Contributor, and only if You agree to indemnify,\n      defend, and hold each Contributor harmless for any liability\n      incurred by, or claims asserted against, such Contributor by reason\n      of your accepting any such warranty or additional liability.\n\n   END OF TERMS AND CONDITIONS\n\n   APPENDIX: How to apply the Apache License to your work.\n\n      To apply the Apache License to your work, attach the following\n      boilerplate notice, with the fields enclosed by brackets \"[]\"\n      replaced with your own identifying information. (Don't include\n      the brackets!)  The text should be enclosed in the appropriate\n      comment syntax for the file format. We also recommend that a\n      file or class name and description of purpose be included on the\n      same \"printed page\" as the copyright notice for easier\n      identification within third-party archives.\n\n   Copyright [yyyy] [name of copyright owner]\n\n   Licensed under the Apache License, Version 2.0 (the \"License\");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an \"AS IS\" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.\n\n================================================================================\n\nCopyright (c) 2017 Landon J. Fuller <landon@landonf.org>\nAll rights reserved.\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of\nthis software and associated documentation files (the \"Software\"), to deal in\nthe Software without restriction, including without limitation the rights to\nuse, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of\nthe Software, and to permit persons to whom the Software is furnished to do so,\nsubject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS\nFOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR\nCOPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER\nIN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN\nCONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:GoogleUtilities@8.1.3",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
       "sha256": "ed1bbb0f45e47aad55abcfadbce9fb60beec13a755cb6d048ced5189ce917a46",
       "text": "MIT License\n\nCopyright (c) 2024 nobody\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
       "sources": [
@@ -5427,6 +6050,24 @@
         },
         {
           "source": "npm:react-native-worklets@0.7.4",
+          "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32",
+      "text": "The MIT License (MIT)\n\nCopyright (c) 2015 Apptailor\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:ExpoAdapterGoogleSignIn@16.1.2",
+          "path": "LICENSE"
+        },
+        {
+          "source": "installed-pod:RNGoogleSignin@16.1.2",
+          "path": "LICENSE"
+        },
+        {
+          "source": "npm:@react-native-google-signin/google-signin@16.1.2",
           "path": "LICENSE"
         }
       ]
@@ -5442,6 +6083,20 @@
         {
           "source": "npm:react-native-video@6.18.0",
           "path": "LICENSE"
+        }
+      ]
+    },
+    {
+      "sha256": "f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d",
+      "text": "The MIT License (MIT)\n\nCopyright (c) 2017-2024 Sentry\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to deal\nin the Software without restriction, including without limitation the rights\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all\ncopies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\nSOFTWARE.",
+      "sources": [
+        {
+          "source": "installed-pod:RNSentry@7.11.0",
+          "path": "LICENSE.md"
+        },
+        {
+          "source": "npm:@sentry/react-native@7.11.0",
+          "path": "LICENSE.md"
         }
       ]
     }

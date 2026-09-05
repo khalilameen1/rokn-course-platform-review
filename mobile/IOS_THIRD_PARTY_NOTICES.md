@@ -6,8 +6,22 @@
 
 This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retains package-specific LICENSE and NOTICE documents from the distributed sources.
 
-- Dependencies: 113
-- Retained unique legal texts: 24
+- Dependencies: 127
+- Retained unique legal texts: 28
+
+### AppAuth@2.1.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5`
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
+
+### AppCheckCore@11.3.1
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `e215d35177a9cf469927863e69c13e220df32a8b`
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
 ### BVLinearGradient@2.8.3
 
@@ -25,12 +39,12 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `react-native@0.83.10`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173`
 
-### EXApplication@55.0.17
+### EXApplication@55.0.19
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `7e3ad9ea3ff92cef0659550b9cdade542e04408c`
-- Owning npm source: `expo-application@55.0.17`
+- Podspec checksum: `093f79372a8ebd9ef65a5255d25818ce2feb0492`
+- Owning npm source: `expo-application@55.0.19`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### EXConstants@55.0.17
@@ -41,36 +55,52 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `expo-constants@55.0.17`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### Expo@55.0.28
+### Expo@55.0.31
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `0009020ac82815d6c3ddaec92f84397e35a3ff46`
-- Owning npm source: `expo@55.0.28`
+- Podspec checksum: `cd74e48f2decdaa4a2410f8c261247b4cfa100ec`
+- Owning npm source: `expo@55.0.31`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoAppleAuthentication@55.0.15
+### ExpoAdapterGoogleSignIn@16.1.2
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `0a2b509c556b3313c57598d179c8561659650e44`
-- Owning npm source: `expo-apple-authentication@55.0.15`
+- Podspec checksum: `3332ac2d96d803350f53f84047244b35e2efc994`
+- Owning npm source: `@react-native-google-signin/google-signin@16.1.2`
+- Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32`
+
+### ExpoAppleAuthentication@55.0.17
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `ab3d5d027724c02652f5be78bf81e43ac0e684c6`
+- Owning npm source: `expo-apple-authentication@55.0.17`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoAsset@55.0.18
+### ExpoAsset@55.0.20
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `5f5b3905cf09f567a66d43870e07c8e60ac468cc`
-- Owning npm source: `expo-asset@55.0.18`
+- Podspec checksum: `64ff088f684d008431f518c0d40fccefb9cda593`
+- Owning npm source: `expo-asset@55.0.20`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoCrypto@55.0.17
+### ExpoCrypto@55.0.19
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `60378601fbd5a2762cbfbdc56906ed1aafa82d94`
-- Owning npm source: `expo-crypto@55.0.17`
+- Podspec checksum: `139bf434edb3c2a94267c70e306b04a7ceb8dc50`
+- Owning npm source: `expo-crypto@55.0.19`
+- Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
+### ExpoDocumentPicker@55.0.17
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `e471276f75d4767740ad1a3929db6996c4c5aef8`
+- Owning npm source: `expo-document-picker@55.0.17`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### ExpoDomWebView@55.0.6
@@ -81,12 +111,12 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `@expo/dom-webview@55.0.6`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoFileSystem@55.0.24
+### ExpoFileSystem@55.0.26
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `2e9515a04c0e4143f2a728d773389d315e2d50da`
-- Owning npm source: `expo-file-system@55.0.24`
+- Podspec checksum: `7874fb1de3cd3f866cb8dd7dbe05361c5c278ef6`
+- Owning npm source: `expo-file-system@55.0.26`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### ExpoFont@55.0.8
@@ -121,44 +151,44 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `@expo/log-box@55.0.13`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoModulesCore@55.0.25
+### ExpoModulesCore@55.0.26
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `15eec5b2cf902fc4f9d64c71adf279bf4e538b8d`
-- Owning npm source: `expo-modules-core@55.0.25`
+- Podspec checksum: `9aabd1a060f905848cac6f42baf658921db697d4`
+- Owning npm source: `expo-modules-core@55.0.26`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoModulesJSI@55.0.25
+### ExpoModulesJSI@55.0.26
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `ae8ebeef19be77aeaf25f2655a5303755ef7178d`
-- Owning npm source: `expo-modules-core@55.0.25`
+- Podspec checksum: `483d791904bf8579a384c2bf5f6265bf6e8362cb`
+- Owning npm source: `expo-modules-core@55.0.26`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoNotifications@55.0.25
+### ExpoNotifications@55.0.27
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `4f296c070cf5abfde08f3e0e5b1e3ba9d9c9dcc2`
-- Owning npm source: `expo-notifications@55.0.25`
+- Podspec checksum: `793cb016faf9ee414ed9ae94e8951c95ca31d619`
+- Owning npm source: `expo-notifications@55.0.27`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoSecureStore@55.0.16
+### ExpoSecureStore@55.0.18
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `267fc7f3d7a4b9163fc12445acf3db4fa5c87b7a`
-- Owning npm source: `expo-secure-store@55.0.16`
+- Podspec checksum: `93300a260cf19518f78afc7a114fbf2c287eef70`
+- Owning npm source: `expo-secure-store@55.0.18`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
-### ExpoWebBrowser@55.0.18
+### ExpoWebBrowser@55.0.20
 
 - Platform: iOS
 - Selected license(s): MIT
-- Podspec checksum: `1018c67e8370e523b4f30c4be249fd32d23a76ca`
-- Owning npm source: `expo-web-browser@55.0.18`
+- Podspec checksum: `d8f05a76ddf8aded64ca5972b577f6a8ccc0be2d`
+- Owning npm source: `expo-web-browser@55.0.20`
 - Retained legal document(s): `371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
 ### FBLazyVector@0.83.10
@@ -168,6 +198,51 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Podspec checksum: `07433c4ab85da44d0b5ceac374ff4e1d57c7aa23`
 - Owning npm source: `react-native@0.83.10`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173`
+
+### GTMAppAuth@5.0.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `217a876b249c3c585a54fd6f73e6b58c4f5c4238`
+- Exact license review: The exact GTMAppAuth 5.0.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
+
+### GTMSessionFetcher@3.5.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `5aea5ba6bd522a239e236100971f10cb71b96ab6`
+- Exact license review: The exact GTMSessionFetcher 3.5.0 podspec abbreviates its license as 'Apache'; the installed LICENSE contains the reviewed Apache License 2.0 terms.
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
+
+### GoogleSignIn@9.2.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `e449a40a92e9f2eea56e98b5214d13725dc5a00a`
+- Exact license review: The exact GoogleSignIn 9.2.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
+
+### GoogleUtilities@8.1.3
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb`
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`, `d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77`
+
+### PromisesObjC@2.4.1
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `752c3227f599e3467650e47ea36f433eeb10c273`
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
+
+### PromisesSwift@2.4.1
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `217dea0fd5d2ad65222a109c48698add13cc1c5b`
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
 
 ### RCT-Folly@2024.11.18.00
 
@@ -265,6 +340,14 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `react-native-gesture-handler@2.30.0`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `cf926c5c74ae12435b1cbe9be06ddf6cb10a0db5d9c03b089041bb30aae945f6`
 
+### RNGoogleSignin@16.1.2
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `ca05a4eb8b125c8a7bf93e1679f008faa0e5090c`
+- Owning npm source: `@react-native-google-signin/google-signin@16.1.2`
+- Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32`
+
 ### RNReanimated@4.2.1
 
 - Platform: iOS
@@ -288,6 +371,14 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Podspec checksum: `32d204189c8c164da3aef640b6d1d8721c25a86f`
 - Owning npm source: `react-native-screens@4.23.0`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `8ffc5e162f4e2afdf64eb92ef26627ff9e244e7fb38079ec3049efe029d4af30`
+
+### RNSentry@7.11.0
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `ce98ae2e5496ce41a9b9f8a4e1c16d045592788d`
+- Owning npm source: `@sentry/react-native@7.11.0`
+- Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d`
 
 ### RNShare@12.2.2
 
@@ -815,6 +906,20 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `react-native@0.83.10`
 - Retained legal document(s): `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`, `cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173`
 
+### RecaptchaInterop@101.0.0
+
+- Platform: iOS
+- Selected license(s): Apache-2.0
+- Podspec checksum: `11e0b637842dfb48308d242afc3f448062325aba`
+- Retained legal document(s): `283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b`
+
+### Sentry@8.58.0
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `d587a8fe91ca13503ecd69a1905f3e8a0fcf61be`
+- Retained legal document(s): `832f09d22fbd73f61f9ecf1b127e0513f5afa2e47b1367aaa24e4333c0563094`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
 ### SocketRocket@0.7.1
 
 - Platform: iOS
@@ -989,7 +1094,7 @@ SOFTWARE.
 
 ### 283ea6cc2997a1a70da0049e09adf9317bb60ca1b51279b65196b83a69e1996b
 
-Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`
+Source(s): `canonical:Apache-2.0/node_modules/baseline-browser-mapping/LICENSE.txt`, `installed-pod:AppAuth@2.1.0/LICENSE`, `installed-pod:AppCheckCore@11.3.1/LICENSE`, `installed-pod:GTMAppAuth@5.0.0/LICENSE`, `installed-pod:GTMSessionFetcher@3.5.0/LICENSE`, `installed-pod:GoogleSignIn@9.2.0/LICENSE`, `installed-pod:PromisesObjC@2.4.1/LICENSE`, `installed-pod:PromisesSwift@2.4.1/LICENSE`, `installed-pod:RecaptchaInterop@101.0.0/LICENSE`
 
 ```text
 Apache License
@@ -1236,7 +1341,7 @@ You may obtain a copy of the Creative Commons Attribution 3.0 License at
 
 ### 371567d5d8999eeffba61ddbcb60ffbe4f25c3f165f1772e2c66befd0251bffa
 
-Source(s): `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
+Source(s): `upstream:https://github.com/expo/expo/blob/30a1c5b4871a5a3f0f6545be0c2d1f67521a5e6f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/7c081282cf88968f81732feb67a71840e769a40f/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/856b99321eeb04bd528b33f90c0e7fa2859a1fcb/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/c8f16914a2713c37fe446c46d613004626b3e6b3/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`, `upstream:https://github.com/expo/expo/blob/fcb091766242d53248cd3c5949965961dbc5ec1d/LICENSE/scripts/licenses/upstream/expo-expo-LICENSE`
 
 ```text
 The MIT License (MIT)
@@ -1648,6 +1753,34 @@ The copyright notices in the Software and this entire statement, including the a
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES OR OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
+### 832f09d22fbd73f61f9ecf1b127e0513f5afa2e47b1367aaa24e4333c0563094
+
+Source(s): `installed-pod:Sentry@8.58.0/LICENSE.md`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015 Sentry
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
 
 Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
@@ -1912,6 +2045,236 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### d740c03bf4a62abc785a93c7ad5ef6c266124b979f7bb75e2eb80dad836d8f77
+
+Source(s): `installed-pod:GoogleUtilities@8.1.3/LICENSE`
+
+```text
+Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      "Legal Entity" shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      "control" means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      "You" (or "Your") shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      "Source" form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      "Object" form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      "Work" shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      "Derivative Works" shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      "Contribution" shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, "submitted"
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as "Not a Contribution."
+
+      "Contributor" shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a "NOTICE" text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an "AS IS" BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+================================================================================
+
+Copyright (c) 2017 Landon J. Fuller <landon@landonf.org>
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+the Software, and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
 ### ed1bbb0f45e47aad55abcfadbce9fb60beec13a755cb6d048ced5189ce917a46
 
 Source(s): `installed-pod:RNWorklets@0.7.4/LICENSE`, `npm:react-native-worklets@0.7.4/LICENSE`
@@ -1920,6 +2283,34 @@ Source(s): `installed-pod:RNWorklets@0.7.4/LICENSE`, `npm:react-native-worklets@
 MIT License
 
 Copyright (c) 2024 nobody
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### f1a3c53ad33fb021326fcb7764df848688bd93f1a4d9e415d9d4ff01f4ca1b32
+
+Source(s): `installed-pod:ExpoAdapterGoogleSignIn@16.1.2/LICENSE`, `installed-pod:RNGoogleSignin@16.1.2/LICENSE`, `npm:@react-native-google-signin/google-signin@16.1.2/LICENSE`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2015 Apptailor
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
@@ -1948,6 +2339,34 @@ MIT License
 
 Copyright (c) 2016-2022 Project contributors
 Copyright (c) 2016 Brent Vatne, Baris Sencan
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+### f6201a2b36e05dad270ee15238a7dba1b609be9009634d84ae505627e9f6e24d
+
+Source(s): `installed-pod:RNSentry@7.11.0/LICENSE.md`, `npm:@sentry/react-native@7.11.0/LICENSE.md`
+
+```text
+The MIT License (MIT)
+
+Copyright (c) 2017-2024 Sentry
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
