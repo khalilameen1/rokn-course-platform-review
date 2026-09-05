@@ -12,6 +12,15 @@ export type ProjectJourneyState =
   | 'passed'
   | 'needs_changes';
 
+export const reviewFeedbackForStatus = (
+  status: ProjectStatus,
+  feedback?: string,
+): string | undefined => {
+  if (status !== 'needs_changes') return undefined;
+  const value = String(feedback || '').trim();
+  return value || undefined;
+};
+
 /**
  * The server status describes the accepted submission. Draft hydration,
  * editing and the request flight are local UI states. Resolve them once so a

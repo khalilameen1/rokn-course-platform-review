@@ -102,6 +102,7 @@ const outcomeFromSync = async (
   if (result.submissionStatus === 'passed') {
     await clearPendingProjectSubmission(pending, operation);
     return {
+      ...result,
       submissionStatus: 'passed',
       accepted: true,
       canContinue: result.canContinue,
@@ -113,11 +114,13 @@ const outcomeFromSync = async (
     // editor visible until the server has accepted a real submission.
     return result.accepted
       ? {
+          ...result,
           submissionStatus: 'evaluating',
           accepted: true,
           canContinue: false,
         }
       : {
+          ...result,
           submissionStatus: 'draft',
           accepted: false,
           canContinue: false,
@@ -126,6 +129,7 @@ const outcomeFromSync = async (
 
   await clearPendingProjectSubmission(pending, operation);
   return {
+    ...result,
     submissionStatus: 'needs_changes',
     accepted: true,
     canContinue: false,

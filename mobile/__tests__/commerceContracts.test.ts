@@ -376,6 +376,10 @@ describe('commerce API contracts', () => {
       path.resolve(__dirname, '../src/screens/wallet/useWalletCheckout.ts'),
       'utf8',
     );
+    const checkoutTypes = fs.readFileSync(
+      path.resolve(__dirname, '../src/services/coinCheckoutTypes.ts'),
+      'utf8',
+    );
     const courseCheckout = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -390,8 +394,11 @@ describe('commerce API contracts', () => {
     expect(courseTopup).toContain('formatArabicDisplayText(item.label)');
     expect(walletCheckout).toContain('openCoinCheckout(item');
     expect(courseCheckout).toContain('openCoinCheckout(coinPackage');
-    expect(walletCheckout).toContain("'recovery_in_progress'");
-    expect(walletCheckout).toContain("'FEATURE_CHECKOUT_DISABLED'");
+    expect(walletCheckout).toContain('coinCheckoutFailureDisposition(code)');
+    expect(checkoutTypes).toContain("'recovery_in_progress'");
+    expect(checkoutTypes).toContain("'FEATURE_CHECKOUT_DISABLED'");
+    expect(checkoutTypes).toContain("'payment_configuration_unavailable'");
+    expect(checkoutTypes).toContain("'checkout_temporarily_unavailable'");
     expect(walletCheckout).toContain('else if (!checkoutUnavailable)');
     expect(walletCheckout).toContain("'الدفع متوقف مؤقتًا'");
   });

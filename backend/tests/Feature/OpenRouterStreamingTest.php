@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Exceptions\AiProviderUnavailableException;
 use App\Services\OpenRouterService;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -101,6 +102,41 @@ final class OpenRouterStreamingTest extends TestCase
         );
 
         self::assertSame(str_repeat('ب', 60), $result['message']);
+    }
+
+    public function test_interrupted_stream_checkpoints_the_last_visible_text_before_failing(): void
+    {
+        $visible = 'جزء من الإجابة';
+        Http::fake([
+            'https://openrouter.test/chat' => Http::response(
+                $this->event(['id' => 'gen-3', 'choices' => [[
+                    'delta' => ['content' => $visible],
+                    'finish_reason' => null,
+                ]]]),
+                200,
+                ['Content-Type' => 'text/event-stream']
+            ),
+        ]);
+        $partials = [];
+
+        try {
+            app(OpenRouterService::class)->chat(
+                'test/model',
+                [['role' => 'user', 'content' => 'السؤال']],
+                .3,
+                200,
+                'request-3',
+                null,
+                function (string $partial) use (&$partials): void {
+                    $partials[] = $partial;
+                }
+            );
+            self::fail('The incomplete provider stream must remain terminal.');
+        } catch (AiProviderUnavailableException $exception) {
+            self::assertTrue($exception->outcomeUnknown);
+        }
+
+        self::assertSame([$visible], $partials);
     }
 
     /** @param array<string,mixed> $payload */

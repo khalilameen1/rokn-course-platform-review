@@ -177,6 +177,32 @@ describe('course details presentation contract', () => {
     );
   });
 
+  it.each(['basic', 'mentor'])(
+    'waits for the wallet when a free tier sits beside paid tiers (selected=%s)',
+    selectedPlanCode => {
+      const input = {
+        remoteCourse: {
+          ...course,
+          price: 0,
+          accessPlans: [plan('basic', 0), plan('mentor', 700)],
+        },
+        remoteBalance: null,
+        selectedPlanCode,
+      };
+      expect(presentation({...input, remoteCommerceLoading: true}).primaryAction.kind)
+        .toBe('disabled');
+      expect(presentation(input).primaryAction.kind).toBe('wallet_unavailable');
+    },
+  );
+
+  it('does not require a wallet for an entirely free course', () => {
+    expect(presentation({
+      remoteCourse: {...course, price: 0, accessPlans: [plan('basic', 0)]},
+      remoteBalance: null,
+      selectedPlanCode: 'basic',
+    }).primaryAction.kind).toBe('free');
+  });
+
   it('keeps the definition visible but disables its single CTA while commerce is loading', () => {
     const result = presentation({remoteCommerceLoading: true});
 

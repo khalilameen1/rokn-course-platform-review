@@ -18,7 +18,6 @@ type Params = {
   busy: boolean;
   couponBusy: boolean;
   courseId: string;
-  coursePrice: number | null;
   dialogStep: DialogStep;
   effectivePurchasePrice: number;
   effectiveSpendableBalance: number;
@@ -30,7 +29,6 @@ type Params = {
   purchaseCouponCode: string;
   purchasePrice: number;
   purchaseRestoreStatus: 'idle' | 'quoting' | 'ready' | 'failed';
-  remoteBalance: number | null;
   remoteSession: boolean | null;
   routeParams: CourseDetailsRouteParams;
   selectedPlanCode?: string;
@@ -63,7 +61,6 @@ export function usePurchaseEntry({
   busy,
   couponBusy,
   courseId,
-  coursePrice,
   dialogStep,
   effectivePurchasePrice,
   effectiveSpendableBalance,
@@ -75,7 +72,6 @@ export function usePurchaseEntry({
   purchaseCouponCode,
   purchasePrice,
   purchaseRestoreStatus,
-  remoteBalance,
   remoteSession,
   routeParams,
   selectedPlanCode,
@@ -217,7 +213,8 @@ export function usePurchaseEntry({
       autoHandledRef.current ||
       !pageReady ||
       owned ||
-      remoteSession === null
+      remoteSession === null ||
+      primaryAction.kind === 'disabled'
     ) {
       return;
     }
@@ -256,12 +253,12 @@ export function usePurchaseEntry({
     }
     autoHandledRef.current = true;
     if (purchaseRestoreStatus !== 'failed') setNotice('');
-    if (coursePrice === null) {
+    if (primaryAction.kind === 'price_unavailable') {
       setNotice('سعر الكورس لم يُنشر بعد\nلم نبدأ أي عملية شراء');
       consumeRouteIntent();
       return;
     }
-    if (coursePrice > 0 && remoteBalance === null) {
+    if (primaryAction.kind === 'wallet_unavailable') {
       setNotice('تعذّر التحقق من رصيدك\nحاول بعد لحظات');
       consumeRouteIntent();
       return;
@@ -274,15 +271,14 @@ export function usePurchaseEntry({
     consumeRouteIntent();
   }, [
     accessPlans,
-    coursePrice,
     consumeRouteIntent,
     effectivePurchasePrice,
     effectiveSpendableBalance,
     openLogin,
     owned,
     pageReady,
+    primaryAction.kind,
     purchaseRestoreStatus,
-    remoteBalance,
     remoteSession,
     routeParams.openPurchase,
     routeParams.purchaseCouponCode,

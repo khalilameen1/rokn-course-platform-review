@@ -480,7 +480,12 @@ export const useReelsController = () => {
       } else if (result.submissionStatus === 'needs_changes') {
         setCourse(current =>
           current
-            ? updateProjectStatusOnly(current, projectId, 'needs_changes')
+            ? updateProjectStatusOnly(
+                current,
+                projectId,
+                'needs_changes',
+                result.reviewFeedback,
+              )
             : current,
         );
       }

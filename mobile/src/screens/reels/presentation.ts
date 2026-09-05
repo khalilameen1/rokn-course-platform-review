@@ -3,6 +3,7 @@ import type {
   CourseLearningData,
   VideoQuality,
 } from '../../components/VideoPlayer/types';
+import {reviewFeedbackForStatus} from '../../components/VideoPlayer/courseLearning/projectJourney';
 import {
   courseLearningGateState,
   orderedCourseSteps,
@@ -115,6 +116,7 @@ export const updateProjectStatusOnly = (
   course: CourseLearningData,
   projectId: string,
   status: 'evaluating' | 'passed' | 'needs_changes',
+  reviewFeedback?: string,
 ): CourseLearningData => ({
   ...course,
   modules: course.modules.map(module => {
@@ -123,7 +125,13 @@ export const updateProjectStatusOnly = (
     return {
       ...module,
       projects: projects.map(project =>
-        project.id === projectId ? {...project, status} : project,
+        project.id === projectId
+          ? {
+              ...project,
+              status,
+              reviewFeedback: reviewFeedbackForStatus(status, reviewFeedback),
+            }
+          : project,
       ),
     };
   }),

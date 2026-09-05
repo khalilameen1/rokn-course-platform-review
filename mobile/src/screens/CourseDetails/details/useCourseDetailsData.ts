@@ -24,6 +24,7 @@ import {
   mapCoursePayload,
 } from '../../../components/VideoPlayer/courseLearningApi';
 import type {CourseLearningData} from '../../../components/VideoPlayer/types';
+import {courseRequiresWallet} from './purchaseTerms';
 
 type UseCourseDetailsDataParams = {
   courseId: string;
@@ -226,8 +227,7 @@ export const useCourseDetailsData = ({
         sessionAvailable &&
           resolvedDetails &&
           !resolvedDetails.owned &&
-          (Number(resolvedDetails.price || 0) > 0 ||
-            resolvedDetails.accessPlans.some(plan => plan.priceCoins > 0)),
+          courseRequiresWallet(resolvedDetails),
       );
       if (needsCommerce) {
         setRemoteCommerceLoading(true);

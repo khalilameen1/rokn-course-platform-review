@@ -11,6 +11,7 @@ import type {
   ProjectReportStatus,
   ProjectStatus,
 } from '../types';
+import {reviewFeedbackForStatus} from '../courseLearning/projectJourney';
 
 type ProjectResolution = Awaited<ReturnType<typeof loadProjectResolution>>;
 
@@ -62,7 +63,10 @@ const stateFromProject = (project: CourseProject): ProjectResolutionState => {
     reportStatus:
       project.reportStatus ??
       (contract.reportEnabled ? 'not_requested' : 'not_included'),
-    reviewFeedback: project.reviewFeedback,
+    reviewFeedback: reviewFeedbackForStatus(
+      project.status,
+      project.reviewFeedback,
+    ),
     feedbackThread: project.feedbackThread,
     contract,
   };
@@ -73,7 +77,10 @@ const stateFromResolution = (
 ): ProjectResolutionState => ({
   status: resolution.status,
   reportStatus: resolution.reportStatus,
-  reviewFeedback: resolution.reviewFeedback,
+  reviewFeedback: reviewFeedbackForStatus(
+    resolution.status,
+    resolution.reviewFeedback,
+  ),
   feedbackThread: resolution.feedbackThread ?? undefined,
   contract: runtimeContract(resolution),
 });
@@ -120,7 +127,10 @@ export const useProjectResolution = ({
       reportStatus:
         project.reportStatus ??
         (contract.reportEnabled ? 'not_requested' : 'not_included'),
-      reviewFeedback: project.reviewFeedback,
+      reviewFeedback: reviewFeedbackForStatus(
+        project.status,
+        project.reviewFeedback,
+      ),
       feedbackThread: project.feedbackThread,
       contract,
     });
@@ -249,6 +259,10 @@ export const useProjectResolution = ({
             : outcome.submissionStatus === 'needs_changes'
             ? 'not_requested'
             : current.reportStatus,
+        reviewFeedback: reviewFeedbackForStatus(
+          outcome.submissionStatus,
+          outcome.reviewFeedback,
+        ),
       }));
     },
     [],

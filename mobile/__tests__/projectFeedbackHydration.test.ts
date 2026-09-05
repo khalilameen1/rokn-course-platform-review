@@ -116,6 +116,7 @@ describe('project feedback hydration parity', () => {
 
       expect(hydrated).toEqual(initial);
       expect(resolution.feedbackThread).toEqual(initial);
+      expect(resolution.reviewFeedback).toBeUndefined();
       expect(initial?.messages[0]).toMatchObject({
         canRetry,
         errorCode: 'provider_unavailable',

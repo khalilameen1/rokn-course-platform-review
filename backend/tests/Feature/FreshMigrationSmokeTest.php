@@ -22,6 +22,10 @@ final class FreshMigrationSmokeTest extends TestCase
     {
         $this->artisan('migrate:fresh', ['--force' => true])
             ->assertExitCode(0);
+        $this->artisan('rokn:preflight', [
+            '--schema-only' => true,
+            '--allow-mixed-release' => true,
+        ])->assertExitCode(0);
 
         foreach ([
             'courses',

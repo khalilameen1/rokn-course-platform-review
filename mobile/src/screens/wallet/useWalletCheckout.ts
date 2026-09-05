@@ -17,7 +17,10 @@ import {
   subscribeCoinCheckoutCredits,
 } from '../../services/coinCheckout';
 import type {CoinPackage} from '../../services/api/coinPackageMapper';
-import {coinCheckoutOutcome} from '../../services/coinCheckoutTypes';
+import {
+  coinCheckoutFailureDisposition,
+  coinCheckoutOutcome,
+} from '../../services/coinCheckoutTypes';
 import {CAN_START_NATIVE_CHECKOUT} from '../../constants/distribution';
 import {
   assertAccountSessionBoundary,
@@ -173,16 +176,9 @@ export const useWalletCheckout = (data: WalletCheckoutData) => {
       } catch (error: unknown) {
         if (!ownsBoundary(boundary)) return;
         const code = errorCode(error);
-        const packageCatalogueChanged = [
-          'package_terms_changed',
-          'package_not_available',
-        ].includes(code);
-        const checkoutUnavailable = [
-          'recovery_in_progress',
-          'recovery_verification_required',
-          'feature_temporarily_unavailable',
-          'FEATURE_CHECKOUT_DISABLED',
-        ].includes(code);
+        const failure = coinCheckoutFailureDisposition(code);
+        const packageCatalogueChanged = failure === 'catalogue_changed';
+        const checkoutUnavailable = failure === 'opening_unavailable';
         if (packageCatalogueChanged) {
           await invalidatePackages(boundary);
           await refreshAfterCurrent();

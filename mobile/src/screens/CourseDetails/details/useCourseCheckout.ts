@@ -3,7 +3,10 @@ import type {Dispatch, SetStateAction} from 'react';
 import {CAN_START_COIN_CHECKOUT} from '../../../constants/distribution';
 import type {CoinPackage} from '../../../services/api/coinPackageMapper';
 import {openCoinCheckout} from '../../../services/coinCheckout';
-import {coinCheckoutOutcome} from '../../../services/coinCheckoutTypes';
+import {
+  coinCheckoutFailureDisposition,
+  coinCheckoutOutcome,
+} from '../../../services/coinCheckoutTypes';
 import {
   getCoinPackages,
   getWallet,
@@ -283,7 +286,8 @@ export function useCourseCheckout({
           setNotice('هناك عملية شحن مفتوحة\nأكملها أو أغلقها ثم حاول مرة أخرى');
           return;
         }
-        if (['package_terms_changed', 'package_not_available'].includes(code)) {
+        const failureDisposition = coinCheckoutFailureDisposition(code);
+        if (failureDisposition === 'catalogue_changed') {
           const operationCouponCode =
             couponApplied && couponCode ? couponCode : '';
           setPackages([]);
@@ -336,7 +340,12 @@ export function useCourseCheckout({
           reload();
           return;
         }
-        setNotice('تعذّر فتح الدفع\nمكانك ورصيدك محفوظان\nحاول مرة أخرى');
+        if (failureDisposition === 'opening_unavailable') {
+          setNotice('الدفع متوقف مؤقتًا\nحاول لاحقًا');
+          return;
+        }
+        reload();
+        setNotice('تعذّر تأكيد حالة الدفع\nحدّث الصفحة قبل محاولة الشحن مرة أخرى');
       } finally {
         if (
           ownsOperation(

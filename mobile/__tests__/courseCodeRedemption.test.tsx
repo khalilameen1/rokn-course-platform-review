@@ -175,7 +175,7 @@ describe('course-code redemption UI', () => {
     await ReactTestRenderer.act(() => renderer!.unmount());
   });
 
-  it('shows the same sufficient package choices inline without opening the wallet page', async () => {
+  it.each([false, true])('keeps inline top-up actions consistent with coupon calculation (busy=%s)', async couponBusy => {
     const onBuyCoins = jest.fn();
     const onChangePlan = jest.fn();
     let renderer: ReactTestRenderer.ReactTestRenderer;
@@ -188,6 +188,7 @@ describe('course-code redemption UI', () => {
           bottomInset={0}
           busy={false}
           courseTitle="كورس الإنتاج"
+          couponBusy={couponBusy}
           dialogStep="topup"
           grantActivated={false}
           isTablet={false}
@@ -240,8 +241,7 @@ describe('course-code redemption UI', () => {
     const actions = renderer!.root.findAll(
       node =>
         node.props.accessibilityRole === 'button' &&
-        typeof node.props.onPress === 'function' &&
-        node.props.disabled === false,
+        typeof node.props.onPress === 'function',
     );
     const paymentAction = actions.find(node =>
       String(node.props.accessibilityLabel || '').includes(
@@ -249,6 +249,7 @@ describe('course-code redemption UI', () => {
       ),
     );
     expect(paymentAction).toBeDefined();
+    expect(paymentAction!.props.disabled).toBe(couponBusy);
     const unresolvedPackageCardStyle = paymentAction!.props.style;
     const packageCardStyle = StyleSheet.flatten(
       typeof unresolvedPackageCardStyle === 'function'
@@ -260,17 +261,19 @@ describe('course-code redemption UI', () => {
       padding: 15,
       width: '100%',
     });
-    await ReactTestRenderer.act(() => paymentAction!.props.onPress());
-    expect(onBuyCoins).toHaveBeenCalledTimes(1);
-    expect(onBuyCoins).toHaveBeenCalledWith(
-      expect.objectContaining({id: 'coins-1000'}),
+    const changePlan = renderer!.root.find(
+      node => node.props.accessibilityLabel === 'تغيير فئة الكورس',
     );
-    await ReactTestRenderer.act(() =>
-      renderer!.root
-        .find(node => node.props.accessibilityLabel === 'تغيير فئة الكورس')
-        .props.onPress(),
-    );
-    expect(onChangePlan).toHaveBeenCalledTimes(1);
+    expect(changePlan.props.disabled).toBe(couponBusy);
+    if (!couponBusy) {
+      await ReactTestRenderer.act(() => paymentAction!.props.onPress());
+      expect(onBuyCoins).toHaveBeenCalledTimes(1);
+      expect(onBuyCoins).toHaveBeenCalledWith(
+        expect.objectContaining({id: 'coins-1000'}),
+      );
+      await ReactTestRenderer.act(() => changePlan.props.onPress());
+      expect(onChangePlan).toHaveBeenCalledTimes(1);
+    }
 
     await ReactTestRenderer.act(() => renderer!.unmount());
   });

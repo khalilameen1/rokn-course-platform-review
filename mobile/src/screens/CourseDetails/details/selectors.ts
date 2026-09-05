@@ -5,7 +5,7 @@ import type {
   CourseAccessPlan,
   CourseDetails as CourseDetailsDto,
 } from '../../../services/roknApi';
-import {derivePurchaseTerms} from './purchaseTerms';
+import {courseRequiresWallet, derivePurchaseTerms} from './purchaseTerms';
 
 export const planBenefits = (
   plan: CourseAccessPlan,
@@ -131,6 +131,7 @@ export const selectCourseDetailsPresentation = ({
     usableCurrentBalance,
   } = terms;
   const pageReady = Boolean(remoteCourse) && !remoteLoading;
+  const requiresWallet = courseRequiresWallet(remoteCourse);
   const started = owned && remoteCourse?.started === true;
   const primaryAction = remoteError
     ? ({kind: 'disabled', label: 'تعذّر تحميل التفاصيل'} as const)
@@ -150,9 +151,9 @@ export const selectCourseDetailsPresentation = ({
     ? ({kind: 'preview', label: 'شاهد مجانًا'} as const)
     : !CAN_START_COIN_CHECKOUT
     ? ({kind: 'checkout_unavailable', label: 'الشراء غير متاح الآن'} as const)
-    : coursePrice > 0 && remoteCommerceLoading
+    : requiresWallet && remoteCommerceLoading
     ? ({kind: 'disabled', label: 'جارٍ تجهيز الشراء'} as const)
-    : coursePrice > 0 && remoteBalance === null
+    : requiresWallet && remoteBalance === null
     ? ({kind: 'wallet_unavailable', label: 'شراء الكورس'} as const)
     : accessPlans.length > 1
     ? ({kind: 'choose_plan', label: 'اختر الفئة المناسبة لك'} as const)

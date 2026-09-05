@@ -141,11 +141,40 @@ describe('reels presentation policy', () => {
 
   it('updates only the reviewed project status', () => {
     const course = fixture();
-    const next = updateProjectStatusOnly(course, 'project-1', 'evaluating');
+    const next = updateProjectStatusOnly(
+      course,
+      'project-1',
+      'needs_changes',
+      'أعد رفع صورة أوضح',
+    );
 
-    expect(next.modules[0].projects?.[0]?.status).toBe('evaluating');
+    expect(next.modules[0].projects?.[0]).toMatchObject({
+      status: 'needs_changes',
+      reviewFeedback: 'أعد رفع صورة أوضح',
+    });
     expect(next.modules[1]).toEqual(course.modules[1]);
     expect(course.modules[0].projects?.[0]?.status).toBe('draft');
+    expect(course.modules[0].projects?.[0]?.reviewFeedback).toBeUndefined();
+
+    const evaluating = updateProjectStatusOnly(
+      next,
+      'project-1',
+      'evaluating',
+    );
+    expect(evaluating.modules[0].projects?.[0]).toMatchObject({
+      status: 'evaluating',
+      reviewFeedback: undefined,
+    });
+
+    const passed = updateProjectStatusOnly(
+      evaluating,
+      'project-1',
+      'passed',
+    );
+    expect(passed.modules[0].projects?.[0]).toMatchObject({
+      status: 'passed',
+      reviewFeedback: undefined,
+    });
   });
 
   it('keeps phone width and caps wide layouts by video aspect', () => {

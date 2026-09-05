@@ -449,16 +449,21 @@ final class OpenRouterService
                 outcomeUnknown: true
             );
         } finally {
+            // The last SSE fragment is still learner-visible recovery data
+            // when the provider disconnects before a terminal frame. Persist
+            // it before propagating the unknown outcome; this never upgrades
+            // the turn to completed or authorizes another provider call.
+            if (mb_strlen($content) > $lastEmittedLength) {
+                $this->emitPartial(
+                    $callback,
+                    $content,
+                    $lastEmittedLength,
+                    $lastEmittedAt,
+                    true
+                );
+            }
             $stream->close();
         }
-
-        $this->emitPartial(
-            $callback,
-            $content,
-            $lastEmittedLength,
-            $lastEmittedAt,
-            true
-        );
 
         return [
             'id' => $providerRequestId,

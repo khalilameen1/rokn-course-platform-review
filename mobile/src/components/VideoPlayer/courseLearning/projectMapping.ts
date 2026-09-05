@@ -11,6 +11,7 @@ import {
   valueAsString,
 } from './shared';
 import {mapProjectFeedbackThread} from './projectFeedbackMapping';
+import {reviewFeedbackForStatus} from './projectJourney';
 
 export const mapCourseProject = (
   section: CoursePayloadDto,
@@ -74,7 +75,10 @@ export const mapCourseProject = (
     canContinue: hasSubmission
       ? valueAsBoolean(submission.can_continue)
       : false,
-    reviewFeedback: valueAsString(submission.feedback) || undefined,
+    reviewFeedback: reviewFeedbackForStatus(
+      rawStatus,
+      valueAsString(submission.feedback),
+    ),
     canRetryReport: explicitBoolean(submission.can_retry_report),
     reportRetryEndpoint:
       valueAsString(submission.report_retry_endpoint) || undefined,

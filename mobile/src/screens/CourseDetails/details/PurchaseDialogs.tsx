@@ -166,7 +166,7 @@ export const CoursePurchaseDialog = ({
             {dialogStep === 'topup' && (
               <TopupStep
                 balance={balance}
-                busy={busy}
+                busy={interactionBusy}
                 couponApplied={couponApplied}
                 onBuyCoins={onBuyCoins}
                 packages={packages}
@@ -206,13 +206,13 @@ export const CoursePurchaseDialog = ({
             {dialogStep === 'confirm' && (
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{busy, disabled: busy || couponBusy}}
-                disabled={busy || couponBusy}
+                accessibilityState={{busy, disabled: interactionBusy}}
+                disabled={interactionBusy}
                 onPress={onConfirmPurchase}
                 style={({pressed}) => [
                   styles.sheetPrimary,
                   pressed && styles.primaryButtonPressed,
-                  (busy || couponBusy) && styles.disabled,
+                  interactionBusy && styles.disabled,
                 ]}>
                 {busy ? (
                   <ActivityIndicator color={Palette.text} />
@@ -226,13 +226,13 @@ export const CoursePurchaseDialog = ({
                 <Pressable
                   accessibilityLabel="تغيير فئة الكورس"
                   accessibilityRole="button"
-                  accessibilityState={{disabled: busy || couponBusy}}
-                  disabled={busy || couponBusy}
+                  accessibilityState={{disabled: interactionBusy}}
+                  disabled={interactionBusy}
                   onPress={onChangePlan}
                   style={({pressed}) => [
                     styles.retentionSecondary,
                     pressed && styles.pressed,
-                    (busy || couponBusy) && styles.disabled,
+                    interactionBusy && styles.disabled,
                   ]}>
                   <Text style={styles.retentionSecondaryText}>تغيير الفئة</Text>
                 </Pressable>

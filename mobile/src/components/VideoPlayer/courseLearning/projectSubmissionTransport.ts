@@ -44,14 +44,18 @@ const unwrapResponseData = (response: unknown): DataRecord => {
   return asRecord(data.data || root.data || response);
 };
 
-const parseSubmissionResult = (payload: DataRecord): SubmissionSyncResult => ({
-  submissionStatus: parseProjectSubmissionStatus(
-    payload.submission_status,
-    true,
-  ),
-  accepted: true,
-  canContinue: valueAsBoolean(payload.can_continue),
-});
+const parseSubmissionResult = (payload: DataRecord): SubmissionSyncResult => {
+  const reviewFeedback = valueAsString(payload.feedback).trim();
+  return {
+    submissionStatus: parseProjectSubmissionStatus(
+      payload.submission_status,
+      true,
+    ),
+    accepted: true,
+    canContinue: valueAsBoolean(payload.can_continue),
+    ...(reviewFeedback ? {reviewFeedback} : {}),
+  };
+};
 
 const waitFor = (milliseconds: number) =>
   new Promise<void>(resolve => setTimeout(resolve, milliseconds));

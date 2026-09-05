@@ -138,6 +138,9 @@ jobs:
       - name: Verify clean MySQL schema replay
         run: php artisan migrate:fresh --force --no-interaction
 
+      - name: Verify migrated MySQL product schema contract
+        run: php artisan rokn:preflight --schema-only --allow-mixed-release --no-interaction
+
       - name: Verify disaster-recovery cutover prerequisite contract
         run: php scripts/verify-dr-runbook.php
 

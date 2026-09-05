@@ -1,9 +1,21 @@
 import {
+  reviewFeedbackForStatus,
   resolveProjectJourneyState,
   resolveProjectReportViewState,
 } from '../src/components/VideoPlayer/courseLearning/projectJourney';
 
 describe('project journey state', () => {
+  it('keeps rejection feedback only while that rejection is current', () => {
+    const feedback = '  أعد رفع صورة أوضح  ';
+
+    expect(reviewFeedbackForStatus('needs_changes', feedback)).toBe(
+      'أعد رفع صورة أوضح',
+    );
+    expect(reviewFeedbackForStatus('evaluating', feedback)).toBeUndefined();
+    expect(reviewFeedbackForStatus('passed', feedback)).toBeUndefined();
+    expect(reviewFeedbackForStatus('draft', feedback)).toBeUndefined();
+  });
+
   it.each([
     [
       {

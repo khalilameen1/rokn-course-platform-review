@@ -20,6 +20,7 @@ import {
   valueAsString,
 } from './shared';
 import {mapProjectFeedbackThread} from './projectFeedbackMapping';
+import {reviewFeedbackForStatus} from './projectJourney';
 
 const PUBLIC_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -102,9 +103,13 @@ export const loadProjectResolution = async (projectId: string) => {
   assertAccountSessionBoundary(boundary);
   const submission = asRecord(payloadFrom(response).latest_submission);
   if (!submission.id) throw new Error('PROJECT_SUBMISSION_CONTRACT_INVALID');
+  const status = parseProjectSubmissionStatus(
+    submission.submission_status,
+    true,
+  );
 
   return {
-    status: parseProjectSubmissionStatus(submission.submission_status, true),
+    status,
     canSubmit: valueAsBoolean(submission.can_submit),
     canContinue: valueAsBoolean(submission.can_continue),
     feedbackLevel: (['report', 'enhanced'].includes(
@@ -115,7 +120,10 @@ export const loadProjectResolution = async (projectId: string) => {
     reportEnabled: valueAsBoolean(submission.report_enabled),
     reportStatus: parseProjectReportStatus(submission.report_status),
     replyEnabled: valueAsBoolean(submission.reply_enabled),
-    reviewFeedback: valueAsString(submission.feedback) || undefined,
+    reviewFeedback: reviewFeedbackForStatus(
+      status,
+      valueAsString(submission.feedback),
+    ),
     canRetryReport: valueAsBoolean(submission.can_retry_report),
     reportRetryEndpoint:
       valueAsString(submission.report_retry_endpoint) || undefined,

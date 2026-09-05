@@ -15,6 +15,7 @@ export type SubmissionSyncResult = {
   submissionStatus: ProjectStatus;
   accepted: boolean;
   canContinue: boolean;
+  reviewFeedback?: string;
 };
 
 export type ProjectSubmissionOutcome = SubmissionSyncResult;

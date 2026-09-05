@@ -101,6 +101,30 @@ describe('project submission outbox ownership', () => {
     ]);
   });
 
+  it('keeps the server review reason when an attempt needs changes', async () => {
+    mockPost.mockResolvedValueOnce({
+      data: {
+        data: {
+          submission_status: 'needs_changes',
+          can_continue: false,
+          feedback: 'الصورة لا توضح النتيجة المطلوبة',
+        },
+      },
+    });
+
+    await expect(
+      submitProjectAttempt('42', null, 'هذه محاولة واضحة'),
+    ).resolves.toEqual({
+      submissionStatus: 'needs_changes',
+      accepted: true,
+      canContinue: false,
+      reviewFeedback: 'الصورة لا توضح النتيجة المطلوبة',
+    });
+    expect(
+      (await AsyncStorage.getAllKeys()).some(key => key.includes(':user-a:42')),
+    ).toBe(false);
+  });
+
   it('keeps the UI attached to the real request and shares it with resume recovery', async () => {
     jest.useFakeTimers();
     const request = deferred<unknown>();

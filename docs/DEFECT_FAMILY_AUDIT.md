@@ -4,6 +4,41 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Daily checkout, reply and project state closure — 2026-09-05
+
+The source changes following the live purchase hotfix close three state-loss
+paths. They are not included in the previously delivered `123.apk`.
+
+- Course purchase return now waits for the same readiness decision as the
+  visible CTA. Previously it consumed the login-return intent while the wallet
+  was still loading. Mixed free/paid tiers now use one wallet requirement in
+  both loading and presentation instead of treating the lowest zero price as
+  proof that commerce is unnecessary. Entirely free courses remain independent
+  of the wallet. Coupon quoting blocks competing top-up and plan-change taps.
+- Wallet and embedded course top-up use the same error classification. A
+  provider configuration/opening failure is not described as an uncertain
+  payment. A genuinely uncertain result refreshes the course state and is not
+  reported as an unopened checkout. These paths do not authorize the course
+  or invent a successful charge.
+- An interrupted provider stream checkpoints its last visible text before
+  preserving the failed/unknown outcome. It does not silently issue another
+  paid provider request. Project submission feedback survives the immediate
+  response and remount, but a prior rejection is cleared when a new submission
+  starts or passes. Server report/reply entitlement remains authoritative.
+
+The migration verification gap is closed at the actual driver boundary:
+GitHub CI runs the existing schema preflight immediately after MySQL replay,
+before the SQLite suite. The same contract now covers all daily financial write
+fields in orders, bills, enrollments and wallet entries. Successful migration
+execution alone is not accepted as proof of a usable product schema.
+
+Focused source verification: 91 mobile tests across 10 suites, TypeScript and
+targeted ESLint passed. The combined backend scope passed 27 tests / 189
+assertions, including schema upgrade, preflight, notification relations and
+streaming. These results do not replace native or paid-provider journey
+acceptance against the resulting release. The prior hotfix `b87d252` also
+completed its GitHub CI run successfully.
+
 ## Live top-up succeeded but course purchase failed — 2026-09-05
 
 Production deployment 166 (`3c30789`) accepted Kashier order 7 for EGP 10.
@@ -23,7 +58,14 @@ the actual missing-column shape, and the release preflight now rejects it.
 The same production log exposed notification inbox failures: the presenter
 requested `courseSection` on Course although that relation belongs to Lesson.
 Both invalid eager loads are removed, with a regression for course and lesson
-notifications. These source fixes await deployment and live verification.
+notifications. Commit `b87d252` was deployed as release 167. The deployment log
+confirmed the forward migration ran successfully and both preflight checks
+passed. A subsequent production read confirmed no missing fillable columns
+across orders, bills, course enrollments and wallet transactions. The same
+900-coin package credit still exists exactly once; the balance remains 945
+and course 3 has not been purchased yet. The learner's post-fix purchase
+attempt remains the final end-to-end confirmation; no purchase was made on
+their behalf to substitute for that evidence.
 
 The administrator completed MFA. The global mentor chat allowance was saved
 successfully through dashboard settings and read back as 50 messages (guided

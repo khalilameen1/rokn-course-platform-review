@@ -27,6 +27,18 @@ final class ContinuousIntegrationLayoutTest extends TestCase
         self::assertStringContainsString('php scripts/verify-repository-secrets.php --history', $contents);
         self::assertStringContainsString('php artisan test', $contents);
 
+        $mysqlReplay = strpos($contents, 'php artisan migrate:fresh --force --no-interaction');
+        $schemaContract = strpos(
+            $contents,
+            'php artisan rokn:preflight --schema-only --allow-mixed-release --no-interaction'
+        );
+        $sqliteSuite = strpos($contents, 'run: php artisan test');
+        self::assertIsInt($mysqlReplay);
+        self::assertIsInt($schemaContract);
+        self::assertIsInt($sqliteSuite);
+        self::assertGreaterThan($mysqlReplay, $schemaContract);
+        self::assertGreaterThan($schemaContract, $sqliteSuite);
+
         $composer = json_decode(
             (string) file_get_contents($backend.'/composer.json'),
             true,

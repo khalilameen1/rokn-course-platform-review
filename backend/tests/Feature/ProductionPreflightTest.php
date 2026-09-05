@@ -14,6 +14,45 @@ use Tests\TestCase;
 
 class ProductionPreflightTest extends TestCase
 {
+    public function test_schema_preflight_rejects_incomplete_daily_financial_write_contracts(): void
+    {
+        foreach (['orders', 'bills', 'course_enrollments', 'wallet_transactions'] as $table) {
+            Schema::create($table, function (Blueprint $blueprint): void {
+                $blueprint->id();
+            });
+        }
+
+        try {
+            $method = new \ReflectionMethod(
+                ProductionPreflight::class,
+                'requiredProductSchemaFailures'
+            );
+            $failures = $method->invoke(app(ProductionPreflight::class));
+
+            foreach ([
+                'orders' => ['coupon_code', 'checkout_request_key', 'financial_status'],
+                'bills' => ['order_id', 'bill_number', 'payment_status'],
+                'course_enrollments' => ['order_id', 'access_plan_snapshot', 'is_active'],
+                'wallet_transactions' => ['idempotency_key', 'paid_balance_after', 'source_type'],
+            ] as $table => $requiredColumns) {
+                $failure = collect($failures)->first(
+                    static fn (string $message): bool => str_starts_with(
+                        $message,
+                        "The {$table} schema is stale."
+                    )
+                );
+                self::assertIsString($failure, "No schema failure was emitted for {$table}.");
+                foreach ($requiredColumns as $column) {
+                    self::assertStringContainsString($column, $failure);
+                }
+            }
+        } finally {
+            foreach (['wallet_transactions', 'course_enrollments', 'bills', 'orders'] as $table) {
+                Schema::dropIfExists($table);
+            }
+        }
+    }
+
     public function test_schema_preflight_rejects_orders_without_coupon_code(): void
     {
         Schema::create('orders', function (Blueprint $table): void {
@@ -30,10 +69,14 @@ class ProductionPreflightTest extends TestCase
             );
             $failures = $method->invoke(app(ProductionPreflight::class));
 
-            self::assertContains(
-                'The orders schema is stale. Missing columns: coupon_code. Run all forward migrations before release.',
-                $failures
+            $orderFailure = collect($failures)->first(
+                static fn (string $message): bool => str_starts_with(
+                    $message,
+                    'The orders schema is stale.'
+                )
             );
+            self::assertIsString($orderFailure);
+            self::assertStringContainsString('coupon_code', $orderFailure);
         } finally {
             Schema::dropIfExists('orders');
         }

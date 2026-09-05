@@ -1,4 +1,13 @@
 import type {CoinPackage} from '../../../services/api/coinPackageMapper';
+import type {CourseDetails} from '../../../services/roknApi';
+
+export const courseRequiresWallet = (
+  course: Pick<CourseDetails, 'price' | 'accessPlans'> | null,
+): boolean => Boolean(course && (
+  course.accessPlans.length
+    ? course.accessPlans.some(plan => plan.priceCoins > 0)
+    : (course.price ?? 0) > 0
+));
 
 export type PurchaseTermsInput = {
   balance: number;
