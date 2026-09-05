@@ -118,6 +118,7 @@
                     && Number(section.module_id) === Number(module.id)
                     && ['lesson', 'project'].includes(section.type)
                     && typeof section.title === 'string' && section.title.trim() !== ''
+                    && typeof section.row_label === 'string' && section.row_label.trim() !== ''
                     && typeof section.update_url === 'string' && section.update_url !== ''
                     && typeof section.delete_url === 'string' && section.delete_url !== '');
         });

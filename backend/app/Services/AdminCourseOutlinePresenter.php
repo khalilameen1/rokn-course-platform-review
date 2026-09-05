@@ -78,21 +78,31 @@ final readonly class AdminCourseOutlinePresenter
         $lesson = $content instanceof Lesson ? $content : null;
         $project = $content instanceof Project ? $content : null;
         $thumbnailPath = trim((string) $lesson?->thumbnail_path);
+        $sectionType = $section->getSectionType();
+        $lessonDuration = $lesson?->duration_minutes === null
+            ? null
+            : (int) $lesson->duration_minutes;
+        $isOpened = (bool) ($lesson?->is_opened ?? false);
 
         return [
             'id' => (int) $section->id,
             'module_id' => $section->module_id === null ? null : (int) $section->module_id,
-            'type' => $section->getSectionType(),
+            'type' => $sectionType,
             'title' => (string) ($section->title_ar ?: $section->title_en),
             'title_ar' => $section->title_ar,
             'title_en' => $section->title_en,
             'order' => (int) $section->order,
             'lesson_description_ar' => $lesson?->description_ar,
             'lesson_description_en' => $lesson?->description_en,
-            'lesson_duration_minutes' => $lesson?->duration_minutes === null
-                ? null
-                : (int) $lesson->duration_minutes,
-            'is_opened' => (bool) ($lesson?->is_opened ?? false),
+            'lesson_duration_minutes' => $lessonDuration,
+            'is_opened' => $isOpened,
+            'row_label' => $sectionType === 'project'
+                ? 'مشروع عبور بعد الوحدة'
+                : collect([
+                    'مقطع',
+                    $lessonDuration ? $lessonDuration.' دقيقة' : null,
+                    $isOpened ? 'مجاني' : null,
+                ])->filter()->implode(' · '),
             'has_video' => trim((string) $lesson?->bunny_video_id) !== '',
             'has_thumbnail' => $thumbnailPath !== '',
             'thumbnail_url' => $thumbnailPath === ''

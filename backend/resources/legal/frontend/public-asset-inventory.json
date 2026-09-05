@@ -345,12 +345,12 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-outline.js",
-      "sha256": "89bae50834afaf2aa2bf4f5a2db32138eacd01e126ac4a3ec8ae2a584794513d",
+      "sha256": "29a439c426328241fbc8c2ea13b48e6c9798e4503fac707bdd5c7fd0669f1797",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/js/course-studio-section-editor.js",
-      "sha256": "81de36226cbb11d53459e584eacc7cf5e78f51111ae1a1762831e29e956d3257",
+      "sha256": "ccb4c138f6d45fd3aa9ce661dfdc48d3810c76d87109b8bfc33f7d81f5ef08f3",
       "classification": "first_party"
     },
     {

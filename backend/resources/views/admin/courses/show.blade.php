@@ -15,6 +15,9 @@
         'lesson' => ['مقطع', 'fa-play-circle', 'lesson'],
         'project' => ['مشروع', 'fa-briefcase', 'project'],
     ];
+    $authoringSectionsById = collect($authoringGraph['modules'] ?? [])
+        ->flatMap(fn (array $module) => $module['sections'] ?? [])
+        ->keyBy(fn (array $section) => (int) $section['id']);
 @endphp
 <div class="admin-page course-studio" id="courseStudio" data-course-id="{{ $course->id }}" data-summary-url="{{ route('admin.courses.show', [$course, 'summary' => 1]) }}" data-authoring-version="{{ $course->authoring_version }}" data-can-author="{{ $course->is_coming_soon ? '1' : '0' }}">
     <script type="application/json" id="courseAuthoringGraph">@json($authoringGraph, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)</script>
@@ -65,13 +68,14 @@
                                     <div class="outline-module__content studio-sortable-sections" id="module-{{ $module->id }}-content" data-module-id="{{ $module->id }}">
                                         @foreach($module->sections as $section)
                                             @php($type = $sectionTypes[$section->getSectionType()] ?? ['محتوى', 'fa-file-o', 'other'])
+                                            @php($authoringSection = $authoringSectionsById->get((int) $section->id))
                                             @if($course->is_coming_soon)
                                                 <button type="button" class="outline-item-insert studio-authoring-control" data-inline-editor-open="lesson" data-module-id="{{ $module->id }}" data-insert-order="{{ $loop->iteration }}" aria-label="إضافة مقطع هنا"><i class="fa fa-plus" aria-hidden="true"></i><span>مقطع هنا</span></button>
                                             @endif
                                             <div class="outline-item" data-section-id="{{ $section->id }}" data-section-type="{{ $section->getSectionType() }}">
                                                 @if($course->is_coming_soon && $section->getSectionType() === 'lesson')<button type="button" class="outline-item__drag studio-authoring-control" aria-label="اسحب لترتيب المقطع"><i class="fa fa-ellipsis-v" aria-hidden="true"></i></button>@endif
                                                 <span class="outline-item__icon outline-item__icon--{{ $type[2] }}"><i class="fa {{ $type[1] }}" aria-hidden="true"></i></span>
-                                                <span class="outline-item__copy"><strong>{{ $section->title_ar ?: $section->title_en ?: 'عنصر بلا عنوان' }}</strong><small>{{ $type[0] }}@if($section->isLesson() && $section->sectionable?->duration_minutes) · {{ $section->sectionable->duration_minutes }} دقيقة@endif</small></span>
+                                                <span class="outline-item__copy"><strong>{{ $authoringSection['title'] }}</strong><small>{{ $authoringSection['row_label'] }}</small></span>
                                                 @if($course->is_coming_soon)<button type="button" data-inline-section-edit="{{ $section->id }}" class="outline-item__edit studio-authoring-control"><i class="fa fa-pencil" aria-hidden="true"></i><span>تعديل</span></button>@endif
                                             </div>
                                         @endforeach

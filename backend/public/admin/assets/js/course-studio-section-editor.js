@@ -142,9 +142,7 @@
             const sectionTitle = document.createElement('strong');
             sectionTitle.textContent = section.title;
             const meta = document.createElement('small');
-            meta.textContent = section.type === 'project'
-                ? 'مشروع عبور بعد الوحدة'
-                : `مقطع${section.lesson_duration_minutes ? ` · ${section.lesson_duration_minutes} دقيقة` : ''}${section.is_opened ? ' · مجاني' : ''}`;
+            meta.textContent = section.row_label;
             copy.append(sectionTitle, meta);
             const edit = document.createElement('button');
             edit.type = 'button';
@@ -162,6 +160,7 @@
                 && Number(section?.module_id) === Number(expected.moduleId)
                 && section?.type === expected.type
                 && typeof section?.title === 'string' && section.title.trim() !== ''
+                && typeof section?.row_label === 'string' && section.row_label.trim() !== ''
                 && typeof section?.update_url === 'string' && section.update_url !== ''
                 && typeof section?.delete_url === 'string' && section.delete_url !== '';
         };

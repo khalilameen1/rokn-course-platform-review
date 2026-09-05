@@ -32,12 +32,42 @@ allows a later expiry to recover; issuing another signed URL alone does not rese
 the failure budget. This prevents both permanently exhausted previews and an
 endless refresh loop for a file that cannot be displayed.
 
-The dashboard deployment at `c346afd` was observed as deployed in Laravel Cloud.
-On that production deployment, saving course 3 refreshed its course description
-and readiness preview without reloading the page or replacing unsaved form
-fields. Light/dark rendering and versioned studio assets were checked in the
-browser. Course 3 is still a draft with no modules or uploaded reels; this is not
-evidence that the requested sample course has been uploaded.
+The dashboard deployment at `988d9ea` was observed as deployed in Laravel Cloud.
+On production, saving course 3 refreshed its course description and readiness
+preview without replacing unsaved form fields. Its second reel previously failed
+at 0 percent with `Failed to fetch`. After this deployment, the same second video
+and thumbnail were uploaded through the studio UI, saved inside the first module,
+and the next inline editor opened automatically. This proves one real upload and
+save, not decoder/playback acceptance or completion of the 15-reel sample course.
+The first module now has five saved reels and its image-submission project,
+all entered one by one through the studio. Course 3 remains an incomplete draft;
+readiness still requests its cover, teacher, classification and video readiness.
+The first reel's edit form confirms its free-preview flag is already enabled.
+Its missing initial outline badge was a separate display inconsistency: Blade
+omitted the preview flag while JavaScript rebuilt it independently. Both now use
+the presenter's shared row label, including duration and project placement.
+The repair passes 13 PHPUnit tests / 203 assertions and the isolated studio
+browser fixture; the stored preview value was not changed.
+
+The user reported broken coin-rule dashboard dimensions. Live inspection at
+1024px confirmed roughly 70px name fields, delete actions overlapping the next
+row, and final delete actions clipped by the enclosing panel. The update form
+used all of its column height while the delete form was its following sibling.
+The repair places both actions in the card's own layout, gives fields practical
+width, and separates method titles from wrapping status badges. The same
+form-height/sibling pattern was not found elsewhere in the admin templates.
+An isolated CSS layout fixture covers 360/768/1024/1440px. The deployed page was
+also inspected at those four widths. At 1024px the rule inputs are approximately
+301px wide instead of 70px; save/delete actions remain within each card without
+overlap or clipping. Mobile and wider layouts have no horizontal page overflow.
+No reward value, campaign or financial setting was changed during this check.
+
+Profile editing now shares one revisioned name/image/professional-headline
+contract, while public portfolio sharing excludes certificates and saved items.
+New practical certificate QR codes point to the portfolio; theoretical codes
+point to that certificate's verification page. Generated samples were visually
+inspected and both QR destinations decoded. Previously issued artifacts remain
+immutable. These checks do not establish native portfolio acceptance.
 
 Automated checks cover the repaired contracts and isolated browser behavior.
 They do not establish signed-APK acceptance, a completed provider callback,
@@ -45,10 +75,24 @@ actual store purchase, real-device RTL or decoder behavior. Portfolio/certificat
 acceptance and remaining dashboard pages still need their own evidence. No
 whole-project completion or zero-defect claim follows from these repairs.
 
-Final local integration check for this source pass: all 130 mobile Jest suites
-passed (702 tests), TypeScript and targeted ESLint passed, and the selected backend
-integration group passed 120 tests / 1244 assertions. These are source checks,
-not native Android, external provider or production payment acceptance.
+Local integration check before the follow-up home-curation and layout repairs:
+all 138 mobile Jest suites passed (722 tests), TypeScript and changed-file ESLint
+passed, and the selected backend integration group passed 238 tests / 2898
+assertions. Studio first-lesson and Bunny recovery browser fixtures passed using
+the existing bundled Playwright runtime. These are source/isolated checks, not
+native Android, external-provider or production-payment acceptance.
+
+Changes through `fe3cb38` are pushed to the production repository and observed
+as deployed in Laravel Cloud. The home-curation integration now preserves hidden
+canonical courses and revision/archive membership when saving a visible row.
+Publishing merges course-draft and live-row edits against the recorded base;
+explicitly clearing the hero remains cleared across partial saves. The focused
+post-integration group passed 54 tests / 1569 assertions. These tests cover
+transaction ordering and sequential conflicts, not real simultaneous database
+load. The live home-row index and create form render, with no production row
+mutation used for verification. Both existing rows are currently hidden; manual
+row configuration is still required before a new APK should use this feed.
+No new APK is built and no whole-project acceptance is claimed.
 
 ## Attribution boundary
 

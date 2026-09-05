@@ -92,14 +92,14 @@ const server = createServer(async (request, response) => {
         return json(response, {
             success: true,
             authoring_version: ++version,
-            section: {id: 34, module_id: 7, type: 'lesson', title: 'المقطع الأول', title_ar: 'المقطع الأول', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: false},
+            section: {id: 34, module_id: 7, type: 'lesson', title: 'المقطع الأول', title_ar: 'المقطع الأول', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: true, row_label: 'مقطع · مجاني'},
         });
     }
     if (request.method === 'POST' && path === '/sections/34') {
         return json(response, {
             success: true,
             authoring_version: ++version,
-            section: {id: 34, module_id: 7, type: 'lesson', title: 'المقطع المعدّل', title_ar: 'المقطع المعدّل', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: false},
+            section: {id: 34, module_id: 7, type: 'lesson', title: 'المقطع المعدّل', title_ar: 'المقطع المعدّل', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: true, row_label: 'مقطع · مجاني'},
         });
     }
     response.statusCode = 404;
@@ -135,6 +135,11 @@ try {
     await page.locator('#bunny_video_claim').evaluate(input => { input.value = 'signed-video-claim'; });
     await page.locator('#studioInlineSaveSection').click();
     await page.locator('.outline-item[data-section-id="34"]').waitFor();
+    assert.equal(
+        await page.locator('.outline-item[data-section-id="34"] .outline-item__copy small').textContent(),
+        'مقطع · مجاني',
+        'the JS-created row must display the same canonical free-preview label as the initial Studio row'
+    );
     await page.waitForFunction(() => document.getElementById('sectionForm').getAttribute('aria-busy') === 'false');
     await page.locator('[data-inline-section-edit="34"]').click();
     assert.equal(await page.locator('#sectionForm').getAttribute('data-section-id'), '34', 'saved lesson must remain editable without reload');

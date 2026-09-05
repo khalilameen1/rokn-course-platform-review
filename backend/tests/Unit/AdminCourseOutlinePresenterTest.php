@@ -75,6 +75,8 @@ final class AdminCourseOutlinePresenterTest extends TestCase
         self::assertSame($lessonNode, $graph['modules'][0]['sections'][0]);
         self::assertSame('كابشن واضح', $lessonNode['lesson_description_ar']);
         self::assertTrue($lessonNode['has_video']);
+        self::assertSame('مقطع · 3 دقيقة · مجاني', $lessonNode['row_label']);
+        self::assertSame('مشروع عبور بعد الوحدة', $graph['modules'][0]['sections'][1]['row_label']);
         self::assertStringContainsString('/dashboard/courses/40/sections/70', $lessonNode['update_url']);
         self::assertSame(
             ['text', 'pdf'],

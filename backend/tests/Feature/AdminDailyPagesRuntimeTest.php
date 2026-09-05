@@ -127,6 +127,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
 
         $studio = $this->get(route('admin.courses.show', $course))->assertOk();
         $this->assertStudioCourseForm($studio->getContent(), $course);
+        $this->assertStudioLessonRow($studio->getContent(), 'المقطع الأول', 'مقطع · 2 دقيقة · مجاني');
 
         foreach ([
             route('admin.users.show', $student),
@@ -162,6 +163,28 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         ])->save();
 
         return $user;
+    }
+
+    private function assertStudioLessonRow(string $html, string $title, string $label): void
+    {
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$html);
+        $xpath = new DOMXPath($document);
+        $rows = $xpath->query("//*[contains(concat(' ', normalize-space(@class), ' '), ' outline-item ')]");
+
+        self::assertNotFalse($rows);
+        foreach ($rows as $row) {
+            $rowTitle = trim((string) $xpath->evaluate('string(.//strong)', $row));
+            if ($rowTitle !== $title) {
+                continue;
+            }
+
+            self::assertSame($label, trim((string) $xpath->evaluate('string(.//small)', $row)));
+
+            return;
+        }
+
+        self::fail('Expected Studio lesson row was not rendered.');
     }
 
     private function course(string $name): Course
