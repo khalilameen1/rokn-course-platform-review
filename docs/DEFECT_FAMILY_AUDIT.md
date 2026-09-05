@@ -10,14 +10,45 @@ The latest user-installed APK failed Arabic alignment and course assistant
 entry-point acceptance. Earlier checkpoints below are historical evidence,
 not approval of the current app. No replacement APK has been built for this pass.
 
-Current source work covers partial authoring updates, one course-details/map
-snapshot, visible versus usable chat actions, Arabic direction, payment review
-recovery and the shared dashboard runtime. Browser shell checks cover navigation,
-storage denial, AJAX/native saves and responsive widths, not complete page QA.
+Current source repairs cover partial authoring updates, one course-details/map
+snapshot, visible versus usable chat actions, Arabic direction, durable social
+login identity, payment review recovery, cancelled/deferred store purchases,
+bounded assistant/media recovery and the shared dashboard runtime.
 
-Authentication, project submission, portfolio/certificate journeys and remaining
-dashboard page implementations are still being reviewed. No whole-project
-completion or zero-defect claim follows from these individual repairs.
+Project recovery now reuses the durable submission and treats recovered outcomes
+as refresh signals, never as authority to overwrite the current course map.
+Initial course data, thread hydration, project polling and message responses use
+one feedback mapper so retry permissions and server-owned attachments survive
+refresh. Runtime tests cover a stale recovery result against a newer passed
+project, failed map refresh, and `can_retry=true/false` across the read paths.
+Concurrent map reads are also ordered within the course owner: a slower old
+response cannot replace a newer pass decision. A database-backed presenter test
+checks report-only and paid-upgrade reply permissions in both summary and full
+transcript responses.
+
+Portfolio image/video recovery ignores callbacks for replaced URLs and allows
+one automatic recovery until the media actually displays. Successful display
+allows a later expiry to recover; issuing another signed URL alone does not reset
+the failure budget. This prevents both permanently exhausted previews and an
+endless refresh loop for a file that cannot be displayed.
+
+The dashboard deployment at `c346afd` was observed as deployed in Laravel Cloud.
+On that production deployment, saving course 3 refreshed its course description
+and readiness preview without reloading the page or replacing unsaved form
+fields. Light/dark rendering and versioned studio assets were checked in the
+browser. Course 3 is still a draft with no modules or uploaded reels; this is not
+evidence that the requested sample course has been uploaded.
+
+Automated checks cover the repaired contracts and isolated browser behavior.
+They do not establish signed-APK acceptance, a completed provider callback,
+actual store purchase, real-device RTL or decoder behavior. Portfolio/certificate
+acceptance and remaining dashboard pages still need their own evidence. No
+whole-project completion or zero-defect claim follows from these repairs.
+
+Final local integration check for this source pass: all 130 mobile Jest suites
+passed (702 tests), TypeScript and targeted ESLint passed, and the selected backend
+integration group passed 120 tests / 1244 assertions. These are source checks,
+not native Android, external provider or production payment acceptance.
 
 ## Attribution boundary
 
@@ -49,10 +80,11 @@ handoff first completed an Android Keystore write/read/delete probe. Production
 telemetry recorded no 1.0.30 session-storage failure after that run. A complete
 provider callback with a real account and Facebook availability remain open.
 
-The deployed global launch gate is also intentionally red: Kashier, AI, Bunny,
+At that checkpoint, the deployed global launch gate was red: Kashier, AI, Bunny,
 mail, push, Android app links, Google and TikTok are ready, while store billing,
 Apple app links/providers and Facebook are not. This accurately prevents a
-test APK checkpoint from being mistaken for store-launch readiness.
+test APK checkpoint from being mistaken for store-launch readiness. Those
+integration states are historical, not a fresh verification on 2026-09-05.
 
 ## 1. Backend defects
 

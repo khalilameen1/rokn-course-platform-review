@@ -67,7 +67,8 @@ export const PortfolioGalleryView = ({
     eligibleLoading,
     eligibleProjects,
     finalizeSelectedProject,
-    handlePreviewPlaybackError,
+    handleMediaDeliveryError,
+    handleMediaDeliverySuccess,
     loadError,
     loading,
     loadProjects,
@@ -161,7 +162,10 @@ export const PortfolioGalleryView = ({
                   {previewMedia?.type === 'video' && previewMedia.uri ? (
                     <Video
                       controls
-                      onError={handlePreviewPlaybackError}
+                      onError={() => handleMediaDeliveryError(previewMedia)}
+                      onReadyForDisplay={() =>
+                        handleMediaDeliverySuccess(previewMedia)
+                      }
                       paused={!appActive}
                       resizeMode="contain"
                       source={{uri: previewMedia.uri}}
@@ -171,6 +175,16 @@ export const PortfolioGalleryView = ({
                     <Image
                       accessible={false}
                       importantForAccessibility="no"
+                      onError={
+                        previewMedia?.type === 'image'
+                          ? () => handleMediaDeliveryError(previewMedia)
+                          : undefined
+                      }
+                      onLoad={
+                        previewMedia?.type === 'image'
+                          ? () => handleMediaDeliverySuccess(previewMedia)
+                          : undefined
+                      }
                       progressiveRenderingEnabled
                       resizeMethod="resize"
                       source={
@@ -209,6 +223,8 @@ export const PortfolioGalleryView = ({
                             ]}>
                             {media.type === 'image' && media.uri ? (
                               <Image
+                                onError={() => handleMediaDeliveryError(media)}
+                                onLoad={() => handleMediaDeliverySuccess(media)}
                                 progressiveRenderingEnabled
                                 resizeMethod="resize"
                                 source={{uri: media.uri}}

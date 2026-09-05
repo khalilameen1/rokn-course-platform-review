@@ -31,6 +31,10 @@ describe('portfolio gallery architecture', () => {
     expect(view).not.toContain('replayPendingPortfolioMediaUploads');
     expect(view).not.toContain('StyleSheet.create');
     expect(view).toContain('<PortfolioProjectGrid');
+    expect(view).toContain(
+      'onError={() => handleMediaDeliveryError(previewMedia)}',
+    );
+    expect(view).toContain('handleMediaDeliveryError(media)');
     expect(cards).not.toContain('services/roknApi');
   });
 

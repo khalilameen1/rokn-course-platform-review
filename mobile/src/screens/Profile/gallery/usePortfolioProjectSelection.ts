@@ -281,12 +281,37 @@ export const usePortfolioProjectSelection = ({
     if (media.uri) setPreviewMedia(media);
   }, []);
 
-  const handlePreviewPlaybackError = useCallback(() => {
-    const media = previewMediaRef.current;
-    if (!media || mediaRefreshAttemptsRef.current.has(media.id)) return;
-    mediaRefreshAttemptsRef.current.add(media.id);
-    void refreshOpenProject(true);
-  }, [refreshOpenProject]);
+  const handleMediaDeliveryError = useCallback(
+    (media: PortfolioMedia) => {
+      const current = selectedRef.current;
+      if (
+        !current ||
+        !current.media.some(
+          candidate => candidate.id === media.id && candidate.uri === media.uri,
+        ) ||
+        mediaRefreshFlightRef.current ||
+        mutationFlightRef.current ||
+        isCreateBusy() ||
+        mediaRefreshAttemptsRef.current.has(media.id)
+      ) {
+        return;
+      }
+      mediaRefreshAttemptsRef.current.add(media.id);
+      void refreshOpenProject(true);
+    },
+    [isCreateBusy, mutationFlightRef, refreshOpenProject],
+  );
+
+  const handleMediaDeliverySuccess = useCallback((media: PortfolioMedia) => {
+    if (
+      selectedRef.current?.media.some(
+        candidate => candidate.id === media.id && candidate.uri === media.uri,
+      )
+    ) {
+      // Only displayed media resets recovery, not a newly issued signed URL.
+      mediaRefreshAttemptsRef.current.delete(media.id);
+    }
+  }, []);
 
   return {
     applyUploadedMedia,
@@ -295,7 +320,8 @@ export const usePortfolioProjectSelection = ({
     commitRemoteProject,
     detailGenerationRef,
     detailLoading,
-    handlePreviewPlaybackError,
+    handleMediaDeliveryError,
+    handleMediaDeliverySuccess,
     openSelection,
     previewMedia,
     reconcileProject,
