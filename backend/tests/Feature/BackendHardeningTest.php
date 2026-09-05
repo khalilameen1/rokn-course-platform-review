@@ -1546,6 +1546,23 @@ final class BackendHardeningTest extends TestCase
         Bus::assertDispatched(\App\Jobs\GenerateCourseChatReply::class, function ($job) use (
             $technicalQuestion, $technicalAnswer, $question, $courseDescription, $lessonDescription
         ): bool {
+            self::assertSame('system', $job->messages[0]['role']);
+            self::assertStringContainsString(
+                'اكتب بالعامية المصرية الطبيعية الواضحة حتى لو هو كتب بالفصحى',
+                $job->messages[0]['content']
+            );
+            self::assertStringContainsString(
+                'لا تستخدم الفاصلة أو النقطة',
+                $job->messages[0]['content']
+            );
+            self::assertStringContainsString(
+                'الأصل من فقرة إلى ثلاث فقرات قصيرة',
+                $job->messages[0]['content']
+            );
+            self::assertStringContainsString(
+                'حافظ على علامات الكود والروابط والرياضيات كما هي',
+                $job->messages[0]['content']
+            );
             self::assertStringContainsString(
                 "BEGIN COURSE DESCRIPTION\n{$courseDescription}\nEND COURSE DESCRIPTION",
                 $job->messages[0]['content']

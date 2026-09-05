@@ -168,10 +168,10 @@ class CoinEarningMethod extends Model
         if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
 
         if (str_contains($key, 'coin_guide')) return 'تعرّف إلى رصيد ركن';
-        if (str_contains($key, 'instagram')) return 'تابع ركن على Instagram';
-        if (str_contains($key, 'tiktok')) return 'تابع ركن على TikTok';
-        if (str_contains($key, 'facebook')) return 'تابع ركن على Facebook';
-        if (str_contains($key, 'youtube')) return 'تابع ركن على YouTube';
+        if (str_contains($key, 'instagram')) return 'تابعنا على Instagram';
+        if (str_contains($key, 'tiktok')) return 'تابعنا على TikTok';
+        if (str_contains($key, 'facebook')) return 'تابعنا على Facebook';
+        if (str_contains($key, 'youtube')) return 'تابعنا على YouTube';
         if ($key === 'link_whatsapp') return 'اربط واتسابك بركن';
 
         return 'مهمة مكافأة';
@@ -185,10 +185,10 @@ class CoinEarningMethod extends Model
         if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
 
         if (str_contains($key, 'coin_guide')) return 'Learn about your Rokn balance';
-        if (str_contains($key, 'instagram')) return 'Follow Rokn on Instagram';
-        if (str_contains($key, 'tiktok')) return 'Follow Rokn on TikTok';
-        if (str_contains($key, 'facebook')) return 'Follow Rokn on Facebook';
-        if (str_contains($key, 'youtube')) return 'Follow Rokn on YouTube';
+        if (str_contains($key, 'instagram')) return 'Follow us on Instagram';
+        if (str_contains($key, 'tiktok')) return 'Follow us on TikTok';
+        if (str_contains($key, 'facebook')) return 'Follow us on Facebook';
+        if (str_contains($key, 'youtube')) return 'Follow us on YouTube';
         if ($key === 'link_whatsapp') return 'Link WhatsApp to Rokn';
 
         return 'Reward task';
@@ -241,6 +241,13 @@ class CoinEarningMethod extends Model
 
     private function titleRevealsMechanism(string $title): bool
     {
+        if (
+            ($this->socialChannel() !== null || $this->action_key === 'link_whatsapp')
+            && preg_match('/^(?:افتح|فتح|زر|زيارة|تصفح|open|visit|browse)\b/iu', $title) === 1
+        ) {
+            return true;
+        }
+
         return preg_match(
             '/(?:افتح|فتح).*(?:ارجع|عد|المطالبة)|(?:ارجع|عد).*(?:استلم|طالب)|open.*return.*claim/iu',
             $title

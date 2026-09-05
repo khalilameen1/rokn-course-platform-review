@@ -20,9 +20,14 @@ final class AiPromptPolicyTest extends TestCase
 
         foreach ($prompts as $prompt) {
             self::assertStringContainsString('ابدأ بالحكم أو الحل مباشرة', $prompt);
-            self::assertStringContainsString('عامية مصرية نظيفة', $prompt);
-            self::assertStringContainsString('فقرات طبيعية بدل الفاصلة والنقطة', $prompt);
+            self::assertStringContainsString('اكتب بالعامية المصرية الطبيعية الواضحة حتى لو هو كتب بالفصحى', $prompt);
+            self::assertStringContainsString('لا تستخدم الفاصلة أو النقطة', $prompt);
+            self::assertStringContainsString('كل فقرة فكرة مكتملة غالبًا من جملة إلى ثلاث', $prompt);
+            self::assertStringContainsString('الأصل من فقرة إلى ثلاث فقرات قصيرة', $prompt);
+            self::assertStringContainsString('لا تجعل الرد شعرًا', $prompt);
+            self::assertStringContainsString('حافظ على علامات الكود والروابط والرياضيات كما هي', $prompt);
             self::assertStringContainsString('لا تستخدم كليشيهات المساعد', $prompt);
+            self::assertStringContainsString('لا كصياغة مساعد شخصي', $prompt);
             self::assertStringContainsString('ما يقبله المختص', $prompt);
             self::assertStringContainsString('رجح بين البدائل بمعيار واضح', $prompt);
             self::assertStringContainsString('ما يحتاج تحققًا', $prompt);

@@ -377,8 +377,8 @@ final class EngagementExperienceTest extends TestCase
             ->firstWhere('action_key', 'demo_instagram');
 
         self::assertIsArray($task);
-        self::assertSame('تابع ركن على Instagram', $task['title_ar']);
-        self::assertSame('Follow Rokn on Instagram', $task['title_en']);
+        self::assertSame('تابعنا على Instagram', $task['title_ar']);
+        self::assertSame('Follow us on Instagram', $task['title_en']);
         self::assertStringNotContainsString('عد', $task['title_ar']);
         self::assertStringNotContainsString('مطالبة', $task['title_ar']);
         self::assertArrayNotHasKey('claim_available_at', $task);
