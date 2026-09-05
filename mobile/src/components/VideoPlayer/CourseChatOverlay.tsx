@@ -32,6 +32,7 @@ interface CourseChatOverlayProps {
   course: CourseLearningData;
   reel?: CourseReel;
   onClose: () => void;
+  onEntitlementChanged: () => void | Promise<void>;
   onOpenCourseAccess: () => void;
 }
 
@@ -64,6 +65,7 @@ const CourseChatOverlay = ({
   course,
   reel,
   onClose,
+  onEntitlementChanged,
   onOpenCourseAccess,
 }: CourseChatOverlayProps) => {
   const insets = useSafeAreaInsets();
@@ -100,6 +102,7 @@ const CourseChatOverlay = ({
     visible,
     course,
     reel,
+    onEntitlementChanged,
     onOpenWallet: () => {
       // A native Modal belongs to this screen even after another route is
       // pushed. Close it before navigation so its backdrop/keyboard cannot

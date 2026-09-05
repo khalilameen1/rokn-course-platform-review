@@ -8,6 +8,11 @@ on:
         required: false
         type: boolean
         default: false
+      reuse_native_locks:
+        description: Reuse committed native locks and refresh legal provenance only
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -18,7 +23,7 @@ concurrency:
 
 jobs:
   refresh-android:
-    if: ${{ !inputs.skip_linux_android }}
+    if: ${{ !inputs.skip_linux_android && !inputs.reuse_native_locks }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
@@ -116,6 +121,7 @@ jobs:
           bundle _4.0.20_ update --bundler=4.0.20
           bundle _4.0.20_ install
       - name: Regenerate native locks and macOS verification metadata
+        if: ${{ !inputs.reuse_native_locks }}
         working-directory: mobile
         env:
           EXPO_PUBLIC_API_URL: https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/
@@ -155,6 +161,7 @@ jobs:
           cd ..
           npm run verify:ios-lock
       - name: Commit native locks before the slower legal inventory
+        if: ${{ !inputs.reuse_native_locks }}
         run: |
           git config user.name "Rokn Release Automation"
           git config user.email "roknproduction@gmail.com"
@@ -181,6 +188,15 @@ jobs:
               git stash pop
             fi
           fi
+      - name: Restore the installed CocoaPods sandbox from committed locks
+        if: ${{ inputs.reuse_native_locks }}
+        working-directory: mobile
+        run: |
+          cd ios
+          bundle _4.0.20_ exec pod install --deployment
+          cd ..
+          npm run verify:ios-lock
+          git diff --exit-code -- ios/Podfile.lock
       - name: Regenerate native legal provenance
         working-directory: mobile
         run: |

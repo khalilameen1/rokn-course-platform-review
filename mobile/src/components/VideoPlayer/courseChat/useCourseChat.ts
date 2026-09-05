@@ -19,11 +19,13 @@ export const useCourseChat = ({
   visible,
   course,
   reel,
+  onEntitlementChanged,
   onOpenWallet,
 }: {
   visible: boolean;
   course: CourseLearningData;
   reel?: CourseReel;
+  onEntitlementChanged: () => void | Promise<void>;
   onOpenWallet: () => void;
 }) => {
   const courseId = course.id;
@@ -40,6 +42,7 @@ export const useCourseChat = ({
     accessType: course.accessType,
     chatAvailable: course.chatAvailable,
     courseId,
+    onEntitlementChanged,
     onOpenWallet,
   });
   const assistantEntitled = courseIncludesAssistant(course) || upgrade.upgraded;

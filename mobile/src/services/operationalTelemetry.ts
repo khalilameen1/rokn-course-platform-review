@@ -29,6 +29,7 @@ type ErrorContext = {
   fatal?: boolean;
   endpoint?: string;
   requestId?: string;
+  orderRef?: string;
 };
 
 type ClientEventPayload = {
@@ -222,6 +223,7 @@ export const reportClientError = (error: Error, context: ErrorContext = {}) => {
     fatal: Boolean(context.fatal),
     endpoint: correlation.endpoint,
     requestId: correlation.requestId,
+    orderRef: correlation.orderRef,
   });
 
   const task = (async () => {

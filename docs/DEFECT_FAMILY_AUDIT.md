@@ -4,6 +4,66 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Correlate actual failures without mixing request and payment identities — 2026-09-05
+
+Backend Sentry kept request headers but discarded every user identifier.
+The existing before-send scrubber now derives searchable request tags from
+the current request and keeps only the authenticated internal user ID. It
+removes inherited correlation before handling a guest; names, email, IP,
+request bodies and secrets remain excluded. A real Laravel HTTP-kernel test
+throws from authenticated and guest routes through Handler, Integration and
+the configured before-send callback. Both events are intercepted locally
+before transport. The focused regression scope passed 3 tests / 26 assertions.
+An earlier proposed middleware-scope implementation was rejected because this
+real exception path did not retain its context; direct scope-only assertions
+were not accepted as proof.
+
+Two mobile checkout failure paths previously labelled the payment order
+reference as `request_id`. They now carry `order_ref` separately, retain the
+actual HTTP response/config correlation ID, and do not invent an HTTP ID for
+an aggregate polling timeout. The mobile telemetry/checkout scope passed
+27 tests. No production event was injected and delivery to Sentry has not
+been verified by this source change. Handled business responses without an
+exception are not automatically new Sentry events. Nightwatch's previously
+observed free-quota exhaustion is not fixed by these changes.
+
+## Regenerate native notices without rebuilding unchanged locks — 2026-09-05
+
+Native refresh run `33965347270` completed dependency resolution and confirmed
+the locks were already current, but failed notice generation on the abbreviated
+`Apache` license in `GTMAppAuth@5.0.0`. The exact official version's
+[podspec](https://github.com/google/GTMAppAuth/blob/5.0.0/GTMAppAuth.podspec)
+and [LICENSE](https://github.com/google/GTMAppAuth/blob/5.0.0/LICENSE)
+establish Apache-2.0. The existing reviewed-coordinate map now recognizes only
+that version; unknown abbreviated licenses remain rejected.
+
+The existing workflow gains an optional `reuse_native_locks` path. It installs
+actual Pods with `--deployment`, verifies the lock stayed unchanged, and runs
+the full native source/license generator and checks. It does not repeat Android
+lint/tests/bundle to repair notice metadata. The original full refresh remains
+the default. YAML parsing and 23 focused workflow/native-notice tests passed.
+Generated notice artifacts are still pending the next macOS run.
+
+## Refresh purchased course capabilities together — 2026-09-05
+
+The chat upgrade previously unlocked only its local chat flag. The loaded
+course could retain the old plan's attachment and project-report/reply
+capabilities until a reload. Confirmed upgrades, including a lost reply
+recovered through the quote endpoint, now refresh the existing authoritative
+course aggregate. The same account-bound loader is used rather than copying
+individual capability flags from the small purchase response.
+
+Runtime hook tests cover confirmed purchase refresh, late settlement after an
+account switch, and quote recovery after a lost reply. The real course-loader
+hook is also exercised against an API mock: it adopts all refreshed attachment
+and project feedback capabilities without clearing current content or moving
+the requested reel index. Refresh failure retains the content with a connection
+note, and late responses from another account are ignored. The loader issues a
+fresh details GET rather than reading the guest details cache. TypeScript,
+scoped ESLint and the combined 5-suite / 40-test scope passed. These are not
+native overlay/rendering or paid-provider acceptance tests. These mobile
+changes are not in the previously delivered `123.apk`.
+
 ## Purchase receipt acceptance and readable error messages — 2026-09-05
 
 The migrated-MySQL gate now also exercises the real course-authorization
@@ -13,7 +73,10 @@ then repeats the same request key. Assertions require one order, bill,
 enrollment, debit and allocation; a 45-coin remaining paid balance; no financial
 hold; and an idempotent second response with no new debit. The product-feature
 switch middleware is excluded from this financial contract test, so it is not
-evidence of the full installed application's checkout. CI execution is pending.
+evidence of the full installed application's checkout. Backend CI run
+`33966557356` passed on `27b2b3a`, including clean MySQL migration, the schema
+preflight, all three MySQL financial tests and the full backend suite.
+Cloud deployment 171 confirmed `27b2b3a` deployed successfully.
 
 A separate production read confirmed that the real learner's 900 paid coins
 are still backed by active lot 2 from settled Kashier order 7 / credit 10.

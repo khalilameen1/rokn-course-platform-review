@@ -42,6 +42,11 @@ const safeRequestId = (value: unknown) => {
     : undefined;
 };
 
+const safeOrderRef = (value: unknown) => {
+  const candidate = String(value || '').trim();
+  return /^[A-Za-z0-9_-]{8,100}$/.test(candidate) ? candidate : undefined;
+};
+
 const endpointWords = new Set([
   'api',
   'v1',
@@ -108,6 +113,7 @@ const readHeader = (headers: unknown, name: string): unknown => {
 export type RequestCorrelation = {
   endpoint?: string;
   requestId?: string;
+  orderRef?: string;
 };
 
 export const requestCorrelationFor = (
@@ -125,6 +131,7 @@ export const requestCorrelationFor = (
         readHeader(shaped.response?.headers, 'x-request-id') ||
         readHeader(shaped.config?.headers, 'x-request-id'),
     ),
+    orderRef: safeOrderRef(supplied.orderRef),
   };
 };
 
@@ -175,6 +182,7 @@ type SentryDiagnostic = {
   fatal: boolean;
   endpoint?: string;
   requestId?: string;
+  orderRef?: string;
 };
 
 /** The existing operational reporter owns JS error capture and dedupe. */
@@ -207,6 +215,7 @@ export const captureSentryDiagnostic = (
     if (correlation.requestId) {
       scope.setTag('request_id', correlation.requestId);
     }
+    if (correlation.orderRef) scope.setTag('order_ref', correlation.orderRef);
     Sentry.captureException(safeError);
   });
 };

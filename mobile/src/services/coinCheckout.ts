@@ -446,7 +446,7 @@ const runCoinCheckout = async (
       reportClientError(new Error('payment_status_timeout'), {
         source: 'coin_checkout',
         endpoint: 'payment/reconcile',
-        requestId: orderRef,
+        orderRef,
       });
     }
     return {
@@ -476,7 +476,7 @@ const runCoinCheckout = async (
       {
         source: 'coin_checkout',
         endpoint: 'payment/reconcile',
-        requestId: orderRef,
+        orderRef,
       },
     );
     throw error;

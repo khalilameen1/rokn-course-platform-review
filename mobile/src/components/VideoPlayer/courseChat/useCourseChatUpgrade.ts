@@ -11,12 +11,14 @@ export const useCourseChatUpgrade = ({
   accessType,
   chatAvailable,
   courseId,
+  onEntitlementChanged,
   onOpenWallet,
 }: {
   accountKey: string;
   accessType?: string;
   chatAvailable?: boolean;
   courseId: string;
+  onEntitlementChanged: () => void | Promise<void>;
   onOpenWallet: () => void;
 }) => {
   const [serverBlockCode, setServerBlockCode] = useState('');
@@ -55,6 +57,10 @@ export const useCourseChatUpgrade = ({
     setUpgraded(true);
     setServerBlockCode('');
     setUpgradeQuote(null);
+    // The upgrade response is intentionally small. Refresh the authoritative
+    // course aggregate so attachments and every project feedback capability
+    // move to the purchased plan without waiting for a relaunch.
+    void Promise.resolve(onEntitlementChanged()).catch(() => undefined);
   };
 
   const loadUpgradeQuote = async () => {

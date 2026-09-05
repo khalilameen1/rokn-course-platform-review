@@ -374,6 +374,23 @@ test('native lock refresh captures the production Android metadata closure', () 
   assert.equal([...workflow.matchAll(/git rebase origin\/main/g)].length, 3);
   assert.equal([...workflow.matchAll(/git push origin HEAD:main/g)].length, 3);
   assert.match(workflow, /skip_linux_android:/);
+  assert.match(
+    workflow,
+    /reuse_native_locks:\s+description:[^\n]+\s+required: false\s+type: boolean\s+default: false/,
+  );
+  assert.match(
+    workflow,
+    /refresh-android:\s+if: \$\{\{ !inputs\.skip_linux_android && !inputs\.reuse_native_locks \}\}/,
+  );
+  assert.equal(
+    [...workflow.matchAll(/if: \$\{\{ !inputs\.reuse_native_locks \}\}/g)]
+      .length,
+    2,
+  );
+  assert.match(
+    workflow,
+    /name: Restore the installed CocoaPods sandbox from committed locks\s+if: \$\{\{ inputs\.reuse_native_locks \}\}\s+working-directory: mobile\s+run: \|\s+cd ios\s+bundle _4\.0\.20_ exec pod install --deployment\s+cd \.\.\s+npm run verify:ios-lock\s+git diff --exit-code -- ios\/Podfile\.lock/,
+  );
   assert.match(workflow, /needs\.refresh-android\.result == 'skipped'/);
   assert.match(workflow, /git stash push --include-untracked/);
   assert.match(workflow, /git stash pop/);

@@ -415,6 +415,10 @@ export const useReelsController = () => {
     },
     [accountViewGenerationRef, load, setLearningMapRetryIndex],
   );
+  const refreshCourseEntitlements = useCallback(
+    () => load({index: currentIndex}),
+    [currentIndex, load],
+  );
   const retryLearningMap = useCallback(async () => {
     const targetIndex = learningMapRetryIndex;
     if (targetIndex === null) return;
@@ -586,6 +590,7 @@ export const useReelsController = () => {
     onScrollToIndexFailed,
     onViewableItemsChanged,
     previewGateVisible,
+    refreshCourseEntitlements,
     reminderNudgeVisible,
     renderItem,
     scrollEnabled: !interactionLocked,

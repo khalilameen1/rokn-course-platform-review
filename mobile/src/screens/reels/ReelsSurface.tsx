@@ -110,6 +110,7 @@ const ReelsSurface = (controller: ReelsController) => {
               course={course}
               reel={controller.currentReel}
               onClose={controller.closeChat}
+              onEntitlementChanged={controller.refreshCourseEntitlements}
               onOpenCourseAccess={() => controller.showCourseDetails(true)}
             />
           )}

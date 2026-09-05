@@ -122,6 +122,11 @@ test('normalizes reviewed Maven and Pod license metadata', () => {
     reason:
       "The exact SocketRocket 0.7.1 podspec says 'BSD'; its installed LICENSE contains the reviewed BSD 3-Clause terms and Facebook attribution.",
   });
+  assert.deepEqual(POD_EXACT_LICENSE_SELECTIONS.get('GTMAppAuth@5.0.0'), {
+    license: 'Apache-2.0',
+    reason:
+      "The exact GTMAppAuth 5.0.0 podspec abbreviates its license as 'Apache'; the tagged LICENSE contains the reviewed Apache License 2.0 terms.",
+  });
   assert.deepEqual(
     POD_EXACT_LICENSE_SELECTIONS.get('GTMSessionFetcher@3.5.0'),
     {
@@ -132,8 +137,8 @@ test('normalizes reviewed Maven and Pod license metadata', () => {
   );
 });
 
-test('applies the exact reviewed Apache selection only to GTMSessionFetcher 3.5.0', async () => {
-  const spec = Buffer.from(
+test('applies reviewed Apache selections only to exact pod coordinates', async () => {
+  const sessionFetcherSpec = Buffer.from(
     JSON.stringify({
       homepage: 'https://github.com/google/gtm-session-fetcher',
       license: {type: 'Apache', file: 'LICENSE'},
@@ -146,7 +151,7 @@ test('applies the exact reviewed Apache selection only to GTMSessionFetcher 3.5.
   );
   const originalFetch = global.fetch;
   global.fetch = async () =>
-    new Response(spec, {
+    new Response(sessionFetcherSpec, {
       status: 200,
       headers: {'content-type': 'application/json'},
     });
@@ -155,7 +160,10 @@ test('applies the exact reviewed Apache selection only to GTMSessionFetcher 3.5.
       {
         coordinate: 'GTMSessionFetcher@3.5.0',
         name: 'GTMSessionFetcher',
-        specChecksum: crypto.createHash('sha1').update(spec).digest('hex'),
+        specChecksum: crypto
+          .createHash('sha1')
+          .update(sessionFetcherSpec)
+          .digest('hex'),
       },
       new Map(),
     );
@@ -165,12 +173,48 @@ test('applies the exact reviewed Apache selection only to GTMSessionFetcher 3.5.
       POD_EXACT_LICENSE_SELECTIONS.get('GTMSessionFetcher@3.5.0'),
     );
 
+    const gtmAppAuthSpec = Buffer.from(
+      JSON.stringify({
+        homepage: 'https://github.com/google/GTMAppAuth',
+        license: {type: 'Apache', file: 'LICENSE'},
+        source: {
+          git: 'https://github.com/google/GTMAppAuth.git',
+          tag: '5.0.0',
+        },
+      }),
+      'utf8',
+    );
+    global.fetch = async () =>
+      new Response(gtmAppAuthSpec, {
+        status: 200,
+        headers: {'content-type': 'application/json'},
+      });
+    const gtmAppAuthRecord = await buildRemotePodRecord(
+      {
+        coordinate: 'GTMAppAuth@5.0.0',
+        name: 'GTMAppAuth',
+        specChecksum: crypto
+          .createHash('sha1')
+          .update(gtmAppAuthSpec)
+          .digest('hex'),
+      },
+      new Map(),
+    );
+    assert.deepEqual(gtmAppAuthRecord.selectedLicenses, ['Apache-2.0']);
+    assert.deepEqual(
+      gtmAppAuthRecord.exactLicenseSelection,
+      POD_EXACT_LICENSE_SELECTIONS.get('GTMAppAuth@5.0.0'),
+    );
+
     await assert.rejects(
       buildRemotePodRecord(
         {
           coordinate: 'UnreviewedApachePod@1.0.0',
           name: 'UnreviewedApachePod',
-          specChecksum: crypto.createHash('sha1').update(spec).digest('hex'),
+          specChecksum: crypto
+            .createHash('sha1')
+            .update(gtmAppAuthSpec)
+            .digest('hex'),
         },
         new Map(),
       ),
