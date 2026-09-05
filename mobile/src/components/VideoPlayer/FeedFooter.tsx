@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import {textDirection} from '../../constants/designSystem';
 import {
-  formatArabicDisplayText,
   formatArabicNumber,
+  formatAuthoredDisplayText,
 } from '../../constants/arabicFormatting';
 import {Fonts} from '../../constants/styleConstants';
 import {CourseReel} from './types';
@@ -49,7 +49,7 @@ const FeedFooter = ({data, bottomInset = 0}: FeedFooterProps) => {
         </Text>
       </View>
       <Text style={styles.title} numberOfLines={2}>
-        {formatArabicDisplayText(data.title)}
+        {formatAuthoredDisplayText(data.title)}
       </Text>
       {!!data.caption && (
         <Pressable
@@ -63,7 +63,7 @@ const FeedFooter = ({data, bottomInset = 0}: FeedFooterProps) => {
             onTextLayout={captureCaptionLayout}
             style={styles.caption}
             numberOfLines={expanded ? (compact ? 4 : 6) : 2}>
-            {formatArabicDisplayText(data.caption)}
+            {formatAuthoredDisplayText(data.caption)}
           </Text>
           {!expanded && canExpand && (
             <Text style={styles.more} maxFontSizeMultiplier={1.15}>

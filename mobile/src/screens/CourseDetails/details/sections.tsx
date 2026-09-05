@@ -13,11 +13,11 @@ import {StatusView} from '../../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../../components/ui/CourseArtwork';
 import {Palette, useResponsiveLayout} from '../../../constants/designSystem';
 import {
-  formatArabicDisplayText,
   formatArabicMinutes,
   formatArabicNumber,
   formatArabicRatings,
   formatArabicStudents,
+  formatAuthoredDisplayText,
 } from '../../../constants/arabicFormatting';
 import type {CourseDetails as CourseDetailsDto} from '../../../services/roknApi';
 import type {CourseLearningData} from '../../../components/VideoPlayer/types';
@@ -37,12 +37,12 @@ export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
           <Text style={styles.sectionEyebrow}>عن الكورس</Text>
           {!!title && (
             <Text style={styles.sectionTitle}>
-              {formatArabicDisplayText(title)}
+              {formatAuthoredDisplayText(title)}
             </Text>
           )}
           {!!description && (
             <Text style={styles.bodyCopy}>
-              {formatArabicDisplayText(description)}
+              {formatAuthoredDisplayText(description)}
             </Text>
           )}
         </View>
@@ -60,11 +60,11 @@ export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
             <View style={styles.instructorCopy}>
               <Text style={styles.instructorLabel}>مدرب الكورس</Text>
               <Text style={styles.instructorName}>
-                {formatArabicDisplayText(instructorName)}
+                {formatAuthoredDisplayText(instructorName)}
               </Text>
               {!!instructorBio && (
                 <Text style={styles.instructorBio}>
-                  {formatArabicDisplayText(instructorBio)}
+                  {formatAuthoredDisplayText(instructorBio)}
                 </Text>
               )}
             </View>
@@ -111,7 +111,7 @@ export const LockedOutline = ({
               </Text>
               <View style={styles.moduleCopy}>
                 <Text style={styles.moduleTitle}>
-                  {formatArabicDisplayText(module.title)}
+                  {formatAuthoredDisplayText(module.title)}
                 </Text>
                 <Text style={styles.moduleMeta}>
                   {formatArabicNumber(module.reelCount)} مقطع
@@ -149,7 +149,7 @@ export const LockedOutline = ({
                       ]}>
                       <View style={styles.outlineItemCopy}>
                         <Text style={styles.outlineItemTitle}>
-                          {formatArabicDisplayText(item.title)}
+                          {formatAuthoredDisplayText(item.title)}
                         </Text>
                         <Text style={styles.outlineItemMeta}>
                           {item.type === 'project'
@@ -244,7 +244,7 @@ export const CourseHero = ({
         },
       ]}>
       <Text style={styles.heroTitle}>
-        {formatArabicDisplayText(courseTitle)}
+        {formatAuthoredDisplayText(courseTitle)}
       </Text>
     </View>
   </View>
@@ -281,7 +281,7 @@ export const CourseIntro = ({
 }: CourseIntroProps) => (
   <View style={styles.courseIntro}>
     <Text style={styles.heroSubtitle}>
-      {formatArabicDisplayText(courseDescription)}
+      {formatAuthoredDisplayText(courseDescription)}
     </Text>
     {pageReady && (
       <View style={styles.socialProofRow}>

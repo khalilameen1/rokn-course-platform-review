@@ -1,7 +1,10 @@
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {Fonts, PixelPerfect} from '../../constants/styleConstants';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../../constants/arabicFormatting';
 import {
   Palette,
   Radius,
@@ -29,9 +32,9 @@ const CourseCard = memo<CourseCardProps>(
     const isAvailable = item.published !== false;
     const progress = Math.max(0, Math.min(100, Number(item.progress || 0)));
     const accessibilitySummary = [
-      item.title,
+      formatAuthoredDisplayText(item.title),
       item.owned && item.started === true
-        ? `اكتمل ${Math.round(progress)}٪`
+        ? formatArabicDisplayText(`اكتمل ${Math.round(progress)}٪`)
         : undefined,
     ]
       .filter(Boolean)
@@ -46,7 +49,7 @@ const CourseCard = memo<CourseCardProps>(
             ? 'بطاقة معاينة لكورس سيتوفر قريبًا'
             : 'بطاقة معاينة للكورس'
         }
-        accessibilityLabel={formatArabicDisplayText(accessibilitySummary)}
+        accessibilityLabel={accessibilitySummary}
         accessibilityRole="button"
         onPress={() => onPress(item)}
         style={({pressed}) => [
@@ -79,11 +82,11 @@ const CourseCard = memo<CourseCardProps>(
           )}
         </View>
         <Text numberOfLines={largeText ? 4 : 2} style={styles.courseTitle}>
-          {formatArabicDisplayText(item.title)}
+          {formatAuthoredDisplayText(item.title)}
         </Text>
         {!!item.instructor && (
           <Text numberOfLines={largeText ? 2 : 1} style={styles.instructor}>
-            {formatArabicDisplayText(item.instructor)}
+            {formatAuthoredDisplayText(item.instructor)}
           </Text>
         )}
         {(item.published === false ||

@@ -12,7 +12,7 @@ import {Swipeable} from 'react-native-gesture-handler';
 import {StatusView, SectionHeading} from '../../components/ui/PremiumUI';
 import {SavedLibrarySkeleton} from '../../components/ui/Skeleton';
 import {
-  formatArabicDisplayText,
+  formatAuthoredDisplayText,
   formatArabicNumber,
   toArabicDigits,
 } from '../../constants/arabicFormatting';
@@ -191,7 +191,7 @@ export default function SavedVideos() {
                   styles.folderChipText,
                   activeFolderId === folder.id && styles.folderChipTextActive,
                 ]}>
-                {formatArabicDisplayText(folder.name)} ·{' '}
+                {formatAuthoredDisplayText(folder.name)} ·{' '}
                 {formatArabicNumber(count)}
               </Text>
             </Pressable>
@@ -245,7 +245,7 @@ export default function SavedVideos() {
         <View key={folderId} style={styles.folder}>
           {activeFolderId === 'all' ? (
             <Text style={styles.folderTitle}>
-              {formatArabicDisplayText(group.name)}
+              {formatAuthoredDisplayText(group.name)}
             </Text>
           ) : null}
           <View style={styles.list}>
@@ -300,10 +300,10 @@ export default function SavedVideos() {
                       </View>
                       <View style={styles.copy}>
                         <Text numberOfLines={2} style={styles.title}>
-                          {formatArabicDisplayText(item.title)}
+                          {formatAuthoredDisplayText(item.title)}
                         </Text>
                         <Text numberOfLines={1} style={styles.course}>
-                          {formatArabicDisplayText(item.courseTitle)}
+                          {formatAuthoredDisplayText(item.courseTitle)}
                         </Text>
                         <Text style={styles.duration}>
                           {toArabicDigits(item.duration)}

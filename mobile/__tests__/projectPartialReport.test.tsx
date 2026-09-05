@@ -2,6 +2,7 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {Text} from 'react-native';
 import type {CourseProject} from '../src/components/VideoPlayer/types';
+import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 const mockController = jest.fn();
 jest.mock('../src/components/VideoPlayer/projectTransition/pickers', () => ({
@@ -32,8 +33,8 @@ const project: CourseProject = {
   id: '7',
   sectionId: 'section-7',
   moduleId: 'module-1',
-  title: 'مشروع العبور',
-  requirements: 'ارفع التصميم',
+  title: 'مشروع ريلز 3',
+  requirements: 'اكتب print(3) ثم اختر "ريلز"',
   status: 'passed',
   isGraduationProject: false,
 };
@@ -43,6 +44,7 @@ describe('interrupted project report presentation', () => {
   it.each([
     ['failed', partial, true],
     ['failed_retryable', partial, true],
+    ['failed', 'const label = "ريلز";\nconst limit = 3;', true],
     ['failed', '', false],
     ['failed_retryable', '', false],
     ['hidden', partial, false],
@@ -85,7 +87,7 @@ describe('interrupted project report presentation', () => {
             <ProjectTransition
               active
               project={project}
-              moduleTitle="الوحدة الأولى"
+              moduleTitle="أساسيات Blender 4"
               width={390}
               height={844}
               onSubmit={jest.fn()}
@@ -94,12 +96,15 @@ describe('interrupted project report presentation', () => {
         });
         const panels = renderer.root.findAllByType(ProjectFeedbackPanel);
         expect(panels).toHaveLength(visible ? 1 : 0);
+        const text = renderer.root
+          .findAllByType(Text)
+          .map(node => cleanUnicodeText(node.props.children));
+        expect(text).toContain(project.title);
+        expect(text).toContain(project.requirements);
+        expect(text).toContain('أساسيات Blender 4');
         if (visible) {
           expect(panels[0].props.canReply).toBe(false);
-          const text = renderer.root
-            .findAllByType(Text)
-            .map(node => node.props.children);
-          expect(text).toContain(partial);
+          expect(text).toContain(content);
           expect(text).toContain('لم يكتمل الرد');
         }
       } finally {

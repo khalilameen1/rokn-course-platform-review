@@ -11,7 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {rtlRowStyle, textDirection} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
@@ -109,7 +109,7 @@ const ProjectTransition = ({
           <Text style={styles.eyebrow}>حان وقت التطبيق</Text>
         </View>
         <Text style={styles.moduleTitle}>
-          {formatArabicDisplayText(moduleTitle)}
+          {formatAuthoredDisplayText(moduleTitle)}
         </Text>
 
         <View style={styles.card}>
@@ -119,10 +119,10 @@ const ProjectTransition = ({
             </Text>
           </View>
           <Text style={styles.title}>
-            {formatArabicDisplayText(project.title)}
+            {formatAuthoredDisplayText(project.title)}
           </Text>
           <Text style={styles.requirements}>
-            {formatArabicDisplayText(project.requirements)}
+            {formatAuthoredDisplayText(project.requirements)}
           </Text>
 
           {controller.journeyState === 'passed' ? (
@@ -210,7 +210,7 @@ const ProjectTransition = ({
               </Text>
               {!!controller.reviewFeedback && (
                 <Text style={styles.reviewDescription}>
-                  {formatArabicDisplayText(controller.reviewFeedback)}
+                  {formatAuthoredDisplayText(controller.reviewFeedback)}
                 </Text>
               )}
               {feedbackPanel}

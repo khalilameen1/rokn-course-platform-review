@@ -2,7 +2,10 @@ import React, {memo} from 'react';
 import {ImageBackground, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type {Course} from '../../types/Course';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../../constants/arabicFormatting';
 import {
   Palette,
   Radius,
@@ -45,7 +48,7 @@ const CarouselItem = ({
               />
             )}
             <Text numberOfLines={2} style={styles.title}>
-              {formatArabicDisplayText(course.title)}
+              {formatAuthoredDisplayText(course.title)}
             </Text>
             {course.published === false ? (
               <Text style={styles.courseState}>قريبًا</Text>
@@ -67,12 +70,12 @@ const CarouselItem = ({
             ) : null}
             {isTablet && (
               <Text numberOfLines={2} style={styles.description}>
-                {formatArabicDisplayText(course.description)}
+                {formatAuthoredDisplayText(course.description)}
               </Text>
             )}
             <View style={styles.ctaRow}>
               <Button
-                accessibilityLabel={formatArabicDisplayText(`عرض ${course.title}`)}
+                accessibilityLabel={`عرض ${formatAuthoredDisplayText(course.title)}`}
                 onPress={onButtonPress}
                 style={styles.button}
                 title="عرض الكورس"

@@ -3,7 +3,10 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {MetaPill, SectionHeading} from '../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../components/ui/CourseArtwork';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../../constants/arabicFormatting';
 import type {LearningCourse} from '../../services/roknApi';
 import {learningResumeTarget, type LearningResumeTarget} from './model';
 import {styles} from './styles';
@@ -65,13 +68,11 @@ export const CourseShelf = ({
             />
           )}
           <Pressable
-            accessibilityLabel={formatArabicDisplayText(
-              `عرض تفاصيل ${course.title}${
-                course.progress > 0
-                  ? `، اكتمل ${Math.round(course.progress)}٪`
-                  : ''
-              }`,
-            )}
+            accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(course.title)}${
+              course.progress > 0
+                ? formatArabicDisplayText(`، اكتمل ${Math.round(course.progress)}٪`)
+                : ''
+            }`}
             accessibilityRole="button"
             onPress={() => onOpenCourse(course.id)}
             style={({pressed}) => [
@@ -102,7 +103,7 @@ export const CourseShelf = ({
               <Text
                 numberOfLines={largeText ? 4 : 2}
                 style={styles.courseTitle}>
-                {formatArabicDisplayText(course.title)}
+                {formatAuthoredDisplayText(course.title)}
               </Text>
               <Text style={styles.nextLesson}>
                 {course.progress >= 100
@@ -131,9 +132,7 @@ export const CourseShelf = ({
               </Text>
               {resumeTarget && (
                 <Pressable
-                  accessibilityLabel={formatArabicDisplayText(
-                    `${hasProgress ? 'استكمال' : 'بدء'} ${course.title}`,
-                  )}
+                  accessibilityLabel={`${hasProgress ? 'استكمال' : 'بدء'} ${formatAuthoredDisplayText(course.title)}`}
                   accessibilityRole="button"
                   onPress={event => {
                     event.stopPropagation();

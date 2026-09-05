@@ -22,7 +22,7 @@ import type {
   ProjectFeedbackMessage,
   ProjectFeedbackThread,
 } from '../types';
-import {formatArabicDisplayText} from '../../../constants/arabicFormatting';
+import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 
 type Props = {
   attachments: ChatAttachmentDraft[];
@@ -67,7 +67,7 @@ const MessageAttachments = ({
             }).catch(() => Alert.alert('تعذّر فتح الملف', 'حاول مرة أخرى'))
           }>
           <Text numberOfLines={1} style={styles.messageAttachmentName}>
-            {formatArabicDisplayText(file.name)}
+            {formatAuthoredDisplayText(file.name)}
           </Text>
         </Pressable>
       ))}
@@ -94,7 +94,7 @@ const FeedbackMessage = ({
     ]}>
     {!!message.text && (
       <Text style={styles.message}>
-        {formatArabicDisplayText(message.text)}
+        {formatAuthoredDisplayText(message.text)}
       </Text>
     )}
     <MessageAttachments

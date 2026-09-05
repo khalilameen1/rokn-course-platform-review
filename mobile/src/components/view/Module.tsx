@@ -5,7 +5,10 @@ import Svg, {Path} from 'react-native-svg';
 import {Fonts} from '../../constants/styleConstants';
 import {rtlRowStyle, textDirection} from '../../constants/designSystem';
 import {CourseLearningModule, CourseProject} from '../VideoPlayer/types';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../../constants/arabicFormatting';
 import type {RootNavigation} from '../../navigation/types';
 import {
   courseLearningGateState,
@@ -61,7 +64,7 @@ const MapProjectCard = ({
     <Text style={styles.projectTitle}>{project.title}</Text>
     {!!project.requirements && (
       <Text style={styles.projectRequirements} numberOfLines={3}>
-        {formatArabicDisplayText(project.requirements)}
+        {formatAuthoredDisplayText(project.requirements)}
       </Text>
     )}
     <Text style={styles.projectPassedCopy}>
@@ -119,7 +122,7 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
         </View>
         <View style={styles.headerCopy}>
           <Text style={styles.title}>
-            {formatArabicDisplayText(module.title)}
+            {formatAuthoredDisplayText(module.title)}
           </Text>
           <Text style={styles.meta}>
             {formatArabicDisplayText(
@@ -234,7 +237,7 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
                   </View>
                   <View style={styles.reelCopy}>
                     <Text style={styles.reelTitle} numberOfLines={2}>
-                      {formatArabicDisplayText(step.reel.title)}
+                      {formatAuthoredDisplayText(step.reel.title)}
                     </Text>
                     <Text style={styles.reelMeta}>
                       {unavailable

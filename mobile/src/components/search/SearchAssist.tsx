@@ -15,7 +15,7 @@ import {
   rtlRowStyle,
   textDirection,
 } from '../../constants/designSystem';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 
 type Props = {
   recent: string[];
@@ -33,7 +33,7 @@ const Chip = ({label, onPress}: {label: string; onPress: () => void}) => (
     onPress={onPress}
     style={({pressed}) => [styles.chip, pressed && styles.pressed]}>
     <Text numberOfLines={1} style={styles.chipText}>
-      {formatArabicDisplayText(label)}
+      {formatAuthoredDisplayText(label)}
     </Text>
   </Pressable>
 );

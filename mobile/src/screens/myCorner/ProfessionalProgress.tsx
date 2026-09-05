@@ -2,7 +2,10 @@ import React from 'react';
 import {Pressable, ScrollView, Text, View} from 'react-native';
 import {PremiumCard, SectionHeading} from '../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../components/ui/CourseArtwork';
-import {formatArabicDisplayText} from '../../constants/arabicFormatting';
+import {
+  formatArabicDisplayText,
+  formatAuthoredDisplayText,
+} from '../../constants/arabicFormatting';
 import type {
   LearningPathLevel,
   LearningPathProgress,
@@ -94,7 +97,7 @@ export const ProfessionalProgress = ({
             </Text>
             {!!badge.courseTitle && (
               <Text numberOfLines={2} style={styles.badgeCourse}>
-                {formatArabicDisplayText(badge.courseTitle)}
+                {formatAuthoredDisplayText(badge.courseTitle)}
               </Text>
             )}
             {!earnedBadge && (

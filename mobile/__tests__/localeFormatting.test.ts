@@ -5,11 +5,37 @@ import {
   formatArabicMinutes,
   formatArabicRatings,
   formatArabicStudents,
+  formatAuthoredDisplayText,
 } from '../src/constants/arabicFormatting';
 import {formatRoknDate, formatRoknRelativeDate} from '../src/utils/dateTime';
+import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 describe('learner locale formatting', () => {
   afterEach(() => jest.useRealTimers());
+
+  it.each([
+    'ريلز 2026',
+    'const label = "ريلز";\nconst limit = 3;',
+    'اكتب print(3) ثم اختر "ريلز"',
+    'صور ريلز 3.png',
+    'افتح Blender Studio 4 من https://rokn.app/course/52.',
+  ])(
+    'preserves authored content without localizing its words or numbers: %s',
+    source => {
+      const formatted = formatAuthoredDisplayText(source);
+      expect(cleanUnicodeText(formatted)).toBe(source);
+      expect(formatAuthoredDisplayText(formatted)).toBe(formatted);
+    },
+  );
+
+  it('keeps authored Latin phrases together without changing neighbouring values', () => {
+    expect(formatAuthoredDisplayText('شرح Grease Pencil في ريلز 3')).toBe(
+      'شرح \u2068Grease Pencil\u2069 في ريلز 3',
+    );
+    expect(formatAuthoredDisplayText('زر https://rokn.app.')).toBe(
+      'زر \u2068https://rokn.app\u2069.',
+    );
+  });
 
   it('keeps copied machine tokens ASCII and isolates them inside Arabic copy', () => {
     const value = formatArabicDisplayText(
@@ -36,9 +62,7 @@ describe('learner locale formatting', () => {
       formatArabicDisplayText(
         '\u200E\u202AABC 52\u202C عنوان\u2066 https://rokn.app\u2069',
       ),
-    ).toBe(
-      '\u2068ABC\u2069 ٥٢ عنوان \u2068https://rokn.app\u2069',
-    );
+    ).toBe('\u2068ABC\u2069 ٥٢ عنوان \u2068https://rokn.app\u2069');
   });
 
   it.each(['Grease Pencil', 'Blender Studio', 'CC BY'])(
@@ -95,8 +119,6 @@ describe('learner locale formatting', () => {
   it('uses the correct Arabic dual form for a recent event', () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-09-01T12:00:00Z'));
-    expect(formatRoknRelativeDate('2026-09-01T11:58:00Z')).toBe(
-      'منذ دقيقتين',
-    );
+    expect(formatRoknRelativeDate('2026-09-01T11:58:00Z')).toBe('منذ دقيقتين');
   });
 });

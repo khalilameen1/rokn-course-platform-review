@@ -10,6 +10,7 @@ import {CoinAmount} from '../../../components/ui/RoknCoin';
 import {
   formatArabicDisplayText,
   formatArabicNumber,
+  formatAuthoredDisplayText,
 } from '../../../constants/arabicFormatting';
 import {Palette} from '../../../constants/designSystem';
 import type {CoinPackage} from '../../../services/api/coinPackageMapper';
@@ -353,7 +354,7 @@ export const ConfirmStep = ({
   <>
     <Text style={styles.sheetEyebrow}>تأكيد الشراء</Text>
     <Text style={styles.sheetTitle}>
-      {formatArabicDisplayText(courseTitle)}
+      {formatAuthoredDisplayText(courseTitle)}
     </Text>
     {!!selectedPlan && (
       <View style={styles.selectedPlanSummary}>

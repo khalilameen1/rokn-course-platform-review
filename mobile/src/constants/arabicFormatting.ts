@@ -42,6 +42,28 @@ export const toArabicDigits = (value: VisibleValue): string => {
   );
 };
 
+const isolateDisplaySegment = (part: string): string => {
+  if (
+    part.startsWith(FIRST_STRONG_ISOLATE) &&
+    part.endsWith(POP_DIRECTIONAL_ISOLATE)
+  ) {
+    return part;
+  }
+  const urlTrailingStop = /^(.*?)(\.+)$/.exec(part);
+  return urlTrailingStop && /^(?:https?:\/\/|www\.)/i.test(part)
+    ? `${isolateBidirectionalText(urlTrailingStop[1])}${urlTrailingStop[2]}`
+    : isolateBidirectionalText(part);
+};
+
+/** Preserve authored words and numbers; only normalize text and its RTL boundaries. */
+export const formatAuthoredDisplayText = (value: VisibleValue): string =>
+  cleanUnicodeText(value)
+    .split(MIXED_DIRECTION_SEGMENT)
+    .map(part =>
+      IS_MIXED_DIRECTION_SEGMENT.test(part) ? isolateDisplaySegment(part) : part,
+    )
+    .join('');
+
 /** Localizes learner-facing copy without touching model, route or API names. */
 export const formatArabicDisplayText = (value: VisibleValue): string => {
   // Text authored outside the app can contain invisible bidi controls that
@@ -51,16 +73,7 @@ export const formatArabicDisplayText = (value: VisibleValue): string => {
     .split(MIXED_DIRECTION_SEGMENT)
     .map(part => {
       if (IS_MIXED_DIRECTION_SEGMENT.test(part)) {
-        if (
-          part.startsWith(FIRST_STRONG_ISOLATE) &&
-          part.endsWith(POP_DIRECTIONAL_ISOLATE)
-        ) {
-          return part;
-        }
-        const urlTrailingStop = /^(.*?)(\.+)$/.exec(part);
-        return urlTrailingStop && /^(?:https?:\/\/|www\.)/i.test(part)
-          ? `${isolateBidirectionalText(urlTrailingStop[1])}${urlTrailingStop[2]}`
-          : isolateBidirectionalText(part);
+        return isolateDisplaySegment(part);
       }
       const counted = part.replace(
         /(\d+)\s+(?:الريلز|ريلز|الريلات|ريلات)(?=$|[^\u0621-\u064A])/g,

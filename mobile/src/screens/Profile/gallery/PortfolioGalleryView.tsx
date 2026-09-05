@@ -26,7 +26,7 @@ import {
   Spacing,
   useResponsiveLayout,
 } from '../../../constants/designSystem';
-import {formatArabicDisplayText} from '../../../constants/arabicFormatting';
+import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import type {PortfolioGalleryController} from './usePortfolioGalleryController';
 import {galleryStyles as styles} from './galleryStyles';
 import {PortfolioProjectGrid} from './PortfolioProjectGrid';
@@ -307,10 +307,10 @@ export const PortfolioGalleryView = ({
                     ) : (
                       <>
                         <Text style={styles.detailTitle}>
-                          {formatArabicDisplayText(selected.title)}
+                          {formatAuthoredDisplayText(selected.title)}
                         </Text>
                         <Text style={styles.detailSummary}>
-                          {formatArabicDisplayText(selected.summary)}
+                          {formatAuthoredDisplayText(selected.summary)}
                         </Text>
                       </>
                     )}
@@ -456,12 +456,12 @@ export const PortfolioGalleryView = ({
                                 <Text
                                   numberOfLines={1}
                                   style={styles.eligibleCourse}>
-                                  {formatArabicDisplayText(project.courseName)}
+                                  {formatAuthoredDisplayText(project.courseName)}
                                 </Text>
                                 <Text
                                   numberOfLines={2}
                                   style={styles.eligibleTitle}>
-                                  {formatArabicDisplayText(project.title)}
+                                  {formatAuthoredDisplayText(project.title)}
                                 </Text>
                               </View>
                             </Pressable>

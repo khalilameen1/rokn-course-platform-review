@@ -4,6 +4,30 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Keep authored content separate from localized interface copy — 2026-09-05
+
+The display formatter was rewriting instructor/student words and numbers, not
+just their direction: a title `ريلز 2026` became `مقاطع ٢٠٢٦`, and numeric code
+examples changed too. Course chat already avoided that rewriting, but project
+reports, lesson captions, course/module titles, portfolio text, saved-folder
+names and search history did not.
+
+Those authored fields now use a direction-only formatter. It shares the existing
+isolation helper with interface-copy formatting, preserving the earlier fix for
+contiguous Latin phrases inside Arabic text. Interface counters, prices and
+fixed labels retain their existing localization; no layout styles were changed.
+Rendered-component regressions reproduced the content changes before correction.
+The combined seven relevant suites pass 47 tests, with TypeScript and targeted
+ESLint also passing. This is source-level evidence, not a new APK or native proof.
+
+Deployment 175 successfully published exact `78ed120ca60b3dcde3dac8a4381c81094dc3238d`
+after backend CI 33984546554 passed. Post-deployment readiness returned success
+with database, schema, identity storage and cache checks true. That deploy carries
+the preceding project-partial service fix, not this newer mobile text batch.
+The current launch gate still reports recovery and mobile_release incomplete;
+Facebook, Apple login and store billing are not currently advertised as ready.
+These operational gaps are not reclassified as completed by public API health.
+
 ## Preserve interrupted project reports across API and screen — 2026-09-05
 
 Actual streamed text was discarded by initial-report failure handling and hidden

@@ -2,8 +2,8 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {
-  formatArabicDisplayText,
   formatArabicNumber,
+  formatAuthoredDisplayText,
 } from '../../../constants/arabicFormatting';
 import {rtlRowStyle, textDirection} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
@@ -69,7 +69,7 @@ const CourseIndexModule = ({
         style={styles.moduleHeader}>
         <View style={styles.moduleHeading}>
           <Text style={styles.moduleTitle}>
-            {formatArabicDisplayText(module.title)}
+            {formatAuthoredDisplayText(module.title)}
           </Text>
           <Text style={styles.moduleMeta}>
             {formatArabicNumber(module.reels.length)} مقطع
@@ -118,7 +118,7 @@ const CourseIndexModule = ({
                   </View>
                   <View style={styles.reelCopy}>
                     <Text style={styles.reelTitle} numberOfLines={1}>
-                      {formatArabicDisplayText(reel.title)}
+                      {formatAuthoredDisplayText(reel.title)}
                     </Text>
                     {unavailable && (
                       <Text style={styles.projectStatus} numberOfLines={1}>
@@ -156,7 +156,7 @@ const CourseIndexModule = ({
                 </View>
                 <View style={styles.projectCopy}>
                   <Text style={styles.projectTitle} numberOfLines={1}>
-                    {formatArabicDisplayText(project.title)}
+                    {formatAuthoredDisplayText(project.title)}
                   </Text>
                   <Text style={styles.projectStatus}>
                     {unavailable
