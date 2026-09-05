@@ -10,9 +10,9 @@ const POP_DIRECTIONAL_ISOLATE = '\u2069';
 // Machine tokens remain ASCII so copying a URL, email, phone number or code
 // yields the original value. Isolates keep them visually intact inside RTL.
 const MIXED_DIRECTION_SEGMENT =
-  /(\u2068[^\u2069]*\u2069|(?:https?:\/\/|www\.)[^\s<>{}[\]()،؛!?,;]+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[A-Za-z]{2,}|\+?\d(?:[\d\s()-]{5,}\d)|[A-Za-z0-9._:/@+-]*[A-Za-z][A-Za-z0-9._:/@+-]*)/giu;
+  /(\u2068[^\u2069]*\u2069|(?:https?:\/\/|www\.)[^\s<>{}[\]()،؛!?,;]+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[A-Za-z]{2,}|\+?\d(?:[\d\s()-]{5,}\d)|[A-Za-z0-9._:/@+-]*[A-Za-z][A-Za-z0-9._:/@+-]*(?:[ \t]+[A-Za-z0-9._:/@+-]*[A-Za-z][A-Za-z0-9._:/@+-]*)*)/giu;
 const IS_MIXED_DIRECTION_SEGMENT =
-  /^(?:\u2068[^\u2069]*\u2069|(?:https?:\/\/|www\.)[^\s<>{}[\]()،؛!?,;]+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[A-Za-z]{2,}|\+?\d(?:[\d\s()-]{5,}\d)|[A-Za-z0-9._:/@+-]*[A-Za-z][A-Za-z0-9._:/@+-]*)$/iu;
+  /^(?:\u2068[^\u2069]*\u2069|(?:https?:\/\/|www\.)[^\s<>{}[\]()،؛!?,;]+|[\p{L}\p{N}._%+-]+@[\p{L}\p{N}.-]+\.[A-Za-z]{2,}|\+?\d(?:[\d\s()-]{5,}\d)|[A-Za-z0-9._:/@+-]*[A-Za-z][A-Za-z0-9._:/@+-]*(?:[ \t]+[A-Za-z0-9._:/@+-]*[A-Za-z][A-Za-z0-9._:/@+-]*)*)$/iu;
 
 /** Keeps a visible URL, code or mixed identifier intact inside Arabic copy. */
 export const isolateBidirectionalText = (value: VisibleValue): string => {

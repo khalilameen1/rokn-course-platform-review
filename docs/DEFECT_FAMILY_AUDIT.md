@@ -4,6 +4,21 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Native mixed-direction text checkpoint — 2026-09-05
+
+The rebuilt internal candidate 1.0.39 / 40 at `dda9598` was installed without
+clearing emulator data. Native screenshots confirmed right-aligned Arabic on
+the course, reel and guest chat. Inspection also exposed a separate shared
+formatter defect: Latin phrases were isolated word by word, reversing names
+such as Grease Pencil and Blender Studio within the RTL paragraph. That
+candidate was uploaded privately but withheld from delivery.
+
+The formatter now isolates each contiguous Latin phrase as one directional
+unit. URLs, email addresses, phone numbers and identifiers remain intact; the
+regression checks also cover repeated formatting. The source fix passed ten
+locale tests, targeted lint and TypeScript. The next rebuilt artifact must
+still demonstrate correct phrase order in native screenshots before delivery.
+
 ## Reported failures in 12.apk — 2026-09-05
 
 The exact delivered APK (1.0.38 / 39, hash below) was installed on an isolated

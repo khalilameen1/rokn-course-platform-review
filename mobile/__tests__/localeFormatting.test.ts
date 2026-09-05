@@ -22,6 +22,13 @@ describe('learner locale formatting', () => {
     expect(formatArabicDisplayText('زر https://rokn.app.')).toBe(
       'زر \u2068https://rokn.app\u2069.',
     );
+    expect(
+      formatArabicDisplayText(
+        'راسل learner52@example.com أو اتصل +20 100 123 4567 واستخدم ID_52',
+      ),
+    ).toBe(
+      'راسل \u2068learner52@example.com\u2069 أو اتصل \u2068+20 100 123 4567\u2069 واستخدم \u2068ID_52\u2069',
+    );
   });
 
   it('removes imported bidi controls before adding bounded isolates', () => {
@@ -31,6 +38,29 @@ describe('learner locale formatting', () => {
       ),
     ).toBe(
       '\u2068ABC\u2069 ٥٢ عنوان \u2068https://rokn.app\u2069',
+    );
+  });
+
+  it.each(['Grease Pencil', 'Blender Studio', 'CC BY'])(
+    'keeps the contiguous Latin phrase %s in authored order',
+    phrase => {
+      expect(formatArabicDisplayText(`شرح ${phrase} بالعربي`)).toBe(
+        `شرح \u2068${phrase}\u2069 بالعربي`,
+      );
+    },
+  );
+
+  it('isolates mixed phrases, URLs and codes once without merging Arabic or numbers', () => {
+    const source =
+      'افتح Blender Studio عبر https://rokn.app/course/52 ثم استخدم CC BY والكود 2zm_64 في 30 مقطع';
+    const formatted = formatArabicDisplayText(source);
+
+    expect(formatted).toBe(
+      'افتح \u2068Blender Studio\u2069 عبر \u2068https://rokn.app/course/52\u2069 ثم استخدم \u2068CC BY\u2069 والكود \u20682zm_64\u2069 في ٣٠ مقطع',
+    );
+    expect(formatArabicDisplayText(formatted)).toBe(formatted);
+    expect(formatArabicDisplayText('رمز ABC 52')).toBe(
+      'رمز \u2068ABC\u2069 ٥٢',
     );
   });
 
