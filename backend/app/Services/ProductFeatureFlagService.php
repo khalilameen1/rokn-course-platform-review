@@ -57,6 +57,9 @@ final class ProductFeatureFlagService
         if (!array_key_exists($key, $definitions)) {
             return false;
         }
+        if ($key === 'checkout' && (bool) config('operations.disaster_recovery_mode', false)) {
+            return false;
+        }
         $rows = $this->rows();
         if ($rows === null) {
             return $definitions[$key]['safe_default'];
@@ -117,6 +120,12 @@ final class ProductFeatureFlagService
                 $enabled, $rollout, $expired, $row?->updated_at?->getTimestamp() ?? 0,
             ];
         }
+
+        $disasterRecoveryMode = (bool) config('operations.disaster_recovery_mode', false);
+        if ($disasterRecoveryMode && array_key_exists('checkout', $flags)) {
+            $flags['checkout'] = false;
+        }
+        $versionSource['runtime'] = ['disaster_recovery_mode' => $disasterRecoveryMode];
 
         $ttl = max(60, (int) config('product_features.client_ttl_seconds', 300));
 

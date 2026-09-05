@@ -172,23 +172,34 @@ export const useWalletCheckout = (data: WalletCheckoutData) => {
         }
       } catch (error: unknown) {
         if (!ownsBoundary(boundary)) return;
+        const code = errorCode(error);
         const packageCatalogueChanged = [
           'package_terms_changed',
           'package_not_available',
-        ].includes(errorCode(error));
+        ].includes(code);
+        const checkoutUnavailable = [
+          'recovery_in_progress',
+          'recovery_verification_required',
+          'feature_temporarily_unavailable',
+          'FEATURE_CHECKOUT_DISABLED',
+        ].includes(code);
         if (packageCatalogueChanged) {
           await invalidatePackages(boundary);
           await refreshAfterCurrent();
           if (!ownsBoundary(boundary)) return;
-        } else {
+        } else if (!checkoutUnavailable) {
           void refreshAfterCurrent();
         }
         Alert.alert(
           packageCatalogueChanged
             ? 'تغيّرت تفاصيل الباقة'
+            : checkoutUnavailable
+            ? 'الدفع متوقف مؤقتًا'
             : 'تعذّر تأكيد حالة الدفع',
           packageCatalogueChanged
             ? 'راجع باقات الشحن\nثم اختر الباقة من جديد'
+            : checkoutUnavailable
+            ? 'حاول لاحقًا'
             : 'حدّث الرصيد قبل المحاولة مرة أخرى',
         );
       } finally {

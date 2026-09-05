@@ -18,6 +18,7 @@ final class UserSessionController extends Controller
     {
         /** @var ApiToken|null $current */
         $current = $request->attributes->get('rokn_api_token');
+        $currentSessionId = trim((string) $current?->session_id);
         $sessions = $request->user()->apiTokens()
             ->whereHasNotExpired()
             ->whereNotNull('session_id')
@@ -26,19 +27,39 @@ final class UserSessionController extends Controller
             ->orderByDesc('session_id')
             ->limit(DeviceLoginService::MAX_ACTIVE_SESSIONS)
             ->get()
-            ->map(static fn (ApiToken $token): array => [
-                'id' => $token->session_id,
-                'platform' => $token->platform ?: 'other',
-                'device_class' => in_array($token->device_class, ['phone', 'tablet'], true)
-                    ? $token->device_class
-                    : null,
-                'app_version' => $token->app_version,
-                'app_build' => $token->app_build,
-                'issued_at' => optional($token->issued_at)->toIso8601String(),
-                'last_used_at' => optional($token->last_used_at)->toIso8601String(),
-                'expires_at' => optional($token->expired_at)->toIso8601String(),
-                'current' => $current !== null && hash_equals((string) $current->session_id, (string) $token->session_id),
-            ])
+            ->groupBy(static function (ApiToken $token): string {
+                $deviceId = trim((string) $token->device_id);
+
+                return $deviceId !== ''
+                    ? 'device:'.$deviceId
+                    : 'legacy-session:'.$token->session_id;
+            })
+            ->map(static function ($deviceSessions) use ($currentSessionId): array {
+                /** @var ApiToken $latest */
+                $latest = $deviceSessions->first();
+                /** @var ApiToken|null $currentDeviceSession */
+                $currentDeviceSession = $deviceSessions->first(
+                    static fn (ApiToken $token): bool => $currentSessionId !== ''
+                        && hash_equals($currentSessionId, (string) $token->session_id)
+                );
+                $display = $currentDeviceSession ?: $latest;
+
+                return [
+                    // A representative session keeps the UUID route contract;
+                    // revocation resolves it to all sessions of this device.
+                    'id' => $display->session_id,
+                    'platform' => $display->platform ?: 'other',
+                    'device_class' => in_array($display->device_class, ['phone', 'tablet'], true)
+                        ? $display->device_class
+                        : null,
+                    'app_version' => $display->app_version,
+                    'app_build' => $display->app_build,
+                    'issued_at' => optional($display->issued_at)->toIso8601String(),
+                    'last_used_at' => optional($latest->last_used_at ?: $latest->issued_at)->toIso8601String(),
+                    'expires_at' => optional($display->expired_at)->toIso8601String(),
+                    'current' => $currentDeviceSession !== null,
+                ];
+            })
             ->values();
 
         return response()->json([
@@ -75,11 +96,26 @@ final class UserSessionController extends Controller
             ]);
         }
 
+        $currentDeviceId = trim((string) $current?->device_id);
+        $sessionDeviceId = trim((string) $session->device_id);
         $isCurrent = $current !== null
-            && hash_equals((string) $current->session_id, (string) $session->session_id);
+            && (
+                hash_equals((string) $current->session_id, (string) $session->session_id)
+                || ($currentDeviceId !== '' && hash_equals($currentDeviceId, $sessionDeviceId))
+            );
         DB::transaction(function () use ($session): void {
             $deviceId = trim((string) $session->device_id);
-            $session->revoke();
+            $sessions = ApiToken::query()
+                ->where('user_id', $session->user_id)
+                ->whereHasNotExpired()
+                ->when(
+                    $deviceId !== '',
+                    static fn ($query) => $query->where('device_id', $deviceId),
+                    static fn ($query) => $query->where('session_id', $session->session_id)
+                )
+                ->lockForUpdate()
+                ->get();
+            $sessions->each(static fn (ApiToken $token): mixed => $token->revoke());
             $this->removePushRegistrationForDevices($session->user_id, [$deviceId]);
         }, 3);
 

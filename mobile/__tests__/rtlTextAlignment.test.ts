@@ -1,14 +1,22 @@
-import fs from 'fs';
-import path from 'path';
+import {StyleSheet} from 'react-native';
+import {
+  rtlRowStyle,
+  textDirection,
+} from '../src/constants/designSystem';
 
-describe('Arabic text alignment', () => {
-  it('uses the physical right edge as the shared Arabic text start', () => {
-    const designSystem = fs.readFileSync(
-      path.resolve(__dirname, '../src/constants/designSystem.ts'),
-      'utf8',
-    );
+describe('Arabic paragraph direction', () => {
+  it('aligns at the RTL paragraph start without a second physical-edge flip', () => {
+    expect(StyleSheet.flatten(textDirection)).toEqual({
+      direction: 'rtl',
+      writingDirection: 'rtl',
+      textAlign: 'auto',
+    });
+  });
 
-    expect(designSystem).toContain("rtlTextAlign = 'right' as const");
-    expect(designSystem).not.toContain("rtlTextAlign = 'left' as const");
+  it('preserves deliberate centered labels and RTL row order', () => {
+    expect(
+      StyleSheet.flatten([textDirection, {textAlign: 'center'}]).textAlign,
+    ).toBe('center');
+    expect(rtlRowStyle).toEqual({direction: 'rtl', flexDirection: 'row'});
   });
 });

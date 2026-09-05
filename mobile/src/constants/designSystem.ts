@@ -43,8 +43,9 @@ export const Accessibility = {
   minTouchTarget: Math.max(48, PixelPerfect(48)),
 } as const;
 
-/** Arabic copy starts at the physical right edge on both Android and iOS. */
-export const rtlTextAlign = 'right' as const;
+// Let the native renderer align to the explicit RTL paragraph. A literal
+// "right" is mirrored again by React Native when the layout is already RTL.
+export const rtlTextAlign = 'auto' as const;
 
 export const textDirection = {
   direction: 'rtl' as const,

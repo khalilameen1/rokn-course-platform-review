@@ -516,6 +516,47 @@ class KashierPaymentTest extends TestCase
         ]);
     }
 
+    public function test_missing_recovery_evidence_does_not_block_normal_production_checkout(): void
+    {
+        config([
+            'app.env' => 'production',
+            'operations.disaster_recovery_mode' => false,
+            'operations.recovery_evidence_path' => storage_path('framework/testing/missing-recovery.json'),
+            'operations.backup_evidence_path' => storage_path('framework/testing/missing-backup.json'),
+        ]);
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+            ]);
+
+        $response->assertOk()->assertJsonPath('success', true);
+        self::assertSame(1, Order::query()->where('user_id', $this->user->id)->count());
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+    }
+
+    public function test_disaster_recovery_mode_blocks_checkout_before_any_order_or_balance_change(): void
+    {
+        config([
+            'app.env' => 'production',
+            'operations.disaster_recovery_mode' => true,
+        ]);
+        Http::fake();
+
+        $response = $this->actingAs($this->user, 'api')
+            ->postJson('/api/v1/payment/initiate', [
+                'package_id' => $this->package->id,
+            ]);
+
+        $response->assertServiceUnavailable()
+            ->assertHeader('Retry-After', '300')
+            ->assertJsonPath('code', 'recovery_in_progress')
+            ->assertJsonPath('feature', 'checkout');
+        self::assertSame(0, Order::query()->where('user_id', $this->user->id)->count());
+        self::assertSame(0, (int) $this->user->fresh()->wallet_coins);
+        Http::assertNothingSent();
+    }
+
    public function test_unauthenticated_user_cannot_initiate_payment(): void
     {
         $response = $this->postJson('/api/v1/payment/initiate', [

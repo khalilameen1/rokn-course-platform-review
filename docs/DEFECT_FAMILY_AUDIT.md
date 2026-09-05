@@ -4,6 +4,47 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Reported failures in 12.apk — 2026-09-05
+
+The exact delivered APK (1.0.38 / 39, hash below) was installed on an isolated
+Android emulator. Guest Home and published course 3 loaded successfully. Its
+Arabic paragraphs were visibly left-aligned. Both native text renderers mirror
+literal left/right alignment under RTL; the shared paragraph style now uses
+natural alignment with explicit RTL layout and writing direction. Centered
+labels and explicit LTR URLs are unchanged. Post-fix native rendering is not
+yet verified in a rebuilt artifact.
+
+The reported payment message matched a production checkout veto before Kashier
+initiation: missing backup/restore-drill evidence was being checked on every
+purchase. Runtime checkout now follows its feature flag and the explicit
+disaster-recovery pause. Backup evidence remains an independent launch-readiness
+requirement, not a per-payment dependency. Wallet copy distinguishes service
+unavailability from uncertain payment status. No paid transaction has been
+performed to claim end-to-end payment acceptance.
+
+The top-up packages inside the course dialog now give their name, amount and
+price separate full-width space. Portfolio sharing and its QR are visible only
+in the works tab. The save picker always offers Watch Later through the existing
+idempotent default-folder API, followed by custom lists. Course chat is labelled
+"استفسارات الكورس" without changing its privacy policy or impersonating the
+instructor. The authoring form preserves already-linked administrator instructors
+without exposing unrelated administrator accounts.
+
+Device rows now represent installation IDs rather than individual bearers.
+Historical releases could omit the installation ID after a short storage timeout.
+The next successful identified login retires these unowned legacy bearers;
+separate identified devices remain intact. A legacy device may consequently
+need to sign in again. No devices are merged by their model name.
+
+The existing production test package 4 was saved through the dashboard and its
+public API verified: 900 coins, base price EGP 11.11, direct checkout EGP 10.00
+after the existing 10% discount. This covers course 3's highest 900-coin tier.
+Changing that tier's global message allowance from 150 to 50 reached the
+dashboard's two-factor challenge and is not yet confirmed saved. An unchanged
+editing draft (course 7) was opened from published course 3; it has not replaced
+the published course. Nightwatch also reported an exceeded free quota in Cloud
+logs; automatic monitoring coverage must not be assumed complete.
+
 ## Built internal artifact and dashboard-role clarification — 2026-09-05
 
 The internal direct APK 1.0.38 / Android 39 was built successfully from mobile

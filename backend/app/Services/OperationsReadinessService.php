@@ -47,7 +47,6 @@ final class OperationsReadinessService
             'rpo_seconds' => $recovery['rpo_seconds'] ?? null,
             'rto_seconds' => $recovery['rto_seconds'] ?? null,
             'recovery_mode' => (bool) ($recovery['recovery_mode'] ?? false),
-            'purchases_allowed' => (bool) ($recovery['purchases_allowed'] ?? false),
             'runbook' => is_file($runbookPath) ? 'PRODUCTION_RUNBOOK.md' : null,
             'note' => 'Signed read-only evidence. The dashboard never starts a backup or restore.',
         ];

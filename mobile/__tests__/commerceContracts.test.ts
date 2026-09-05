@@ -390,6 +390,10 @@ describe('commerce API contracts', () => {
     expect(courseTopup).toContain('formatArabicDisplayText(item.label)');
     expect(walletCheckout).toContain('openCoinCheckout(item');
     expect(courseCheckout).toContain('openCoinCheckout(coinPackage');
+    expect(walletCheckout).toContain("'recovery_in_progress'");
+    expect(walletCheckout).toContain("'FEATURE_CHECKOUT_DISABLED'");
+    expect(walletCheckout).toContain('else if (!checkoutUnavailable)');
+    expect(walletCheckout).toContain("'الدفع متوقف مؤقتًا'");
   });
 
   it('uses mobile-first devices artwork without a desktop stand', () => {

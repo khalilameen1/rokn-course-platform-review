@@ -223,10 +223,7 @@ const CourseChatOverlay = ({
           <View style={styles.handle} />
           <View style={styles.header}>
             <View style={styles.headerCopy}>
-              <Text style={styles.title}>استفسارات</Text>
-              <Text style={styles.presenceText}>
-                مساعد تعليمي بالذكاء الاصطناعي
-              </Text>
+              <Text style={styles.title}>استفسارات الكورس</Text>
               <View style={styles.presenceRow}>
                 <View
                   style={[

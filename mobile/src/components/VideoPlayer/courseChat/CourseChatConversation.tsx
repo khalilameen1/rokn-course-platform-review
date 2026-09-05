@@ -138,7 +138,7 @@ export const CourseChatConversation = ({
   return (
     <>
       <ScrollView
-        accessibilityLabel="استفسارات الكورس"
+        accessibilityLabel="محادثة استفسارات الكورس"
         ref={scrollRef}
         style={styles.messages}
         contentContainerStyle={styles.messagesContent}

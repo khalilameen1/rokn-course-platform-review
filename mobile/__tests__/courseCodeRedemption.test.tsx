@@ -1,4 +1,5 @@
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import ReactTestRenderer from 'react-test-renderer';
 
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
@@ -202,7 +203,8 @@ describe('course-code redemption UI', () => {
               id: 'coins-1000',
               coins: 1000,
               price: 99,
-              label: 'رصيد مدفوع',
+              label: 'باقة رصيد مدفوع للاستخدام في الكورسات العملية',
+              displayPrice: '٩٩٫٠٠ جنيه مصري شامل الضريبة',
             },
             {
               id: 'coins-1500',
@@ -229,7 +231,7 @@ describe('course-code redemption UI', () => {
 
     const tree = JSON.stringify(renderer!.toJSON());
     expect(tree).toContain('تغطي المبلغ الناقص');
-    expect(tree).toContain('٩٩');
+    expect(tree).toContain('٩٩٫٠٠ جنيه مصري شامل الضريبة');
     expect(tree).toContain('١٣٩');
     expect(tree).toContain('جنيه');
     expect(tree).toContain('يتبقى ');
@@ -242,9 +244,22 @@ describe('course-code redemption UI', () => {
         node.props.disabled === false,
     );
     const paymentAction = actions.find(node =>
-      String(node.props.accessibilityLabel || '').includes('٩٩'),
+      String(node.props.accessibilityLabel || '').includes(
+        '٩٩٫٠٠ جنيه مصري شامل الضريبة',
+      ),
     );
     expect(paymentAction).toBeDefined();
+    const unresolvedPackageCardStyle = paymentAction!.props.style;
+    const packageCardStyle = StyleSheet.flatten(
+      typeof unresolvedPackageCardStyle === 'function'
+        ? unresolvedPackageCardStyle({pressed: false})
+        : unresolvedPackageCardStyle,
+    );
+    expect(packageCardStyle).toMatchObject({
+      minWidth: 0,
+      padding: 15,
+      width: '100%',
+    });
     await ReactTestRenderer.act(() => paymentAction!.props.onPress());
     expect(onBuyCoins).toHaveBeenCalledTimes(1);
     expect(onBuyCoins).toHaveBeenCalledWith(

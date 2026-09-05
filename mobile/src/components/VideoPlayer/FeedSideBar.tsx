@@ -93,6 +93,7 @@ const FeedSideBar = ({
     name: newFolderName,
     open: openSaveSheet,
     saveInFolder,
+    saveInWatchLater,
     setName: setNewFolderName,
   } = useSavedFolderPicker({
     dismiss: dismissSaveSheet,
@@ -304,6 +305,18 @@ const FeedSideBar = ({
             <ActivityIndicator color="#76A9FF" style={styles.folderLoader} />
           ) : (
             <View style={styles.folderList}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{disabled: savePending}}
+                disabled={savePending}
+                onPress={saveInWatchLater}
+                style={({pressed}) => [
+                  styles.folderRow,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.folderRowText}>المشاهدة لاحقًا</Text>
+                <Text style={styles.folderRowAction}>حفظ</Text>
+              </Pressable>
               {folders.map(folder => (
                 <Pressable
                   accessibilityRole="button"

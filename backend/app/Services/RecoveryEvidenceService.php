@@ -64,7 +64,6 @@ final class RecoveryEvidenceService
         return [
             'ready' => $ready,
             'recovery_mode' => $recoveryMode,
-            'purchases_allowed' => $ready && !$recoveryMode,
             'checks' => $checks,
             'provider' => $backup['provider'] ?? null,
             'last_backup_at' => $this->date($backup['snapshot_at'] ?? null),

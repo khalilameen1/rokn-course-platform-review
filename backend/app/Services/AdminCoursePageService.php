@@ -157,7 +157,7 @@ final readonly class AdminCoursePageService
             : null;
 
         return [
-            ...$this->formOptions(),
+            ...$this->formOptions($course),
             'course' => $course,
             'sections' => $sections,
             'publishingAudit' => $this->publishing->audit($course),
@@ -227,14 +227,25 @@ final readonly class AdminCoursePageService
     }
 
     /** @return array<string, mixed> */
-    private function formOptions(): array
+    private function formOptions(Course $course): array
     {
+        $existingAdminInstructorIds = $course->teachers
+            ->filter(fn (User $teacher): bool => $teacher->role === 'admin')
+            ->modelKeys();
+
         return [
             'enableEnglish' => (bool) (Setting::query()->value('english_translation') ?? false),
             'classifications' => Classification::query()->orderBy('home_order')->orderBy('id')->get(),
             'levels' => Level::ordered()->get(),
             'designSettings' => DesignSetting::getDefaultSettings(),
-            'teachers' => User::query()->where('role', 'teacher')->with('photo')
+            'teachers' => User::query()
+                ->where(function (Builder $teachers) use ($existingAdminInstructorIds): void {
+                    $teachers->where('role', 'teacher');
+                    if ($existingAdminInstructorIds !== []) {
+                        $teachers->orWhereIn('id', $existingAdminInstructorIds);
+                    }
+                })
+                ->with('photo')
                 ->orderBy('name_ar')->orderBy('id')->get(),
             'paths' => Path::query()->orderBy('title_ar')->orderBy('id')->get(),
             'certificateTextTemplates' => $this->certificateTemplates->catalogue(),

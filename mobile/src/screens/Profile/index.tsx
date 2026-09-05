@@ -51,10 +51,12 @@ export default function Profile() {
     setHasShareablePortfolio,
     sharePortfolio,
   } = useProfileOverview();
+  const showPortfolioActions =
+    activeTab === 'portfolio' && canSharePortfolio;
 
   useEffect(() => {
-    if (!canSharePortfolio) setShowPortfolioQr(false);
-  }, [canSharePortfolio]);
+    if (!showPortfolioActions) setShowPortfolioQr(false);
+  }, [showPortfolioActions]);
 
   useEffect(() => {
     if (route.params?.tab) setActiveTab(route.params.tab);
@@ -138,7 +140,7 @@ export default function Profile() {
                   />
                 )}
               </View>
-              {canSharePortfolio && (
+              {showPortfolioActions && (
                 <Pressable
                   accessibilityLabel="مشاركة البورتفوليو"
                   accessibilityRole="button"
@@ -151,7 +153,7 @@ export default function Profile() {
                 </Pressable>
               )}
             </View>
-            {canSharePortfolio && (
+            {showPortfolioActions && (
               <View style={styles.publicActions}>
                 <Pressable
                   accessibilityLabel="فتح رابط مشاركة البورتفوليو"
@@ -184,7 +186,7 @@ export default function Profile() {
             onRequestClose={() => setShowPortfolioQr(false)}
             statusBarTranslucent
             transparent
-            visible={showPortfolioQr && canSharePortfolio}>
+            visible={showPortfolioQr && showPortfolioActions}>
             <View style={styles.qrOverlay}>
               <View accessibilityViewIsModal>
                 <PremiumCard style={styles.qrCard}>

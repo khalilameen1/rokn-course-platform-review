@@ -63,7 +63,10 @@ export const useReelsSavedLessons = ({
       pendingRef.current.add(operationKey);
       setSavingLessons(current => new Set(current).add(reel.lessonId));
       const currentlySaved = savedLessonsRef.current.has(reel.lessonId);
-      const shouldSave = Boolean(folder) || !currentlySaved;
+      // undefined means the explicit default destination; null is the only
+      // remove command. A reel saved in another list must still be addable to
+      // "المشاهدة لاحقًا" without deleting its existing memberships.
+      const shouldSave = folder !== null;
       let optimisticApplied = false;
       let boundary: Awaited<
         ReturnType<typeof captureAccountSessionBoundary>
@@ -94,7 +97,7 @@ export const useReelsSavedLessons = ({
         if (folder) {
           await saveLessonToFolder(reel.lessonId, folder);
         } else {
-          await toggleWatchLater(reel.lessonId, currentlySaved);
+          await toggleWatchLater(reel.lessonId, folder === null);
         }
         assertAccountSessionBoundary(boundary);
         if (!stillOwned()) return;

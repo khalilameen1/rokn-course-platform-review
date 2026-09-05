@@ -413,6 +413,13 @@ describe('course assistant waiting experience', () => {
       'utf8',
     );
     expect(conversation).toContain('accessibilityLabel="نسخ الرسالة"');
+    expect(conversation).toContain(
+      'accessibilityLabel="محادثة استفسارات الكورس"',
+    );
+    expect(overlay).toContain(
+      '<Text style={styles.title}>استفسارات الكورس</Text>',
+    );
+    expect(overlay).not.toContain('مساعد تعليمي بالذكاء الاصطناعي');
     expect(overlay).toContain(
       "hardwareAccelerated={Platform.OS === 'android'}",
     );

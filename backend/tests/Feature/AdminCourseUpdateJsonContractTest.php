@@ -175,6 +175,36 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
         self::assertFalse($course->teachers()->exists());
     }
 
+    public function test_studio_round_trip_preserves_only_the_existing_legacy_admin_instructor(): void
+    {
+        $course = $this->draftCourse();
+        $linkedAdministrator = $this->instructor('admin', 'linked-admin-instructor@example.test');
+        $unrelatedAdministrator = $this->instructor('admin', 'private-admin@example.test');
+        $teacher = $this->instructor('teacher', 'teacher-option@example.test');
+        $course->teachers()->attach([$linkedAdministrator->id, $teacher->id]);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $studio = $this->actingAs($this->moderator(), 'web')
+            ->get(route('admin.courses.show', $course))
+            ->assertOk();
+        $teacherOptions = $studio->original->getData()['teachers'];
+        $optionIds = $teacherOptions->modelKeys();
+
+        self::assertContains($linkedAdministrator->id, $optionIds);
+        self::assertContains($teacher->id, $optionIds);
+        self::assertNotContains($unrelatedAdministrator->id, $optionIds);
+
+        $this->patchJson(route('admin.courses.update', $course), [
+            'authoring_version' => 3,
+            'teacher_ids_present' => true,
+            'teacher_ids' => $optionIds,
+        ])->assertOk();
+
+        self::assertTrue($course->teachers()->whereKey($linkedAdministrator->id)->exists());
+        self::assertTrue($course->teachers()->whereKey($teacher->id)->exists());
+        self::assertFalse($course->teachers()->whereKey($unrelatedAdministrator->id)->exists());
+    }
+
     public function test_every_authoring_result_uses_the_same_editor_payload_shape(): void
     {
         $course = $this->draftCourse();
@@ -226,6 +256,19 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
             'name_ar' => 'محرر المحتوى',
             'email' => 'course-json-moderator@example.test',
             'role' => 'moderator',
+            'active' => true,
+        ])->save();
+
+        return $user;
+    }
+
+    private function instructor(string $role, string $email): User
+    {
+        $user = new User();
+        $user->forceFill([
+            'name_ar' => $email,
+            'email' => $email,
+            'role' => $role,
             'active' => true,
         ])->save();
 

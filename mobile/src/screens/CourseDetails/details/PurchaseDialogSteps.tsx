@@ -227,28 +227,31 @@ export const TopupStep = ({
                 pressed && styles.pressed,
                 busy && styles.disabled,
               ]}>
-              <View style={styles.packageCopy}>
+              <View style={styles.packageHeading}>
                 <Text style={styles.packageLabel}>
                   {formatArabicDisplayText(item.label)}
                 </Text>
-                <View style={styles.planHeader}>
-                  <CoinAmount size={18} value={item.coins} />
-                  {isQuickChoice && (
-                    <Text style={styles.sheetEyebrow}>تغطي المبلغ الناقص</Text>
-                  )}
-                </View>
-                <Text style={styles.packageRemainder}>
-                  {item.coins < shortfall
-                    ? `تحتاج بعدها ${formatArabicNumber(
-                        shortfall - item.coins,
-                      )} عملة لإكمال الشراء`
-                    : `يتبقى ${formatArabicNumber(
-                        remainingAfterPurchase,
-                      )} عملة بعد شراء الكورس`}
-                </Text>
+                {isQuickChoice && (
+                  <Text style={styles.packageBadge}>تغطي المبلغ الناقص</Text>
+                )}
               </View>
+              <CoinAmount
+                size={21}
+                style={styles.packageCoins}
+                textStyle={styles.packageCoinsText}
+                value={item.coins}
+              />
               <Text style={styles.packagePrice}>
                 {item.displayPrice || `${formatArabicNumber(item.price)} جنيه`}
+              </Text>
+              <Text style={styles.packageRemainder}>
+                {item.coins < shortfall
+                  ? `تحتاج بعدها ${formatArabicNumber(
+                      shortfall - item.coins,
+                    )} عملة لإكمال الشراء`
+                  : `يتبقى ${formatArabicNumber(
+                      remainingAfterPurchase,
+                    )} عملة بعد شراء الكورس`}
               </Text>
             </Pressable>
           );

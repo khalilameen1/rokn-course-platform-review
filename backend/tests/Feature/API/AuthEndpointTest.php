@@ -382,6 +382,84 @@ class AuthEndpointTest extends ApiTestCase
             ->assertJsonStructure(['data' => ['signed_out'], 'signed_out']);
     }
 
+    public function test_user_sessions_render_one_row_per_installation_without_merging_similar_phones(): void
+    {
+        $currentDeviceId = (string) Str::uuid();
+        $otherDeviceId = (string) Str::uuid();
+        $this->user->generateApiToken(session: [
+            'device_id' => $currentDeviceId,
+            'platform' => 'android',
+            'device_class' => 'phone',
+        ]);
+        $currentToken = $this->user->generateApiToken(session: [
+            'device_id' => $currentDeviceId,
+            'platform' => 'android',
+            'device_class' => 'phone',
+        ]);
+        $this->user->generateApiToken(session: [
+            'device_id' => $otherDeviceId,
+            'platform' => 'android',
+            'device_class' => 'phone',
+        ]);
+        $currentSessionId = (string) \App\Models\ApiToken::query()
+            ->where('token', hash('sha256', $currentToken))
+            ->value('session_id');
+
+        $response = $this->withToken($currentToken)
+            ->getJson('/api/v1/user/sessions')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        self::assertCount(
+            1,
+            collect($response->json('data'))->where('current', true)
+        );
+        self::assertSame(
+            $currentSessionId,
+            collect($response->json('data'))->firstWhere('current', true)['id']
+        );
+    }
+
+    public function test_valid_installation_login_retires_legacy_unowned_sessions_under_multiple_device_policy(): void
+    {
+        Schema::table('settings', function (\Illuminate\Database\Schema\Blueprint $table): void {
+            $table->string('device_login_policy')->nullable();
+        });
+        \App\Models\Setting::query()->firstOrCreate([])->forceFill([
+            'device_login_policy' => \App\Services\DeviceLoginService::POLICY_MULTIPLE,
+        ])->save();
+        $currentDeviceId = (string) Str::uuid();
+        $otherDeviceId = (string) Str::uuid();
+        $legacyToken = $this->user->generateApiToken();
+        $sameDeviceToken = $this->user->generateApiToken(session: ['device_id' => $currentDeviceId]);
+        $otherDeviceToken = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
+        \App\Models\UserDeviceToken::query()->create([
+            'user_id' => $this->user->id,
+            'device_token' => 'legacy-unowned-push',
+            'device_type' => 'android',
+            'device_os' => 'android',
+            'device_id' => null,
+        ]);
+        \App\Models\UserDeviceToken::query()->create([
+            'user_id' => $this->user->id,
+            'device_token' => 'other-device-push',
+            'device_type' => 'android',
+            'device_os' => 'android',
+            'device_id' => $otherDeviceId,
+        ]);
+
+        $devices = app(\App\Services\DeviceLoginService::class);
+        $access = $devices->checkDeviceAccess($this->user, $currentDeviceId);
+        self::assertSame('allow_multiple', $access['action']);
+        $devices->applyDeviceAction($this->user, $access['action'], $currentDeviceId);
+
+        self::assertNotNull(\App\Models\ApiToken::query()->find(hash('sha256', $legacyToken))?->revoked_at);
+        self::assertNotNull(\App\Models\ApiToken::query()->find(hash('sha256', $sameDeviceToken))?->revoked_at);
+        self::assertNull(\App\Models\ApiToken::query()->find(hash('sha256', $otherDeviceToken))?->revoked_at);
+        $this->assertDatabaseMissing('user_device_tokens', ['device_token' => 'legacy-unowned-push']);
+        $this->assertDatabaseHas('user_device_tokens', ['device_token' => 'other-device-push']);
+    }
+
     public function test_revoking_an_already_revoked_device_session_is_idempotent(): void
     {
         $currentToken = $this->user->generateApiToken();
@@ -480,20 +558,19 @@ class AuthEndpointTest extends ApiTestCase
         self::assertSame('owned', $secondResult);
     }
 
-    public function test_revoking_one_session_keeps_push_for_another_session_on_the_same_device(): void
+    public function test_revoking_a_device_retires_all_of_its_sessions_and_push_registration(): void
     {
-        $deviceId = (string) Str::uuid();
-        $currentToken = $this->user->generateApiToken();
-        $otherToken = $this->user->generateApiToken();
-        \App\Models\ApiToken::query()
-            ->whereIn('token', [hash('sha256', $currentToken), hash('sha256', $otherToken)])
-            ->update(['device_id' => $deviceId]);
+        $currentDeviceId = (string) Str::uuid();
+        $otherDeviceId = (string) Str::uuid();
+        $currentToken = $this->user->generateApiToken(session: ['device_id' => $currentDeviceId]);
+        $otherToken = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
+        $otherTokenAgain = $this->user->generateApiToken(session: ['device_id' => $otherDeviceId]);
         \App\Models\UserDeviceToken::query()->create([
             'user_id' => $this->user->id,
             'device_token' => 'shared-device-push-token',
             'device_type' => 'android',
             'device_os' => 'android',
-            'device_id' => $deviceId,
+            'device_id' => $otherDeviceId,
         ]);
         $otherSessionId = (string) \App\Models\ApiToken::query()
             ->where('token', hash('sha256', $otherToken))
@@ -504,9 +581,18 @@ class AuthEndpointTest extends ApiTestCase
             ->deleteJson('/api/v1/user/sessions/'.$otherSessionId)
             ->assertOk();
 
-        $this->assertDatabaseHas('user_device_tokens', [
+        self::assertNotNull(
+            \App\Models\ApiToken::query()->find(hash('sha256', $otherToken))?->revoked_at
+        );
+        self::assertNotNull(
+            \App\Models\ApiToken::query()->find(hash('sha256', $otherTokenAgain))?->revoked_at
+        );
+        self::assertNull(
+            \App\Models\ApiToken::query()->find(hash('sha256', $currentToken))?->revoked_at
+        );
+        $this->assertDatabaseMissing('user_device_tokens', [
             'user_id' => $this->user->id,
-            'device_id' => $deviceId,
+            'device_id' => $otherDeviceId,
             'device_token' => 'shared-device-push-token',
         ]);
     }

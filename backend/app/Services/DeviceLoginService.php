@@ -200,10 +200,18 @@ class DeviceLoginService
                 if ($deviceId !== '') {
                     $user->apiTokens()
                         ->whereHasNotExpired()
-                        ->where('device_id', $deviceId)
+                        ->where(function ($query) use ($deviceId): void {
+                            $query->where('device_id', $deviceId)
+                                // Retire legacy bearers without installation
+                                // identity when a known device signs in again.
+                                ->orWhereNull('device_id');
+                        })
                         ->lockForUpdate()
                         ->get()
                         ->each(static fn (ApiToken $token): mixed => $token->revoke());
+                    $user->deviceTokens()
+                        ->whereNull('device_id')
+                        ->delete();
                 }
                 break;
 

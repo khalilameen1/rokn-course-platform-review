@@ -68,6 +68,23 @@ final class ProductFeatureFlagTest extends TestCase
         self::assertFalse($service->clientSnapshot(25)['flags']['project_uploads']);
     }
 
+    public function test_disaster_recovery_mode_closes_checkout_in_both_server_and_client_contracts(): void
+    {
+        $service = app(ProductFeatureFlagService::class);
+        config(['operations.disaster_recovery_mode' => false]);
+        $normal = $service->clientSnapshot(45);
+
+        self::assertTrue($service->enabled('checkout', 45));
+        self::assertTrue($normal['flags']['checkout']);
+
+        config(['operations.disaster_recovery_mode' => true]);
+        $recovery = $service->clientSnapshot(45);
+
+        self::assertFalse($service->enabled('checkout', 45));
+        self::assertFalse($recovery['flags']['checkout']);
+        self::assertNotSame($normal['version'], $recovery['version']);
+    }
+
     public function test_versioned_public_endpoint_exposes_only_the_closed_client_snapshot(): void
     {
         ProductFeatureFlag::query()->create([

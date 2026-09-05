@@ -12,6 +12,9 @@ import {
 } from '../../../constants/helpers';
 import type {RootState} from '../../../store/store';
 
+const watchLaterName = (value: string) =>
+  value.trim().toLocaleLowerCase('ar') === 'المشاهدة لاحقًا';
+
 export function useSavedFolderPicker({
   dismiss,
   onBeforeOpen,
@@ -99,6 +102,13 @@ export function useSavedFolderPicker({
     [dismiss, onToggleSave],
   );
 
+  const watchLaterFolder = folders.find(folder => watchLaterName(folder.name));
+  const visibleFolders = folders.filter(folder => !watchLaterName(folder.name));
+  const saveInWatchLater = useCallback(() => {
+    onToggleSave(watchLaterFolder);
+    dismiss();
+  }, [dismiss, onToggleSave, watchLaterFolder]);
+
   const createAndSave = useCallback(async () => {
     const normalizedName = name.trim();
     if (!normalizedName || creating || creatingRef.current) return;
@@ -142,11 +152,12 @@ export function useSavedFolderPicker({
     createAndSave,
     creating,
     error,
-    folders,
+    folders: visibleFolders,
     loading,
     name,
     open,
     saveInFolder,
+    saveInWatchLater,
     setName,
   };
 }
