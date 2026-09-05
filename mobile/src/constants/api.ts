@@ -160,34 +160,37 @@ export const onRejectedResponse = async (error: unknown): Promise<never> => {
     // A timeout applies to each Axios attempt, not to the logical read. The
     // request policy supplies one journey-wide deadline so a weak connection cannot
     // multiply 15 seconds by every origin-wake retry and strand first launch.
-    if (remainingRetryBudget <= 0) {
-      return Promise.reject(response ?? error);
-    }
-    const configuredTimeout = Number(config?.timeout || 0);
-    const retryConfig = {
-      ...(config as RoknRequestConfig),
-      roknNetworkRetryCount: retryCount + 1,
-      ...(Number.isFinite(remainingRetryBudget)
-        ? {
-            timeout: Math.max(
-              1,
-              Math.floor(
-                configuredTimeout > 0
-                  ? Math.min(configuredTimeout, remainingRetryBudget)
-                  : remainingRetryBudget,
+    if (remainingRetryBudget > 0) {
+      const configuredTimeout = Number(config?.timeout || 0);
+      const retryConfig = {
+        ...(config as RoknRequestConfig),
+        roknNetworkRetryCount: retryCount + 1,
+        ...(Number.isFinite(remainingRetryBudget)
+          ? {
+              timeout: Math.max(
+                1,
+                Math.floor(
+                  configuredTimeout > 0
+                    ? Math.min(configuredTimeout, remainingRetryBudget)
+                    : remainingRetryBudget,
+                ),
               ),
-            ),
-          }
-        : {}),
-    };
-    await waitForReadRetry(retryDelay, config as RoknRequestConfig | undefined);
-    if (retryDeadlineAt && Date.now() >= retryDeadlineAt) {
-      return Promise.reject(response ?? error);
+            }
+          : {}),
+      };
+      await waitForReadRetry(
+        retryDelay,
+        config as RoknRequestConfig | undefined,
+      );
+      if (!retryDeadlineAt || Date.now() < retryDeadlineAt) {
+        return publicRequest.request(retryConfig).then(
+          value => value as never,
+          retryError => Promise.reject(retryError),
+        );
+      }
     }
-    return publicRequest.request(retryConfig).then(
-      value => value as never,
-      retryError => Promise.reject(retryError),
-    );
+    // Exhausting the read budget is a terminal availability failure too.
+    // Continue to diagnostics before returning the original error below.
   }
 
   if (

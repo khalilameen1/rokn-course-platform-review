@@ -4,6 +4,35 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Keep terminal read-timeout diagnostics on the common transport path — 2026-09-05
+
+The installed cf7b7b0 / Android 42 candidate was revisited from sign-in through
+the free course preview. This time the preview loaded, a screenshot showed the
+first reel playing, and a later native hierarchy showed reel two at 75/75 seconds
+with the preview-complete purchase gate. No retry, account authentication or
+purchase was performed during this attempt. These sampled observations do not
+prove uninterrupted playback or explain the earlier intermittent failure.
+
+Inspection found that both budget-exhaustion exits in the common API interceptor
+returned before terminal-availability diagnostics. A read that used all its time
+could fail visibly without reporting through `api_transport`. Both exits now
+reach the existing non-blocking diagnostic path and reject the original failure.
+No request budget, retry count or mutation policy changed. Recovered reads and
+intentional cancellation remain unreported as incidents.
+
+Jest's CommonJS environment also left dynamic imports unsupported inside the
+fire-and-forget reporting path. A test-only Babel transform now executes these
+imports; production transformation is unchanged. With that harness corrected,
+temporarily restoring the two old early exits reproduced both missing-event
+failures; removing them passes both cases. The plugin is resolved from the
+already-declared Babel preset dependency, without adding a runtime package.
+
+Verification: all 158 Jest suites / 840 tests passed, then the final 24 transport
+tests passed again after adding explicit no-event assertions for successful
+recovery and cancellation. TypeScript and scoped ESLint passed. This demonstrates
+client-side diagnostic dispatch, not confirmed Sentry/Nightwatch receipt. The
+source fix and prior recovery changes are still absent from unchanged `1234.apk`.
+
 ## Share fresh course-read recovery between details and playback — 2026-09-05
 
 The backend details action can return `409 course_revision_changed` when a

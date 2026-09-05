@@ -1,4 +1,15 @@
 module.exports = {
+  // Jest runs CommonJS. Exercise lazy imports there instead of swallowing
+  // unsupported VM-import errors in fire-and-forget diagnostics.
+  env: {
+    test: {
+      plugins: [
+        require.resolve('@babel/plugin-transform-dynamic-import', {
+          paths: [require.resolve('@babel/preset-env')],
+        }),
+      ],
+    },
+  },
   // Resolve Expo's compatible preset from Expo's own dependency tree. This
   // works whether npm hoists the preset or keeps it nested under Expo.
   presets: [

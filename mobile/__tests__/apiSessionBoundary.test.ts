@@ -2,6 +2,7 @@ import {AxiosHeaders} from 'axios';
 
 const mockGetItem = jest.fn();
 const mockPeekSession = jest.fn();
+const mockReportClientError = jest.fn();
 const mockSecureRandomUuid = jest.fn(
   () => '11111111-1111-4111-8111-111111111111',
 );
@@ -44,6 +45,9 @@ jest.mock('../src/utils/secureRandom', () => ({
 }));
 jest.mock('../src/services/installationIdentity', () => ({
   getInstallationId: jest.fn(async () => null),
+}));
+jest.mock('../src/services/operationalTelemetry', () => ({
+  reportClientError: (...args: unknown[]) => mockReportClientError(...args),
 }));
 
 import {
@@ -425,6 +429,7 @@ describe('public request session boundary', () => {
     expect(request.mock.calls[0][0]).toEqual(
       expect.objectContaining({roknNetworkRetryCount: 1}),
     );
+    expect(mockReportClientError).not.toHaveBeenCalled();
     request.mockRestore();
   });
 
@@ -494,6 +499,44 @@ describe('public request session boundary', () => {
 
     await expect(retry).rejects.toMatchObject({code: 'ERR_CANCELED'});
     expect(request).not.toHaveBeenCalled();
+    expect(mockReportClientError).not.toHaveBeenCalled();
     request.mockRestore();
   });
+
+  it.each(['already spent', 'spent while waiting'])(
+    'reports a terminal read when its deadline is %s',
+    async stage => {
+      jest.useFakeTimers();
+      const now = jest.spyOn(Date, 'now').mockReturnValue(1000);
+      const request = jest.spyOn(publicRequest, 'request');
+      const failure = Object.assign(new Error('timeout'), {
+        code: 'ETIMEDOUT',
+        config: {
+          method: 'get',
+          url: 'courses/3/details',
+          roknSessionEpoch: 1,
+          roknNetworkRetryDeadlineAt: stage === 'already spent' ? 900 : 2000,
+        },
+      });
+      try {
+        const rejected = onRejectedResponse(failure).catch(error => error);
+        await Promise.resolve();
+        if (stage === 'spent while waiting') {
+          now.mockReturnValue(2001);
+          await jest.advanceTimersByTimeAsync(300);
+        }
+        expect(await rejected).toBe(failure);
+        await jest.advanceTimersByTimeAsync(0);
+        expect(request).not.toHaveBeenCalled();
+        expect(mockReportClientError).toHaveBeenCalledTimes(1);
+        expect(mockReportClientError).toHaveBeenCalledWith(failure, {
+          source: 'api_transport',
+        });
+      } finally {
+        request.mockRestore();
+        now.mockRestore();
+        jest.useRealTimers();
+      }
+    },
+  );
 });
