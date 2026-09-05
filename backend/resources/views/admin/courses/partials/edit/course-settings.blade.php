@@ -1,3 +1,19 @@
+            @php
+                $classificationSelectionWasSubmitted = old('classification_ids_present') !== null;
+                $selectedClassificationIds = collect($classificationSelectionWasSubmitted
+                    ? old('classification_ids', [])
+                    : $course->classifications->modelKeys())
+                    ->map(fn ($id) => (string) $id)
+                    ->all();
+                $teacherSelectionWasSubmitted = old('teacher_ids_present') !== null;
+                $selectedTeacherIds = collect($teacherSelectionWasSubmitted
+                    ? old('teacher_ids', [])
+                    : $course->teachers->modelKeys())
+                    ->map(fn ($id) => (string) $id)
+                    ->all();
+                $selectedLevelId = (string) old('level_id', $course->level_id ?? '');
+                $selectedPathId = (string) old('path_id', $course->path_id ?? '');
+            @endphp
             <!-- Course Settings Section -->
             <div class="form-section" id="course-editor-settings">
                 @include('admin.courses.partials.publishing-area-issues', ['area' => 'settings'])
@@ -19,7 +35,7 @@
                         <input type="hidden" name="classification_ids_present" value="1">
                         <select name="classification_ids[]" id="classification_ids" class="form-control-modern select2" multiple>
                             @foreach($classifications as $classification)
-                                <option value="{{ $classification->id }}" {{ $course->classifications->contains($classification->id) ? 'selected' : '' }}>
+                                <option value="{{ $classification->id }}" {{ in_array((string) $classification->id, $selectedClassificationIds, true) ? 'selected' : '' }}>
                                     {{ $classification->name_ar }}
                                 </option>
                             @endforeach
@@ -35,7 +51,7 @@
                         <select name="level_id" id="level_id" class="form-control-modern select2">
                             <option value="">اختر المستوى...</option>
                             @foreach($levels as $level)
-                                <option value="{{ $level->id }}" {{ $course->level_id == $level->id ? 'selected' : '' }}>
+                                <option value="{{ $level->id }}" {{ $selectedLevelId === (string) $level->id ? 'selected' : '' }}>
                                     {{ $level->name_ar }} ({{ $level->name_en }})
                                 </option>
                             @endforeach
@@ -51,7 +67,7 @@
                         <select name="path_id" id="path_id" class="form-control-modern select2">
                             <option value="">لا يوجد مسار</option>
                             @foreach($paths as $path)
-                                <option value="{{ $path->id }}" {{ $course->path_id == $path->id ? 'selected' : '' }}>
+                                <option value="{{ $path->id }}" {{ $selectedPathId === (string) $path->id ? 'selected' : '' }}>
                                     {{ $path->title_ar }} ({{ $path->title_en }})
                                 </option>
                             @endforeach
@@ -123,7 +139,7 @@
                         <input type="hidden" name="teacher_ids_present" value="1">
                         <select name="teacher_ids[]" id="teacher_ids" class="form-control-modern select2" multiple>
                             @foreach($teachers as $teacher)
-                                <option value="{{ $teacher->id }}" {{ $course->teachers->contains($teacher->id) ? 'selected' : '' }}>
+                                <option value="{{ $teacher->id }}" {{ in_array((string) $teacher->id, $selectedTeacherIds, true) ? 'selected' : '' }}>
                                     {{ $teacher->name }}
                                 </option>
                             @endforeach

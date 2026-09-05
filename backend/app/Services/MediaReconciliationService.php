@@ -401,14 +401,71 @@ final class MediaReconciliationService
                 return ['ready' => false, 'code' => 'manifest_http_error'];
             }
 
-            $prefix = substr((string) $response->body(), 0, 8192);
-            return str_contains($prefix, '#EXTM3U')
+            $body = (string) $response->body();
+            $prefix = substr($body, 0, 8192);
+            if (strlen($body) > strlen($prefix) && !str_ends_with($prefix, "\n")) {
+                $lastCompleteLine = strrpos($prefix, "\n");
+                $prefix = $lastCompleteLine === false
+                    ? ''
+                    : substr($prefix, 0, $lastCompleteLine + 1);
+            }
+
+            return $this->hasPlayablePlaylistEntry($prefix)
                 ? ['ready' => true, 'code' => 'ok']
                 : ['ready' => false, 'code' => 'manifest_invalid'];
         } catch (Throwable $exception) {
             // Never log the signed URL or its token.
             return ['ready' => false, 'code' => 'manifest_unreachable'];
         }
+    }
+
+    /**
+     * This is deliberately a bounded readiness check, not an HLS parser. A
+     * provider error page and an empty encoding skeleton must not become
+     * learner-ready merely because they contain the EXTM3U token.
+     */
+    private function hasPlayablePlaylistEntry(string $playlist): bool
+    {
+        $lines = explode("\n", str_replace("\r", '', $playlist));
+        if (($lines[0] ?? null) !== '#EXTM3U') {
+            return false;
+        }
+
+        $awaitingUri = false;
+        foreach (array_slice($lines, 1) as $rawLine) {
+            $line = $rawLine;
+            if ($line === '') {
+                continue;
+            }
+
+            if (str_starts_with($line, '#EXT-X-STREAM-INF:')) {
+                $awaitingUri = trim(substr($line, strlen('#EXT-X-STREAM-INF:'))) !== '';
+                continue;
+            }
+            if (str_starts_with($line, '#EXTINF:')) {
+                $duration = trim(explode(',', substr($line, strlen('#EXTINF:')), 2)[0]);
+                $awaitingUri = $duration !== ''
+                    && is_numeric($duration)
+                    && (float) $duration > 0;
+                continue;
+            }
+            if (str_starts_with($line, '#')) {
+                continue;
+            }
+
+            if ($awaitingUri && $this->isValidPlaylistUri($line)) {
+                return true;
+            }
+            $awaitingUri = false;
+        }
+
+        return false;
+    }
+
+    private function isValidPlaylistUri(string $uri): bool
+    {
+        return $uri !== ''
+            && preg_match('/[\x00-\x20\x7F<>"\\\\]/', $uri) !== 1;
     }
 
     private function imageIsReadable(string $signedUrl): bool

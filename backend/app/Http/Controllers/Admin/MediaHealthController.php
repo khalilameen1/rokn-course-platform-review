@@ -7,17 +7,26 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\Course;
-use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Http\RedirectResponse;
 
 class MediaHealthController extends Controller
 {
-    public function probe(Lesson $lesson, MediaHealthService $health): RedirectResponse
+    public function probe(
+        Lesson $lesson,
+        MediaReconciliationService $reconciliation
+    ): RedirectResponse
     {
-        $state = $health->probe($lesson);
+        $result = $reconciliation->reconcileLesson($lesson, true, true);
+        $playable = ($result['playback_status'] ?? null) === 'ready';
+        $healthy = ($result['integrity_status'] ?? null) === 'healthy';
 
-        return back()->with($state->status === 'ready' ? 'success' : 'warning', $state->status === 'ready' ? 'الفيديو جاهز للتشغيل.' : 'تم تحديث حالة الفيديو: ' . $state->status);
+        return back()->with(
+            $playable && $healthy ? 'success' : 'warning',
+            $playable
+                ? ($healthy ? 'الفيديو جاهز للتشغيل' : 'الفيديو يعمل لكن توجد تفاصيل تحتاج مراجعة')
+                : 'الفيديو لم يجهز للمشاهدة بعد'
+        );
     }
 
     public function probeCourse(

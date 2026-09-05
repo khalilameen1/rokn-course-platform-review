@@ -162,7 +162,7 @@ describe('course assistant waiting experience', () => {
     });
   });
 
-  it('does not offer an impossible retry when history marks the outcome unknown', async () => {
+  it('keeps a durable partial visible without offering an impossible retry', async () => {
     jest.mocked(publicRequest.get).mockResolvedValue({
       data: {
         data: {
@@ -170,7 +170,7 @@ describe('course assistant waiting experience', () => {
             {
               id: 'assistant-1',
               role: 'assistant',
-              text: null,
+              text: 'ابدأ بالخطوة الأولى\n\nتوقف الرد قبل أن يكتمل',
               delivery_status: 'failed',
               error_code: 'chat_provider_outcome_unknown',
               can_retry: false,
@@ -183,11 +183,36 @@ describe('course assistant waiting experience', () => {
 
     await expect(loadCourseAssistantHistory('52')).resolves.toEqual([
       expect.objectContaining({
-        text: 'تعذّر تأكيد نتيجة الإجابة السابقة',
+        text: 'ابدأ بالخطوة الأولى\n\nتوقف الرد قبل أن يكتمل',
         deliveryStatus: 'failed',
         canRetry: false,
       }),
     ]);
+  });
+
+  it('keeps a failed streamed checkpoint visible in the active turn', async () => {
+    jest.mocked(publicRequest.get).mockResolvedValue({
+      data: {
+        code: 'chat_provider_outcome_unknown',
+        data: {
+          client_request_id: 'b1644f1f-21ff-4a52-bfc3-cf98fd87a388',
+          turn_status: 'failed',
+          message: 'ابدأ بالخطوة الأولى\n\nتوقف الرد قبل أن يكتمل',
+          partial: true,
+          unavailable: true,
+          can_retry: false,
+        },
+      },
+    });
+
+    await expect(
+      pollCourseAssistantTurn('b1644f1f-21ff-4a52-bfc3-cf98fd87a388'),
+    ).resolves.toMatchObject({
+      text: 'ابدأ بالخطوة الأولى\n\nتوقف الرد قبل أن يكتمل',
+      turnStatus: 'failed',
+      partial: true,
+      canRetry: false,
+    });
   });
 
   it('does not attach a response carrying another turn identity', async () => {

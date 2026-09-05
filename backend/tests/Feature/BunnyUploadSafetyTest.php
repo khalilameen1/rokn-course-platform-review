@@ -11,6 +11,7 @@ use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use App\Services\BunnyService;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Http\Client\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -133,6 +134,17 @@ final class BunnyUploadSafetyTest extends TestCase
         Http::preventStrayRequests();
         $oldJob->handle(app(MediaHealthService::class), app(MediaReconciliationService::class));
         Http::assertNothingSent();
+    }
+
+    public function test_pending_media_probe_releases_its_unique_lock_before_provider_work(): void
+    {
+        $job = new ProbeLessonMedia(41, 'a3cc17a0-4b61-4e59-a4dc-947eabf36790');
+
+        self::assertInstanceOf(ShouldBeUniqueUntilProcessing::class, $job);
+        self::assertSame(
+            'lesson-media-probe:41:a3cc17a0-4b61-4e59-a4dc-947eabf36790',
+            $job->uniqueId()
+        );
     }
 
     public function test_storage_uploads_use_unique_server_names_and_mime_extensions(): void

@@ -8,19 +8,22 @@ use App\Models\Lesson;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /** Promote one newly attached upload only after Bunny finishes processing it. */
-final class ProbeLessonMedia implements ShouldQueue, ShouldBeUnique
+final class ProbeLessonMedia implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 12;
     public int $timeout = 45;
+    // Coalesce duplicate dispatches only until a worker owns the job. Once
+    // processing begins, a crashed/released attempt must not retain the lock
+    // that the scheduled recovery command needs to redeliver stale media.
     public int $uniqueFor = 3600;
     public bool $failOnTimeout = true;
 

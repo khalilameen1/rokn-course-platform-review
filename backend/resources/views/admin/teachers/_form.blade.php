@@ -122,6 +122,7 @@
     <div class="col-md-6">
         <div class="form-group">
             <div class="custom-control custom-checkbox mt-4">
+                <input type="hidden" name="active" value="0">
                 <input type="checkbox" name="active" class="custom-control-input" id="active" {{ old('active', $teacher->active ?? true) ? 'checked' : '' }}>
                 <label class="custom-control-label" for="active">مفعل</label>
             </div>

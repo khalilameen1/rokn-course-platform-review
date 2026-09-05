@@ -119,7 +119,13 @@
             </div>
         </div>
         <div class="card-body p-4">
-            <form action="{{ route('admin.reward-rules.store') }}" method="POST" class="border rounded p-3 mb-4">
+            @php
+                $restoreRewardRuleCreate = old('authoring_request_id') !== null
+                    && old('editor_version') === null
+                    && old('event_key') !== null;
+                $failedRewardRuleVersion = (string) old('editor_version', '');
+            @endphp
+            <form id="reward-rule-create" action="{{ route('admin.reward-rules.store') }}" method="POST" class="border rounded p-3 mb-4">
                 @csrf
                 <input type="hidden" name="authoring_request_id" value="{{ old('authoring_request_id', (string) \Illuminate\Support\Str::uuid()) }}">
                 <h6 class="font-weight-bold mb-3">إضافة قاعدة</h6>
@@ -130,17 +136,17 @@
                             <option value="">اختر الحدث</option>
                             @foreach($rewardEvents as $eventKey => $eventLabel)
                                 @if(!$rewardRules->contains('event_key', $eventKey))
-                                    <option value="{{ $eventKey }}">{{ $eventLabel }}</option>
+                                    <option value="{{ $eventKey }}" {{ $restoreRewardRuleCreate && (string) old('event_key') === (string) $eventKey ? 'selected' : '' }}>{{ $eventLabel }}</option>
                                 @endif
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الاسم بالعربية</label><input name="title_ar" class="form-control" required></div>
-                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الاسم بالإنجليزية</label><input name="title_en" class="form-control"></div>
-                    <div class="col-md-4 mb-3"><label class="font-weight-bold">عدد العملات</label><input type="number" min="0" name="coins_amount" class="form-control" required></div>
-                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الفترة/الشرط العددي</label><input type="number" min="1" name="interval_count" value="1" class="form-control" required><small class="text-muted">أيام للاستمرارية، ودقائق للدراسة، و1 لباقي الأحداث.</small></div>
-                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الحد اليومي</label><input type="number" min="0" name="daily_cap" class="form-control"></div>
-                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الحد خلال 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" class="form-control"></div>
+                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الاسم بالعربية</label><input name="title_ar" value="{{ $restoreRewardRuleCreate ? old('title_ar') : '' }}" class="form-control" required></div>
+                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الاسم بالإنجليزية</label><input name="title_en" value="{{ $restoreRewardRuleCreate ? old('title_en') : '' }}" class="form-control"></div>
+                    <div class="col-md-4 mb-3"><label class="font-weight-bold">عدد العملات</label><input type="number" min="0" name="coins_amount" value="{{ $restoreRewardRuleCreate ? old('coins_amount') : '' }}" class="form-control" required></div>
+                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الفترة/الشرط العددي</label><input type="number" min="1" name="interval_count" value="{{ $restoreRewardRuleCreate ? old('interval_count', 1) : 1 }}" class="form-control" required><small class="text-muted">أيام للاستمرارية، ودقائق للدراسة، و1 لباقي الأحداث.</small></div>
+                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الحد اليومي</label><input type="number" min="0" name="daily_cap" value="{{ $restoreRewardRuleCreate ? old('daily_cap') : '' }}" class="form-control"></div>
+                    <div class="col-md-4 mb-3"><label class="font-weight-bold">الحد خلال 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" value="{{ $restoreRewardRuleCreate ? old('rolling_30_day_cap') : '' }}" class="form-control"></div>
                 </div>
                 <input type="hidden" name="is_active" value="1">
                 <button class="btn btn-primary px-4"><i class="fa fa-plus ml-1"></i> إضافة القاعدة</button>
@@ -148,24 +154,29 @@
 
             <div class="row">
                 @forelse($rewardRules as $rule)
+                    @php
+                        $ruleEditorVersion = (string) $rewardRuleEditorVersions->get($rule->id);
+                        $restoreThisRewardRule = $failedRewardRuleVersion !== ''
+                            && hash_equals($ruleEditorVersion, $failedRewardRuleVersion);
+                    @endphp
                     <div class="col-12 mb-3">
                         <div class="reward-rule-card">
                         <form id="reward-rule-{{ $rule->id }}" action="{{ route('admin.reward-rules.update', $rule) }}" method="POST" class="reward-rule-form">
                             @csrf
                             @method('PUT')
-                            <input type="hidden" name="editor_version" value="{{ $rewardRuleEditorVersions->get($rule->id) }}">
+                            <input type="hidden" name="editor_version" value="{{ $ruleEditorVersion }}">
                             <input type="hidden" name="event_key" value="{{ $rule->event_key }}">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <strong>{{ $rewardEvents[$rule->event_key] ?? $rule->event_key }}</strong>
-                                <label class="mb-0"><input type="checkbox" name="is_active" value="1" {{ $rule->is_active ? 'checked' : '' }}> نشطة</label>
+                                <label class="mb-0"><input type="hidden" name="is_active" value="0"><input type="checkbox" name="is_active" value="1" {{ ($restoreThisRewardRule ? old('is_active', '0') : $rule->is_active) ? 'checked' : '' }}> نشطة</label>
                             </div>
                             <div class="reward-rule-fields">
-                                <div class="reward-rule-field"><label>الاسم بالعربية</label><input name="title_ar" value="{{ $rule->title_ar }}" class="form-control" required></div>
-                                <div class="reward-rule-field"><label>الاسم بالإنجليزية</label><input name="title_en" value="{{ $rule->title_en }}" class="form-control"></div>
-                                <div class="reward-rule-field"><label>العملات</label><input type="number" min="0" name="coins_amount" value="{{ $rule->coins_amount }}" class="form-control" required></div>
-                                <div class="reward-rule-field"><label>الفترة/الشرط</label><input type="number" min="1" name="interval_count" value="{{ $rule->interval_count }}" class="form-control" required></div>
-                                <div class="reward-rule-field"><label>حد يومي</label><input type="number" min="0" name="daily_cap" value="{{ $rule->daily_cap }}" class="form-control"></div>
-                                <div class="reward-rule-field"><label>حد 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" value="{{ $rule->rolling_30_day_cap }}" class="form-control"></div>
+                                <div class="reward-rule-field"><label>الاسم بالعربية</label><input name="title_ar" value="{{ $restoreThisRewardRule ? old('title_ar', $rule->title_ar) : $rule->title_ar }}" class="form-control" required></div>
+                                <div class="reward-rule-field"><label>الاسم بالإنجليزية</label><input name="title_en" value="{{ $restoreThisRewardRule ? old('title_en', $rule->title_en) : $rule->title_en }}" class="form-control"></div>
+                                <div class="reward-rule-field"><label>العملات</label><input type="number" min="0" name="coins_amount" value="{{ $restoreThisRewardRule ? old('coins_amount', $rule->coins_amount) : $rule->coins_amount }}" class="form-control" required></div>
+                                <div class="reward-rule-field"><label>الفترة/الشرط</label><input type="number" min="1" name="interval_count" value="{{ $restoreThisRewardRule ? old('interval_count', $rule->interval_count) : $rule->interval_count }}" class="form-control" required></div>
+                                <div class="reward-rule-field"><label>حد يومي</label><input type="number" min="0" name="daily_cap" value="{{ $restoreThisRewardRule ? old('daily_cap', $rule->daily_cap) : $rule->daily_cap }}" class="form-control"></div>
+                                <div class="reward-rule-field"><label>حد 30 يومًا</label><input type="number" min="0" name="rolling_30_day_cap" value="{{ $restoreThisRewardRule ? old('rolling_30_day_cap', $rule->rolling_30_day_cap) : $rule->rolling_30_day_cap }}" class="form-control"></div>
                             </div>
                             <input type="hidden" name="sort_order" value="{{ $rule->sort_order }}">
                         </form>

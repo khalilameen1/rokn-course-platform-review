@@ -9,9 +9,13 @@ use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
+use App\Models\Classification;
 use App\Models\Lesson;
+use App\Models\Level;
 use App\Models\Order;
 use App\Models\Package;
+use App\Models\Path;
+use App\Models\RewardRule;
 use App\Models\User;
 use DOMDocument;
 use DOMXPath;
@@ -148,6 +152,198 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         }
     }
 
+    public function test_course_studio_restores_submitted_relationship_fields_after_validation_failure(): void
+    {
+        $moderator = $this->dashboardUser('moderator');
+        $course = $this->course('كورس التحرير');
+        $storedClassification = Classification::query()->create([
+            'name_ar' => 'التصنيف القديم',
+            'name_en' => 'Stored classification',
+        ]);
+        $submittedClassification = Classification::query()->create([
+            'name_ar' => 'التصنيف الجديد',
+            'name_en' => 'Submitted classification',
+        ]);
+        $submittedLevel = Level::query()->create([
+            'name_ar' => 'المستوى الجديد',
+            'name_en' => 'Submitted level',
+            'order' => 1,
+        ]);
+        $submittedPath = Path::query()->create([
+            'title_ar' => 'المسار الجديد',
+            'title_en' => 'Submitted path',
+        ]);
+        $storedTeacher = $this->dashboardUser('teacher');
+        $course->classifications()->attach($storedClassification);
+        $course->teachers()->attach($storedTeacher);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $response = $this->actingAs($moderator, 'web')
+            ->from(route('admin.courses.show', $course))
+            ->post(route('admin.courses.update', $course), [
+                '_method' => 'PATCH',
+                'authoring_version' => 1,
+                'name_ar' => 'x',
+                'classification_ids_present' => 1,
+                'classification_ids' => [$submittedClassification->id],
+                'teacher_ids_present' => 1,
+                'level_id' => $submittedLevel->id,
+                'path_id' => $submittedPath->id,
+            ]);
+
+        $response->assertRedirect(route('admin.courses.show', $course));
+        $page = $this->followRedirects($response)->assertOk();
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
+        $xpath = new DOMXPath($document);
+
+        self::assertSame(
+            (string) $submittedClassification->id,
+            trim((string) $xpath->evaluate('string(//select[@name="classification_ids[]"]/option[@selected]/@value)'))
+        );
+        self::assertSame(
+            (string) $submittedLevel->id,
+            trim((string) $xpath->evaluate('string(//select[@name="level_id"]/option[@selected]/@value)'))
+        );
+        self::assertSame(
+            (string) $submittedPath->id,
+            trim((string) $xpath->evaluate('string(//select[@name="path_id"]/option[@selected]/@value)'))
+        );
+        self::assertSame('', trim((string) $xpath->evaluate(
+            'string(//select[@name="teacher_ids[]"]/option[@selected]/@value)'
+        )));
+    }
+
+    public function test_teacher_form_keeps_an_explicit_inactive_choice_after_validation_failure(): void
+    {
+        $moderator = $this->dashboardUser('moderator');
+        $teacher = $this->dashboardUser('teacher');
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $edit = $this->actingAs($moderator, 'web')
+            ->get(route('admin.teachers.edit', $teacher))
+            ->assertOk();
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$edit->getContent());
+        $xpath = new DOMXPath($document);
+        $editorVersion = trim((string) $xpath->evaluate(
+            'string(//input[@name="editor_version"]/@value)'
+        ));
+
+        $response = $this->from(route('admin.teachers.edit', $teacher))
+            ->put(route('admin.teachers.update', $teacher), [
+                'editor_version' => $editorVersion,
+                'name_ar' => '',
+                'active' => '0',
+            ]);
+
+        $response->assertRedirect(route('admin.teachers.edit', $teacher));
+        $page = $this->followRedirects($response)->assertOk();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
+        $xpath = new DOMXPath($document);
+        self::assertSame(0, $xpath->query('//input[@name="active" and @type="checkbox" and @checked]')->length);
+        self::assertSame('0', trim((string) $xpath->evaluate(
+            'string(//input[@name="active" and @type="hidden"]/@value)'
+        )));
+    }
+
+    public function test_failed_reward_rule_update_restores_only_its_own_card(): void
+    {
+        $admin = $this->dashboardUser('admin');
+        $failedRule = RewardRule::query()->where('event_key', 'course_completed')->firstOrFail();
+        $failedRule->update([
+            'event_key' => 'course_completed',
+            'title_ar' => 'إكمال الكورس',
+            'coins_amount' => 100,
+            'interval_count' => 1,
+            'rolling_30_day_cap' => 300,
+            'is_active' => true,
+            'sort_order' => 10,
+        ]);
+        $otherRule = RewardRule::query()->where('event_key', 'welcome_bonus')->firstOrFail();
+        $otherRule->update([
+            'event_key' => 'welcome_bonus',
+            'title_ar' => 'هدية التسجيل',
+            'coins_amount' => 20,
+            'interval_count' => 1,
+            'is_active' => true,
+            'sort_order' => 20,
+        ]);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $index = $this->actingAs($admin, 'web')
+            ->get(route('admin.coin-earning-methods.index'))
+            ->assertOk();
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$index->getContent());
+        $xpath = new DOMXPath($document);
+        $version = $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'editor_version');
+
+        $response = $this->from(route('admin.coin-earning-methods.index'))
+            ->put(route('admin.reward-rules.update', $failedRule), [
+                'editor_version' => $version,
+                'event_key' => $failedRule->event_key,
+                'title_ar' => 'اسم التعديل غير المحفوظ',
+                'title_en' => '',
+                'coins_amount' => 175,
+                'interval_count' => 2,
+                'daily_cap' => 10,
+                'rolling_30_day_cap' => '',
+                'sort_order' => 10,
+                'is_active' => '0',
+            ]);
+
+        $response->assertRedirect(route('admin.coin-earning-methods.index'));
+        $page = $this->followRedirects($response)->assertOk();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
+        $xpath = new DOMXPath($document);
+        self::assertSame('اسم التعديل غير المحفوظ', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'title_ar'));
+        self::assertSame('175', $this->inputValue($xpath, 'reward-rule-'.$failedRule->id, 'coins_amount'));
+        self::assertSame(0, $xpath->query('//form[@id="reward-rule-'.$failedRule->id.'"]//input[@name="is_active" and @type="checkbox" and @checked]')->length);
+        self::assertSame('هدية التسجيل', $this->inputValue($xpath, 'reward-rule-'.$otherRule->id, 'title_ar'));
+        self::assertSame('', $this->inputValue($xpath, 'reward-rule-create', 'title_ar'));
+    }
+
+    public function test_failed_reward_rule_create_restores_only_the_create_form(): void
+    {
+        $admin = $this->dashboardUser('admin');
+        $storedRule = RewardRule::query()->where('event_key', 'welcome_bonus')->firstOrFail();
+        $storedRule->update([
+            'event_key' => 'welcome_bonus',
+            'title_ar' => 'هدية التسجيل',
+            'coins_amount' => 20,
+            'interval_count' => 1,
+            'is_active' => true,
+            'sort_order' => 20,
+        ]);
+        RewardRule::query()->where('event_key', 'daily_checkin')->delete();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+
+        $response = $this->actingAs($admin, 'web')
+            ->from(route('admin.coin-earning-methods.index'))
+            ->post(route('admin.reward-rules.store'), [
+                'authoring_request_id' => (string) \Illuminate\Support\Str::uuid(),
+                'event_key' => 'daily_checkin',
+                'title_ar' => 'مكافأة الحضور الجديدة',
+                'title_en' => 'Daily reward',
+                'coins_amount' => 12,
+                'interval_count' => 2,
+                'daily_cap' => 24,
+                'rolling_30_day_cap' => '',
+                'is_active' => '1',
+            ]);
+
+        $response->assertRedirect(route('admin.coin-earning-methods.index'));
+        $page = $this->followRedirects($response)->assertOk();
+        $document = new DOMDocument();
+        @$document->loadHTML('<?xml encoding="utf-8" ?>'.$page->getContent());
+        $xpath = new DOMXPath($document);
+        self::assertSame('daily_checkin', trim((string) $xpath->evaluate(
+            'string(//form[@id="reward-rule-create"]//select[@name="event_key"]/option[@selected]/@value)'
+        )));
+        self::assertSame('مكافأة الحضور الجديدة', $this->inputValue($xpath, 'reward-rule-create', 'title_ar'));
+        self::assertSame('12', $this->inputValue($xpath, 'reward-rule-create', 'coins_amount'));
+        self::assertSame('هدية التسجيل', $this->inputValue($xpath, 'reward-rule-'.$storedRule->id, 'title_ar'));
+    }
+
     private function dashboardUser(string $role): User
     {
         $user = new User();
@@ -155,6 +351,7 @@ final class AdminDailyPagesRuntimeTest extends TestCase
             'name_ar' => match ($role) {
                 'admin' => 'مالك ركن',
                 'moderator' => 'محرر المحتوى',
+                'teacher' => 'محاضر ركن',
                 default => 'طالب ركن',
             },
             'email' => $role.'-daily-pages@example.test',
@@ -232,5 +429,12 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         self::assertSame(1, $fields->length, "Unexpected {$name} field count");
 
         return $fields->item(0)?->attributes?->getNamedItem('value')?->nodeValue ?? '';
+    }
+
+    private function inputValue(DOMXPath $xpath, string $formId, string $name): string
+    {
+        return trim((string) $xpath->evaluate(
+            'string(//form[@id="'.$formId.'"]//input[@name="'.$name.'"]/@value)'
+        ));
     }
 }

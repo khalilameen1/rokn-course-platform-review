@@ -1609,6 +1609,60 @@ final class BackendHardeningTest extends TestCase
         self::assertFalse((bool) data_get($event->fresh()->metadata, 'entitlement_delivered'));
     }
 
+    public function test_failed_course_chat_keeps_its_durable_partial_in_status_and_history(): void
+    {
+        $user = $this->user();
+        $course = $this->course();
+        $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
+        $plan = $this->paidPlanTerms($course);
+        $enrollmentId = DB::table('course_enrollments')->insertGetId([
+            'user_id' => $user->id,
+            'course_id' => $course->id,
+            'order_id' => $order->id,
+            'access_plan_id' => $plan['id'],
+            'access_plan_snapshot' => json_encode($plan['snapshot'], JSON_THROW_ON_ERROR),
+            'is_active' => true,
+            'access_granted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $requestId = '3951a571-53db-43b6-84d6-4af2a77162d5';
+        $turns = app(CourseChatTurnService::class);
+        $turn = $turns->begin(
+            $user->id,
+            $course->id,
+            $enrollmentId,
+            null,
+            $requestId,
+            'اشرح الخطوة التالية',
+            'ar',
+            'prompt-v1'
+        );
+        $turns->markStreaming($turn);
+        app(\App\Services\AiStreamCheckpointService::class)->courseChat(
+            $turn->fresh(),
+            'ابدأ بتجهيز الملف ثم راجع'
+        );
+        $turns->fail($turn->fresh(), 'chat_provider_outcome_unknown');
+        $expected = "ابدأ بتجهيز الملف ثم راجع\n\nتوقف الرد قبل أن يكتمل";
+
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/course-chat/turns/'.$requestId)
+            ->assertOk()
+            ->assertJsonPath('data.turn_status', CourseChatTurn::FAILED)
+            ->assertJsonPath('data.message', $expected)
+            ->assertJsonPath('data.partial', true)
+            ->assertJsonPath('data.can_retry', false);
+
+        $this->actingAs($user, 'api')
+            ->getJson('/api/v1/course-chat/messages?course_id='.$course->id)
+            ->assertOk()
+            ->assertJsonPath('data.messages.1.delivery_status', CourseChatTurn::FAILED)
+            ->assertJsonPath('data.messages.1.text', $expected)
+            ->assertJsonPath('data.messages.1.partial', true)
+            ->assertJsonPath('data.messages.1.context_eligible', false);
+    }
+
     public function test_cancelled_course_chat_status_remains_a_clean_terminal_result(): void
     {
         $user = $this->user();

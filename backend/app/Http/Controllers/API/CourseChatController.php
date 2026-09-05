@@ -170,12 +170,15 @@ final class CourseChatController extends Controller
                 $failure = $turn->status === CourseChatTurn::FAILED
                     ? $this->failurePolicy->describe((string) $turn->error_code)
                     : null;
+                $failedAnswer = $turn->status === CourseChatTurn::FAILED
+                    ? $this->failedAnswerText($turn)
+                    : null;
                 $assistantText = in_array($turn->status, [
                     CourseChatTurn::STREAMING,
                     CourseChatTurn::COMPLETED,
                 ], true)
                     ? trim((string) $turn->answer)
-                    : null;
+                    : $failedAnswer;
                 $turnAttachments = $attachmentsByTurn->get($turn->id, collect())
                     ->map(function (AiInputAttachment $attachment): array {
                         $expiresAt = now()->addMinutes(30);
@@ -217,6 +220,7 @@ final class CourseChatController extends Controller
                     'failure_category' => $failure['category'] ?? null,
                     'can_retry' => $failure['can_retry'] ?? null,
                     'retry_after_seconds' => $failure['retry_after_seconds'] ?? null,
+                    'partial' => $failedAnswer !== null,
                     'created_at' => ($turn->completed_at ?? $turn->updated_at)?->toIso8601String(),
                     'context_eligible' => $turn->status === CourseChatTurn::COMPLETED,
                 ]];
@@ -297,6 +301,7 @@ final class CourseChatController extends Controller
 
         $failureCode = (string) ($turn->error_code ?: 'chat_turn_failed');
         $failure = $this->failurePolicy->describe($failureCode);
+        $failedAnswer = $this->failedAnswerText($turn);
 
         return response()->json([
             'status' => 200,
@@ -304,9 +309,10 @@ final class CourseChatController extends Controller
             'code' => $failureCode,
             'message' => 'لم تكتمل الإجابة',
             'data' => [
-                'message' => $failure['can_retry']
+                'message' => $failedAnswer ?? ($failure['can_retry']
                     ? "لم تكتمل الإجابة السابقة\nأرسل السؤال مرة أخرى"
-                    : 'تعذّر تأكيد نتيجة الإجابة السابقة',
+                    : 'تعذّر تأكيد نتيجة الإجابة السابقة'),
+                'partial' => $failedAnswer !== null,
                 'unavailable' => true,
                 'failure_category' => $failure['category'],
                 'can_retry' => $failure['can_retry'],
@@ -315,6 +321,16 @@ final class CourseChatController extends Controller
                 'turn_status' => (string) $turn->status,
             ],
         ]);
+    }
+
+    /** Preserve a safe streamed checkpoint without presenting it as complete. */
+    private function failedAnswerText(CourseChatTurn $turn): ?string
+    {
+        $partial = trim((string) $turn->answer);
+
+        return $partial !== ''
+            ? $partial . "\n\nتوقف الرد قبل أن يكتمل"
+            : null;
     }
 
     public function cancel(string $clientRequestId): JsonResponse
