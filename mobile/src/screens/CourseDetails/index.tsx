@@ -247,8 +247,6 @@ export default function CourseDetails() {
             )}
           <CourseBody
             activeTab={activeTab}
-            courseId={courseId}
-            identityKey={identityKey}
             onFullTrackUpgradeHandled={handleFullTrackUpgradePrompt}
             onOpenCertificates={openCertificates}
             onPreviewSelect={startPreview}
@@ -256,6 +254,7 @@ export default function CourseDetails() {
             onTabChange={setActiveTab}
             openFullTrackUpgrade={route.params?.openFullTrackUpgrade === true}
             owned={owned}
+            learningCourse={course.learningValue}
             remoteCourse={course.value}
             remoteError={course.error}
             remoteLoading={course.loading}

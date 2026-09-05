@@ -1,5 +1,4 @@
-import {useFocusEffect} from '@react-navigation/native';
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,106 +6,33 @@ import {
   Text,
   View,
 } from 'react-native';
-import {
-  applyLocalLearningState,
-  loadCourseLearningData,
-} from '../../components/VideoPlayer/courseLearningApi';
 import {CourseLearningData} from '../../components/VideoPlayer/types';
 import {isGrantCourseAccess} from '../../components/VideoPlayer/courseEntitlements';
 import Module from '../../components/view/Module';
 import FullTrackUpgradeSheet from '../../components/FullTrackUpgradeSheet';
 import {rtlRowStyle, textDirection} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
-import {
-  assertAccountSessionBoundary,
-  captureAccountSessionBoundary,
-} from '../../constants/helpers';
 
 type CourseOutlineProps = {
-  courseId: string;
-  identityKey: string;
+  course: CourseLearningData | null;
+  loading: boolean;
+  loadError: string;
   openFullTrackUpgrade: boolean;
   onFullTrackUpgradeHandled: () => void;
   onOpenCertificates: () => void;
+  onRetry: () => void;
 };
 
 export default function CourseOutline({
-  courseId,
-  identityKey,
+  course,
+  loading,
+  loadError,
   openFullTrackUpgrade,
   onFullTrackUpgradeHandled,
   onOpenCertificates,
+  onRetry,
 }: CourseOutlineProps) {
-  const ownerKey = `${identityKey}:${courseId}`;
-  const [loadedCourse, setLoadedCourse] = useState<CourseLearningData | null>(
-    null,
-  );
-  const loadedOwnerRef = useRef('');
-  const courseOwnerMatches = loadedOwnerRef.current === ownerKey;
-  const course = courseOwnerMatches ? loadedCourse : null;
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
   const [fullTrackVisible, setFullTrackVisible] = useState(false);
-  const loadGenerationRef = useRef(0);
-  const loadAbortRef = useRef<AbortController | null>(null);
-
-  const load = useCallback(async () => {
-    loadAbortRef.current?.abort();
-    const controller = new AbortController();
-    loadAbortRef.current = controller;
-    const generation = ++loadGenerationRef.current;
-    const hasCurrentCourse = loadedOwnerRef.current === ownerKey;
-    if (!hasCurrentCourse) {
-      loadedOwnerRef.current = ownerKey;
-      setLoadedCourse(null);
-    }
-    setLoading(true);
-    setLoadError('');
-    try {
-      const boundary = await captureAccountSessionBoundary();
-      const result = await loadCourseLearningData(courseId || undefined, {
-        signal: controller.signal,
-      });
-      assertAccountSessionBoundary(boundary);
-      const withLocalState = await applyLocalLearningState(result.course);
-      assertAccountSessionBoundary(boundary);
-      if (
-        generation !== loadGenerationRef.current ||
-        controller.signal.aborted
-      ) {
-        return;
-      }
-      loadedOwnerRef.current = ownerKey;
-      setLoadedCourse(withLocalState);
-    } catch {
-      if (
-        generation !== loadGenerationRef.current ||
-        controller.signal.aborted
-      ) {
-        return;
-      }
-      setLoadError('تعذّر تحميل خريطة الكورس الآن\nمكانك محفوظ');
-    } finally {
-      if (
-        generation === loadGenerationRef.current &&
-        !controller.signal.aborted
-      ) {
-        if (loadAbortRef.current === controller) loadAbortRef.current = null;
-        setLoading(false);
-      }
-    }
-  }, [courseId, ownerKey]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void load();
-      return () => {
-        loadGenerationRef.current += 1;
-        loadAbortRef.current?.abort();
-        loadAbortRef.current = null;
-      };
-    }, [load]),
-  );
 
   useEffect(() => {
     if (!course || !openFullTrackUpgrade) return;
@@ -116,7 +42,7 @@ export default function CourseOutline({
     onFullTrackUpgradeHandled();
   }, [course, onFullTrackUpgradeHandled, openFullTrackUpgrade]);
 
-  if ((loading || !courseOwnerMatches) && !course) {
+  if (loading && !course) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color="#76A9FF" />
@@ -133,7 +59,7 @@ export default function CourseOutline({
         <Pressable
           accessibilityRole="button"
           style={styles.retryButton}
-          onPress={() => void load()}>
+          onPress={onRetry}>
           <Text style={styles.retryText}>إعادة المحاولة</Text>
         </Pressable>
       </View>
@@ -243,9 +169,7 @@ export default function CourseOutline({
         courseId={course.id}
         courseTitle={course.title}
         onClose={() => setFullTrackVisible(false)}
-        onUpgraded={async () => {
-          await load();
-        }}
+        onUpgraded={onRetry}
         visible={fullTrackVisible}
       />
     </View>

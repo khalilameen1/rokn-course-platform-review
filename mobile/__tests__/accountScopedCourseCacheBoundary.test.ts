@@ -23,6 +23,7 @@ jest.mock('../src/services/secureSession', () => {
 import {
   getCachedPublishedCourses,
   getCourseDetails,
+  getCourseDetailsSnapshot,
   getPublishedCoursesPage,
 } from '../src/services/api/courses';
 
@@ -189,5 +190,53 @@ describe('account-scoped course cache boundary', () => {
       ratingAverage: null,
       ratingsCount: 0,
     });
+  });
+
+  it('returns the exact details envelope for a single learning projection', async () => {
+    mockSessionSnapshot = {ready: true, session: null, epoch: 21};
+    const plan = (code: string, feedback: string) => ({
+      code,
+      name: code,
+      price_coins: 20,
+      minimum_paid_coins: 0,
+      chat_enabled: false,
+      project_report_enabled: false,
+      project_thread_reply_enabled: false,
+      project_output_enabled: false,
+      certificate_enabled: true,
+      project_feedback_level: feedback,
+    });
+    const responsePayload = {
+      data: {
+        id: 7,
+        title: 'كورس ركن',
+        is_coming_soon: false,
+        ratings_count: 0,
+        average_rating: null,
+        published_revision: 1,
+        metadata: {students_count: 2, duration_minutes: 1},
+        access_plans: [
+          plan('basic', 'pass_only'),
+          plan('guided', 'report'),
+          plan('mentor', 'enhanced'),
+        ],
+        modules: [
+          {
+            id: 1,
+            title: 'وحدة',
+            sections: [
+              {id: 1, content_id: 1, title: 'درس', type: 'lesson'},
+            ],
+          },
+        ],
+      },
+    };
+    mockGet.mockResolvedValue({data: responsePayload});
+
+    await expect(getCourseDetailsSnapshot('7')).resolves.toEqual({
+      course: expect.objectContaining({id: '7'}),
+      responsePayload,
+    });
+    expect(mockGet).toHaveBeenCalledTimes(1);
   });
 });

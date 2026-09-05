@@ -33,7 +33,7 @@ import {useReelsCourseRevision} from './useReelsCourseRevision';
 import {sessionIdentityKey} from '../../constants/helpers';
 import {useSelector} from 'react-redux';
 import type {RootState} from '../../store/store';
-import {includesCourseAssistant} from '../../components/VideoPlayer/courseEntitlements';
+import {hasCourseLearningAccess} from '../../components/VideoPlayer/courseEntitlements';
 
 export const useReelsController = () => {
   const route = useRoute();
@@ -98,12 +98,13 @@ export const useReelsController = () => {
   useEffect(() => {
     if (!isScreenFocused || !course || params.openCourseChatUpgrade !== true)
       return;
-    if (includesCourseAssistant(course)) setChatVisible(true);
+    if (hasCourseLearningAccess(course.accessType)) setChatVisible(true);
     navigation.setParams({openCourseChatUpgrade: false});
   }, [course, isScreenFocused, navigation, params.openCourseChatUpgrade]);
 
   useEffect(() => {
-    if (course && !includesCourseAssistant(course)) setChatVisible(false);
+    if (course && !hasCourseLearningAccess(course.accessType))
+      setChatVisible(false);
   }, [course]);
   const [contentOverlayVisible, setContentOverlayVisible] = useState(false);
   const contentOverlayScopesRef = useRef(new Set<string>());
@@ -550,7 +551,9 @@ export const useReelsController = () => {
   );
 
   return {
-    canUseCourseAssistant: Boolean(course && includesCourseAssistant(course)),
+    canOpenCourseAssistant: Boolean(
+      course && hasCourseLearningAccess(course.accessType),
+    ),
     chatVisible,
     closeChat: () => setChatVisible(false),
     closeReminderNudge,

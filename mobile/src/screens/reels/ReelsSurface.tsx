@@ -112,7 +112,7 @@ const ReelsSurface = (controller: ReelsController) => {
                 topInset={insets.top}
               />
             )}
-          {controller.canUseCourseAssistant && (
+          {controller.canOpenCourseAssistant && (
             <CourseChatOverlay
               visible={controller.chatVisible}
               course={course}

@@ -12,6 +12,16 @@ const GRANT_ACCESS_TYPES = new Set([
   'institutional_grant',
 ]);
 
+const LEARNING_ACCESS_TYPES = new Set([
+  'paid',
+  'scholarship',
+  'grant',
+  'institutional',
+  'institutional_grant',
+  'course_code',
+  'free',
+]);
+
 export const normalizeCourseAccessType = (value: unknown) =>
   String(value || '')
     .trim()
@@ -19,6 +29,10 @@ export const normalizeCourseAccessType = (value: unknown) =>
 
 export const isGrantCourseAccess = (value: unknown) =>
   GRANT_ACCESS_TYPES.has(normalizeCourseAccessType(value));
+
+/** A purchased or granted course may expose the assistant entry point. */
+export const hasCourseLearningAccess = (value: unknown) =>
+  LEARNING_ACCESS_TYPES.has(normalizeCourseAccessType(value));
 
 /**
  * Default closed: the backend must explicitly grant this variable-cost feature.

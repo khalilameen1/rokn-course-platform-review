@@ -20,6 +20,7 @@ import {
   formatArabicStudents,
 } from '../../../constants/arabicFormatting';
 import type {CourseDetails as CourseDetailsDto} from '../../../services/roknApi';
+import type {CourseLearningData} from '../../../components/VideoPlayer/types';
 import Lessons from '../Lessons';
 import styles from './styles';
 
@@ -420,8 +421,6 @@ export const CourseRatingAction = ({
 
 type CourseBodyProps = {
   activeTab: 'about' | 'outline';
-  courseId: string;
-  identityKey: string;
   onFullTrackUpgradeHandled: () => void;
   onOpenCertificates: () => void;
   onPreviewSelect: (reelId?: string) => void;
@@ -429,6 +428,7 @@ type CourseBodyProps = {
   onTabChange: (tab: 'about' | 'outline') => void;
   openFullTrackUpgrade: boolean;
   owned: boolean;
+  learningCourse: CourseLearningData | null;
   remoteCourse: CourseDetailsDto | null;
   remoteError: string;
   remoteLoading: boolean;
@@ -436,8 +436,6 @@ type CourseBodyProps = {
 
 export const CourseBody = ({
   activeTab,
-  courseId,
-  identityKey,
   onFullTrackUpgradeHandled,
   onOpenCertificates,
   onPreviewSelect: startPreview,
@@ -445,6 +443,7 @@ export const CourseBody = ({
   onTabChange,
   openFullTrackUpgrade,
   owned,
+  learningCourse,
   remoteCourse,
   remoteError,
   remoteLoading,
@@ -494,10 +493,12 @@ export const CourseBody = ({
           <CourseAbout details={remoteCourse} />
         ) : owned ? (
           <Lessons
-            courseId={courseId}
-            identityKey={identityKey}
+            course={learningCourse}
+            loading={remoteLoading}
+            loadError={remoteError}
             onFullTrackUpgradeHandled={onFullTrackUpgradeHandled}
             onOpenCertificates={onOpenCertificates}
+            onRetry={onRetry}
             openFullTrackUpgrade={openFullTrackUpgrade}
           />
         ) : (

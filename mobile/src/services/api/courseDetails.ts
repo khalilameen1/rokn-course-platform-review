@@ -52,10 +52,21 @@ const isCourseRevisionChangedError = (error: unknown): boolean =>
 export const isCourseUnavailableError = (error: unknown): boolean =>
   [403, 404, 410].includes(errorStatus(error));
 
-export const getCourseDetails = async (
+export type CourseDetailsSnapshot = {
+  course: CourseDetails;
+  /**
+   * The exact successful API envelope used to build `course`. Consumers that
+   * need the learning graph project this same immutable response instead of
+   * issuing a second details request. Cached guest details deliberately have
+   * no learning envelope because they never drive owned-course playback.
+   */
+  responsePayload: unknown | null;
+};
+
+export const getCourseDetailsSnapshot = async (
   courseId: string,
   options: {signal?: AbortSignal} = {},
-): Promise<CourseDetails> => {
+): Promise<CourseDetailsSnapshot> => {
   const id = numericRouteId(courseId, 'COURSE');
   const account = await captureAccountSessionBoundary();
   const cacheKey = await accountScopedStorageKey(
@@ -66,15 +77,16 @@ export const getCourseDetails = async (
 
   try {
     let data: unknown;
+    let responsePayload: unknown = null;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        data = payload(
-          await publicRequest.get(`courses/${id}/details`, {
-            optionalAuthorization: true,
-            roknNetworkRetryDeadlineAt: retryDeadlineAt,
-            signal: options.signal,
-          } as RoknRequestConfig),
-        );
+        const response = await publicRequest.get(`courses/${id}/details`, {
+          optionalAuthorization: true,
+          roknNetworkRetryDeadlineAt: retryDeadlineAt,
+          signal: options.signal,
+        } as RoknRequestConfig);
+        responsePayload = response.data;
+        data = payload(response);
         break;
       } catch (error) {
         if (attempt === 0 && isCourseRevisionChangedError(error)) continue;
@@ -89,7 +101,7 @@ export const getCourseDetails = async (
     }
     void cacheCourseDetails(id, course, cacheKey).catch(() => undefined);
     assertAccountSessionBoundary(account);
-    return course;
+    return {course, responsePayload};
   } catch (error) {
     assertAccountSessionBoundary(account);
     if (isCourseRevisionChangedError(error)) {
@@ -119,6 +131,12 @@ export const getCourseDetails = async (
     if (!cached) throw error;
     await settleWithin(touchCourseDetailsCache(id, cacheKey), undefined);
     assertAccountSessionBoundary(account);
-    return cached;
+    return {course: cached, responsePayload: null};
   }
 };
+
+export const getCourseDetails = async (
+  courseId: string,
+  options: {signal?: AbortSignal} = {},
+): Promise<CourseDetails> =>
+  (await getCourseDetailsSnapshot(courseId, options)).course;

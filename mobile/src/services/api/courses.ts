@@ -6,7 +6,12 @@ export {
   getPublishedCourses,
   getPublishedCoursesPage,
 } from './courseCatalogue';
-export {getCourseDetails, isCourseUnavailableError} from './courseDetails';
+export {
+  getCourseDetails,
+  getCourseDetailsSnapshot,
+  isCourseUnavailableError,
+  type CourseDetailsSnapshot,
+} from './courseDetails';
 export {getLearningCourses} from './learningCourses';
 export {
   deleteCourseRating,

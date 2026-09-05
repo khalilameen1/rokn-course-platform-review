@@ -1,10 +1,23 @@
 import {
+  hasCourseLearningAccess,
   includesCourseAssistant,
   includesCourseCertificate,
   isGrantCourseAccess,
 } from '../src/components/VideoPlayer/courseEntitlements';
 
 describe('course AI entitlement', () => {
+  it.each(['paid', 'free', 'course_code', 'scholarship'])(
+    'keeps the assistant entry visible for %s learning access',
+    accessType => {
+      expect(hasCourseLearningAccess(accessType)).toBe(true);
+    },
+  );
+
+  it('does not expose the assistant entry in a guest preview', () => {
+    expect(hasCourseLearningAccess('none')).toBe(false);
+    expect(hasCourseLearningAccess('preview')).toBe(false);
+  });
+
   it.each(['scholarship', 'institutional_grant'])(
     'keeps %s access out of variable-cost chat',
     accessType => {

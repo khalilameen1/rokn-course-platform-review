@@ -67,7 +67,9 @@ const CourseChatOverlay = ({
   const reducedMotion = useReducedMotion();
   const {height: windowHeight, fontScale} = useWindowDimensions();
   const navigation = useNavigation<CourseChatNavigation>();
-  const upgradeAutoLoadCourseRef = useRef<string | undefined>(undefined);
+  const previousVisibleRef = useRef(false);
+  const previousAssistantIncludedRef = useRef(true);
+  const previousCourseIdRef = useRef(String(course.id));
   const {
     answerPending,
     assistantPresence,
@@ -129,19 +131,25 @@ const CourseChatOverlay = ({
   });
 
   useEffect(() => {
-    if (upgradeAutoLoadCourseRef.current !== String(course.id)) {
-      upgradeAutoLoadCourseRef.current = undefined;
-    }
-    if (
+    const courseChanged = previousCourseIdRef.current !== String(course.id);
+    const opened = visible && !previousVisibleRef.current;
+    const becameGated =
       visible &&
+      previousAssistantIncludedRef.current &&
+      !assistantIncluded;
+    previousCourseIdRef.current = String(course.id);
+    previousVisibleRef.current = visible;
+    previousAssistantIncludedRef.current = assistantIncluded;
+
+    // A quote contains a point-in-time wallet balance. Re-opening after the
+    // Wallet must refresh it even when the old quote is still rendered;
+    // otherwise its old deficit sends the learner back to Wallet forever.
+    if (
+      (opened || becameGated || (visible && courseChanged)) &&
       !assistantIncluded &&
       !chatAccessUnavailable &&
-      !upgradeQuote &&
-      !upgradeLoading &&
-      !upgradeError &&
-      upgradeAutoLoadCourseRef.current !== String(course.id)
+      !upgradeLoading
     ) {
-      upgradeAutoLoadCourseRef.current = String(course.id);
       void loadUpgradeQuote();
     }
   }, [
@@ -149,9 +157,7 @@ const CourseChatOverlay = ({
     chatAccessUnavailable,
     course.id,
     loadUpgradeQuote,
-    upgradeError,
     upgradeLoading,
-    upgradeQuote,
     visible,
   ]);
 

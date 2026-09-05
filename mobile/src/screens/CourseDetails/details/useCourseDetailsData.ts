@@ -1,8 +1,9 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import type {Dispatch, SetStateAction} from 'react';
 import type {CoinPackage} from '../../../services/api/coinPackageMapper';
 import {
   getCoinPackages,
-  getCourseDetails,
+  getCourseDetailsSnapshot,
   getWallet,
   hasSession,
   isCourseUnavailableError,
@@ -18,6 +19,11 @@ import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../../constants/helpers';
+import {
+  applyLocalLearningState,
+  mapCoursePayload,
+} from '../../../components/VideoPlayer/courseLearningApi';
+import type {CourseLearningData} from '../../../components/VideoPlayer/types';
 
 type UseCourseDetailsDataParams = {
   courseId: string;
@@ -30,6 +36,11 @@ type CourseWalletState = {
   rewardBalance: number;
   rewardContributionCap: number;
   spendableBalance: number;
+};
+
+type RemoteCourseSnapshot = {
+  details: CourseDetailsDto;
+  learning: CourseLearningData | null;
 };
 
 export type CourseWalletUpdate = Omit<
@@ -48,9 +59,10 @@ export const useCourseDetailsData = ({
   );
   const [remotePackages, setRemotePackages] = useState<CoinPackage[]>([]);
   const [remoteSession, setRemoteSession] = useState<boolean | null>(null);
-  const [remoteCourse, setRemoteCourse] = useState<CourseDetailsDto | null>(
-    null,
-  );
+  const [remoteSnapshot, setRemoteSnapshot] =
+    useState<RemoteCourseSnapshot | null>(null);
+  const remoteCourse = remoteSnapshot?.details ?? null;
+  const remoteLearningCourse = remoteSnapshot?.learning ?? null;
   const [remoteCommerceLoading, setRemoteCommerceLoading] = useState(false);
   const loadedCourseRef = useRef<CourseDetailsDto | null>(null);
   const ownershipWriteEpochRef = useRef(0);
@@ -73,7 +85,7 @@ export const useCourseDetailsData = ({
       displayScopeRef.current.identityKey !== identityKey
     ) {
       displayScopeRef.current = {courseId, identityKey};
-      setRemoteCourse(null);
+      setRemoteSnapshot(null);
       setRemoteWallet(null);
       setRemotePackages([]);
       setRemoteCommerceLoading(false);
@@ -124,7 +136,7 @@ export const useCourseDetailsData = ({
       ) {
         loadedCourseRef.current = null;
         loadedOwnerRef.current = identityKey;
-        setRemoteCourse(null);
+        setRemoteSnapshot(null);
         setRemoteWallet(null);
         setRemotePackages([]);
         setRemoteCommerceLoading(false);
@@ -139,16 +151,27 @@ export const useCourseDetailsData = ({
       let resolvedDetails = detailsLoaded ? loadedCourseRef.current : null;
       const ownershipWriteEpoch = ownershipWriteEpochRef.current;
       try {
-        const details = await getCourseDetails(courseId, {
+        const snapshot = await getCourseDetailsSnapshot(courseId, {
           signal: controller.signal,
         });
+        const details = snapshot.course;
+        const mappedLearningCourse = details.owned && snapshot.responsePayload
+          ? mapCoursePayload(snapshot.responsePayload)
+          : null;
+        if (details.owned && !mappedLearningCourse) {
+          throw new Error('API_CONTRACT_INVALID_COURSE_LEARNING_SNAPSHOT');
+        }
+        const learningCourse = mappedLearningCourse
+          ? await applyLocalLearningState(mappedLearningCourse)
+          : null;
+        assertAccountSessionBoundary(boundary);
         detailsLoaded = true;
         resolvedDetails = details;
         if (stillOwned()) {
+          const ownershipChangedWhileReading =
+            ownershipWriteEpochRef.current !== ownershipWriteEpoch;
           loadedOwnerRef.current = identityKey;
-          setRemoteCourse(current => {
-            const ownershipChangedWhileReading =
-              ownershipWriteEpochRef.current !== ownershipWriteEpoch;
+          setRemoteSnapshot(current => {
             const next = {
               ...details,
               // Preserve a purchase that completed while this particular read
@@ -156,11 +179,16 @@ export const useCourseDetailsData = ({
               // refunded, held, or revoked enrollment cannot stay unlocked
               // merely because this screen once observed `owned: true`.
               owned: ownershipChangedWhileReading
-                ? current?.owned ?? details.owned
+                ? current?.details.owned ?? details.owned
                 : details.owned,
             };
             loadedCourseRef.current = next;
-            return next;
+            return {
+              details: next,
+              learning: ownershipChangedWhileReading
+                ? current?.learning ?? null
+                : learningCourse,
+            };
           });
           if (details.fromCache) {
             setRemoteNotice(
@@ -173,7 +201,7 @@ export const useCourseDetailsData = ({
         if (stillOwned()) {
           if (isCourseUnavailableError(error)) {
             loadedCourseRef.current = null;
-            setRemoteCourse(null);
+            setRemoteSnapshot(null);
             detailsLoaded = false;
             setRemoteError(
               'هذا الكورس غير متاح الآن\nعد إلى الرئيسية واختر كورسًا آخر',
@@ -254,15 +282,41 @@ export const useCourseDetailsData = ({
     displayScopeRef.current.identityKey === identityKey &&
     displayScopeRef.current.courseId === courseId;
 
-  const setRemoteOwned = useCallback((owned: boolean) => {
-    ownershipWriteEpochRef.current += 1;
-    setRemoteCourse(current => {
-      if (!current) return current;
-      const next = {...current, owned};
-      loadedCourseRef.current = next;
-      return next;
-    });
-  }, []);
+  const setRemoteCourse: Dispatch<SetStateAction<CourseDetailsDto | null>> =
+    useCallback(update => {
+      setRemoteSnapshot(current => {
+        const currentDetails = current?.details ?? null;
+        const next =
+          typeof update === 'function'
+            ? update(currentDetails)
+            : update;
+        loadedCourseRef.current = next;
+        return next
+          ? {details: next, learning: current?.learning ?? null}
+          : null;
+      });
+    }, []);
+
+  const setRemoteOwned = useCallback(
+    (owned: boolean) => {
+      const ownershipChanged = loadedCourseRef.current?.owned !== owned;
+      ownershipWriteEpochRef.current += 1;
+      setRemoteSnapshot(current => {
+        if (!current) return current;
+        const next = {...current.details, owned};
+        loadedCourseRef.current = next;
+        return {
+          details: next,
+          learning: ownershipChanged ? null : current.learning,
+        };
+      });
+      if (ownershipChanged) {
+        setRemoteLoading(true);
+        reloadRemote();
+      }
+    },
+    [reloadRemote],
+  );
 
   const updateRemoteWallet = useCallback((next: CourseWalletUpdate) => {
     setRemoteWallet(current => ({
@@ -285,6 +339,7 @@ export const useCourseDetailsData = ({
       setOwned: setRemoteOwned,
       setValue: setRemoteCourse,
       value: ownerMatches ? remoteCourse : null,
+      learningValue: ownerMatches ? remoteLearningCourse : null,
     },
     commerce: {
       balance: ownerMatches ? remoteWallet?.balance ?? null : null,

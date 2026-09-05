@@ -339,6 +339,46 @@ describe('course journey contract', () => {
     expect(checkout).toContain('const buyCoins = useCallback(');
   });
 
+  it('projects details and the owned outline from one details response', () => {
+    const loader = source(
+      'src/screens/CourseDetails/details/useCourseDetailsData.ts',
+    );
+    const outline = source('src/screens/CourseDetails/Lessons.tsx');
+
+    expect(loader).toContain('getCourseDetailsSnapshot(');
+    expect(loader).toContain('mapCoursePayload(snapshot.responsePayload)');
+    expect(loader).toContain('useState<RemoteCourseSnapshot | null>(null)');
+    expect(loader).not.toContain('setRemoteLearningCourse');
+    expect(outline).not.toContain('loadCourseLearningData');
+    expect(outline).not.toContain('publicRequest');
+  });
+
+  it('keeps the assistant entry reachable when the purchased plan needs an upgrade', () => {
+    const sidebar = source('src/components/VideoPlayer/FeedSideBar.tsx');
+    const controller = source('src/screens/reels/useReelsController.tsx');
+    const surface = source('src/screens/reels/ReelsSurface.tsx');
+    const overlay = source(
+      'src/components/VideoPlayer/CourseChatOverlay.tsx',
+    );
+
+    expect(sidebar).toContain(
+      'showChat={hasCourseLearningAccess(course.accessType)}',
+    );
+    expect(controller).toContain(
+      'if (hasCourseLearningAccess(course.accessType)) setChatVisible(true);',
+    );
+    expect(controller).toContain('canOpenCourseAssistant: Boolean(');
+    expect(surface).toContain('controller.canOpenCourseAssistant');
+    expect(sidebar).not.toContain('showChat={includesCourseAssistant(course)}');
+    expect(overlay).toContain(
+      'const opened = visible && !previousVisibleRef.current;',
+    );
+    expect(overlay).toContain(
+      '(opened || becameGated || (visible && courseChanged))',
+    );
+    expect(overlay).not.toContain('upgradeAutoLoadCourseRef');
+  });
+
   it('keeps the production course journey free of runtime demo forks', () => {
     for (const file of [
       'src/screens/Home.tsx',
