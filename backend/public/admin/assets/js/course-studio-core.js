@@ -149,12 +149,19 @@
 
         const mutate = (operation, options = {}) => {
             const {feedback = null, form = null, reloadOnError = false} = options;
+            const versionBeforeSave = authoringVersion;
             showFeedback(feedback);
             setFormBusy(form, true);
             busyCount += 1;
             refreshBusy();
 
             return window.RoknAdminRequest.serializeMutation('course-studio-authoring', operation)
+                .then(result => {
+                    if (authoringVersion !== versionBeforeSave) {
+                        studio.dispatchEvent(new Event('course-studio:saved'));
+                    }
+                    return result;
+                })
                 .catch(error => {
                     if (error?.code === 'cancelled') return null;
                     if (reloadOnError || error?.status === 409 || ['mutation_outcome_unknown', 'invalid_authoring_response'].includes(error?.code)) {

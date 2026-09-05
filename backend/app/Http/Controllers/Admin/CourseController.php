@@ -63,16 +63,25 @@ final class CourseController extends Controller
         Course $course,
         AdminCoursePageService $pages
     ) {
-        return view(
-            'admin.courses.show',
-            $pages->show(
-                $course,
-                $this->isAdministrator(),
-                max(1, $request->integer('commercial_page', 1)),
-                $request->query('tab') === 'commercial-report'
-                    || $request->has('commercial_page')
-            )
+        $summaryOnly = $request->boolean('summary') && $request->expectsJson();
+        $data = $pages->show(
+            $course,
+            $this->isAdministrator(),
+            max(1, $request->integer('commercial_page', 1)),
+            !$summaryOnly && ($request->query('tab') === 'commercial-report'
+                || $request->has('commercial_page'))
         );
+
+        if ($summaryOnly) {
+            return response()->json([
+                'course_id' => (int) $data['course']->id,
+                'authoring_version' => (int) $data['course']->authoring_version,
+                'html' => view('admin.courses.partials.show.course-overview', $data)->render()
+                    .view('admin.courses.partials.show.course-readiness', $data)->render(),
+            ])->header('Cache-Control', 'private, no-store');
+        }
+
+        return view('admin.courses.show', $data);
     }
 
     public function studentPreview(

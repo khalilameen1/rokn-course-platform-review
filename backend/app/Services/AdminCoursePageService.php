@@ -137,6 +137,12 @@ final readonly class AdminCoursePageService
         $course->setRelation('sections', $sections);
         $reportCourse = $this->stagedAuthoring->canonicalFor($course);
         $reportCourse->loadCount('ratings')->loadAvg('ratings', 'rating');
+        $catalogRatingSummary = [
+            'count' => (int) $reportCourse->ratings_count,
+            'average' => $reportCourse->ratings_count > 0
+                ? round((float) $reportCourse->ratings_avg_rating, 1)
+                : null,
+        ];
         if ($administrator) {
             $reportCourse->loadCount('activeEnrollments');
         }
@@ -177,14 +183,12 @@ final readonly class AdminCoursePageService
             'activeStudentsCount' => $administrator
                 ? (int) $reportCourse->active_enrollments_count
                 : null,
+            'catalogRatingSummary' => $catalogRatingSummary,
             'learningHealthSummary' => $administrator
                 ? $this->learningHealth->forCourse($reportCourse)
                 : null,
             'ratingSummary' => $administrator ? [
-                'count' => (int) $reportCourse->ratings_count,
-                'average' => $reportCourse->ratings_count > 0
-                    ? round((float) $reportCourse->ratings_avg_rating, 1)
-                    : null,
+                ...$catalogRatingSummary,
                 'removed_count' => CourseRating::onlyTrashed()
                     ->where('course_id', $reportCourse->id)
                     ->count(),

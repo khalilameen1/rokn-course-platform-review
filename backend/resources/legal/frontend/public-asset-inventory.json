@@ -14,7 +14,7 @@
     },
     {
       "path": "public/admin/assets/css/admin-shell.css",
-      "sha256": "8b6ce38453f5b7cdba0d24e465f7a1cdb4b57d71e1209ed8f500f1adc525213d",
+      "sha256": "acee37a4b1b02602a439416f0b146f1b8737f0e6a8176e83e0b072c668e582d3",
       "classification": "first_party"
     },
     {
@@ -56,7 +56,7 @@
     },
     {
       "path": "public/admin/assets/css/course-editor.css",
-      "sha256": "e7d181171b72fed3f7301d75927eb8dddb8d6fafd52b10aa0ca8415692b258a4",
+      "sha256": "12ca0f7bb8ae00201fd4992998aabd03a052fb409f62840c50bb04b0fbf7e45d",
       "classification": "first_party"
     },
     {
@@ -71,17 +71,17 @@
     },
     {
       "path": "public/admin/assets/css/course-student-preview.css",
-      "sha256": "66d598de10b821c2c9f3e64dd920184464c9152a93de8b14269cc02df0527282",
+      "sha256": "23aeee83496d0739915567218b65689e492cd8934cf6f2706e8a93d882208429",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/course-studio.css",
-      "sha256": "23c8cec6ac345fde7bf5018d8564770b33de9ca7928da1c7d1df5f115f752791",
+      "sha256": "f19ce53cac64d2f5f2dc170f882dae1ac09160c583d95533df5724b86bac2e42",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/course-workspace.css",
-      "sha256": "ca3f04989db791c79da5aaa36d3ab706f02ad643c794166663b60429970c70d7",
+      "sha256": "1e0d1c130ca52785d6fe56f3ab89b2f9c470bd938e4c784e756118a15f5c05f5",
       "classification": "first_party"
     },
     {
@@ -325,7 +325,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-core.js",
-      "sha256": "f14fd3f555b68eaf8602022c3185fae09860829ba59b7a5e3819fe59dec0bcc9",
+      "sha256": "4253c1660a7d990dc2cbb6058776867375aa5557985734ba4e399adf99f2f2bf",
       "classification": "first_party"
     },
     {
@@ -351,6 +351,11 @@
     {
       "path": "public/admin/assets/js/course-studio-section-editor.js",
       "sha256": "08123b4b622cd2a5f3a64e993f3b36a36d80aa664bdc54d08e40f54e2f72b563",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-summary.js",
+      "sha256": "10e0ec34e8800716c1f06c57a62b1766599935a0e6050eec289e5739278e5bc7",
       "classification": "first_party"
     },
     {

@@ -1,5 +1,6 @@
 @foreach([
     'course-studio-core.js',
+    'course-studio-summary.js',
     'course-studio-outline.js',
     'course-studio-editor-coordinator.js',
     'course-studio-section-editor.js',

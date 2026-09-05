@@ -164,7 +164,7 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
     public function test_publish_readiness_does_not_block_moderators_on_hidden_ai_controls(): void
     {
         $service = file_get_contents(dirname(__DIR__, 2).'/app/Services/CoursePublishingService.php');
-        $editor = $this->source('courses/show.blade.php');
+        $editor = $this->source('courses/partials/show/course-readiness.blade.php');
         self::assertIsString($service);
 
         foreach (['ميزانية المحادثة', 'ميزانية تقييم المشاريع', 'ميزانية متابعة تقرير المشروع'] as $technicalIssue) {
@@ -227,7 +227,7 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
     public function test_publish_readiness_points_to_the_owning_editor_area(): void
     {
         $publishing = file_get_contents(dirname(__DIR__, 2).'/app/Services/CoursePublishingService.php');
-        $editor = $this->source('courses/show.blade.php')
+        $editor = $this->source('courses/partials/show/course-readiness.blade.php')
             .$this->source('courses/partials/publishing-area-issues.blade.php');
 
         self::assertIsString($publishing);
@@ -239,7 +239,7 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
     public function test_course_studio_does_not_load_or_render_student_operations_for_moderators(): void
     {
         $pageService = file_get_contents(dirname(__DIR__, 2).'/app/Services/AdminCoursePageService.php');
-        $studio = $this->source('courses/show.blade.php');
+        $studio = $this->source('courses/partials/show/course-overview.blade.php');
         self::assertIsString($pageService);
 
         self::assertStringContainsString('if ($administrator) {', $pageService);

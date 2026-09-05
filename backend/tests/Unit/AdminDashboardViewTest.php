@@ -291,8 +291,8 @@ class AdminDashboardViewTest extends TestCase
             ],
             'course details' => [
                 'show',
-                ['statistics', 'commercial-report', 'inline-authoring', 'scripts'],
-                ['courseStudio', 'publishingAudit', 'workspace-header', 'courseAuthoringGraph'],
+                ['statistics', 'commercial-report', 'inline-authoring', 'scripts', 'course-overview', 'course-readiness'],
+                ['courseStudio', 'workspace-header', 'courseAuthoringGraph'],
             ],
         ];
     }

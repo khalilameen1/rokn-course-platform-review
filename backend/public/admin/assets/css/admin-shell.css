@@ -1,5 +1,5 @@
 /* Page styles own content. This file owns the navigation, header and feedback. */
-.modern-sidebar {
+aside.left-panel.modern-sidebar {
     color: var(--rokn-admin-nav-text);
     background: var(--rokn-admin-nav);
     border-inline-end: 1px solid var(--rokn-admin-nav-border);

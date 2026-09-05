@@ -70,6 +70,37 @@ final class AdminCourseUpdateJsonContractTest extends TestCase
             ->assertRedirect(route('admin.courses.show', $course));
     }
 
+    public function test_summary_read_uses_saved_course_and_readiness_without_replacing_editors(): void
+    {
+        $course = $this->draftCourse();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($this->moderator(), 'web');
+        $url = route('admin.courses.show', [$course, 'summary' => 1]);
+        $before = $this->getJson($url)->assertOk()->json('html');
+        self::assertStringContainsString('أضف وصفًا مختصرًا يوضح نتيجة الكورس', $before);
+
+        $this->patchJson(route('admin.courses.update', $course), [
+            'name_ar' => 'عنوان محفوظ',
+            'description_ar' => 'وصف محفوظ بعد التعديل',
+            'authoring_version' => 3,
+            'publishing_intent' => 'save',
+        ])->assertOk();
+
+        $response = $this->getJson($url)->assertOk()
+            ->assertJsonPath('course_id', $course->id)
+            ->assertJsonPath('authoring_version', 4)
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $html = $response->json('html');
+        self::assertStringContainsString('عنوان محفوظ', $html);
+        self::assertStringContainsString('وصف محفوظ بعد التعديل', $html);
+        self::assertStringNotContainsString('أضف وصفًا مختصرًا يوضح نتيجة الكورس', $html);
+        foreach (['course', 'instructor', 'readiness'] as $region) {
+            self::assertStringContainsString('data-studio-summary="'.$region.'"', $html);
+        }
+        self::assertStringNotContainsString('studioCourseForm', $html);
+        self::assertStringNotContainsString('OpenRouter', $html);
+    }
+
     public function test_laravel_validation_errors_remain_json_for_the_studio_form(): void
     {
         $this->withoutMiddleware(RequireAdminMfa::class);

@@ -11,19 +11,18 @@
 
 @section('content')
 @php
-    $teacher = $course->teachers->first();
-    $courseTitle = trim((string) ($course->name_ar ?: $course->name_en)) ?: 'كورس بلا عنوان';
-    $courseDescription = trim((string) ($course->description_ar ?: $course->description_en)) ?: 'أضف وصفًا مختصرًا يشرح للطالب ما الذي سيتعلمه ولماذا يبدأ هذا الكورس.';
-    $teacherName = trim((string) ($teacher?->name_ar ?: $teacher?->name_en ?: $teacher?->getRawOriginal('name'))) ?: 'اختر محاضر الكورس';
-    $teacherBio = trim((string) ($teacher?->bio_ar ?: $teacher?->bio_en ?: $teacher?->getRawOriginal('bio'))) ?: 'ستظهر نبذة المحاضر للطالب هنا.';
     $sectionTypes = [
         'lesson' => ['مقطع', 'fa-play-circle', 'lesson'],
         'project' => ['مشروع', 'fa-briefcase', 'project'],
     ];
 @endphp
-<div class="admin-page course-studio" id="courseStudio" data-authoring-version="{{ $course->authoring_version }}" data-can-author="{{ $course->is_coming_soon ? '1' : '0' }}">
+<div class="admin-page course-studio" id="courseStudio" data-course-id="{{ $course->id }}" data-summary-url="{{ route('admin.courses.show', [$course, 'summary' => 1]) }}" data-authoring-version="{{ $course->authoring_version }}" data-can-author="{{ $course->is_coming_soon ? '1' : '0' }}">
     <script type="application/json" id="courseAuthoringGraph">@json($authoringGraph, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)</script>
     @include('admin.courses.partials.workspace-header', ['course' => $course])
+    <div class="studio-inline-feedback is-error" id="courseStudioSummaryStatus" role="status" hidden>
+        <span data-studio-summary-message>حُفظ التعديل ولم تتحدث المعاينة بعد</span>
+        <button type="button" class="studio-inline-secondary" data-studio-summary-retry>تحديث المعاينة</button>
+    </div>
 
     @if($canViewCommercialReport)
     <nav class="course-studio__tabs" aria-label="أقسام استوديو الكورس" role="tablist">
@@ -40,48 +39,7 @@
     <section class="course-studio__panel is-active" id="builder" data-studio-panel role="tabpanel" tabindex="0">
         <div class="course-studio__layout">
             <div class="course-studio__canvas" aria-label="عرض وتحرير صفحة الكورس">
-                <article class="student-course-card">
-                    <div class="student-course-card__cover">
-                        @if($course->image)<img src="{{ $course->image }}" alt="غلاف {{ $courseTitle }}">
-                        @else<div class="student-course-card__placeholder"><i class="fa fa-picture-o" aria-hidden="true"></i><span>أضف صورة غلاف للكورس</span></div>@endif
-                        @if($course->is_coming_soon)<button type="button" data-studio-course-open="image" class="studio-edit-chip studio-authoring-control"><i class="fa fa-pencil" aria-hidden="true"></i> تعديل الغلاف</button>@endif
-                        <span class="student-course-card__state">{{ $course->is_coming_soon ? 'قريبًا' : ($course->is_catalog_visible ? 'متاح الآن' : 'مخفي من الاكتشاف') }}</span>
-                    </div>
-                    <div class="student-course-card__content">
-                        @if($course->is_coming_soon)<button type="button" data-studio-course-open="details" class="studio-block-edit studio-authoring-control" aria-label="تعديل بيانات الكورس"><i class="fa fa-pencil" aria-hidden="true"></i></button>@endif
-                        <div class="student-course-card__badges">@foreach($course->classifications as $classification)<span>{{ $classification->name_ar }}</span>@endforeach @if($course->level)<span>{{ $course->level->name_ar }}</span>@endif</div>
-                        <h2>{{ $courseTitle }}</h2>
-                        <p>{{ $courseDescription }}</p>
-                        <div class="student-course-card__facts">
-                            <span><i class="fa fa-play-circle" aria-hidden="true"></i> {{ number_format($sections->filter(fn ($section) => $section->getSectionType() === 'lesson')->count()) }} مقطع</span>
-                            <span><i class="fa fa-clock-o" aria-hidden="true"></i> {{ number_format((int) ($course->duration_minutes_computed ?? 0)) }} دقيقة</span>
-                            @if($activeStudentsCount !== null)<span><i class="fa fa-users" aria-hidden="true"></i> {{ number_format($activeStudentsCount) }} طالب</span>@endif
-                            <span><i class="fa fa-star" aria-hidden="true"></i> {{ $course->ratings_count ? number_format((float) $course->ratings_avg_rating, 1).' · '.number_format((int) $course->ratings_count) : 'لا تقييمات' }}</span>
-                        </div>
-                        @if($previewPlans->isNotEmpty())
-                            <div class="student-course-card__plans" aria-label="فئات الكورس كما تظهر للطالب">
-                                @foreach($previewPlans as $plan)
-                                    <article class="student-course-plan">
-                                        <div><strong>{{ $plan['name'] }}</strong><span>{{ number_format($plan['price_coins']) }} عملة</span></div>
-                                        <ul>
-                                            <li>محتوى الكورس</li>
-                                            @if($plan['chat_enabled'])<li>شات ركن</li>@endif
-                                            @if($plan['project_report_enabled'])<li>تقرير المشروع</li>@endif
-                                            @if($plan['project_thread_reply_enabled'])<li>محادثة المشروع</li>@endif
-                                            @if($plan['certificate_enabled'])<li>الشهادة</li>@endif
-                                        </ul>
-                                    </article>
-                                @endforeach
-                            </div>
-                        @endif
-                    </div>
-                </article>
-
-                <section class="student-instructor-card">
-                    @if($course->is_coming_soon)<button type="button" data-studio-course-open="details" class="studio-block-edit studio-authoring-control" aria-label="تعديل المحاضر"><i class="fa fa-pencil" aria-hidden="true"></i></button>@endif
-                    <div class="student-instructor-card__avatar">@if($teacher?->profile_image_url)<img src="{{ $teacher->profile_image_url }}" alt="{{ $teacherName }}">@else<i class="fa fa-user" aria-hidden="true"></i>@endif</div>
-                    <div><span>المحاضر</span><h3>{{ $teacherName }}</h3><p>{{ $teacherBio }}</p></div>
-                </section>
+                @include('admin.courses.partials.show.course-overview')
 
                 @include('admin.courses.partials.show.course-settings-panel')
                 @include('admin.courses.partials.show.course-attachments-panel')
@@ -135,19 +93,7 @@
             </div>
 
             <aside class="course-studio__rail studio-authoring-control" aria-label="أدوات الكورس">
-                <section class="studio-rail-card studio-rail-card--status">
-                    <div class="studio-rail-card__heading"><span class="studio-status-dot {{ $course->is_coming_soon ? 'is-draft' : 'is-live' }}"></span><div><small>حالة الكورس</small><h2>{{ !$course->is_coming_soon ? ($course->is_catalog_visible ? 'منشور في التطبيق' : 'منشور للطلاب ومخفي') : ($publishingAudit['ready'] ? 'جاهز للنشر' : 'مسودة غير مكتملة') }}</h2></div></div>
-                    <div class="studio-readiness"><span><strong>{{ $publishingAudit['counts']['modules'] }}</strong> وحدات</span><span><strong>{{ $publishingAudit['counts']['reels'] }}</strong> مقاطع</span><span><strong>{{ $publishingAudit['counts']['projects'] }}</strong> مشروعات</span></div>
-                    @if($course->is_coming_soon && !$publishingAudit['ready'])<ul>@foreach(array_slice($publishingAudit['issues'], 0, 4) as $issue)<li>{{ $issue }}</li>@endforeach</ul>@endif
-                    @if($course->is_coming_soon)
-                        <button type="button" data-studio-course-open="publish">مراجعة الجاهزية والنشر</button>
-                    @else
-                        <form method="POST" action="{{ route('admin.courses.draft.start', $course) }}">
-                            @csrf
-                            <button type="submit">بدء تعديل الكورس</button>
-                        </form>
-                    @endif
-                </section>
+                @include('admin.courses.partials.show.course-readiness')
                 @if($course->is_coming_soon)
                 <section class="studio-rail-card">
                     <h2>إدارة سريعة</h2>

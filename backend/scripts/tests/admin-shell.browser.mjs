@@ -82,6 +82,7 @@ try {
         page.on('pageerror', error => errors.push(error.message));
         await page.goto(origin);
         await page.waitForFunction(() => document.getElementById('menuToggle').hasAttribute('aria-expanded'));
+        assert.equal(await page.locator('#left-panel').evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(7, 10, 16)', 'Legacy template CSS must not own the Rokn sidebar');
         await page.locator('#userMenuToggle').click();
         assert.equal(await page.locator('#userMenu').getAttribute('aria-hidden'), 'false');
         await page.locator('#notificationToggle').click();
