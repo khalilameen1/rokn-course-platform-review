@@ -46,6 +46,16 @@ carries the previous authored-notification fix, not these newer mobile changes.
 Mobile CI 33986546218 for that same SHA is still running; its staging smoke is
 skipped, not passed. APK `1234.apk` remains unchanged.
 
+Native acceptance was resumed on emulator-5560 against the installed
+`1.0.41 / versionCode 42` (the older 1234 candidate). Its existing preview ended
+at the free-preview gate; course details, home and the guest profile loaded.
+The login page advertised Google and TikTok. Choosing Google reached Chrome's
+first-run account setup, not an authenticated Rokn session. The user was asked
+to complete Google login on this emulator with the account already topped up.
+No paid course purchase, provider reply or acceptance of the newer source is
+proved by this sample. Do not build a new candidate merely to rediscover this
+authentication prerequisite; do not manually credit or enroll around it.
+
 ## Deliver authored notifications without mistaking them for failures — 2026-09-05
 
 A valid notification mentioning `Grease Pencil` or `SQLSTATE` was passed through
