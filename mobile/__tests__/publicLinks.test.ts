@@ -1,3 +1,4 @@
+import {roknApiUrl} from '../src/constants/apiBaseUrl';
 import {
   trustedCertificateFileUrl,
   trustedCertificateVerificationUrl,
@@ -5,8 +6,7 @@ import {
 } from '../src/services/publicLinks';
 
 describe('public share link trust boundary', () => {
-  const deployment =
-    'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud';
+  const deployment = new URL(roknApiUrl).origin;
   const slug = 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa';
   const credential = '11111111-1111-4111-8111-111111111111';
 
@@ -20,6 +20,9 @@ describe('public share link trust boundary', () => {
       trustedPortfolioShareUrl(`https://rokn.app.evil.example/@${slug}`),
     ).toBeNull();
     expect(trustedPortfolioShareUrl(`${deployment}/@student-6`)).toBeNull();
+    expect(
+      trustedPortfolioShareUrl(`https://unconfigured-rokn.laravel.cloud/@${slug}`),
+    ).toBeNull();
   });
 
   it('uses the same deployment trust boundary for certificate verification', () => {

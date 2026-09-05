@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {roknApiUrl} from '../src/constants/apiBaseUrl';
 
 const mockGet = jest.fn();
 
@@ -195,11 +196,7 @@ describe('guest catalogue session boundary', () => {
 
     expect(
       (await AsyncStorage.getAllKeys()).some(key =>
-        key.includes(
-          encodeURIComponent(
-            'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/',
-          ),
-        ),
+        key.includes(encodeURIComponent(roknApiUrl)),
       ),
     ).toBe(true);
   });

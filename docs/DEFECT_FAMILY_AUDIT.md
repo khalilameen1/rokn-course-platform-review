@@ -4,6 +4,26 @@ This is a living engineering audit, not a claim that every row has already
 passed production acceptance. A row is complete only when its stated evidence
 exists against the deployed backend and the signed mobile artifact.
 
+## Make deployment-sensitive fixtures test the configured deployment — 2026-09-05
+
+Mobile run 33973207771 completed Android successfully but failed five JavaScript
+assertions in three suites. The catalogue cache-key assertion, the social-auth
+cache fixture and the public-link tests assumed the developer's Cloud API while
+CI deliberately configures `https://ci.invalid/api/v1/`. The same five failures
+were reproduced locally with that API and the release runner's test-mode Babel
+environment. Fixtures now use the configured API identity; checks still reject
+an unrelated deployment's cache and unconfigured public hosts. Runtime code and
+CI's non-production API were not relaxed. All 156 suites / 818 tests then passed
+under the CI API; the focused four-suite scope also passed against the current
+Cloud API (29 tests).
+
+iOS in the same run compiled past the optional binding but rejected the renamed
+Swift selector `swapLeftAndRightInRTL`. It now uses the compiler-specified
+`swapLeftAndRight(inRTL:)` with its value still true. Another native compile is
+required; JavaScript success does not establish that result. Version 1.0.41
+(Android 42 / iOS 39) identifies the next candidate and is not yet a delivered
+artifact.
+
 ## Close the existing payment path before changing it again — 2026-09-05
 
 Re-read Kashier settlement, wallet credit, course purchase/replay, the mobile

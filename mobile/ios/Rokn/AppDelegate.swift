@@ -21,7 +21,7 @@ class AppDelegate: ExpoAppDelegate {
     if let i18n = RCTI18nUtil.sharedInstance() {
       i18n.allowRTL(true)
       i18n.forceRTL(true)
-      i18n.swapLeftAndRightInRTL(true)
+      i18n.swapLeftAndRight(inRTL: true)
     }
 
     let delegate = ReactNativeDelegate()
