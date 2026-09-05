@@ -107,7 +107,9 @@ describe('course gate contracts', () => {
 
     expect(feedback).toContain("feedbackLevel === 'enhanced'");
     expect(feedbackPanel).toContain("feedbackLevel === 'report'");
-    expect(feedbackPanel).toContain('الرد متاح في فئة المتابعة');
+    expect(feedbackPanel).toContain('فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة');
+    expect(feedbackPanel).toContain('اعرف فئة الرد على التقرير');
+    expect(feedbackPanel).toContain('الرد على التقرير');
     expect(feedbackPanel).toContain('الردود متاحة في فئة المتابعة');
     expect(feedback).toContain('!canReply ||');
     expect(submission).toContain('if (outcome.accepted)');

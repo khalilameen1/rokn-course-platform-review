@@ -9,7 +9,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {rtlRowStyle, textDirection} from '../../../constants/designSystem';
+import {
+  Palette,
+  rtlRowStyle,
+  textDirection,
+} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 import {openProjectInputAttachment} from '../courseLearningApi';
 import {
@@ -80,17 +84,19 @@ const FeedbackMessage = ({
   sending,
   threadId,
   onRetry,
+  report = false,
 }: {
   message: ProjectFeedbackMessage;
   projectId: string;
   sending: boolean;
   threadId: string;
   onRetry: (message: ProjectFeedbackMessage) => void;
+  report?: boolean;
 }) => (
   <View
     style={[
-      styles.bubble,
-      message.role === 'user' ? styles.bubbleUser : styles.bubbleAssistant,
+      styles.messageBlock,
+      !report && message.role === 'user' && styles.bubbleUser,
     ]}>
     {!!message.text && (
       <Text style={styles.message}>
@@ -102,9 +108,19 @@ const FeedbackMessage = ({
       projectId={projectId}
       threadId={threadId}
     />
-    {message.role === 'assistant' && message.status === 'streaming' && (
-      <Text style={styles.state}>يكتب الآن</Text>
-    )}
+    {message.role === 'assistant' &&
+      ['queued', 'sent', 'streaming'].includes(message.status) && (
+        <View accessibilityLiveRegion="polite" style={styles.pendingState}>
+          <ActivityIndicator color={Palette.textMuted} size="small" />
+          <Text style={styles.state}>
+            {message.status === 'streaming'
+              ? 'يكتب الآن'
+              : report
+              ? 'جارٍ تجهيز التقرير'
+              : 'جارٍ تجهيز الرد'}
+          </Text>
+        </View>
+      )}
     {message.role === 'assistant' && message.status === 'failed' && (
       <Text style={styles.state}>
         {message.text?.trim()
@@ -121,6 +137,7 @@ const FeedbackMessage = ({
         <Pressable
           accessibilityRole="button"
           disabled={sending}
+          style={styles.retryAction}
           onPress={() => onRetry(message)}>
           <Text style={styles.retry}>إرسال مرة أخرى</Text>
         </Pressable>
@@ -150,25 +167,58 @@ const ProjectFeedbackPanel = ({
   onRetryMessage,
   onSend,
 }: Props) => {
+  // The server retains the initial report at the head of the ordered thread,
+  // even when older follow-ups fall outside its history window.
+  const report =
+    thread.messages[0]?.role === 'assistant' ? thread.messages[0] : undefined;
+  const conversation = report ? thread.messages.slice(1) : thread.messages;
+  const hasPendingAssistant = thread.messages.some(
+    message =>
+      message.role === 'assistant' &&
+      ['queued', 'sent', 'streaming'].includes(message.status),
+  );
   return (
     <View style={styles.thread}>
-      <View style={styles.header}>
-        <Text style={styles.title}>شات ركن</Text>
-        <Text style={styles.availability}>
-          {canReply ? 'متصل الآن' : 'تقرير مشروعك'}
+      <View style={styles.report}>
+        <Text accessibilityRole="header" style={styles.title}>
+          تقرير المشروع
         </Text>
+        {report && (
+          <FeedbackMessage
+            report
+            message={report}
+            projectId={projectId}
+            sending={sending}
+            threadId={thread.id}
+            onRetry={onRetryMessage}
+          />
+        )}
       </View>
 
-      {thread.messages.map(message => (
-        <FeedbackMessage
-          key={message.id}
-          message={message}
-          projectId={projectId}
-          sending={sending}
-          threadId={thread.id}
-          onRetry={onRetryMessage}
-        />
-      ))}
+      {(canReply || conversation.length > 0) && (
+        <View style={styles.conversation}>
+          <Text accessibilityRole="header" style={styles.conversationTitle}>
+            استفسارات عن التقرير
+          </Text>
+          {conversation.map(message => (
+            <FeedbackMessage
+              key={message.id}
+              message={message}
+              projectId={projectId}
+              sending={sending}
+              threadId={thread.id}
+              onRetry={onRetryMessage}
+            />
+          ))}
+        </View>
+      )}
+
+      {pending && !hasPendingAssistant && (
+        <View accessibilityLiveRegion="polite" style={styles.pendingState}>
+          <ActivityIndicator color={Palette.textMuted} size="small" />
+          <Text style={styles.state}>جارٍ تجهيز الرد</Text>
+        </View>
+      )}
 
       {attachments.length > 0 && (
         <View style={styles.attachmentList}>
@@ -189,6 +239,7 @@ const ProjectFeedbackPanel = ({
                 accessibilityLabel={`إزالة ${file.name}`}
                 accessibilityRole="button"
                 disabled={sending}
+                style={styles.removeAction}
                 onPress={() => onRemoveAttachment(file)}>
                 <Text style={styles.attachmentRemove}>×</Text>
               </Pressable>
@@ -208,54 +259,56 @@ const ProjectFeedbackPanel = ({
             placeholderTextColor="rgba(255,255,255,.38)"
             style={styles.input}
           />
-          {thread.attachmentsEnabled && (
+          <View style={styles.composerActions}>
+            {thread.attachmentsEnabled && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="إضافة مرفق"
+                disabled={
+                  sending ||
+                  attachments.length >= (thread.attachmentMaxFiles || 0)
+                }
+                style={styles.attach}
+                onPress={onPickAttachments}>
+                <Text style={styles.attachText}>＋</Text>
+              </Pressable>
+            )}
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="إضافة مرفق"
+              accessibilityLabel="إرسال الاستفسار"
+              accessibilityState={{busy: sending}}
               disabled={
-                sending ||
-                attachments.length >= (thread.attachmentMaxFiles || 0)
+                (!normalizedDraft && attachments.length === 0) || sending
               }
-              style={styles.attach}
-              onPress={onPickAttachments}>
-              <Text style={styles.attachText}>＋</Text>
+              onPress={onSend}
+              style={[
+                styles.send,
+                ((!normalizedDraft && attachments.length === 0) || sending) &&
+                  styles.disabled,
+              ]}>
+              {sending ? (
+                <ActivityIndicator color={Palette.text} size="small" />
+              ) : (
+                <Text style={styles.sendText}>إرسال</Text>
+              )}
             </Pressable>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{busy: sending}}
-            disabled={(!normalizedDraft && attachments.length === 0) || sending}
-            onPress={onSend}
-            style={[
-              styles.send,
-              ((!normalizedDraft && attachments.length === 0) || sending) &&
-                styles.disabled,
-            ]}>
-            {sending ? (
-              <ActivityIndicator color="#FFFFFF" size="small" />
-            ) : (
-              <Text style={styles.sendText}>إرسال</Text>
-            )}
-          </Pressable>
+          </View>
         </View>
       )}
 
       {!canReply && feedbackLevel === 'report' && (
-        <View style={styles.composer}>
-          <TextInput
-            editable={false}
-            placeholder="الرد متاح في فئة المتابعة"
-            placeholderTextColor="rgba(255,255,255,.38)"
-            style={styles.input}
-          />
+        <View style={styles.reportGate}>
+          <Text style={styles.state}>
+            فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة
+          </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="اعرف فئة الرد على التقرير"
             onPress={() =>
               Alert.alert('الرد غير مشمول', 'الردود متاحة في فئة المتابعة')
             }
-            style={[styles.send, styles.disabled]}>
-            <Text style={styles.sendText}>رد</Text>
+            style={styles.gateAction}>
+            <Text style={styles.gateActionText}>الرد على التقرير</Text>
           </Pressable>
         </View>
       )}
@@ -276,69 +329,63 @@ const styles = StyleSheet.create({
   thread: {
     direction: 'rtl',
     width: '100%',
-    marginTop: 18,
-    padding: 12,
-    borderRadius: 18,
-    gap: 8,
-    backgroundColor: '#0B111A',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.08)',
+    marginTop: 24,
+    gap: 24,
   },
-  header: {
-    ...rtlRowStyle,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
+  report: {gap: 12},
+  conversation: {gap: 16},
   title: {
     ...textDirection,
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.bold,
-    fontSize: 14,
+    fontSize: 18,
+    lineHeight: 28,
   },
-  availability: {
+  conversationTitle: {
     ...textDirection,
-    color: '#67D39B',
-    fontFamily: Fonts.regular,
-    fontSize: 10,
+    color: Palette.text,
+    fontFamily: Fonts.semiBold,
+    fontSize: 15,
+    lineHeight: 24,
   },
-  bubble: {
-    maxWidth: '90%',
-    borderRadius: 15,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-  },
-  bubbleAssistant: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#17202C',
-    borderTopLeftRadius: 5,
-  },
+  messageBlock: {alignSelf: 'stretch', gap: 8},
   bubbleUser: {
     alignSelf: 'flex-start',
-    backgroundColor: '#236FE8',
-    borderTopRightRadius: 5,
+    maxWidth: '100%',
+    backgroundColor: Palette.surfaceRaised,
+    borderRadius: 14,
+    padding: 12,
   },
   message: {
     ...textDirection,
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.regular,
-    fontSize: 12,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 24,
   },
   state: {
     ...textDirection,
-    color: 'rgba(255,255,255,.58)',
+    color: Palette.textMuted,
     fontFamily: Fonts.regular,
-    fontSize: 10,
+    fontSize: 12,
+    lineHeight: 20,
+    flexShrink: 1,
+  },
+  pendingState: {...rtlRowStyle, gap: 8, alignItems: 'center'},
+  retryAction: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
   retry: {
     ...textDirection,
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.semiBold,
-    fontSize: 10,
-    marginTop: 4,
+    fontSize: 12,
+    lineHeight: 20,
   },
-  attachmentList: {gap: 6, marginTop: 3},
+  attachmentList: {gap: 8},
   attachmentChip: {
     ...rtlRowStyle,
     alignItems: 'center',
@@ -346,74 +393,111 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     paddingHorizontal: 10,
     paddingVertical: 7,
-    backgroundColor: 'rgba(255,255,255,.07)',
+    backgroundColor: Palette.surfaceRaised,
   },
   attachmentName: {
     ...textDirection,
     flex: 1,
-    color: '#FFFFFF',
+    minWidth: 0,
+    color: Palette.text,
     fontFamily: Fonts.regular,
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 20,
   },
-  attachmentRemove: {color: '#FFFFFF', fontSize: 20, lineHeight: 20},
+  removeAction: {
+    minWidth: 48,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentRemove: {color: Palette.text, fontSize: 22, lineHeight: 26},
   attachmentPreview: {width: 34, height: 34, borderRadius: 8},
   attach: {
-    width: 44,
-    height: 44,
+    minWidth: 48,
+    minHeight: 48,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.08)',
+    backgroundColor: Palette.surfaceRaised,
   },
-  attachText: {color: '#FFFFFF', fontSize: 22, lineHeight: 24},
-  messageAttachments: {gap: 5, marginTop: 6},
+  attachText: {color: Palette.text, fontSize: 22, lineHeight: 26},
+  messageAttachments: {gap: 8},
   messageAttachment: {
-    borderRadius: 9,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    backgroundColor: 'rgba(255,255,255,.1)',
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Palette.surfaceRaised,
   },
   messageAttachmentName: {
     ...textDirection,
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.regular,
-    fontSize: 10,
+    fontSize: 12,
+    lineHeight: 20,
   },
-  composer: {
+  composer: {gap: 12},
+  composerActions: {
     ...rtlRowStyle,
-    alignItems: 'flex-end',
-    gap: 7,
-    marginTop: 3,
+    gap: 12,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
   },
   input: {
     ...textDirection,
-    flex: 1,
-    minHeight: 44,
-    maxHeight: 110,
+    width: '100%',
+    minHeight: 72,
+    maxHeight: 160,
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.regular,
-    fontSize: 12,
-    backgroundColor: 'rgba(255,255,255,.06)',
+    fontSize: 15,
+    lineHeight: 24,
+    textAlignVertical: 'top',
+    backgroundColor: Palette.surface,
   },
   send: {
-    minWidth: 64,
-    height: 44,
+    minWidth: 88,
+    minHeight: 48,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.action,
   },
-  sendText: {color: '#FFFFFF', fontFamily: Fonts.semiBold, fontSize: 11},
+  sendText: {
+    color: Palette.text,
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 24,
+  },
+  reportGate: {gap: 8},
+  gateAction: {
+    minHeight: 48,
+    minWidth: 48,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+  },
+  gateActionText: {
+    ...textDirection,
+    color: Palette.text,
+    fontFamily: Fonts.semiBold,
+    fontSize: 14,
+    lineHeight: 24,
+  },
   disabled: {opacity: 0.38},
   error: {
     ...textDirection,
-    color: '#FF9A9A',
+    color: Palette.danger,
     fontFamily: Fonts.regular,
-    fontSize: 10,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 20,
   },
 });
 

@@ -1,7 +1,18 @@
 import React from 'react';
-import {Image, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
-import {rtlRowStyle, textDirection} from '../../../constants/designSystem';
+import {
+  Palette,
+  rtlRowStyle,
+  textDirection,
+} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 import type {SelectedProjectFile} from '../types';
 
@@ -22,13 +33,13 @@ type Props = {
   onSubmit: () => void;
 };
 
-const UploadIcon = () => (
-  <Svg width={27} height={27} viewBox="0 0 28 28">
+const AttachmentIcon = () => (
+  <Svg width={22} height={22} viewBox="0 0 24 24">
     <Path
-      d="M14 19V5m0 0L8.8 10.2M14 5l5.2 5.2M5.5 18.2v3.3c0 1.1.9 2 2 2h13c1.1 0 2-.9 2-2v-3.3"
+      d="m8 12 6-6a3.5 3.5 0 0 1 5 5l-8 8a5 5 0 0 1-7-7l8-8m-6 10 7-7"
       fill="none"
-      stroke="#fff"
-      strokeWidth={1.9}
+      stroke={Palette.textMuted}
+      strokeWidth={1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
     />
@@ -52,9 +63,31 @@ const ProjectSubmissionEditor = ({
   onSubmit,
 }: Props) => (
   <View style={styles.uploadBlock}>
+    <Text accessibilityRole="header" style={styles.sectionTitle}>
+      تسليمك
+    </Text>
+    {textSubmissionEnabled && (
+      <View style={styles.noteField}>
+        <Text style={styles.fieldLabel}>ما نفذته</Text>
+        <TextInput
+          accessibilityLabel="ما نفذته"
+          multiline
+          editable={!sending}
+          value={note}
+          onChangeText={onChangeNote}
+          placeholder={
+            fileSubmissionEnabled ? 'اكتب مشروعك أو وصفه' : 'اكتب مشروعك هنا'
+          }
+          placeholderTextColor={Palette.textFaint}
+          textAlignVertical="top"
+          style={styles.submissionNoteInput}
+        />
+      </View>
+    )}
     {fileSubmissionEnabled && (
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel="إضافة ملف"
         accessibilityState={{disabled: filePickerDisabled}}
         disabled={filePickerDisabled}
         style={[
@@ -62,15 +95,11 @@ const ProjectSubmissionEditor = ({
           filePickerDisabled && styles.disabledButton,
         ]}
         onPress={onChooseFile}>
-        <View style={styles.uploadIcon}>
-          <UploadIcon />
+        <View style={styles.attachmentIcon}>
+          <AttachmentIcon />
         </View>
         <View style={styles.uploadCopy}>
-          <Text style={styles.uploadTitle}>
-            {selectedFiles.length
-              ? `${selectedFiles.length} ملفات`
-              : 'أضف ملفات مشروعك'}
-          </Text>
+          <Text style={styles.uploadTitle}>إضافة ملف</Text>
           <Text style={styles.uploadHint}>
             {selectedFiles.length
               ? selectedFiles.length >= maximumFiles
@@ -84,9 +113,7 @@ const ProjectSubmissionEditor = ({
     {fileSubmissionEnabled && selectedFiles.length > 0 && (
       <View style={styles.attachmentList}>
         {selectedFiles.map(file => (
-          <View
-            key={`${file.uri}:${file.name}`}
-            style={styles.attachmentChip}>
+          <View key={`${file.uri}:${file.name}`} style={styles.attachmentChip}>
             {file.type.startsWith('image/') && !!file.uri && (
               <Image
                 progressiveRenderingEnabled
@@ -101,26 +128,15 @@ const ProjectSubmissionEditor = ({
             <Pressable
               accessibilityLabel={`إزالة ${file.name}`}
               accessibilityRole="button"
+              accessibilityState={{disabled: sending}}
               disabled={sending}
+              style={styles.removeButton}
               onPress={() => onRemoveFile(file)}>
               <Text style={styles.attachmentRemove}>×</Text>
             </Pressable>
           </View>
         ))}
       </View>
-    )}
-    {textSubmissionEnabled && (
-      <TextInput
-        multiline
-        editable={!sending}
-        value={note}
-        onChangeText={onChangeNote}
-        placeholder={
-          fileSubmissionEnabled ? 'اكتب ما نفذته أو أضف ملفًا' : 'اكتب ما نفذته'
-        }
-        placeholderTextColor="rgba(255,255,255,.38)"
-        style={styles.submissionNoteInput}
-      />
     )}
     {draftSaveError && (
       <Text accessibilityRole="alert" style={styles.draftSaveError}>
@@ -132,10 +148,7 @@ const ProjectSubmissionEditor = ({
       accessibilityRole="button"
       accessibilityState={{busy: sending, disabled: submitDisabled}}
       disabled={submitDisabled}
-      style={[
-        styles.primaryButton,
-        submitDisabled && styles.disabledButton,
-      ]}
+      style={[styles.primaryButton, submitDisabled && styles.disabledButton]}
       onPress={onSubmit}>
       <Text style={styles.primaryButtonText}>
         {sending ? 'جارٍ التسليم' : 'سلّم المشروع'}
@@ -145,98 +158,119 @@ const ProjectSubmissionEditor = ({
 );
 
 const styles = StyleSheet.create({
-  uploadBlock: {marginTop: 22, gap: 12},
+  uploadBlock: {marginTop: 24, gap: 14},
+  sectionTitle: {
+    ...textDirection,
+    color: Palette.text,
+    fontFamily: Fonts.semiBold,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  noteField: {gap: 8},
+  fieldLabel: {
+    ...textDirection,
+    color: Palette.textMuted,
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 22,
+  },
   uploadTarget: {
-    minHeight: 78,
-    borderRadius: 18,
-    padding: 13,
+    minHeight: 48,
+    paddingVertical: 4,
     ...rtlRowStyle,
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: 'rgba(255,255,255,.035)',
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(118,169,255,.4)',
+    gap: 10,
   },
   submissionNoteInput: {
     ...textDirection,
-    minHeight: 64,
-    maxHeight: 120,
-    borderRadius: 16,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
-    color: '#FFFFFF',
+    minHeight: 104,
+    maxHeight: 176,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: Palette.text,
     fontFamily: Fonts.regular,
-    fontSize: 12,
-    lineHeight: 20,
-    backgroundColor: 'rgba(255,255,255,.045)',
+    fontSize: 15,
+    lineHeight: 24,
+    backgroundColor: Palette.surface,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.09)',
+    borderColor: Palette.lineSoft,
   },
-  uploadIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 15,
+  attachmentIcon: {
+    width: 28,
+    height: 32,
+    flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(35,111,232,.2)',
   },
   uploadCopy: {flex: 1, minWidth: 0},
   uploadTitle: {
     ...textDirection,
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.semiBold,
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 22,
   },
   uploadHint: {
     ...textDirection,
-    color: 'rgba(255,255,255,.48)',
+    color: Palette.textMuted,
     fontFamily: Fonts.regular,
-    fontSize: 10,
-    lineHeight: 17,
-    marginTop: 3,
+    fontSize: 12,
+    lineHeight: 20,
+    marginTop: 2,
   },
   primaryButton: {
     width: '100%',
-    minHeight: 50,
-    borderRadius: 17,
+    minHeight: 52,
+    borderRadius: 12,
     paddingHorizontal: 18,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.primary,
   },
   disabledButton: {opacity: 0.38},
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.bold,
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 24,
+    textAlign: 'center',
   },
   draftSaveError: {
     ...textDirection,
-    color: '#F3A3A3',
+    color: Palette.danger,
     fontFamily: Fonts.medium,
     fontSize: 12,
     lineHeight: 19,
-    marginTop: 10,
   },
-  attachmentList: {gap: 6, marginTop: 3},
+  attachmentList: {gap: 8},
   attachmentChip: {
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 8,
     borderRadius: 11,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    backgroundColor: 'rgba(255,255,255,.07)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: Palette.surface,
   },
   attachmentName: {
     ...textDirection,
     flex: 1,
-    color: '#FFFFFF',
+    minWidth: 0,
+    color: Palette.text,
     fontFamily: Fonts.regular,
-    fontSize: 11,
+    fontSize: 12,
+    lineHeight: 20,
   },
-  attachmentRemove: {color: '#FFFFFF', fontSize: 20, lineHeight: 20},
+  removeButton: {
+    width: 48,
+    minHeight: 48,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentRemove: {color: Palette.textMuted, fontSize: 24, lineHeight: 28},
   attachmentPreview: {width: 34, height: 34, borderRadius: 8},
 });
 

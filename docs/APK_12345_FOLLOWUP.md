@@ -101,3 +101,38 @@ The complete local backend run had 1181 tests and five environment-specific skip
 its only two failures were old prompt-text assertions, updated and rerun green
 (2 tests / 34 assertions). This is not a new authenticated device acceptance:
 Windows Computer Use initialization still fails with a missing kernel-asset path.
+
+## Project presentation follow-up — 1.0.44
+
+- The project page now has a top-aligned brief and editor before submission, then
+  a clear review/result state with the brief available through an accessible
+  disclosure. The continue action precedes the optional report, so a long
+  conversation does not bury the student's route back to the course.
+- Submission and feedback use the app's palette and readable body text. Removed
+  the nested report card, desktop-like dashed upload target and inert reply input.
+  Attachment removal and other actions have at least 48dp touch targets. The
+  report-only reply action still explains the existing tier restriction.
+- The report keeps its original paragraph breaks and full content width. Pending
+  replies have an indicator even before an assistant message exists; partial
+  replies and all existing retry/attachment/quota conditions remain intact.
+- Android project entry uses KeyboardAvoidingView height behavior so the scroll
+  viewport can shrink even while its parent retains the reel's paging height.
+  This remains source/component verification, not native keyboard acceptance.
+- Deployment 178 served the multi-course fix: command 100 read both enrolled
+  courses for the previously failing account. The same command exposed an
+  operator-edit error in the environment: the model assignment had joined the
+  API-key line. The plain editor value changed without updating the site's editor
+  state. Repair was applied through normal select-all/paste and saved, then the
+  page was reloaded and its persisted values compared exactly before deployment
+  179. No key or other credentials are recorded in this document.
+
+The 1.0.43 artifact was built but not handed off; the new project UI is included
+in the next artifact rather than asking the learner to install an interim build.
+
+Validation: 175 mobile suites / 949 tests, TypeScript and release ESLint passed.
+Production command 103 confirmed key authentication (200), Sonnet 5, no model
+fallback and a real streaming response through OpenRouterService with web-search
+availability. First partial arrived at 0.77 seconds and completion at 7.05 seconds
+in that one sample. The stale authentication circuit was cleared only after the
+key check succeeded. The sample still contained unwanted punctuation and excess
+paragraphs, so voice consistency is not considered closed by this result.

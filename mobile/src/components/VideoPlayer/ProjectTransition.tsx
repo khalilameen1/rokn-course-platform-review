@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../../navigation/types';
 import {
@@ -12,7 +12,15 @@ import {
   View,
 } from 'react-native';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
-import {rtlRowStyle, textDirection} from '../../constants/designSystem';
+import {
+  Accessibility,
+  Palette,
+  Radius,
+  Spacing,
+  Type,
+  rtlRowStyle,
+  textDirection,
+} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
 import type {ProjectSubmissionOutcome} from './courseLearningApi';
@@ -36,6 +44,89 @@ interface ProjectTransitionProps {
   onContinue?: () => void;
 }
 
+type StatusTone = 'progress' | 'success' | 'danger';
+
+const StatusHeading = ({
+  busy = false,
+  description,
+  title,
+  tone,
+}: {
+  busy?: boolean;
+  description: string;
+  title: string;
+  tone: StatusTone;
+}) => {
+  const color =
+    tone === 'success'
+      ? Palette.success
+      : tone === 'danger'
+      ? Palette.danger
+      : Palette.primary;
+
+  return (
+    <View style={styles.statusHeading}>
+      <View
+        style={[
+          styles.statusMark,
+          tone === 'success' && styles.successMark,
+          tone === 'danger' && styles.dangerMark,
+          tone === 'progress' && styles.progressMark,
+        ]}>
+        {busy ? (
+          <ActivityIndicator color={color} size="small" />
+        ) : (
+          <Text style={[styles.statusSymbol, {color}]}>
+            {tone === 'success' ? '✓' : '!'}
+          </Text>
+        )}
+      </View>
+      <View style={styles.statusCopy}>
+        <Text accessibilityRole="header" style={styles.statusTitle}>
+          {title}
+        </Text>
+        <Text style={styles.statusDescription}>{description}</Text>
+      </View>
+    </View>
+  );
+};
+
+const ProjectBrief = ({
+  expanded,
+  onToggle,
+  project,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  project: CourseProject;
+}) => (
+  <View style={styles.brief}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={
+        expanded ? 'إخفاء تفاصيل المشروع' : 'عرض تفاصيل المشروع'
+      }
+      accessibilityState={{expanded}}
+      onPress={onToggle}
+      style={styles.briefToggle}>
+      <Text style={styles.briefToggleText}>تفاصيل المشروع</Text>
+      <Text accessibilityElementsHidden style={styles.briefToggleSymbol}>
+        {expanded ? '−' : '+'}
+      </Text>
+    </Pressable>
+    {expanded && (
+      <View style={styles.briefBody}>
+        <Text style={styles.briefTitle}>
+          {formatAuthoredDisplayText(project.title)}
+        </Text>
+        <Text style={styles.briefRequirements}>
+          {formatAuthoredDisplayText(project.requirements)}
+        </Text>
+      </View>
+    )}
+  </View>
+);
+
 const ProjectTransition = ({
   active,
   project,
@@ -48,11 +139,16 @@ const ProjectTransition = ({
   onContinue,
 }: ProjectTransitionProps) => {
   const navigation = useNavigation<RootNavigation>();
+  const [briefExpanded, setBriefExpanded] = useState(false);
   const controller = useProjectTransitionController({
     active,
     project,
     onSubmit,
   });
+
+  useEffect(() => {
+    setBriefExpanded(false);
+  }, [project.id]);
 
   const hasInterruptedReport =
     ['failed', 'failed_retryable'].includes(controller.reportViewState) &&
@@ -83,154 +179,191 @@ const ProjectTransition = ({
       />
     ) : null;
   const canContinue = controller.canContinue && Boolean(onContinue);
+  const showProjectBrief = controller.journeyState !== 'draft';
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={topInset}
       style={[styles.page, {width, height}]}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="العودة"
-        hitSlop={10}
-        style={[styles.backButton, {top: topInset + 8}]}
+        hitSlop={8}
+        style={[styles.backButton, {top: topInset + Spacing.xs}]}
         onPress={() => goBackOrHome(navigation)}>
         <Text style={styles.backSymbol}>›</Text>
       </Pressable>
       <ScrollView
+        keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
-          {paddingTop: topInset + 36, paddingBottom: bottomInset + 38},
+          {
+            paddingTop: topInset + 72,
+            paddingBottom: bottomInset + Spacing.section,
+          },
         ]}>
-        <View style={styles.eyebrowRow}>
-          <View style={styles.eyebrowLine} />
-          <Text style={styles.eyebrow}>حان وقت التطبيق</Text>
+        <View style={styles.context}>
+          <Text style={styles.projectKind}>
+            {project.isGraduationProject ? 'مشروع التخرج' : 'مشروع العبور'}
+          </Text>
+          {!!moduleTitle && (
+            <Text style={styles.moduleTitle}>
+              {formatAuthoredDisplayText(moduleTitle)}
+            </Text>
+          )}
         </View>
-        <Text style={styles.moduleTitle}>
-          {formatAuthoredDisplayText(moduleTitle)}
-        </Text>
 
-        <View style={styles.card}>
-          <View style={styles.projectBadge}>
-            <Text style={styles.projectBadgeText}>
-              {project.isGraduationProject ? 'مشروع التخرج' : 'مشروع العبور'}
+        {controller.journeyState === 'draft' && (
+          <View style={styles.instructions}>
+            <Text accessibilityRole="header" style={styles.projectTitle}>
+              {formatAuthoredDisplayText(project.title)}
+            </Text>
+            <Text style={styles.projectRequirements}>
+              {formatAuthoredDisplayText(project.requirements)}
             </Text>
           </View>
-          <Text style={styles.title}>
-            {formatAuthoredDisplayText(project.title)}
-          </Text>
-          <Text style={styles.requirements}>
-            {formatAuthoredDisplayText(project.requirements)}
-          </Text>
+        )}
 
+        <View
+          style={[
+            styles.lifecycle,
+            controller.journeyState === 'draft' && styles.draftLifecycle,
+          ]}>
           {controller.journeyState === 'passed' ? (
-            <View style={styles.successState}>
-              <View style={styles.successIcon}>
-                <Text style={styles.successCheck}>✓</Text>
-              </View>
-              <Text style={styles.successTitle}>تم اعتماد مشروعك</Text>
-              <Text style={styles.successDescription}>
-                {canContinue
-                  ? 'فتحنا لك المقطع التالي'
-                  : 'تم اعتماد النتيجة وحفظ تقدمك'}
-              </Text>
+            <>
+              <StatusHeading
+                description={
+                  canContinue
+                    ? 'فتحنا لك المقطع التالي'
+                    : 'تم اعتماد النتيجة وحفظ تقدمك'
+                }
+                title="تم اعتماد مشروعك"
+                tone="success"
+              />
               {!!controller.syncNote && (
                 <Text style={styles.syncNote}>{controller.syncNote}</Text>
               )}
-              {canContinue && (
-                <Pressable
-                  accessibilityRole="button"
-                  style={styles.primaryButton}
-                  onPress={onContinue!}>
-                  <Text style={styles.primaryButtonText}>أكمل الكورس</Text>
-                </Pressable>
+
+              {(canContinue || project.outputEnabled) && (
+                <View style={styles.actionGroup}>
+                  {canContinue && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="أكمل الكورس"
+                      style={styles.primaryButton}
+                      onPress={onContinue!}>
+                      <Text style={styles.primaryButtonText}>أكمل الكورس</Text>
+                    </Pressable>
+                  )}
+                  {project.outputEnabled && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="أضف مشروعك إلى البورتفوليو"
+                      style={styles.secondaryButton}
+                      onPress={() =>
+                        navigation.navigate('Profile', {tab: 'portfolio'})
+                      }>
+                      <Text style={styles.secondaryButtonText}>
+                        أضف مشروعك إلى البورتفوليو
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
               )}
-              {project.outputEnabled && (
-                <Pressable
-                  accessibilityRole="button"
-                  style={styles.portfolioButton}
-                  onPress={() =>
-                    navigation.navigate('Profile', {tab: 'portfolio'})
-                  }>
-                  <Text style={styles.portfolioButtonText}>
-                    أضف مشروعك إلى البورتفوليو
+
+              {(controller.reportViewState === 'preparing' ||
+                controller.reportViewState === 'loading') && (
+                <View style={styles.reportLoading}>
+                  <ActivityIndicator color={Palette.primary} size="small" />
+                  <Text style={styles.reportState}>
+                    {controller.reportViewState === 'preparing'
+                      ? 'نجهّز تقرير مشروعك'
+                      : 'نحمّل تقرير مشروعك'}
                   </Text>
-                </Pressable>
-              )}
-              {controller.reportViewState === 'preparing' && (
-                <Text style={styles.syncNote}>نجهّز تقرير مشروعك</Text>
-              )}
-              {controller.reportViewState === 'loading' && (
-                <Text style={styles.syncNote}>نحمّل تقرير مشروعك</Text>
+                </View>
               )}
               {controller.reportViewState === 'failed_retryable' && (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{disabled: controller.reportRetrying}}
                   disabled={controller.reportRetrying}
-                  onPress={() => void controller.retryReport()}>
-                  <Text style={styles.feedbackRetry}>
+                  onPress={() => void controller.retryReport()}
+                  style={styles.reportRetry}>
+                  <Text style={styles.reportRetryText}>
                     {controller.reportRetrying
                       ? 'نحاول الآن'
-                      : 'تعذّر تجهيز التقرير\nحاول مرة أخرى'}
+                      : 'تعذّر تجهيز التقرير  حاول مرة أخرى'}
                   </Text>
                 </Pressable>
               )}
               {controller.reportViewState === 'failed' && (
-                <Text style={styles.feedbackState}>تعذّر تجهيز التقرير</Text>
+                <Text style={styles.reportError}>تعذّر تجهيز التقرير</Text>
               )}
-              {feedbackPanel}
-            </View>
+              {feedbackPanel && (
+                <View style={styles.reportSection}>{feedbackPanel}</View>
+              )}
+            </>
           ) : controller.journeyState === 'submitting' ? (
-            <View style={styles.reviewState}>
-              <View style={styles.reviewLoader}>
-                <ActivityIndicator color="#76A9FF" size="large" />
-              </View>
-              <Text style={styles.reviewTitle}>نسلّم مشروعك</Text>
-              <Text style={styles.reviewDescription}>نحفظ الملفات الآن</Text>
-            </View>
+            <StatusHeading
+              busy
+              description="نحفظ الملفات الآن"
+              title="نسلّم مشروعك"
+              tone="progress"
+            />
           ) : controller.journeyState === 'reviewing' ? (
-            <View style={styles.reviewState}>
-              <View style={styles.reviewLoader}>
-                <ActivityIndicator color="#76A9FF" size="large" />
-              </View>
-              <Text style={styles.reviewTitle}>مشروعك محفوظ</Text>
-              <Text style={styles.reviewDescription}>سنحدّث النتيجة هنا</Text>
+            <>
+              <StatusHeading
+                busy
+                description="سنحدّث النتيجة هنا"
+                title="مشروعك محفوظ"
+                tone="progress"
+              />
               {!!controller.syncNote && (
                 <Text style={styles.syncNote}>{controller.syncNote}</Text>
               )}
-            </View>
+            </>
           ) : controller.journeyState === 'needs_changes' ? (
-            <View style={styles.reviewState}>
-              <Text style={styles.reviewTitle}>يحتاج المشروع إلى تعديل</Text>
-              <Text style={styles.reviewDescription}>
-                راجع الملاحظات ثم أرسل من جديد
-              </Text>
+            <>
+              <StatusHeading
+                description="راجع الملاحظات ثم أرسل من جديد"
+                title="يحتاج المشروع إلى تعديل"
+                tone="danger"
+              />
               {!!controller.reviewFeedback && (
-                <Text style={styles.reviewDescription}>
-                  {formatAuthoredDisplayText(controller.reviewFeedback)}
-                </Text>
+                <View style={styles.reviewFeedback}>
+                  <Text style={styles.reviewFeedbackText}>
+                    {formatAuthoredDisplayText(controller.reviewFeedback)}
+                  </Text>
+                </View>
               )}
-              {feedbackPanel}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{disabled: !controller.submissionAllowed}}
-                disabled={!controller.submissionAllowed}
-                onPress={controller.editRetry}
-                style={[
-                  styles.primaryButton,
-                  !controller.submissionAllowed && styles.disabledButton,
-                ]}>
-                <Text style={styles.primaryButtonText}>عدّل التسليم</Text>
-              </Pressable>
-            </View>
+              {feedbackPanel && (
+                <View style={styles.reportSection}>{feedbackPanel}</View>
+              )}
+              <View style={styles.actionGroup}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="عدّل التسليم"
+                  accessibilityState={{disabled: !controller.submissionAllowed}}
+                  disabled={!controller.submissionAllowed}
+                  onPress={controller.editRetry}
+                  style={[
+                    styles.primaryButton,
+                    !controller.submissionAllowed && styles.disabledButton,
+                  ]}>
+                  <Text style={styles.primaryButtonText}>عدّل التسليم</Text>
+                </Pressable>
+              </View>
+            </>
           ) : controller.journeyState === 'details' ? (
-            <View style={styles.reviewState}>
-              <ActivityIndicator color="#76A9FF" size="small" />
-              <Text style={styles.reviewDescription}>نحمّل مسودتك</Text>
-            </View>
+            <StatusHeading
+              busy
+              description="نجهّز بيانات التسليم"
+              title="نحمّل المشروع"
+              tone="progress"
+            />
           ) : (
             <ProjectSubmissionEditor
               draftSaveError={controller.submissionDraftSaveError}
@@ -250,6 +383,14 @@ const ProjectTransition = ({
             />
           )}
         </View>
+
+        {showProjectBrief && (
+          <ProjectBrief
+            expanded={briefExpanded}
+            project={project}
+            onToggle={() => setBriefExpanded(value => !value)}
+          />
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -263,25 +404,28 @@ export {
 } from './projectTransition/pickers';
 
 const styles = StyleSheet.create({
-  page: {backgroundColor: '#070B11'},
+  page: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
   backButton: {
     position: 'absolute',
-    start: 12,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    start: Spacing.md,
+    width: Accessibility.minTouchTarget,
+    height: Accessibility.minTouchTarget,
+    borderRadius: Radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(5,9,14,.72)',
+    backgroundColor: Palette.canvasSoft,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.12)',
+    borderColor: Palette.lineSoft,
     zIndex: 20,
   },
   backSymbol: {
-    color: '#FFFFFF',
+    color: Palette.text,
     fontFamily: Fonts.regular,
     fontSize: 35,
-    lineHeight: 37,
+    lineHeight: 38,
     marginBottom: 3,
   },
   content: {
@@ -290,190 +434,217 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 700,
     alignSelf: 'center',
-    paddingHorizontal: 18,
-    justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
   },
-  eyebrowRow: {...rtlRowStyle, alignItems: 'center', gap: 8},
-  eyebrowLine: {
-    width: 24,
-    height: 2,
-    borderRadius: 1,
-    backgroundColor: '#4B8EF7',
+  context: {
+    alignItems: 'flex-start',
   },
-  eyebrow: {
+  projectKind: {
     ...textDirection,
-    color: '#76A9FF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 11,
+    ...Type.bodyStrong,
+    color: Palette.primary,
   },
   moduleTitle: {
     ...textDirection,
-    color: 'rgba(255,255,255,.58)',
-    fontFamily: Fonts.medium,
-    fontSize: 13,
-    marginTop: 7,
-    marginBottom: 18,
+    ...Type.caption,
+    color: Palette.textMuted,
+    marginTop: 2,
   },
-  card: {
-    direction: 'rtl',
-    borderRadius: 26,
-    padding: 20,
-    backgroundColor: '#111923',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.08)',
+  instructions: {
+    marginTop: Spacing.xl,
   },
-  projectBadge: {
-    alignSelf: 'flex-start',
-    minHeight: 27,
-    paddingHorizontal: 11,
-    borderRadius: 14,
+  projectTitle: {
+    ...textDirection,
+    ...Type.title,
+    color: Palette.text,
+  },
+  projectRequirements: {
+    ...textDirection,
+    ...Type.body,
+    color: Palette.textMuted,
+    marginTop: Spacing.xs,
+  },
+  lifecycle: {
+    width: '100%',
+    marginTop: Spacing.xl,
+  },
+  draftLifecycle: {
+    marginTop: 0,
+  },
+  statusHeading: {
+    ...rtlRowStyle,
+    width: '100%',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  statusMark: {
+    width: 38,
+    height: 38,
+    borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(75,142,247,.14)',
     borderWidth: 1,
-    borderColor: 'rgba(91,153,251,.25)',
   },
-  projectBadgeText: {
-    ...textDirection,
-    color: '#8BB6FA',
-    fontFamily: Fonts.semiBold,
-    fontSize: 11,
+  successMark: {
+    backgroundColor: 'rgba(72,185,138,.10)',
+    borderColor: 'rgba(72,185,138,.28)',
   },
-  title: {
-    ...textDirection,
-    color: '#FFFFFF',
+  dangerMark: {
+    backgroundColor: 'rgba(240,100,105,.10)',
+    borderColor: 'rgba(240,100,105,.28)',
+  },
+  progressMark: {
+    backgroundColor: Palette.primarySoft,
+    borderColor: 'rgba(52,120,246,.28)',
+  },
+  statusSymbol: {
     fontFamily: Fonts.bold,
-    fontSize: 23,
-    lineHeight: 35,
-    marginTop: 13,
+    fontSize: 19,
   },
-  requirements: {
+  statusCopy: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-start',
+  },
+  statusTitle: {
     ...textDirection,
-    color: 'rgba(255,255,255,.72)',
-    fontFamily: Fonts.regular,
-    fontSize: 14,
-    lineHeight: 24,
-    marginTop: 7,
+    ...Type.section,
+    color: Palette.text,
+  },
+  statusDescription: {
+    ...textDirection,
+    ...Type.body,
+    color: Palette.textMuted,
+    marginTop: 2,
+  },
+  syncNote: {
+    ...textDirection,
+    ...Type.caption,
+    color: Palette.primary,
+    marginTop: Spacing.sm,
+  },
+  reportSection: {
+    width: '100%',
+    alignSelf: 'stretch',
+    marginTop: Spacing.lg,
+  },
+  reportLoading: {
+    ...rtlRowStyle,
+    minHeight: Accessibility.minTouchTarget,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+  },
+  reportState: {
+    flexShrink: 1,
+    ...textDirection,
+    ...Type.body,
+    color: Palette.textMuted,
+  },
+  reportError: {
+    ...textDirection,
+    ...Type.body,
+    color: Palette.danger,
+    marginTop: Spacing.md,
+  },
+  reportRetry: {
+    minHeight: Accessibility.minTouchTarget,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  reportRetryText: {
+    ...textDirection,
+    ...Type.bodyStrong,
+    color: Palette.primary,
+  },
+  reviewFeedback: {
+    width: '100%',
+    padding: Spacing.md,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.surface,
+    borderWidth: 1,
+    borderColor: Palette.lineSoft,
+    marginTop: Spacing.lg,
+  },
+  reviewFeedbackText: {
+    ...textDirection,
+    ...Type.body,
+    color: Palette.text,
+  },
+  actionGroup: {
+    width: '100%',
+    gap: Spacing.sm,
+    marginTop: Spacing.xl,
   },
   primaryButton: {
     width: '100%',
-    minHeight: 50,
-    borderRadius: 17,
-    paddingHorizontal: 18,
+    minHeight: 52,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.primary,
   },
-  disabledButton: {opacity: 0.38},
+  disabledButton: {
+    opacity: 0.38,
+  },
   primaryButtonText: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 14,
+    ...Type.button,
+    color: Palette.text,
+    textAlign: 'center',
   },
-  portfolioButton: {
+  secondaryButton: {
     width: '100%',
-    minHeight: 48,
-    borderRadius: 17,
-    paddingHorizontal: 18,
+    minHeight: Accessibility.minTouchTarget,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(118,169,255,.1)',
     borderWidth: 1,
-    borderColor: 'rgba(118,169,255,.24)',
+    borderColor: Palette.line,
   },
-  portfolioButtonText: {
-    color: '#AFCBFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 13,
+  secondaryButtonText: {
+    ...Type.bodyStrong,
+    color: Palette.text,
+    textAlign: 'center',
   },
-  reviewState: {
-    minHeight: 190,
+  brief: {
+    width: '100%',
+    marginTop: Spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: Palette.lineSoft,
+  },
+  briefToggle: {
+    ...rtlRowStyle,
+    minHeight: Accessibility.minTouchTarget,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
+    justifyContent: 'space-between',
   },
-  reviewLoader: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(52,120,246,.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(118,169,255,.24)',
-  },
-  reviewTitle: {
+  briefToggleText: {
     ...textDirection,
-    color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 17,
-    marginTop: 15,
-    textAlign: 'center',
+    ...Type.bodyStrong,
+    color: Palette.textMuted,
   },
-  reviewDescription: {
-    direction: 'rtl',
-    writingDirection: 'rtl',
-    color: 'rgba(255,255,255,.55)',
-    fontFamily: Fonts.regular,
-    fontSize: 12,
-    marginTop: 4,
-    textAlign: 'center',
+  briefToggleSymbol: {
+    color: Palette.textMuted,
+    fontFamily: Fonts.medium,
+    fontSize: 22,
   },
-  successState: {
-    minHeight: 215,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 18,
+  briefBody: {
+    paddingBottom: Spacing.sm,
   },
-  successIcon: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(70,196,135,.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(90,218,156,.3)',
-  },
-  successCheck: {color: '#67D39B', fontFamily: Fonts.bold, fontSize: 25},
-  successTitle: {
+  briefTitle: {
     ...textDirection,
-    color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 18,
-    marginTop: 12,
-    textAlign: 'center',
+    ...Type.section,
+    color: Palette.text,
   },
-  successDescription: {
-    direction: 'rtl',
-    writingDirection: 'rtl',
-    color: 'rgba(255,255,255,.56)',
-    fontFamily: Fonts.regular,
-    fontSize: 12,
-    marginTop: 3,
-    textAlign: 'center',
-  },
-  syncNote: {
-    direction: 'rtl',
-    writingDirection: 'rtl',
-    color: '#8BB6FA',
-    fontFamily: Fonts.regular,
-    fontSize: 10,
-    lineHeight: 16,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  feedbackState: {
+  briefRequirements: {
     ...textDirection,
-    color: 'rgba(255,255,255,.58)',
-    fontFamily: Fonts.regular,
-    fontSize: 10,
-  },
-  feedbackRetry: {
-    ...textDirection,
-    color: '#FFFFFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 10,
-    marginTop: 4,
+    ...Type.body,
+    color: Palette.textMuted,
+    marginTop: Spacing.xs,
   },
 });
