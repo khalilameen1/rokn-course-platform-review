@@ -46,12 +46,14 @@ export function useCertificatesController(resolvedDisplayName?: string) {
   const loadGeneration = useRef(0);
   const issueFlight = useRef<symbol | null>(null);
   const pendingPollAttempts = useRef(0);
+  const acceptedIssueCourseIds = useRef(new Set<string>());
   const identityOwnerRef = useRef(identityKey);
 
   useEffect(() => {
     loadGeneration.current += 1;
     issueFlight.current = null;
     pendingPollAttempts.current = 0;
+    acceptedIssueCourseIds.current.clear();
     setLoading(true);
     setLoadError('');
     setCertificatePending(false);
@@ -127,9 +129,12 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         }
         if (certificatesResult.status === 'fulfilled') {
           const remoteCertificates = certificatesResult.value;
-          const hasPendingCertificate = remoteCertificates.some(
-            item => item.status === 'pending',
-          );
+          remoteCertificates.forEach(item => {
+            acceptedIssueCourseIds.current.delete(item.courseId);
+          });
+          const hasPendingCertificate =
+            acceptedIssueCourseIds.current.size > 0 ||
+            remoteCertificates.some(item => item.status === 'pending');
           if (learningResult.status === 'fulfilled') {
             const certificateByCourse = new Map(
               remoteCertificates.map(item => [item.courseId, item]),
@@ -140,7 +145,11 @@ export function useCertificatesController(resolvedDisplayName?: string) {
               setReadyCourses(
                 learningResult.value
                   .filter(course => course.certificateAvailable)
-                  .filter(course => !certificateByCourse.has(course.id)),
+                  .filter(
+                    course =>
+                      !certificateByCourse.has(course.id) &&
+                      !acceptedIssueCourseIds.current.has(course.id),
+                  ),
               );
             }
           }
@@ -196,9 +205,12 @@ export function useCertificatesController(resolvedDisplayName?: string) {
       const boundary = await captureAccountSessionBoundary();
       const pendingCourseIds = Array.from(
         new Set(
-          certificates
-            .filter(certificate => certificate.status === 'pending')
-            .map(certificate => certificate.courseId),
+          [
+            ...certificates
+              .filter(certificate => certificate.status === 'pending')
+              .map(certificate => certificate.courseId),
+            ...acceptedIssueCourseIds.current,
+          ],
         ),
       );
       // POST issue is idempotent for user + course. For an existing pending
@@ -357,6 +369,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         ]);
         setSelectedId(issued.publicId);
       } else {
+        acceptedIssueCourseIds.current.add(issueCourse.id);
         pendingPollAttempts.current = 0;
         setCertificatePending(true);
         // Keep ownership until the read endpoint has observed the accepted

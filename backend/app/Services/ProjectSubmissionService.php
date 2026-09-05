@@ -38,6 +38,38 @@ final class ProjectSubmissionService
     ) {
     }
 
+    /** Resolve a committed POST whose response was lost before mutable admission checks run again. */
+    public function replayCommittedSubmission(
+        User $user,
+        Project $project,
+        ?string $text,
+        ?array $files,
+        string $idempotencyKey
+    ): ?ProjectSubmission {
+        $idempotencyKey = trim($idempotencyKey);
+        if ($idempotencyKey === '') {
+            return null;
+        }
+
+        [$text, $files] = $this->normalizeSubmissionInput($text, $files);
+        $equivalentProjectIds = $this->stagedAuthoring->equivalentEntityIds(
+            Project::class,
+            (int) $project->id
+        );
+        $existing = $this->idempotentSubmission(
+            (int) $user->id,
+            $equivalentProjectIds,
+            $idempotencyKey,
+            $this->requestFingerprint($text, $files)
+        );
+
+        if (!$existing) {
+            return null;
+        }
+
+        return $this->finalizeIfDue($existing);
+    }
+
     public function submit(
         User $user,
         Project $project,
@@ -46,8 +78,7 @@ final class ProjectSubmissionService
         string $idempotencyKey,
         array $metadata = []
     ): ProjectSubmission {
-        $text = $text === null ? null : UnicodeText::clean($text);
-        if ($text === '') $text = null;
+        [$text, $files] = $this->normalizeSubmissionInput($text, $files);
         if ($text !== null && UnicodeText::graphemeLength($text) > 20000) {
             throw ValidationException::withMessages([
                 'submission_text' => ['نص المشروع أطول من الحد المتاح'],
@@ -58,8 +89,6 @@ final class ProjectSubmissionService
             throw new \RuntimeException('The configured project submission disk is not available.');
         }
 
-        $files ??= [];
-        $files = array_values(array_filter($files, static fn ($file): bool => $file instanceof UploadedFile));
         $allowedMimes = $project->submission_allowed_mime_types === null
             ? array_map('strtolower', (array) config('projects.allowed_mime_types', []))
             : array_map('strtolower', (array) $project->submission_allowed_mime_types);
@@ -76,14 +105,14 @@ final class ProjectSubmissionService
             Project::class,
             (int) $project->id
         );
-        $existing = ProjectSubmission::query()
-            ->where('user_id', $user->id)
-            ->whereIn('project_id', $equivalentProjectIds)
-            ->where('idempotency_key', $idempotencyKey)
-            ->first();
+        $existing = $this->idempotentSubmission(
+            (int) $user->id,
+            $equivalentProjectIds,
+            $idempotencyKey,
+            $requestFingerprint
+        );
 
         if ($existing) {
-            $this->assertIdempotentReplay($existing, $requestFingerprint);
             return $this->finalizeIfDue($existing);
         }
 
@@ -385,16 +414,7 @@ final class ProjectSubmissionService
             );
         });
 
-        if (
-            $result->review_status === ProjectSubmission::STATUS_PASSED
-            && $this->submissionIncludesProjectReport($result)
-        ) {
-            // Feedback is a paid enhancement, never a gate. Queue/provider
-            // failures cannot revoke the already granted progression.
-            $this->queueFeedback((int) $result->id);
-        } else {
-            $this->fileRetention->purgeIfEligible($result);
-        }
+        $this->completeReportHandoff($result);
 
         return $result;
     }
@@ -471,14 +491,7 @@ final class ProjectSubmissionService
             );
         });
 
-        if (
-            $reviewed->review_status === ProjectSubmission::STATUS_PASSED
-            && $this->submissionIncludesProjectReport($reviewed)
-        ) {
-            $this->queueFeedback((int) $reviewed->id);
-        } else {
-            $this->fileRetention->purgeIfEligible($reviewed);
-        }
+        $this->completeReportHandoff($reviewed);
 
         return $reviewed;
     }
@@ -506,17 +519,23 @@ final class ProjectSubmissionService
             : ($source === 'admin_manual' ? 'human_review' : 'effort_guard');
         $metadata['skill_verified'] = $passed && $source === 'admin_manual';
         $metadata['progression_credit'] = $passed;
-        if (
-            $passed
-            && $this->submissionIncludesProjectReport($locked)
-            && data_get($metadata, 'ai_feedback.status') !== 'ready'
-        ) {
+        if ($passed
+            && $this->submissionReportWasIncluded($locked)
+            && data_get($metadata, 'ai_feedback.status') !== 'ready') {
             // Persist intent before the queue dispatch so a lost enqueue can
             // be recovered. The job terminally classifies pass-only plans.
-            $metadata['ai_feedback'] = [
-                'status' => 'queued',
-                'queued_at' => $reviewedAt->toIso8601String(),
-            ];
+            $metadata['ai_feedback'] = $this->submissionIncludesProjectReport($locked)
+                ? [
+                    'status' => 'queued',
+                    'queued_at' => $reviewedAt->toIso8601String(),
+                ]
+                : [
+                    'status' => 'unavailable',
+                    'reason' => 'report_not_included',
+                    'request_id' => (string) $locked->public_id,
+                    'retry_count' => 0,
+                    'failed_at' => $reviewedAt->toIso8601String(),
+                ];
         }
 
         $locked->update([
@@ -770,6 +789,16 @@ final class ProjectSubmissionService
             && (bool) $this->accessPlans->publicPayloadFromTerms($terms)['project_report_enabled'];
     }
 
+    private function submissionReportWasIncluded(ProjectSubmission $submission): bool
+    {
+        $snapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
+        $terms = $snapshot ? data_get($snapshot, 'access.terms') : null;
+
+        return is_array($terms)
+            && (bool) $this->accessPlans
+                ->publicPayloadFromTerms($terms)['project_report_enabled'];
+    }
+
     private function isObviousGaming(string $text): bool
     {
         $normalized = mb_strtolower(trim((string) preg_replace('/[^\p{L}\p{N}]+/u', ' ', $text)));
@@ -818,6 +847,62 @@ final class ProjectSubmissionService
                 'Project submission idempotency key was reused for different content.'
             );
         }
+    }
+
+    private function completeReportHandoff(ProjectSubmission $submission): void
+    {
+        if (
+            $submission->review_status === ProjectSubmission::STATUS_PASSED
+            && $this->submissionIncludesProjectReport($submission)
+        ) {
+            // Feedback is a paid enhancement, never a gate. Queue/provider
+            // failures cannot revoke the already granted progression.
+            $this->queueFeedback((int) $submission->id);
+            return;
+        }
+
+        $terminalReportFailure = data_get(
+            $submission->submission_metadata,
+            'ai_feedback.reason'
+        ) === 'report_not_included';
+        $this->fileRetention->purgeIfEligible($submission, $terminalReportFailure);
+    }
+
+    /** @return array{0:?string,1:list<UploadedFile>} */
+    private function normalizeSubmissionInput(?string $text, ?array $files): array
+    {
+        $text = $text === null ? null : UnicodeText::clean($text);
+        if ($text === '') {
+            $text = null;
+        }
+
+        return [
+            $text,
+            array_values(array_filter(
+                $files ?? [],
+                static fn ($file): bool => $file instanceof UploadedFile
+            )),
+        ];
+    }
+
+    /** @param iterable<int> $equivalentProjectIds */
+    private function idempotentSubmission(
+        int $userId,
+        iterable $equivalentProjectIds,
+        string $idempotencyKey,
+        string $requestFingerprint
+    ): ?ProjectSubmission {
+        $existing = ProjectSubmission::query()
+            ->where('user_id', $userId)
+            ->whereIn('project_id', $equivalentProjectIds)
+            ->where('idempotency_key', $idempotencyKey)
+            ->first();
+
+        if ($existing) {
+            $this->assertIdempotentReplay($existing, $requestFingerprint);
+        }
+
+        return $existing;
     }
 
     private function hasPassedProject(int $userId, int $projectId): bool

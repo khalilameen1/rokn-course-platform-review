@@ -36,6 +36,18 @@ final class ProjectSubmissionOrchestrator
         ?string $idempotencyKey,
         array $metadata
     ): array {
+        $idempotencyKey = trim((string) $idempotencyKey);
+        $replayed = $this->submissions->replayCommittedSubmission(
+            $user,
+            $project,
+            $text,
+            $files,
+            $idempotencyKey
+        );
+        if ($replayed) {
+            return ['state' => 'submitted', 'submission' => $replayed];
+        }
+
         $hasText = trim(strip_tags((string) $text)) !== '';
         $maximumFiles = max(1, min(5, (int) ($project->submission_max_files ?: 3)));
         if ($hasText && !(bool) $project->submission_text_enabled) {
@@ -88,7 +100,7 @@ final class ProjectSubmissionOrchestrator
                 $project,
                 $text,
                 $files,
-                trim((string) $idempotencyKey) ?: (string) Str::uuid(),
+                $idempotencyKey ?: (string) Str::uuid(),
                 $metadata
             ),
         ];

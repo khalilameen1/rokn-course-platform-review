@@ -98,7 +98,7 @@ export default function Certificates({
         <StatusView
           actionLabel="إعادة المحاولة"
           description="سنحدّث حالتها تلقائيًا"
-          onAction={loadCertificates}
+          onAction={recoverPendingCertificates}
           state="loading"
           title="شهادتك قيد التجهيز"
         />

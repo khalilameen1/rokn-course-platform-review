@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Jobs\GenerateProjectFeedback;
+use App\Models\AiEntitlementUsage;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
@@ -18,8 +20,10 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\CourseAccessPlanService;
 use App\Services\ProjectSubmissionPresenter;
+use App\Services\ProjectSubmissionOrchestrator;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -47,6 +51,80 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             expectedFeedbackLevel: CourseAccessPlan::FEEDBACK_REPORT,
             expectedCanReply: false
         );
+    }
+
+    public function test_lost_submit_response_replays_before_the_report_budget_is_rechecked(): void
+    {
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        AiEntitlementUsage::query()->create([
+            'enrollment_id' => $fixture['enrollment']->id,
+            'access_plan_id' => $fixture['enrollment']->access_plan_id,
+            'feature' => AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK,
+            'used_requests' => 1,
+            'used_tokens' => 4000,
+        ]);
+
+        $result = app(ProjectSubmissionOrchestrator::class)->submit(
+            $fixture['user'],
+            $fixture['project'],
+            $fixture['text'],
+            [],
+            $fixture['idempotency_key'],
+            []
+        );
+
+        self::assertSame('submitted', $result['state']);
+        self::assertSame($fixture['submission']->id, $result['submission']->id);
+        self::assertSame(1, ProjectSubmission::query()->count());
+
+        $this->expectException(\UnexpectedValueException::class);
+        app(ProjectSubmissionOrchestrator::class)->submit(
+            $fixture['user'],
+            $fixture['project'],
+            'محاولة أخرى بالمفتاح نفسه',
+            [],
+            $fixture['idempotency_key'],
+            []
+        );
+    }
+
+    public function test_replay_after_entitlement_revocation_finishes_without_provider_spend_or_stuck_report(): void
+    {
+        Bus::fake();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $fixture['submission']->feedbackThread->messages()->delete();
+        $fixture['submission']->feedbackThread()->delete();
+        $metadata = (array) $fixture['submission']->submission_metadata;
+        unset($metadata['ai_feedback']);
+        $fixture['submission']->forceFill([
+            'submission_metadata' => $metadata,
+            'review_status' => ProjectSubmission::STATUS_PENDING,
+            'review_source' => null,
+            'score' => null,
+            'feedback' => null,
+            'auto_pass_at' => now()->subSecond(),
+            'reviewed_at' => null,
+        ])->save();
+        $fixture['enrollment']->forceFill(['is_active' => false])->save();
+
+        $result = app(ProjectSubmissionOrchestrator::class)->submit(
+            $fixture['user'],
+            $fixture['project'],
+            $fixture['text'],
+            [],
+            $fixture['idempotency_key'],
+            []
+        );
+        $submission = $result['submission']->fresh();
+        $payload = app(ProjectSubmissionPresenter::class)->present($submission);
+
+        self::assertSame(ProjectSubmission::STATUS_PASSED, $submission->review_status);
+        self::assertSame('unavailable', data_get($submission->submission_metadata, 'ai_feedback.status'));
+        self::assertSame('report_not_included', data_get($submission->submission_metadata, 'ai_feedback.reason'));
+        self::assertSame('failed', $payload['report_status']);
+        self::assertFalse($payload['can_retry_report']);
+        self::assertNull($submission->submission_text);
+        Bus::assertNotDispatched(GenerateProjectFeedback::class);
     }
 
     private function assertPresentationContract(
@@ -78,7 +156,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         }
     }
 
-    /** @return array{submission:ProjectSubmission} */
+    /** @return array{submission:ProjectSubmission,user:User,project:Project,enrollment:CourseEnrollment,text:string,idempotency_key:string} */
     private function submissionFixture(bool $upgradedToEnhanced): array
     {
         $user = new User();
@@ -127,14 +205,20 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             'enrolled_at' => now(),
             'access_granted_at' => now(),
         ])->save();
+        $submissionText = 'محاولة مكتملة';
+        $idempotencyKey = (string) Str::uuid();
         $submission = ProjectSubmission::query()->create([
             'public_id' => (string) Str::uuid(),
             'user_id' => $user->id,
             'project_id' => $project->id,
-            'idempotency_key' => (string) Str::uuid(),
-            'submission_text' => 'محاولة مكتملة',
+            'idempotency_key' => $idempotencyKey,
+            'submission_text' => $submissionText,
             'submission_metadata' => [
                 'ai_feedback' => ['status' => 'completed'],
+                'request_fingerprint' => hash('sha256', json_encode([
+                    'text' => $submissionText,
+                    'files' => [],
+                ], JSON_THROW_ON_ERROR)),
             ],
             'evaluation_snapshot' => ProjectSubmissionEvaluationSnapshot::capture(
                 $project,
@@ -186,7 +270,14 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             ])->save();
         }
 
-        return ['submission' => $submission];
+        return [
+            'submission' => $submission,
+            'user' => $user,
+            'project' => $project,
+            'enrollment' => $enrollment,
+            'text' => $submissionText,
+            'idempotency_key' => $idempotencyKey,
+        ];
     }
 
     /** @return array<string,mixed> */

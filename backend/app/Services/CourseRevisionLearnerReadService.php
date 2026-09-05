@@ -21,33 +21,18 @@ final readonly class CourseRevisionLearnerReadService
     /** @return Collection<int,int> current section IDs */
     public function completedSectionIds(int $userId, iterable $currentSectionIds): Collection
     {
-        $aliases = $this->revisions->equivalentEntityMap(CourseSection::class, $currentSectionIds);
-        $reverse = $this->reverse($aliases);
-        if ($reverse === []) return collect();
-
-        return StudentSectionProgress::query()
-            ->where('user_id', $userId)
-            ->whereIn('course_section_id', array_keys($reverse))
+        return $this->sectionProgressRows($userId, $currentSectionIds)
             ->where('is_completed', true)
             ->pluck('course_section_id')
-            ->map(fn ($id): int => $reverse[(int) $id])
-            ->unique()->values();
+            ->map(static fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
     }
 
     public function completedSectionProgress(int $userId, int $currentSectionId): ?StudentSectionProgress
     {
-        $aliases = $this->revisions->equivalentEntityIds(CourseSection::class, $currentSectionId);
-
-        return StudentSectionProgress::query()
-            ->where('user_id', $userId)
-            ->whereIn('course_section_id', $aliases)
-            ->where('is_completed', true)
-            // Completion is irreversible; retain the original earned time
-            // instead of making a publish look like a new completion.
-            ->orderByRaw('completed_at IS NULL')
-            ->orderBy('completed_at')
-            ->orderBy('id')
-            ->first();
+        return $this->sectionProgressRows($userId, [$currentSectionId])
+            ->first(fn (StudentSectionProgress $row): bool => $row->is_completed);
     }
 
     /** @return Collection<int,StudentSectionProgress> projected to current section IDs */
@@ -63,24 +48,74 @@ final readonly class CourseRevisionLearnerReadService
         ?DateTimeInterface $completedBefore = null
     ): Collection
     {
-        $userIds = collect($userIds)->map(fn ($id): int => (int) $id)->filter()->unique()->values();
+        $userIds = $this->ids($userIds);
         if ($userIds->isEmpty()) return collect();
-        $aliases = $this->revisions->equivalentEntityMap(CourseSection::class, $currentSectionIds);
-        $reverse = $this->reverse($aliases);
-        if ($reverse === []) return collect();
+        $currentSectionIds = $this->ids($currentSectionIds);
+        if ($currentSectionIds->isEmpty()) return collect();
 
-        return StudentSectionProgress::query()
-            ->whereIn('user_id', $userIds)
-            ->whereIn('course_section_id', array_keys($reverse))
-            ->when($completedBefore, function ($query) use ($completedBefore): void {
-                $query->where('is_completed', true)
-                    ->whereNotNull('completed_at')
-                    ->where('completed_at', '<', $completedBefore);
-            })
-            ->get()
-            ->each(fn (StudentSectionProgress $row) =>
-                $row->course_section_id = $reverse[(int) $row->course_section_id]
-            )
+        $projectSections = CourseSection::query()
+            ->whereIn('id', $currentSectionIds)
+            ->where('sectionable_type', Project::class)
+            ->get(['id', 'sectionable_id']);
+        $projectSectionIds = $projectSections->pluck('id')
+            ->map(static fn ($id): int => (int) $id)
+            ->all();
+
+        // A mutable progress row remains the lesson read model only. Project
+        // completion belongs to the latest canonical submission, so even a
+        // legacy project progress row must not compete with that decision.
+        $sectionAliases = $this->revisions->equivalentEntityMap(
+            CourseSection::class,
+            $currentSectionIds
+        );
+        $nonProjectAliases = array_diff_key(
+            $sectionAliases,
+            array_fill_keys($projectSectionIds, true)
+        );
+        $reverse = $this->reverse($nonProjectAliases);
+        $progressRows = $reverse === []
+            ? collect()
+            : StudentSectionProgress::query()
+                ->whereIn('user_id', $userIds)
+                ->whereIn('course_section_id', array_keys($reverse))
+                ->when($completedBefore, function ($query) use ($completedBefore): void {
+                    $query->where('is_completed', true)
+                        ->whereNotNull('completed_at')
+                        ->where('completed_at', '<', $completedBefore);
+                })
+                ->get()
+                ->each(fn (StudentSectionProgress $row) =>
+                    $row->course_section_id = $reverse[(int) $row->course_section_id]
+                );
+
+        $projectIds = $projectSections->pluck('sectionable_id')
+            ->map(static fn ($id): int => (int) $id)
+            ->unique()
+            ->values();
+        $submissions = $this->projectSubmissionsForUsers($userIds, $projectIds);
+        $sectionsByProject = $projectSections->groupBy('sectionable_id');
+        $projectRows = collect();
+        foreach ($submissions as $key => $submission) {
+            [, $projectId] = explode(':', $key, 2);
+            foreach ($sectionsByProject->get((int) $projectId, collect()) as $section) {
+                $row = $this->projectProgressRow(
+                    (int) $submission->user_id,
+                    (int) $section->id,
+                    $submission
+                );
+                if ($completedBefore && (
+                    !$row->is_completed
+                    || !$row->completed_at
+                    || $row->completed_at->getTimestamp() >= $completedBefore->getTimestamp()
+                )) {
+                    continue;
+                }
+                $projectRows->push($row);
+            }
+        }
+
+        return $progressRows
+            ->concat($projectRows)
             ->groupBy(fn (StudentSectionProgress $row): string =>
                 $row->user_id . ':' . $row->course_section_id
             )
@@ -128,22 +163,49 @@ final readonly class CourseRevisionLearnerReadService
         array $with = []
     ): Collection
     {
+        return $this->projectSubmissionsForUsers([$userId], $currentProjectIds, $with)
+            ->mapWithKeys(function (ProjectSubmission $submission, string $key): array {
+                [, $projectId] = explode(':', $key, 2);
+
+                return [(int) $projectId => $submission];
+            });
+    }
+
+    /**
+     * @param iterable<int> $userIds
+     * @param iterable<int> $currentProjectIds
+     * @param list<string> $with
+     * @return Collection<string,ProjectSubmission> keyed by user ID and current project ID
+     */
+    private function projectSubmissionsForUsers(
+        iterable $userIds,
+        iterable $currentProjectIds,
+        array $with = []
+    ): Collection
+    {
+        $userIds = $this->ids($userIds);
+        $currentProjectIds = $this->ids($currentProjectIds);
+        if ($userIds->isEmpty() || $currentProjectIds->isEmpty()) return collect();
+
         $aliases = $this->revisions->equivalentEntityMap(Project::class, $currentProjectIds);
         $reverse = $this->reverse($aliases);
         if ($reverse === []) return collect();
 
         $latestIds = ProjectSubmission::query()
             ->selectRaw('MAX(id)')
-            ->where('user_id', $userId)
+            ->whereIn('user_id', $userIds)
             ->whereIn('project_id', array_keys($reverse))
-            ->groupBy('project_id');
+            ->groupBy('user_id', 'project_id');
 
         return ProjectSubmission::query()
             ->with(array_values(array_unique($with)))
             ->whereIn('id', $latestIds)
             ->orderByDesc('id')
             ->get()
-            ->groupBy(fn (ProjectSubmission $row): int => $reverse[(int) $row->project_id])
+            ->groupBy(fn (ProjectSubmission $row): string => $this->submissionKey(
+                (int) $row->user_id,
+                $reverse[(int) $row->project_id]
+            ))
             ->map(fn (Collection $rows): ProjectSubmission => $rows->first());
     }
 
@@ -182,5 +244,54 @@ final readonly class CourseRevisionLearnerReadService
         }
 
         return $reverse;
+    }
+
+    /** @return Collection<int,int> */
+    private function ids(iterable $ids): Collection
+    {
+        return collect($ids)
+            ->map(static fn ($id): int => (int) $id)
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    private function submissionKey(int $userId, int $projectId): string
+    {
+        return $userId . ':' . $projectId;
+    }
+
+    /**
+     * Build the progress-compatible read model used by existing consumers.
+     * It deliberately remains unsaved: the submission is the durable fact.
+     */
+    private function projectProgressRow(
+        int $userId,
+        int $sectionId,
+        ProjectSubmission $submission
+    ): StudentSectionProgress
+    {
+        $outcome = $submission->reviewOutcome();
+        $completedAt = $outcome['passed']
+            ? ($outcome['reviewed_at']
+                ?? $submission->auto_pass_at
+                ?? $submission->updated_at
+                ?? $submission->submitted_at
+                ?? $submission->created_at)
+            : null;
+        $updatedAt = $submission->updated_at
+            ?? $submission->submitted_at
+            ?? $submission->created_at;
+        $row = new StudentSectionProgress();
+        $row->forceFill([
+            'user_id' => $userId,
+            'course_section_id' => $sectionId,
+            'is_completed' => (bool) $outcome['passed'],
+            'completed_at' => $completedAt,
+            'created_at' => $submission->created_at ?? $submission->submitted_at,
+            'updated_at' => $updatedAt,
+        ]);
+
+        return $row;
     }
 }

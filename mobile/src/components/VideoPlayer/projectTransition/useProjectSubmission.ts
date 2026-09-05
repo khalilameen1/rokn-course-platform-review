@@ -99,8 +99,25 @@ export const useProjectSubmission = ({
   const normalizedNote = cleanUnicodeText(note);
   const textSubmissionEnabled = project.submissionTextEnabled !== false;
   const fileSubmissionEnabled = project.submissionFilesEnabled !== false;
-  const allowedMimeTypes =
-    project.submissionAllowedMimeTypes ?? EMPTY_MIME_TYPES;
+  const allowedMimeTypesKey = Array.from(
+    new Set(
+      (project.submissionAllowedMimeTypes ?? EMPTY_MIME_TYPES)
+        .map(value => String(value || '').trim().toLowerCase())
+        .filter(Boolean),
+    ),
+  )
+    .sort()
+    .join('\n');
+  // Course reloads rebuild API arrays. Keep an equivalent submission contract
+  // referentially stable so a refresh cannot restart draft hydration and wipe
+  // text typed since the last debounced local save.
+  const allowedMimeTypes = useMemo(
+    () =>
+      allowedMimeTypesKey
+        ? allowedMimeTypesKey.split('\n')
+        : EMPTY_MIME_TYPES,
+    [allowedMimeTypesKey],
+  );
   const fileTypesLabel = allowedFileTypesLabel(allowedMimeTypes);
   const maximumFiles = Math.max(
     1,
