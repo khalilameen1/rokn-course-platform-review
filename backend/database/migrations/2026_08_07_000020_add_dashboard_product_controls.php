@@ -19,6 +19,7 @@ return new class extends Migration
             'ai_global_daily_request_limit' => fn (Blueprint $table) => $table->unsignedInteger('ai_global_daily_request_limit')->nullable(),
             'ai_global_daily_token_budget' => fn (Blueprint $table) => $table->unsignedBigInteger('ai_global_daily_token_budget')->nullable(),
             'ai_global_monthly_token_budget' => fn (Blueprint $table) => $table->unsignedBigInteger('ai_global_monthly_token_budget')->nullable(),
+            'ai_answer_cache_minutes' => fn (Blueprint $table) => $table->unsignedSmallInteger('ai_answer_cache_minutes')->nullable(),
         ];
         foreach ($columns as $name => $definition) {
             if (!Schema::hasColumn('settings', $name)) {
@@ -34,6 +35,7 @@ return new class extends Migration
             'ai_global_daily_request_limit',
             'ai_global_daily_token_budget',
             'ai_global_monthly_token_budget',
+            'ai_answer_cache_minutes',
         ], fn (string $column): bool => Schema::hasColumn('settings', $column)));
         if ($columns !== []) {
             Schema::table('settings', function (Blueprint $table) use ($columns): void {

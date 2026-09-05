@@ -12,8 +12,14 @@ return new class extends Migration
     {
         if (Schema::hasTable('users')) {
             Schema::table('users', function (Blueprint $table): void {
+                if (!Schema::hasColumn('users', 'autoplay_next_enabled')) {
+                    $table->boolean('autoplay_next_enabled')->default(true);
+                }
                 if (!Schema::hasColumn('users', 'video_quality_preference')) {
                     $table->string('video_quality_preference', 16)->default('auto');
+                }
+                if (!Schema::hasColumn('users', 'video_fit_mode')) {
+                    $table->string('video_fit_mode', 12)->default('cover');
                 }
                 if (!Schema::hasColumn('users', 'playback_speed')) {
                     $table->decimal('playback_speed', 3, 2)->default(1.00);
@@ -69,7 +75,9 @@ return new class extends Migration
         if (Schema::hasTable('users')) {
             Schema::table('users', function (Blueprint $table): void {
                 $columns = array_values(array_filter([
+                    'autoplay_next_enabled',
                     'video_quality_preference',
+                    'video_fit_mode',
                     'playback_speed',
                 ], fn (string $column): bool => Schema::hasColumn('users', $column)));
                 if ($columns !== []) {

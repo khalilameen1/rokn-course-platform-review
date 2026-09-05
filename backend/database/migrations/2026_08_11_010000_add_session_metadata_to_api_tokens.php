@@ -20,9 +20,6 @@ return new class extends Migration
             if (!Schema::hasColumn($table->getTable(), 'platform')) {
                 $table->string('platform', 16)->nullable()->index();
             }
-            if (!Schema::hasColumn($table->getTable(), 'device_class')) {
-                $table->string('device_class', 12)->nullable();
-            }
             if (!Schema::hasColumn($table->getTable(), 'app_version')) {
                 $table->string('app_version', 32)->nullable();
             }
@@ -47,7 +44,7 @@ return new class extends Migration
 
         Schema::table($tableName, function (Blueprint $table): void {
             $columns = collect([
-                'session_id', 'platform', 'device_class', 'app_version', 'app_build',
+                'session_id', 'platform', 'app_version', 'app_build',
                 'last_used_at', 'revoked_at',
             ])->filter(fn (string $column): bool => Schema::hasColumn($table->getTable(), $column))->all();
 
