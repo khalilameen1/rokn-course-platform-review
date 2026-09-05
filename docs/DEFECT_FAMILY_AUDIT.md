@@ -16,6 +16,18 @@ was changed to satisfy the assertion. The local release Jest run including
 the pending checkout fixes passed 164 suites / 891 tests; TypeScript and
 scoped ESLint passed. This is not authenticated-device acceptance.
 
+Internal candidate `mobile/artifacts/12345.apk` was built successfully from clean
+commit `c46f31f440b4e36fcf62890f8921679e05ad1df5` at
+`2026-09-05T19:51:38Z`, SHA-256
+`e132cf831dac4ec8f49e177bafb9a5cfc832357d1925a6bcefc1f5226c680977`.
+Its manifest confirms `com.rokn`, version 1.0.41 / code 42, minSdk 24,
+targetSdk 36, arm64-v8a / armeabi-v7a / x86_64. It retains the previous
+internal debug signer and deployed production API base. The numbered 1234 APK
+is unchanged, and its original sidecar was preserved. Both use version code 42;
+the artifact hash and source commit, not version alone, distinguish this
+candidate. No in-place installation or authenticated journey was performed,
+and mobile CI `33988165231` was still running when the candidate was built.
+
 Two distinct mobile boundaries were dropping valid server/payment outcomes:
 
 - Foreground recovery joined an in-flight checkout but converted both pending
