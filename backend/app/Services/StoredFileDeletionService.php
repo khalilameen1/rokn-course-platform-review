@@ -11,12 +11,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;
+use League\Flysystem\UnableToRetrieveMetadata;
+use League\Flysystem\UnableToWriteFile;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
 final class StoredFileDeletionService
 {
+    public const REQUEST_UPLOAD_DEADLINE_ATTRIBUTE = 'rokn.storage_upload_deadline';
+
     public function __construct(private readonly StoredFileReferenceService $references)
     {
     }
@@ -74,9 +78,19 @@ final class StoredFileDeletionService
         int $orphanDelayMinutes = 60,
         ?string $operationIdentity = null
     ): string {
+        $this->assertRequestUploadBudget($directory);
         $path = $this->trackedUploadDestination($file, $directory, $disk, $operationIdentity);
-        $this->trackPotentialOrphan($disk, $path, $orphanDelayMinutes);
-        $this->writeTrackedUpload($file, $path, $disk, $operationIdentity !== null);
+        $mightAlreadyBeStored = $this->trackPotentialOrphan(
+            $disk,
+            $path,
+            $orphanDelayMinutes
+        );
+        $this->writeTrackedUpload(
+            $file,
+            $path,
+            $disk,
+            $operationIdentity !== null && $mightAlreadyBeStored
+        );
         return $path;
     }
 
@@ -122,10 +136,39 @@ final class StoredFileDeletionService
         }
         $storage = Storage::disk($disk);
         $expectedSize = (int) $file->getSize();
-        if ($resumeExisting && $storage->exists($path) && (int) $storage->size($path) === $expectedSize) {
-            return;
+        $deadline = $this->requestUploadDeadline();
+        if ($resumeExisting && $deadline === null) {
+            try {
+                // fileSize is one metadata request. exists()+size() issues two
+                // sequential remote calls on S3 before a retry can resume.
+                if ((int) $storage->size($path) === $expectedSize) {
+                    return;
+                }
+            } catch (UnableToRetrieveMetadata) {
+                // The earlier attempt did not finish writing this object.
+                // Reusing the deterministic path makes the following write safe.
+            }
         }
-        $stored = $file->storeAs($directory, $filename, $disk);
+        $options = ['disk' => $disk];
+        if ($deadline !== null) {
+            $remainingSeconds = $this->assertRequestUploadBudget($path);
+            $operationTimeout = max(1.0, min(6.0, $remainingSeconds - 2.0));
+            $options += [
+                // Project files are capped at 25 MB. Keeping them below this
+                // threshold makes the bounded upload one HTTP operation rather
+                // than an unbounded sequence of multipart requests.
+                'mup_threshold' => 64 * 1024 * 1024,
+                'before_upload' => static function ($command) use ($operationTimeout): void {
+                    $command['@retries'] = 0;
+                    $http = is_array($command['@http'] ?? null) ? $command['@http'] : [];
+                    $command['@http'] = array_replace($http, [
+                        'connect_timeout' => min(2.0, $operationTimeout),
+                        'timeout' => $operationTimeout,
+                    ]);
+                },
+            ];
+        }
+        $stored = $file->storeAs($directory, $filename, $options);
         if (!is_string($stored) || ltrim($stored, '/') !== $path) {
             throw new RuntimeException('Tracked file storage failed.');
         }
@@ -136,7 +179,7 @@ final class StoredFileDeletionService
         string $disk,
         string $path,
         int $delayMinutes = 60
-    ): void {
+    ): bool {
         if (DB::transactionLevel() > 0) {
             throw new \LogicException('Potential-orphan ledger must commit before storage bytes are written.');
         }
@@ -167,5 +210,37 @@ final class StoredFileDeletionService
                 'exception' => $exception::class,
             ]);
         }
+
+        // A deterministic caller only needs a remote metadata probe when a
+        // prior request reserved this exact object. Fresh uploads can write
+        // immediately instead of spending part of the HTTP deadline on HEAD.
+        return !$row->wasRecentlyCreated;
+    }
+
+    private function requestUploadDeadline(): ?float
+    {
+        if (!app()->bound('request')) {
+            return null;
+        }
+        $deadline = request()->attributes->get(self::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE);
+
+        return is_numeric($deadline) ? (float) $deadline : null;
+    }
+
+    private function assertRequestUploadBudget(string $path): float
+    {
+        $deadline = $this->requestUploadDeadline();
+        if ($deadline === null) {
+            return INF;
+        }
+        $remaining = $deadline - microtime(true);
+        if ($remaining <= 2.0) {
+            throw UnableToWriteFile::atLocation(
+                trim($path, '/'),
+                'The shared upload request budget was exhausted.'
+            );
+        }
+
+        return $remaining;
     }
 }

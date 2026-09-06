@@ -352,7 +352,11 @@ export const useReelsController = () => {
     }),
     [accountViewGenerationRef, loadedCourseRef],
   );
-  const {refreshProjectState, watchProjectUntilResolved} = useProjectReview({
+  const {
+    refreshProjectState,
+    watchProjectUntilResolved,
+    applyReviewResolution,
+  } = useProjectReview({
     active: isScreenFocused,
     course,
     previewMode,
@@ -481,6 +485,30 @@ export const useReelsController = () => {
             : current,
         );
         watchProjectUntilResolved(projectId);
+      } else if (result.submissionStatus === 'review_unavailable') {
+        setCourse(current =>
+          current
+            ? {
+                ...current,
+                modules: current.modules.map(module => ({
+                  ...module,
+                  projects: module.projects?.map(project =>
+                    project.id === projectId
+                      ? {
+                          ...project,
+                          status: 'review_unavailable',
+                          canContinue: false,
+                          canSubmit: false,
+                          canRetryReview: result.canRetryReview,
+                          reviewRetryEndpoint: result.reviewRetryEndpoint,
+                          reviewFailureCategory: result.reviewFailureCategory,
+                        }
+                      : project,
+                  ),
+                })),
+              }
+            : current,
+        );
       } else if (result.submissionStatus === 'needs_changes') {
         setCourse(current =>
           current
@@ -532,6 +560,7 @@ export const useReelsController = () => {
     setChatVisible,
     onContentOverlayVisibilityChange: handleContentOverlayVisibility,
     submitProject,
+    applyReviewResolution,
     toggleSaved,
     topInset: insets.top,
   });

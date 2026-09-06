@@ -80,11 +80,21 @@ export const mapCourseProject = (
       valueAsString(submission.feedback),
     ),
     canRetryReport: explicitBoolean(submission.can_retry_report),
+    canRetryReview: submission.can_retry_review === true,
+    reviewRetryEndpoint:
+      valueAsString(submission.review_retry_endpoint) || undefined,
+    reviewFailureCategory:
+      valueAsString(submission.review_failure_category) || undefined,
     reportRetryEndpoint:
       valueAsString(submission.report_retry_endpoint) || undefined,
     feedbackThread,
     submissionTextEnabled: valueAsBoolean(content.submission_text_enabled),
     submissionFilesEnabled: valueAsBoolean(content.submission_files_enabled),
+    submissionMaxFileBytes:
+      Number.isFinite(Number(content.submission_max_file_bytes)) &&
+      Number(content.submission_max_file_bytes) > 0
+        ? Number(content.submission_max_file_bytes)
+        : undefined,
     submissionMaxFiles: Math.min(
       5,
       Math.max(1, Number(content.submission_max_files) || 3),

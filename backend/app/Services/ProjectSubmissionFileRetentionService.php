@@ -52,7 +52,7 @@ final class ProjectSubmissionFileRetentionService
 
             $retained = array_intersect_key($metadata, array_flip([
                 'request_fingerprint', 'assessment_type', 'skill_verified',
-                'progression_credit', 'ai_feedback',
+                'progression_credit', 'ai_feedback', 'evaluation',
             ]));
             $retained['files_purged_at'] = now()->toIso8601String();
             $locked->forceFill([

@@ -18,6 +18,22 @@ final class ProjectSubmissionLifecycleTest extends TestCase
         self::assertSame('evaluating', ProjectSubmissionLifecycle::submissionStatus('unexpected'));
     }
 
+    public function test_review_failure_stops_the_spinner_without_rejecting_the_submission(): void
+    {
+        self::assertSame('review_unavailable', ProjectSubmissionLifecycle::submissionStatus(
+            ProjectSubmission::STATUS_PENDING, 'unavailable'
+        ));
+        self::assertSame('evaluating', ProjectSubmissionLifecycle::submissionStatus(
+            ProjectSubmission::STATUS_PENDING, 'processing'
+        ));
+        self::assertSame('passed', ProjectSubmissionLifecycle::submissionStatus(
+            ProjectSubmission::STATUS_PASSED, 'unavailable'
+        ));
+        self::assertSame('needs_changes', ProjectSubmissionLifecycle::submissionStatus(
+            ProjectSubmission::STATUS_NEEDS_RESUBMISSION, 'unavailable'
+        ));
+    }
+
     public function test_an_included_report_has_a_complete_lifecycle_before_and_after_thread_creation(): void
     {
         self::assertSame('queued', ProjectSubmissionLifecycle::reportStatus(true, null, 'queued', ProjectSubmission::STATUS_PASSED));

@@ -35,13 +35,20 @@ $submissionTypes = [
 ];
 
 return [
+    'evaluation_daily_attempt_limit' => (int) env('PROJECT_EVALUATION_DAILY_ATTEMPT_LIMIT', 60),
+    'evaluation_max_output_tokens' => 384,
+    'evaluation_max_input_characters' => 60000,
+    'evaluation_reserve_usd' => '0.050000',
     // Keep learner submissions private while allowing every web/worker node to
     // read the same file. Production should point this at a shared private
     // disk (for example S3); local remains a safe single-node default.
     'submission_disk' => env('PROJECT_SUBMISSION_DISK', 'local'),
-    // The UI can show "under review" briefly, while the server never blocks a
-    // sincere learner because an optional external evaluator is unavailable.
-    'fallback_review_delay_seconds' => (int) env('PROJECT_FALLBACK_REVIEW_DELAY_SECONDS', 90),
+    // Leave enough of the platform's 20-second request deadline to return a
+    // retryable JSON response after a slow multi-file object-storage attempt.
+    'submission_request_budget_seconds' => max(
+        5,
+        min(17, (int) env('PROJECT_SUBMISSION_REQUEST_BUDGET_SECONDS', 16))
+    ),
     'minimum_text_length' => (int) env('PROJECT_MINIMUM_TEXT_LENGTH', 10),
     'minimum_file_bytes' => (int) env('PROJECT_MINIMUM_FILE_BYTES', 512),
     'maximum_file_kilobytes' => (int) env('PROJECT_MAXIMUM_FILE_KILOBYTES', 25600),

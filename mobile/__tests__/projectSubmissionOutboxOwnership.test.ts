@@ -125,6 +125,48 @@ describe('project submission outbox ownership', () => {
     ).toBe(false);
   });
 
+  it.each(['initial', 'status'])(
+    'keeps review unavailable distinct from a rejected upload or project after %s response',
+    async source => {
+      const id = '11111111-1111-4111-8111-111111111111';
+      const submission = {
+        id,
+        submission_status: 'review_unavailable',
+        can_continue: false,
+        can_retry_review: true,
+        review_retry_endpoint: `/api/v1/project-submissions/${id}/review/retry`,
+        review_failure_category: 'provider_unavailable',
+      };
+      mockPost.mockResolvedValueOnce({
+        data: {
+          success: true,
+          data:
+            source === 'initial'
+              ? submission
+              : {...submission, submission_status: 'evaluating'},
+        },
+      });
+      if (source === 'status')
+        mockGet.mockResolvedValueOnce({
+          data: {success: true, data: submission},
+        });
+      await expect(
+        submitProjectAttempt('42', null, 'هذه محاولة واضحة'),
+      ).resolves.toEqual({
+        submissionStatus: 'review_unavailable',
+        accepted: true,
+        canContinue: false,
+        canRetryReview: true,
+        reviewRetryEndpoint: submission.review_retry_endpoint,
+        reviewFailureCategory: 'provider_unavailable',
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockGet).toHaveBeenCalledTimes(source === 'initial' ? 0 : 1);
+      expect(await retryPendingProjectSubmissions()).toEqual([]);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it('keeps the UI attached to the real request and shares it with resume recovery', async () => {
     jest.useFakeTimers();
     const request = deferred<unknown>();

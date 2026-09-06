@@ -65,6 +65,7 @@ describe('course learning facade', () => {
       retryPendingPlaybackPositions: playback.retryPendingPlaybackPositions,
       retryPendingProjectSubmissions: projects.retryPendingProjectSubmissions,
       retryProjectReport: projects.retryProjectReport,
+      retryProjectReview: projects.retryProjectReview,
       retryPendingSectionCompletions: playback.retryPendingSectionCompletions,
       saveLessonToFolder: savedCollections.saveLessonToFolder,
       savePlaybackPosition: playback.savePlaybackPosition,

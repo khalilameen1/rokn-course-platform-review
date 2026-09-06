@@ -9,6 +9,7 @@ export type ProjectJourneyState =
   | 'draft'
   | 'submitting'
   | 'reviewing'
+  | 'review_unavailable'
   | 'passed'
   | 'needs_changes';
 
@@ -41,6 +42,7 @@ export const resolveProjectJourneyState = ({
   if (submitting) return 'submitting';
   if (status === 'passed') return 'passed';
   if (status === 'evaluating') return 'reviewing';
+  if (status === 'review_unavailable') return 'review_unavailable';
   if (status === 'needs_changes' && !editingRetry) return 'needs_changes';
   return draftReady ? 'draft' : 'details';
 };

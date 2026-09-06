@@ -14,6 +14,7 @@ import {
   subscribeProjectSubmissionRecovery,
   type ProjectSubmissionRetryOutcome,
   watchProjectResolution,
+  type ProjectResolution,
 } from '../../components/VideoPlayer/courseLearning/projects';
 
 type ProjectReviewRefs = {
@@ -41,6 +42,7 @@ export const useProjectReview = ({
   const reviewActive = active && appIsActive;
   const pendingMapRefreshRef = useRef<string | null>(null);
   const mapRefreshSequenceRef = useRef(0);
+  const stopReviewRef = useRef<(() => void) | undefined>(undefined);
   const courseProjectIds =
     course?.modules
       .flatMap(module => module.projects || [])
@@ -51,6 +53,34 @@ export const useProjectReview = ({
   useEffect(() => {
     pendingMapRefreshRef.current = null;
   }, [course?.id]);
+
+  const publishReviewResolution = useCallback(
+    (projectId: string, resolution: ProjectResolution) => {
+      if (!refs.mounted.current || refs.loadedCourse.current?.id !== course?.id)
+        return;
+      setCourse(current =>
+        !current || current.id !== course?.id
+          ? current
+          : {
+              ...current,
+              modules: current.modules.map(module => ({
+                ...module,
+                projects: module.projects?.map(project =>
+                  project.id !== projectId
+                    ? project
+                    : {
+                        ...project,
+                        ...resolution,
+                        feedbackThread: resolution.feedbackThread ?? undefined,
+                        canContinue: false,
+                      },
+                ),
+              })),
+            },
+      );
+    },
+    [course?.id, refs, setCourse],
+  );
 
   const refreshProjectState = useCallback(
     async (projectId: string) => {
@@ -101,12 +131,23 @@ export const useProjectReview = ({
     (projectId: string) => {
       if (!reviewActive) return;
       if (refs.watchedProject.current === projectId) return;
+      stopReviewRef.current?.();
       refs.watchedProject.current = projectId;
       const watcher = ++refs.reviewWatcher.current;
-      watchProjectResolution({
+      stopReviewRef.current = watchProjectResolution({
         projectId,
         resolve: async currentProjectId => {
           const resolution = await loadProjectResolution(currentProjectId);
+          if (resolution.status === 'review_unavailable') {
+            if (
+              refs.reviewWatcher.current === watcher &&
+              refs.mounted.current
+            ) {
+              pendingMapRefreshRef.current = null;
+              publishReviewResolution(currentProjectId, resolution);
+            }
+            return {status: resolution.status, canContinue: false};
+          }
           if (
             resolution.status !== 'passed' &&
             resolution.status !== 'needs_changes'
@@ -126,7 +167,10 @@ export const useProjectReview = ({
           pendingMapRefreshRef.current = currentProjectId;
           return {status: 'evaluating' as const, canContinue: false};
         },
-        isActive: () => reviewActive && refs.reviewWatcher.current === watcher,
+        isActive: () =>
+          reviewActive &&
+          refs.mounted.current &&
+          refs.reviewWatcher.current === watcher,
         initialDelayMs: 2500,
         onExhausted: () => {
           if (refs.reviewWatcher.current === watcher) {
@@ -136,6 +180,7 @@ export const useProjectReview = ({
         onResolution: refreshed => {
           if (
             refreshed.status === 'passed' ||
+            refreshed.status === 'review_unavailable' ||
             refreshed.status === 'needs_changes'
           ) {
             refs.watchedProject.current = null;
@@ -143,14 +188,26 @@ export const useProjectReview = ({
         },
       });
     },
-    [refreshProjectState, refs, reviewActive],
+    [publishReviewResolution, refreshProjectState, refs, reviewActive],
+  );
+
+  const applyReviewResolution = useCallback(
+    (projectId: string, resolution: ProjectResolution) => {
+      publishReviewResolution(projectId, resolution);
+      if (resolution.status !== 'review_unavailable')
+        watchProjectUntilResolved(projectId);
+    },
+    [publishReviewResolution, watchProjectUntilResolved],
   );
 
   useEffect(() => {
-    if (reviewActive) return;
-    refs.reviewWatcher.current += 1;
-    refs.watchedProject.current = null;
-  }, [refs, reviewActive]);
+    return () => {
+      stopReviewRef.current?.();
+      stopReviewRef.current = undefined;
+      refs.reviewWatcher.current += 1;
+      refs.watchedProject.current = null;
+    };
+  }, [course?.id, refs, reviewActive]);
 
   useEffect(() => {
     if (!course || previewMode || !reviewActive) return;
@@ -225,5 +282,9 @@ export const useProjectReview = ({
     watchProjectUntilResolved,
   ]);
 
-  return {refreshProjectState, watchProjectUntilResolved};
+  return {
+    refreshProjectState,
+    watchProjectUntilResolved,
+    applyReviewResolution,
+  };
 };

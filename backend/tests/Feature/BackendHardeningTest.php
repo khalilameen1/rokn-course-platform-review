@@ -592,7 +592,7 @@ final class BackendHardeningTest extends TestCase
         ]);
     }
 
-    public function test_graceful_project_fallback_grants_progress_without_claiming_a_skill_score(): void
+    public function test_review_recovery_deadline_does_not_grant_progress_before_a_decision(): void
     {
         Bus::fake();
         $student = $this->user();
@@ -619,10 +619,10 @@ final class BackendHardeningTest extends TestCase
 
         $submission = $service->finalizeIfDue($submission->fresh());
 
-        self::assertSame(ProjectSubmission::STATUS_PASSED, $submission->review_status);
-        self::assertSame('graceful_fallback', $submission->review_source);
+        self::assertSame(ProjectSubmission::STATUS_PENDING, $submission->review_status);
+        self::assertNull($submission->review_source);
         self::assertNull($submission->score);
-        self::assertSame('participation', data_get($submission->submission_metadata, 'assessment_type'));
+        self::assertSame('queued', data_get($submission->submission_metadata, 'evaluation.status'));
         self::assertFalse((bool) data_get($submission->submission_metadata, 'skill_verified'));
         self::assertNull(data_get($submission->submission_metadata, 'ai_feedback'));
         Bus::assertNotDispatched(GenerateProjectFeedback::class);

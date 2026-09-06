@@ -5,10 +5,12 @@ import {resolveProjectReportViewState} from '../courseLearning/projectJourney';
 import {useProjectFeedback} from './useProjectFeedback';
 import {useProjectResolution} from './useProjectResolution';
 import {useProjectSubmission} from './useProjectSubmission';
+import type {ProjectResolution} from '../courseLearning/projectRemote';
 
 type ControllerInput = {
   active: boolean;
   project: CourseProject;
+  onReviewResolution?: (resolution: ProjectResolution) => void;
   onSubmit: (
     files: SelectedProjectFile[],
     note?: string,
@@ -26,9 +28,15 @@ export const useProjectTransitionController = ({
   active,
   project,
   onSubmit,
+  onReviewResolution,
 }: ControllerInput) => {
   const appIsActive = useAppForegroundState();
-  const resolution = useProjectResolution({active, appIsActive, project});
+  const resolution = useProjectResolution({
+    active,
+    appIsActive,
+    project,
+    onReviewResolution,
+  });
   const submission = useProjectSubmission({
     appIsActive,
     project,
@@ -81,12 +89,18 @@ export const useProjectTransitionController = ({
     reportViewState,
     retryFeedbackMessage: feedback.retryMessage,
     retryReport: resolution.retryReport,
+    retryReview: resolution.retryReview,
+    reviewRetryAvailable: resolution.reviewRetryAvailable,
+    reviewRetrying: resolution.reviewRetrying,
+    reviewRecoveryRequired: resolution.reviewRecoveryRequired,
+    reviewRecoveryError: resolution.reviewRecoveryError,
     reviewFeedback: resolution.reviewFeedback,
     sendFeedback: feedback.send,
     selectedFiles: submission.selectedFiles,
     submissionAllowed: submission.submissionAllowed,
     submissionDraftSaveError: submission.draftSaveError,
     submissionMaximumFiles: submission.maximumFiles,
+    submissionMaximumFileSizeLabel: submission.maximumFileSizeLabel,
     submissionNote: submission.note,
     submissionSending: submission.sending,
     submit: submission.submit,

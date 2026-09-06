@@ -24,12 +24,17 @@ final class AiFailurePolicy
             'chat_entitlement_unavailable',
             'entitlement_unavailable',
             'account_unavailable',
+            'review_access_unavailable',
             'reply_not_included',
             'report_not_included' => $this->result('entitlement', false, 0),
 
             'chat_attachment_unavailable',
             'chat_attachment_unreadable',
             'attachment_unavailable' => $this->result('attachment', false, 0),
+
+            'review_input_unavailable' => $this->result('attachment', true, 3),
+            'review_daily_limit' => $this->result('review_limit', false, 0),
+            'review_result_unavailable' => $this->result('provider', false, 0),
 
             'chat_attachment_claim_failed',
             'chat_usage_identity_mismatch',
@@ -42,6 +47,7 @@ final class AiFailurePolicy
             'ai_configuration_unavailable',
             'ai_request_rejected' => $this->result('provider', false, 0),
             'ai_temporarily_unavailable',
+            'review_provider_unavailable',
             'provider_unavailable' => $this->result('provider', true, 30),
 
             'learner_cancelled',

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 
 final class AiUsageEvent extends Model
 {
+    public const FEATURE_PROJECT_REVIEW = 'project_review';
+
     protected $guarded = [];
     protected $casts = [
         'reserved_tokens' => 'integer', 'prompt_tokens' => 'integer',

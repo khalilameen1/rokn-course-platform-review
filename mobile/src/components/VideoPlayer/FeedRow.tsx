@@ -13,6 +13,7 @@ import FeedFooter from './FeedFooter';
 import FeedHeader from './FeedHeader';
 import FeedSideBar from './FeedSideBar';
 import ProjectTransition from './ProjectTransition';
+import type {ProjectResolution} from './courseLearning/projectRemote';
 import type {
   ProjectSubmissionOutcome,
   SavedFolderOption,
@@ -58,6 +59,7 @@ interface FeedRowProps {
     note?: string,
   ) => Promise<ProjectSubmissionOutcome>;
   onContinueAfterProject?: () => void;
+  onReviewResolution?: (resolution: ProjectResolution) => void;
 }
 
 const FeedRow = ({
@@ -90,6 +92,7 @@ const FeedRow = ({
   onPlaybackMetrics,
   onSubmitProject,
   onContinueAfterProject,
+  onReviewResolution,
 }: FeedRowProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const attachmentClockRef = useRef(0);
@@ -219,6 +222,7 @@ const FeedRow = ({
           topInset={topInset}
           bottomInset={bottomInset}
           onSubmit={onSubmitProject}
+          onReviewResolution={onReviewResolution}
           onContinue={onContinueAfterProject}
         />
       </View>

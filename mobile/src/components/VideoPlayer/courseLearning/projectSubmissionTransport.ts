@@ -53,6 +53,15 @@ const parseSubmissionResult = (payload: DataRecord): SubmissionSyncResult => {
     ),
     accepted: true,
     canContinue: valueAsBoolean(payload.can_continue),
+    ...('can_retry_review' in payload
+      ? {
+          canRetryReview: payload.can_retry_review === true,
+          reviewRetryEndpoint:
+            valueAsString(payload.review_retry_endpoint) || undefined,
+          reviewFailureCategory:
+            valueAsString(payload.review_failure_category) || undefined,
+        }
+      : {}),
     ...(reviewFeedback ? {reviewFeedback} : {}),
   };
 };
@@ -106,6 +115,7 @@ const pollProjectSubmission = async (
       const result = parseSubmissionResult(unwrapResponseData(response));
       if (
         result.submissionStatus === 'passed' ||
+        result.submissionStatus === 'review_unavailable' ||
         result.submissionStatus === 'needs_changes'
       ) {
         return result;
@@ -184,6 +194,7 @@ const performProjectSubmissionSync = async (
   const immediateResult = parseSubmissionResult(payload);
   if (
     immediateResult.submissionStatus === 'passed' ||
+    immediateResult.submissionStatus === 'review_unavailable' ||
     immediateResult.submissionStatus === 'needs_changes'
   ) {
     return immediateResult;

@@ -40,9 +40,10 @@ const publicId = (value: string, field: string) => {
 };
 
 const payloadFrom = (response: unknown): DataRecord => {
-  const root = asRecord(response);
-  const data = asRecord(root.data);
-  return Object.keys(data).length > 0 ? data : root;
+  // publicRequest returns AxiosResponse, not the API body. Project endpoints
+  // put their business payload inside the body's explicit `data` envelope.
+  const body = asRecord(asRecord(response).data);
+  return asRecord(body.data);
 };
 
 export const parseProjectSubmissionStatus = (
@@ -53,6 +54,7 @@ export const parseProjectSubmissionStatus = (
   if (
     status === 'draft' ||
     status === 'evaluating' ||
+    status === 'review_unavailable' ||
     status === 'passed' ||
     status === 'needs_changes'
   ) {
@@ -102,6 +104,10 @@ export const loadProjectResolution = async (projectId: string) => {
   );
   assertAccountSessionBoundary(boundary);
   const submission = asRecord(payloadFrom(response).latest_submission);
+  return projectResolutionFromSubmission(submission);
+};
+
+const projectResolutionFromSubmission = (submission: DataRecord) => {
   if (!submission.id) throw new Error('PROJECT_SUBMISSION_CONTRACT_INVALID');
   const status = parseProjectSubmissionStatus(
     submission.submission_status,
@@ -125,10 +131,36 @@ export const loadProjectResolution = async (projectId: string) => {
       valueAsString(submission.feedback),
     ),
     canRetryReport: valueAsBoolean(submission.can_retry_report),
+    canRetryReview: submission.can_retry_review === true,
+    reviewRetryEndpoint:
+      valueAsString(submission.review_retry_endpoint) || undefined,
+    reviewFailureCategory:
+      valueAsString(submission.review_failure_category) || undefined,
     reportRetryEndpoint:
       valueAsString(submission.report_retry_endpoint) || undefined,
     feedbackThread: mapProjectFeedbackThread(submission.feedback_thread),
   };
+};
+
+export type ProjectResolution = ReturnType<
+  typeof projectResolutionFromSubmission
+>;
+
+export const retryProjectReview = async (
+  endpoint: string,
+): Promise<ProjectResolution> => {
+  const route = endpoint.replace(/^\/?api\/v1\//, '');
+  const match = /^project-submissions\/([^/]+)\/review\/retry$/.exec(route);
+  if (!match) throw new Error('INVALID_PROJECT_REVIEW_RETRY_ENDPOINT');
+  const submissionId = publicId(match[1], 'PROJECT_SUBMISSION');
+  const boundary = await captureAccountSessionBoundary();
+  const response = await publicRequest.post(route, undefined, {timeout: 30000});
+  assertAccountSessionBoundary(boundary);
+  const payload = payloadFrom(response);
+  if (valueAsString(payload.id).toLowerCase() !== submissionId) {
+    throw new Error('PROJECT_SUBMISSION_CONTRACT_INVALID');
+  }
+  return projectResolutionFromSubmission(payload);
 };
 
 export const retryProjectReport = async (endpoint: string): Promise<void> => {
@@ -147,7 +179,7 @@ export const watchProjectResolution = <T extends {status: ProjectStatus}>({
   onResolution,
   onExhausted,
   isActive = () => true,
-  maxAttempts = 30,
+  maxAttempts = Number.POSITIVE_INFINITY,
   initialDelayMs = 0,
 }: {
   projectId: string;
@@ -183,18 +215,39 @@ export const watchProjectResolution = <T extends {status: ProjectStatus}>({
         onResolution(resolution);
         if (
           resolution.status === 'passed' ||
+          resolution.status === 'review_unavailable' ||
           resolution.status === 'needs_changes'
         ) {
           return;
         }
       }
-    } catch {}
+    } catch (error) {
+      if (cancelled || !isActive()) return;
+      if (
+        error instanceof Error &&
+        [
+          'PROJECT_SUBMISSION_CONTRACT_INVALID',
+          'PROJECT_REPORT_CONTRACT_INVALID',
+        ].includes(error.message)
+      ) {
+        onExhausted?.();
+        return;
+      }
+    }
+    if (cancelled || !isActive()) return;
     if (attempt >= maxAttempts) {
       onExhausted?.();
       return;
     }
     if (!cancelled && isActive()) {
-      schedule(Math.min(12000, 2200 * Math.pow(1.4, Math.min(7, attempt - 1))));
+      // A delayed queue or a temporary outage is not a project decision.
+      // Keep the visible review fresh instead of silently abandoning it after
+      // five minutes, but reduce background read traffic during long waits.
+      schedule(
+        attempt >= 30
+          ? 30000
+          : Math.min(12000, 2200 * Math.pow(1.4, Math.min(7, attempt - 1))),
+      );
     }
   };
 

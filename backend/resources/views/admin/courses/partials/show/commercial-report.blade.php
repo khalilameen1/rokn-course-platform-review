@@ -246,7 +246,7 @@
                         <td>
                             {{ number_format($row['ai_requests']) }} طلب AI · {{ number_format($row['ai_tokens']) }} توكن<br>
                             @foreach(($row['ai_by_feature'] ?? []) as $feature => $featureUsage)
-                                <small>{{ ['course_chat' => 'شات الكورس', 'project_feedback' => 'تقرير المشروع', 'project_followup' => 'متابعة المشروع'][$feature] ?? $feature }} · {{ number_format($featureUsage['delivered_requests']) }} مكتمل · {{ number_format($featureUsage['unanswered_requests']) }} بلا نتيجة · ${{ number_format($featureUsage['cost_usd'], 6) }}</small><br>
+                                <small>{{ \App\Services\CourseCostReportService::aiFeatureLabels()[$feature] ?? $feature }} · {{ number_format($featureUsage['delivered_requests']) }} مكتمل · {{ number_format($featureUsage['unanswered_requests']) }} بلا نتيجة · ${{ number_format($featureUsage['cost_usd'], 6) }}</small><br>
                             @endforeach
                             ${{ number_format($row['ai_cost_usd'], 6) }} · {{ number_format($row['playback_minutes'], 0) }} دقيقة
                         </td>

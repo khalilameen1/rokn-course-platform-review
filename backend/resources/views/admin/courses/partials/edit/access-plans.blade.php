@@ -41,9 +41,10 @@
                         <span>مدفوعة <strong>{{ number_format($stats['paid_coins']) }}</strong></span>
                         <span>مكافآت <strong>{{ number_format($stats['reward_coins']) }}</strong></span>
                         <span>طلبات الشات <strong>{{ number_format($stats['chat_requests']) }}</strong></span>
-                        <span>مراجعات المشاريع <strong>{{ number_format($stats['project_requests']) }}</strong></span>
+                        <span>مراجعة المشروع <strong>{{ number_format($stats['review_requests']) }}</strong></span>
+                        <span>تقارير المشاريع <strong>{{ number_format($stats['project_requests']) }}</strong></span>
                         <span>رسائل المتابعة <strong>{{ number_format($stats['followup_requests']) }}</strong></span>
-                        <span class="course-editor__plan-stats-total">تكلفة OpenRouter <strong>${{ number_format($stats['chat_cost_usd'] + $stats['project_cost_usd'] + $stats['followup_cost_usd'], 6) }}</strong></span>
+                        <span class="course-editor__plan-stats-total">تكلفة OpenRouter <strong>${{ number_format($stats['chat_cost_usd'] + $stats['review_cost_usd'] + $stats['project_cost_usd'] + $stats['followup_cost_usd'], 6) }}</strong></span>
                         @if($stats['incomplete_orders'])
                             <span class="course-editor__plan-stats-total text-warning">عمليات تحتاج ربط الدفتر <strong>{{ number_format($stats['incomplete_orders']) }}</strong></span>
                         @endif

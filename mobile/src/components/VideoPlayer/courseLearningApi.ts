@@ -46,6 +46,7 @@ export {
   loadProjectFeedbackThread,
   loadProjectResolution,
   retryProjectReport,
+  retryProjectReview,
   watchProjectResolution,
   openProjectInputAttachment,
   sendProjectFeedbackMessage,

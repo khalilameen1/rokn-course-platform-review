@@ -136,3 +136,47 @@ availability. First partial arrived at 0.77 seconds and completion at 7.05 secon
 in that one sample. The stale authentication circuit was cleared only after the
 key check succeeded. The sample still contained unwanted punctuation and excess
 paragraphs, so voice consistency is not considered closed by this result.
+
+## Project review follow-up — 1.0.45
+
+Production command 105 found one committed submission for the reported project.
+The server accepted it after 96 seconds through `graceful_fallback`, not through
+a relevance evaluation. Command 106 confirmed the live controller returned HTTP
+200 and `data.latest_submission.submission_status=passed` with continuation allowed.
+
+- Mobile project reads unwrapped Axios but not the API body's `data` envelope.
+  Resolution, report/thread hydration and attachment metadata now use the actual
+  two-layer contract. Regression fixtures now represent the real HTTP response.
+- Pending reviews no longer auto-pass after an artificial delay. A queued review
+  examines the published project requirements and actual submission, accepts
+  genuine relevant effort and asks for a new attempt for unrelated work. It does
+  not assign a mastery score or generate a paid report for pass-only access.
+  Review cost is recorded separately without debiting course message allowances.
+- Provider failure is an explicit `review_unavailable` state, not a rejection or
+  a perpetual spinner. Safe retry reuses the existing submission and request
+  identity. Unknown paid outcomes are not blindly sent to the provider again.
+- Temporary files stay available until a decision and any included report are
+  finished. Cleanup preserves the decision metadata. Existing passed progress
+  is not revoked. Retry and course-map refresh use the same server decision.
+- Project upload storage work shares one request deadline. New uploads no longer
+  issue unnecessary HEAD requests and failures return retryable JSON. This does
+  not establish what caused the first uncommitted random-image upload to fail.
+
+The production log also shows Nightwatch ingestion blocked by a quota response.
+It is not evidence that the project review itself failed and is not resolved by
+this code change. No billing plan or telemetry credentials were changed.
+
+A live provider-only probe used two generated 400px images and the review
+instructions: the matching blue circle returned `relevant_effort` in 2.27 seconds
+and the unrelated red/green rectangles returned `needs_changes` in 2.26 seconds.
+Both responses were valid JSON with a correct visual reason. Combined reported
+provider cost was USD 0.004192. This verifies those two provider decisions, not
+device upload latency or universal grading accuracy. It changed no learner rows.
+
+Validation: all 177 mobile suites / 971 tests passed. TypeScript and release
+ESLint passed. The complete backend run executed 1213 tests with three skips;
+its two failures were expectations of the removed timed auto-pass. They now
+assert that expiry cannot approve work and that a real decision precedes the
+notification; both reran successfully (2 tests / 16 assertions). The new review
+and upload tests include valid/irrelevant images, provider uncertainty, preserved
+paid results, long document text, upload limits and shared-storage failures.

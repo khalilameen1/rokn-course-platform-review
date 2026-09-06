@@ -22,6 +22,7 @@ type Props = {
   filePickerDisabled: boolean;
   fileTypesLabel: string;
   maximumFiles: number;
+  maximumFileSizeLabel?: string;
   note: string;
   selectedFiles: SelectedProjectFile[];
   sending: boolean;
@@ -52,6 +53,7 @@ const ProjectSubmissionEditor = ({
   filePickerDisabled,
   fileTypesLabel,
   maximumFiles,
+  maximumFileSizeLabel,
   note,
   selectedFiles,
   sending,
@@ -107,6 +109,11 @@ const ProjectSubmissionEditor = ({
                 : `يمكنك إضافة ${maximumFiles - selectedFiles.length}`
               : fileTypesLabel}
           </Text>
+          {!!maximumFileSizeLabel && (
+            <Text style={styles.uploadHint}>
+              الحد الأقصى للملف {maximumFileSizeLabel}
+            </Text>
+          )}
         </View>
       </Pressable>
     )}

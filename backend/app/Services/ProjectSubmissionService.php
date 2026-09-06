@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Jobs\GenerateProjectFeedback;
+use App\Jobs\EvaluateProjectSubmission;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\CourseSection;
@@ -129,6 +130,45 @@ final class ProjectSubmissionService
             ->first();
         if ($activeSubmission) {
             return $this->finalizeIfDue($activeSubmission);
+        }
+
+        $maximumFileBytes = ProjectSubmissionOrchestrator::maximumFileBytes();
+        $maximumInputCharacters = max(
+            1000,
+            (int) config('projects.evaluation_max_input_characters', 60000)
+        );
+        $reviewInputCharacters = mb_strlen(
+            UnicodeText::clean((string) $project->requirements_text)
+        ) + mb_strlen(UnicodeText::clean((string) $text));
+        foreach ($files as $file) {
+            if ((int) $file->getSize() > $maximumFileBytes) {
+                throw ValidationException::withMessages([
+                    'submission_files' => ['الملف أكبر من الحد المتاح لمراجعة المشروع'],
+                ]);
+            }
+            try {
+                $reviewInputCharacters += $this->attachments->reviewInputCharacterCount($file);
+            } catch (\UnexpectedValueException) {
+                throw ValidationException::withMessages([
+                    'submission_files' => [
+                        'تعذّرت قراءة أحد الملفات اختر ملفًا مقروءًا أو ارفعه كصورة أو PDF',
+                    ],
+                ]);
+            }
+            if ($reviewInputCharacters > $maximumInputCharacters) {
+                throw ValidationException::withMessages([
+                    'submission_files' => [
+                        'محتوى الملفات أطول من مساحة المراجعة قلّل النص أو قسّمه بوضوح',
+                    ],
+                ]);
+            }
+        }
+        if ($reviewInputCharacters > $maximumInputCharacters) {
+            throw ValidationException::withMessages([
+                ($files === [] ? 'submission_text' : 'submission_files') => [
+                    'محتوى المشروع أطول من مساحة المراجعة قلّل النص أو قسّمه بوضوح',
+                ],
+            ]);
         }
 
         $effortStatus = $this->detectEffort($text, $files);
@@ -298,22 +338,25 @@ final class ProjectSubmissionService
                         // PROJECT_SUBMISSION_DISK later must not orphan uploads
                         // created by an older web or queue node.
                         'storage_disk' => $submissionDisk,
+                        'evaluation' => $isInvalid ? null : [
+                            'version' => 1,
+                            'status' => 'queued',
+                            'request_id' => (string) Str::uuid(),
+                            'queued_at' => now()->toIso8601String(),
+                            'retry_count' => 0,
+                            'retry_safe' => false,
+                        ],
                     ]),
                     'evaluation_snapshot' => $evaluationSnapshot,
                     'effort_status' => $effortStatus,
-                    // Empty/black/solid attempts are the only immediate stop.
-                    // A sincere attempt keeps the short reviewing state and then passes.
+                    // Nonblank input still needs a relevance decision before progression.
                     'review_status' => $reviewStatus,
                     'review_source' => $isInvalid ? 'effort_guard' : null,
                     'score' => $isInvalid ? 0 : null,
                     'feedback' => $feedback,
                     'submitted_at' => now(),
-                    'auto_pass_at' => $isInvalid
-                        ? null
-                        : now()->addSeconds(max(1, (int) (
-                            $projectSnapshot->fallback_review_delay_seconds
-                            ?? config('projects.fallback_review_delay_seconds', 8)
-                        ))),
+                    // Retained as a durable recovery deadline, never an automatic pass.
+                    'auto_pass_at' => $isInvalid ? null : now(),
                     'reviewed_at' => $isInvalid ? now() : null,
                 ]);
 
@@ -372,15 +415,11 @@ final class ProjectSubmissionService
 
     public function finalizeIfDue(ProjectSubmission $submission): ProjectSubmission
     {
-        if (
-            $submission->review_status !== ProjectSubmission::STATUS_PENDING
-            || !$submission->auto_pass_at
-            || $submission->auto_pass_at->isFuture()
-        ) {
+        if ($submission->review_status !== ProjectSubmission::STATUS_PENDING) {
             return $submission;
         }
-
-        $result = DB::transaction(function () use ($submission): ProjectSubmission {
+        $dispatch = false;
+        $result = DB::transaction(function () use ($submission, &$dispatch): ProjectSubmission {
             // Account deletion owns the learner row before scrubbing this
             // aggregate. Taking the same owner lock first prevents a delayed
             // fallback job from recreating review/progress data afterwards.
@@ -388,7 +427,7 @@ final class ProjectSubmissionService
                 ->whereKey($submission->user_id)
                 ->lockForUpdate()
                 ->first();
-            if (!$learner) {
+            if (!$learner || !$learner->active) {
                 return $submission->fresh();
             }
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
@@ -396,27 +435,53 @@ final class ProjectSubmissionService
                 return $locked;
             }
 
-            $wasAlreadyPassed = $this->hasPassedProject(
-                (int) $locked->user_id,
-                (int) $locked->project_id
-            );
-            $passed = $wasAlreadyPassed
-                || $locked->effort_status !== ProjectSubmission::EFFORT_INVALID;
-            $feedback = $passed
-                ? "استلمنا محاولة واضحة وفتحنا لك المقطع التالي\nهذا قبول للاستكمال وليس تقييمًا للعمل"
-                : "المحاولة غير واضحة بما يكفي للمراجعة\nارفع صورة أو ملفًا يوضح ما نفذته";
-
-            return $this->applyReviewOutcome(
-                $locked,
-                $passed,
-                'graceful_fallback',
-                $feedback
-            );
+            $metadata = (array) $locked->submission_metadata;
+            $evaluation = (array) ($metadata['evaluation'] ?? []);
+            if (in_array($evaluation['status'] ?? '', ['ready', 'unavailable'], true)) return $locked;
+            if ($evaluation !== [] && $locked->auto_pass_at?->isFuture()) return $locked;
+            if ($evaluation === []) {
+                $evaluation = ['version' => 1, 'status' => 'queued',
+                    'request_id' => (string) Str::uuid(), 'queued_at' => now()->toIso8601String(),
+                    'retry_count' => 0, 'retry_safe' => false];
+            }
+            $metadata['evaluation'] = $evaluation;
+            $locked->forceFill(['submission_metadata' => $metadata,
+                'auto_pass_at' => now()->addSeconds(100)])->save();
+            $dispatch = true;
+            return $locked;
         });
+        if ($dispatch) {
+            try {
+                DurableJobDispatch::afterCommit(new EvaluateProjectSubmission((int) $result->id));
+            } catch (\Throwable $exception) {
+                // The pending marker remains durable for the minute recovery worker.
+                report($exception);
+            }
+        }
+        return $result->fresh();
+    }
 
-        $this->completeReportHandoff($result);
-
-        return $result;
+    public function applyEvaluationOutcome(ProjectSubmission $submission, string $requestId, bool $passed, string $feedback): ProjectSubmission
+    {
+        $reviewed = DB::transaction(function () use ($submission, $requestId, $passed, $feedback): ProjectSubmission {
+            $active = User::query()->whereKey($submission->user_id)->where('active', true)->lockForUpdate()->exists();
+            $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
+            if (!$active || $locked->review_status !== ProjectSubmission::STATUS_PENDING
+                || data_get($locked->submission_metadata, 'evaluation.request_id') !== $requestId) return $locked;
+            // A late worker cannot revoke progression granted by an earlier attempt.
+            $passed = $passed || $this->hasPassedProject((int) $locked->user_id, (int) $locked->project_id);
+            $metadata = (array) $locked->submission_metadata;
+            $metadata['evaluation'] = array_merge((array) $metadata['evaluation'], [
+                'status' => 'ready', 'decision' => $passed ? 'relevant_effort' : 'needs_changes',
+                'completed_at' => now()->toIso8601String(), 'retry_safe' => false,
+            ]);
+            unset($metadata['evaluation']['reason'], $metadata['evaluation']['failed_at']);
+            $locked->forceFill(['submission_metadata' => $metadata, 'auto_pass_at' => null])->save();
+            return $this->applyReviewOutcome($locked, $passed, 'relevance_review', $feedback);
+        }, 3);
+        if ($reviewed->review_status === ProjectSubmission::STATUS_PASSED) $this->completeReportHandoff($reviewed);
+        $this->fileRetention->purgeIfEligible($reviewed);
+        return $reviewed->fresh();
     }
 
     public function reviewByStaff(
@@ -509,14 +574,14 @@ final class ProjectSubmissionService
         $isParticipationAcceptance = $passed && $source === 'graceful_fallback';
         // The forgiving fallback grants progression only. A numeric score is
         // evidence of assessment, so it is reserved for a human review.
-        $score = $passed ? ($isParticipationAcceptance ? null : 100) : 0;
+        $score = $source === 'relevance_review' ? null : ($passed ? ($isParticipationAcceptance ? null : 100) : 0);
         $reviewedAt = now();
         $metadata = is_array($locked->submission_metadata)
             ? $locked->submission_metadata
             : [];
         $metadata['assessment_type'] = $isParticipationAcceptance
             ? 'participation'
-            : ($source === 'admin_manual' ? 'human_review' : 'effort_guard');
+            : ($source === 'admin_manual' ? 'human_review' : ($source === 'relevance_review' ? 'relevance_review' : 'effort_guard'));
         $metadata['skill_verified'] = $passed && $source === 'admin_manual';
         $metadata['progression_credit'] = $passed;
         if ($passed
@@ -618,8 +683,13 @@ final class ProjectSubmissionService
         $count = 0;
         ProjectSubmission::query()
             ->where('review_status', ProjectSubmission::STATUS_PENDING)
-            ->whereNotNull('auto_pass_at')
-            ->where('auto_pass_at', '<=', now())
+            ->where(function ($query): void {
+                $query->whereNull('auto_pass_at')->orWhere('auto_pass_at', '<=', now());
+            })
+            ->where(function ($query): void {
+                $query->whereNull('submission_metadata->evaluation->status')
+                    ->orWhereIn('submission_metadata->evaluation->status', ['queued', 'processing']);
+            })
             ->orderBy('id')
             ->limit($limit)
             ->get()

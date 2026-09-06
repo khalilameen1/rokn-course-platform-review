@@ -9,6 +9,7 @@ use App\Models\ProjectSubmission;
 final class ProjectSubmissionLifecycle
 {
     public const EVALUATING = 'evaluating';
+    public const REVIEW_UNAVAILABLE = 'review_unavailable';
     public const PASSED = 'passed';
     public const NEEDS_CHANGES = 'needs_changes';
 
@@ -18,10 +19,12 @@ final class ProjectSubmissionLifecycle
     public const REPORT_READY = 'ready';
     public const REPORT_FAILED = 'failed';
 
-    public static function submissionStatus(string $internalStatus): string
+    public static function submissionStatus(string $internalStatus, ?string $evaluationStatus = null): string
     {
         return match ($internalStatus) {
-            ProjectSubmission::STATUS_PENDING => self::EVALUATING,
+            ProjectSubmission::STATUS_PENDING => $evaluationStatus === 'unavailable'
+                ? self::REVIEW_UNAVAILABLE
+                : self::EVALUATING,
             ProjectSubmission::STATUS_PASSED => self::PASSED,
             ProjectSubmission::STATUS_NEEDS_RESUBMISSION => self::NEEDS_CHANGES,
             default => self::EVALUATING,

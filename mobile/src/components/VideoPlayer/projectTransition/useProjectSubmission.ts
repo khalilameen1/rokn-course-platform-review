@@ -3,7 +3,7 @@ import {Alert, NativeModules, Platform} from 'react-native';
 
 import {
   PROJECT_SUBMISSION_FORMATS_LABEL,
-  PROJECT_SUBMISSION_MAX_LABEL,
+  PROJECT_SUBMISSION_MAX_BYTES,
   projectFileMatchesAllowedTypes,
   validateProjectFile,
 } from '../../../config/projects';
@@ -24,6 +24,7 @@ import {resolveProjectJourneyState} from '../courseLearning/projectJourney';
 import type {ProjectSubmissionOutcome} from '../courseLearningApi';
 import type {CourseProject, ProjectStatus, SelectedProjectFile} from '../types';
 import {pickProjectFilesOwned} from './pickers';
+import {formatArabicNumber} from '../../../constants/arabicFormatting';
 
 const EMPTY_MIME_TYPES: string[] = [];
 
@@ -102,7 +103,11 @@ export const useProjectSubmission = ({
   const allowedMimeTypesKey = Array.from(
     new Set(
       (project.submissionAllowedMimeTypes ?? EMPTY_MIME_TYPES)
-        .map(value => String(value || '').trim().toLowerCase())
+        .map(value =>
+          String(value || '')
+            .trim()
+            .toLowerCase(),
+        )
         .filter(Boolean),
     ),
   )
@@ -113,9 +118,7 @@ export const useProjectSubmission = ({
   // text typed since the last debounced local save.
   const allowedMimeTypes = useMemo(
     () =>
-      allowedMimeTypesKey
-        ? allowedMimeTypesKey.split('\n')
-        : EMPTY_MIME_TYPES,
+      allowedMimeTypesKey ? allowedMimeTypesKey.split('\n') : EMPTY_MIME_TYPES,
     [allowedMimeTypesKey],
   );
   const fileTypesLabel = allowedFileTypesLabel(allowedMimeTypes);
@@ -123,6 +126,12 @@ export const useProjectSubmission = ({
     1,
     Math.min(5, project.submissionMaxFiles || 3),
   );
+  const maximumFileBytes =
+    project.submissionMaxFileBytes ?? PROJECT_SUBMISSION_MAX_BYTES;
+  const maximumFileSizeLabel = `${formatArabicNumber(
+    maximumFileBytes / (1024 * 1024),
+    {maximumFractionDigits: 2},
+  )} ميجابايت`;
   const filePickerDisabled =
     !fileSubmissionEnabled ||
     !submissionAllowed ||
@@ -208,7 +217,11 @@ export const useProjectSubmission = ({
       .then(boundary => {
         if (generation !== draftGenerationRef.current) return null;
         draftLifecycle.boundary = boundary;
-        if (project.status === 'passed' || project.status === 'evaluating') {
+        if (
+          ['passed', 'evaluating', 'review_unavailable'].includes(
+            project.status,
+          )
+        ) {
           return clearProjectSubmissionDraft(project.id, [], boundary).then(
             () => null,
           );
@@ -314,7 +327,7 @@ export const useProjectSubmission = ({
             }
             return {
               ...file,
-              size: await validateProjectFile(file),
+              size: await validateProjectFile(file, maximumFileBytes),
             };
           }),
         );
@@ -334,7 +347,7 @@ export const useProjectSubmission = ({
           code === 'LEARNER_DRAFT_STORAGE_FULL'
             ? 'اتصل بالإنترنت لإرسال الملفات المعلّقة\nثم حاول مرة أخرى'
             : code === 'PROJECT_FILE_TOO_LARGE'
-            ? `اختر ملفًا أصغر من ${PROJECT_SUBMISSION_MAX_LABEL}`
+            ? `الحد الأقصى ${maximumFileSizeLabel}\nاختر نسخة أصغر`
             : code === 'PROJECT_FILE_TYPE_UNSUPPORTED'
             ? `اختر ${PROJECT_SUBMISSION_FORMATS_LABEL}`
             : 'اختر الملف مرة أخرى أو نسخة أصغر',
@@ -378,8 +391,9 @@ export const useProjectSubmission = ({
         if (outcome.accepted) {
           // Another rejected attempt can keep the same server status, so no
           // hydration effect will run. Its empty replacement draft is ready
-          // here; only a pending or passed submission closes the editor.
-          const canEditNextAttempt = outcome.submissionStatus === 'needs_changes';
+          // here; a saved submission closes the editor until a change is requested.
+          const canEditNextAttempt =
+            outcome.submissionStatus === 'needs_changes';
           setEditingRetry(false);
           draftLifecycle.ready = canEditNextAttempt;
           draftLifecycle.status = outcome.submissionStatus;
@@ -433,6 +447,8 @@ export const useProjectSubmission = ({
       allowedMimeTypes,
       fileSubmissionEnabled,
       normalizedNote,
+      maximumFileBytes,
+      maximumFileSizeLabel,
       onOutcome,
       onSubmit,
       ownsProject,
@@ -516,7 +532,7 @@ export const useProjectSubmission = ({
         if (!projectFileMatchesAllowedTypes(file, allowedMimeTypes)) {
           throw new Error('PROJECT_FILE_TYPE_UNSUPPORTED');
         }
-        const size = await validateProjectFile(file);
+        const size = await validateProjectFile(file, maximumFileBytes);
         assertAccountSessionBoundary(ownerBoundary);
         cached.push(
           await cacheProjectDraftFile({...file, size}, ownerBoundary),
@@ -542,7 +558,7 @@ export const useProjectSubmission = ({
           ? 'صيغة الملف غير مدعومة'
           : 'تعذّر قراءة الملف',
         code === 'PROJECT_FILE_TOO_LARGE'
-          ? `الحد الأقصى ${PROJECT_SUBMISSION_MAX_LABEL}\nاختر نسخة أصغر`
+          ? `الحد الأقصى ${maximumFileSizeLabel}\nاختر نسخة أصغر`
           : code === 'PROJECT_FILE_TYPE_UNSUPPORTED'
           ? `اختر ${PROJECT_SUBMISSION_FORMATS_LABEL}`
           : 'اختر الملف مرة أخرى أو نسخة أصغر',
@@ -555,6 +571,8 @@ export const useProjectSubmission = ({
     draftLifecycle,
     fileSubmissionEnabled,
     maximumFiles,
+    maximumFileBytes,
+    maximumFileSizeLabel,
     ownsProject,
     selectedFiles.length,
     submissionAllowed,
@@ -568,13 +586,17 @@ export const useProjectSubmission = ({
     void removeLearnerDraftFile(file);
   }, []);
 
-  const changeNote = useCallback((value: string) => {
-    if (textSubmissionEnabled && !submissionFlightRef.current) {
-      setNote(truncateGraphemes(value, 2000));
-    }
-  }, [textSubmissionEnabled]);
+  const changeNote = useCallback(
+    (value: string) => {
+      if (textSubmissionEnabled && !submissionFlightRef.current) {
+        setNote(truncateGraphemes(value, 2000));
+      }
+    },
+    [textSubmissionEnabled],
+  );
 
   return {
+    maximumFileSizeLabel,
     changeNote,
     chooseProjectFile,
     draftSaveError,

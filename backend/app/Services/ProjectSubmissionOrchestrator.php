@@ -63,7 +63,14 @@ final class ProjectSubmissionOrchestrator
         }
 
         $allowedMimeTypes = $this->allowedMimeTypes($project);
+        $maximumFileBytes = self::maximumFileBytes();
         foreach ($files as $file) {
+            if ((int) $file->getSize() > $maximumFileBytes) {
+                return $this->invalid(
+                    'submission_files',
+                    'اختر ملفات بحجم '.self::maximumFileMegabytesLabel().' ميجابايت أو أقل'
+                );
+            }
             $canonicalMime = $this->attachments->canonicalMime($file);
             if ($canonicalMime === null || !in_array($canonicalMime, $allowedMimeTypes, true)) {
                 return $this->invalid('submission_files', 'أحد الملفات بصيغة غير متاحة لهذا المشروع');
@@ -117,12 +124,8 @@ final class ProjectSubmissionOrchestrator
         array $files
     ): ?string
     {
-        $providerMaximum = (int) config('openrouter.attachment_provider_max_bytes', 8388608);
         $attachmentTokens = 0;
         foreach ($files as $file) {
-            if ((int) $file->getSize() > $providerMaximum) {
-                return 'اختر ملفات أصغر من 8 ميجابايت لنتمكن من مراجعتها';
-            }
             try {
                 $attachmentTokens += $this->attachments->estimatedUploadedFileTokens($file);
             } catch (\UnexpectedValueException) {
@@ -160,6 +163,24 @@ final class ProjectSubmissionOrchestrator
         ));
 
         return $configured;
+    }
+
+    public static function maximumFileBytes(): int
+    {
+        return max(1024, min(
+            max(1, (int) config('projects.maximum_file_kilobytes', 25600)) * 1024,
+            max(1024, (int) config('openrouter.attachment_provider_max_bytes', 8388608))
+        ));
+    }
+
+    public static function maximumFileKilobytes(): int
+    {
+        return max(1, (int) floor(self::maximumFileBytes() / 1024));
+    }
+
+    public static function maximumFileMegabytesLabel(): string
+    {
+        return rtrim(rtrim(number_format(self::maximumFileBytes() / 1048576, 2, '.', ''), '0'), '.');
     }
 
     /** @return array{state:string, field:string, message:string} */

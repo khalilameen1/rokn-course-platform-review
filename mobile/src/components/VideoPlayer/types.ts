@@ -59,7 +59,12 @@ export interface CourseReel {
   sectionOrder?: number;
 }
 
-export type ProjectStatus = 'draft' | 'evaluating' | 'passed' | 'needs_changes';
+export type ProjectStatus =
+  | 'draft'
+  | 'evaluating'
+  | 'review_unavailable'
+  | 'passed'
+  | 'needs_changes';
 
 export type ProjectReportStatus =
   | 'not_included'
@@ -124,11 +129,15 @@ export interface CourseProject {
   canContinue?: boolean;
   reviewFeedback?: string;
   canRetryReport?: boolean;
+  canRetryReview?: boolean;
+  reviewRetryEndpoint?: string;
+  reviewFailureCategory?: string;
   reportRetryEndpoint?: string;
   feedbackThread?: ProjectFeedbackThread;
   submissionTextEnabled?: boolean;
   submissionFilesEnabled?: boolean;
   submissionMaxFiles?: number;
+  submissionMaxFileBytes?: number;
   submissionAllowedMimeTypes?: string[];
 }
 

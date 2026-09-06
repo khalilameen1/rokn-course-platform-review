@@ -1,6 +1,6 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {StyleSheet, Text} from 'react-native';
+import {ActivityIndicator, StyleSheet, Text} from 'react-native';
 import type {CourseProject} from '../src/components/VideoPlayer/types';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 
@@ -197,6 +197,43 @@ const renderTransition = (
 };
 
 describe('project lifecycle presentation', () => {
+  it.each([true, false])(
+    'shows saved but unavailable review without a spinner or failed-project instruction (retry %s)',
+    canRetry => {
+      const retryReview = jest.fn();
+      const renderer = renderTransition(
+        controllerFor({
+          journeyState: 'review_unavailable',
+          reviewRetryAvailable: canRetry,
+          retryReview,
+          submissionAllowed: false,
+        }),
+      );
+      try {
+        const text = renderer.root
+          .findAllByType(Text)
+          .map(node => node.props.children);
+        expect(text).toContain('تسليمك محفوظ ولم تكتمل مراجعته');
+        expect(text).not.toContain('يحتاج المشروع إلى تعديل');
+        expect(renderer.root.findAllByType(ActivityIndicator)).toHaveLength(0);
+        expect(
+          renderer.root.findAllByType(ProjectSubmissionEditor),
+        ).toHaveLength(0);
+        expect(text.includes('إعادة المراجعة')).toBe(canRetry);
+        if (canRetry) {
+          const label = renderer.root
+            .findAllByType(Text)
+            .find(node => node.props.children === 'إعادة المراجعة')!;
+          let button = label.parent!;
+          while (!button.props.onPress) button = button.parent!;
+          act(() => button.props.onPress());
+          expect(retryReview).toHaveBeenCalledTimes(1);
+        }
+      } finally {
+        act(() => renderer.unmount());
+      }
+    },
+  );
   it('keeps the brief dominant while the learner can submit', () => {
     const submit = jest.fn();
     const renderer = renderTransition(controllerFor({submit}));

@@ -54,7 +54,15 @@ class StudentElearningFlowTest extends ApiTestCase
             'auto_pass_at' => now()->subSecond(),
         ]);
 
-        $reviewed = app(ProjectSubmissionService::class)->finalizeIfDue($submission);
+        $service = app(ProjectSubmissionService::class);
+        $pending = $service->finalizeIfDue($submission);
+        self::assertSame(ProjectSubmission::STATUS_PENDING, $pending->review_status);
+        $reviewed = $service->applyEvaluationOutcome(
+            $pending,
+            (string) data_get($pending->submission_metadata, 'evaluation.request_id'),
+            true,
+            'المحاولة مرتبطة بالمطلوب'
+        );
         self::assertSame(ProjectSubmission::STATUS_PASSED, $reviewed->review_status);
 
         $signal = InternalSignal::query()

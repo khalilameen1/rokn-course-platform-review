@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Course;
 use App\Models\Order;
 use App\Services\CourseCommercialReportService;
+use App\Services\CourseCostReportService;
 use App\Services\PlatformCommercialReportService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -263,6 +264,56 @@ final class CourseCommercialReportServiceTest extends TestCase
             100.0,
             $report['service_breakdown']->firstWhere('key', 'infrastructure')['actual_egp']
         );
+    }
+
+    public function test_platform_funded_project_review_is_visible_in_course_ai_costs(): void
+    {
+        $now = now();
+        DB::table('users')->insert([
+            'id' => 1,
+            'name_ar' => 'طالب',
+            'email' => 'review@example.test',
+            'password' => 'x',
+            'role' => 'client',
+            'active' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('courses')->insert([
+            'id' => 10,
+            'name_ar' => 'كورس',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        DB::table('ai_usage_events')->insert([
+            'request_id' => '33333333-3333-4333-8333-333333333333',
+            'user_id' => 1,
+            'course_id' => 10,
+            'feature' => 'project_review',
+            'status' => 'completed',
+            'total_tokens' => 250,
+            'cost_usd' => 0.1,
+            'fx_rate_to_egp' => 50,
+            'cost_egp' => 5,
+            'metadata' => json_encode([
+                'cost_usage_source' => 'provider',
+                'funding_source' => 'platform',
+            ]),
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $report = app(CourseCostReportService::class)->forCourse(
+            Course::query()->findOrFail(10),
+            collect([1])
+        );
+        $learner = $report['users']->get(1);
+
+        self::assertSame('مراجعة المشروع', CourseCostReportService::aiFeatureLabels()['project_review']);
+        self::assertSame(1, $learner['ai_requests']);
+        self::assertSame(1, $learner['ai_by_feature']['project_review']['delivered_requests']);
+        self::assertSame(0.1, $learner['ai_by_feature']['project_review']['cost_usd']);
+        self::assertSame(5.0, $learner['service_cost_actual_egp']);
     }
 
     private function createSchema(): void

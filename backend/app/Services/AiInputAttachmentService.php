@@ -361,7 +361,7 @@ final class AiInputAttachmentService
     }
 
     /** @return list<array<string,mixed>> */
-    public function providerParts(Collection $attachments): array
+    public function providerParts(Collection $attachments, bool $preserveFullText = false): array
     {
         $parts = [];
         $maxBytes = max(1024, (int) config('openrouter.attachment_provider_max_bytes', 8388608));
@@ -383,7 +383,7 @@ final class AiInputAttachmentService
                 continue;
             }
             if ($mime === 'text/plain') {
-                $plain = $this->safeExtractedText($bytes);
+                $plain = $this->safeExtractedText($bytes, $preserveFullText);
                 $parts[] = [
                     'type' => 'text',
                     'text' => "FILE {$attachment->original_file_name}\n"
@@ -401,14 +401,27 @@ final class AiInputAttachmentService
                 ];
                 continue;
             }
-            $text = $this->officeText($attachment->storage_path, $disk, $mime);
-            $text = $this->safeExtractedText($text);
+            $text = $this->officeTextFromBytes($bytes, $mime, $preserveFullText);
+            $text = $this->safeExtractedText($text, $preserveFullText);
             $parts[] = [
                 'type' => 'text',
-                'text' => "FILE {$attachment->original_file_name}\n" . mb_substr($text, 0, 30000),
+                'text' => "FILE {$attachment->original_file_name}\n" . $text,
             ];
         }
         return $parts;
+    }
+
+    /** Validate/count local submission text before admission using the review extraction contract. */
+    public function reviewInputCharacterCount(UploadedFile $file): int
+    {
+        $mime = (string) $this->canonicalMime($file);
+        if (str_starts_with($mime, 'image/') || $mime === 'application/pdf') return 0;
+        $bytes = file_get_contents($file->getRealPath());
+        if (!is_string($bytes)) throw new UnexpectedValueException('Attachment cannot be read.');
+        $text = $this->safeExtractedText($mime === 'text/plain'
+            ? $bytes : $this->officeTextFromBytes($bytes, $mime, true), true);
+        $name = DownloadFilename::safe($file->getClientOriginalName(), 'project-submission', $this->canonicalExtension($mime));
+        return mb_strlen("FILE {$name}\n".$text);
     }
 
     public function markProcessed(Collection $attachments, array $annotations): void
@@ -494,13 +507,7 @@ final class AiInputAttachmentService
         return max(100, (int) ceil(mb_strlen($text) / 3.2));
     }
 
-    private function officeText(string $path, $disk, string $mime): string
-    {
-        $bytes = $disk->get($path);
-        return is_string($bytes) ? $this->officeTextFromBytes($bytes, $mime) : '';
-    }
-
-    private function officeTextFromBytes(string $bytes, string $mime): string
+    private function officeTextFromBytes(string $bytes, string $mime, bool $preserveFullText = false): string
     {
         if (!class_exists(ZipArchive::class) || $bytes === '') return '';
         $temporary = tempnam(sys_get_temp_dir(), 'rokn-ai-');
@@ -517,12 +524,20 @@ final class AiInputAttachmentService
                 ));
             $chunks = [];
             $expandedBytes = 0;
+            if ($preserveFullText && count($files) > 100) {
+                $zip->close();
+                throw new UnexpectedValueException('The whole presentation exceeds the review extraction limit.');
+            }
             foreach (array_slice($files, 0, 100) as $file) {
                 $index = $zip->locateName($file);
                 $stat = $index === false ? false : $zip->statIndex($index);
                 $entryBytes = is_array($stat) ? (int) ($stat['size'] ?? 0) : 0;
                 if ($entryBytes <= 0 || $entryBytes > 2 * 1024 * 1024
                     || $expandedBytes + $entryBytes > 8 * 1024 * 1024) {
+                    if ($preserveFullText) {
+                        $zip->close();
+                        throw new UnexpectedValueException('The whole document cannot be extracted within the review limit.');
+                    }
                     continue;
                 }
                 $xml = $zip->getFromName($file);
@@ -538,7 +553,7 @@ final class AiInputAttachmentService
         }
     }
 
-    private function safeExtractedText(string $bytes): string
+    private function safeExtractedText(string $bytes, bool $preserveFullText = false): string
     {
         if ($bytes === '' || !mb_check_encoding($bytes, 'UTF-8')) {
             throw new UnexpectedValueException('Attachment text encoding is unsupported.');
@@ -546,7 +561,7 @@ final class AiInputAttachmentService
         $text = UnicodeText::clean((string) preg_replace(
             '/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $bytes
         ));
-        $text = trim(mb_substr($text, 0, 30000));
+        $text = trim($preserveFullText ? $text : mb_substr($text, 0, 30000));
         if ($text === '') {
             throw new UnexpectedValueException('Attachment contains no readable text.');
         }

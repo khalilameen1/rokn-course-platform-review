@@ -3,6 +3,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {
   loadProjectResolution,
   retryProjectReport,
+  retryProjectReview,
   type ProjectSubmissionOutcome,
 } from '../courseLearningApi';
 import type {
@@ -12,6 +13,11 @@ import type {
   ProjectStatus,
 } from '../types';
 import {reviewFeedbackForStatus} from '../courseLearning/projectJourney';
+import {
+  captureAccountSessionBoundary,
+  assertAccountSessionBoundary,
+  type AccountSessionBoundary,
+} from '../../../constants/helpers';
 
 type ProjectResolution = Awaited<ReturnType<typeof loadProjectResolution>>;
 
@@ -23,6 +29,9 @@ export type ProjectRuntimeContract = {
   replyEnabled: boolean;
   canRetryReport: boolean;
   reportRetryEndpoint?: string;
+  canRetryReview: boolean;
+  reviewRetryEndpoint?: string;
+  reviewFailureCategory?: string;
 };
 
 type ProjectResolutionState = {
@@ -41,6 +50,9 @@ type ContractSource = {
   replyEnabled?: boolean;
   canRetryReport?: boolean;
   reportRetryEndpoint?: string;
+  canRetryReview?: boolean;
+  reviewRetryEndpoint?: string;
+  reviewFailureCategory?: string;
 };
 
 const runtimeContract = (source: ContractSource): ProjectRuntimeContract => ({
@@ -54,6 +66,9 @@ const runtimeContract = (source: ContractSource): ProjectRuntimeContract => ({
     source.feedbackLevel === 'enhanced' && source.replyEnabled === true,
   canRetryReport: source.canRetryReport === true,
   reportRetryEndpoint: source.reportRetryEndpoint,
+  canRetryReview: source.canRetryReview === true,
+  reviewRetryEndpoint: source.reviewRetryEndpoint,
+  reviewFailureCategory: source.reviewFailureCategory,
 });
 
 const stateFromProject = (project: CourseProject): ProjectResolutionState => {
@@ -89,10 +104,12 @@ export const useProjectResolution = ({
   active,
   appIsActive,
   project,
+  onReviewResolution,
 }: {
   active: boolean;
   appIsActive: boolean;
   project: CourseProject;
+  onReviewResolution?: (resolution: ProjectResolution) => void;
 }) => {
   const activeProjectIdRef = useRef(project.id);
   activeProjectIdRef.current = project.id;
@@ -101,6 +118,11 @@ export const useProjectResolution = ({
   );
   const [reportRetrying, setReportRetrying] = useState(false);
   const retryFlightRef = useRef<symbol | null>(null);
+  const reviewFlightRef = useRef<symbol | null>(null);
+  const reviewReadOnlyRef = useRef(false);
+  const [reviewRetrying, setReviewRetrying] = useState(false);
+  const [reviewRecoveryRequired, setReviewRecoveryRequired] = useState(false);
+  const [reviewRecoveryError, setReviewRecoveryError] = useState('');
   const pollJitterRef = useRef(0.82 + Math.random() * 0.3);
 
   const ownsProject = useCallback(
@@ -121,6 +143,9 @@ export const useProjectResolution = ({
       replyEnabled: project.replyEnabled,
       canRetryReport: project.canRetryReport,
       reportRetryEndpoint: project.reportRetryEndpoint,
+      canRetryReview: project.canRetryReview,
+      reviewRetryEndpoint: project.reviewRetryEndpoint,
+      reviewFailureCategory: project.reviewFailureCategory,
     });
     setResolution({
       status: project.status,
@@ -139,6 +164,9 @@ export const useProjectResolution = ({
   }, [
     project.canContinue,
     project.canRetryReport,
+    project.canRetryReview,
+    project.reviewRetryEndpoint,
+    project.reviewFailureCategory,
     project.canSubmit,
     project.feedbackLevel,
     project.feedbackThread,
@@ -150,6 +178,16 @@ export const useProjectResolution = ({
     project.reviewFeedback,
     project.status,
   ]);
+
+  useEffect(() => {
+    reviewReadOnlyRef.current = false;
+    setReviewRecoveryRequired(false);
+    setReviewRecoveryError('');
+    setReviewRetrying(false);
+    return () => {
+      reviewFlightRef.current = null;
+    };
+  }, [project.id]);
 
   useEffect(() => {
     if (
@@ -251,6 +289,9 @@ export const useProjectResolution = ({
           canSubmit: outcome.submissionStatus === 'needs_changes',
           canContinue:
             outcome.submissionStatus === 'passed' && outcome.canContinue,
+          canRetryReview: outcome.canRetryReview === true,
+          reviewRetryEndpoint: outcome.reviewRetryEndpoint,
+          reviewFailureCategory: outcome.reviewFailureCategory,
         },
         reportStatus:
           outcome.submissionStatus === 'passed' &&
@@ -297,6 +338,75 @@ export const useProjectResolution = ({
     }
   }, [applyResolution, ownsProject, project.id, resolution.contract]);
 
+  const retryReview = useCallback(async () => {
+    const {canRetryReview, reviewRetryEndpoint} = resolution.contract;
+    if (
+      !active ||
+      !appIsActive ||
+      reviewFlightRef.current ||
+      (!reviewReadOnlyRef.current &&
+        (!canRetryReview ||
+          !reviewRetryEndpoint ||
+          resolution.status !== 'review_unavailable'))
+    )
+      return;
+    const projectId = project.id;
+    const flight = Symbol('project-review-retry');
+    reviewFlightRef.current = flight;
+    const ownsFlight = () =>
+      ownsProject(projectId) && reviewFlightRef.current === flight;
+    setReviewRetrying(true);
+    setReviewRecoveryError('');
+    const apply = (next: ProjectResolution) => {
+      if (!ownsFlight()) return;
+      reviewReadOnlyRef.current = false;
+      setReviewRecoveryRequired(false);
+      // A pass needs the course's fresh media entitlement before continuing.
+      applyResolution({...next, canContinue: false});
+      onReviewResolution?.(next);
+    };
+    let boundary: AccountSessionBoundary | undefined;
+    try {
+      boundary = await captureAccountSessionBoundary();
+      if (!ownsFlight()) return;
+      const next = reviewReadOnlyRef.current
+        ? await loadProjectResolution(projectId)
+        : await retryProjectReview(reviewRetryEndpoint!);
+      assertAccountSessionBoundary(boundary);
+      apply(next);
+    } catch {
+      // A timed-out POST may already be queued. Read the existing submission;
+      // never turn an uncertain retry into a second review request.
+      try {
+        if (!boundary || !ownsFlight()) return;
+        assertAccountSessionBoundary(boundary);
+        const next = await loadProjectResolution(projectId);
+        assertAccountSessionBoundary(boundary);
+        apply(next);
+      } catch {
+        if (ownsFlight()) {
+          reviewReadOnlyRef.current = true;
+          setReviewRecoveryRequired(true);
+          setReviewRecoveryError('تعذّر تحديث حالة المراجعة  تسليمك محفوظ');
+        }
+      }
+    } finally {
+      if (ownsFlight()) {
+        reviewFlightRef.current = null;
+        setReviewRetrying(false);
+      }
+    }
+  }, [
+    active,
+    appIsActive,
+    applyResolution,
+    onReviewResolution,
+    ownsProject,
+    project.id,
+    resolution.contract,
+    resolution.status,
+  ]);
+
   return {
     ...resolution,
     applySubmissionOutcome,
@@ -305,5 +415,12 @@ export const useProjectResolution = ({
       Boolean(resolution.contract.reportRetryEndpoint),
     reportRetrying,
     retryReport,
+    reviewRetryAvailable:
+      resolution.contract.canRetryReview &&
+      Boolean(resolution.contract.reviewRetryEndpoint),
+    reviewRetrying,
+    reviewRecoveryRequired,
+    reviewRecoveryError,
+    retryReview,
   };
 };

@@ -388,6 +388,7 @@ class CourseResource extends BaseCourseResource
                     $content['submission_max_files'] = max(1, min(5, (int) (
                         $section->sectionable->submission_max_files ?: 3
                     )));
+                    $content['submission_max_file_bytes'] = \App\Services\ProjectSubmissionOrchestrator::maximumFileBytes();
                     $content['submission_allowed_mime_types'] = $projectSubmissionMimeTypes;
                     $submission = $this->projectSubmissions->get((int) $section->sectionable->id);
                     $submissionPayload = $submission

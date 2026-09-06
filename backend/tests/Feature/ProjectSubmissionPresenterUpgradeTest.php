@@ -6,6 +6,8 @@ namespace Tests\Feature;
 
 use App\Jobs\GenerateProjectFeedback;
 use App\Jobs\GenerateProjectFeedbackReply;
+use App\Jobs\EvaluateProjectSubmission;
+use App\Http\Controllers\API\ProjectController;
 use App\Models\AiEntitlementUsage;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
@@ -23,6 +25,7 @@ use App\Services\CourseAccessPlanService;
 use App\Services\AiConversationContextService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectSubmissionPresenter;
+use App\Services\ProjectSubmissionFileRetentionService;
 use App\Services\ProjectSubmissionOrchestrator;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -34,6 +37,141 @@ use Tests\TestCase;
 final class ProjectSubmissionPresenterUpgradeTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_review_retry_returns_the_same_submission_without_upload_or_provider_call(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $submission = $fixture['submission'];
+        $requestId = (string) Str::uuid();
+        $submission->forceFill([
+            'review_status' => ProjectSubmission::STATUS_PENDING,
+            'reviewed_at' => null,
+            'submission_metadata' => ['evaluation' => [
+                'status' => 'unavailable', 'request_id' => $requestId,
+                'reason' => 'ai_rate_limited', 'retry_safe' => true, 'retry_count' => 0,
+            ]],
+        ])->save();
+        $this->actingAs($fixture['user'], 'api');
+
+        foreach ([1, 2] as $attempt) {
+            $response = app(ProjectController::class)->retryEvaluation($submission->fresh());
+            $body = $response->getData(true);
+            self::assertSame(202, $response->getStatusCode());
+            self::assertTrue($body['success']);
+            self::assertSame((string) $submission->public_id, $body['data']['id']);
+            self::assertSame('evaluating', $body['data']['submission_status']);
+        }
+
+        $metadata = $submission->fresh()->submission_metadata;
+        self::assertSame($requestId, data_get($metadata, 'evaluation.request_id'));
+        self::assertSame(1, data_get($metadata, 'evaluation.retry_count'));
+        self::assertSame(1, ProjectSubmission::query()->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_review_retry_cannot_address_another_learners_submission(): void
+    {
+        Http::preventStrayRequests();
+        $owner = $this->submissionFixture(upgradedToEnhanced: false);
+        $other = $this->submissionFixture(upgradedToEnhanced: false);
+        $this->actingAs($other['user'], 'api');
+
+        $response = app(ProjectController::class)->retryEvaluation($owner['submission']);
+
+        self::assertSame(404, $response->getStatusCode());
+        self::assertNull($response->getData(true)['data']);
+        Http::assertNothingSent();
+    }
+
+    public function test_completed_review_evidence_survives_temporary_submission_cleanup(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $submission = $fixture['submission'];
+        $evaluation = [
+            'status' => 'ready', 'decision' => 'relevant_effort',
+            'request_id' => (string) Str::uuid(), 'completed_at' => now()->toIso8601String(),
+        ];
+        $submission->forceFill(['submission_metadata' => [
+            'evaluation' => $evaluation,
+            'ai_feedback' => ['status' => 'ready'],
+        ]])->save();
+
+        self::assertTrue(app(ProjectSubmissionFileRetentionService::class)->purgeIfEligible($submission));
+
+        $submission->refresh();
+        self::assertNull($submission->submission_text);
+        self::assertSame($evaluation, data_get($submission->submission_metadata, 'evaluation'));
+        self::assertSame(ProjectSubmission::STATUS_PASSED, $submission->review_status);
+        Http::assertNothingSent();
+    }
+
+    public function test_unavailable_review_is_not_presented_as_waiting_rejection_or_paid_report(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $submission = $fixture['submission'];
+        $submission->forceFill([
+            'review_status' => ProjectSubmission::STATUS_PENDING,
+            'reviewed_at' => null,
+            'submission_metadata' => [
+                'evaluation' => [
+                    'status' => 'unavailable',
+                    'request_id' => (string) Str::uuid(),
+                    'reason' => 'provider_outcome_unknown',
+                    'retry_safe' => false,
+                    'retry_count' => 0,
+                ],
+            ],
+        ])->save();
+
+        $payload = app(ProjectSubmissionPresenter::class)->present($submission);
+
+        self::assertSame('review_unavailable', $payload['submission_status']);
+        self::assertFalse($payload['can_submit']);
+        self::assertFalse($payload['can_continue']);
+        self::assertFalse($payload['can_retry_review']);
+        self::assertNull($payload['review_retry_endpoint']);
+        self::assertSame('unknown_outcome', $payload['review_failure_category']);
+        self::assertNull($payload['poll_after_seconds']);
+        self::assertSame('not_requested', $payload['report_status']);
+        self::assertFalse($payload['can_retry_report']);
+        Http::assertNothingSent();
+    }
+
+    public function test_safe_review_retry_is_advertised_separately_from_paid_report_retry(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $submission = $fixture['submission'];
+        $submission->forceFill([
+            'review_status' => ProjectSubmission::STATUS_PENDING,
+            'reviewed_at' => null,
+            'submission_metadata' => [
+                'evaluation' => [
+                    'status' => 'unavailable',
+                    'request_id' => (string) Str::uuid(),
+                    'reason' => 'ai_rate_limited',
+                    'retry_safe' => true,
+                    'retry_count' => 0,
+                ],
+            ],
+        ])->save();
+
+        $payload = app(ProjectSubmissionPresenter::class)->present($submission);
+
+        self::assertSame('review_unavailable', $payload['submission_status']);
+        self::assertTrue($payload['can_retry_review']);
+        self::assertSame(
+            "/api/v1/project-submissions/{$submission->public_id}/review/retry",
+            $payload['review_retry_endpoint']
+        );
+        self::assertFalse($payload['can_retry_report']);
+        self::assertNull($payload['poll_after_seconds']);
+        Http::assertNothingSent();
+    }
 
     public function test_tag_only_project_submission_is_admitted_as_learner_work(): void
     {
@@ -391,6 +529,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
     public function test_replay_after_entitlement_revocation_finishes_without_provider_spend_or_stuck_report(): void
     {
         Bus::fake();
+        Http::preventStrayRequests();
         $fixture = $this->submissionFixture(upgradedToEnhanced: false);
         $fixture['submission']->feedbackThread->messages()->delete();
         $fixture['submission']->feedbackThread()->delete();
@@ -415,16 +554,20 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             $fixture['idempotency_key'],
             []
         );
+        app()->call([new EvaluateProjectSubmission($result['submission']->id), 'handle']);
         $submission = $result['submission']->fresh();
         $payload = app(ProjectSubmissionPresenter::class)->present($submission);
 
-        self::assertSame(ProjectSubmission::STATUS_PASSED, $submission->review_status);
-        self::assertSame('unavailable', data_get($submission->submission_metadata, 'ai_feedback.status'));
-        self::assertSame('report_not_included', data_get($submission->submission_metadata, 'ai_feedback.reason'));
-        self::assertSame('failed', $payload['report_status']);
+        self::assertSame(ProjectSubmission::STATUS_PENDING, $submission->review_status);
+        self::assertSame('unavailable', data_get($submission->submission_metadata, 'evaluation.status'));
+        self::assertSame('review_access_unavailable', data_get($submission->submission_metadata, 'evaluation.reason'));
+        self::assertSame('review_unavailable', $payload['submission_status']);
+        self::assertSame('not_requested', $payload['report_status']);
+        self::assertFalse($payload['can_continue']);
         self::assertFalse($payload['can_retry_report']);
-        self::assertNull($submission->submission_text);
+        self::assertNotNull($submission->submission_text);
         Bus::assertNotDispatched(GenerateProjectFeedback::class);
+        Http::assertNothingSent();
     }
 
     private function assertPresentationContract(

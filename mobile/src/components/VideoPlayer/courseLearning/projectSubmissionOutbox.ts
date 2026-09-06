@@ -128,6 +128,9 @@ const outcomeFromSync = async (
   }
 
   await clearPendingProjectSubmission(pending, operation);
+  if (result.submissionStatus === 'review_unavailable') {
+    return {...result, accepted: true, canContinue: false};
+  }
   return {
     ...result,
     submissionStatus: 'needs_changes',

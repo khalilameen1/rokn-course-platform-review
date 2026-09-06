@@ -1,6 +1,7 @@
 import {useCallback} from 'react';
 import type {Dispatch, MutableRefObject, SetStateAction} from 'react';
 import FeedRow from '../../components/VideoPlayer/FeedRow';
+import type {ProjectResolution} from '../../components/VideoPlayer/courseLearning/projectRemote';
 import type {
   ProjectSubmissionOutcome,
   SavedFolderOption,
@@ -55,6 +56,7 @@ export const useReelsFeedRenderer = ({
   setChatVisible,
   onContentOverlayVisibilityChange,
   submitProject,
+  applyReviewResolution,
   toggleSaved,
   topInset,
 }: {
@@ -107,6 +109,10 @@ export const useReelsFeedRenderer = ({
     files: SelectedProjectFile[],
     note?: string,
   ) => Promise<ProjectSubmissionOutcome>;
+  applyReviewResolution?: (
+    projectId: string,
+    resolution: ProjectResolution,
+  ) => void;
   toggleSaved: (
     reel: CourseReel,
     folder?: SavedFolderOption | null,
@@ -196,6 +202,10 @@ export const useReelsFeedRenderer = ({
               ? () => scheduleDelayedAction(() => scrollToIndex(index + 1), 80)
               : undefined
           }
+          onReviewResolution={resolution => {
+            if (item.type === 'project')
+              applyReviewResolution?.(item.project.id, resolution);
+          }}
         />
       );
     },
@@ -233,6 +243,7 @@ export const useReelsFeedRenderer = ({
       setChatVisible,
       onContentOverlayVisibilityChange,
       submitProject,
+      applyReviewResolution,
       toggleSaved,
       topInset,
     ],

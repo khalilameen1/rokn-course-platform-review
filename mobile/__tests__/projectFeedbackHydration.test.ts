@@ -1,11 +1,16 @@
 const mockGet = jest.fn();
+const mockPost = jest.fn();
+const mockOpenExternal = jest.fn();
 
 jest.mock('../src/constants/api', () => ({
   publicRequest: {
     get: (...args: unknown[]) => mockGet(...args),
-    post: jest.fn(),
+    post: (...args: unknown[]) => mockPost(...args),
     delete: jest.fn(),
   },
+}));
+jest.mock('../src/services/systemActions', () => ({
+  openExternalUrlOnce: (...args: unknown[]) => mockOpenExternal(...args),
 }));
 
 jest.mock('../src/constants/helpers', () => ({
@@ -20,9 +25,17 @@ import {mapCourseProject} from '../src/components/VideoPlayer/courseLearning/pro
 import {
   loadProjectFeedbackThread,
   loadProjectResolution,
+  sendProjectFeedbackMessage,
+  uploadProjectFeedbackAttachment,
+  openProjectInputAttachment,
 } from '../src/components/VideoPlayer/courseLearning/projectRemote';
 
 const THREAD_ID = '11111111-1111-4111-8111-111111111111';
+const axiosResponse = (data: unknown) => ({
+  status: 200,
+  headers: {},
+  data: {status: 200, success: true, message: 'تم', data},
+});
 
 const feedbackThreadPayload = (canRetry: boolean) => ({
   id: THREAD_ID,
@@ -99,6 +112,8 @@ const initialThreadFromCourseMap = (canRetry: boolean) =>
 describe('project feedback hydration parity', () => {
   beforeEach(() => {
     mockGet.mockReset();
+    mockPost.mockReset();
+    mockOpenExternal.mockReset();
   });
 
   it.each([true, false])(
@@ -107,8 +122,8 @@ describe('project feedback hydration parity', () => {
       const threadPayload = feedbackThreadPayload(canRetry);
       const projectPayload = {latest_submission: submissionPayload(canRetry)};
       mockGet
-        .mockResolvedValueOnce({data: threadPayload})
-        .mockResolvedValueOnce({data: projectPayload});
+        .mockResolvedValueOnce(axiosResponse(threadPayload))
+        .mockResolvedValueOnce(axiosResponse(projectPayload));
 
       const initial = initialThreadFromCourseMap(canRetry);
       const hydrated = await loadProjectFeedbackThread('7', THREAD_ID);
@@ -137,4 +152,57 @@ describe('project feedback hydration parity', () => {
       ]);
     },
   );
+
+  it('uses the same real response envelope for project-based feedback hydration', async () => {
+    mockGet.mockResolvedValueOnce(
+      axiosResponse({latest_submission: submissionPayload(true)}),
+    );
+    await expect(loadProjectFeedbackThread('7')).resolves.toEqual(
+      initialThreadFromCourseMap(true),
+    );
+  });
+
+  it('keeps a successful feedback send and attachment upload from becoming false transport failures', async () => {
+    mockPost
+      .mockResolvedValueOnce(axiosResponse(feedbackThreadPayload(true)))
+      .mockResolvedValueOnce(axiosResponse({id: THREAD_ID}));
+    await expect(
+      sendProjectFeedbackMessage(THREAD_ID, 'هذا سؤالي', THREAD_ID),
+    ).resolves.toEqual(initialThreadFromCourseMap(true));
+    await expect(
+      uploadProjectFeedbackAttachment(THREAD_ID, {
+        uploadId: THREAD_ID,
+        name: 'مشروعي.png',
+        uri: 'file:///project.png',
+        type: 'image/png',
+      }),
+    ).resolves.toBe(THREAD_ID);
+    expect(mockPost).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens refreshed attachment metadata from the server rather than reporting it unavailable', async () => {
+    const url = 'https://cdn.rokn.test/project.png?signature=new';
+    mockGet.mockResolvedValueOnce(
+      axiosResponse({
+        id: THREAD_ID,
+        download_url: url,
+        download_url_expires_at: '2099-01-01T00:00:00Z',
+      }),
+    );
+    await openProjectInputAttachment({
+      projectId: '7',
+      file: {
+        uploadId: THREAD_ID,
+        serverId: THREAD_ID,
+        name: 'مشروعي.png',
+        uri: '',
+        type: 'image/png',
+      },
+    });
+    expect(mockOpenExternal).toHaveBeenCalledWith(
+      url,
+      undefined,
+      `project-input-attachment:${THREAD_ID}`,
+    );
+  });
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\AiUsageEvent;
 use App\Models\Order;
 use App\Support\CsvCell;
 use Illuminate\Support\Collection;
@@ -126,7 +127,7 @@ final readonly class AdminCourseReportService
         });
 
         $usage = $this->usageByPlan($course);
-        $features = ['course_chat', 'project_feedback', 'project_followup'];
+        $features = array_keys(CourseCostReportService::aiFeatureLabels());
 
         return $course->accessPlans->mapWithKeys(fn ($plan) => [
             $plan->code => [
@@ -139,6 +140,10 @@ final readonly class AdminCourseReportService
                 'chat_unanswered_requests' => (int) ($usage->get($plan->code.':course_chat')?->unanswered_requests ?? 0),
                 'chat_tokens' => (int) ($usage->get($plan->code.':course_chat')?->total_tokens ?? 0),
                 'chat_cost_usd' => (float) ($usage->get($plan->code.':course_chat')?->cost_usd ?? 0),
+                'review_requests' => (int) ($usage->get($plan->code.':'.AiUsageEvent::FEATURE_PROJECT_REVIEW)?->ai_requests ?? 0),
+                'review_unanswered_requests' => (int) ($usage->get($plan->code.':'.AiUsageEvent::FEATURE_PROJECT_REVIEW)?->unanswered_requests ?? 0),
+                'review_tokens' => (int) ($usage->get($plan->code.':'.AiUsageEvent::FEATURE_PROJECT_REVIEW)?->total_tokens ?? 0),
+                'review_cost_usd' => (float) ($usage->get($plan->code.':'.AiUsageEvent::FEATURE_PROJECT_REVIEW)?->cost_usd ?? 0),
                 'project_requests' => (int) ($usage->get($plan->code.':project_feedback')?->ai_requests ?? 0),
                 'project_unanswered_requests' => (int) ($usage->get($plan->code.':project_feedback')?->unanswered_requests ?? 0),
                 'project_tokens' => (int) ($usage->get($plan->code.':project_feedback')?->total_tokens ?? 0),

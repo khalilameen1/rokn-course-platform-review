@@ -19,7 +19,8 @@ final readonly class ProjectSubmissionPresenter
     public function __construct(
         private CourseAccessPlanService $accessPlans,
         private ProjectFeedbackThreadService $feedbackThreads,
-        private AiFailurePolicy $failurePolicy
+        private AiFailurePolicy $failurePolicy,
+        private ProjectSubmissionEvaluationService $evaluations
     ) {
     }
 
@@ -32,6 +33,15 @@ final readonly class ProjectSubmissionPresenter
             : [];
         $outcome = $submission->reviewOutcome();
         $reviewStatus = (string) $outcome['status'];
+        $submissionStatus = ProjectSubmissionLifecycle::submissionStatus(
+            $reviewStatus,
+            data_get($metadata, 'evaluation.status')
+        );
+        $reviewUnavailable = $submissionStatus === ProjectSubmissionLifecycle::REVIEW_UNAVAILABLE;
+        $canRetryReview = $reviewUnavailable && $this->evaluations->canRetry($submission);
+        $reviewFailure = $reviewUnavailable
+            ? $this->failurePolicy->describe((string) data_get($metadata, 'evaluation.reason'))
+            : null;
         $contract = $this->contract($submission);
         $reportEnabled = (bool) $contract['project_report_enabled'];
         $replyEnabled = (bool) $contract['project_thread_reply_enabled'];
@@ -66,9 +76,14 @@ final readonly class ProjectSubmissionPresenter
         return [
             'id' => (string) $submission->public_id,
             'project_id' => (int) $submission->project_id,
-            'submission_status' => ProjectSubmissionLifecycle::submissionStatus($reviewStatus),
+            'submission_status' => $submissionStatus,
             'can_submit' => $reviewStatus === ProjectSubmission::STATUS_NEEDS_RESUBMISSION,
             'can_continue' => $reviewStatus === ProjectSubmission::STATUS_PASSED,
+            'can_retry_review' => $canRetryReview,
+            'review_failure_category' => $reviewFailure['category'] ?? null,
+            'review_retry_endpoint' => $canRetryReview
+                ? "/api/v1/project-submissions/{$submission->public_id}/review/retry"
+                : null,
             'assessment_type' => $outcome['assessment_type'],
             'skill_verified' => $outcome['skill_verified'],
             'feedback_level' => $effectiveFeedbackLevel,
@@ -105,7 +120,7 @@ final readonly class ProjectSubmissionPresenter
             'submitted_at' => $submission->submitted_at?->toIso8601String(),
             'reviewed_at' => $outcome['reviewed_at']?->toIso8601String(),
             'poll_after_seconds' => (
-                $reviewStatus === ProjectSubmission::STATUS_PENDING
+                $submissionStatus === ProjectSubmissionLifecycle::EVALUATING
                 || $reportStatus === ProjectSubmissionLifecycle::REPORT_QUEUED
             ) ? 3 : null,
             'feedback_thread' => $threadPayload,

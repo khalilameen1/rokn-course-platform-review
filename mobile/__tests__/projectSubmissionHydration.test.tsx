@@ -1,5 +1,6 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
+import {Alert} from 'react-native';
 
 const mockLoadDraft = jest.fn(async (..._args: unknown[]) => ({
   files: [],
@@ -23,20 +24,18 @@ jest.mock('../src/services/learnerDraftFiles', () => ({
 
 jest.mock('../src/services/projectSubmissionDraft', () => ({
   cacheProjectDraftFile: jest.fn(async file => file),
-  clearProjectSubmissionDraft: (...args: unknown[]) =>
-    mockClearDraft(...args),
+  clearProjectSubmissionDraft: (...args: unknown[]) => mockClearDraft(...args),
   loadProjectSubmissionDraft: (...args: unknown[]) => mockLoadDraft(...args),
   saveProjectSubmissionDraft: (...args: unknown[]) => mockSaveDraft(...args),
 }));
 
-jest.mock(
-  '../src/components/VideoPlayer/projectTransition/pickers',
-  () => ({
-    pickProjectFilesOwned: jest.fn(),
-  }),
-);
+jest.mock('../src/components/VideoPlayer/projectTransition/pickers', () => ({
+  pickProjectFilesOwned: jest.fn(),
+}));
 
 import {useProjectSubmission} from '../src/components/VideoPlayer/projectTransition/useProjectSubmission';
+import {pickProjectFilesOwned} from '../src/components/VideoPlayer/projectTransition/pickers';
+import {cacheProjectDraftFile} from '../src/services/projectSubmissionDraft';
 import type {CourseProject} from '../src/components/VideoPlayer/types';
 
 const DOCX =
@@ -66,6 +65,77 @@ describe('project submission draft hydration', () => {
   afterEach(() => {
     jest.useRealTimers();
   });
+
+  it.each([9, 8])(
+    'enforces the project server limit before caching or upload for a %s MiB file',
+    async mebibytes => {
+      const value = {
+        ...project(),
+        submissionAllowedMimeTypes: ['application/pdf'],
+        submissionMaxFileBytes: 8 * 1024 * 1024,
+      };
+      const selected = {
+        uri: 'file:///project.pdf',
+        name: 'project.pdf',
+        type: 'application/pdf',
+        size: mebibytes * 1024 * 1024,
+      };
+      jest
+        .mocked(pickProjectFilesOwned)
+        .mockResolvedValueOnce({
+          files: [selected],
+          ownerBoundary: {scope: 'user-a', epoch: 1},
+        });
+      const onSubmit = jest.fn(async () => ({
+        accepted: true,
+        submissionStatus: 'evaluating' as const,
+        canContinue: false,
+      }));
+      const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+      let current!: ReturnType<typeof useProjectSubmission>;
+      function Harness() {
+        current = useProjectSubmission({
+          appIsActive: true,
+          project: value,
+          status: 'draft',
+          submissionAllowed: true,
+          onSubmit,
+          onOutcome: jest.fn(),
+        });
+        return null;
+      }
+      let renderer!: TestRenderer.ReactTestRenderer;
+      try {
+        await act(async () => {
+          renderer = TestRenderer.create(<Harness />);
+        });
+        expect(current.maximumFileSizeLabel).toBe('٨ ميجابايت');
+        await act(async () => {
+          await current.chooseProjectFile();
+        });
+        if (mebibytes > 8) {
+          expect(current.selectedFiles).toEqual([]);
+          expect(alert).toHaveBeenCalledWith(
+            'حجم الملف كبير',
+            'الحد الأقصى ٨ ميجابايت\nاختر نسخة أصغر',
+          );
+          expect(onSubmit).not.toHaveBeenCalled();
+          expect(cacheProjectDraftFile).not.toHaveBeenCalled();
+        } else {
+          expect(current.selectedFiles).toEqual([selected]);
+          expect(cacheProjectDraftFile).toHaveBeenCalledTimes(1);
+          await act(async () => {
+            await current.submit();
+          });
+          expect(onSubmit).toHaveBeenCalledTimes(1);
+          expect(alert).not.toHaveBeenCalled();
+        }
+      } finally {
+        act(() => renderer.unmount());
+        alert.mockRestore();
+      }
+    },
+  );
 
   it('does not erase unsaved typing when the same API contract is remapped', async () => {
     let current!: ReturnType<typeof useProjectSubmission>;

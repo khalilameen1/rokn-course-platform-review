@@ -183,6 +183,55 @@ final readonly class AiEntitlementBudgetService
         }, 3);
     }
 
+    /** Compulsory relevance review is platform funded, never a report/message entitlement. */
+    public function reserveProjectReview(
+        CourseEnrollment $enrollment,
+        int $estimatedTokens,
+        string $model,
+        string $requestId
+    ): AiUsageEvent {
+        return DB::transaction(function () use ($enrollment, $estimatedTokens, $model, $requestId): AiUsageEvent {
+            User::query()->whereKey($enrollment->user_id)->where('active', true)
+                ->lockForUpdate()->firstOrFail();
+            $locked = CourseEnrollment::query()->lockForUpdate()->findOrFail($enrollment->id);
+            if (!$locked->isActive()) {
+                throw new AiPlanLimitReachedException('The course entitlement is not active.');
+            }
+            $existing = AiUsageEvent::query()->where('request_id', $requestId)->lockForUpdate()->first();
+            if ($existing) {
+                if ((int) $existing->enrollment_id !== (int) $locked->id
+                    || $existing->feature !== AiUsageEvent::FEATURE_PROJECT_REVIEW) {
+                    throw new \UnexpectedValueException('AI request identity conflict.');
+                }
+                return $existing;
+            }
+            $today = AiUsageEvent::query()->where('user_id', $locked->user_id)
+                ->where('feature', AiUsageEvent::FEATURE_PROJECT_REVIEW)
+                ->where('created_at', '>=', now()->startOfDay())->count();
+            if ($today >= max(1, (int) config('projects.evaluation_daily_attempt_limit', 60))) {
+                throw new AiPlanLimitReachedException('The platform review daily limit is reached.');
+            }
+            return AiUsageEvent::query()->create([
+                'request_id' => $requestId,
+                'enrollment_id' => $locked->id,
+                'access_plan_id' => $locked->access_plan_id,
+                'user_id' => $locked->user_id,
+                'course_id' => $locked->course_id,
+                'feature' => AiUsageEvent::FEATURE_PROJECT_REVIEW,
+                'model' => $model,
+                'status' => 'reserved',
+                'reserved_tokens' => max(1, $estimatedTokens),
+                'reserved_cost_usd' => $this->formatUsdMicros(max(1, $this->toUsdMicros(
+                    config('projects.evaluation_reserve_usd', '0.050000')
+                ))),
+                'reservation_expires_at' => now()->addSeconds($this->reservationTtlSeconds()),
+                // Existing detached settlement records provider costs without touching
+                // mutable entitlement aggregates, including unknown provider outcomes.
+                'metadata' => ['funding_source' => 'platform', 'reservation_detached' => true],
+            ]);
+        }, 3);
+    }
+
     public function settle(?AiUsageEvent $event, array $providerResult): bool
     {
         if (!$event) {
@@ -566,6 +615,7 @@ final readonly class AiEntitlementBudgetService
                 ->keyBy('feature');
             $reserved = AiUsageEvent::query()
                 ->where('enrollment_id', $enrollment->id)
+                ->where('feature', '!=', AiUsageEvent::FEATURE_PROJECT_REVIEW)
                 ->where('status', 'reserved')
                 ->lockForUpdate()
                 ->get();
@@ -661,7 +711,9 @@ final readonly class AiEntitlementBudgetService
                             data_get($metadata, 'provider_call_state'),
                             ['started', 'outcome_unknown'], true
                         );
-                        $metadata['reason'] = 'missing_entitlement_aggregate';
+                        $metadata['reason'] = ($metadata['funding_source'] ?? null) === 'platform'
+                            ? 'platform_reservation_expired'
+                            : 'missing_entitlement_aggregate';
                         if ($started) {
                             $event->forceFill(['metadata' => $metadata])->save();
                             $this->finalizeUnknownProviderOutcome(

@@ -105,6 +105,8 @@ $registerCourseApiRoutes = function () {
                 Route::post('projects/{project}/submissions', [\App\Http\Controllers\API\ProjectController::class, 'submit'])
                     ->middleware(['product.feature:project_uploads', 'throttle:8,1']);
                 Route::get('project-submissions/{submission}', [\App\Http\Controllers\API\ProjectController::class, 'submissionStatus']);
+                Route::post('project-submissions/{submission}/review/retry', [\App\Http\Controllers\API\ProjectController::class, 'retryEvaluation'])
+                    ->middleware(['product.feature:project_uploads', 'recovery.write', 'throttle:3,1']);
                 Route::post('project-submissions/{submission}/report/retry', [\App\Http\Controllers\API\ProjectController::class, 'retryInitialReport'])
                     ->middleware(['product.feature:ai_chat', 'recovery.write', 'throttle:3,1']);
                 Route::get('project-feedback-threads/{thread}', [\App\Http\Controllers\API\ProjectController::class, 'feedbackThread']);

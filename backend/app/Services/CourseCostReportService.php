@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\AiUsageEvent;
 use App\Models\OperatingCostPool;
 use App\Models\Setting;
 use Carbon\Carbon;
@@ -17,6 +18,17 @@ use App\Support\BusinessClock;
 final class CourseCostReportService
 {
     public const OPENROUTER_SERVICE = 'openrouter';
+
+    /** @return array<string, string> */
+    public static function aiFeatureLabels(): array
+    {
+        return [
+            'course_chat' => 'شات الكورس',
+            AiUsageEvent::FEATURE_PROJECT_REVIEW => 'مراجعة المشروع',
+            'project_feedback' => 'تقرير المشروع',
+            'project_followup' => 'متابعة المشروع',
+        ];
+    }
 
     /** @return array<string, string> */
     public static function serviceLabels(): array
@@ -86,7 +98,7 @@ final class CourseCostReportService
             $byFeature = DB::table('ai_usage_events')
                 ->where('course_id', $course->id)
                 ->whereIn('user_id', $userIds)
-                ->whereIn('feature', ['course_chat', 'project_feedback', 'project_followup'])
+                ->whereIn('feature', array_keys(self::aiFeatureLabels()))
                 ->selectRaw("user_id, feature, SUM(CASE WHEN status = 'completed' AND {$delivered} THEN 1 ELSE 0 END) as delivered_requests, SUM(CASE WHEN status = 'completed' AND {$unanswered} THEN 1 ELSE 0 END) as unanswered_requests, SUM(CASE WHEN status = 'completed' THEN cost_usd ELSE 0 END) as cost_usd")
                 ->groupBy('user_id', 'feature')->get();
             foreach ($byFeature as $usage) {

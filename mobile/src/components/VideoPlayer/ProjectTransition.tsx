@@ -24,6 +24,7 @@ import {
 import {Fonts} from '../../constants/styleConstants';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
 import type {ProjectSubmissionOutcome} from './courseLearningApi';
+import type {ProjectResolution} from './courseLearning/projectRemote';
 import type {CourseProject, SelectedProjectFile} from './types';
 import ProjectFeedbackPanel from './projectTransition/ProjectFeedbackPanel';
 import ProjectSubmissionEditor from './projectTransition/ProjectSubmissionEditor';
@@ -42,6 +43,7 @@ interface ProjectTransitionProps {
     note?: string,
   ) => Promise<ProjectSubmissionOutcome>;
   onContinue?: () => void;
+  onReviewResolution?: (resolution: ProjectResolution) => void;
 }
 
 type StatusTone = 'progress' | 'success' | 'danger';
@@ -137,6 +139,7 @@ const ProjectTransition = ({
   bottomInset = 0,
   onSubmit,
   onContinue,
+  onReviewResolution,
 }: ProjectTransitionProps) => {
   const navigation = useNavigation<RootNavigation>();
   const [briefExpanded, setBriefExpanded] = useState(false);
@@ -144,6 +147,7 @@ const ProjectTransition = ({
     active,
     project,
     onSubmit,
+    onReviewResolution,
   });
 
   useEffect(() => {
@@ -325,6 +329,39 @@ const ProjectTransition = ({
                 <Text style={styles.syncNote}>{controller.syncNote}</Text>
               )}
             </>
+          ) : controller.journeyState === 'review_unavailable' ? (
+            <>
+              <StatusHeading
+                description="تسليمك محفوظ ولم تكتمل مراجعته"
+                title="تعذّرت مراجعة المشروع"
+                tone="progress"
+              />
+              {!!controller.reviewRecoveryError && (
+                <Text style={styles.reportError}>
+                  {controller.reviewRecoveryError}
+                </Text>
+              )}
+              {(controller.reviewRetryAvailable ||
+                controller.reviewRecoveryRequired) && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{disabled: controller.reviewRetrying}}
+                  disabled={controller.reviewRetrying}
+                  style={[
+                    styles.primaryButton,
+                    controller.reviewRetrying && styles.disabledButton,
+                  ]}
+                  onPress={() => void controller.retryReview()}>
+                  <Text style={styles.primaryButtonText}>
+                    {controller.reviewRetrying
+                      ? 'نحدّث المراجعة'
+                      : controller.reviewRecoveryRequired
+                      ? 'تحديث حالة المراجعة'
+                      : 'إعادة المراجعة'}
+                  </Text>
+                </Pressable>
+              )}
+            </>
           ) : controller.journeyState === 'needs_changes' ? (
             <>
               <StatusHeading
@@ -371,6 +408,7 @@ const ProjectTransition = ({
               filePickerDisabled={controller.filePickerDisabled}
               fileTypesLabel={controller.fileTypesLabel}
               maximumFiles={controller.submissionMaximumFiles}
+              maximumFileSizeLabel={controller.submissionMaximumFileSizeLabel}
               note={controller.submissionNote}
               selectedFiles={controller.selectedFiles}
               sending={controller.submissionSending}

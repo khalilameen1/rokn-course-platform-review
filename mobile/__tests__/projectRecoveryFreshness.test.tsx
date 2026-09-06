@@ -52,6 +52,7 @@ import type {
   ProjectStatus,
 } from '../src/components/VideoPlayer/types';
 import {useProjectReview} from '../src/screens/reels/useProjectReview';
+import {loadProjectResolution} from '../src/components/VideoPlayer/courseLearning/projects';
 
 const courseWithStatus = (status: ProjectStatus): CourseLearningData => ({
   id: 'course-1',
@@ -92,6 +93,79 @@ describe('project recovery freshness', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     recoveryListener = undefined;
+  });
+
+  it('publishes unavailable review without a course reload and resumes the same watcher only after explicit retry', async () => {
+    const current = courseWithStatus('evaluating');
+    const setCourse = jest.fn();
+    const refs = {
+      loadedCourse: {current},
+      mounted: {current: true},
+      ownerGeneration: {current: 1},
+      reviewWatcher: {current: 0},
+      watchedProject: {current: null as string | null},
+    };
+    let review!: ReturnType<typeof useProjectReview>;
+    const Harness = () => {
+      review = useProjectReview({
+        active: true,
+        course: current,
+        previewMode: false,
+        refs,
+        setCourse,
+      });
+      return null;
+    };
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<Harness />);
+    });
+    const unavailable = {
+      status: 'review_unavailable' as const,
+      canSubmit: false,
+      canContinue: false,
+      feedbackLevel: 'pass_only' as const,
+      reportEnabled: false,
+      reportStatus: 'not_included' as const,
+      replyEnabled: false,
+      canRetryReport: false,
+      canRetryReview: true,
+      reviewRetryEndpoint:
+        '/api/v1/project-submissions/11111111-1111-4111-8111-111111111111/review/retry',
+      reviewFailureCategory: 'provider_unavailable',
+      reviewFeedback: undefined,
+      reportRetryEndpoint: undefined,
+      feedbackThread: null,
+    };
+    jest.mocked(loadProjectResolution).mockResolvedValueOnce(unavailable);
+    const watcher = mockWatchProjectResolution.mock.calls[0][0];
+    try {
+      await ReactTestRenderer.act(async () => {
+        const result = await watcher.resolve('project-1');
+        watcher.onResolution(result);
+      });
+      expect(mockLoadCourseLearningData).not.toHaveBeenCalled();
+      const updated = setCourse.mock.calls[0][0](current);
+      expect(updated.modules[0].projects[0]).toMatchObject({
+        status: 'review_unavailable',
+        canRetryReview: true,
+        canContinue: false,
+      });
+      expect(refs.watchedProject.current).toBeNull();
+      await ReactTestRenderer.act(async () => {
+        review.applyReviewResolution('project-1', {
+          ...unavailable,
+          status: 'evaluating',
+          canRetryReview: false,
+        });
+      });
+      expect(mockWatchProjectResolution).toHaveBeenCalledTimes(2);
+      expect(
+        setCourse.mock.calls[1][0](current).modules[0].projects[0].status,
+      ).toBe('evaluating');
+    } finally {
+      await ReactTestRenderer.act(async () => renderer.unmount());
+    }
   });
 
   it('treats a replay as a refresh signal and waits for the current server map', async () => {
@@ -144,9 +218,9 @@ describe('project recovery freshness', () => {
       await Promise.resolve();
     });
     expect(setCourse).toHaveBeenCalledWith(fresh);
-    expect(
-      setCourse.mock.calls[0][0].modules[0].projects[0].status,
-    ).toBe('passed');
+    expect(setCourse.mock.calls[0][0].modules[0].projects[0].status).toBe(
+      'passed',
+    );
     await ReactTestRenderer.act(async () => renderer!.unmount());
   });
 
@@ -192,5 +266,48 @@ describe('project recovery freshness', () => {
     expect(setCourse).not.toHaveBeenCalled();
     expect(mockWatchProjectResolution).toHaveBeenCalledTimes(1);
     await ReactTestRenderer.act(async () => renderer!.unmount());
+  });
+
+  it('stops native-page review timers on exit and starts a fresh reader on return', async () => {
+    const current = courseWithStatus('evaluating');
+    const firstStop = jest.fn();
+    const secondStop = jest.fn();
+    mockWatchProjectResolution
+      .mockReturnValueOnce(firstStop)
+      .mockReturnValueOnce(secondStop);
+    const refs = {
+      loadedCourse: {current},
+      mounted: {current: true},
+      ownerGeneration: {current: 1},
+      reviewWatcher: {current: 0},
+      watchedProject: {current: null},
+    };
+    const setCourse = jest.fn();
+    const Harness = ({active}: {active: boolean}) => {
+      useProjectReview({
+        active,
+        course: current,
+        previewMode: false,
+        refs,
+        setCourse,
+      });
+      return null;
+    };
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<Harness active />);
+    });
+    expect(mockWatchProjectResolution).toHaveBeenCalledTimes(1);
+    await ReactTestRenderer.act(async () =>
+      renderer.update(<Harness active={false} />),
+    );
+    expect(firstStop).toHaveBeenCalledTimes(1);
+    expect(refs.watchedProject.current).toBeNull();
+    await ReactTestRenderer.act(async () =>
+      renderer.update(<Harness active />),
+    );
+    expect(mockWatchProjectResolution).toHaveBeenCalledTimes(2);
+    await ReactTestRenderer.act(async () => renderer.unmount());
+    expect(secondStop).toHaveBeenCalledTimes(1);
   });
 });

@@ -21,13 +21,16 @@ use App\Services\CourseStagedAuthoringService;
 use App\Services\ProjectAttachmentDownloadService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectReportRetryService;
+use App\Services\ProjectSubmissionEvaluationService;
 use App\Services\ProjectSubmissionOrchestrator;
 use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionService;
+use App\Services\StoredFileDeletionService;
 use App\Support\DownloadFilename;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use League\Flysystem\FilesystemException;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ProjectController extends Controller
@@ -43,7 +46,8 @@ final class ProjectController extends Controller
         private CourseRevisionLearnerReadService $revisionReads,
         private ProjectAttachmentDownloadService $downloads,
         private ProjectReportRetryService $reportRetries,
-        private ProjectSubmissionOrchestrator $submissionOrchestrator
+        private ProjectSubmissionOrchestrator $submissionOrchestrator,
+        private ProjectSubmissionEvaluationService $evaluations
     ) {
     }
 
@@ -101,6 +105,7 @@ final class ProjectController extends Controller
                     'submission_text_enabled' => (bool) $project->submission_text_enabled,
                     'submission_files_enabled' => $submissionMimeTypes !== [],
                     'submission_max_files' => max(1, min(5, (int) ($project->submission_max_files ?: 3))),
+                    'submission_max_file_bytes' => ProjectSubmissionOrchestrator::maximumFileBytes(),
                     'submission_allowed_mime_types' => $submissionMimeTypes,
                     'is_graduation_project' => $project->is_graduation_project,
                     'project_feedback' => [
@@ -142,6 +147,10 @@ final class ProjectController extends Controller
      */
     public function submit(SubmitProjectRequest $request, $projectId): JsonResponse
     {
+        $request->attributes->set(
+            StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE,
+            microtime(true) + (float) config('projects.submission_request_budget_seconds', 16)
+        );
         try {
             $user = auth('api')->user();
             if (!$user) {
@@ -215,10 +224,23 @@ final class ProjectController extends Controller
             ], 409);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
             return $this->error('المشروع غير متاح', 404);
+        } catch (FilesystemException $exception) {
+            report($exception);
+            return response()->json([
+                'status' => 503,
+                'success' => false,
+                'code' => 'project_upload_temporarily_unavailable',
+                'message' => 'تعذّر حفظ الملف الآن حاول مرة أخرى',
+                'data' => null,
+            ], 503, ['Retry-After' => '3']);
         } catch (\Throwable $exception) {
             $this->rethrowExpectedRequestException($exception);
             report($exception);
             return $this->error('تعذّر إرسال المشروع', 500);
+        } finally {
+            $request->attributes->remove(
+                StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE
+            );
         }
     }
 
@@ -391,6 +413,34 @@ final class ProjectController extends Controller
                 'download_url_expires_at' => $expiresAt->toIso8601String(),
             ],
         ]);
+    }
+
+    public function retryEvaluation(ProjectSubmission $submission): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user || (int) $submission->user_id !== (int) $user->id) {
+            return $this->error('التسليم غير متاح', 404);
+        }
+
+        try {
+            $submission = $this->evaluations->retryEvaluation($submission, $user);
+        } catch (\Illuminate\Validation\ValidationException) {
+            // A concurrent retry can already own this submission. Return its
+            // current state rather than making the client upload it again.
+            $submission->refresh();
+        }
+        $payload = $this->submissions->present($submission);
+        $unavailable = $payload['submission_status'] === 'review_unavailable';
+
+        return response()->json([
+            'status' => $unavailable ? 409 : 202,
+            'success' => !$unavailable,
+            'code' => $unavailable ? 'project_review_retry_unavailable' : null,
+            'message' => $unavailable
+                ? "لم تكتمل المراجعة\nتسليمك محفوظ"
+                : 'تم تحديث حالة المراجعة',
+            'data' => $payload,
+        ], $unavailable ? 409 : 202);
     }
 
     public function retryInitialReport(ProjectSubmission $submission): JsonResponse
