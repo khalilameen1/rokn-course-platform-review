@@ -248,3 +248,12 @@ accounting tests (57 assertions), and 29 report recovery/presentation tests
 These are not authenticated device acceptance or a claim that the old student's
 report was delivered. The Android artifact remains 1.0.45 / 12345678.apk; the
 later changes are backend-only plus an iOS native version synchronization.
+
+Deployment 182 (`d31ce37`) succeeded. The post-deploy provider probe used the
+published `AiPromptPolicy::projectReport` and `OpenRouterService` streaming path
+with an in-memory generated JPEG, without an empty text block. It returned nine
+partial updates, first partial at 1.07 seconds and a 328-character report at
+4.58 seconds; reported cost was USD 0.005092. It changed no student rows. The same
+command verified the original submission is still passed with continuation
+allowed, an unchanged review timestamp, a failed old report and no retained
+input. Recovering that old report still requires the student's actual work.
