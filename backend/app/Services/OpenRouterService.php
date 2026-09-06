@@ -9,6 +9,7 @@ use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\FnStream;
 use GuzzleHttp\Psr7\Utils;
+use GuzzleHttp\TransferStats;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -199,11 +200,27 @@ final class OpenRouterService
         }
 
         $eventStream = $onPartial !== null ? new OpenRouterEventStream($onPartial, $model) : null;
+        $transportStats = [];
         try {
             $request = Http::withToken($apiKey)
                 ->acceptJson()
                 // A 307/308 redirect must not replay a billable generation.
-                ->withOptions(['allow_redirects' => false])
+                ->withOptions([
+                    'allow_redirects' => false,
+                    'on_stats' => static function (TransferStats $stats) use (&$transportStats): void {
+                        $handler = $stats->getHandlerStats();
+                        $handlerError = $stats->getHandlerErrorData();
+                        $transportStats = [
+                            'curl_errno' => is_numeric($handlerError)
+                                ? max(0, (int) $handlerError)
+                                : 0,
+                            'http_code' => max(0, (int) ($handler['http_code'] ?? 0)),
+                            'total_time' => max(0, (float) ($handler['total_time'] ?? 0)),
+                            'starttransfer_time' => max(0, (float) ($handler['starttransfer_time'] ?? 0)),
+                            'size_download' => max(0, (float) ($handler['size_download'] ?? 0)),
+                        ];
+                    },
+                ])
                 ->withHeaders([
                     'HTTP-Referer' => (string) config('app.url'),
                     'X-Title' => (string) config('app.name', 'Rokn'),
@@ -228,6 +245,13 @@ final class OpenRouterService
             $request->setHandler($this->generationHandler($eventStream));
             $response = $request->post((string) config('openrouter.endpoint'), $payload);
         } catch (ConnectionException $exception) {
+            $this->logTransportFailure(
+                $requestIdentity,
+                $model,
+                $payload,
+                $eventStream,
+                $transportStats
+            );
             // A timeout may happen after the provider accepted and billed the
             // request. Do not issue a blind second paid call.
             throw new AiProviderUnavailableException(
@@ -235,6 +259,15 @@ final class OpenRouterService
                 previous: $exception,
                 outcomeUnknown: true
             );
+        } catch (AiProviderUnavailableException $exception) {
+            $this->logTransportFailure(
+                $requestIdentity,
+                $model,
+                $payload,
+                $eventStream,
+                $transportStats
+            );
+            throw $exception;
         } finally {
             $eventStream?->flush();
         }
@@ -245,7 +278,7 @@ final class OpenRouterService
             $providerCode = trim((string) $response->json('error.code'));
             $providerCode = $providerCode !== ''
                 ? substr($providerCode, 0, 80)
-                : null;
+                : (string) $response->status();
             Log::warning('OpenRouter rejected a generation request.', [
                 'status' => $response->status(),
                 'provider_code' => $providerCode,
@@ -286,6 +319,15 @@ final class OpenRouterService
                     $eventStream->append($response->body());
                 }
                 $body = $eventStream->finish();
+            } catch (AiProviderUnavailableException $exception) {
+                $this->logTransportFailure(
+                    $requestIdentity,
+                    $model,
+                    $payload,
+                    $eventStream,
+                    $transportStats
+                );
+                throw $exception;
             } finally {
                 $eventStream->flush();
             }
@@ -398,18 +440,26 @@ final class OpenRouterService
             $headers = null;
             $isEventStream = false;
             $decoderFailure = null;
-            $options['on_headers'] = static function (ResponseInterface $response) use (&$headers, &$isEventStream): void {
+            $options['on_headers'] = static function (ResponseInterface $response) use ($stream, &$headers, &$isEventStream): void {
                 $headers = $response;
+                $stream->captureGenerationId($response->getHeaderLine('X-Generation-Id'));
+                if ($response->getStatusCode() >= 400) {
+                    // Rejection is already known. Waiting for an optional error
+                    // body can turn a silent keep-alive into an unknown timeout.
+                    throw new \RuntimeException('Provider rejected the request headers.');
+                }
                 $isEventStream = $response->getStatusCode() >= 200
                     && $response->getStatusCode() < 300
                     && str_contains(strtolower($response->getHeaderLine('Content-Type')), 'text/event-stream');
             };
             $options['sink'] = FnStream::decorate($body, [
                 'write' => static function (string $chunk) use ($stream, $body, &$isEventStream, &$decoderFailure): int {
-                    if (!$isEventStream) {
-                        return $body->write($chunk);
-                    }
                     try {
+                        if (!$isEventStream) {
+                            $written = $body->write($chunk);
+                            $stream->rejectJsonError((string) $body);
+                            return $written;
+                        }
                         $stream->append($chunk);
                     } catch (Throwable $exception) {
                         $decoderFailure = $exception;
@@ -427,6 +477,9 @@ final class OpenRouterService
                     if ($decoderFailure !== null) {
                         throw $decoderFailure;
                     }
+                    if ($headers !== null && $headers->getStatusCode() >= 400) {
+                        return $headers;
+                    }
                     if ($stream->completed() && $headers !== null) {
                         return $headers;
                     }
@@ -439,6 +492,40 @@ final class OpenRouterService
                 }
             );
         };
+    }
+
+    /** @param array<string,mixed> $payload @param array<string,int|float> $transportStats */
+    private function logTransportFailure(
+        ?string $requestIdentity,
+        string $model,
+        array $payload,
+        ?OpenRouterEventStream $eventStream,
+        array $transportStats
+    ): void {
+        $requestId = preg_replace(
+            '/[^A-Za-z0-9._:-]/',
+            '_',
+            trim((string) $requestIdentity)
+        );
+        $stream = $eventStream?->diagnostics() ?? [
+            'received_fragments' => false,
+            'visible_chars' => 0,
+            'generation_id' => null,
+        ];
+        Log::warning('OpenRouter generation transport failed.', [
+            'request_id' => $requestId !== '' ? substr((string) $requestId, 0, 128) : null,
+            'model' => substr($model, 0, 128),
+            'stream' => $eventStream !== null,
+            'max_tokens' => max(0, (int) ($payload['max_tokens'] ?? 0)),
+            'curl_errno' => max(0, (int) ($transportStats['curl_errno'] ?? 0)),
+            'http_code' => max(0, (int) ($transportStats['http_code'] ?? 0)),
+            'total_time' => max(0, (float) ($transportStats['total_time'] ?? 0)),
+            'starttransfer_time' => max(0, (float) ($transportStats['starttransfer_time'] ?? 0)),
+            'size_download' => max(0, (float) ($transportStats['size_download'] ?? 0)),
+            'received_fragments' => (bool) $stream['received_fragments'],
+            'visible_chars' => max(0, (int) $stream['visible_chars']),
+            'generation_id' => $stream['generation_id'],
+        ]);
     }
 
     private function containsPdf(array $messages): bool

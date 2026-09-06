@@ -6,11 +6,13 @@ namespace Tests\Feature;
 
 use App\Exceptions\AiProviderUnavailableException;
 use App\Services\OpenRouterService;
+use App\Services\OpenRouterEventStream;
 use App\Services\OpenRouterCurlFactory;
 use GuzzleHttp\Handler\CurlFactory;
 use GuzzleHttp\Handler\CurlHandler;
 use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
@@ -112,6 +114,7 @@ final class OpenRouterTransportTest extends TestCase
     public function test_one_total_deadline_covers_headers_and_body(string $scenario, bool $hasPartial): void
     {
         $this->startServer($scenario);
+        Log::spy();
         $started = hrtime(true);
         $partials = [];
         $landings = 0;
@@ -119,7 +122,7 @@ final class OpenRouterTransportTest extends TestCase
         try {
             app(OpenRouterService::class)->chat(
                 'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
-                null,
+                'report-request-123',
                 function () use (&$landings): void { ++$landings; },
                 function (string $text) use (&$partials, &$firstPartialAt, $started): void {
                     $firstPartialAt ??= (hrtime(true) - $started) / 1e9;
@@ -140,6 +143,30 @@ final class OpenRouterTransportTest extends TestCase
             self::assertLessThan($scenario === 'headers_then_silence' ? 3.0 : 1.0, $firstPartialAt);
         }
         self::assertSame(1, substr_count($this->server->getOutput(), 'REQUEST'));
+        Log::shouldHaveReceived('warning')
+            ->once()
+            ->withArgs(static function (string $message, array $context) use ($hasPartial): bool {
+                $keys = [
+                    'request_id', 'model', 'stream', 'max_tokens', 'curl_errno',
+                    'http_code', 'total_time', 'starttransfer_time', 'size_download',
+                    'received_fragments', 'visible_chars', 'generation_id',
+                ];
+
+                return $message === 'OpenRouter generation transport failed.'
+                    && array_keys($context) === $keys
+                    && $context['request_id'] === 'report-request-123'
+                    && $context['model'] === 'test/model'
+                    && $context['stream'] === true
+                    && $context['max_tokens'] === 100
+                    && $context['curl_errno'] === 28
+                    && $context['http_code'] === ($hasPartial ? 200 : 0)
+                    && $context['total_time'] >= 4.5
+                    && $context['starttransfer_time'] >= 0
+                    && $context['size_download'] >= 0
+                    && $context['received_fragments'] === $hasPartial
+                    && $context['visible_chars'] === ($hasPartial ? mb_strlen('First small fragment') : 0)
+                    && $context['generation_id'] === ($hasPartial ? 'local-generation' : null);
+            });
     }
 
     public function test_interrupted_stream_keeps_partial_but_never_lands(): void
@@ -209,6 +236,65 @@ final class OpenRouterTransportTest extends TestCase
         self::assertSame('Buffered JSON answer', $result['message']);
         self::assertSame(0.01, $result['usage']['cost']);
         self::assertCount(1, $landings);
+    }
+
+    public static function openRejections(): array
+    {
+        return [
+            ['rejection_headers_silence', false],
+            ['rejection_json', false],
+            ['rejection_wrong_type', false],
+            ['rejection_raw_sse', false],
+            ['rejection_proper_sse', false],
+            ['rejection_after_partial', true],
+        ];
+    }
+
+    #[DataProvider('openRejections')]
+    public function test_rejection_does_not_wait_for_the_socket_to_close(string $scenario, bool $unknown): void
+    {
+        $this->startServer($scenario);
+        $started = hrtime(true);
+        $partials = [];
+        $landings = 0;
+        try {
+            app(OpenRouterService::class)->chat(
+                'test/model', [['role' => 'user', 'content' => 'Local question']], .3, 100,
+                null,
+                function () use (&$landings): void { ++$landings; },
+                function (string $text) use (&$partials): void { $partials[] = $text; }
+            );
+            self::fail('A complete rejection must stop the transport.');
+        } catch (AiProviderUnavailableException $exception) {
+            self::assertSame($unknown, $exception->outcomeUnknown);
+            self::assertFalse($exception->retrySafe);
+            self::assertSame(400, $exception->providerStatus);
+            self::assertSame('400', $exception->providerCode);
+            self::assertSame(
+                $scenario === 'rejection_headers_silence' ? [] : [['type' => 'local-file']],
+                $exception->fileAnnotations
+            );
+        }
+        self::assertLessThan(2.0, (hrtime(true) - $started) / 1e9);
+        self::assertSame($unknown ? ['First small fragment'] : [], $partials);
+        self::assertSame(0, $landings);
+        self::assertSame(1, substr_count($this->server->getOutput(), 'REQUEST'));
+    }
+
+    public function test_json_detection_does_not_treat_answer_text_or_incomplete_data_as_rejection(): void
+    {
+        $decoder = new OpenRouterEventStream(static function (): void {}, 'test/model');
+        foreach ([
+            '{"error":{"code":400,"message":"incomplete"}',
+            '{"message":"An error code 400 is a bad request"}',
+            '{"error":"An explanation of error handling"}',
+            '{"error":{"code":400}}',
+            '{"choices":[{"message":{"content":"An error example"}}],"error":{"code":400,"message":"quoted example"}}',
+        ] as $body) {
+            $decoder->rejectJsonError($body);
+        }
+        self::assertFalse($decoder->completed());
+        self::assertFalse($decoder->receivedFragments());
     }
 
     public function test_vendor_rewind_recovery_cannot_dispatch_a_second_generation(): void

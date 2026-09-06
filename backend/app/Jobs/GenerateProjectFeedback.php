@@ -22,7 +22,6 @@ use App\Services\OpenRouterService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectSubmissionFileRetentionService;
-use App\Support\ProjectReportRetryPolicy;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
 use Illuminate\Bus\Queueable;
@@ -159,6 +158,14 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             }
             return;
         }
+        // A landed/settled report no longer needs its original upload. Resolve
+        // it before input checks so storage loss cannot replace a paid answer.
+        $knownEvent = AiUsageEvent::query()->where('request_id', $requestId)
+            ->where('feature', 'project_feedback')->where('user_id', $submission->user_id)
+            ->where('enrollment_id', $enrollment->id)->first();
+        $hasKnownReport = $paidCalls->landedResult($knownEvent) !== null
+            || ($knownEvent?->status === 'completed'
+                && trim((string) data_get($knownEvent->metadata, 'accepted_response', '')) !== '');
         $text = UnicodeText::limit(
             UnicodeText::clean((string) $submission->submission_text),
             8000
@@ -167,20 +174,6 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             AiInputAttachment::OWNER_PROJECT_SUBMISSION,
             (int) $submission->id
         );
-        if ($text === '' && $ownedAttachments->isEmpty()) {
-            $metadata['ai_feedback'] = ['status' => 'not_applicable', 'reason' => 'no_text_input'];
-            $submission->forceFill(['submission_metadata' => $metadata])->save();
-            $threads->storeInitialReport(
-                $submission,
-                $enrollment,
-                $courseId,
-                $evaluationTerms,
-                trim((string) ($submission->feedback ?: 'تم اعتماد المحاولة وفتح المحتوى التالي'))
-            );
-            $fileRetention->purgeIfEligible($submission->fresh());
-            return;
-        }
-
         $claimed = DB::transaction(function () use ($submission): bool {
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
             if ($locked->review_status !== ProjectSubmission::STATUS_PASSED) return false;
@@ -215,6 +208,10 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             return true;
         }, 3);
         if (!$claimed) return;
+        if ($text === '' && $ownedAttachments->isEmpty() && !$hasKnownReport) {
+            $this->markUnavailable($submission->id, 'report_input_missing');
+            return;
+        }
 
         $model = '';
         $maxTokens = max(80, min(
@@ -243,36 +240,40 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
             'course_title' => $courseTitle,
             'project_title' => $projectTitle,
         ]);
-        $messages = [[
-            'role' => 'system',
-            'content' => $promptPolicy->projectReport(
-                $requirements,
-                $courseTitle,
-                $projectTitle
-            ),
-        ], [
-            'role' => 'user',
-            'content' => array_merge([[
-                'type' => 'text',
-                'text' => $promptPolicy->learnerSubmission($text),
-            ]], $attachments->providerParts($ownedAttachments)),
-        ]];
-
         $reservation = null;
         $providerResultKnown = false;
         $reportMessage = null;
+        $inputParts = null;
         try {
-            $model = $openRouter->configuredModel('project_model');
-            $estimated = $maxTokens
-                + (int) ceil((strlen($requirements) + strlen($text)) / 4)
-                + $attachments->estimatedInputTokens($ownedAttachments);
-            $reservation = $budget->reserve(
-                $enrollment,
-                'project_feedback',
-                $estimated,
-                $model,
-                $requestId
-            );
+            $reservation = $knownEvent;
+            $inputParts = $hasKnownReport ? [] : $attachments->providerParts($ownedAttachments);
+            $messages = $hasKnownReport ? [] : [[
+                'role' => 'system',
+                'content' => $promptPolicy->projectReport(
+                    $requirements,
+                    $courseTitle,
+                    $projectTitle
+                ),
+            ], [
+                'role' => 'user',
+                'content' => array_merge($text === '' ? [] : [[
+                    'type' => 'text',
+                    'text' => $promptPolicy->learnerSubmission($text),
+                ]], $inputParts),
+            ]];
+            if (!$hasKnownReport) {
+                $model = $openRouter->configuredModel('project_model');
+                $estimated = $maxTokens
+                    + (int) ceil((strlen($requirements) + strlen($text)) / 4)
+                    + $attachments->estimatedInputTokens($ownedAttachments);
+                $reservation = $budget->reserve(
+                    $enrollment,
+                    'project_feedback',
+                    $estimated,
+                    $model,
+                    $requestId
+                );
+            }
             if (!$reservation) {
                 throw new AiPlanLimitReachedException('Project feedback is not metered for this enrollment.');
             }
@@ -467,20 +468,16 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 $submission->id,
                 $failureCode
             );
-            // Keep the project input while the public contract still offers
-            // a safe report retry. The bounded retention sweep removes it if
-            // the learner never retries; terminal failures can be retired now.
-            $freshSubmission = $submission->fresh();
-            $retryCount = (int) data_get(
-                $freshSubmission->submission_metadata,
-                'ai_feedback.retry_count',
-                0
-            );
-            $fileRetention->purgeIfEligible(
-                $freshSubmission,
-                !ProjectReportRetryPolicy::allows($failureCode, $retryCount, null)
-            );
+            // A provider failure is not a delivered report. Keep its input for
+            // the existing bounded recovery window, even when another paid
+            // request is unsafe. The retention sweep handles expiry separately.
+            $fileRetention->purgeIfEligible($submission->fresh());
         } catch (\Throwable $exception) {
+            if ($inputParts === null) {
+                $this->markUnavailable($submission->id, 'attachment_unavailable');
+                report($exception);
+                return;
+            }
             $settled = $reservation?->fresh();
             $accepted = trim((string) data_get(
                 $settled?->metadata,

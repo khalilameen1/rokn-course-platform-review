@@ -38,6 +38,12 @@ final class OpenRouterEventStream
             return;
         }
         $this->buffer .= $chunk;
+        // Some gateways return a JSON rejection after opening an SSE response.
+        // Only a complete, explicit error envelope is authoritative here.
+        if (str_starts_with(ltrim($this->buffer), '{')) {
+            $this->rejectJsonError($this->buffer);
+            return;
+        }
         foreach ($this->takeCompleteSseEvents() as $event) {
             if ($this->consumeSseEvent($event)) {
                 $this->completed = true;
@@ -55,6 +61,46 @@ final class OpenRouterEventStream
     public function receivedFragments(): bool
     {
         return $this->receivedFragments;
+    }
+
+    public function rejectJsonError(string $body): void
+    {
+        try {
+            $frame = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException) {
+            return; // An incomplete chunk is not a provider rejection.
+        }
+        if (!is_array($frame) || array_key_exists('choices', $frame)) {
+            return;
+        }
+        $error = $frame['error'] ?? null;
+        if (!is_array($error)
+            || !(is_string($error['code'] ?? null) || is_int($error['code'] ?? null))
+            || trim((string) $error['code']) === ''
+            || !is_string($error['message'] ?? null)) {
+            return;
+        }
+        $this->throwProviderError($error);
+    }
+
+    public function captureGenerationId(string $generationId): void
+    {
+        $generationId = trim($generationId);
+        if ($generationId !== '' && $this->providerRequestId === '') {
+            $this->providerRequestId = substr($generationId, 0, 255);
+        }
+    }
+
+    /** @return array{received_fragments:bool,visible_chars:int,generation_id:?string} */
+    public function diagnostics(): array
+    {
+        return [
+            'received_fragments' => $this->receivedFragments,
+            'visible_chars' => mb_strlen($this->content),
+            'generation_id' => $this->providerRequestId !== ''
+                ? $this->providerRequestId
+                : null,
+        ];
     }
 
     public function finish(): array
@@ -141,21 +187,7 @@ final class OpenRouterEventStream
             return false;
         }
         if (isset($frame['error'])) {
-            $rawCode = trim((string) data_get($frame, 'error.code', ''));
-            $providerStatus = ctype_digit($rawCode) ? (int) $rawCode : null;
-            $outcomeUnknown = $this->content !== '';
-            throw new AiProviderUnavailableException(
-                !$outcomeUnknown && (
-                    in_array($providerStatus, [408, 429], true)
-                    || ($providerStatus !== null && $providerStatus >= 500)
-                ),
-                'AI provider stream returned an error.',
-                fileAnnotations: is_array(data_get($frame, 'error.metadata.file_annotations'))
-                    ? data_get($frame, 'error.metadata.file_annotations') : [],
-                outcomeUnknown: $outcomeUnknown,
-                providerStatus: $providerStatus,
-                providerCode: $rawCode !== '' ? substr($rawCode, 0, 80) : null
-            );
+            $this->throwProviderError(is_array($frame['error']) ? $frame['error'] : []);
         }
 
         $this->providerRequestId = (string) ($frame['id'] ?? $this->providerRequestId);
@@ -187,6 +219,25 @@ final class OpenRouterEventStream
         }
 
         return false;
+    }
+
+    private function throwProviderError(array $error): never
+    {
+        $rawCode = trim((string) ($error['code'] ?? ''));
+        $providerStatus = ctype_digit($rawCode) ? (int) $rawCode : null;
+        $outcomeUnknown = $this->content !== '';
+        throw new AiProviderUnavailableException(
+            !$outcomeUnknown && (
+                in_array($providerStatus, [408, 429], true)
+                || ($providerStatus !== null && $providerStatus >= 500)
+            ),
+            'AI provider stream returned an error.',
+            fileAnnotations: is_array(data_get($error, 'metadata.file_annotations'))
+                ? data_get($error, 'metadata.file_annotations') : [],
+            outcomeUnknown: $outcomeUnknown,
+            providerStatus: $providerStatus,
+            providerCode: $rawCode !== '' ? substr($rawCode, 0, 80) : null
+        );
     }
 
     private function streamVisibleContent(mixed $content): string

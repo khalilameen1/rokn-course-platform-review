@@ -43,6 +43,35 @@ $send = static function (string $bytes) use ($client): void {
 $event = static function (array $payload) use ($send): void {
     $send('data: '.json_encode($payload, JSON_THROW_ON_ERROR)."\n\n");
 };
+if (str_starts_with($scenario, 'rejection_')) {
+    $status = $scenario === 'rejection_headers_silence' ? '400 Bad Request' : '200 OK';
+    $type = match ($scenario) {
+        'rejection_json' => 'application/json',
+        'rejection_wrong_type' => 'text/plain',
+        default => 'text/event-stream',
+    };
+    $send("HTTP/1.1 {$status}\r\nContent-Type: {$type}\r\nConnection: close\r\n\r\n");
+    if ($scenario !== 'rejection_headers_silence') {
+        if ($scenario === 'rejection_after_partial') {
+            $event(['choices' => [['delta' => ['content' => 'First small fragment']]]]);
+        }
+        $error = ['error' => ['code' => 400, 'message' => 'Local rejection',
+            'metadata' => ['file_annotations' => [['type' => 'local-file']]],
+        ]];
+        if ($scenario === 'rejection_proper_sse') {
+            $event($error);
+        } else {
+            $json = json_encode($error, JSON_THROW_ON_ERROR);
+            $send(substr($json, 0, 20));
+            usleep(150_000); // Deliberately split the JSON across TCP writes.
+            $send(substr($json, 20));
+        }
+    }
+    usleep(7_000_000); // The response body has no length and remains open.
+    fclose($client);
+    fclose($server);
+    exit(0);
+}
 if ($scenario === 'slow_headers') {
     usleep(7_000_000);
 }

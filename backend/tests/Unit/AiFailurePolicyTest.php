@@ -40,4 +40,13 @@ final class AiFailurePolicyTest extends TestCase
         self::assertFalse($policy->describe('chat_usage_identity_mismatch')['can_retry']);
         self::assertFalse($policy->describe('project_context_missing')['can_retry']);
     }
+
+    public function test_missing_report_input_is_not_described_as_a_transient_connection_error(): void
+    {
+        $failure = (new AiFailurePolicy())->describe('report_input_missing');
+
+        self::assertSame('attachment', $failure['category']);
+        self::assertFalse($failure['can_retry']);
+        self::assertSame(0, $failure['retry_after_seconds']);
+    }
 }

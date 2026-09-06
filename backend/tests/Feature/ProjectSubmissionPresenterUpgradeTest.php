@@ -362,6 +362,43 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         self::assertSame('', (string) data_get($event->metadata, 'accepted_response', ''));
         self::assertSame('provider_outcome_unknown', data_get($event->metadata, 'provider_outcome_reason'));
         self::assertFalse(data_get($event->metadata, 'entitlement_delivered'));
+        self::assertSame($fixture['text'], $fixture['submission']->fresh()->submission_text);
+        self::assertSame(0, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
+        $this->travel(31)->days();
+        self::assertSame(1, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
+        self::assertNull($fixture['submission']->fresh()->submission_text);
+        self::assertEquals($review, $fixture['submission']->fresh()->only(array_keys($review)));
+    }
+
+    public function test_rejected_report_keeps_input_for_repair_without_reversing_progress(): void
+    {
+        config([
+            'openrouter.api_key' => 'test-key',
+            'openrouter.endpoint' => 'https://openrouter.test/project',
+            'openrouter.project_model' => 'test/model',
+            'openrouter.allowed_models' => ['test/model'],
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['https://openrouter.test/project' => Http::response([
+            'error' => ['code' => 400, 'message' => 'Invalid content block'],
+        ], 400)]);
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $review = $fixture['submission']->only(['review_status', 'score', 'feedback', 'reviewed_at']);
+
+        app()->call([new GenerateProjectFeedback($fixture['submission']->id), 'handle']);
+
+        Http::assertSentCount(1);
+        $submission = $fixture['submission']->fresh();
+        self::assertSame('ai_request_rejected', data_get($submission->submission_metadata, 'ai_feedback.reason'));
+        self::assertSame($fixture['text'], $submission->submission_text);
+        self::assertEquals($review, $submission->only(array_keys($review)));
+        self::assertSame(0, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
+        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->firstOrFail();
+        self::assertSame('failed', $event->status);
+        self::assertSame('provider_unavailable', data_get($event->metadata, 'reason'));
+        $usage = AiEntitlementUsage::query()->where('feature', 'project_feedback')->firstOrFail();
+        self::assertSame(0, (int) $usage->reserved_requests);
+        self::assertSame(0, (int) $usage->used_requests);
     }
 
     public function test_interrupted_followup_keeps_partial_visible_without_completing_reply(): void

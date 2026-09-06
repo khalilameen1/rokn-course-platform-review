@@ -195,3 +195,56 @@ This central correction also covers report generation, report replies, displayed
 project entitlements and project-to-portfolio eligibility. It cannot restore any
 previously deleted payloads. The MySQL CI contract suite now includes the real
 JSON round-trip regression, in addition to reordered/tampered snapshot cases.
+
+### Production report follow-up — September 6
+
+Deployment 181 (`8d63125`) and command 110 verified the old v3 submission and a
+fresh v4 snapshot both survive the actual MySQL JSON round trip. The existing
+submission remained passed, with the same review time and continuation allowed.
+Backend CI 34002128280 passed, including the MySQL snapshot contract.
+
+That check exposed a missing report-dispatch marker. Recovery now restores only
+verified, report-eligible missing intents; it does not replay failed reports,
+pass-only submissions or completed reports. Invalid candidates cannot consume
+the batch ahead of valid reports. An already landed paid answer is recovered
+before checking its original input, without another provider request. Missing
+input without an existing answer is explicitly failed, not presented as a copy
+of the progression note. Attachment read failures are handled within the job's
+failure boundary before a new reservation or provider call, so a missing stored
+file cannot leave the report indefinitely processing.
+
+The actual report dispatch then failed after 45 seconds. OpenRouter's upstream
+log for that request showed all six provider attempts rejected with HTTP 400 in
+1.8 seconds. No report text arrived. The USD 0.025 local amount was reservation
+fallback accounting, not verified provider billing. No blind second generation
+was issued for that student submission.
+
+Two independent defects were established:
+
+- Image-only initial reports included an empty text block. A live comparison
+  with the same generated JPEG reproduced HTTP 400 and the provider error
+  `text content blocks must be non-empty`; omitting that block returned HTTP 200
+  in 1.32 seconds, with reported cost USD 0.000642. No student files or records
+  were used in this comparison. The report payload now omits only absent text.
+- A known HTTP rejection with a still-open socket was treated as a transport
+  timeout. The shared transport now stops at rejecting response headers and
+  recognizes complete JSON error envelopes even under a misleading SSE content
+  type. Real TCP regressions cover silence, fragmented JSON, SSE errors and an
+  error after partial output. Partial output still prevents blind paid retries.
+
+Transport diagnostics record only request identity, model, status, timing,
+download count, visible-character count and generation identity. They exclude
+keys, headers, prompts, uploaded bytes and raw exception messages.
+
+The old failure path had already purged this student's temporary input when its
+report failed. It cannot be regenerated from absent work. Provider failure now
+retains report inputs for the existing bounded 30-day recovery window, without
+extending that policy to successful reports or rejected project attempts.
+Passed progress is preserved throughout; failure does not imply delivery.
+
+Focused verification: 30 transport/stream tests (250 assertions), 15 streaming/
+accounting tests (57 assertions), and 29 report recovery/presentation tests
+(221 assertions) passed. Independent transport review found no blocking issue.
+These are not authenticated device acceptance or a claim that the old student's
+report was delivered. The Android artifact remains 1.0.45 / 12345678.apk; the
+later changes are backend-only plus an iOS native version synchronization.

@@ -30,6 +30,7 @@ final class AiFailurePolicy
 
             'chat_attachment_unavailable',
             'chat_attachment_unreadable',
+            'report_input_missing',
             'attachment_unavailable' => $this->result('attachment', false, 0),
 
             'review_input_unavailable' => $this->result('attachment', true, 3),
