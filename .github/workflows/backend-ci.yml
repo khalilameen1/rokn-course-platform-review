@@ -141,7 +141,7 @@ jobs:
       - name: Verify migrated MySQL product schema contract
         run: php artisan rokn:preflight --schema-only --allow-mixed-release --no-interaction
 
-      - name: Verify current purchase snapshots against MySQL constraints
+      - name: Verify purchase and project snapshots against MySQL
         env:
           ROKN_REQUIRE_MYSQL_CONTRACT_TEST: "true"
         run: vendor/bin/phpunit --configuration=phpunit.mysql.xml

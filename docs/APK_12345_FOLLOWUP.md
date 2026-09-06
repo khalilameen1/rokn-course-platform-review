@@ -180,3 +180,18 @@ assert that expiry cannot approve work and that a real decision precedes the
 notification; both reran successfully (2 tests / 16 assertions). The new review
 and upload tests include valid/irrelevant images, provider uncertainty, preserved
 paid results, long document text, upload limits and shared-storage failures.
+
+The pre-handoff production check caught a separate MySQL-only snapshot defect.
+Command 109 proved that the persisted v3 project context had valid IDs and access
+terms, but its hash depended on PHP object insertion order. MySQL JSON changed
+that order: a newly captured in-memory snapshot validated before `CAST(? AS JSON)`
+and failed after it. Restoring the historical writer order matched the existing
+student row's ORIGINAL digest exactly. No row or learner progress was changed.
+
+Snapshot v4 now canonicalizes object keys recursively, preserving list order.
+Existing v3 rows are accepted only when their original digest matches a known
+writer layout; no digest is rewritten and no mutable course data is substituted.
+This central correction also covers report generation, report replies, displayed
+project entitlements and project-to-portfolio eligibility. It cannot restore any
+previously deleted payloads. The MySQL CI contract suite now includes the real
+JSON round-trip regression, in addition to reordered/tampered snapshot cases.

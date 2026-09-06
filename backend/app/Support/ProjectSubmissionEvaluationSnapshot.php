@@ -13,8 +13,8 @@ use LogicException;
 /** Immutable project and entitlement facts used by delayed review jobs. */
 final class ProjectSubmissionEvaluationSnapshot
 {
-    public const CURRENT_VERSION = 3;
-    public const SUPPORTED_VERSIONS = [self::CURRENT_VERSION];
+    public const CURRENT_VERSION = 4;
+    public const SUPPORTED_VERSIONS = [3, self::CURRENT_VERSION];
 
     /** @param array<string,mixed>|null $accessTerms */
     public static function capture(
@@ -124,7 +124,8 @@ final class ProjectSubmissionEvaluationSnapshot
             }
         }
         $fingerprint = trim((string) ($snapshot['fingerprint'] ?? ''));
-        if ($fingerprint === '' || !hash_equals($fingerprint, self::fingerprint($snapshot))) {
+        if ($fingerprint === '' || (!hash_equals($fingerprint, self::fingerprint($snapshot))
+            && !($version === 3 && self::matchesLegacyFingerprint($snapshot, $fingerprint)))) {
             return null;
         }
 
@@ -135,11 +136,86 @@ final class ProjectSubmissionEvaluationSnapshot
     private static function fingerprint(array $snapshot): string
     {
         unset($snapshot['fingerprint']);
+        if ((int) ($snapshot['version'] ?? 0) >= 4) {
+            $snapshot = self::canonicalObjects($snapshot);
+        }
 
         return hash('sha256', json_encode(
             $snapshot,
             JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
         ));
+    }
+
+    /** Object key order is not a JSON fact; list item order still is. */
+    private static function canonicalObjects(array $value): array
+    {
+        foreach ($value as $key => $child) {
+            if (is_array($child)) {
+                $value[$key] = self::canonicalObjects($child);
+            }
+        }
+        if (!array_is_list($value)) {
+            ksort($value, SORT_STRING);
+        }
+        return $value;
+    }
+
+    /**
+     * V3 signed PHP insertion order, which MySQL JSON does not preserve.
+     * Reconstruct only the historical writer's known layouts and compare to
+     * the ORIGINAL digest. Never replace a digest or consult mutable live data.
+     */
+    private static function matchesLegacyFingerprint(array $snapshot, string $fingerprint): bool
+    {
+        $ordered = self::inWriterOrder($snapshot, [
+            'version', 'captured_at', 'course_id', 'section_id', 'course', 'project', 'access', 'fingerprint',
+        ]);
+        foreach ([
+            'course' => ['id', 'title_ar', 'title_en'],
+            'project' => ['id', 'title', 'title_ar', 'title_en', 'updated_at',
+                'requirements_text', 'requirements_text_ar', 'requirements_text_en'],
+            'access' => ['enrollment_id', 'access_plan_id', 'terms'],
+        ] as $key => $keys) {
+            if (!is_array($ordered[$key] ?? null)) {
+                return false;
+            }
+            $ordered[$key] = self::inWriterOrder($ordered[$key], $keys);
+        }
+        // Production capture normally read terms from an already-persisted
+        // enrollment, so their current MySQL JSON ordering is the writer order.
+        if (hash_equals($fingerprint, self::fingerprint($ordered))) {
+            return true;
+        }
+        if (!is_array($ordered['access']['terms'] ?? null)) {
+            return false;
+        }
+        // Capture can also receive a freshly-created CourseAccessPlanService
+        // receipt before its first database round trip (including SQLite).
+        $ordered['access']['terms'] = self::inWriterOrder($ordered['access']['terms'], [
+            'version', 'plan_id', 'code', 'name_ar', 'price_coins', 'minimum_paid_coins', 'sort_order',
+            'chat_enabled', 'chat_message_limit', 'chat_token_budget',
+            'chat_attachments_enabled', 'chat_attachment_max_files',
+            'project_followup_attachments_enabled', 'project_followup_attachment_max_files',
+            'ai_budget_usd', 'request_reserve_usd', 'project_feedback_token_budget',
+            'project_feedback_budget_usd', 'project_feedback_reserve_usd',
+            'project_followup_message_limit', 'project_followup_token_budget',
+            'project_followup_budget_usd', 'project_followup_reserve_usd',
+            'max_output_tokens', 'model_override', 'project_feedback_level',
+            'project_output_enabled', 'certificate_enabled', 'purchased_at',
+        ]);
+        return hash_equals($fingerprint, self::fingerprint($ordered));
+    }
+
+    private static function inWriterOrder(array $value, array $keys): array
+    {
+        $ordered = [];
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $value)) {
+                $ordered[$key] = $value[$key];
+            }
+        }
+        // Keep unknown fields in the digest: dropping one would conceal tampering.
+        return $ordered + $value;
     }
 
     private function __construct()

@@ -6,6 +6,7 @@
   <testsuites>
     <testsuite name="MySQL contract">
       <file>./tests/Feature/AccessPlanSnapshotMysqlConstraintTest.php</file>
+      <file>./tests/Unit/ProjectSubmissionEvaluationSnapshotTest.php</file>
     </testsuite>
   </testsuites>
   <php>
