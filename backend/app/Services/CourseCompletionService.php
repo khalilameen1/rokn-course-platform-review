@@ -18,7 +18,8 @@ final readonly class CourseCompletionService
         private LearningEvidenceService $learningEvidence,
         private CourseModuleAccessService $courseAccess,
         private InternalSignalService $internalSignals,
-        private CourseRevisionLearnerReadService $revisionReads
+        private CourseRevisionLearnerReadService $revisionReads,
+        private CourseStagedAuthoringService $revisions
     ) {
     }
 
@@ -50,6 +51,13 @@ final readonly class CourseCompletionService
         if (!$course->isPublishedForLearning()) {
             return $this->failure(404, 'Course is not available for learning');
         }
+        // A durable phone command retains the section it originally viewed.
+        // Resolve only published learner-state lineage, under the same course
+        // lock as completion; current membership/evidence/access still decide.
+        $sectionId = $this->revisions->currentLearnerEntityMap(
+            CourseSection::class,
+            [$sectionId]
+        )[$sectionId] ?? $sectionId;
         $section = CourseSection::query()
             ->whereKey($sectionId)
             ->where('course_id', $courseId)

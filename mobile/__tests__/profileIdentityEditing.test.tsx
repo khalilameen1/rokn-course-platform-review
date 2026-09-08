@@ -13,6 +13,7 @@ const mockRemoveLearnerDraftFile = jest.fn(
   async (..._args: unknown[]) => undefined,
 );
 const mockUpdateSecureSessionForOwner = jest.fn();
+let mockCachedSession: unknown;
 
 let mockStoredSession: Record<string, unknown> = {
   api_token: 'token-one',
@@ -48,6 +49,11 @@ jest.mock('../src/services/learnerDraftFiles', () => ({
     mockRemoveLearnerDraftFile(...args),
 }));
 jest.mock('../src/services/secureSession', () => ({
+  peekSecureSession: () => ({
+    ready: true,
+    session: mockCachedSession,
+    epoch: 1,
+  }),
   updateSecureSessionForOwner: (...args: unknown[]) =>
     mockUpdateSecureSessionForOwner(...args),
 }));
@@ -92,7 +98,11 @@ jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/touchables/Button', () => {
   const ReactModule = require('react');
   const {Pressable: RNPressable, Text} = require('react-native');
-  return ({disable, onPress, title}: {
+  return ({
+    disable,
+    onPress,
+    title,
+  }: {
     disable?: boolean;
     onPress: () => void;
     title: string;
@@ -144,18 +154,22 @@ describe('profile identity editing', () => {
     mockGetProfile.mockResolvedValue(
       profile('اسم Google', 'https://cdn.example.test/old.jpg', 2),
     );
+    mockCachedSession = mockStoredSession;
     mockCacheLearnerDraftFile.mockResolvedValue({
       fileName: 'avatar.jpg',
       size: 1200,
       type: 'image/jpeg',
       uri: 'file:///cached/avatar.jpg',
     });
+    mockRemoveLearnerDraftFile.mockReset().mockResolvedValue(undefined);
     mockUpdateProfile.mockResolvedValue(
       profile('الاسم الجديد', 'https://cdn.example.test/new.jpg', 3),
     );
     mockUpdateSecureSessionForOwner.mockImplementation(
-      async (_owner: string, update: (session: unknown) => unknown) =>
-        update(mockStoredSession),
+      async (_owner: string, update: (session: unknown) => unknown) => {
+        mockCachedSession = update(mockCachedSession);
+        return mockCachedSession;
+      },
     );
   });
 
@@ -247,7 +261,9 @@ describe('profile identity editing', () => {
       accessibilityLabel: 'العنوان المهني في البورتفوليو',
     });
     expect(headline.props.value).toBe('مصمم منتجات رقمية');
-    await act(async () => headline.props.onChangeText('  مصمم   واجهات وتجارب  '));
+    await act(async () =>
+      headline.props.onChangeText('  مصمم   واجهات وتجارب  '),
+    );
     await act(async () =>
       renderer.root
         .findByProps({accessibilityLabel: 'حفظ التغييرات'})
@@ -287,6 +303,62 @@ describe('profile identity editing', () => {
     await act(async () => renderer.unmount());
   });
 
+  it('saves the replacement photo without waiting for the discarded selection to be deleted', async () => {
+    jest.useFakeTimers();
+    const first = {
+      uri: 'file:///cached/first.jpg',
+      type: 'image/jpeg',
+      size: 1200,
+    };
+    const second = {...first, uri: 'file:///cached/second.jpg'};
+    mockLaunchImageLibrary.mockResolvedValue({
+      assets: [
+        {uri: 'file:///picker/photo.jpg', type: 'image/jpeg', fileSize: 1200},
+      ],
+    });
+    mockCacheLearnerDraftFile
+      .mockResolvedValueOnce(first)
+      .mockResolvedValueOnce(second);
+    mockRemoveLearnerDraftFile.mockImplementation(async file => {
+      if ((file as {uri?: string})?.uri === first.uri)
+        await new Promise(() => undefined);
+    });
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<EditAccount />);
+      });
+      const pick = () =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'اختيار صورة الحساب'})
+          .props.onPress();
+      await act(async () => {
+        await pick();
+      });
+      let secondPickerFinished = false;
+      await act(async () => {
+        void pick().then(() => {
+          secondPickerFinished = true;
+        });
+      });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1500);
+      });
+      expect(secondPickerFinished).toBe(true);
+      await act(async () => {
+        await renderer.root
+          .findByProps({accessibilityLabel: 'حفظ التغييرات'})
+          .props.onPress();
+      });
+      expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+      expect(mockUpdateProfile.mock.calls[0][0].avatar).toEqual(second);
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    } finally {
+      await act(async () => renderer.unmount());
+      jest.useRealTimers();
+    }
+  });
+
   it('keeps the same identity write and selected image available after a failed save', async () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     mockLaunchImageLibrary.mockResolvedValue({
@@ -319,8 +391,9 @@ describe('profile identity editing', () => {
         .props.onChangeText('الاسم الجديد'),
     );
     const save = () =>
-      renderer.root.findByProps({accessibilityLabel: 'حفظ التغييرات'}).props
-        .onPress();
+      renderer.root
+        .findByProps({accessibilityLabel: 'حفظ التغييرات'})
+        .props.onPress();
 
     await act(async () => save());
     expect(mockGoBack).not.toHaveBeenCalled();
@@ -339,7 +412,9 @@ describe('profile identity editing', () => {
   });
 
   it('locks text during a pending save and retains an editable draft after failure', async () => {
-    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    const alert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation(() => undefined);
     let rejectSave!: (error: Error) => void;
     mockUpdateProfile.mockReturnValueOnce(
       new Promise((_resolve, reject) => {
@@ -357,8 +432,9 @@ describe('profile identity editing', () => {
         accessibilityLabel: 'العنوان المهني في البورتفوليو',
       });
     const save = () =>
-      renderer.root.findByProps({accessibilityLabel: 'حفظ التغييرات'}).props
-        .onPress();
+      renderer.root
+        .findByProps({accessibilityLabel: 'حفظ التغييرات'})
+        .props.onPress();
 
     try {
       await act(async () => {
@@ -416,4 +492,99 @@ describe('profile identity editing', () => {
       alert.mockRestore();
     }
   });
+
+  it.each(['session cache', 'temporary image cleanup'])(
+    'does not leave a confirmed profile save busy while %s is stalled',
+    async stage => {
+      jest.useFakeTimers();
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation(() => undefined);
+      const confirmed = profile(
+        'الاسم المحفوظ',
+        'https://cdn.example.test/new.jpg',
+        3,
+      );
+      mockUpdateProfile.mockImplementationOnce(async () => {
+        mockGetProfile.mockResolvedValue(confirmed);
+        return confirmed;
+      });
+      if (stage === 'session cache') {
+        mockUpdateSecureSessionForOwner.mockReturnValueOnce(
+          new Promise(() => undefined),
+        );
+      } else {
+        mockLaunchImageLibrary.mockResolvedValue({
+          assets: [
+            {
+              uri: 'file:///picker/photo.jpg',
+              type: 'image/jpeg',
+              fileSize: 1200,
+            },
+          ],
+        });
+        mockRemoveLearnerDraftFile.mockImplementation(async file => {
+          if ((file as {uri?: string})?.uri === 'file:///cached/avatar.jpg') {
+            await new Promise(() => undefined);
+          }
+        });
+      }
+      let renderer!: TestRenderer.ReactTestRenderer;
+      let finished = false;
+      try {
+        await act(async () => {
+          renderer = TestRenderer.create(<EditAccount />);
+        });
+        if (stage === 'temporary image cleanup') {
+          await act(async () => {
+            await renderer.root
+              .findByProps({accessibilityLabel: 'اختيار صورة الحساب'})
+              .props.onPress();
+          });
+        }
+        await act(async () => {
+          renderer.root
+            .findByProps({accessibilityLabel: 'الاسم الظاهر'})
+            .props.onChangeText('الاسم المحفوظ');
+        });
+        await act(async () => {
+          void renderer.root
+            .findByProps({accessibilityLabel: 'حفظ التغييرات'})
+            .props.onPress()
+            .then(() => {
+              finished = true;
+            });
+        });
+        expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+        await act(async () => {
+          await jest.advanceTimersByTimeAsync(1500);
+        });
+        expect(finished).toBe(true);
+        expect(
+          renderer.root.findByProps({accessibilityLabel: 'حفظ التغييرات'}).props
+            .disabled,
+        ).toBe(false);
+        expect(mockUpdateProfile).toHaveBeenCalledTimes(1);
+        if (stage === 'session cache') {
+          expect(mockGoBack).not.toHaveBeenCalled();
+          expect(mockDispatch).not.toHaveBeenCalled();
+          expect(
+            renderer.root.findByProps({accessibilityLabel: 'الاسم الظاهر'})
+              .props.value,
+          ).toBe('الاسم المحفوظ');
+          expect(alert).toHaveBeenCalledWith(
+            'حُفظت التغييرات',
+            expect.any(String),
+          );
+        } else {
+          expect(mockGoBack).toHaveBeenCalledTimes(1);
+          expect(mockDispatch).toHaveBeenCalledTimes(1);
+        }
+      } finally {
+        await act(async () => renderer.unmount());
+        alert.mockRestore();
+        jest.useRealTimers();
+      }
+    },
+  );
 });

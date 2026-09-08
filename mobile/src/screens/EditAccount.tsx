@@ -37,7 +37,10 @@ import {
   textDirection,
 } from '../constants/designSystem';
 import {saveLoginData} from '../store/reducers/auth';
-import {updateSecureSessionForOwner} from '../services/secureSession';
+import {
+  peekSecureSession,
+  updateSecureSessionForOwner,
+} from '../services/secureSession';
 import {getProfile, hasSession, updateProfile} from '../services/roknApi';
 import type {RootState} from '../store/store';
 import {asRecord, learnerErrorMessage} from '../utils/errorPayload';
@@ -48,6 +51,11 @@ import {
 import {secureRandomUuid} from '../utils/secureRandom';
 import {showMediaPickerFailure} from '../services/mediaPickerErrors';
 import {DefaultAvatar} from '../components/ui/DefaultAvatar';
+import {settleWithin} from '../utils/settleWithin';
+
+const discardAvatar = (file: Parameters<typeof removeLearnerDraftFile>[0]) => {
+  void removeLearnerDraftFile(file).catch(() => undefined);
+};
 
 export default function EditAccount() {
   const navigation = useNavigation<RootNavigation>();
@@ -95,7 +103,7 @@ export default function EditAccount() {
     return () => {
       mountedRef.current = false;
       if (!saveFlightRef.current) {
-        void removeLearnerDraftFile(avatarUploadRef.current);
+        discardAvatar(avatarUploadRef.current);
       }
     };
   }, []);
@@ -113,7 +121,7 @@ export default function EditAccount() {
     setAvatar('');
     setProfileRevision(0);
     setServerSession(null);
-    void removeLearnerDraftFile(staleDraft);
+    discardAvatar(staleDraft);
   }, [identityKey]);
 
   useEffect(() => {
@@ -137,11 +145,7 @@ export default function EditAccount() {
         value => ({status: 'fulfilled' as const, value}),
         reason => ({status: 'rejected' as const, reason}),
       );
-      try {
-        assertAccountSessionBoundary(boundary);
-      } catch {
-        return;
-      }
+      assertAccountSessionBoundary(boundary);
       if (!active) {
         return;
       }
@@ -216,7 +220,7 @@ export default function EditAccount() {
         cachedSelection = cached;
         assertAccountSessionBoundary(pickerBoundary);
         if (!mountedRef.current) {
-          await removeLearnerDraftFile(cached);
+          discardAvatar(cached);
           cachedSelection = undefined;
           return;
         }
@@ -225,10 +229,10 @@ export default function EditAccount() {
         setAvatarUpload(cached);
         cachedSelection = undefined;
         profileRequestRef.current = null;
-        await removeLearnerDraftFile(previous);
+        discardAvatar(previous);
       }
     } catch (error: unknown) {
-      await removeLearnerDraftFile(cachedSelection);
+      discardAvatar(cachedSelection);
       if (
         error instanceof Error &&
         error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -258,9 +262,10 @@ export default function EditAccount() {
     saveFlightRef.current = true;
     setSaving(true);
     let remoteProfileSaved = false;
+    let sessionAtStart: unknown;
     try {
       const accountBoundary = await captureAccountSessionBoundary();
-      const sessionAtStart = await getItem(AsyncKeys.USER_DATA);
+      sessionAtStart = await getItem(AsyncKeys.USER_DATA);
       assertAccountSessionBoundary(accountBoundary);
       const ownerAtStart = extractUserProfile(sessionAtStart);
       const expectedOwner = String(
@@ -310,36 +315,46 @@ export default function EditAccount() {
         remoteProfileSaved = true;
       }
       assertAccountSessionBoundary(accountBoundary);
-      const next = await updateSecureSessionForOwner(
+      const sessionWrite = updateSecureSessionForOwner(
         expectedOwner,
         activeSession => {
+          assertAccountSessionBoundary(accountBoundary);
           const activeRecord = asRecord(activeSession) ?? {};
-          const activeData = asRecord(activeRecord.data);
           const activeUser = extractUserProfile(activeSession);
-          const updatedProfile = {
-            ...activeUser,
-            name: remoteName,
-            portfolio_headline: remotePortfolioHeadline,
-            avatar: remoteAvatar,
-            profile_image: remoteAvatar,
-            image: remoteAvatar,
-            profile_revision: remoteProfileRevision,
+          return {
+            ...activeRecord,
+            user: {
+              ...activeUser,
+              name: remoteName,
+              portfolio_headline: remotePortfolioHeadline,
+              avatar: remoteAvatar,
+              profile_image: remoteAvatar,
+              image: remoteAvatar,
+              profile_revision: remoteProfileRevision,
+            },
           };
-          return activeRecord.user
-            ? {...activeRecord, user: updatedProfile}
-            : activeData?.user
-            ? {
-                ...activeRecord,
-                data: {...activeData, user: updatedProfile},
-              }
-            : activeData && !activeRecord.name
-            ? {...activeRecord, data: {...activeData, ...updatedProfile}}
-            : {...activeRecord, ...updatedProfile};
         },
       );
-      dispatch(saveLoginData(next));
+      // The server has committed. A slow local mirror must not hold the form
+      // indefinitely; its real session mutation still retains queue ownership.
+      const persisted = await settleWithin(
+        sessionWrite.then(() => true),
+        false,
+      );
+      const current = peekSecureSession();
+      if (
+        !current.ready ||
+        sessionIdentityKey(current.session) !==
+          sessionIdentityKey(sessionAtStart) ||
+        extractApiToken(current.session) !== extractApiToken(sessionAtStart)
+      )
+        return;
+      if (!persisted) throw new Error('PROFILE_SESSION_CACHE_UNAVAILABLE');
+      // The mirror advances the epoch itself. Use the current committed
+      // snapshot, never the pre-write boundary or a superseded profile result.
+      dispatch(saveLoginData(current.session));
       profileRequestRef.current = null;
-      await removeLearnerDraftFile(avatarUpload).catch(() => undefined);
+      discardAvatar(avatarUpload);
       if (mountedRef.current) {
         setAvatarUpload(undefined);
         navigation.goBack();
@@ -351,11 +366,20 @@ export default function EditAccount() {
       ) {
         return;
       }
+      const current = peekSecureSession();
+      if (
+        sessionAtStart &&
+        (sessionIdentityKey(current.session) !==
+          sessionIdentityKey(sessionAtStart) ||
+          extractApiToken(current.session) !== extractApiToken(sessionAtStart))
+      )
+        return;
       if (mountedRef.current) {
         if (remoteProfileSaved) {
           profileRequestRef.current = null;
+          setHydrationState('loading');
           setReloadProfile(value => value + 1);
-          await removeLearnerDraftFile(avatarUpload).catch(() => undefined);
+          discardAvatar(avatarUpload);
           setAvatarUpload(undefined);
           Alert.alert('حُفظت التغييرات', 'ستظهر عند فتح الصفحة من جديد');
         } else {
@@ -370,9 +394,7 @@ export default function EditAccount() {
       if (mountedRef.current) {
         setSaving(false);
       } else {
-        await removeLearnerDraftFile(avatarUploadRef.current).catch(
-          () => undefined,
-        );
+        discardAvatar(avatarUploadRef.current);
       }
     }
   };

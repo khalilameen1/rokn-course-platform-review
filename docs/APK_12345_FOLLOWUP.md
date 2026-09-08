@@ -1458,3 +1458,61 @@ This closes these explicit local evidence gaps, not physical-device acceptance.
 iOS compilation, OEM behavior, live external-host transfers and production
 acceptance are not established by these checks. No APK, push or deployment;
 the broader requested review remains active.
+
+## September 9 — published completion acknowledgements and confirmed profile saves
+
+Two further daily-journey defects were established rather than replacing
+working features or changing the application's design.
+
+- The durable section-completion command on a phone retains the section ID it
+  watched. After staged publication, this explicit fallback returned 404 for
+  that old ID even when surviving watch evidence authorized its current ID.
+  Mobile treats 404 as terminal and removes the pending command. Completion
+  now resolves the existing published learner-state lineage inside its existing
+  User-to-Course lock, then applies current course membership, access, evidence
+  and project-gate checks. There is no second mapping implementation or mobile
+  response change. Eight real HTTP cases cover two publications, replay of an
+  already completed historical section, one progress row, missing evidence,
+  deletion with a valid remaining graph, revoked access, foreign/unknown
+  sections and unavailability. The old-ID/current-ID countercase failed before
+  the source change. Existing project lineage and completion projection cases
+  remain green. SQLite does not establish live database concurrency behavior.
+- A confirmed account-profile POST could remain busy forever while its local
+  session mirror or uploaded-image cleanup waited on native storage. Both
+  stalled-stage UI cases failed before the fix. Only the confirmed mirror's
+  caller wait is bounded; the actual secure-session queue retains ownership
+  until persistence finishes. Unconfirmed writes still retain their request ID
+  and selected image for explicit retry. A mirror failure or deadline uses the
+  existing saved notice and authoritative profile reload, never a second POST
+  or a speculative Redux identity. A late mirror can invalidate that reload's
+  epoch; the existing error/retry state now handles this instead of leaving the
+  form permanently loading. Obsolete/accepted avatar cleanup is nonblocking
+  with rejection handling, including replacing an earlier picker selection;
+  the account-scoped file lock and reference checks remain unchanged.
+- The profile updater checks the original boundary when it actually reaches
+  the session queue, so a queued same-user re-login with a new token cannot
+  accept stale metadata. After persistence, the UI checks the current owner
+  and bearer synchronously and dispatches the current committed snapshot. It
+  does not reject its own legitimate epoch advance or overwrite newer metadata
+  using its old return value. Three legacy envelope branches were unreachable
+  behind the service's canonical `user` owner validation and were removed;
+  the single merge preserves other session and user fields. The Settings
+  reauthentication callers still wait for durable credentials as before.
+
+Independent mobile cases use the actual session service, helpers, epoch and
+raw mutation queue with mocked native storage. They cover ordinary durable
+success and cold restore, deadlines at the profile and final binding writes,
+queued newer writes, logout/re-login to another or the same user, delayed
+recovery GET rejection followed by explicit retry, and preservation of a newer
+visible edit after the old mirror finishes. UI wrappers and API responses are
+fixtures; these are not device-storage or live-provider acceptance tests.
+
+The separate chat and checkout publication reviews found no additional proven
+defect in the inspected paths. Existing historical-context mapping, original
+chat request recovery, purchase receipt replay and enrollment snapshots were
+left unchanged. No new model/provider calls, features or architecture layers.
+
+Final root gates: 11 mobile suites / 78 tests and 53 backend tests / 491
+assertions across two exact-path runs passed. TypeScript, scoped ESLint,
+formatting, PHP syntax and diff checks passed. All changes remain local source
+work: no APK, push or deployment, and no claim of complete app acceptance.
