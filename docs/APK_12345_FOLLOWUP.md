@@ -299,3 +299,21 @@ configuration checks passed. Android is 1.0.46 / versionCode 47 and the matching
 iOS source version is 1.0.46 / build 44. Native UI initialization was retried once
 after resetting the tool and failed with the same missing kernel-assets path;
 no native walkthrough is claimed.
+
+The internal Android build completed successfully in 2m 53s from clean commit
+`e4cdf26a64576827ba07930658f455852cbc6f40`, already pushed to production origin/main.
+The preserved numbered artifact is `mobile/artifacts/123456789.apk` with its
+build-provenance JSON alongside it. Older numbered APKs were not overwritten.
+APK manifest inspection confirmed version 1.0.46 / 47, minimum Android API 24,
+target API 36 and armeabi-v7a / arm64-v8a / x86_64 support. Its API base is the
+deployed Laravel Cloud `/api/v1/` endpoint, not the old developers' rokn.app API.
+
+- Bytes: 79,649,847
+- SHA-256: `91d585d9d516aebf2d70c254c2d3b2787141040ad5e21e468cbe43c5fa44f8fe`
+- Signer SHA-256: `af332099abab71759a75a51db654f4595b86d6b8ddd86e602385cbbc89e9fe85`
+- Built at: 2026-09-08T00:08:13Z
+
+This is the existing internal-test signing profile, not a public distribution
+release. No new backend deployment, Drive upload or device installation is
+claimed. CI run 34171959516 was still running without failures at the last
+read-only snapshot; local validation and APK build completed independently.
