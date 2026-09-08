@@ -248,7 +248,7 @@ export const CoursePurchaseDialog = ({
                 {notice}
               </Text>
             )}
-            {busy && dialogStep === 'topup' && (
+            {busy && dialogStep === 'topup' && !notice && (
               <View style={styles.busyRow}>
                 <ActivityIndicator color={Palette.primary} size="small" />
                 <Text style={styles.busyText}>جارٍ فتح الدفع</Text>

@@ -183,25 +183,26 @@ export const useCoursePurchase = ({
     setPackages: commerce.setPackages,
     updateWallet: commerce.updateWallet,
   });
+  const reviewAfterCredit = checkout.reviewAfterCredit;
 
   useEffect(() => {
     if (
       dialogStep !== 'topup' ||
       checkout.busy ||
+      couponBusy ||
       commerce.balance === null ||
       effectiveShortfall > 0
     ) {
       return;
     }
-    setNotice('تم تحديث رصيدك\nراجع الإجمالي ثم أكد الشراء');
-    showConfirm();
+    void reviewAfterCredit();
   }, [
     checkout.busy,
     commerce.balance,
+    couponBusy,
     dialogStep,
     effectiveShortfall,
-    setNotice,
-    showConfirm,
+    reviewAfterCredit,
   ]);
 
   useEffect(() => {

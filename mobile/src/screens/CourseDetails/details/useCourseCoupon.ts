@@ -79,7 +79,9 @@ export function useCourseCoupon({
     quoteEpochRef.current += 1;
     requestRef.current = '';
     setQuote(null);
-    setRestoreState(null);
+    // Invalidating a consumed return quote must not silently restore the same
+    // rejected coupon again while navigation is clearing its return params.
+    setRestoreState(current => current && {...current, status: 'failed'});
     setBusy(false);
     if (clearCode) setCode('');
   }, []);
@@ -301,8 +303,12 @@ export function useCourseCoupon({
   const replaceQuote = useCallback((nextQuote: CoursePurchaseQuote | null) => {
     quoteEpochRef.current += 1;
     requestRef.current = '';
-    setRestoreState(null);
+    setRestoreState(
+      current =>
+        current && {...current, status: nextQuote ? 'ready' : 'failed'},
+    );
     setQuote(nextQuote);
+    setBusy(false);
     if (nextQuote?.couponCode) setCode(nextQuote.couponCode);
   }, []);
 

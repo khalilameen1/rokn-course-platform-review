@@ -10,6 +10,7 @@ import {
   deletePortfolioItem,
   deletePortfolioMedia,
   updatePortfolioItem,
+  type PortfolioItem,
   type PortfolioMedia,
 } from '../../../services/roknApi';
 import {
@@ -76,6 +77,28 @@ export const usePortfolioProjectDetails = ({
     selectedRef,
     selectPreviewMedia,
   } = selection;
+  const isMutationActive = useCallback(
+    () => Boolean(mutationFlightRef.current),
+    [],
+  );
+  const commitPublication = useCallback(
+    (item: PortfolioItem) => {
+      // Publication has its own mutation generation guard. A fresh retry can
+      // update the currently-open item without reopening an older selection.
+      commitRemoteProject(
+        item,
+        selectedRef.current?.id === item.id
+          ? detailGenerationRef.current
+          : undefined,
+      );
+    },
+    [commitRemoteProject, detailGenerationRef, selectedRef],
+  );
+  const {finalizeAfterUpload, invalidatePublication} = usePortfolioPublication({
+    commit: commitPublication,
+    isMutationActive,
+    mountedRef,
+  });
 
   useEffect(
     () => () => {
@@ -90,13 +113,21 @@ export const usePortfolioProjectDetails = ({
       if (mutationFlightRef.current) return null;
       const flight = Symbol('portfolio-project-mutation');
       mutationFlightRef.current = flight;
+      const projectId = selectedRef.current?.id;
+      if (projectId) invalidatePublication(projectId);
       setMutationBlocked(true);
       cancelLibraryLoad();
       cancelDetailLoad();
       if (showSaving) setSaving(true);
       return flight;
     },
-    [cancelDetailLoad, cancelLibraryLoad, setMutationBlocked],
+    [
+      cancelDetailLoad,
+      cancelLibraryLoad,
+      invalidatePublication,
+      selectedRef,
+      setMutationBlocked,
+    ],
   );
 
   const finishMutation = useCallback(
@@ -109,17 +140,10 @@ export const usePortfolioProjectDetails = ({
     [mountedRef, setMutationBlocked],
   );
 
-  const {finalizeAfterUpload} = usePortfolioPublication({
-    commit: commitRemoteProject,
-    mountedRef,
-  });
-
   const settleUploadedProjects = useCallback(
     async (projectIds: string[]) => {
       if (!projectIds.length) return;
       const boundary = await captureBoundary();
-      const openProjectId = selectedRef.current?.id;
-      const openProjectGeneration = detailGenerationRef.current;
       await Promise.allSettled(
         projectIds.map(async projectId => {
           // A visible server item may already contain the first successful file
@@ -127,15 +151,11 @@ export const usePortfolioProjectDetails = ({
           // would publish a partial portfolio and shrink its expected count.
           const pending = await listPortfolioMediaUploads(projectId, boundary);
           if (pending.length) return 'processing' as const;
-          return finalizeAfterUpload(
-            projectId,
-            boundary,
-            projectId === openProjectId ? openProjectGeneration : undefined,
-          );
+          return finalizeAfterUpload(projectId, boundary);
         }),
       );
     },
-    [captureBoundary, detailGenerationRef, finalizeAfterUpload, selectedRef],
+    [captureBoundary, finalizeAfterUpload],
   );
 
   const openProject = useCallback(
@@ -216,14 +236,11 @@ export const usePortfolioProjectDetails = ({
     const flight = beginMutation();
     if (!flight) return;
     const projectId = current.id;
-    const generation = detailGenerationRef.current;
     try {
       const boundary = await captureBoundary();
-      const publication = await finalizeAfterUpload(
-        projectId,
-        boundary,
-        generation,
-      );
+      const publication = await finalizeAfterUpload(projectId, boundary, {
+        ownsMutation: true,
+      });
       if (publication === 'published') {
         await discardPortfolioMediaUploads(projectId, boundary).catch(
           () => undefined,
@@ -249,7 +266,6 @@ export const usePortfolioProjectDetails = ({
   }, [
     beginMutation,
     captureBoundary,
-    detailGenerationRef,
     finalizeAfterUpload,
     finishMutation,
     mountedRef,
@@ -316,11 +332,9 @@ export const usePortfolioProjectDetails = ({
       }
       if (!interrupted) {
         try {
-          const publication = await finalizeAfterUpload(
-            projectId,
-            boundary,
-            generation,
-          );
+          const publication = await finalizeAfterUpload(projectId, boundary, {
+            ownsMutation: true,
+          });
           if (publication === 'processing' && mountedRef.current) {
             Alert.alert(
               'يُجهز الفيديو',
@@ -500,7 +514,7 @@ export const usePortfolioProjectDetails = ({
     finalizeSelectedProject,
     handleMediaDeliveryError,
     handleMediaDeliverySuccess,
-    isMutationActive: () => Boolean(mutationFlightRef.current),
+    isMutationActive,
     openProject,
     previewMedia,
     reconcileProject,

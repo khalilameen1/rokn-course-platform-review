@@ -17,7 +17,8 @@ import {
 } from './portfolioModel';
 
 type Options = {
-  commit: (item: PortfolioItem, detailGeneration?: number) => void;
+  commit: (item: PortfolioItem) => void;
+  isMutationActive: () => boolean;
   mountedRef: React.MutableRefObject<boolean>;
 };
 
@@ -33,8 +34,13 @@ const RETRY_DELAYS_MS = [3_000, 7_000, 15_000, 30_000];
  * playable. Upload state never doubles as publication state: the server is
  * re-read before each retry and only a successful finalize exposes sharing.
  */
-export const usePortfolioPublication = ({commit, mountedRef}: Options) => {
+export const usePortfolioPublication = ({
+  commit,
+  isMutationActive,
+  mountedRef,
+}: Options) => {
   const flightsRef = useRef(new Map<string, symbol>());
+  const projectGenerationsRef = useRef(new Map<string, symbol>());
   const waitsRef = useRef(
     new Map<ReturnType<typeof setTimeout>, (active: boolean) => void>(),
   );
@@ -42,6 +48,7 @@ export const usePortfolioPublication = ({commit, mountedRef}: Options) => {
   useEffect(
     () => () => {
       flightsRef.current.clear();
+      projectGenerationsRef.current.clear();
       for (const [timer, resolve] of waitsRef.current) {
         clearTimeout(timer);
         resolve(false);
@@ -50,6 +57,10 @@ export const usePortfolioPublication = ({commit, mountedRef}: Options) => {
     },
     [],
   );
+
+  const invalidatePublication = useCallback((projectId: string) => {
+    projectGenerationsRef.current.delete(projectId);
+  }, []);
 
   const wait = useCallback(
     (milliseconds: number) =>
@@ -67,36 +78,44 @@ export const usePortfolioPublication = ({commit, mountedRef}: Options) => {
     async (
       projectId: string,
       boundary: AccountSessionBoundary,
-      detailGeneration?: number,
+      options?: {ownsMutation?: boolean},
     ): Promise<PortfolioPublicationResult> => {
+      // Replay/background publication must not read a snapshot inside an edit.
+      // Keep its bounded retry alive so it can publish the newer item afterwards.
+      if (!options?.ownsMutation && isMutationActive()) return 'processing';
+      const generation =
+        projectGenerationsRef.current.get(projectId) || Symbol(projectId);
+      projectGenerationsRef.current.set(projectId, generation);
+      const isCurrent = () =>
+        mountedRef.current &&
+        projectGenerationsRef.current.get(projectId) === generation;
       try {
         const published = await finalizePortfolioItem(projectId, boundary);
         assertAccountSessionBoundary(boundary);
-        commit(published, detailGeneration);
+        if (!isCurrent()) return 'processing';
+        commit(published);
         return 'published';
       } catch (error: unknown) {
         if (isPortfolioAccountChangedError(error)) throw error;
+        if (!isCurrent()) return 'processing';
         if (errorStatus(error) !== 409) throw error;
 
         const current = await getPortfolioItem(projectId, boundary);
         assertAccountSessionBoundary(boundary);
-        commit(current, detailGeneration);
+        if (!isCurrent()) return 'processing';
+        commit(current);
         return portfolioPublicationDisposition(toPortfolioProject(current)) ===
           'retry'
           ? 'processing'
           : 'incomplete';
       }
     },
-    [commit],
+    [commit, isMutationActive, mountedRef],
   );
 
   const continueInBackground = useCallback(
-    (
-      projectId: string,
-      boundary: AccountSessionBoundary,
-      detailGeneration?: number,
-    ) => {
-      if (flightsRef.current.has(projectId)) return;
+    (projectId: string, boundary: AccountSessionBoundary) => {
+      if (!mountedRef.current || flightsRef.current.has(projectId)) return;
       const flight = Symbol(projectId);
       flightsRef.current.set(projectId, flight);
 
@@ -105,7 +124,7 @@ export const usePortfolioPublication = ({commit, mountedRef}: Options) => {
           if (!(await wait(delay))) return;
           if (flightsRef.current.get(projectId) !== flight) return;
           try {
-            const result = await attempt(projectId, boundary, detailGeneration);
+            const result = await attempt(projectId, boundary);
             if (result !== 'processing') return;
           } catch (error: unknown) {
             if (isPortfolioAccountChangedError(error)) return;
@@ -120,27 +139,27 @@ export const usePortfolioPublication = ({commit, mountedRef}: Options) => {
         }
       });
     },
-    [attempt, wait],
+    [attempt, mountedRef, wait],
   );
 
   const finalizeAfterUpload = useCallback(
     async (
       projectId: string,
       boundary: AccountSessionBoundary,
-      detailGeneration?: number,
+      options?: {ownsMutation?: boolean},
     ) => {
       // A processing item already owns a bounded reconciliation flight. A
       // remount/library refresh may rediscover it, but must not create a
       // second finalize loop for the same item.
       if (flightsRef.current.has(projectId)) return 'processing' as const;
-      const result = await attempt(projectId, boundary, detailGeneration);
+      const result = await attempt(projectId, boundary, options);
       if (result === 'processing') {
-        continueInBackground(projectId, boundary, detailGeneration);
+        continueInBackground(projectId, boundary);
       }
       return result;
     },
     [attempt, continueInBackground],
   );
 
-  return {finalizeAfterUpload};
+  return {finalizeAfterUpload, invalidatePublication};
 };

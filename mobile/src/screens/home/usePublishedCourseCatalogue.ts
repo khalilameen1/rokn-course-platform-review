@@ -50,7 +50,7 @@ export const usePublishedCourseCatalogue = ({
   const loadingMoreRef = useRef(false);
   const browseCoursesRef = useRef<Course[]>([]);
   const catalogueRevisionRef = useRef<number | undefined>(undefined);
-  const loadedQueryRef = useRef('');
+  const loadedQueryRef = useRef<string | null>(null);
   const requestedQueryRef = useRef('');
   const activeQueryRef = useRef(normalizeText(searchQuery));
   const lastAttemptAtRef = useRef(0);
@@ -86,7 +86,6 @@ export const usePublishedCourseCatalogue = ({
           normalizedQuery !== '' || browseCoursesRef.current.length === 0,
         );
         setError('');
-        if (browseCoursesRef.current.length === 0) setCourses(null);
       }
 
       try {
@@ -97,7 +96,12 @@ export const usePublishedCourseCatalogue = ({
           search: query,
           signal: controller.signal,
         });
-        if (requestId !== requestIdRef.current) return;
+        if (
+          requestId !== requestIdRef.current ||
+          normalizedQuery !== activeQueryRef.current
+        ) {
+          return;
+        }
 
         setCourses(current => {
           if (!append || result.reset || !current) {
@@ -125,7 +129,12 @@ export const usePublishedCourseCatalogue = ({
         }
       } catch (requestError) {
         if (networkFailureKind(requestError) === 'cancelled') return;
-        if (requestId !== requestIdRef.current) return;
+        if (
+          requestId !== requestIdRef.current ||
+          normalizedQuery !== activeQueryRef.current
+        ) {
+          return;
+        }
 
         if (append) {
           setLoadMoreError('تعذّر تحميل المزيد\nحاول مرة أخرى');
@@ -134,8 +143,6 @@ export const usePublishedCourseCatalogue = ({
 
         const hasBrowseSnapshot = browseCoursesRef.current.length > 0;
         const isSearch = normalizedQuery !== '';
-        setHasMore(false);
-        setPage(1);
         if (hasBrowseSnapshot && !isSearch) setStaleNotice(OFFLINE_NOTICE);
         setError(
           hasBrowseSnapshot && !isSearch
@@ -242,16 +249,22 @@ export const usePublishedCourseCatalogue = ({
 
   useEffect(() => {
     const query = normalizeText(searchQuery);
-    if (query === loadedQueryRef.current) return;
     if (controllerRef.current && query === requestedQueryRef.current) return;
 
+    // Returning to already loaded results still abandons the other query.
+    // Keep pagination with those results, not with an unfinished request.
     controllerRef.current?.abort();
     controllerRef.current = null;
     requestIdRef.current += 1;
     loadingMoreRef.current = false;
-    catalogueRevisionRef.current = undefined;
-    setLoading(Boolean(query) || browseCoursesRef.current.length === 0);
+    setLoadingMore(false);
     setLoadMoreError('');
+    if (query === loadedQueryRef.current) {
+      setLoading(false);
+      setError('');
+      return;
+    }
+    setLoading(Boolean(query) || browseCoursesRef.current.length === 0);
     const timer = setTimeout(() => void load({query}), 350);
     return () => clearTimeout(timer);
   }, [load, searchQuery]);
@@ -271,6 +284,8 @@ export const usePublishedCourseCatalogue = ({
         loading ||
         loadingMore ||
         controllerRef.current ||
+        loadedQueryRef.current !== activeQueryRef.current ||
+        error ||
         !hasMore ||
         (!manualRetry && loadMoreError)
       ) {
@@ -280,10 +295,10 @@ export const usePublishedCourseCatalogue = ({
         append: true,
         blocking: false,
         page: page + 1,
-        query: loadedQueryRef.current,
+        query: loadedQueryRef.current ?? '',
       });
     },
-    [hasMore, load, loading, loadingMore, loadMoreError, page],
+    [error, hasMore, load, loading, loadingMore, loadMoreError, page],
   );
 
   const handleScroll = useCallback(
@@ -315,7 +330,7 @@ export const usePublishedCourseCatalogue = ({
     loading,
     loadingMore,
     loadMoreError,
-    loadedSearchQuery: loadedQueryRef.current,
+    loadedSearchQuery: loadedQueryRef.current ?? '',
     refresh,
     staleNotice,
   };

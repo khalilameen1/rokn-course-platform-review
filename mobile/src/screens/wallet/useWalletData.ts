@@ -36,6 +36,8 @@ export const useWalletData = (identityKey: string) => {
   const [manualRefreshing, setManualRefreshing] = useState(false);
 
   const requestGenerationRef = useRef(0);
+  const mountedRef = useRef(false);
+  const refocusPendingRef = useRef(false);
   const refreshFlightRef = useRef<Promise<void> | null>(null);
   const queuedRefreshRef = useRef<Promise<void> | null>(null);
   const manualRefreshRef = useRef<symbol | null>(null);
@@ -51,6 +53,7 @@ export const useWalletData = (identityKey: string) => {
   tasksRef.current = tasks;
 
   const ownsBoundary = useCallback((boundary: AccountSessionBoundary) => {
+    if (!mountedRef.current) return false;
     try {
       assertAccountSessionBoundary(boundary);
       return true;
@@ -88,6 +91,11 @@ export const useWalletData = (identityKey: string) => {
       return;
     }
 
+    const requestOwnsData = () =>
+      requestGeneration === requestGenerationRef.current &&
+      ownsBoundary(boundary);
+    if (!requestOwnsData()) return;
+
     let sessionAvailable = false;
     try {
       sessionAvailable = await hasSession();
@@ -103,9 +111,6 @@ export const useWalletData = (identityKey: string) => {
       return;
     }
 
-    const requestOwnsData = () =>
-      requestGeneration === requestGenerationRef.current &&
-      ownsBoundary(boundary);
     if (!requestOwnsData()) return;
 
     setServerSession(sessionAvailable);
@@ -204,6 +209,7 @@ export const useWalletData = (identityKey: string) => {
   }, [ownsBoundary]);
 
   const refresh = useCallback(() => {
+    if (!mountedRef.current) return Promise.resolve();
     if (refreshFlightRef.current) return refreshFlightRef.current;
     let flight: Promise<void>;
     flight = performRefresh().finally(() => {
@@ -258,6 +264,7 @@ export const useWalletData = (identityKey: string) => {
   );
 
   useEffect(() => {
+    mountedRef.current = true;
     requestGenerationRef.current += 1;
     refreshFlightRef.current = null;
     queuedRefreshRef.current = null;
@@ -277,19 +284,36 @@ export const useWalletData = (identityKey: string) => {
     setTasksStatus('idle');
     setManualRefreshing(false);
     void refresh();
+    return () => {
+      mountedRef.current = false;
+      requestGenerationRef.current += 1;
+      refreshFlightRef.current = null;
+      queuedRefreshRef.current = null;
+      manualRefreshRef.current = null;
+    };
   }, [identityKey, refresh]);
 
   useFocusEffect(
     useCallback(() => {
-      void refresh();
+      if (refocusPendingRef.current) void refreshAfterCurrent();
+      else void refresh();
+      refocusPendingRef.current = false;
+      let previousState = AppState.currentState;
       const subscription = AppState.addEventListener('change', state => {
-        if (state === 'active') void refresh();
+        const returnedToForeground =
+          state === 'active' && previousState !== 'active';
+        previousState = state;
+        // A live read may have fetched wallet/tasks before an external task
+        // credited them. Queue one post-return snapshot behind that read.
+        if (returnedToForeground) void refreshAfterCurrent();
       });
-      // A screen blur does not cancel or forget a live account-bound read.
-      // Its result is still useful on return and the account boundary rejects
-      // it if ownership actually changed.
-      return () => subscription.remove();
-    }, [refresh]),
+      // Keep a live read on blur, but follow it with a current snapshot when
+      // returning from another screen. Initial focus still joins mount's read.
+      return () => {
+        refocusPendingRef.current = mountedRef.current;
+        subscription.remove();
+      };
+    }, [refresh, refreshAfterCurrent]),
   );
 
   return {

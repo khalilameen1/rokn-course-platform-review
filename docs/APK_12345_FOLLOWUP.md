@@ -629,3 +629,45 @@ The broader requested review remains active. This is evidence for these paths,
 not a claim that every application journey is defect-free. No new APK, live
 course-content mutation, production deployment or physical-device acceptance
 is claimed by this source-only entry.
+
+## September 8 — daily journey stale-response follow-through (source only)
+
+The next bounded pass followed operations through navigation, remote writes,
+read coalescing and local cache updates. It found these related gaps rather
+than treating each visible symptom as an isolated screen problem:
+
+- Course checkout kept an applied coupon after expiration, quota exhaustion or
+  changed pricing while wallet credit was pending. Definitive quote rejection
+  now refreshes the price and preserves confirmed wallet credit independently.
+  Only a definitively rejected coupon is removed. A changed total always needs
+  another explicit purchase confirmation; recovery never starts a debit or
+  another payment. The waiting label describes repricing, not opening payment.
+- Home search could accept B after the learner returned to already loaded A,
+  leave its loading state stuck after cancelling a debounce, or confuse an
+  unrequested/failed empty query with a successfully loaded Home. Result data
+  and pagination now remain associated with the loaded query and late results
+  cannot replace the active query. Failed Home followed by successful search
+  is covered as well as normal catalogue entry.
+- Portfolio background publication could restore an older title or removed
+  media after a later successful edit. Per-project mutation ownership now
+  guards finalize and reconciliation responses. Existing bounded retry waits
+  through active editing and can still publish the newer item afterwards.
+- Returning to Wallet could join a read whose balance/tasks snapshot predated
+  an external reward. Real foreground and screen-return transitions use the
+  existing single queued refresh. Initial focus stays coalesced and account
+  changes/unmount discard old queued work.
+- Saved-folder refresh after a successful write could join a pre-write list
+  request. Mutations invalidate that read generation; stale readers join the
+  current read, and updates to the existing local folder index remain ordered.
+
+Read-only counterchecks did not establish the same missing transition in the
+project submission/review return path, MyCorner, certificates or notification
+read-state handling. Their existing attempt identities, generation guards and
+mutation overlays were retained. These are scoped source findings, not claims
+of a complete device, provider or production acceptance test.
+
+Final combined gate for this follow-through: 25 affected Jest suites passed
+143 tests. Full mobile TypeScript, scoped ESLint and `git diff --check` passed.
+The Home cases and saved-folder stale read/cache-order cases were reproduced
+as failures before their fixes. No new APK, Git push, live payment or production
+deployment was performed for this entry; the larger review goal stays open.
