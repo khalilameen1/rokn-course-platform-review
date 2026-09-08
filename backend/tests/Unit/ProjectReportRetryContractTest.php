@@ -28,6 +28,7 @@ final class ProjectReportRetryContractTest extends TestCase
         self::assertStringContainsString("'throttle:3,1'", $routes);
         self::assertStringContainsString("'can_retry_report'", $presenter);
         self::assertStringContainsString("'report_retry_endpoint'", $presenter);
+        self::assertStringContainsString('$this->reportRetries->canRetry($submission)', $presenter);
         self::assertStringContainsString('ProjectReportRetryPolicy::allows', $retryService);
         self::assertStringContainsString('(string) Str::uuid()', $retryService);
     }

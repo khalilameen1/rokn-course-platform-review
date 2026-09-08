@@ -35,10 +35,20 @@ final class RecoverStalledAiFeedback extends Command
                 $query->whereIn(
                     'submission_metadata->ai_feedback->status',
                     ['queued', 'processing']
-                )->orWhere(function ($readyWithoutThread): void {
-                    $readyWithoutThread
+                )->orWhere(function ($readyWithoutReport): void {
+                    // Older workers could commit the ready marker before the
+                    // initial report transaction. An existing typing/failed
+                    // thread is not proof that the paid answer was presented.
+                    $readyWithoutReport
                         ->where('submission_metadata->ai_feedback->status', 'ready')
-                        ->whereDoesntHave('feedbackThread');
+                        ->whereDoesntHave('feedbackThread', function ($thread): void {
+                            $thread->where('status', 'ready')
+                                ->whereHas('messages', function ($report): void {
+                                    $report->where('role', 'assistant')
+                                        ->where('client_request_id', 'like', 'report:%')
+                                        ->where('status', ProjectFeedbackMessage::COMPLETED);
+                                });
+                        });
                 })->orWhere(function ($missingMarker): void {
                     $missingMarker
                         ->whereNull('submission_metadata->ai_feedback->status')

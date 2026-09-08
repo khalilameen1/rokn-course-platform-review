@@ -19,53 +19,32 @@ final class ProjectReportRetryService
 {
     public function __construct(
         private CourseAccessPlanService $accessPlans,
-        private CourseChatAccessService $courseAccess
+        private CourseChatAccessService $courseAccess,
+        private PaidAiCallExecutionService $paidCalls
     ) {
+    }
+
+    public function canRetry(ProjectSubmission $submission): bool
+    {
+        $user = $submission->user;
+
+        return $user !== null
+            && $this->decision($submission, $user)['state'] === 'allowed';
     }
 
     /** @return array{state: string, submission: ProjectSubmission} */
     public function request(ProjectSubmission $submission, User $user): array
     {
-        if (!$this->isAvailable($submission, $user)) {
-            return ['state' => 'unavailable', 'submission' => $submission];
-        }
-
-        $state = DB::transaction(function () use ($submission): string {
+        $state = DB::transaction(function () use ($submission, $user): string {
             $locked = ProjectSubmission::query()->lockForUpdate()->findOrFail($submission->id);
-            if ($locked->review_status !== ProjectSubmission::STATUS_PASSED) {
-                return 'unsafe';
+            $decision = $this->decision($locked, $user, lockEvent: true);
+            if ($decision['state'] !== 'allowed') {
+                return $decision['state'];
             }
-
+            $event = $decision['event'];
             $metadata = is_array($locked->submission_metadata) ? $locked->submission_metadata : [];
-            if ((string) data_get($metadata, 'ai_feedback.status') !== 'unavailable') {
-                return 'not_terminal';
-            }
-
-            $reason = (string) data_get($metadata, 'ai_feedback.reason', '');
             $retryCount = (int) data_get($metadata, 'ai_feedback.retry_count', 0);
             $requestId = (string) data_get($metadata, 'ai_feedback.request_id', $locked->public_id);
-            $event = AiUsageEvent::query()
-                ->where('request_id', $requestId)
-                ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK)
-                ->lockForUpdate()
-                ->first();
-
-            if (!ProjectReportRetryPolicy::allows(
-                $reason,
-                $retryCount,
-                $event?->status,
-                (string) data_get($event?->metadata, 'provider_call_state', ''),
-                trim((string) data_get($event?->metadata, 'accepted_response', '')) !== ''
-            )) {
-                if ($retryCount >= 2) {
-                    return 'exhausted';
-                }
-
-                return $event !== null && !in_array($event->status, ['completed', 'failed'], true)
-                    ? 'not_terminal'
-                    : 'unsafe';
-            }
-
             if ($event?->status === 'failed') {
                 $requestId = (string) Str::uuid();
             }
@@ -92,6 +71,47 @@ final class ProjectReportRetryService
         }
 
         return ['state' => $state, 'submission' => $submission->fresh()];
+    }
+
+    /** @return array{state: string, event: ?AiUsageEvent} */
+    private function decision(ProjectSubmission $submission, User $user, bool $lockEvent = false): array
+    {
+        if (!$this->isAvailable($submission, $user)) {
+            return ['state' => 'unavailable', 'event' => null];
+        }
+        $metadata = is_array($submission->submission_metadata) ? $submission->submission_metadata : [];
+        if ((string) data_get($metadata, 'ai_feedback.status') !== 'unavailable') {
+            return ['state' => 'not_terminal', 'event' => null];
+        }
+        $retryCount = (int) data_get($metadata, 'ai_feedback.retry_count', 0);
+        $snapshot = ProjectSubmissionEvaluationSnapshot::fromSubmission($submission);
+        $event = AiUsageEvent::query()
+            ->where('request_id', (string) data_get($metadata, 'ai_feedback.request_id', $submission->public_id))
+            ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK)
+            ->where('user_id', $submission->user_id)
+            ->where('enrollment_id', (int) data_get($snapshot, 'access.enrollment_id'))
+            ->when($lockEvent, fn ($query) => $query->lockForUpdate())
+            ->first();
+        $allowed = ProjectReportRetryPolicy::allows(
+            (string) data_get($metadata, 'ai_feedback.reason', ''),
+            $retryCount,
+            $event?->status,
+            (string) data_get($event?->metadata, 'provider_call_state', ''),
+            trim((string) data_get($event?->metadata, 'accepted_response', '')) !== '',
+            inputsPurged: trim((string) data_get($metadata, 'files_purged_at', '')) !== '',
+            hasLandedResponse: $this->paidCalls->landedResult($event) !== null
+        );
+        if ($allowed) {
+            return ['state' => 'allowed', 'event' => $event];
+        }
+        if ($retryCount >= 2) {
+            return ['state' => 'exhausted', 'event' => $event];
+        }
+        $state = $event !== null && !in_array($event->status, ['completed', 'failed'], true)
+            ? 'not_terminal'
+            : 'unsafe';
+
+        return ['state' => $state, 'event' => $event];
     }
 
     private function isAvailable(ProjectSubmission $submission, User $user): bool

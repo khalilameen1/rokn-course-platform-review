@@ -259,6 +259,106 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         self::assertSame('ready', data_get($fixture['submission']->fresh()->submission_metadata, 'ai_feedback.status'));
     }
 
+    public function test_paid_report_publication_rolls_back_as_one_write_and_replays_without_another_provider_call(): void
+    {
+        $this->fakeProjectProvider();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $submission = $fixture['submission'];
+        $thread = $submission->feedbackThread;
+        $thread->forceFill(['status' => 'processing'])->save();
+        $report = $thread->messages()->firstOrFail();
+        $report->forceFill([
+            'status' => ProjectFeedbackMessage::STREAMING,
+            'body' => null,
+            'completed_at' => null,
+        ])->save();
+        $interrupt = true;
+        ProjectFeedbackMessage::saving(function (ProjectFeedbackMessage $message) use ($report, &$interrupt): void {
+            if ($interrupt && $message->id === $report->id && $message->status === ProjectFeedbackMessage::COMPLETED) {
+                $interrupt = false;
+                throw new \RuntimeException('Report write interrupted');
+            }
+        });
+
+        try {
+            app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+            self::fail('The injected presentation failure must reach the job retry path.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame('Report write interrupted', $exception->getMessage());
+        }
+
+        // A paid answer is durable, but none of its ready presentation may
+        // commit until both the initial message and its submission are saved.
+        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->sole();
+        self::assertSame('completed', $event->status);
+        self::assertSame('The input is required.', data_get($event->metadata, 'accepted_response'));
+        self::assertSame('queued', data_get($submission->fresh()->submission_metadata, 'ai_feedback.status'));
+        self::assertSame('processing', $thread->fresh()->status);
+        self::assertSame(ProjectFeedbackMessage::STREAMING, $report->fresh()->status);
+        self::assertSame($fixture['text'], $submission->fresh()->submission_text);
+        self::assertNull(data_get($event->metadata, 'presentation_completed_at'));
+        $usage = AiEntitlementUsage::query()->where('feature', 'project_feedback')->sole();
+        $paidUsage = $usage->only(['used_requests', 'used_tokens', 'used_cost_usd']);
+
+        app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+        app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+
+        self::assertSame('ready', data_get($submission->fresh()->submission_metadata, 'ai_feedback.status'));
+        self::assertSame('ready', $thread->fresh()->status);
+        self::assertSame(ProjectFeedbackMessage::COMPLETED, $report->fresh()->status);
+        self::assertSame('The input is required.', $report->fresh()->body);
+        self::assertSame(1, $thread->messages()->count());
+        self::assertEquals($paidUsage, $usage->fresh()->only(array_keys($paidUsage)));
+        self::assertNotEmpty(data_get($event->fresh()->metadata, 'presentation_completed_at'));
+        self::assertNull($submission->fresh()->submission_text);
+        Http::assertSentCount(1);
+    }
+
+    public function test_initial_report_waits_for_its_current_execution_before_marking_the_paid_answer_presented(): void
+    {
+        $this->fakeProjectProvider();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $submission = $fixture['submission'];
+        $thread = $submission->feedbackThread;
+        $thread->forceFill(['status' => 'processing'])->save();
+        $report = $thread->messages()->firstOrFail();
+        $report->forceFill([
+            'status' => ProjectFeedbackMessage::STREAMING,
+            'body' => null,
+            'completed_at' => null,
+        ])->save();
+        $replacement = new GenerateProjectFeedback($submission->id);
+        $takenOver = false;
+        \App\Models\AiUsageEvent::saved(function ($event) use ($submission, $replacement, &$takenOver): void {
+            if ($takenOver || $event->feature !== 'project_feedback' || $event->status !== 'completed') return;
+            $takenOver = true;
+            $fresh = $submission->fresh();
+            $metadata = $fresh->submission_metadata;
+            $metadata['ai_feedback']['execution_id'] = $replacement->executionId;
+            $metadata['ai_feedback']['lease_expires_at'] = now()->addMinute()->toIso8601String();
+            $fresh->forceFill(['submission_metadata' => $metadata])->save();
+        });
+
+        app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+
+        $event = \App\Models\AiUsageEvent::query()->where('feature', 'project_feedback')->sole();
+        self::assertTrue($takenOver);
+        self::assertSame('processing', data_get($submission->fresh()->submission_metadata, 'ai_feedback.status'));
+        self::assertSame(ProjectFeedbackMessage::STREAMING, $report->fresh()->status);
+        self::assertNull(data_get($event->metadata, 'presentation_completed_at'));
+        self::assertSame('The input is required.', data_get($event->metadata, 'accepted_response'));
+        self::assertSame($fixture['text'], $submission->fresh()->submission_text);
+
+        app()->call([$replacement, 'handle']);
+
+        self::assertSame('ready', data_get($submission->fresh()->submission_metadata, 'ai_feedback.status'));
+        self::assertSame(ProjectFeedbackMessage::COMPLETED, $report->fresh()->status);
+        self::assertSame('The input is required.', $report->fresh()->body);
+        self::assertNotEmpty(data_get($event->fresh()->metadata, 'presentation_completed_at'));
+        self::assertSame(1, AiEntitlementUsage::query()->where('feature', 'project_feedback')->sole()->used_requests);
+        Http::assertSentCount(1);
+    }
+
     public function test_followup_provider_keeps_submission_and_completed_html_exchanges(): void
     {
         Bus::fake();

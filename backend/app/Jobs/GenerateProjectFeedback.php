@@ -408,17 +408,19 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     }
                 }
             }
-            DB::transaction(function () use ($submission, $contract, $result, $requestId): void {
+            $presented = DB::transaction(function () use (
+                $submission, $contract, $result, $requestId, $threads, $enrollment, $courseId, $evaluationTerms
+            ): bool {
                 if (!User::query()->whereKey($submission->user_id)->where('active', true)
-                    ->lockForUpdate()->exists()) return;
+                    ->lockForUpdate()->exists()) return false;
                 $fresh = ProjectSubmission::query()->lockForUpdate()->find($submission->id);
-                if (!$fresh) return;
+                if (!$fresh) return false;
                 $meta = is_array($fresh->submission_metadata) ? $fresh->submission_metadata : [];
                 if (
                     data_get($meta, 'ai_feedback.status') === 'ready'
                     || data_get($meta, 'ai_feedback.execution_id') !== $this->executionId
                 ) {
-                    return;
+                    return false;
                 }
                 $meta['ai_feedback'] = [
                     'status' => 'ready',
@@ -427,15 +429,19 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     'generated_at' => now()->toIso8601String(),
                 ];
                 $fresh->forceFill(['submission_metadata' => $meta])->save();
+                // Ready means the initial report is readable. Keep both writes
+                // together so a failed message save remains a recoverable job.
+                $threads->storeInitialReport(
+                    $fresh,
+                    $enrollment,
+                    $courseId,
+                    $evaluationTerms,
+                    trim((string) $result['message'])
+                );
+
+                return true;
             }, 3);
-            $submission->refresh();
-            $threads->storeInitialReport(
-                $submission,
-                $enrollment,
-                $courseId,
-                $evaluationTerms,
-                trim((string) $result['message'])
-            );
+            if (!$presented) return;
             $paidCalls->markPresented($reservation?->fresh());
             $fileRetention->purgeIfEligible($submission->fresh());
         } catch (AiPlanLimitReachedException $exception) {

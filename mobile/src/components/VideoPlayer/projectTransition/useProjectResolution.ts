@@ -185,6 +185,7 @@ export const useProjectResolution = ({
     setReviewRecoveryError('');
     setReviewRetrying(false);
     return () => {
+      retryFlightRef.current = null;
       reviewFlightRef.current = null;
     };
   }, [project.id]);
@@ -374,23 +375,33 @@ export const useProjectResolution = ({
     const projectId = project.id;
     const flight = Symbol('project-report-retry');
     retryFlightRef.current = flight;
+    const ownsFlight = () =>
+      ownsProject(projectId) && retryFlightRef.current === flight;
     setReportRetrying(true);
-    setResolution(current => ({...current, reportStatus: 'queued'}));
+    let boundary: AccountSessionBoundary | undefined;
     try {
-      await retryProjectReport(reportRetryEndpoint);
+      boundary = await captureAccountSessionBoundary();
+      if (!ownsFlight()) return;
+      const next = await retryProjectReport(reportRetryEndpoint);
+      assertAccountSessionBoundary(boundary);
+      // Only the committed retry response starts polling. Reading while the
+      // POST is still pending can return the previous failure and stop it.
+      if (ownsFlight()) applyResolution(next);
     } catch {
       try {
+        if (!boundary || !ownsFlight()) return;
+        assertAccountSessionBoundary(boundary);
         const next = await loadProjectResolution(projectId);
-        if (ownsProject(projectId)) applyResolution(next);
+        assertAccountSessionBoundary(boundary);
+        if (ownsFlight()) applyResolution(next);
       } catch {
-        if (ownsProject(projectId)) {
-          setResolution(current => ({...current, reportStatus: 'failed'}));
-        }
+        // Keep the last confirmed failure if recovery is also unavailable.
+        // A lost ACK may be queued; a later explicit retry reconciles it.
       }
     } finally {
-      if (retryFlightRef.current === flight) {
+      if (ownsFlight()) {
         retryFlightRef.current = null;
-        if (ownsProject(projectId)) setReportRetrying(false);
+        setReportRetrying(false);
       }
     }
   }, [applyResolution, ownsProject, project.id, resolution.contract]);

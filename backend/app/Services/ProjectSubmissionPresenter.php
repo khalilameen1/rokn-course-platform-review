@@ -4,12 +4,9 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\AiEntitlementUsage;
 use App\Models\AiInputAttachment;
-use App\Models\AiUsageEvent;
 use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
-use App\Support\ProjectReportRetryPolicy;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\ProjectSubmissionLifecycle;
 use Illuminate\Support\Facades\URL;
@@ -20,7 +17,8 @@ final readonly class ProjectSubmissionPresenter
         private CourseAccessPlanService $accessPlans,
         private ProjectFeedbackThreadService $feedbackThreads,
         private AiFailurePolicy $failurePolicy,
-        private ProjectSubmissionEvaluationService $evaluations
+        private ProjectSubmissionEvaluationService $evaluations,
+        private ProjectReportRetryService $reportRetries
     ) {
     }
 
@@ -67,7 +65,8 @@ final readonly class ProjectSubmissionPresenter
             ? 'enhanced'
             : (string) $contract['project_feedback_level'];
         $effectiveReplyEnabled = $replyAvailable || $replyEnabled;
-        $canRetryReport = $this->canRetryInitialReport($submission, $reportStatus);
+        $canRetryReport = $reportStatus === ProjectSubmissionLifecycle::REPORT_FAILED
+            && $this->reportRetries->canRetry($submission);
         $reportFailure = $reportStatus === ProjectSubmissionLifecycle::REPORT_FAILED
             ? $this->failurePolicy->describe((string) data_get($metadata, 'ai_feedback.reason'))
             : null;
@@ -157,28 +156,5 @@ final readonly class ProjectSubmissionPresenter
             'remaining_messages' => 0,
             'messages' => [],
         ];
-    }
-
-    private function canRetryInitialReport(ProjectSubmission $submission, string $reportStatus): bool
-    {
-        if ($reportStatus !== ProjectSubmissionLifecycle::REPORT_FAILED) {
-            return false;
-        }
-        $metadata = is_array($submission->submission_metadata)
-            ? $submission->submission_metadata
-            : [];
-        $requestId = (string) data_get($metadata, 'ai_feedback.request_id', $submission->public_id);
-        $event = AiUsageEvent::query()
-            ->where('request_id', $requestId)
-            ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK)
-            ->first();
-
-        return ProjectReportRetryPolicy::allows(
-            (string) data_get($metadata, 'ai_feedback.reason', ''),
-            (int) data_get($metadata, 'ai_feedback.retry_count', 0),
-            $event?->status,
-            (string) data_get($event?->metadata, 'provider_call_state', ''),
-            trim((string) data_get($event?->metadata, 'accepted_response', '')) !== ''
-        );
     }
 }

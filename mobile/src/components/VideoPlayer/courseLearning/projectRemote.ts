@@ -163,14 +163,21 @@ export const retryProjectReview = async (
   return projectResolutionFromSubmission(payload);
 };
 
-export const retryProjectReport = async (endpoint: string): Promise<void> => {
+export const retryProjectReport = async (
+  endpoint: string,
+): Promise<ProjectResolution> => {
   const route = endpoint.replace(/^\/?api\/v1\//, '');
-  if (!/^project-submissions\/[^/]+\/report\/retry$/.test(route)) {
-    throw new Error('INVALID_PROJECT_REPORT_RETRY_ENDPOINT');
-  }
+  const match = /^project-submissions\/([^/]+)\/report\/retry$/.exec(route);
+  if (!match) throw new Error('INVALID_PROJECT_REPORT_RETRY_ENDPOINT');
+  const submissionId = publicId(match[1], 'PROJECT_SUBMISSION');
   const boundary = await captureAccountSessionBoundary();
-  await publicRequest.post(route);
+  const response = await publicRequest.post(route);
   assertAccountSessionBoundary(boundary);
+  const payload = payloadFrom(response);
+  if (valueAsString(payload.id).toLowerCase() !== submissionId) {
+    throw new Error('PROJECT_SUBMISSION_CONTRACT_INVALID');
+  }
+  return projectResolutionFromSubmission(payload);
 };
 
 export const watchProjectResolution = <T extends {status: ProjectStatus}>({

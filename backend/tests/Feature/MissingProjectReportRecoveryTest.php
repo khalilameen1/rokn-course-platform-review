@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Jobs\GenerateProjectFeedback;
 use App\Models\AiUsageEvent;
+use App\Models\AiEntitlementUsage;
 use App\Models\AiInputAttachment;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
@@ -22,6 +23,8 @@ use App\Services\AiEntitlementBudgetService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectSubmissionPresenter;
+use App\Services\ProjectReportRetryService;
+use App\Services\ProjectSubmissionFileRetentionService;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -53,10 +56,13 @@ final class MissingProjectReportRecoveryTest extends TestCase
         [$ready, $enrollment] = $this->fixture();
         $ready->forceFill(['submission_metadata' => ['ai_feedback' => ['status' => 'ready']],
             'updated_at' => now()->subMinutes(5)])->save();
-        ProjectFeedbackThread::query()->create(['public_id' => (string) Str::uuid(), 'submission_id' => $ready->id,
+        $readyThread = ProjectFeedbackThread::query()->create(['public_id' => (string) Str::uuid(), 'submission_id' => $ready->id,
             'user_id' => $ready->user_id, 'course_id' => $enrollment->course_id, 'project_id' => $ready->project_id,
             'enrollment_id' => $enrollment->id, 'access_plan_id' => $enrollment->access_plan_id,
             'feedback_level' => 'report', 'can_reply' => false, 'status' => 'ready']);
+        $readyThread->messages()->create(['public_id' => (string) Str::uuid(), 'role' => 'assistant',
+            'client_request_id' => 'report:'.$ready->public_id, 'status' => 'completed',
+            'body' => 'التقرير المكتمل موجود بالفعل', 'completed_at' => now()]);
         [$invalid] = $this->fixture();
         $snapshot = $invalid->evaluation_snapshot;
         $snapshot['project']['requirements_text'] = 'unverified changed requirements';
@@ -93,6 +99,218 @@ final class MissingProjectReportRecoveryTest extends TestCase
         self::assertNull($payload['poll_after_seconds']);
         self::assertSame(0, AiUsageEvent::query()->count());
         Http::assertNothingSent();
+    }
+
+    public static function retiredReportRetries(): array
+    {
+        return [
+            'presenter without a provider event' => [false, false],
+            'presenter with a safely failed provider event' => [true, false],
+            'locked request without a provider event' => [false, true],
+            'locked request with a safely failed provider event' => [true, true],
+        ];
+    }
+
+    #[DataProvider('retiredReportRetries')]
+    public function test_retention_does_not_leave_an_impossible_new_report_retry(bool $failedEvent, bool $request): void
+    {
+        [$submission, $enrollment] = $this->fixture();
+        if ($failedEvent) {
+            $budget = app(AiEntitlementBudgetService::class);
+            $event = $budget->reserve($enrollment, 'project_feedback', 1000, 'test/model', $submission->public_id);
+            $budget->release($event, 'provider_unavailable');
+            self::assertSame('failed', $event->fresh()->status);
+        }
+        $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
+            'status' => 'unavailable', 'reason' => 'provider_unavailable',
+            'request_id' => $submission->public_id, 'retry_count' => 0,
+        ]], 'updated_at' => now()->subDays(31)])->save();
+        $presenter = app(ProjectSubmissionPresenter::class);
+        self::assertTrue($presenter->present($submission->fresh())['can_retry_report']);
+
+        self::assertSame(1, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
+        $retired = $submission->fresh();
+        self::assertNull($retired->submission_text);
+        self::assertNotEmpty(data_get($retired->submission_metadata, 'files_purged_at'));
+
+        if ($request) {
+            // Deliberately pass the pre-purge model: the locked fresh row must
+            // determine eligibility, not the stale HTTP-bound instance.
+            $result = app(ProjectReportRetryService::class)->request($submission, $submission->user);
+            self::assertSame('unsafe', $result['state']);
+            self::assertSame($retired->submission_metadata, $submission->fresh()->submission_metadata);
+        } else {
+            $payload = $presenter->present($retired);
+            self::assertFalse($payload['can_retry_report']);
+            self::assertNull($payload['report_retry_endpoint']);
+            self::assertSame(0, $payload['report_retry_after_seconds']);
+            self::assertTrue($payload['can_continue']);
+        }
+        Bus::assertNotDispatched(GenerateProjectFeedback::class);
+        Http::assertNothingSent();
+    }
+
+    public static function freshReportRetries(): array
+    {
+        return ['no provider event' => [false], 'safely failed provider event' => [true]];
+    }
+
+    #[DataProvider('freshReportRetries')]
+    public function test_a_safe_retry_before_retirement_preserves_its_inputs_and_existing_request_identity_rules(bool $failedEvent): void
+    {
+        [$submission, $enrollment] = $this->fixture();
+        if ($failedEvent) {
+            $budget = app(AiEntitlementBudgetService::class);
+            $event = $budget->reserve($enrollment, 'project_feedback', 1000, 'test/model', $submission->public_id);
+            $budget->release($event, 'provider_unavailable');
+        }
+        $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
+            'status' => 'unavailable', 'reason' => 'provider_unavailable',
+            'request_id' => $submission->public_id, 'retry_count' => 0,
+        ]]])->save();
+
+        $result = app(ProjectReportRetryService::class)->request($submission, $submission->user);
+
+        self::assertSame('queued', $result['state']);
+        $requestId = data_get($result['submission']->submission_metadata, 'ai_feedback.request_id');
+        if ($failedEvent) self::assertNotSame($submission->public_id, $requestId);
+        else self::assertSame($submission->public_id, $requestId);
+        self::assertSame(1, data_get($result['submission']->submission_metadata, 'ai_feedback.retry_count'));
+        $duplicate = app(ProjectReportRetryService::class)->request($submission, $submission->user);
+        self::assertSame('not_terminal', $duplicate['state']);
+        self::assertSame($requestId, data_get($duplicate['submission']->submission_metadata, 'ai_feedback.request_id'));
+        // The retention sweep must recheck the now-queued row under the same
+        // lock, even when its earlier scan called this an expired failure.
+        self::assertFalse(app(ProjectSubmissionFileRetentionService::class)->purgeIfEligible($submission, true));
+        self::assertSame($submission->submission_text, $submission->fresh()->submission_text);
+        Bus::assertDispatchedTimes(GenerateProjectFeedback::class, 1);
+        Http::assertNothingSent();
+    }
+
+    public static function durableRetiredReports(): array
+    {
+        return ['landed' => [false], 'accepted' => [true]];
+    }
+
+    #[DataProvider('durableRetiredReports')]
+    public function test_a_retired_report_replays_its_known_result_without_another_provider_request_or_charge(bool $settled): void
+    {
+        [$submission, $enrollment, $event, $providerResult] = $this->failedDurableReport($settled);
+        self::assertSame(1, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
+        $retired = $submission->fresh();
+        self::assertNull($retired->submission_text);
+        self::assertTrue(app(ProjectSubmissionPresenter::class)->present($retired)['can_retry_report']);
+
+        $result = app(ProjectReportRetryService::class)->request($retired, $retired->user);
+
+        self::assertSame('queued', $result['state']);
+        self::assertSame($submission->public_id, data_get($result['submission']->submission_metadata, 'ai_feedback.request_id'));
+        self::assertNotEmpty(data_get($result['submission']->submission_metadata, 'files_purged_at'));
+        Bus::assertDispatchedTimes(GenerateProjectFeedback::class, 1);
+        app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+        // A repeated worker delivery must not create another report or charge.
+        app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+
+        $completed = $submission->fresh();
+        self::assertSame('ready', $completed->feedbackThread?->status);
+        self::assertSame($providerResult['message'], $completed->feedbackThread?->messages()->first()?->body);
+        self::assertSame(1, $completed->feedbackThread?->messages()->count());
+        self::assertSame('completed', $event->fresh()->status);
+        self::assertSame(1, (int) data_get($event->fresh()->metadata, 'provider_call_attempt'));
+        self::assertSame(1, AiUsageEvent::query()->count());
+        $usage = AiEntitlementUsage::query()->where('enrollment_id', $enrollment->id)
+            ->where('feature', 'project_feedback')->firstOrFail();
+        self::assertSame(1, $usage->used_requests);
+        self::assertSame(100, $usage->used_tokens);
+        self::assertSame('0.010000', $usage->used_cost_usd);
+        self::assertSame('passed', $completed->review_status);
+        self::assertSame('قبول للاستكمال وليس تقريرًا', $completed->feedback);
+        Http::assertNothingSent();
+    }
+
+    public static function unavailableReplayEntitlements(): array
+    {
+        return [
+            'expired durable replay' => ['expired', true],
+            'revoked durable replay' => ['revoked', true],
+            'refunded durable replay' => ['refunded', true],
+            'expired new request' => ['expired', false],
+            'revoked new request' => ['revoked', false],
+            'refunded new request' => ['refunded', false],
+        ];
+    }
+
+    #[DataProvider('unavailableReplayEntitlements')]
+    public function test_retry_capability_and_mutation_share_the_existing_entitlement_boundary(string $unavailable, bool $durable): void
+    {
+        if ($durable) {
+            [$submission, $enrollment] = $this->failedDurableReport(true);
+            self::assertSame(1, app(ProjectSubmissionFileRetentionService::class)->purgeExpiredTerminalFailures(10));
+        } else {
+            [$submission, $enrollment] = $this->fixture();
+            $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
+                'status' => 'unavailable', 'reason' => 'provider_unavailable', 'retry_count' => 0,
+            ]]])->save();
+        }
+        if ($unavailable === 'expired') $enrollment->forceFill(['expires_at' => now()->subDay()])->save();
+        elseif ($unavailable === 'revoked') $enrollment->forceFill(['is_active' => false])->save();
+        else $enrollment->order->forceFill(['financial_status' => Order::FINANCIAL_REFUNDED])->save();
+        $retired = $submission->fresh();
+
+        $result = app(ProjectReportRetryService::class)->request($retired, $retired->user);
+
+        self::assertSame('unavailable', $result['state']);
+        self::assertSame($retired->submission_metadata, $submission->fresh()->submission_metadata);
+        $payload = app(ProjectSubmissionPresenter::class)->present($retired);
+        self::assertFalse($payload['can_retry_report']);
+        self::assertNull($payload['report_retry_endpoint']);
+        Bus::assertNotDispatched(GenerateProjectFeedback::class);
+        Http::assertNothingSent();
+    }
+
+    public static function declinedRetryStates(): array
+    {
+        return [
+            'exhausted' => ['exhausted', 'unavailable', 'worker_failed', 2],
+            'unsafe' => ['unsafe', 'unavailable', 'provider_outcome_unknown', 0],
+            'already queued' => ['not_terminal', 'queued', 'worker_failed', 0],
+        ];
+    }
+
+    #[DataProvider('declinedRetryStates')]
+    public function test_shared_capability_preserves_declined_request_states(string $state, string $status, string $reason, int $retries): void
+    {
+        [$submission] = $this->fixture();
+        $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
+            'status' => $status, 'reason' => $reason, 'retry_count' => $retries,
+        ]]])->save();
+        self::assertFalse(app(ProjectSubmissionPresenter::class)->present($submission)['can_retry_report']);
+
+        $result = app(ProjectReportRetryService::class)->request($submission, $submission->user);
+
+        self::assertSame($state, $result['state']);
+        self::assertSame($submission->submission_metadata, $submission->fresh()->submission_metadata);
+        Bus::assertNotDispatched(GenerateProjectFeedback::class);
+        Http::assertNothingSent();
+    }
+
+    private function failedDurableReport(bool $settled): array
+    {
+        [$submission, $enrollment] = $this->fixture();
+        $budget = app(AiEntitlementBudgetService::class);
+        $calls = app(PaidAiCallExecutionService::class);
+        $event = $budget->reserve($enrollment, 'project_feedback', 1000, 'test/model', $submission->public_id);
+        $execution = (string) Str::uuid();
+        $calls->beginForActiveUser($event, $execution, $submission->user_id);
+        $providerResult = ['message' => 'تقرير محفوظ عن تصميم الشعار',
+            'usage' => ['total_tokens' => 100, 'cost' => .01, 'cost_reported' => true], 'provider_request_id' => 'retired-report'];
+        $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $providerResult);
+        if ($settled) $budget->settle($event, $providerResult);
+        $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
+            'status' => 'unavailable', 'reason' => 'worker_failed',
+            'request_id' => $submission->public_id, 'retry_count' => 0,
+        ]], 'updated_at' => now()->subDays(31)])->save();
+        return [$submission, $enrollment, $event, $providerResult];
     }
 
     public function test_invalid_missing_marker_does_not_starve_a_later_report_with_a_dispatch_limit_of_one(): void

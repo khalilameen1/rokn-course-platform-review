@@ -861,3 +861,62 @@ regressions are not a live Google, Kashier, iPhone or production acceptance test
 The confirmed lower-priority report-retry capability gap after temporary input
 retention expires remains open for a later pass. No APK, push or deployment was
 performed; this is a source checkpoint, not completion of the broader goal.
+
+## September 8 — project report retry and delivery as one operation (source only)
+
+The open retention/retry finding was followed through the learner capability,
+locked server mutation, paid-result ledger, worker publication and mobile
+acknowledgement. The same publication boundary was checked in report follow-up
+messages and ordinary course chat. No project archive or retention extension
+was added:
+
+- A passed submission whose temporary inputs were deliberately purged no
+  longer offers a new provider call that cannot succeed. A durable landed or
+  accepted answer still replays its existing request without those inputs,
+  another provider request, or another charge. Existing reasons and retry caps
+  are retained; a queued retry continues to protect its inputs from the sweep.
+- The presenter and retry mutation now use the same service decision. Expired,
+  revoked and refunded enrolments previously advertised an actionable retry
+  that the mutation rejected. Both sides now agree, including after input
+  retirement. The decision rechecks the current locked submission for writes,
+  uses its captured owner/enrolment for the paid event, and preserves duplicate
+  request identities and the existing error states.
+- The initial worker now saves the ready marker and the complete report
+  thread/message in one transaction. A failed message save cannot leave a
+  committed ready marker with an incomplete report. Publication also returns
+  whether this execution still owns the write; an overtaken worker cannot mark
+  an unpresented paid result as consumed or purge its input. Recovery reuses the
+  stored answer instead of generating another one.
+- The scheduled recovery includes older ready markers with an incomplete
+  existing thread or initial message, not just missing threads. A completed
+  initial report is not redispatched for a pending follow-up. The existing
+  recovery delay is unchanged.
+- Mobile report retry waits for the POST acknowledgement and applies the
+  validated submission response before polling. A pre-acknowledgement read of
+  the old failed state can no longer stop the new report's polling. A lost
+  acknowledgement reconciles by reading, never an automatic second POST;
+  account/project changes and unmount retain ownership guards. Passed-course
+  continuation and report-only tiers remain independent of report delivery.
+- Report follow-up completion now returns success, and all its completion
+  callers retire the durable paid answer only on that success. Local fault
+  injection reproduced temporary account deactivation after settlement but
+  before publication: the answer now survives and publishes after reactivation
+  without a new provider call or usage increment. This is a concurrency
+  regression test, not a claimed production incident. Normal course chat
+  already used the guarded completion pattern and was not rewritten.
+
+Before/after regressions demonstrated retired-input retry, unavailable-plan
+capability, incomplete legacy presentation, premature ready publication,
+mobile retry ordering and lost follow-up presentation. Final root targeted
+backend gate passed 69 tests / 572 assertions. A broader 98-case run first hit
+five local PHP extension-loading errors (GD and ZIP), not application failures;
+GD was enabled for the targeted gate, and all five relevant adjacent image and
+text/DOCX checks passed with GD/ZIP enabled (41 assertions). Both extensions are
+available in the current PHP 8.4.24 runtime; no source workaround was introduced
+to hide these environment errors. All remaining cases in that broader run
+passed. Mobile verification passed 17 affected Jest suites / 155 tests, full
+TypeScript, scoped ESLint and diff checks.
+
+The source changes are verified locally, not accepted against live Google,
+Kashier, AI providers, a device or production. No APK, push, deployment or live
+account change was performed. The broader operation-review goal remains open.

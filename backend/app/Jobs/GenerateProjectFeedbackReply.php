@@ -115,14 +115,15 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             }
             $accepted = trim((string) data_get($event?->metadata, 'accepted_response', ''));
             if ($event?->status === 'completed' && $accepted !== '') {
-                $this->complete(
+                if ($this->complete(
                     (int) $message->id,
                     (int) $message->thread_id,
                     $event,
                     $accepted,
                     (array) data_get($event->metadata, 'provider_file_annotations', [])
-                );
-                $paidCalls->markPresented($event->fresh());
+                )) {
+                    $paidCalls->markPresented($event->fresh());
+                }
                 return;
             }
             if ($event?->status === 'reserved') {
@@ -133,14 +134,15 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                     );
                     if (AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) {
                         $settled = $event->fresh();
-                        $this->complete(
+                        if ($this->complete(
                             (int) $message->id,
                             (int) $message->thread_id,
                             $settled,
                             trim((string) $landed['message']),
                             (array) ($landed['file_annotations'] ?? [])
-                        );
-                        $paidCalls->markPresented($settled?->fresh());
+                        )) {
+                            $paidCalls->markPresented($settled?->fresh());
+                        }
                     }
                     return;
                 }
@@ -314,14 +316,15 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             if ($reservation && $reservation->status === 'completed') {
                 $replay = trim((string) data_get($reservation->metadata, 'accepted_response', ''));
                 if ($replay === '') throw new \RuntimeException('Completed request has no replay response.');
-                $this->complete(
+                if ($this->complete(
                     $message->id,
                     $thread->id,
                     $reservation,
                     $replay,
                     (array) data_get($reservation->metadata, 'provider_file_annotations', [])
-                );
-                $paidCalls->markPresented($reservation->fresh());
+                )) {
+                    $paidCalls->markPresented($reservation->fresh());
+                }
                 return;
             }
             if ($reservation && $reservation->status !== 'reserved') {
@@ -334,12 +337,13 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 );
                 if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
                 $settledEvent = $reservation->fresh();
-                $this->complete(
+                if ($this->complete(
                     $message->id, $thread->id, $settledEvent,
                     trim((string) $landed['message']),
                     (array) ($landed['file_annotations'] ?? [])
-                );
-                $paidCalls->markPresented($settledEvent?->fresh());
+                )) {
+                    $paidCalls->markPresented($settledEvent?->fresh());
+                }
                 return;
             }
             $callState = $paidCalls->beginForActiveUser(
@@ -419,14 +423,15 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 );
             }
             $settledEvent = $reservation?->fresh() ?: $reservation;
-            $this->complete(
+            if ($this->complete(
                 $message->id,
                 $thread->id,
                 $settledEvent,
                 trim((string) $result['message']),
                 is_array($result['file_annotations'] ?? null) ? $result['file_annotations'] : []
-            );
-            $paidCalls->markPresented($settledEvent?->fresh());
+            )) {
+                $paidCalls->markPresented($settledEvent?->fresh());
+            }
         } catch (AiPlanLimitReachedException $exception) {
             $this->markFailedWithReply($message->id, $thread->id, 'plan_limit_reached');
         } catch (AiProviderUnavailableException $exception) {
@@ -458,7 +463,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             $acceptedResponse = trim((string) data_get($settledEvent?->metadata, 'accepted_response', ''));
             if ($settledEvent?->status === 'completed' && $acceptedResponse !== '') {
                 try {
-                    $this->complete(
+                    if ($this->complete(
                         $message->id,
                         $thread->id,
                         $settledEvent,
@@ -468,8 +473,9 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                             'provider_file_annotations',
                             []
                         )
-                    );
-                    $paidCalls->markPresented($settledEvent->fresh());
+                    )) {
+                        $paidCalls->markPresented($settledEvent->fresh());
+                    }
                     return;
                 } catch (Throwable $recoveryException) {
                     report($recoveryException);
@@ -635,13 +641,14 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         }, 3);
     }
 
+    /** True only when the paid answer is durably visible, not merely settled. */
     private function complete(
         int $messageId,
         int $threadId,
         ?AiUsageEvent $event,
         string $body,
         array $providerAnnotations = []
-    ): void
+    ): bool
     {
         if ($providerAnnotations !== []) {
             $attachmentService = app(AiInputAttachmentService::class);
@@ -654,12 +661,20 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             }
         }
         $userId = (int) ProjectFeedbackThread::query()->whereKey($threadId)->value('user_id');
-        DB::transaction(function () use ($messageId, $threadId, $event, $body, $providerAnnotations, $userId): void {
+        return DB::transaction(function () use ($messageId, $threadId, $event, $body, $providerAnnotations, $userId): bool {
             if ($userId <= 0 || !User::query()->whereKey($userId)->where('active', true)
-                ->lockForUpdate()->exists()) return;
+                ->lockForUpdate()->exists()) return false;
             $message = ProjectFeedbackMessage::query()->lockForUpdate()->find($messageId);
             $thread = ProjectFeedbackThread::query()->lockForUpdate()->find($threadId);
-            if (!$message || !$thread || $message->status === ProjectFeedbackMessage::COMPLETED) return;
+            if (!$message || !$thread) return false;
+            if ($message->status === ProjectFeedbackMessage::COMPLETED) {
+                $reply = $thread->messages()
+                    ->where('role', 'assistant')
+                    ->where('client_request_id', 'reply:' . $message->public_id)
+                    ->where('status', ProjectFeedbackMessage::COMPLETED)
+                    ->first();
+                return $reply !== null && hash_equals((string) $reply->body, $body);
+            }
             $message->forceFill([
                 'status' => ProjectFeedbackMessage::COMPLETED,
                 'usage_event_id' => $event?->id,
@@ -681,6 +696,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 'error_code' => null,
                 'completed_at' => now(),
             ])->save();
+            return true;
         }, 3);
     }
 
@@ -730,7 +746,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             $accepted = trim((string) data_get($event->metadata, 'accepted_response', ''));
             if ($accepted !== '') {
                 try {
-                    $this->complete(
+                    if ($this->complete(
                         (int) $message->id,
                         (int) $message->thread_id,
                         $event,
@@ -740,8 +756,9 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                             'provider_file_annotations',
                             []
                         )
-                    );
-                    app(PaidAiCallExecutionService::class)->markPresented($event->fresh());
+                    )) {
+                        app(PaidAiCallExecutionService::class)->markPresented($event->fresh());
+                    }
                     return;
                 } catch (Throwable $recoveryException) {
                     report($recoveryException);
