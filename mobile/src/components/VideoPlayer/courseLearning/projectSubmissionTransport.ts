@@ -323,7 +323,8 @@ const performProjectSubmissionSync = async (
 
   // Legacy outboxes have no marker and may already exist on the server. A
   // failed lookup is not permission to replay their multipart upload.
-  if (pending.uploadAttempted !== false) {
+  const hasUnconfirmedUpload = pending.uploadAttempted !== false;
+  if (hasUnconfirmedUpload) {
     const recovered = await recoverSubmissionAcknowledgement(
       pending,
       operation,
@@ -357,6 +358,33 @@ const performProjectSubmissionSync = async (
     assertProjectSubmissionOwner(operation);
   } catch (error) {
     assertProjectSubmissionOwner(operation);
+    const errorResponse = asRecord(asRecord(error).response || error);
+    if (
+      hasUnconfirmedUpload &&
+      requestStatus(error) === 409 &&
+      asRecord(errorResponse.data).code === 'course_revision_changed'
+    ) {
+      // Refusing this replay after publication cannot reject the earlier POST
+      // whose ACK was lost. Its exact identity may have committed since the
+      // preflight lookup. Never discard it or move its key to another project.
+      const recovered = await recoverSubmissionAcknowledgement(
+        pending,
+        operation,
+        true,
+      );
+      if (recovered.kind === 'found') return recovered.result;
+      if (
+        recovered.kind === 'missing' &&
+        asRecord(asRecord(errorResponse.data).data)
+          .submission_admission_closed === true
+      ) {
+        // New servers serialize this receipt against admission: no older
+        // upload can commit after the marked rejection and missing lookup.
+        // Preserve the original revision contract for explicit draft recovery.
+        throw error;
+      }
+      throw new Error('PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING');
+    }
     if (requestStatus(error) === 429) {
       // This POST was explicitly refused, not lost in transit. Persist the
       // server's cooldown so taps, resume and process restart cannot bypass it.

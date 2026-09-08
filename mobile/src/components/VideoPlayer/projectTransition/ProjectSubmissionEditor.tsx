@@ -18,6 +18,12 @@ import type {SelectedProjectFile} from '../types';
 
 type Props = {
   draftSaveError: boolean;
+  revisionMessage?: string;
+  revisionUpdating?: boolean;
+  canReviewUpdatedProject?: boolean;
+  revisionActionLabel?: string;
+  onReviewUpdatedProject?: () => void;
+  draftCompatibilityMessage?: string;
   fileSubmissionEnabled: boolean;
   filePickerDisabled: boolean;
   fileTypesLabel: string;
@@ -49,6 +55,12 @@ const AttachmentIcon = () => (
 
 const ProjectSubmissionEditor = ({
   draftSaveError,
+  revisionMessage,
+  revisionUpdating,
+  canReviewUpdatedProject,
+  revisionActionLabel,
+  onReviewUpdatedProject,
+  draftCompatibilityMessage,
   fileSubmissionEnabled,
   filePickerDisabled,
   fileTypesLabel,
@@ -68,13 +80,42 @@ const ProjectSubmissionEditor = ({
     <Text accessibilityRole="header" style={styles.sectionTitle}>
       تسليمك
     </Text>
-    {textSubmissionEnabled && (
+    {!!revisionMessage && (
+      <View style={styles.noteField}>
+        <Text accessibilityRole="alert" style={styles.fieldLabel}>
+          {revisionMessage}
+        </Text>
+        {canReviewUpdatedProject && (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{
+              busy: revisionUpdating,
+              disabled: revisionUpdating,
+            }}
+            disabled={revisionUpdating}
+            style={styles.primaryButton}
+            onPress={onReviewUpdatedProject}>
+            <Text style={styles.primaryButtonText}>
+              {revisionUpdating
+                ? 'نجهّز المسودة'
+                : revisionActionLabel || 'راجع المشروع المحدّث'}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+    )}
+    {(textSubmissionEnabled || Boolean(note)) && (
       <View style={styles.noteField}>
         <Text style={styles.fieldLabel}>ما نفذته</Text>
+        {!textSubmissionEnabled && (
+          <Text style={styles.uploadHint}>
+            المتطلبات الحالية لا تقبل النص أزله قبل التسليم
+          </Text>
+        )}
         <TextInput
           accessibilityLabel="ما نفذته"
           multiline
-          editable={!sending}
+          editable={!sending && !revisionUpdating}
           value={note}
           onChangeText={onChangeNote}
           placeholder={
@@ -117,7 +158,7 @@ const ProjectSubmissionEditor = ({
         </View>
       </Pressable>
     )}
-    {fileSubmissionEnabled && selectedFiles.length > 0 && (
+    {selectedFiles.length > 0 && (
       <View style={styles.attachmentList}>
         {selectedFiles.map(file => (
           <View key={`${file.uri}:${file.name}`} style={styles.attachmentChip}>
@@ -135,8 +176,8 @@ const ProjectSubmissionEditor = ({
             <Pressable
               accessibilityLabel={`إزالة ${file.name}`}
               accessibilityRole="button"
-              accessibilityState={{disabled: sending}}
-              disabled={sending}
+              accessibilityState={{disabled: sending || revisionUpdating}}
+              disabled={sending || revisionUpdating}
               style={styles.removeButton}
               onPress={() => onRemoveFile(file)}>
               <Text style={styles.attachmentRemove}>×</Text>
@@ -145,22 +186,29 @@ const ProjectSubmissionEditor = ({
         ))}
       </View>
     )}
+    {!!draftCompatibilityMessage && (
+      <Text accessibilityRole="alert" style={styles.draftSaveError}>
+        {draftCompatibilityMessage}
+      </Text>
+    )}
     {draftSaveError && (
       <Text accessibilityRole="alert" style={styles.draftSaveError}>
         تعذّر حفظ المسودة على الجهاز
         {'\n'}اترك الصفحة مفتوحة حتى تسلّم المشروع
       </Text>
     )}
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{busy: sending, disabled: submitDisabled}}
-      disabled={submitDisabled}
-      style={[styles.primaryButton, submitDisabled && styles.disabledButton]}
-      onPress={onSubmit}>
-      <Text style={styles.primaryButtonText}>
-        {sending ? 'جارٍ التسليم' : 'سلّم المشروع'}
-      </Text>
-    </Pressable>
+    {!revisionMessage && (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{busy: sending, disabled: submitDisabled}}
+        disabled={submitDisabled}
+        style={[styles.primaryButton, submitDisabled && styles.disabledButton]}
+        onPress={onSubmit}>
+        <Text style={styles.primaryButtonText}>
+          {sending ? 'جارٍ التسليم' : 'سلّم المشروع'}
+        </Text>
+      </Pressable>
+    )}
   </View>
 );
 

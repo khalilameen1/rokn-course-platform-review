@@ -32,6 +32,8 @@ final readonly class CourseCompletionService
         // progress write so a request can never complete a section removed by
         // a publish that won the race.
         return DB::transaction(function () use ($user, $courseId, $sectionId): array {
+            // Match submission, purchase and rating: learner before course.
+            User::query()->lockForUpdate()->findOrFail($user->id);
             $course = Course::query()
                 ->whereKey($courseId)
                 ->lockForUpdate()
@@ -70,8 +72,6 @@ final readonly class CourseCompletionService
 
         if ($existingProgress && $existingProgress->is_completed) {
             $courseProgress = DB::transaction(function () use ($user, $courseId): array {
-                User::query()->lockForUpdate()->findOrFail($user->id);
-
                 return $this->recordCourseCompletionIfEligible(
                     (int) $user->id,
                     $courseId

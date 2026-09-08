@@ -1162,3 +1162,80 @@ an uncertain outbox as a new attempt. The existing public-ID/exact-key lookup
 already recovers ordinary lost acknowledgements. The narrower sequence of a
 lookup returning 404, an original acceptance arriving, and a retry receiving
 409 has not yet been reproduced and must not be described as proven failure.
+
+## September 9 — preserve project work across publication and failed saves
+
+The previously open editor path now has one explicit transition, separate from
+an accepted submission's existing receipt/review path. No project, course,
+submission, public receipt or feature was deleted by this checkpoint.
+
+- Project revision responses identify the original project and its surviving
+  current project/section through real staged-publication mappings. Deleted or
+  retyped projects have no fabricated destination. A short shared canonical
+  course read keeps identity, ownership and published version coherent when a
+  second publish arrives during the response. Metadata does not bypass current
+  enrollment or progression checks. The same revision response is returned if
+  publication wins while an upload is being staged, not a false access error.
+- The formerly unproven lost-ACK sequence was reproduced: initial receipt
+  lookup missing, original acceptance arriving, then a retry getting revision
+  409. The transport now checks the exact original project/client key again.
+  Found receipts remain original receipts; an unavailable lookup or an older
+  server's unmarked missing response retains the uncertain outbox and files.
+  Only a marked rejection plus confirmed missing receipt can expose draft
+  recovery. No new submission UUID or automatic POST is created by recovery.
+- That marker depends on a server guarantee, not optimistic client handling.
+  Admission takes the learner lock followed by a shared canonical course lock,
+  then validates fresh project-section ownership before inserting the receipt.
+  Publication takes the exclusive course lock. Completion now follows the same
+  learner-before-course order. Existing receipt replay and paid-work identities
+  remain intact. The marker is emitted only by the rejected submit endpoint.
+- The editor retains prepared text and readable files even when the newly
+  published input requirements disallow them. They remain visible/removable;
+  incompatible work blocks explicit submission instead of disappearing during
+  hydration, background save or unmount. A changed project presents a separate
+  review action. A deleted project explicitly lets the learner review/save the
+  source work before opening the updated course, without inventing a draft
+  archive UI or another project destination.
+- On that action, the original project's current lineage is read again before
+  choosing a destination. The existing ordered draft locks preserve the full
+  source and copy to the destination only after its file references and storage
+  are durable. A different existing destination requires explicit replacement;
+  its displayed raw snapshot is compared again under the lock. Confirmation is
+  bound to the original account, project, active screen visit and destination
+  identity, so newer destination edits or another publish require a new choice.
+  Network/storage failure does not navigate or resubmit. Account replacement,
+  unmount and leaving/returning to the same mounted card cannot apply an old
+  confirmation. Normal background draft saving is unchanged.
+- Navigation anchors the replacement only while the original project is the
+  active card. Reordered reels do not send the learner to an old numeric index;
+  users viewing another item are not redirected to a background review. If
+  another publish overtakes the prepared destination before the map arrives,
+  the loader retains the source editor instead of committing a map in which
+  the prepared draft cannot appear. This checks the full outline, not just the
+  accessible feed, so an existing gated project remains a valid identity. The
+  existing loss-of-entitlement redirect still runs first.
+- Review of the copy exposed a pre-existing ordinary-save defect too: replacing
+  file references before a failed draft write could allow another owner's
+  cleanup to delete files still named by the previous durable draft. Two failing
+  tests used the actual reference registry and cleanup implementation. Both
+  ordinary save and confirmed replacement now retain previous plus new files
+  until the new record commits. Reference trimming afterward is maintenance;
+  its failure cannot be reported as a failed save. Empty-save deletion similarly
+  releases references only after durable record removal.
+
+Root mobile verification passed 20 explicitly named affected suites / 157 tests
+together, full TypeScript, scoped ESLint and diff checks. The final seven-case
+navigation suite was also rerun after the optional-projects type correction.
+The final root backend gate passed all eight named project admission, lookup,
+upload-failure, completion, presenter, evaluation and projection suites / 97
+tests / 949 assertions together after all controller changes; PHP syntax also
+passed on the four affected backend files.
+These checks cover controlled transport/storage ordering and real application
+hooks, not physical-device fault acceptance. Backend publication tests use real
+HTTP handlers and staged graph swaps with a controlled SQLite lock-intent
+scheduler; they are not evidence of a live multi-connection InnoDB stress run.
+
+No APK, push or deployment. This remains a local source checkpoint, not proof
+that every application operation is complete or defect-free. Deploy the paired
+backend contract before relying on the new client's definitive missing-receipt
+handoff; an older unmarked backend is deliberately treated as uncertain.

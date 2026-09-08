@@ -27,8 +27,10 @@ use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionService;
 use App\Services\StoredFileDeletionService;
 use App\Support\DownloadFilename;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\URL;
 use League\Flysystem\FilesystemException;
 use Symfony\Component\HttpFoundation\Response;
@@ -161,7 +163,7 @@ final class ProjectController extends Controller
 
             $project = Project::with('section')->findOrFail($projectId);
             $project->loadMissing('section.course');
-            if ($revisionChanged = $this->revisionChangedResponse($project)) return $revisionChanged;
+            if ($revisionChanged = $this->revisionChangedResponse($project, true)) return $revisionChanged;
             $files = array_values(array_filter([
                 ...($request->file('submission_files', []) ?: []),
                 $request->file('submission_file'),
@@ -206,6 +208,15 @@ final class ProjectController extends Controller
                 'message' => 'استلمنا مشروعك وبدأت مراجعته',
                 'data' => $this->submissions->present($submission),
             ], 202);
+        } catch (AuthorizationException $exception) {
+            // Publication can win while files are staged, after the first
+            // revision check. Return the same reload contract, not a false
+            // loss-of-access message; unrelated authorization failures stay 403.
+            $current = isset($project) ? $project->fresh(['section.course']) : null;
+            if ($current && ($revisionChanged = $this->revisionChangedResponse($current, true))) {
+                return $revisionChanged;
+            }
+            throw $exception;
         } catch (\Illuminate\Validation\ValidationException $exception) {
             return response()->json([
                 'status' => 422,
@@ -523,27 +534,50 @@ final class ProjectController extends Controller
         ], $status);
     }
 
-    private function revisionChangedResponse(Project $project): ?JsonResponse
+    private function revisionChangedResponse(Project $project, bool $submissionAdmissionClosed = false): ?JsonResponse
     {
         $course = $project->section?->course;
         if (!$course || !$course->is_coming_soon) return null;
         $revision = $this->stagedAuthoring->activeArchiveForCourse($course);
         if (!$revision) return null;
-        $canonical = $revision->canonicalCourse()->firstOrFail();
+        return DB::transaction(function () use ($project, $revision, $submissionAdmissionClosed): JsonResponse {
+            // Resolve mapping, ownership and version from one publication.
+            // Otherwise a second publish can move the mapped project into an
+            // archive during this read and falsely present it as deleted.
+            $canonical = $revision->canonicalCourse()->sharedLock()->firstOrFail();
+            $currentProjectId = $this->stagedAuthoring->currentEntityId(Project::class, (int) $project->id);
+            $currentProject = $currentProjectId
+                ? Project::query()->with('section')->find($currentProjectId)
+                : null;
+            $currentSection = $currentProject?->section;
+            // A chain can end at an intermediate archive when a later publish
+            // deletes/retypes the project. Only a surviving canonical owner is a
+            // draft-review destination; this identity does not grant access to it.
+            if (!$currentSection || (int) $currentSection->course_id !== (int) $canonical->id) {
+                $currentProject = null;
+                $currentSection = null;
+            }
 
-        return response()->json([
-            'status' => 409,
-            'success' => false,
-            'code' => 'course_revision_changed',
-            'message' => "تم تحديث الكورس\nنعيد تحميل أحدث نسخة",
-            'data' => [
-                'course_id' => (int) $canonical->id,
-                'published_revision' => (int) (
-                    $canonical->last_published_authoring_version ?: $canonical->authoring_version
-                ),
-                'reload_endpoint' => "/api/v1/courses/{$canonical->id}/details",
-            ],
-        ], 409);
+            return response()->json([
+                'status' => 409,
+                'success' => false,
+                'code' => 'course_revision_changed',
+                'message' => "تم تحديث الكورس\nنعيد تحميل أحدث نسخة",
+                'data' => [
+                    'course_id' => (int) $canonical->id,
+                    'source_project_id' => (int) $project->id,
+                    'current_project_id' => $currentProject ? (int) $currentProject->id : null,
+                    'current_section_id' => $currentSection ? (int) $currentSection->id : null,
+                    // A fresh old-project admission now shares the publish lock.
+                    // Clients must still recover the exact original receipt first.
+                    ...($submissionAdmissionClosed ? ['submission_admission_closed' => true] : []),
+                    'published_revision' => (int) (
+                        $canonical->last_published_authoring_version ?: $canonical->authoring_version
+                    ),
+                    'reload_endpoint' => "/api/v1/courses/{$canonical->id}/details",
+                ],
+            ], 409);
+        }, 3);
     }
 
     /** @param array{disk:\Illuminate\Filesystem\FilesystemAdapter,path:string,name:string,mime:string} $file */

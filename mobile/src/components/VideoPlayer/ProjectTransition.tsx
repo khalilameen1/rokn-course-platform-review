@@ -404,6 +404,14 @@ const ProjectTransition = ({
           ) : (
             <ProjectSubmissionEditor
               draftSaveError={controller.submissionDraftSaveError}
+              revisionMessage={controller.submissionRevisionMessage}
+              revisionUpdating={controller.submissionRevisionUpdating}
+              canReviewUpdatedProject={controller.canReviewUpdatedProject}
+              revisionActionLabel={controller.revisionActionLabel}
+              onReviewUpdatedProject={() =>
+                void controller.reviewUpdatedProject()
+              }
+              draftCompatibilityMessage={controller.draftCompatibilityMessage}
               fileSubmissionEnabled={controller.fileSubmissionEnabled}
               filePickerDisabled={controller.filePickerDisabled}
               fileTypesLabel={controller.fileTypesLabel}

@@ -38,6 +38,7 @@ export const useProjectTransitionController = ({
     onReviewResolution,
   });
   const submission = useProjectSubmission({
+    active,
     appIsActive,
     project,
     status: resolution.status,
@@ -99,6 +100,12 @@ export const useProjectTransitionController = ({
     selectedFiles: submission.selectedFiles,
     submissionAllowed: submission.submissionAllowed,
     submissionDraftSaveError: submission.draftSaveError,
+    submissionRevisionMessage: submission.revisionMessage,
+    submissionRevisionUpdating: submission.revisionUpdating,
+    canReviewUpdatedProject: submission.canReviewUpdatedProject,
+    revisionActionLabel: submission.revisionActionLabel,
+    reviewUpdatedProject: submission.reviewUpdatedProject,
+    draftCompatibilityMessage: submission.draftCompatibilityMessage,
     submissionMaximumFiles: submission.maximumFiles,
     submissionMaximumFileSizeLabel: submission.maximumFileSizeLabel,
     submissionNote: submission.note,

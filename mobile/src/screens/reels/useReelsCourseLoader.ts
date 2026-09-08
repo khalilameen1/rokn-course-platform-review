@@ -38,8 +38,9 @@ type CourseLoaderRefs = {
 
 export type CourseReloadTarget = {
   lessonId?: string;
+  projectId?: string;
   index?: number;
-  onResult?: (succeeded: boolean) => void;
+  onResult?: (succeeded: boolean, reason?: 'project_changed') => void;
 };
 
 export const useReelsCourseLoader = ({
@@ -143,6 +144,21 @@ export const useReelsCourseLoader = ({
           reloadTarget?.onResult?.(false);
           return;
         }
+        if (
+          reloadTarget?.projectId &&
+          !result.course.modules.some(module =>
+            (module.projects || []).some(
+              project => project.id === reloadTarget.projectId,
+            ),
+          )
+        ) {
+          // Another publication overtook the prepared draft destination. Keep
+          // its source editor until the learner resolves the latest lineage.
+          // Gated projects still exist in the outline; only absence blocks this
+          // transition, never ordinary access checks or an explicit course load.
+          reloadTarget.onResult?.(false, 'project_changed');
+          return;
+        }
         const [withLocalState, localState, sessionAvailable] =
           await Promise.all([
             applyLocalLearningState(result.course),
@@ -186,7 +202,7 @@ export const useReelsCourseLoader = ({
             ? continueAfterReelId
             : undefined;
         const requestedAnchor = reloadTarget
-          ? {lessonId: reloadTarget.lessonId}
+          ? {lessonId: reloadTarget.lessonId, projectId: reloadTarget.projectId}
           : {
               reelId: params.reelId,
               lessonId: params.lessonId,

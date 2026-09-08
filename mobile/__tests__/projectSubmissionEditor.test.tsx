@@ -79,14 +79,12 @@ describe('project submission editor', () => {
     [false, true],
     [true, true],
   ])(
-    'preserves text=%s and file=%s permission combinations',
+    'preserves existing work while new input permissions are text=%s and file=%s',
     (textSubmissionEnabled, fileSubmissionEnabled) => {
       render({textSubmissionEnabled, fileSubmissionEnabled});
-      expect(renderer.root.findAllByType(TextInput)).toHaveLength(
-        textSubmissionEnabled ? 1 : 0,
-      );
+      expect(renderer.root.findAllByType(TextInput)).toHaveLength(1);
       expect(Boolean(button('إضافة ملف'))).toBe(fileSubmissionEnabled);
-      expect(Boolean(button(`إزالة ${file.name}`))).toBe(fileSubmissionEnabled);
+      expect(Boolean(button(`إزالة ${file.name}`))).toBe(true);
     },
   );
 

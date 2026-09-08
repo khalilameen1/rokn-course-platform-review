@@ -3,6 +3,8 @@ export type CourseRevisionChange = {
   sourceLessonId?: string;
   currentLessonId?: string;
   currentSectionId?: string;
+  sourceProjectId?: string;
+  currentProjectId?: string;
 };
 
 const listeners = new Set<(change: CourseRevisionChange) => void>();
@@ -42,6 +44,12 @@ export const publishCourseRevisionChange = (
       : {}),
     ...(raw.current_section_id !== null && raw.current_section_id !== undefined
       ? {currentSectionId: String(raw.current_section_id)}
+      : {}),
+    ...(raw.source_project_id !== null && raw.source_project_id !== undefined
+      ? {sourceProjectId: String(raw.source_project_id)}
+      : {}),
+    ...(raw.current_project_id !== null && raw.current_project_id !== undefined
+      ? {currentProjectId: String(raw.current_project_id)}
       : {}),
   };
   listeners.forEach(listener => {

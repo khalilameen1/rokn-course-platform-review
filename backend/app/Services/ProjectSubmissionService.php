@@ -210,6 +210,10 @@ final class ProjectSubmissionService
             ];
         }
 
+        $projectCourse = $project->section?->course;
+        $admissionCourseId = $projectCourse
+            ? (int) $this->stagedAuthoring->canonicalFor($projectCourse)->id
+            : null;
         try {
             $submission = DB::transaction(function () use (
                 $user,
@@ -223,14 +227,13 @@ final class ProjectSubmissionService
                 $requestFingerprint,
                 $submissionDisk,
                 $fileDescriptors,
-                $equivalentProjectIds
+                $equivalentProjectIds,
+                $admissionCourseId
             ): ProjectSubmission {
                 // Different client retry keys are still serialized per learner,
-                // preventing two simultaneous uploads for the same project.
-                // Project and CourseSection are published catalog definitions;
-                // locking either one would serialize every learner submitting
-                // the same assignment. The mutable enrollment/submission state
-                // below remains locked at its owning learner boundary.
+                // then share the publication boundary just like course purchases.
+                // Different learners remain concurrent; an exclusive publish
+                // cannot retire this graph between admission and receipt commit.
                 $activeUser = User::query()
                     ->whereKey($user->id)
                     ->where('active', true)
@@ -239,6 +242,14 @@ final class ProjectSubmissionService
                 if (!$activeUser) {
                     throw new AuthorizationException(
                         'The learner account is no longer active.'
+                    );
+                }
+                $admissionCourse = $admissionCourseId
+                    ? Course::query()->sharedLock()->find($admissionCourseId)
+                    : null;
+                if (!$admissionCourse?->isPublishedForLearning()) {
+                    throw new AuthorizationException(
+                        'The course is no longer available for project submissions.'
                     );
                 }
                 $projectSnapshot = Project::query()->findOrFail($project->id);
@@ -273,7 +284,7 @@ final class ProjectSubmissionService
                     ->where('sectionable_id', $projectSnapshot->id)
                     ->with('course:id,name_ar,name_en')
                     ->first();
-                if (!$projectSection) {
+                if (!$projectSection || (int) $projectSection->course_id !== (int) $admissionCourse->id) {
                     throw new AuthorizationException(
                         'The project is no longer part of the published course.'
                     );

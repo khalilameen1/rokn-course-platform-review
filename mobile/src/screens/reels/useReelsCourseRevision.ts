@@ -7,6 +7,7 @@ import type {
   CourseReel,
 } from '../../components/VideoPlayer/types';
 import type {CourseReloadTarget} from './useReelsCourseLoader';
+import {buildAccessibleFeed} from './presentation';
 
 type Params = {
   activeReel: MutableRefObject<CourseReel | undefined>;
@@ -36,7 +37,7 @@ export const useReelsCourseRevision = ({
   setRefreshing,
 }: Params) => {
   const reload = useCallback(
-    (lessonId?: string) => {
+    (lessonId?: string, projectId?: string) => {
       if (reloadFlight.current) return;
       pending.current = true;
       setRefreshing(true);
@@ -44,11 +45,16 @@ export const useReelsCourseRevision = ({
       closedSessions.current.clear();
       setConnectionNote('تم تحديث الكورس\nنعرض أحدث نسخة');
       let succeeded = false;
+      let projectChanged = false;
       const flight = load({
-        lessonId: lessonId || activeReel.current?.lessonId,
+        lessonId: projectId
+          ? undefined
+          : lessonId || activeReel.current?.lessonId,
+        ...(projectId ? {projectId} : {}),
         index: currentIndex.current,
-        onResult: result => {
+        onResult: (result, reason) => {
           succeeded = result;
+          projectChanged = reason === 'project_changed';
         },
       }).finally(() => {
         if (reloadFlight.current !== flight) return;
@@ -57,6 +63,11 @@ export const useReelsCourseRevision = ({
         if (!mounted.current) return;
         if (succeeded) {
           setRefreshing(false);
+        } else if (projectChanged) {
+          // The source editor owns renewing its prepared draft destination.
+          // Do not offer a generic reload that would discard that transition.
+          setRefreshing(false);
+          setConnectionNote('تغيّر المشروع مرة أخرى\nراجع المشروع المحدّث');
         } else {
           setConnectionNote('تغيّر محتوى الكورس\nاضغط لإعادة التحميل');
         }
@@ -89,12 +100,22 @@ export const useReelsCourseRevision = ({
       if (String(current?.id || '') !== change.courseId && !ownsSourceLesson) {
         return;
       }
-      reload(change.currentLessonId);
+      const activeItem = current
+        ? buildAccessibleFeed(current)[currentIndex.current]
+        : undefined;
+      // A background project review may also announce publication. Only move
+      // to its replacement when that project's card is currently being viewed.
+      const projectId =
+        activeItem?.type === 'project' &&
+        activeItem.project.id === change.sourceProjectId
+          ? change.currentProjectId
+          : undefined;
+      reload(change.currentLessonId, projectId);
     });
     return () => {
       unsubscribe();
     };
-  }, [loadedCourse, reload]);
+  }, [currentIndex, loadedCourse, reload]);
 
   return reload;
 };

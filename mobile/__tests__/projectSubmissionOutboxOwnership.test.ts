@@ -731,6 +731,143 @@ describe('project submission outbox ownership', () => {
     expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
+  it.each([
+    ['found', false],
+    ['unavailable', false],
+    ['missing', false],
+    ['account-changed', false],
+    ['found', true],
+    ['unavailable', true],
+    ['missing', true],
+  ] as const)(
+    'reconciles an uncertain original receipt across publication (%s; admission closed: %s)',
+    async (recovery, admissionClosed) => {
+      jest.useFakeTimers();
+      const file = {
+        uri: 'file:///project.png',
+        name: 'project.png',
+        type: 'image/png',
+        size: 10,
+      };
+      mockPost.mockRejectedValueOnce(
+        new Error('original acknowledgement lost'),
+      );
+      mockGet.mockRejectedValueOnce(new Error('lookup unavailable'));
+      await expect(
+        submitProjectAttempt('42', file, 'المحاولة الأصلية'),
+      ).resolves.toMatchObject({accepted: false});
+      const storageKey = (await AsyncStorage.getAllKeys())[0];
+      const original = JSON.parse((await AsyncStorage.getItem(storageKey))!);
+      const revisionChanged = {
+        status: 409,
+        data: {
+          code: 'course_revision_changed',
+          data: {
+            course_id: 7,
+            ...(admissionClosed ? {submission_admission_closed: true} : {}),
+          },
+        },
+      };
+      // The read preceded the first POST's commit. Publication refuses the
+      // replay, but does not prove that this earlier request was rejected.
+      mockGet.mockRejectedValueOnce({status: 404});
+      mockPost.mockRejectedValueOnce(revisionChanged);
+      if (recovery === 'found') {
+        mockGet.mockResolvedValueOnce(
+          lookupResponse(original.clientSubmissionId),
+        );
+      } else if (recovery === 'account-changed') {
+        mockGet.mockImplementationOnce(async () => {
+          mockActiveBoundary = {scope: 'user-b', epoch: 2};
+          return lookupResponse(original.clientSubmissionId);
+        });
+      } else {
+        mockGet.mockRejectedValue(
+          recovery === 'missing'
+            ? {status: 404}
+            : new Error('lookup unavailable'),
+        );
+      }
+      const retried = submitProjectAttempt('42', file, 'المحاولة الأصلية');
+      const result = retried.then(
+        value => ({value}),
+        error => ({error}),
+      );
+      await settleMicrotasks(100);
+      await jest.advanceTimersByTimeAsync(2500);
+      if (recovery === 'found') {
+        expect(await result).toEqual({
+          value: expect.objectContaining({
+            accepted: true,
+            submissionStatus: 'passed',
+          }),
+        });
+        expect(await AsyncStorage.getItem(storageKey)).toBeNull();
+      } else if (recovery === 'missing' && admissionClosed) {
+        // Only the marked server rejection closes the admission window. Let
+        // the editor handle its original revision target, never auto-send it.
+        expect(await result).toEqual({error: revisionChanged});
+        expect(await AsyncStorage.getItem(storageKey)).toBeNull();
+        expect(await retryPendingProjectSubmissions()).toEqual([]);
+      } else {
+        expect(await result).toEqual({
+          error: expect.objectContaining({
+            message:
+              recovery === 'account-changed'
+                ? 'ACCOUNT_CHANGED_DURING_REQUEST'
+                : 'PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING',
+          }),
+        });
+        expect(
+          JSON.parse((await AsyncStorage.getItem(storageKey))!),
+        ).toMatchObject({
+          clientSubmissionId: original.clientSubmissionId,
+          selectedFiles: [file],
+        });
+        expect(removeLearnerDraftFile).not.toHaveBeenCalled();
+        // A later read can still find the original receipt, without creating
+        // a new submission or transferring its key to the replacement project.
+        if (recovery !== 'account-changed') {
+          mockGet.mockResolvedValueOnce(
+            lookupResponse(original.clientSubmissionId),
+          );
+          await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+            expect.objectContaining({
+              projectId: '42',
+              accepted: true,
+              submissionStatus: 'passed',
+            }),
+          ]);
+        }
+      }
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
+        original.clientSubmissionId,
+      );
+      expect(
+        mockGet.mock.calls.every(
+          call => call[0] === 'projects/42/submissions/lookup',
+        ),
+      ).toBe(true);
+      expect(
+        mockGet.mock.calls.every(
+          call =>
+            call[1].params.client_submission_id === original.clientSubmissionId,
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it('keeps a first-upload revision rejection definitive when no earlier receipt is uncertain', async () => {
+    const rejection = {status: 409, data: {code: 'course_revision_changed'}};
+    mockPost.mockRejectedValueOnce(rejection);
+    await expect(
+      submitProjectAttempt('42', null, 'لم تُرسل من قبل'),
+    ).rejects.toBe(rejection);
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(await AsyncStorage.getAllKeys()).toHaveLength(0);
+  });
+
   it('does not adopt or clean up the old account after an identity lookup changes owner', async () => {
     mockPost.mockRejectedValueOnce(new Error('response lost'));
     mockGet.mockImplementationOnce(async (_route, config) => {

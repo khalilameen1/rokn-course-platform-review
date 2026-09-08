@@ -16,6 +16,7 @@ import {removeLearnerDraftFile} from '../../../services/learnerDraftFiles';
 import {
   cacheProjectDraftFile,
   clearProjectSubmissionDraft,
+  copyProjectSubmissionDraft,
   loadProjectSubmissionDraft,
   saveProjectSubmissionDraft,
 } from '../../../services/projectSubmissionDraft';
@@ -25,8 +26,42 @@ import type {ProjectSubmissionOutcome} from '../courseLearningApi';
 import type {CourseProject, ProjectStatus, SelectedProjectFile} from '../types';
 import {pickProjectFilesOwned} from './pickers';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
+import {asRecord} from '../courseLearning/shared';
+import {publishCourseRevisionChange} from '../courseLearning/playbackRevision';
+import {publicRequest} from '../../../constants/api';
 
 const EMPTY_MIME_TYPES: string[] = [];
+
+type DraftRevision = {response: unknown; currentProjectId: string | null};
+const projectDraftRevision = (
+  error: unknown,
+  sourceProjectId: string,
+): DraftRevision | null => {
+  const response = asRecord(asRecord(error).response || error);
+  const envelope = asRecord(response.data);
+  const data = asRecord(envelope.data);
+  const positiveId = (value: unknown) =>
+    typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+  if (
+    response.status !== 409 ||
+    envelope.code !== 'course_revision_changed' ||
+    !positiveId(data.source_project_id) ||
+    String(data.source_project_id) !== sourceProjectId ||
+    !positiveId(data.course_id) ||
+    !positiveId(data.published_revision) ||
+    (data.current_project_id !== null &&
+      !positiveId(data.current_project_id)) ||
+    (data.current_project_id !== null &&
+      !positiveId(data.current_section_id)) ||
+    String(data.current_project_id) === sourceProjectId
+  )
+    return null;
+  return {
+    response,
+    currentProjectId:
+      data.current_project_id === null ? null : String(data.current_project_id),
+  };
+};
 
 const allowedFileTypesLabel = (mimeTypes: string[]) => {
   const labels: string[] = [];
@@ -51,6 +86,7 @@ const allowedFileTypesLabel = (mimeTypes: string[]) => {
 };
 
 export const useProjectSubmission = ({
+  active = true,
   appIsActive,
   project,
   status,
@@ -58,6 +94,7 @@ export const useProjectSubmission = ({
   onSubmit,
   onOutcome,
 }: {
+  active?: boolean;
   appIsActive: boolean;
   project: CourseProject;
   status: ProjectStatus;
@@ -68,6 +105,10 @@ export const useProjectSubmission = ({
   ) => Promise<ProjectSubmissionOutcome>;
   onOutcome: (outcome: ProjectSubmissionOutcome) => void;
 }) => {
+  const revisionVisitRef = useRef({active});
+  if (revisionVisitRef.current.active !== active) {
+    revisionVisitRef.current = {active};
+  }
   const identityRef = useRef({id: project.id, generation: 0});
   if (identityRef.current.id !== project.id) {
     identityRef.current = {
@@ -96,6 +137,9 @@ export const useProjectSubmission = ({
   const [sending, setSending] = useState(false);
   const [editingRetry, setEditingRetry] = useState(false);
   const [syncNote, setSyncNote] = useState('');
+  const [revision, setRevision] = useState<DraftRevision | null>(null);
+  const [revisionUpdating, setRevisionUpdating] = useState(false);
+  const [revisionError, setRevisionError] = useState('');
 
   const normalizedNote = cleanUnicodeText(note);
   const textSubmissionEnabled = project.submissionTextEnabled !== false;
@@ -132,16 +176,30 @@ export const useProjectSubmission = ({
     maximumFileBytes / (1024 * 1024),
     {maximumFractionDigits: 2},
   )} ميجابايت`;
+  const incompatibleDraft =
+    (!textSubmissionEnabled && Boolean(note.trim())) ||
+    selectedFiles.length > maximumFiles ||
+    selectedFiles.some(
+      file =>
+        !fileSubmissionEnabled ||
+        !projectFileMatchesAllowedTypes(file, allowedMimeTypes) ||
+        Number(file.size || 0) > maximumFileBytes,
+    );
   const filePickerDisabled =
     !fileSubmissionEnabled ||
     !submissionAllowed ||
     !draftReady ||
     sending ||
+    revisionUpdating ||
+    Boolean(revision) ||
     selectedFiles.length >= maximumFiles;
   const submitDisabled =
     !submissionAllowed ||
     !draftReady ||
     sending ||
+    revisionUpdating ||
+    Boolean(revision) ||
+    incompatibleDraft ||
     ((!fileSubmissionEnabled || selectedFiles.length === 0) &&
       (!textSubmissionEnabled || normalizedNote.length < 10));
   const journeyState = resolveProjectJourneyState({
@@ -152,8 +210,8 @@ export const useProjectSubmission = ({
   });
 
   draftLifecycle.snapshot = {
-    files: fileSubmissionEnabled ? selectedFiles : [],
-    note: textSubmissionEnabled ? note : '',
+    files: selectedFiles,
+    note,
   };
   draftLifecycle.ready = draftReady;
   draftLifecycle.status = status;
@@ -171,7 +229,17 @@ export const useProjectSubmission = ({
     submissionFlightRef.current = false;
     pickerFlightRef.current = false;
     setSending(false);
+    setRevision(null);
+    setRevisionError('');
+    setRevisionUpdating(false);
   }, [project.id]);
+
+  useEffect(
+    () => () => {
+      identityRef.current.generation += 1;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (status !== 'evaluating') setSyncNote('');
@@ -222,20 +290,12 @@ export const useProjectSubmission = ({
         // editor's files; the draft loader still enforces its normal TTL.
         return loadProjectSubmissionDraft(project.id, boundary);
       })
-      .then(async draft => {
+      .then(draft => {
         if (generation !== draftGenerationRef.current || !draft) return;
-        const files = fileSubmissionEnabled
-          ? (draft.files || []).filter(file =>
-              projectFileMatchesAllowedTypes(file, allowedMimeTypes),
-            )
-          : [];
-        const removedFiles = (draft.files || []).filter(
-          file => !files.some(kept => kept.uri === file.uri),
-        );
-        await Promise.all(removedFiles.map(removeLearnerDraftFile));
-        if (generation !== draftGenerationRef.current) return;
-        setSelectedFiles(files);
-        setNote(textSubmissionEnabled ? draft.note : '');
+        // New requirements can make old work incompatible, never disposable.
+        // Keep it visible until the learner explicitly edits or removes it.
+        setSelectedFiles(draft.files || []);
+        setNote(draft.note);
       })
       .catch(() => {
         if (generation === draftGenerationRef.current) setDraftSaveError(true);
@@ -249,13 +309,7 @@ export const useProjectSubmission = ({
     return () => {
       draftGenerationRef.current += 1;
     };
-  }, [
-    allowedMimeTypes,
-    draftLifecycle,
-    fileSubmissionEnabled,
-    project.id,
-    textSubmissionEnabled,
-  ]);
+  }, [draftLifecycle, project.id]);
 
   useEffect(() => {
     if (!['draft', 'needs_changes'].includes(status) || !draftReady) return;
@@ -380,8 +434,8 @@ export const useProjectSubmission = ({
         await saveProjectSubmissionDraft(
           id,
           {
-            files: fileSubmissionEnabled ? files : [],
-            note: textSubmissionEnabled ? note : '',
+            files,
+            note,
             updatedAt: Date.now(),
           },
           boundary,
@@ -425,6 +479,17 @@ export const useProjectSubmission = ({
         }
       } catch (error: unknown) {
         if (!ownsProject(id, generation)) return;
+        try {
+          assertAccountSessionBoundary(boundary);
+        } catch {
+          return;
+        }
+        const changed = projectDraftRevision(error, id);
+        if (changed) {
+          setRevision(changed);
+          setRevisionError('');
+          return;
+        }
         if (
           error instanceof Error &&
           error.message === 'PROJECT_SUBMISSION_RATE_LIMITED'
@@ -494,6 +559,8 @@ export const useProjectSubmission = ({
   const submit = useCallback(async () => {
     if (
       !submissionAllowed ||
+      revision ||
+      incompatibleDraft ||
       !draftReady ||
       submissionFlightRef.current ||
       pickerFlightRef.current
@@ -526,6 +593,8 @@ export const useProjectSubmission = ({
     }
   }, [
     draftReady,
+    incompatibleDraft,
+    revision,
     fileSubmissionEnabled,
     normalizedNote.length,
     ownsProject,
@@ -539,6 +608,7 @@ export const useProjectSubmission = ({
     if (
       !submissionAllowed ||
       !fileSubmissionEnabled ||
+      revision ||
       pickerFlightRef.current ||
       submissionFlightRef.current
     ) {
@@ -610,6 +680,7 @@ export const useProjectSubmission = ({
     maximumFileSizeLabel,
     ownsProject,
     selectedFiles.length,
+    revision,
     submissionAllowed,
   ]);
 
@@ -621,17 +692,130 @@ export const useProjectSubmission = ({
     void removeLearnerDraftFile(file);
   }, []);
 
-  const changeNote = useCallback(
-    (value: string) => {
-      if (textSubmissionEnabled && !submissionFlightRef.current) {
-        setNote(truncateGraphemes(value, 2000));
+  const changeNote = useCallback((value: string) => {
+    if (!submissionFlightRef.current) {
+      setNote(truncateGraphemes(value, 2000));
+    }
+  }, []);
+
+  const reviewUpdatedProject = useCallback(
+    async (confirmation?: {
+      projectId: string;
+      snapshot: string;
+    }): Promise<void> => {
+      if (!revision || submissionFlightRef.current || pickerFlightRef.current)
+        return;
+      const visit = revisionVisitRef.current;
+      if (!visit.active) return;
+      const {id, generation} = identityRef.current;
+      const ownsRevisionAction = () =>
+        revisionVisitRef.current === visit && ownsProject(id, generation);
+      const boundary = draftLifecycle.boundary;
+      if (!boundary) return;
+      submissionFlightRef.current = true;
+      setRevisionUpdating(true);
+      setRevisionError('');
+      try {
+        assertAccountSessionBoundary(boundary);
+        // A second publish can retire the destination while this editor or
+        // its confirmation is open. Read the original project again without
+        // broadcasting a navigation event before its draft is prepared.
+        let response: unknown;
+        try {
+          response = await publicRequest.get(`projects/${id}`, {
+            timeout: 12000,
+          });
+        } catch (error) {
+          response = error;
+        }
+        assertAccountSessionBoundary(boundary);
+        if (!ownsRevisionAction()) return;
+        const currentRevision = projectDraftRevision(response, id);
+        if (!currentRevision) throw new Error('PROJECT_REVISION_UNAVAILABLE');
+        setRevision(currentRevision);
+        const destinationId = currentRevision.currentProjectId;
+        if (!destinationId) {
+          await saveProjectSubmissionDraft(
+            id,
+            {...draftLifecycle.snapshot, updatedAt: Date.now()},
+            boundary,
+          );
+          assertAccountSessionBoundary(boundary);
+          if (ownsRevisionAction())
+            publishCourseRevisionChange(currentRevision.response);
+          return;
+        }
+        const result = await copyProjectSubmissionDraft(
+          id,
+          destinationId,
+          {...draftLifecycle.snapshot, updatedAt: Date.now()},
+          boundary,
+          confirmation?.projectId === destinationId
+            ? confirmation.snapshot
+            : undefined,
+        );
+        assertAccountSessionBoundary(boundary);
+        if (!ownsRevisionAction()) return;
+        if (result.kind === 'conflict') {
+          Alert.alert(
+            'توجد مسودة للمشروع المحدّث',
+            'هل تريد استبدالها بهذه المسودة\nستبقى نسختك الأصلية محفوظة',
+            [
+              {text: 'إلغاء', style: 'cancel'},
+              {
+                text: 'استبدال المسودة',
+                onPress: () => {
+                  if (ownsRevisionAction())
+                    void reviewUpdatedProject({
+                      projectId: destinationId,
+                      snapshot: result.destinationSnapshot,
+                    });
+                },
+              },
+            ],
+          );
+          return;
+        }
+        // The original remains durable; only a prepared destination permits the
+        // existing course owner to navigate to the current project requirements.
+        publishCourseRevisionChange(currentRevision.response);
+      } catch {
+        if (!ownsRevisionAction()) return;
+        try {
+          assertAccountSessionBoundary(boundary);
+        } catch {
+          return;
+        }
+        setRevisionError(
+          'تعذّر تجهيز المسودة\nاترك الصفحة مفتوحة وحاول مرة أخرى',
+        );
+      } finally {
+        if (ownsProject(id, generation)) {
+          submissionFlightRef.current = false;
+          setRevisionUpdating(false);
+        }
       }
     },
-    [textSubmissionEnabled],
+    [draftLifecycle, ownsProject, revision],
   );
 
   return {
     maximumFileSizeLabel,
+    revisionMessage: revision
+      ? revisionError ||
+        (revision.currentProjectId
+          ? 'تغيّرت متطلبات المشروع\nراجع النسخة المحدّثة قبل التسليم'
+          : 'لم يعد هذا المشروع ضمن الكورس\nراجع مسودتك هنا قبل فتح الكورس المحدّث')
+      : '',
+    revisionUpdating,
+    canReviewUpdatedProject: Boolean(revision),
+    revisionActionLabel: revision?.currentProjectId
+      ? 'راجع المشروع المحدّث'
+      : 'افتح الكورس المحدّث',
+    reviewUpdatedProject: () => reviewUpdatedProject(),
+    draftCompatibilityMessage: incompatibleDraft
+      ? 'بعض محتوى المسودة لا يناسب المتطلبات الحالية\nعدّل النص أو أزل الملفات غير المناسبة قبل التسليم'
+      : '',
     changeNote,
     chooseProjectFile,
     draftSaveError,

@@ -14,7 +14,7 @@ import {
   retainLearnerDraftFiles,
 } from './learnerDraftFiles';
 
-type ProjectSubmissionDraft = {
+export type ProjectSubmissionDraft = {
   files?: SelectedProjectFile[];
   note: string;
   updatedAt: number;
@@ -46,6 +46,54 @@ const keyFor = async (projectId: string, boundary?: AccountSessionBoundary) =>
   )}`;
 const submissionReferenceOwner = (projectId: string) =>
   `project-submission:${String(projectId).replace(/[^a-z0-9_-]/gi, '')}`;
+
+const writeDraft = async (
+  projectId: string,
+  key: string,
+  draft: ProjectSubmissionDraft,
+  boundary: AccountSessionBoundary,
+) => {
+  assertAccountSessionBoundary(boundary);
+  if (!draft.note.trim() && !draft.files?.length) {
+    await AsyncStorage.removeItem(key);
+    assertAccountSessionBoundary(boundary);
+    await retainLearnerDraftFiles(
+      submissionReferenceOwner(projectId),
+      [],
+      boundary.scope,
+    ).catch(() => undefined);
+    assertAccountSessionBoundary(boundary);
+    return;
+  }
+  const previous = await AsyncStorage.getItem(key);
+  let previousFiles: SelectedProjectFile[] = [];
+  if (previous) {
+    try {
+      const stored = JSON.parse(previous) as Partial<ProjectSubmissionDraft>;
+      previousFiles = Array.isArray(stored.files) ? stored.files : [];
+    } catch {}
+  }
+  assertAccountSessionBoundary(boundary);
+  // Both versions own their files until the new record is durable. Replacing
+  // these references early lets another owner's cleanup erase the old draft
+  // when the following storage write fails.
+  await retainLearnerDraftFiles(
+    submissionReferenceOwner(projectId),
+    [...previousFiles, ...(draft.files || [])],
+    boundary.scope,
+  );
+  assertAccountSessionBoundary(boundary);
+  await AsyncStorage.setItem(key, JSON.stringify(draft));
+  assertAccountSessionBoundary(boundary);
+  // This is maintenance after a committed save. A failed trim keeps extra
+  // references safely until reconciliation, not a false failed draft copy.
+  await retainLearnerDraftFiles(
+    submissionReferenceOwner(projectId),
+    draft.files || [],
+    boundary.scope,
+  ).catch(() => undefined);
+  assertAccountSessionBoundary(boundary);
+};
 
 export const loadProjectSubmissionDraft = async (
   projectId: string,
@@ -147,25 +195,56 @@ export const saveProjectSubmissionDraft = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await keyFor(projectId, boundary);
-  await withDraftLock(key, async () => {
-    assertAccountSessionBoundary(boundary);
-    if (!draft.note.trim() && !draft.files?.length) {
-      await retainLearnerDraftFiles(
-        submissionReferenceOwner(projectId),
-        [],
-        boundary.scope,
-      );
-      await AsyncStorage.removeItem(key);
-      return;
-    }
-    await retainLearnerDraftFiles(
-      submissionReferenceOwner(projectId),
-      draft.files || [],
-      boundary.scope,
-    );
-    await AsyncStorage.setItem(key, JSON.stringify(draft));
-    assertAccountSessionBoundary(boundary);
-  });
+  await withDraftLock(key, () => writeDraft(projectId, key, draft, boundary));
+};
+
+export type ProjectDraftCopyResult =
+  | {kind: 'copied'}
+  | {kind: 'conflict'; destinationSnapshot: string};
+
+/** Copy only the editor draft, never a submitted attempt or its retry identity. */
+export const copyProjectSubmissionDraft = async (
+  sourceProjectId: string,
+  currentProjectId: string,
+  draft: ProjectSubmissionDraft,
+  boundary: AccountSessionBoundary,
+  confirmedDestinationSnapshot?: string,
+): Promise<ProjectDraftCopyResult> => {
+  const sourceKey = await keyFor(sourceProjectId, boundary);
+  const destinationKey = await keyFor(currentProjectId, boundary);
+  if (sourceKey === destinationKey)
+    throw new Error('INVALID_PROJECT_DRAFT_DESTINATION');
+  const [firstKey, secondKey] = [sourceKey, destinationKey].sort();
+  return withDraftLock(firstKey, () =>
+    withDraftLock(secondKey, async () => {
+      // Preserve the complete source before touching the destination. Its own
+      // reference stays alive even after the new project accepts an edited copy.
+      await writeDraft(sourceProjectId, sourceKey, draft, boundary);
+      const destinationSnapshot = await AsyncStorage.getItem(destinationKey);
+      assertAccountSessionBoundary(boundary);
+      let sameContent = false;
+      if (destinationSnapshot) {
+        try {
+          const existing = JSON.parse(
+            destinationSnapshot,
+          ) as ProjectSubmissionDraft;
+          sameContent =
+            existing.note === draft.note &&
+            JSON.stringify(existing.files || []) ===
+              JSON.stringify(draft.files || []);
+        } catch {}
+      }
+      if (
+        destinationSnapshot &&
+        !sameContent &&
+        destinationSnapshot !== confirmedDestinationSnapshot
+      ) {
+        return {kind: 'conflict', destinationSnapshot};
+      }
+      await writeDraft(currentProjectId, destinationKey, draft, boundary);
+      return {kind: 'copied'};
+    }),
+  );
 };
 
 export const clearProjectSubmissionDraft = async (
