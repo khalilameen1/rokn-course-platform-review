@@ -758,3 +758,53 @@ publication invalidation wiring; the actual stale-publication behavior suite
 also passed. Native horizontal-end wiring is covered, but a physical-device
 gesture test is not claimed. Diff checks passed. No APK, push, production
 deployment or live course-content mutation was performed for this entry.
+
+## September 8 — public bootstrap, download cancellation and notification intent (source only)
+
+This pass closed four demonstrated operation gaps:
+
+- Public settings, managed information pages and installation-scoped feature
+  discovery inherited the personal session wait and response-owner rejection.
+  They now explicitly use the existing session-neutral request option. A slow
+  native account restore does not delay these reads, and completing login does
+  not discard their valid public responses. Personal balances, owned courses,
+  messages and optional-auth course details remain session-owned; no global
+  HTTP default changed.
+- The installed iOS RNFS implementation can retain its native promise when it
+  produces resumable data during interruption or cancellation. The existing
+  private attachment download now settles its JS operation on those events and
+  releases the row for retry. Each attempt owns its staging path; a late native
+  completion cannot share or remove the retry's file. Reuse is limited to the
+  same account/attachment/version and a completed expected-size file, excluding
+  cancelled targets still owned by a late callback. Legacy staging recovery and
+  Android DownloadManager behavior are retained.
+- A slow first notification could override the second notification the learner
+  had chosen. The latest tap now owns navigation and pending-marker changes,
+  while duplicate delivery of the same intent remains coalesced. Durable and
+  native cold-start reads also retain account/generation ownership across
+  logout. A failed cold-start navigation keeps its exact pending identity for
+  foreground retry; serialized marker writes cannot overwrite a newer choice.
+- Starting or resuming an expired reward task left its stale card on screen.
+  The explicit `task_unavailable` response now requests the existing queued
+  wallet reconciliation. Transient errors retain normal retry, and an old
+  account cannot refresh or open a replacement account's task. No reward claim,
+  provider configuration or verification rule changed.
+
+Final root checks: 19 affected Jest suites passed 168 tests before the final
+native cold-start ownership sibling was added; the final notification suite
+then passed all 23 cases. Full TypeScript, scoped ESLint and diff checks passed.
+Regressions reproduced the public-session mismatch, never-settling native
+download, stale notification navigation and unavailable-task refresh gaps.
+These are source-level simulations, not iPhone, live-push or provider acceptance.
+
+Read-only counterchecks retained the works-only share payload, readiness-gated
+portfolio publication, stable public media redirects and shared practical vs
+theoretical certificate QR destination. The adjacent saved-folder review found
+a separate ordinary-flow defect: selecting an older folder filtered only the
+global first page and could falsely display an empty folder. That repair is
+tracked next, not counted as complete here. A lower-priority confirmed report
+retry capability gap after temporary input retention expires is also still
+open; no archive or retention-policy expansion has been made.
+
+No APK, Git push, deployment, live notification or provider mutation was made.
+The wider end-to-end review goal remains open.

@@ -289,6 +289,7 @@ export const clearCurrentPushDeviceRegistration = async (
   // Invalidate async navigation/registration ownership before touching native
   // storage. Keychain access can be slow on a locked or low-end device.
   pushNavigationGeneration += 1;
+  latestNotificationIntent = null;
   pushRegistrationGeneration += 1;
   pendingNotificationResponse = null;
   openNotificationByIdFlights.clear();
@@ -390,9 +391,37 @@ const pendingNotificationStorageKey = (
 
 const openNotificationByIdFlights = new Map<string, Promise<boolean>>();
 const responseOpenFlights = new Map<string, Promise<boolean>>();
-const recentlyOpenedResponses = new Map<string, number>();
+const recentlyOpenedResponses = new Map<
+  string,
+  {at: number; intent: NotificationNavigationIntent}
+>();
 const RESPONSE_DEDUPE_MS = 8_000;
 let pushNavigationGeneration = 0;
+type NotificationNavigationIntent = {
+  key: string;
+  generation: number;
+  sequence: number;
+};
+let notificationIntentSequence = 0;
+let latestNotificationIntent: NotificationNavigationIntent | null = null;
+let pendingMarkerTail: Promise<unknown> = Promise.resolve();
+
+const ownsNotificationIntent = (intent: NotificationNavigationIntent) =>
+  latestNotificationIntent === intent &&
+  intent.generation === pushNavigationGeneration;
+
+// Serialize only the existing durable marker: a slow old set/remove must not
+// overwrite the next tap's marker after navigation ownership has changed.
+const updatePendingMarker = (
+  intent: NotificationNavigationIntent,
+  operation: () => Promise<unknown>,
+) => {
+  const write = pendingMarkerTail.then(() =>
+    ownsNotificationIntent(intent) ? operation() : undefined,
+  );
+  pendingMarkerTail = write.catch(() => undefined);
+  return write;
+};
 
 const notificationResponseKey = (
   response: Notifications.NotificationResponse,
@@ -416,17 +445,43 @@ const notificationResponseKey = (
   return `payload:${payload.slice(0, 1000)}:${action}`;
 };
 
-const openNotificationById = async (notificationId: string) => {
+const claimNotificationIntent = (key: string) => {
+  if (
+    latestNotificationIntent?.key !== key ||
+    latestNotificationIntent.generation !== pushNavigationGeneration
+  ) {
+    latestNotificationIntent = {
+      key,
+      generation: pushNavigationGeneration,
+      sequence: ++notificationIntentSequence,
+    };
+  }
+  return latestNotificationIntent;
+};
+
+const intentForResponse = (response: Notifications.NotificationResponse) =>
+  claimNotificationIntent(
+    notificationIdFromResponse(response)
+      ? `notification:${notificationIdFromResponse(response)}`
+      : notificationResponseKey(response),
+  );
+
+const openNotificationById = async (
+  notificationId: string,
+  intent: NotificationNavigationIntent,
+) => {
   const accountScope = await getCurrentAccountStorageScope();
+  if (!ownsNotificationIntent(intent)) return false;
   const generation = pushNavigationGeneration;
-  const flightKey = `${accountScope}:${notificationId}`;
+  const flightKey = `${accountScope}:${notificationId}:${intent.sequence}`;
   const existing = openNotificationByIdFlights.get(flightKey);
   if (existing) return existing;
   const flight = getNotification(notificationId)
     .then(async notification => {
       if (
         generation !== pushNavigationGeneration ||
-        (await getCurrentAccountStorageScope()) !== accountScope
+        (await getCurrentAccountStorageScope()) !== accountScope ||
+        !ownsNotificationIntent(intent)
       ) {
         return false;
       }
@@ -446,7 +501,8 @@ const openNotificationById = async (notificationId: string) => {
     .catch(async error => {
       if (
         generation !== pushNavigationGeneration ||
-        (await getCurrentAccountStorageScope()) !== accountScope
+        (await getCurrentAccountStorageScope()) !== accountScope ||
+        !ownsNotificationIntent(intent)
       ) {
         return false;
       }
@@ -474,20 +530,29 @@ const openNotificationById = async (notificationId: string) => {
 
 export const openNotificationLink = async (
   response: Notifications.NotificationResponse,
+  intent = intentForResponse(response),
 ) => {
   const accountScope = await getCurrentAccountStorageScope();
+  if (!ownsNotificationIntent(intent)) return false;
   const generation = pushNavigationGeneration;
   const responseKey = `${accountScope}:${notificationResponseKey(response)}`;
-  const recentOpen = recentlyOpenedResponses.get(responseKey) || 0;
-  const elapsed = Date.now() - recentOpen;
-  if (elapsed >= 0 && elapsed < RESPONSE_DEDUPE_MS) return true;
-  const existing = responseOpenFlights.get(responseKey);
+  const recentOpen = recentlyOpenedResponses.get(responseKey);
+  const elapsed = Date.now() - (recentOpen?.at || 0);
+  if (
+    recentOpen?.intent === intent &&
+    elapsed >= 0 &&
+    elapsed < RESPONSE_DEDUPE_MS
+  )
+    return true;
+  const flightKey = `${responseKey}:${intent.sequence}`;
+  const existing = responseOpenFlights.get(flightKey);
   if (existing) return existing;
 
   const flight = (async () => {
     if (
       generation !== pushNavigationGeneration ||
-      (await getCurrentAccountStorageScope()) !== accountScope
+      (await getCurrentAccountStorageScope()) !== accountScope ||
+      !ownsNotificationIntent(intent)
     ) {
       return false;
     }
@@ -497,6 +562,7 @@ export const openNotificationLink = async (
     const sessionAvailability = requiresInboxOwnership
       ? await currentSessionAvailability()
       : null;
+    if (!ownsNotificationIntent(intent)) return false;
     if (requiresInboxOwnership && sessionAvailability?.state === 'pending') {
       return false;
     }
@@ -504,12 +570,15 @@ export const openNotificationLink = async (
       // A tap can outlive the account that received it. Its durable inbox row
       // must never open under a guest or a later account from the old payload.
       pendingNotificationResponse = null;
-      await removeItem(await pendingNotificationStorageKey());
-      await Notifications.clearLastNotificationResponseAsync();
+      const key = await pendingNotificationStorageKey();
+      await updatePendingMarker(intent, () => removeItem(key));
+      if (ownsNotificationIntent(intent)) {
+        await Notifications.clearLastNotificationResponseAsync();
+      }
       return false;
     }
     const opened = notificationId
-      ? await openNotificationById(notificationId)
+      ? await openNotificationById(notificationId, intent)
       : localReminder
       ? navigateToNotificationData(
           (response.notification.request.content.data || {}) as Record<
@@ -520,27 +589,37 @@ export const openNotificationLink = async (
       : navigate('Notifications');
     if (opened) {
       const now = Date.now();
-      recentlyOpenedResponses.set(responseKey, now);
+      recentlyOpenedResponses.set(responseKey, {at: now, intent});
       recentlyOpenedResponses.forEach((openedAt, key) => {
-        if (now - openedAt >= RESPONSE_DEDUPE_MS) {
+        if (now - openedAt.at >= RESPONSE_DEDUPE_MS) {
           recentlyOpenedResponses.delete(key);
         }
       });
     }
     return opened;
   })().finally(() => {
-    if (responseOpenFlights.get(responseKey) === flight) {
-      responseOpenFlights.delete(responseKey);
+    if (responseOpenFlights.get(flightKey) === flight) {
+      responseOpenFlights.delete(flightKey);
     }
   });
-  responseOpenFlights.set(responseKey, flight);
+  responseOpenFlights.set(flightKey, flight);
   return flight;
 };
 
-let pendingNotificationResponse: {
-  response: Notifications.NotificationResponse;
-  clearNativeResponse: boolean;
-} | null = null;
+let pendingNotificationResponse:
+  | ((
+      | {
+          response: Notifications.NotificationResponse;
+          clearNativeResponse: boolean;
+        }
+      | {
+          notificationId: string;
+          storedKey: string;
+        }
+    ) & {
+      intent: NotificationNavigationIntent;
+    })
+  | null = null;
 let notificationNavigationReady = false;
 
 export const setNotificationNavigationReady = (ready: boolean) => {
@@ -551,36 +630,47 @@ const deliverNotificationResponse = async (
   response: Notifications.NotificationResponse,
   clearNativeResponse: boolean,
 ) => {
+  const intent = intentForResponse(response);
+  // Capture the latest tap before keychain/storage waits. A stale completion
+  // must never replace this pending response during bootstrap.
+  pendingNotificationResponse = {response, clearNativeResponse, intent};
   const notificationId = notificationIdFromResponse(response);
   const localReminder = isLocalReminderResponse(response);
   const requiresInboxOwnership = Boolean(notificationId) || !localReminder;
   const sessionAvailability = requiresInboxOwnership
     ? await currentSessionAvailability()
     : null;
+  if (!ownsNotificationIntent(intent)) return false;
   if (requiresInboxOwnership && sessionAvailability?.state === 'pending') {
-    pendingNotificationResponse = {response, clearNativeResponse};
     return false;
   }
   if (requiresInboxOwnership && sessionAvailability?.state === 'guest') {
     pendingNotificationResponse = null;
-    await removeItem(await pendingNotificationStorageKey());
-    await Notifications.clearLastNotificationResponseAsync();
+    const key = await pendingNotificationStorageKey();
+    await updatePendingMarker(intent, () => removeItem(key));
+    if (ownsNotificationIntent(intent)) {
+      await Notifications.clearLastNotificationResponseAsync();
+    }
     return true;
   }
   if (notificationId) {
-    await saveItem(await pendingNotificationStorageKey(), notificationId);
+    const key = await pendingNotificationStorageKey();
+    await updatePendingMarker(intent, () => saveItem(key, notificationId));
   }
+  if (!ownsNotificationIntent(intent)) return false;
   if (!notificationNavigationReady) {
-    pendingNotificationResponse = {response, clearNativeResponse};
     return false;
   }
-  if (!(await openNotificationLink(response))) {
-    pendingNotificationResponse = {response, clearNativeResponse};
+  if (!(await openNotificationLink(response, intent))) {
     return false;
   }
+  if (!ownsNotificationIntent(intent)) return false;
   if (notificationId) {
-    await removeItem(await pendingNotificationStorageKey());
+    const key = await pendingNotificationStorageKey();
+    await updatePendingMarker(intent, () => removeItem(key));
   }
+  if (!ownsNotificationIntent(intent)) return false;
+  pendingNotificationResponse = null;
   if (clearNativeResponse) {
     await Notifications.clearLastNotificationResponseAsync();
   }
@@ -590,25 +680,47 @@ const deliverNotificationResponse = async (
 /** Complete a notification tap only after NavigationContainer is ready. */
 export const flushPendingNotificationNavigation = async () => {
   if (!notificationNavigationReady) return false;
-  const storedKey = await pendingNotificationStorageKey();
-  const storedId = await getItem<string>(storedKey);
-  if (storedId && /^\d+$/.test(storedId)) {
-    if (!(await openNotificationById(storedId))) return false;
-    await removeItem(storedKey);
-    pendingNotificationResponse = null;
-    await Notifications.clearLastNotificationResponseAsync();
-    return true;
+  let pending = pendingNotificationResponse;
+  if (pending && 'response' in pending) {
+    if (!ownsNotificationIntent(pending.intent)) return false;
+    return deliverNotificationResponse(
+      pending.response,
+      pending.clearNativeResponse,
+    );
   }
-  if (storedId) await removeItem(storedKey);
-
-  const pending = pendingNotificationResponse;
-  if (!pending) return false;
-  if (!(await openNotificationLink(pending.response))) return false;
-
+  if (!pending) {
+    // A persisted marker must not supersede a tap received by this process.
+    if (latestNotificationIntent) return false;
+    const generation = pushNavigationGeneration;
+    const accountScope = await getCurrentAccountStorageScope();
+    const storedKey = await pendingNotificationStorageKey();
+    const storedId = await getItem<string>(storedKey);
+    if (
+      (await getCurrentAccountStorageScope()) !== accountScope ||
+      generation !== pushNavigationGeneration ||
+      latestNotificationIntent ||
+      pendingNotificationResponse
+    )
+      return false;
+    if (!storedId) return false;
+    const intent = claimNotificationIntent(`notification:${storedId}`);
+    if (!/^\d+$/.test(storedId)) {
+      await updatePendingMarker(intent, () => removeItem(storedKey));
+      return false;
+    }
+    // Preserve this exact identity for the next foreground/navigation retry.
+    pending = {notificationId: storedId, storedKey, intent};
+    pendingNotificationResponse = pending;
+  }
+  if (!ownsNotificationIntent(pending.intent)) return false;
+  if (!(await openNotificationById(pending.notificationId, pending.intent)))
+    return false;
+  await updatePendingMarker(pending.intent, () =>
+    removeItem(pending.storedKey),
+  );
+  if (!ownsNotificationIntent(pending.intent)) return false;
   pendingNotificationResponse = null;
-  if (pending.clearNativeResponse) {
-    await Notifications.clearLastNotificationResponseAsync();
-  }
+  await Notifications.clearLastNotificationResponseAsync();
   return true;
 };
 
@@ -619,9 +731,16 @@ export const subscribeToPushResponses = () => {
     },
   );
 
+  const initialIntent = latestNotificationIntent;
+  const initialGeneration = pushNavigationGeneration;
   void Notifications.getLastNotificationResponseAsync()
     .then(async response => {
-      if (!response) return;
+      if (
+        !response ||
+        latestNotificationIntent !== initialIntent ||
+        pushNavigationGeneration !== initialGeneration
+      )
+        return;
       await deliverNotificationResponse(response, true);
     })
     .catch(() => undefined);

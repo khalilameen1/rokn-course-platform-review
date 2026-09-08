@@ -21,6 +21,7 @@ import {asRecord} from './courseLearning/shared';
 import {remainingServerMilliseconds} from '../../utils/serverClock';
 import {settleWithin} from '../../utils/settleWithin';
 import {safeFilenameStem} from '../../utils/unicodeText';
+import {secureRandomUuid} from '../../utils/secureRandom';
 import {nativeAttachmentRecovery} from './attachmentDownloadPolicy';
 import {
   attachmentHeaderFilename,
@@ -34,7 +35,8 @@ const downloadFlights = new Map<
   string,
   Promise<{copied: boolean; downloaded: boolean; downloadId?: number}>
 >();
-const activePrivateDownloadJobs = new Set<number>();
+const activePrivateDownloadJobs = new Map<number, () => void>();
+const retiredPrivateDownloadTargets = new Set<string>();
 const activeAndroidDownloadIds = new Set<number>();
 let privateDownloadGeneration = 0;
 type AttachmentResult = {
@@ -288,10 +290,37 @@ const hasLocalSpace = async (expectedBytes?: number) => {
 };
 
 const downloadPrivateFile = (fromUrl: string, toFile: string) => {
-  let rejectResponse!: (error: Error) => void;
-  const responseRejected = new Promise<never>((_, reject) => {
-    rejectResponse = reject;
+  let settled = false;
+  let jobId: number | undefined;
+  let resolveTransfer!: (
+    result: Awaited<ReturnType<typeof RNFS.downloadFile>['promise']>,
+  ) => void;
+  let rejectTransfer!: (error: unknown) => void;
+  const promise = new Promise<
+    Awaited<ReturnType<typeof RNFS.downloadFile>['promise']>
+  >((resolve, reject) => {
+    resolveTransfer = resolve;
+    rejectTransfer = reject;
   });
+  const fail = (error: unknown) => {
+    if (settled) return false;
+    settled = true;
+    retiredPrivateDownloadTargets.add(toFile);
+    if (jobId !== undefined) activePrivateDownloadJobs.delete(jobId);
+    rejectTransfer(error);
+    return true;
+  };
+  const stop = (id = jobId) => {
+    if (id === undefined) return;
+    try {
+      RNFS.stopDownload(id);
+    } catch {
+      // JS owns settlement even if the native cancellation cannot acknowledge it.
+    }
+  };
+  const cancel = () => {
+    if (fail(new Error('ATTACHMENT_DOWNLOAD_CANCELLED'))) stop();
+  };
   const task = RNFS.downloadFile({
     fromUrl,
     toFile,
@@ -300,26 +329,79 @@ const downloadPrivateFile = (fromUrl: string, toFile: string) => {
     readTimeout: 45_000,
     backgroundTimeout: IOS_DOWNLOAD_TIMEOUT_MS,
     begin: response => {
+      if (settled) return;
       const mime = Object.entries(response.headers || {}).find(
         ([name]) => name.toLowerCase() === 'content-type',
       )?.[1];
       if (attachmentResponseIsHtml(mime)) {
-        rejectResponse(new Error('ATTACHMENT_HOST_PAGE'));
-        try {
-          RNFS.stopDownload(response.jobId);
-        } catch {
-          // The rejection still prevents a save/share handoff.
-        }
+        fail(new Error('ATTACHMENT_HOST_PAGE'));
+        stop(response.jobId);
       }
     },
+    resumable: () => {
+      // RNFS keeps its promise pending when iOS produces resumeData, even on
+      // cancellation. A later retry must recheck access/source, not resume a
+      // cancelled or old-account task behind the current action.
+      if (fail(new Error('ATTACHMENT_DOWNLOAD_INTERRUPTED'))) stop();
+    },
   });
-  activePrivateDownloadJobs.add(task.jobId);
-  return {
-    jobId: task.jobId,
-    promise: Promise.race([responseRejected, task.promise]).finally(() => {
+  jobId = task.jobId;
+  if (!settled) activePrivateDownloadJobs.set(jobId, cancel);
+  void task.promise.then(
+    result => {
+      if (settled) {
+        // The target belongs only to this attempt, never to a newer retry.
+        void RNFS.unlink(toFile)
+          .then(() => retiredPrivateDownloadTargets.delete(toFile))
+          .catch(() => undefined);
+        return;
+      }
+      settled = true;
       activePrivateDownloadJobs.delete(task.jobId);
-    }),
-  };
+      resolveTransfer(result);
+    },
+    error => {
+      fail(error);
+    },
+  );
+  return {jobId: task.jobId, promise, cancel};
+};
+
+const completedPrivateDownloadFolder = async (
+  root: string,
+  fileName: string,
+  expectedBytes?: number,
+): Promise<string | null> => {
+  if (!expectedBytes || expectedBytes <= 0) return null;
+  // Preserve the old fixed target and completed background attempts, looking
+  // only inside this account/attachment/version root, not other downloads.
+  const entries = await RNFS.readDir(root).catch(() => []);
+  const folders = [
+    root,
+    ...entries
+      .filter(
+        entry =>
+          entry.isDirectory() && /^attempt-[a-f0-9-]{36}$/.test(entry.name),
+      )
+      .map(entry => `${root}/${entry.name}`),
+  ];
+  for (const folder of folders) {
+    const target = `${folder}/${fileName}`;
+    // A cancelled task may still produce its final native callback/file. Do
+    // not adopt that path while its old owner can still clean it up.
+    if (retiredPrivateDownloadTargets.has(target)) continue;
+    try {
+      if (
+        (await RNFS.exists(target)) &&
+        Number((await RNFS.stat(target)).size) === expectedBytes
+      ) {
+        return folder;
+      }
+    } catch {
+      // An evicted/incomplete attempt is not a reusable file.
+    }
+  }
+  return null;
 };
 
 const nativeDownloadId = (value: unknown) => {
@@ -668,7 +750,7 @@ const openCourseAttachmentInternal = async (
     Alert.alert('المساحة لا تكفي', 'وفّر مساحة على الهاتف ثم حاول مرة أخرى');
     return emptyResult();
   }
-  const cacheFolder = `${
+  const attachmentCacheFolder = `${
     RNFS.CachesDirectoryPath
   }/rokn-attachments/${nativeStableKey(
     currentAttachment,
@@ -676,19 +758,26 @@ const openCourseAttachmentInternal = async (
   )
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .slice(0, 120)}`;
-  const target = `${cacheFolder}/${fileName}`;
+  let cacheFolder = `${attachmentCacheFolder}/attempt-${secureRandomUuid()}`;
   let cancelled = false;
-  let activeJobId: number | undefined;
 
   try {
     // A cancelled/failed attempt can leave a partial cache file with the same
-    // name. A full byte-for-byte staging file can also be the result of an iOS
+    // name. A staging file matching the expected size can also result from an iOS
     // background transfer that finished after the process was evicted.
+    await RNFS.mkdir(attachmentCacheFolder);
+    const completedFolder = await completedPrivateDownloadFolder(
+      attachmentCacheFolder,
+      fileName,
+      transferAttachment.fileSizeBytes,
+    );
+    if (completedFolder) cacheFolder = completedFolder;
     await RNFS.mkdir(cacheFolder);
     if (!attachmentOwnerIsActive(operation)) {
       await RNFS.unlink(cacheFolder).catch(() => undefined);
       return emptyResult();
     }
+    const target = `${cacheFolder}/${fileName}`;
     const stagedSize = (await RNFS.exists(target))
       ? Number((await RNFS.stat(target)).size)
       : 0;
@@ -698,14 +787,12 @@ const openCourseAttachmentInternal = async (
         stagedSize === transferAttachment.fileSizeBytes,
     );
     let result: {jobId: number; statusCode: number; bytesWritten: number};
-    let download: ReturnType<typeof RNFS.downloadFile> | undefined;
     if (recoveredBackgroundDownload) {
       result = {jobId: -1, statusCode: 200, bytesWritten: stagedSize};
     } else {
       await RNFS.unlink(target).catch(() => undefined);
       assertAttachmentOwner(operation);
-      download = downloadPrivateFile(transferAttachment.url, target);
-      activeJobId = download.jobId;
+      const download = downloadPrivateFile(transferAttachment.url, target);
       Alert.alert(
         'جارٍ تنزيل الملف',
         currentAttachment.fileSize
@@ -717,7 +804,7 @@ const openCourseAttachmentInternal = async (
             style: 'cancel',
             onPress: () => {
               cancelled = true;
-              if (activeJobId !== undefined) RNFS.stopDownload(activeJobId);
+              download.cancel();
             },
           },
           {text: 'إخفاء'},
@@ -777,6 +864,7 @@ const openCourseAttachmentInternal = async (
       }
       try {
         assertAttachmentOwner(operation);
+        if (cancelled) return emptyResult();
         const handoff = await Share.open({
           url: `file://${target}`,
           saveToFiles: true,
@@ -857,13 +945,7 @@ export const openCourseAttachment = async (
 export const quiescePrivateAttachmentDownloads = async (): Promise<void> => {
   privateDownloadGeneration += 1;
   downloadFlights.clear();
-  activePrivateDownloadJobs.forEach(jobId => {
-    try {
-      RNFS.stopDownload(jobId);
-    } catch {
-      // A transfer that finished between snapshot and cancellation is safe.
-    }
-  });
+  activePrivateDownloadJobs.forEach(cancel => cancel());
   activePrivateDownloadJobs.clear();
   if (NativeModules.RoknDownloads?.cancelIfActive) {
     await settleWithin(

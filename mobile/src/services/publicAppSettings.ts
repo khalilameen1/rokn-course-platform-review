@@ -1,4 +1,4 @@
-import {publicRequest} from '../constants/api';
+import {publicRequest, type RoknRequestConfig} from '../constants/api';
 import {getItem, saveItem} from '../constants/helpers';
 import {isServerTimestampFresh, serverNowMs} from '../utils/serverClock';
 import {trustedUpdateUrl} from './appVersionPolicy';
@@ -125,7 +125,9 @@ export const getPublicAppSettings = async (): Promise<PublicAppSettings> => {
         }
       }
       try {
-        const response = await publicRequest.get('settings');
+        const response = await publicRequest.get('settings', {
+          skipAuthorization: true,
+        } as RoknRequestConfig);
         const responsePayload = apiPayload<unknown>(response);
         const settings = Array.isArray(responsePayload)
           ? responsePayload[0]

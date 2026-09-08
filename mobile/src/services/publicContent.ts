@@ -1,4 +1,4 @@
-import {publicRequest} from '../constants/api';
+import {publicRequest, type RoknRequestConfig} from '../constants/api';
 import {getItem, removeItem, saveItem} from '../constants/helpers';
 import {isServerTimestampFresh, serverNowMs} from '../utils/serverClock';
 
@@ -45,7 +45,9 @@ export const getManagedPublicContent = async (page: PublicContentPage) => {
     return plainText(cached.body);
   }
   try {
-    const response = await publicRequest.get(`content/pages/${page}`);
+    const response = await publicRequest.get(`content/pages/${page}`, {
+      skipAuthorization: true,
+    } as RoknRequestConfig);
     const envelope = response?.data ?? {};
     const data = (envelope.data ?? envelope) as PublicContentResponse;
     const body =

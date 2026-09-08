@@ -11,7 +11,7 @@ import {
 } from '../../services/roknApi';
 import {openExternalUrlOnce} from '../../services/systemActions';
 import {trustedExternalTaskUrl} from '../../services/externalTaskUrlPolicy';
-import {learnerErrorMessage} from '../../utils/errorPayload';
+import {errorCode, learnerErrorMessage} from '../../utils/errorPayload';
 import type {WalletData} from './useWalletData';
 
 const isCoinGuideTask = (task: CoinTask) =>
@@ -136,12 +136,7 @@ export const useWalletTasks = (
         await openTaskDestination(task, boundary, started.url);
       }
     },
-    [
-      openTaskDestination,
-      refreshAfterCurrent,
-      showCoinRules,
-      updateTask,
-    ],
+    [openTaskDestination, refreshAfterCurrent, showCoinRules, updateTask],
   );
 
   const startAndOpenTask = useCallback(
@@ -152,16 +147,18 @@ export const useWalletTasks = (
         await applyTaskStart(task, boundary, started);
       } catch (error: unknown) {
         if (!ownsBoundary(boundary)) return;
+        if (errorCode(error) === 'task_unavailable') {
+          // The campaign can end while its card remains on screen. Reconcile
+          // that terminal answer behind any older read already in progress.
+          void refreshAfterCurrent();
+        }
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر بدء المهمة',
           learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
         );
       }
     },
-    [
-      applyTaskStart,
-      ownsBoundary,
-    ],
+    [applyTaskStart, ownsBoundary, refreshAfterCurrent],
   );
 
   const resumeExternalTask = useCallback(
@@ -175,6 +172,9 @@ export const useWalletTasks = (
         await applyTaskStart(task, boundary, resumed);
       } catch (error: unknown) {
         if (!ownsBoundary(boundary)) return;
+        if (errorCode(error) === 'task_unavailable') {
+          void refreshAfterCurrent();
+        }
         setOpeningNeedsRetry(task.id, true);
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر فتح المهمة',
@@ -182,11 +182,7 @@ export const useWalletTasks = (
         );
       }
     },
-    [
-      applyTaskStart,
-      ownsBoundary,
-      setOpeningNeedsRetry,
-    ],
+    [applyTaskStart, ownsBoundary, refreshAfterCurrent, setOpeningNeedsRetry],
   );
 
   const claimTask = useCallback(

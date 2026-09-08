@@ -18,8 +18,7 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 
 jest.mock('../src/services/systemActions', () => ({
-  openExternalUrlOnce: (...args: unknown[]) =>
-    mockOpenExternalUrlOnce(...args),
+  openExternalUrlOnce: (...args: unknown[]) => mockOpenExternalUrlOnce(...args),
 }));
 
 jest.mock('../src/services/externalTaskUrlPolicy', () => ({
@@ -27,6 +26,7 @@ jest.mock('../src/services/externalTaskUrlPolicy', () => ({
 }));
 
 jest.mock('../src/utils/errorPayload', () => ({
+  ...jest.requireActual('../src/utils/errorPayload'),
   learnerErrorMessage: (_error: unknown, fallback: string) => fallback,
 }));
 
@@ -327,4 +327,137 @@ describe('wallet ready-to-claim task', () => {
     expect(showCoinRules).toHaveBeenCalledTimes(1);
     await act(async () => renderer.unmount());
   });
+
+  it.each([
+    [
+      'starting a social task',
+      availableSocialTask,
+      {status: 404, data: {code: 'task_unavailable'}},
+    ],
+    [
+      'resuming WhatsApp',
+      {...availableWhatsAppTask, status: 'started'} as CoinTask,
+      {response: {status: 404, data: {code: 'task_unavailable'}}},
+    ],
+  ])(
+    'refreshes a retired card when %s is rejected',
+    async (_label, task, failure) => {
+      mockStartCoinTask.mockRejectedValue(failure);
+      const refreshAfterCurrent = jest.fn(async () => undefined);
+      const updateTask = jest.fn();
+      let controller!: ReturnType<typeof useWalletTasks>;
+      const Harness = () => {
+        controller = useWalletTasks(
+          {
+            identityKey: 'account-a',
+            ownsBoundary: () => true,
+            refreshAfterCurrent,
+            updateTask,
+          },
+          jest.fn(),
+        );
+        return null;
+      };
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      await act(async () => {
+        await controller.handleTask(task);
+      });
+
+      expect(refreshAfterCurrent).toHaveBeenCalledTimes(1);
+      expect(mockStartCoinTask).toHaveBeenCalledTimes(1);
+      expect(mockOpenExternalUrlOnce).not.toHaveBeenCalled();
+      expect(mockClaimCoinTask).not.toHaveBeenCalled();
+      expect(updateTask).not.toHaveBeenCalled();
+      expect(controller.loadingIds).toEqual([]);
+      await act(async () => renderer.unmount());
+    },
+  );
+
+  it.each([
+    availableSocialTask,
+    {...availableWhatsAppTask, status: 'started'} as CoinTask,
+  ])(
+    'keeps transient start failures retryable without refreshing away $actionKey',
+    async task => {
+      mockStartCoinTask.mockRejectedValue(new Error('Network unavailable'));
+      const refreshAfterCurrent = jest.fn(async () => undefined);
+      let controller!: ReturnType<typeof useWalletTasks>;
+      const Harness = () => {
+        controller = useWalletTasks(
+          {
+            identityKey: 'account-a',
+            ownsBoundary: () => true,
+            refreshAfterCurrent,
+            updateTask: jest.fn(),
+          },
+          jest.fn(),
+        );
+        return null;
+      };
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      await act(async () => {
+        await controller.handleTask(task);
+      });
+
+      expect(refreshAfterCurrent).not.toHaveBeenCalled();
+      expect(controller.loadingIds).toEqual([]);
+      expect(mockClaimCoinTask).not.toHaveBeenCalled();
+      expect(mockOpenExternalUrlOnce).not.toHaveBeenCalled();
+      await act(async () => renderer.unmount());
+    },
+  );
+
+  it.each([
+    availableSocialTask,
+    {...availableWhatsAppTask, status: 'started'} as CoinTask,
+  ])(
+    'does not refresh a retired $actionKey response after its screen/account loses ownership',
+    async task => {
+      let rejectStart!: (error: unknown) => void;
+      mockStartCoinTask.mockReturnValue(
+        new Promise((_resolve, reject) => {
+          rejectStart = reject;
+        }),
+      );
+      let ownsBoundary = true;
+      const refreshAfterCurrent = jest.fn(async () => undefined);
+      let controller!: ReturnType<typeof useWalletTasks>;
+      const Harness = () => {
+        controller = useWalletTasks(
+          {
+            identityKey: 'account-a',
+            ownsBoundary: () => ownsBoundary,
+            refreshAfterCurrent,
+            updateTask: jest.fn(),
+          },
+          jest.fn(),
+        );
+        return null;
+      };
+      let renderer!: TestRenderer.ReactTestRenderer;
+      let flight!: Promise<void>;
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      await act(async () => {
+        flight = controller.handleTask(task);
+      });
+      ownsBoundary = false;
+      await act(async () => {
+        rejectStart({status: 404, data: {code: 'task_unavailable'}});
+        await flight;
+      });
+
+      expect(refreshAfterCurrent).not.toHaveBeenCalled();
+      expect(mockClaimCoinTask).not.toHaveBeenCalled();
+      expect(mockOpenExternalUrlOnce).not.toHaveBeenCalled();
+      await act(async () => renderer.unmount());
+    },
+  );
 });

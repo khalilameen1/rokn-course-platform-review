@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {publicRequest} from '../constants/api';
+import {publicRequest, type RoknRequestConfig} from '../constants/api';
 import {roknApiUrl} from '../constants/apiBaseUrl';
 import {serverNowMs} from '../utils/serverClock';
 
@@ -138,8 +138,10 @@ export const refreshProductFeatures =
     refreshFlight = (async () => {
       try {
         const response = await publicRequest.get<unknown>('product-features', {
+          // Rollout uses the installation header, not an authenticated account.
+          skipAuthorization: true,
           timeout: 6000,
-        });
+        } as RoknRequestConfig);
         const envelope = isRecord(response.data) ? response.data : {};
         const raw = envelope.data || envelope;
         const snapshot = normalizeRemoteSnapshot(raw);

@@ -5,6 +5,7 @@ jest.mock('react-native-fs', () => ({
   getFSInfo: jest.fn(async () => ({freeSpace: 1024 * 1024 * 1024})),
   mkdir: jest.fn(async () => undefined),
   read: jest.fn(async () => '%PDF-1.7'),
+  readDir: jest.fn(async () => []),
   stat: jest.fn(async () => ({size: 10})),
   stopDownload: jest.fn(),
   unlink: jest.fn(async () => undefined),
@@ -22,6 +23,12 @@ jest.mock('../src/components/VideoPlayer/courseLearning/mapping', () => ({
   loadCourseLearningData: jest.fn(),
 }));
 jest.mock('../src/constants/api', () => ({publicRequest: {get: jest.fn()}}));
+
+let mockAttemptId = 0;
+jest.mock('../src/utils/secureRandom', () => ({
+  secureRandomUuid: () =>
+    `11111111-1111-4111-8111-${String(++mockAttemptId).padStart(12, '0')}`,
+}));
 
 let mockBoundary = {epoch: 1, scope: 'user-a'};
 jest.mock('../src/constants/helpers', () => ({
@@ -109,6 +116,8 @@ describe('course attachment operation ownership', () => {
     cancelIfActive.mockClear();
     cancelAllActive.mockClear();
     loadCourse.mockReset();
+    jest.mocked(RNFS.exists).mockResolvedValue(false);
+    jest.mocked(RNFS.readDir).mockResolvedValue([]);
     jest.mocked(publicRequest.get).mockReset();
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await quiescePrivateAttachmentDownloads();
@@ -409,6 +418,136 @@ describe('course attachment operation ownership', () => {
       expect.any(Array),
     );
   });
+
+  it.each(['cancel', 'interruption', 'account change'] as const)(
+    'settles iOS %s without a native result and isolates the next attempt from late callbacks',
+    async reason => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      const oldTransfer =
+        deferred<Awaited<ReturnType<typeof RNFS.downloadFile>['promise']>>();
+      const newTransfer =
+        deferred<Awaited<ReturnType<typeof RNFS.downloadFile>['promise']>>();
+      let oldOptions!: Parameters<typeof RNFS.downloadFile>[0];
+      let newOptions!: Parameters<typeof RNFS.downloadFile>[0];
+      jest
+        .mocked(RNFS.downloadFile)
+        .mockImplementationOnce(options => {
+          oldOptions = options;
+          return {jobId: 70, promise: oldTransfer.promise};
+        })
+        .mockImplementationOnce(options => {
+          newOptions = options;
+          return {jobId: 71, promise: newTransfer.promise};
+        });
+      const file = attachment({
+        fileSizeBytes: 10,
+        temporary: true,
+        expiresAt: '2099-01-01T00:00:00Z',
+      });
+      const first = openCourseAttachment(file);
+      await settleMicrotasks(50);
+      const cancel = jest
+        .mocked(Alert.alert)
+        .mock.calls.find(([title]) => title === 'جارٍ تنزيل الملف')?.[2]
+        ?.find(button => button.text === 'إلغاء')?.onPress;
+      expect(cancel).toBeDefined();
+      expect(oldOptions.resumable).toEqual(expect.any(Function));
+      jest.mocked(Alert.alert).mockClear();
+      if (reason === 'cancel') cancel?.();
+      else if (reason === 'interruption') oldOptions.resumable?.();
+      else {
+        mockBoundary = {epoch: 2, scope: 'user-b'};
+        await quiescePrivateAttachmentDownloads();
+      }
+      await expect(first).resolves.toEqual({copied: false, downloaded: false});
+      expect(RNFS.stopDownload).toHaveBeenCalledWith(70);
+      expect(Share.open).not.toHaveBeenCalled();
+      expect(Linking.openURL).not.toHaveBeenCalled();
+      if (reason === 'interruption') {
+        expect(Alert.alert).toHaveBeenLastCalledWith(
+          'تعذّر تنزيل الملف',
+          'تحقق من الاتصال ثم حاول مرة أخرى',
+        );
+      } else expect(Alert.alert).not.toHaveBeenCalled();
+
+      // Even if a retired native task leaves a full-sized file before its
+      // final callback, a new retry must not adopt that still-owned path.
+      const oldFolderName = oldOptions.toFile.split('/').at(-2)!;
+      jest.mocked(RNFS.readDir).mockResolvedValueOnce([
+        {
+          name: oldFolderName,
+          isDirectory: () => true,
+        } as Awaited<ReturnType<typeof RNFS.readDir>>[number],
+      ]);
+      jest
+        .mocked(RNFS.exists)
+        .mockImplementation(async target => target === oldOptions.toFile);
+      const retry = openCourseAttachment(file);
+      await settleMicrotasks(50);
+      expect(RNFS.downloadFile).toHaveBeenCalledTimes(2);
+      expect(newOptions.toFile).not.toBe(oldOptions.toFile);
+      jest.mocked(RNFS.unlink).mockClear();
+      const alertCount = jest.mocked(Alert.alert).mock.calls.length;
+      oldOptions.resumable?.();
+      oldOptions.begin?.({
+        jobId: 70,
+        statusCode: 200,
+        contentLength: 10,
+        headers: {'Content-Type': 'text/html'},
+      });
+      oldTransfer.resolve({jobId: 70, statusCode: 200, bytesWritten: 10});
+      await settleMicrotasks(30);
+      expect(RNFS.unlink).toHaveBeenCalledWith(oldOptions.toFile);
+      expect(RNFS.unlink).not.toHaveBeenCalledWith(newOptions.toFile);
+      expect(RNFS.unlink).not.toHaveBeenCalledWith(
+        newOptions.toFile.slice(0, newOptions.toFile.lastIndexOf('/')),
+      );
+      expect(Share.open).not.toHaveBeenCalled();
+      expect(Alert.alert).toHaveBeenCalledTimes(alertCount);
+
+      newTransfer.resolve({jobId: 71, statusCode: 200, bytesWritten: 10});
+      await expect(retry).resolves.toEqual({copied: false, downloaded: true});
+      expect(Share.open).toHaveBeenCalledTimes(1);
+      expect(Share.open).toHaveBeenCalledWith(
+        expect.objectContaining({url: `file://${newOptions.toFile}`}),
+      );
+    },
+  );
+
+  it.each(['legacy', 'background attempt'] as const)(
+    'reuses a complete %s file without downloading it again',
+    async kind => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      const attemptName = 'attempt-22222222-2222-4222-8222-222222222222';
+      let expectedTarget = '';
+      jest.mocked(RNFS.readDir).mockImplementationOnce(async root => {
+        expectedTarget = `${root}/${
+          kind === 'legacy' ? '' : `${attemptName}/`
+        }saved.pdf`;
+        return kind === 'legacy'
+          ? []
+          : [
+              {
+                name: attemptName,
+                isDirectory: () => true,
+              } as Awaited<ReturnType<typeof RNFS.readDir>>[number],
+            ];
+      });
+      jest
+        .mocked(RNFS.exists)
+        .mockImplementation(async target => target === expectedTarget);
+      await expect(
+        openCourseAttachment(attachment({
+          fileName: 'saved.pdf',
+          fileSizeBytes: 10,
+        })),
+      ).resolves.toEqual({copied: false, downloaded: true});
+      expect(RNFS.downloadFile).not.toHaveBeenCalled();
+      expect(Share.open).toHaveBeenCalledWith(
+        expect.objectContaining({url: `file://${expectedTarget}`}),
+      );
+    },
+  );
 
   it('re-enters source and device routing when an expired iOS upload was replaced with a computer link', async () => {
     jest.replaceProperty(Platform, 'OS', 'ios');
