@@ -76,8 +76,10 @@ export const readPortfolioEditorDraft = async (
   return withDraftLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const raw = await AsyncStorage.getItem(key);
+    assertAccountSessionBoundary(boundary);
     if (!raw) {
       await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
+      assertAccountSessionBoundary(boundary);
       return null;
     }
     const parsed = parseDraft(raw);
@@ -101,12 +103,15 @@ export const readPortfolioEditorDraft = async (
       };
       const changed =
         readableMedia.length !== (draft.media || []).length || !coverReadable;
+      assertAccountSessionBoundary(boundary);
       if (changed) await AsyncStorage.setItem(key, JSON.stringify(repaired));
+      assertAccountSessionBoundary(boundary);
       await retainLearnerDraftFiles(
         REFERENCE_OWNER,
         draftFiles(repaired),
         boundary.scope,
       );
+      assertAccountSessionBoundary(boundary);
       if (changed) {
         const readableUris = new Set(
           draftFiles(repaired).map(file => file.uri),
@@ -121,7 +126,9 @@ export const readPortfolioEditorDraft = async (
       return repaired;
     }
     await AsyncStorage.removeItem(key);
+    assertAccountSessionBoundary(boundary);
     await retainLearnerDraftFiles(REFERENCE_OWNER, [], boundary.scope);
+    assertAccountSessionBoundary(boundary);
     await Promise.all(draftFiles(parsed).map(removeLearnerDraftFile));
     assertAccountSessionBoundary(boundary);
     return null;

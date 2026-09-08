@@ -44,6 +44,8 @@ export const useFeedbackComposer = ({
   const [sent, setSent] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [draftSaveError, setDraftSaveError] = useState(false);
+  const [draftRestoreError, setDraftRestoreError] = useState(false);
+  const [draftRestoreRevision, setDraftRestoreRevision] = useState(0);
   const [draftSourceScreen, setDraftSourceScreen] = useState(sourceScreen);
   const [clientRequestId, setClientRequestId] = useState(secureRandomUuid);
   const [receipt, setReceipt] = useState<ProductFeedbackReceipt>();
@@ -54,6 +56,7 @@ export const useFeedbackComposer = ({
   const submitGenerationRef = useRef(0);
   const dataOwnerRef = useRef(identityKey);
   const draftOwnerScopeRef = useRef('');
+  const draftRestoreGenerationRef = useRef(0);
   const draftSnapshotRef = useRef({
     attachment,
     category,
@@ -106,6 +109,9 @@ export const useFeedbackComposer = ({
 
   useEffect(() => {
     let active = true;
+    draftRestoreGenerationRef.current += 1;
+    setDraftReady(false);
+    setDraftRestoreError(false);
     const generation = submitGenerationRef.current;
     let ownerBoundary: AccountSessionBoundary | null = null;
     void captureAccountSessionBoundary()
@@ -137,6 +143,7 @@ export const useFeedbackComposer = ({
           setIncludeDiagnostics(draft.includeDiagnostics);
           setDraftSourceScreen(draft.sourceScreen || sourceScreen);
         }
+        setDraftReady(true);
         const alternative = conflicts.find(conflict => conflict.type === 'new');
         if (!alternative) return;
         Alert.alert(
@@ -148,7 +155,13 @@ export const useFeedbackComposer = ({
               text: 'استعادة الأخرى',
               onPress: () => {
                 const restoreOwnerScope = ownerBoundary?.scope;
-                if (!restoreOwnerScope) return;
+                if (
+                  !restoreOwnerScope ||
+                  !active ||
+                  generation !== submitGenerationRef.current
+                )
+                  return;
+                draftRestoreGenerationRef.current += 1;
                 setDraftReady(false);
                 void (async () => {
                   try {
@@ -157,52 +170,46 @@ export const useFeedbackComposer = ({
                     if (restoreBoundary.scope !== restoreOwnerScope) {
                       throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
                     }
+                    if (!active || generation !== submitGenerationRef.current)
+                      return;
                     const restored = await restoreProductFeedbackDraftConflict(
                       alternative.id,
                       restoreBoundary,
                     );
                     if (
-                      !restored ||
                       !mountedRef.current ||
                       generation !== submitGenerationRef.current ||
                       dataOwnerRef.current !== identityKey
                     ) {
                       return;
                     }
+                    if (!restored) throw new Error('DRAFT_RESTORE_UNAVAILABLE');
                     const value = await loadProductFeedbackDraft(
                       restoreBoundary,
                     );
                     if (
-                      !value ||
                       !mountedRef.current ||
                       generation !== submitGenerationRef.current ||
                       dataOwnerRef.current !== identityKey
                     ) {
                       return;
                     }
+                    if (!value) throw new Error('DRAFT_RESTORE_UNAVAILABLE');
                     setCategory(value.category);
                     setMessage(value.message);
                     setAttachment(value.attachment);
                     setClientRequestId(value.clientRequestId);
                     setIncludeDiagnostics(value.includeDiagnostics);
                     setDraftSourceScreen(value.sourceScreen || sourceScreen);
+                    setDraftReady(true);
                   } catch {
                     if (
                       mountedRef.current &&
                       generation === submitGenerationRef.current &&
                       dataOwnerRef.current === identityKey
                     ) {
-                      setDraftSaveError(true);
+                      setDraftRestoreError(true);
                     }
-                  } finally {
-                    if (
-                      !mountedRef.current ||
-                      generation !== submitGenerationRef.current ||
-                      dataOwnerRef.current !== identityKey
-                    ) {
-                      return;
-                    }
-                    setDraftReady(true);
                   }
                 })();
               },
@@ -211,29 +218,25 @@ export const useFeedbackComposer = ({
         );
       })
       .catch(() => {
-        if (active) {
-          if (ownerBoundary) {
-            draftOwnerScopeRef.current = ownerBoundary.scope;
-          }
-          setDraftSaveError(true);
+        if (active && generation === submitGenerationRef.current) {
+          setDraftRestoreError(true);
         }
-      })
-      .finally(() => {
-        if (active) setDraftReady(true);
       });
 
     return () => {
       active = false;
     };
-  }, [identityKey, sourceScreen]);
+  }, [identityKey, sourceScreen, draftRestoreRevision]);
 
   useEffect(() => {
     if (!draftReady || sent || busy || trackingRecoveryNeeded) return;
     const ownerScope = draftOwnerScopeRef.current;
     if (!ownerScope) return;
+    const restoreGeneration = draftRestoreGenerationRef.current;
     const timer = setTimeout(() => {
       void captureAccountSessionBoundary()
         .then(boundary => {
+          if (restoreGeneration !== draftRestoreGenerationRef.current) return;
           if (boundary.scope !== ownerScope) {
             throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
           }
@@ -285,8 +288,10 @@ export const useFeedbackComposer = ({
       return;
     const ownerScope = draftOwnerScopeRef.current;
     if (!ownerScope) return;
+    const restoreGeneration = draftRestoreGenerationRef.current;
     void captureAccountSessionBoundary()
       .then(boundary => {
+        if (restoreGeneration !== draftRestoreGenerationRef.current) return;
         if (boundary.scope !== ownerScope) {
           throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
         }
@@ -488,6 +493,7 @@ export const useFeedbackComposer = ({
     }
   };
 
+  const restoreOwner = draftRestoreGenerationRef.current;
   return {
     attachment,
     busy,
@@ -496,6 +502,18 @@ export const useFeedbackComposer = ({
     chooseScreenshot,
     dismissReceipt: () => setSent(false),
     draftSaveError,
+    draftRestoreError,
+    retryDraftRestore: () => {
+      if (
+        !draftReady &&
+        draftRestoreError &&
+        !busy &&
+        mountedRef.current &&
+        dataOwnerRef.current === identityKey &&
+        restoreOwner === draftRestoreGenerationRef.current
+      )
+        setDraftRestoreRevision(value => value + 1);
+    },
     error,
     includeDiagnostics,
     message,

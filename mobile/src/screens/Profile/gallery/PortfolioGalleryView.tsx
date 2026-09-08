@@ -58,6 +58,8 @@ export const PortfolioGalleryView = ({
     detailLoading,
     draftCover,
     draftMediaAssets,
+    draftLoadError,
+    draftReady,
     draftSaveError,
     draftSummary,
     draftTitle,
@@ -81,6 +83,7 @@ export const PortfolioGalleryView = ({
     previewMedia,
     projects,
     removeSelectedMedia,
+    retryDraftLoad,
     saveProjectEdits,
     saving,
     selectPreviewMedia,
@@ -416,6 +419,18 @@ export const PortfolioGalleryView = ({
                   },
                 ]}>
                 <Text style={styles.detailTitle}>أضف مشروعًا</Text>
+                {!draftReady && (
+                  <StatusView
+                    state={draftLoadError ? 'error' : 'loading'}
+                    title={
+                      draftLoadError
+                        ? 'تعذّرت استعادة المسودة'
+                        : 'جارٍ استعادة المسودة'
+                    }
+                    actionLabel={draftLoadError ? 'إعادة المحاولة' : undefined}
+                    onAction={draftLoadError ? retryDraftLoad : undefined}
+                  />
+                )}
                 {serverSession && (
                   <View style={styles.eligibleSection}>
                     <Text style={styles.fieldLabel}>من مشروعاتك المكتملة</Text>
@@ -436,7 +451,7 @@ export const PortfolioGalleryView = ({
                           return (
                             <Pressable
                               accessibilityRole="button"
-                              disabled={saving}
+                              disabled={saving || !draftReady}
                               key={project.projectId}
                               onPress={() => chooseSourceProject(project)}
                               style={({pressed}) => [
@@ -476,7 +491,7 @@ export const PortfolioGalleryView = ({
                     {selectedSourceProject && (
                       <Pressable
                         accessibilityRole="button"
-                        disabled={saving}
+                        disabled={saving || !draftReady}
                         onPress={clearSelectedSourceProject}
                         style={styles.manualEntryButton}>
                         <Text style={styles.manualEntryLabel}>
@@ -489,7 +504,7 @@ export const PortfolioGalleryView = ({
                 <Text style={styles.fieldLabel}>اسم المشروع</Text>
                 <TextInput
                   accessibilityLabel="اسم المشروع"
-                  editable={!saving}
+                  editable={!saving && draftReady}
                   onChangeText={updateDraftTitle}
                   placeholder="هوية لمقهى محلي"
                   placeholderTextColor={Palette.textFaint}
@@ -499,7 +514,7 @@ export const PortfolioGalleryView = ({
                 <Text style={styles.fieldLabel}>وصف مختصر</Text>
                 <TextInput
                   accessibilityLabel="وصف المشروع"
-                  editable={!saving}
+                  editable={!saving && draftReady}
                   multiline
                   onChangeText={updateDraftSummary}
                   placeholder="المشكلة التي حللتها والنتيجة"
@@ -510,7 +525,7 @@ export const PortfolioGalleryView = ({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="اختيار صور وفيديوهات المشروع"
-                  disabled={saving}
+                  disabled={saving || !draftReady}
                   onPress={pickCover}
                   style={styles.coverPicker}>
                   {draftMediaAssets.length ? (
@@ -539,7 +554,10 @@ export const PortfolioGalleryView = ({
                 </Pressable>
                 <Button
                   disable={
-                    !draftTitle.trim() || !draftMediaAssets.length || saving
+                    !draftReady ||
+                    !draftTitle.trim() ||
+                    !draftMediaAssets.length ||
+                    saving
                   }
                   loader={saving}
                   onPress={addProject}
@@ -561,7 +579,7 @@ export const PortfolioGalleryView = ({
                     ) : null}
                   </View>
                 )}
-                {draftSaveError && !saving && (
+                {draftReady && draftSaveError && !saving && (
                   <Text accessibilityRole="alert" style={styles.draftError}>
                     لم تُحفظ المسودة على الجهاز
                     {'\n'}يمكنك المتابعة أو تفريغ بعض المساحة

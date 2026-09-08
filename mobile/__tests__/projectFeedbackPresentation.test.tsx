@@ -224,6 +224,44 @@ describe('project feedback report and conversation presentation', () => {
     expect(base.onSend).not.toHaveBeenCalled();
   });
 
+  it('keeps the accepted report readable while restoring a failed local draft', () => {
+    const retryDraftRestore = jest.fn();
+    const base = props({
+      canReply: false,
+      draftRestoreError: true,
+      onRetryDraftRestore: retryDraftRestore,
+    });
+    render(base);
+
+    expect(texts(renderer)).toContain(reportText);
+    expect(texts(renderer)).toContain('تعذّر استعادة مسودة الرسالة');
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
+    expect(button(renderer, 'اعرف فئة الرد على التقرير')).toBeUndefined();
+    act(() => button(renderer, 'إعادة استعادة مسودة الرسالة').props.onPress());
+    expect(retryDraftRestore).toHaveBeenCalledTimes(1);
+    expect(base.onSend).not.toHaveBeenCalled();
+    expect(base.onRetryMessage).not.toHaveBeenCalled();
+    expect(base.onPickAttachments).not.toHaveBeenCalled();
+
+    act(() =>
+      renderer.update(
+        <ProjectFeedbackPanel
+          {...base}
+          canReply
+          draftRestoreError={false}
+          draft="أحتاج توضيح التباين"
+          normalizedDraft="أحتاج توضيح التباين"
+        />,
+      ),
+    );
+    expect(button(renderer, 'إعادة استعادة مسودة الرسالة')).toBeUndefined();
+    expect(renderer.root.findByType(TextInput).props.value).toBe(
+      'أحتاج توضيح التباين',
+    );
+    expect(button(renderer, 'إرسال الاستفسار').props.disabled).toBe(false);
+    expect(base.onSend).not.toHaveBeenCalled();
+  });
+
   it('shows truthful preparation while a sent inquiry has no response then preserves streamed and failed text', () => {
     const base = props({pending: true});
     const user: typeof report = {

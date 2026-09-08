@@ -78,6 +78,8 @@ export const useProjectFeedback = ({
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachmentDraft[]>([]);
   const [draftReady, setDraftReady] = useState(false);
+  const [draftRestoreError, setDraftRestoreError] = useState(false);
+  const [draftRestoreAttempt, setDraftRestoreAttempt] = useState(0);
   const [hydrating, setHydrating] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -95,6 +97,7 @@ export const useProjectFeedback = ({
       hydratedThreadRef.current !== thread?.id &&
       !error);
   const canReply =
+    draftReady &&
     !threadHydrating &&
     reportStatus === 'ready' &&
     feedbackLevel === 'enhanced' &&
@@ -268,34 +271,47 @@ export const useProjectFeedback = ({
     const threadId = thread?.id;
     if (!threadId) return;
     const generation = generationRef.current;
+    const ownerBoundary = draftBoundaryRef.current;
     let cancelled = false;
     setDraftReady(false);
+    draftReadyRef.current = false;
+    setDraftRestoreError(false);
     void captureAccountSessionBoundary()
       .then(boundary => {
         if (cancelled || generationRef.current !== generation) return null;
+        // Retry may renew the same account's epoch, but must not forget the
+        // failed attempt's owner and read another account's local message.
+        if (ownerBoundary && ownerBoundary.scope !== boundary.scope)
+          throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
+        assertAccountSessionBoundary(boundary);
         draftBoundaryRef.current = boundary;
         return loadProjectFeedbackDraft(threadId, boundary);
       })
       .then(saved => {
-        if (cancelled || generationRef.current !== generation || !saved) return;
-        setDraft(saved.text);
-        setAttachments(saved.attachments);
-        if (saved.requestId && saved.fingerprint) {
-          requestRef.current = {
-            id: saved.requestId,
-            fingerprint: saved.fingerprint,
-          };
+        if (cancelled || generationRef.current !== generation) return;
+        const boundary = draftBoundaryRef.current;
+        if (!boundary) return;
+        assertAccountSessionBoundary(boundary);
+        if (saved) {
+          setDraft(saved.text);
+          setAttachments(saved.attachments);
+          if (saved.requestId && saved.fingerprint) {
+            requestRef.current = {
+              id: saved.requestId,
+              fingerprint: saved.fingerprint,
+            };
+          }
         }
+        setDraftReady(true);
       })
-      .catch(() => undefined)
-      .finally(() => {
+      .catch(() => {
         if (!cancelled && generationRef.current === generation)
-          setDraftReady(true);
+          setDraftRestoreError(true);
       });
     return () => {
       cancelled = true;
     };
-  }, [thread?.id]);
+  }, [draftRestoreAttempt, thread?.id]);
 
   useEffect(
     () => () => {
@@ -649,7 +665,7 @@ export const useProjectFeedback = ({
   );
 
   const removeAttachment = useCallback((file: ChatAttachmentDraft) => {
-    if (sendFlightRef.current) return;
+    if (!draftReadyRef.current || sendFlightRef.current) return;
     setAttachments(current =>
       current.filter(item => item.uploadId !== file.uploadId),
     );
@@ -657,14 +673,31 @@ export const useProjectFeedback = ({
   }, []);
 
   const changeDraft = useCallback((value: string) => {
-    if (!sendFlightRef.current) setDraft(truncateGraphemes(value, 2000));
+    if (draftReadyRef.current && !sendFlightRef.current)
+      setDraft(truncateGraphemes(value, 2000));
   }, []);
+
+  const restoreGeneration = generationRef.current;
+  const retryDraftRestore = () => {
+    if (
+      !draftRestoreError ||
+      !active ||
+      draftReadyRef.current ||
+      generationRef.current !== restoreGeneration ||
+      activeProjectIdRef.current !== projectId ||
+      activeThreadIdRef.current !== thread?.id
+    )
+      return;
+    setDraftRestoreAttempt(attempt => attempt + 1);
+  };
 
   return {
     attachments,
     canReply,
     changeDraft,
     draft,
+    draftRestoreError,
+    retryDraftRestore,
     error,
     hydrating: threadHydrating,
     normalizedDraft,

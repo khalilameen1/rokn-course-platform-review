@@ -89,57 +89,72 @@ export const loadProjectFeedbackDraft = async (
   return withDraftLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const raw = await AsyncStorage.getItem(key);
+    assertAccountSessionBoundary(boundary);
     if (!raw) {
       await retainLearnerDraftFiles(
         referenceOwner(threadId),
         [],
         boundary.scope,
       );
+      assertAccountSessionBoundary(boundary);
       return null;
     }
 
-    let storedFiles: ChatAttachmentDraft[] = [];
+    let draft: Partial<ProjectFeedbackDraft> | null = null;
     try {
-      const draft = JSON.parse(raw) as ProjectFeedbackDraft;
-      storedFiles = Array.isArray(draft.attachments) ? draft.attachments : [];
-      if (
-        typeof draft.text !== 'string' ||
-        !Array.isArray(draft.attachments) ||
-        !Number.isFinite(draft.updatedAt) ||
-        Date.now() - draft.updatedAt > MAX_AGE_MS
-      ) {
-        throw new Error('INVALID_PROJECT_FEEDBACK_DRAFT');
-      }
-
-      const attachments: ChatAttachmentDraft[] = [];
-      for (const file of storedFiles) {
-        if (file.serverId || (await learnerDraftFileIsReadable(file))) {
-          attachments.push(file);
-        } else {
-          await removeLearnerDraftFile(file);
-        }
-      }
-      await retainLearnerDraftFiles(
-        referenceOwner(threadId),
-        attachments,
-        boundary.scope,
-      );
-      assertAccountSessionBoundary(boundary);
-      return {...draft, attachments};
-    } catch {
+      draft = JSON.parse(raw) as Partial<ProjectFeedbackDraft>;
+    } catch {}
+    const storedFiles = Array.isArray(draft?.attachments)
+      ? draft.attachments
+      : [];
+    if (
+      !draft ||
+      typeof draft.text !== 'string' ||
+      !Array.isArray(draft.attachments) ||
+      !Number.isFinite(draft.updatedAt) ||
+      Date.now() - Number(draft.updatedAt) > MAX_AGE_MS
+    ) {
       await AsyncStorage.removeItem(key);
+      assertAccountSessionBoundary(boundary);
       await retainLearnerDraftFiles(
         referenceOwner(threadId),
         [],
         boundary.scope,
       );
+      assertAccountSessionBoundary(boundary);
       await Promise.all(
         storedFiles.map(file =>
           removeLearnerDraftFile(file).catch(() => undefined),
         ),
       );
+      assertAccountSessionBoundary(boundary);
       return null;
     }
+    const attachments: ChatAttachmentDraft[] = [];
+    for (const file of storedFiles) {
+      if (file?.serverId || (await learnerDraftFileIsReadable(file))) {
+        attachments.push(file);
+      }
+    }
+    assertAccountSessionBoundary(boundary);
+    const repaired = {...draft, attachments} as ProjectFeedbackDraft;
+    if (attachments.length !== storedFiles.length) {
+      await AsyncStorage.setItem(key, JSON.stringify(repaired));
+      assertAccountSessionBoundary(boundary);
+    }
+    await retainLearnerDraftFiles(
+      referenceOwner(threadId),
+      attachments,
+      boundary.scope,
+    );
+    assertAccountSessionBoundary(boundary);
+    await Promise.all(
+      storedFiles
+        .filter(file => !attachments.includes(file))
+        .map(removeLearnerDraftFile),
+    );
+    assertAccountSessionBoundary(boundary);
+    return repaired;
   });
 };
 

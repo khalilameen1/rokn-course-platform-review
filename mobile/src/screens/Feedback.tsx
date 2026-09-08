@@ -88,6 +88,9 @@ export default function Feedback() {
             replyAttachment={cases.replyAttachment}
             replyBusy={cases.replyBusy}
             replyError={cases.replyError}
+            replyReady={cases.replyReady}
+            replyRestoreError={cases.replyRestoreError}
+            onRetryReplyRestore={cases.retryReplyRestore}
             replyMessage={cases.replyMessage}
             selectedCase={cases.selectedCase}
             selectedCaseId={cases.selectedCaseId}
@@ -106,6 +109,8 @@ export default function Feedback() {
               canSubmit={composer.canSubmit}
               category={composer.category}
               draftSaveError={composer.draftSaveError}
+              draftRestoreError={composer.draftRestoreError}
+              onRetryRestore={composer.retryDraftRestore}
               error={composer.error}
               includeDiagnostics={composer.includeDiagnostics}
               message={composer.message}

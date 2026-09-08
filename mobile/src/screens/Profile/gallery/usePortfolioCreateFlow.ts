@@ -102,10 +102,13 @@ export const usePortfolioCreateFlow = ({
     draftCover,
     draftCoverAsset,
     draftMediaAssets,
+    draftLoadError,
+    draftReady,
     draftSaveError,
     draftSummary,
     draftTitle,
     selectedSourceProject,
+    retryDraftLoad,
     setDraftCover,
     setDraftCoverAsset,
     setDraftMediaAssets,
@@ -166,6 +169,7 @@ export const usePortfolioCreateFlow = ({
 
   const pickDraftMedia = useCallback(async () => {
     if (
+      !draftReady ||
       pickerFlightRef.current ||
       saving ||
       busyRef.current ||
@@ -258,6 +262,7 @@ export const usePortfolioCreateFlow = ({
     captureBoundary,
     changeDraft,
     draftMediaAssets,
+    draftReady,
     isDetailBusy,
     mountedRef,
     saving,
@@ -268,7 +273,7 @@ export const usePortfolioCreateFlow = ({
 
   const chooseSourceProject = useCallback(
     (project: EligibleProject) => {
-      if (saving || busyRef.current || isDetailBusy()) return;
+      if (!draftReady || saving || busyRef.current || isDetailBusy()) return;
       const previous = draftCoverAsset;
       const previousMedia = draftMediaAssets;
       changeDraft(() => {
@@ -289,6 +294,7 @@ export const usePortfolioCreateFlow = ({
       changeDraft,
       draftCoverAsset,
       draftMediaAssets,
+      draftReady,
       isDetailBusy,
       saving,
       setDraftCover,
@@ -301,7 +307,7 @@ export const usePortfolioCreateFlow = ({
   );
 
   const clearSelectedSourceProject = useCallback(() => {
-    if (saving || busyRef.current || isDetailBusy()) return;
+    if (!draftReady || saving || busyRef.current || isDetailBusy()) return;
     const previous = draftMediaAssets;
     changeDraft(() => {
       setSelectedSourceProject(null);
@@ -314,6 +320,7 @@ export const usePortfolioCreateFlow = ({
     busyRef,
     changeDraft,
     draftMediaAssets,
+    draftReady,
     isDetailBusy,
     saving,
     setDraftCover,
@@ -324,25 +331,26 @@ export const usePortfolioCreateFlow = ({
 
   const updateDraftTitle = useCallback(
     (value: string) => {
-      if (!saving && !busyRef.current) {
+      if (draftReady && !saving && !busyRef.current) {
         changeDraft(() => setDraftTitle(value));
       }
     },
-    [busyRef, changeDraft, saving, setDraftTitle],
+    [busyRef, changeDraft, draftReady, saving, setDraftTitle],
   );
 
   const updateDraftSummary = useCallback(
     (value: string) => {
-      if (!saving && !busyRef.current) {
+      if (draftReady && !saving && !busyRef.current) {
         changeDraft(() => setDraftSummary(value));
       }
     },
-    [busyRef, changeDraft, saving, setDraftSummary],
+    [busyRef, changeDraft, draftReady, saving, setDraftSummary],
   );
 
   const addProject = useCallback(async () => {
     if (
       serverSession !== true ||
+      !draftReady ||
       !draftTitle.trim() ||
       !draftMediaAssets.length ||
       saving ||
@@ -465,6 +473,7 @@ export const usePortfolioCreateFlow = ({
     clearDraft,
     clientRequestId,
     draftMediaAssets,
+    draftReady,
     draftSummary,
     draftTitle,
     finalizeAfterUpload,
@@ -486,6 +495,8 @@ export const usePortfolioCreateFlow = ({
     closeAddProject,
     draftCover,
     draftMediaAssets,
+    draftLoadError,
+    draftReady,
     draftSaveError,
     draftSummary,
     draftTitle,
@@ -493,6 +504,7 @@ export const usePortfolioCreateFlow = ({
     eligibleProjects,
     openAddProject,
     pickCover: pickDraftMedia,
+    retryDraftLoad,
     saving,
     selectedSourceProject,
     updateDraftSummary,

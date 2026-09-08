@@ -27,6 +27,9 @@ const mockInsets = {top: 0, bottom: 0, left: 0, right: 0};
 jest.unmock('react-native/Libraries/Components/Keyboard/KeyboardAvoidingView');
 
 const mockChatState = {
+  hydrated: true,
+  hydrationError: '',
+  retryHydration: jest.fn(),
   assistantIncluded: true,
   assistantPresence: 'connected',
   attachments: [] as ChatAttachmentDraft[],
@@ -103,12 +106,30 @@ describe('course conversation keyboard ownership', () => {
     mockChatState.attachments = [];
     mockChatState.answerPending = false;
     mockChatState.input = 'سؤال مكتوب';
+    mockChatState.hydrated = true;
+    mockChatState.hydrationError = '';
     mockInsets.top = 0;
     mockInsets.bottom = 0;
   });
   afterEach(async () => {
     await act(async () => renderer?.unmount());
     jest.restoreAllMocks();
+  });
+
+  it('offers a local restore retry instead of a usable empty composer after hydration failure', async () => {
+    mockChatState.hydrated = false;
+    mockChatState.hydrationError = 'تعذّر استعادة المحادثة';
+    await render();
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
+    const retry = renderer.root.findAll(
+      node =>
+        node.props.accessibilityRole === 'button' &&
+        node.props.onPress === mockChatState.retryHydration,
+    )[0];
+    expect(retry).toBeDefined();
+    await act(async () => retry.props.onPress());
+    expect(mockChatState.retryHydration).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it.each(['android', 'ios'] as const)(

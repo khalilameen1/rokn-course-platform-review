@@ -1,7 +1,7 @@
 import React from 'react';
 import {Image, Modal, Pressable, Text, TextInput, View} from 'react-native';
 
-import {PremiumCard} from '../../components/ui/PremiumUI';
+import {PremiumCard, StatusView} from '../../components/ui/PremiumUI';
 import {Palette} from '../../constants/designSystem';
 import type {
   FeedbackAttachment,
@@ -39,6 +39,9 @@ type Props = {
   replyAttachment?: FeedbackAttachment;
   replyBusy: boolean;
   replyError: string;
+  replyReady?: boolean;
+  replyRestoreError?: boolean;
+  onRetryReplyRestore?: () => void;
   replyMessage: string;
   selectedCase?: ProductFeedbackCase;
   selectedCaseId: string;
@@ -62,6 +65,9 @@ export const FeedbackConversation = ({
   replyAttachment,
   replyBusy,
   replyError,
+  replyReady = true,
+  replyRestoreError,
+  onRetryReplyRestore,
   replyMessage,
   selectedCase,
   selectedCaseId,
@@ -153,70 +159,87 @@ export const FeedbackConversation = ({
               ))}
             </View>
           ))}
-          <TextInput
-            accessibilityLabel="ردك على الحالة"
-            maxLength={2000}
-            editable={!casesBusy && !replyBusy}
-            multiline
-            onChangeText={onReplyChange}
-            placeholder="اكتب ردك"
-            placeholderTextColor={Palette.textFaint}
-            style={styles.replyInput}
-            textAlignVertical="top"
-            value={replyMessage}
-          />
-          {replyAttachment ? (
-            <View style={styles.attachmentRow}>
-              <Image
-                accessibilityLabel="الصورة المرفقة بالرد"
-                source={{uri: replyAttachment.uri}}
-                style={styles.attachmentImage}
-              />
-              <Pressable
-                accessibilityLabel="حذف صورة الرد"
-                accessibilityRole="button"
-                disabled={casesBusy || replyBusy}
-                onPress={onRemoveReplyAttachment}>
-                <Text style={styles.removeAttachment}>حذف الصورة</Text>
-              </Pressable>
-            </View>
+          {!replyReady ? (
+            <StatusView
+              state={replyRestoreError ? 'error' : 'loading'}
+              title={
+                replyRestoreError
+                  ? 'تعذّر استعادة مسودة الرد'
+                  : 'جارٍ استعادة مسودة الرد'
+              }
+              actionLabel={replyRestoreError ? 'إعادة المحاولة' : undefined}
+              onAction={replyRestoreError ? onRetryReplyRestore : undefined}
+            />
           ) : (
-            <Pressable
-              accessibilityLabel="إضافة صورة إلى الرد"
-              accessibilityRole="button"
-              disabled={casesBusy || replyBusy}
-              onPress={onChooseReplyAttachment}
-              style={({pressed}) => [
-                styles.replyAttachmentButton,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.attachmentButtonText}>أضف صورة</Text>
-            </Pressable>
+            <>
+              <TextInput
+                accessibilityLabel="ردك على الحالة"
+                maxLength={2000}
+                editable={!casesBusy && !replyBusy}
+                multiline
+                onChangeText={onReplyChange}
+                placeholder="اكتب ردك"
+                placeholderTextColor={Palette.textFaint}
+                style={styles.replyInput}
+                textAlignVertical="top"
+                value={replyMessage}
+              />
+              {replyAttachment ? (
+                <View style={styles.attachmentRow}>
+                  <Image
+                    accessibilityLabel="الصورة المرفقة بالرد"
+                    source={{uri: replyAttachment.uri}}
+                    style={styles.attachmentImage}
+                  />
+                  <Pressable
+                    accessibilityLabel="حذف صورة الرد"
+                    accessibilityRole="button"
+                    disabled={casesBusy || replyBusy}
+                    onPress={onRemoveReplyAttachment}>
+                    <Text style={styles.removeAttachment}>حذف الصورة</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityLabel="إضافة صورة إلى الرد"
+                  accessibilityRole="button"
+                  disabled={casesBusy || replyBusy}
+                  onPress={onChooseReplyAttachment}
+                  style={({pressed}) => [
+                    styles.replyAttachmentButton,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.attachmentButtonText}>أضف صورة</Text>
+                </Pressable>
+              )}
+              {!!replyError && (
+                <Text accessibilityRole="alert" style={styles.error}>
+                  {replyError}
+                </Text>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{
+                  busy: replyBusy,
+                  disabled:
+                    casesBusy || replyBusy || replyMessage.trim().length < 2,
+                }}
+                disabled={
+                  casesBusy || replyBusy || replyMessage.trim().length < 2
+                }
+                onPress={onSendReply}
+                style={({pressed}) => [
+                  styles.replyButton,
+                  (casesBusy || replyBusy || replyMessage.trim().length < 2) &&
+                    styles.submitDisabled,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.submitText}>
+                  {replyBusy ? 'جارٍ الإرسال' : 'إرسال الرد'}
+                </Text>
+              </Pressable>
+            </>
           )}
-          {!!replyError && (
-            <Text accessibilityRole="alert" style={styles.error}>
-              {replyError}
-            </Text>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{
-              busy: replyBusy,
-              disabled:
-                casesBusy || replyBusy || replyMessage.trim().length < 2,
-            }}
-            disabled={casesBusy || replyBusy || replyMessage.trim().length < 2}
-            onPress={onSendReply}
-            style={({pressed}) => [
-              styles.replyButton,
-              (casesBusy || replyBusy || replyMessage.trim().length < 2) &&
-                styles.submitDisabled,
-              pressed && styles.pressed,
-            ]}>
-            <Text style={styles.submitText}>
-              {replyBusy ? 'جارٍ الإرسال' : 'إرسال الرد'}
-            </Text>
-          </Pressable>
         </View>
       )}
     </PremiumCard>

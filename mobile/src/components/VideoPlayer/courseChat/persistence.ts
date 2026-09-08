@@ -176,53 +176,44 @@ export const loadCourseChatHistory = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<ChatMessage[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
+  const raw = await AsyncStorage.getItem(
+    await historyKey(courseId, lessonId, boundary),
+  );
+  assertAccountSessionBoundary(boundary);
+  let parsed: unknown;
   try {
-    const raw = await AsyncStorage.getItem(
-      await historyKey(courseId, lessonId, boundary),
-    );
-    assertAccountSessionBoundary(boundary);
-    const parsed = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) return [];
-    const messages = parsed
-      .map(normaliseStoredMessage)
-      .filter((message): message is ChatMessage => Boolean(message))
-      .slice(-MAX_STORED_MESSAGES);
-    for (const message of messages) {
-      if (!message.attachments?.length) continue;
-      const readable = [];
-      for (const file of message.attachments) {
-        if (
-          file.serverId ||
-          (file.uri && (await learnerDraftFileIsReadable(file)))
-        ) {
-          readable.push(file);
-        }
-      }
-      message.attachments = readable;
-    }
-    await retainLearnerDraftFiles(
-      referenceOwner(courseId, lessonId),
-      messages
-        .flatMap(message => message.attachments || [])
-        .filter(file => !file.serverId),
-      boundary.scope,
-    ).catch(() => undefined);
-    assertAccountSessionBoundary(boundary);
-    return messages;
-  } catch (error: unknown) {
-    if (
-      error instanceof Error &&
-      error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
-    ) {
-      throw error;
-    }
-    await retainLearnerDraftFiles(
-      referenceOwner(courseId, lessonId),
-      [],
-      boundary.scope,
-    ).catch(() => undefined);
-    return [];
+    parsed = raw ? JSON.parse(raw) : [];
+  } catch {
+    parsed = [];
   }
+  const messages = (Array.isArray(parsed) ? parsed : [])
+    .map(normaliseStoredMessage)
+    .filter((message): message is ChatMessage => Boolean(message))
+    .slice(-MAX_STORED_MESSAGES);
+  for (const message of messages) {
+    if (!message.attachments?.length) continue;
+    const readable = [];
+    for (const file of message.attachments) {
+      if (
+        file.serverId ||
+        (file.uri && (await learnerDraftFileIsReadable(file)))
+      ) {
+        readable.push(file);
+      }
+    }
+    message.attachments = readable;
+  }
+  assertAccountSessionBoundary(boundary);
+  await retainLearnerDraftFiles(
+    referenceOwner(courseId, lessonId),
+    messages
+      .flatMap(message => message.attachments || [])
+      .filter(file => !file.serverId),
+    boundary.scope,
+  ).catch(() => undefined);
+  assertAccountSessionBoundary(boundary);
+  return messages;
 };
 
 export const saveCourseChatHistory = async (

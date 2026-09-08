@@ -67,7 +67,8 @@ describe('project draft durable file references', () => {
       nativeFiles.delete(path);
     });
     jest.mocked(RNFS.stat).mockImplementation(async path => {
-      if (!nativeFiles.has(path)) throw new Error('ENOENT');
+      if (!nativeFiles.has(path))
+        throw Object.assign(new Error('ENOENT'), {code: 'ENOENT'});
       return {size: 100, isFile: () => true} as Awaited<
         ReturnType<typeof RNFS.stat>
       >;

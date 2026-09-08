@@ -1,7 +1,11 @@
 import React from 'react';
 import {Image, Pressable, Text, TextInput, View} from 'react-native';
 
-import {PremiumCard, SectionHeading} from '../../components/ui/PremiumUI';
+import {
+  PremiumCard,
+  SectionHeading,
+  StatusView,
+} from '../../components/ui/PremiumUI';
 import {toArabicDigits} from '../../constants/arabicFormatting';
 import {Palette} from '../../constants/designSystem';
 import type {
@@ -23,6 +27,8 @@ type Props = {
   canSubmit: boolean;
   category: ProductFeedbackCategory;
   draftSaveError: boolean;
+  draftRestoreError?: boolean;
+  onRetryRestore?: () => void;
   error: string;
   includeDiagnostics: boolean;
   message: string;
@@ -41,6 +47,8 @@ export const FeedbackForm = ({
   canSubmit,
   category,
   draftSaveError,
+  draftRestoreError,
+  onRetryRestore,
   error,
   includeDiagnostics,
   message,
@@ -51,151 +59,161 @@ export const FeedbackForm = ({
   onToggleDiagnostics,
   onSubmit,
   ready,
-}: Props) => (
-  <>
-    <SectionHeading style={styles.heading} title="ماذا حدث" />
-    <Text style={styles.intro}>اكتب المشكلة أو الاقتراح بوضوح</Text>
+}: Props) =>
+  !ready ? (
+    <StatusView
+      state={draftRestoreError ? 'error' : 'loading'}
+      title={
+        draftRestoreError ? 'تعذّر استعادة المسودة' : 'جارٍ استعادة المسودة'
+      }
+      actionLabel={draftRestoreError ? 'إعادة المحاولة' : undefined}
+      onAction={draftRestoreError ? onRetryRestore : undefined}
+    />
+  ) : (
+    <>
+      <SectionHeading style={styles.heading} title="ماذا حدث" />
+      <Text style={styles.intro}>اكتب المشكلة أو الاقتراح بوضوح</Text>
 
-    <View accessibilityRole="radiogroup" style={styles.categories}>
-      {CATEGORIES.map(item => {
-        const selected = item.key === category;
-        return (
+      <View accessibilityRole="radiogroup" style={styles.categories}>
+        {CATEGORIES.map(item => {
+          const selected = item.key === category;
+          return (
+            <Pressable
+              accessibilityLabel={item.label}
+              accessibilityRole="radio"
+              accessibilityState={{
+                checked: selected,
+                disabled: busy || !ready,
+              }}
+              disabled={busy || !ready}
+              key={item.key}
+              onPress={() => onSelectCategory(item.key)}
+              style={({pressed}) => [
+                styles.category,
+                selected && styles.categorySelected,
+                pressed && styles.pressed,
+              ]}>
+              <Text
+                style={[
+                  styles.categoryText,
+                  selected && styles.categoryTextSelected,
+                ]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      <PremiumCard style={styles.form}>
+        <Text style={styles.label}>اكتب التفاصيل</Text>
+        <TextInput
+          accessibilityHint="اكتب عشرة أحرف على الأقل"
+          accessibilityLabel="تفاصيل الملاحظة"
+          multiline
+          maxLength={1600}
+          editable={ready && !busy}
+          onChangeText={onMessageChange}
+          placeholder="أين كنت وما الذي ظهر لك"
+          placeholderTextColor={Palette.textFaint}
+          selectionColor={Palette.primary}
+          style={styles.input}
+          textAlignVertical="top"
+          value={message}
+        />
+        <Text style={styles.counter}>
+          {toArabicDigits(message.length)} من ١٦٠٠
+        </Text>
+
+        {attachment ? (
+          <View style={styles.attachmentRow}>
+            <Image
+              accessibilityLabel="الصورة المرفقة"
+              source={{uri: attachment.uri}}
+              style={styles.attachmentImage}
+            />
+            <View style={styles.attachmentCopy}>
+              <Text style={styles.attachmentTitle}>الصورة جاهزة للإرسال</Text>
+              <Pressable
+                accessibilityLabel="حذف الصورة المرفقة"
+                accessibilityRole="button"
+                disabled={busy || !ready}
+                hitSlop={8}
+                onPress={onRemoveAttachment}>
+                <Text style={styles.removeAttachment}>حذف الصورة</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
           <Pressable
-            accessibilityLabel={item.label}
-            accessibilityRole="radio"
-            accessibilityState={{
-              checked: selected,
-              disabled: busy || !ready,
-            }}
+            accessibilityLabel="إضافة صورة توضح المشكلة"
+            accessibilityRole="button"
             disabled={busy || !ready}
-            key={item.key}
-            onPress={() => onSelectCategory(item.key)}
+            onPress={onChooseAttachment}
             style={({pressed}) => [
-              styles.category,
-              selected && styles.categorySelected,
+              styles.attachmentButton,
               pressed && styles.pressed,
             ]}>
-            <Text
-              style={[
-                styles.categoryText,
-                selected && styles.categoryTextSelected,
-              ]}>
-              {item.label}
+            <Text style={styles.attachmentButtonText}>
+              أضف صورة إذا كانت توضح المشكلة
             </Text>
           </Pressable>
-        );
-      })}
-    </View>
+        )}
 
-    <PremiumCard style={styles.form}>
-      <Text style={styles.label}>اكتب التفاصيل</Text>
-      <TextInput
-        accessibilityHint="اكتب عشرة أحرف على الأقل"
-        accessibilityLabel="تفاصيل الملاحظة"
-        multiline
-        maxLength={1600}
-        editable={ready && !busy}
-        onChangeText={onMessageChange}
-        placeholder="أين كنت وما الذي ظهر لك"
-        placeholderTextColor={Palette.textFaint}
-        selectionColor={Palette.primary}
-        style={styles.input}
-        textAlignVertical="top"
-        value={message}
-      />
-      <Text style={styles.counter}>
-        {toArabicDigits(message.length)} من ١٦٠٠
-      </Text>
-
-      {attachment ? (
-        <View style={styles.attachmentRow}>
-          <Image
-            accessibilityLabel="الصورة المرفقة"
-            source={{uri: attachment.uri}}
-            style={styles.attachmentImage}
-          />
-          <View style={styles.attachmentCopy}>
-            <Text style={styles.attachmentTitle}>الصورة جاهزة للإرسال</Text>
-            <Pressable
-              accessibilityLabel="حذف الصورة المرفقة"
-              accessibilityRole="button"
-              disabled={busy || !ready}
-              hitSlop={8}
-              onPress={onRemoveAttachment}>
-              <Text style={styles.removeAttachment}>حذف الصورة</Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : (
         <Pressable
-          accessibilityLabel="إضافة صورة توضح المشكلة"
-          accessibilityRole="button"
+          accessibilityLabel="إرفاق معلومات التشغيل"
+          accessibilityRole="checkbox"
+          accessibilityState={{
+            checked: includeDiagnostics,
+            disabled: busy || !ready,
+          }}
           disabled={busy || !ready}
-          onPress={onChooseAttachment}
+          onPress={() => onToggleDiagnostics(!includeDiagnostics)}
           style={({pressed}) => [
-            styles.attachmentButton,
+            styles.diagnosticsRow,
             pressed && styles.pressed,
           ]}>
-          <Text style={styles.attachmentButtonText}>
-            أضف صورة إذا كانت توضح المشكلة
-          </Text>
+          <View
+            style={[
+              styles.diagnosticsCheck,
+              includeDiagnostics && styles.diagnosticsCheckSelected,
+            ]}>
+            {includeDiagnostics && (
+              <Text style={styles.diagnosticsCheckMark}>✓</Text>
+            )}
+          </View>
+          <View style={styles.diagnosticsCopy}>
+            <Text style={styles.diagnosticsTitle}>أرفق معلومات التشغيل</Text>
+            <Text style={styles.diagnosticsHint}>
+              تساعدنا في معرفة سبب المشكلة
+            </Text>
+          </View>
         </Pressable>
-      )}
+      </PremiumCard>
 
+      {!!error && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {error}
+        </Text>
+      )}
+      {draftSaveError && !error && (
+        <Text accessibilityRole="alert" style={styles.error}>
+          لم تُحفظ المسودة على الجهاز
+          {'\n'}حرر مساحة ثم حاول مرة أخرى
+        </Text>
+      )}
       <Pressable
-        accessibilityLabel="إرفاق معلومات التشغيل"
-        accessibilityRole="checkbox"
-        accessibilityState={{
-          checked: includeDiagnostics,
-          disabled: busy || !ready,
-        }}
-        disabled={busy || !ready}
-        onPress={() => onToggleDiagnostics(!includeDiagnostics)}
+        accessibilityLabel="إرسال الملاحظة"
+        accessibilityRole="button"
+        accessibilityState={{busy, disabled: !canSubmit}}
+        disabled={!canSubmit}
+        onPress={onSubmit}
         style={({pressed}) => [
-          styles.diagnosticsRow,
+          styles.submit,
+          !canSubmit && styles.submitDisabled,
           pressed && styles.pressed,
         ]}>
-        <View
-          style={[
-            styles.diagnosticsCheck,
-            includeDiagnostics && styles.diagnosticsCheckSelected,
-          ]}>
-          {includeDiagnostics && (
-            <Text style={styles.diagnosticsCheckMark}>✓</Text>
-          )}
-        </View>
-        <View style={styles.diagnosticsCopy}>
-          <Text style={styles.diagnosticsTitle}>أرفق معلومات التشغيل</Text>
-          <Text style={styles.diagnosticsHint}>
-            تساعدنا في معرفة سبب المشكلة
-          </Text>
-        </View>
+        <Text style={styles.submitText}>{busy ? 'جارٍ الإرسال' : 'إرسال'}</Text>
       </Pressable>
-    </PremiumCard>
-
-    {!!error && (
-      <Text accessibilityRole="alert" style={styles.error}>
-        {error}
-      </Text>
-    )}
-    {draftSaveError && !error && (
-      <Text accessibilityRole="alert" style={styles.error}>
-        لم تُحفظ المسودة على الجهاز
-        {'\n'}حرر مساحة ثم حاول مرة أخرى
-      </Text>
-    )}
-    <Pressable
-      accessibilityLabel="إرسال الملاحظة"
-      accessibilityRole="button"
-      accessibilityState={{busy, disabled: !canSubmit}}
-      disabled={!canSubmit}
-      onPress={onSubmit}
-      style={({pressed}) => [
-        styles.submit,
-        !canSubmit && styles.submitDisabled,
-        pressed && styles.pressed,
-      ]}>
-      <Text style={styles.submitText}>{busy ? 'جارٍ الإرسال' : 'إرسال'}</Text>
-    </Pressable>
-  </>
-);
+    </>
+  );

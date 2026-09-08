@@ -134,6 +134,8 @@ export const useProjectSubmission = ({
   const [note, setNote] = useState('');
   const [draftReady, setDraftReady] = useState(false);
   const [draftSaveError, setDraftSaveError] = useState(false);
+  const [draftRestoreError, setDraftRestoreError] = useState(false);
+  const [draftRestoreAttempt, setDraftRestoreAttempt] = useState(0);
   const [sending, setSending] = useState(false);
   const [editingRetry, setEditingRetry] = useState(false);
   const [syncNote, setSyncNote] = useState('');
@@ -274,16 +276,22 @@ export const useProjectSubmission = ({
 
   useEffect(() => {
     const generation = ++draftGenerationRef.current;
+    const ownerBoundary = draftLifecycle.boundary;
     draftLifecycle.ready = false;
-    draftLifecycle.boundary = null;
     draftLifecycle.snapshot = {files: [], note: ''};
     setDraftReady(false);
     setDraftSaveError(false);
+    setDraftRestoreError(false);
     setSelectedFiles([]);
     setNote('');
     void captureAccountSessionBoundary()
       .then(boundary => {
         if (generation !== draftGenerationRef.current) return null;
+        // An explicit retry can renew this account's session, never adopt a
+        // different account's draft. Keep the owner even if this retry fails.
+        if (ownerBoundary && ownerBoundary.scope !== boundary.scope)
+          throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
+        assertAccountSessionBoundary(boundary);
         draftLifecycle.boundary = boundary;
         // A status refresh can describe an older upload whose response was
         // lost. Only the matching accepted outcome below may clear this
@@ -291,25 +299,27 @@ export const useProjectSubmission = ({
         return loadProjectSubmissionDraft(project.id, boundary);
       })
       .then(draft => {
-        if (generation !== draftGenerationRef.current || !draft) return;
+        if (generation !== draftGenerationRef.current) return;
+        const boundary = draftLifecycle.boundary;
+        if (!boundary) return;
+        assertAccountSessionBoundary(boundary);
         // New requirements can make old work incompatible, never disposable.
         // Keep it visible until the learner explicitly edits or removes it.
-        setSelectedFiles(draft.files || []);
-        setNote(draft.note);
+        if (draft) {
+          setSelectedFiles(draft.files || []);
+          setNote(draft.note);
+        }
+        draftLifecycle.ready = true;
+        setDraftReady(true);
       })
       .catch(() => {
-        if (generation === draftGenerationRef.current) setDraftSaveError(true);
-      })
-      .finally(() => {
-        if (generation === draftGenerationRef.current) {
-          draftLifecycle.ready = true;
-          setDraftReady(true);
-        }
+        if (generation === draftGenerationRef.current)
+          setDraftRestoreError(true);
       });
     return () => {
       draftGenerationRef.current += 1;
     };
-  }, [draftLifecycle, project.id]);
+  }, [draftLifecycle, draftRestoreAttempt, project.id]);
 
   useEffect(() => {
     if (!['draft', 'needs_changes'].includes(status) || !draftReady) return;
@@ -608,6 +618,7 @@ export const useProjectSubmission = ({
     if (
       !submissionAllowed ||
       !fileSubmissionEnabled ||
+      !draftReady ||
       revision ||
       pickerFlightRef.current ||
       submissionFlightRef.current
@@ -678,25 +689,45 @@ export const useProjectSubmission = ({
     maximumFiles,
     maximumFileBytes,
     maximumFileSizeLabel,
+    draftReady,
     ownsProject,
     selectedFiles.length,
     revision,
     submissionAllowed,
   ]);
 
-  const removeSubmissionFile = useCallback((file: SelectedProjectFile) => {
-    if (submissionFlightRef.current) return;
-    setSelectedFiles(current =>
-      current.filter(candidate => candidate.uri !== file.uri),
-    );
-    void removeLearnerDraftFile(file);
-  }, []);
+  const removeSubmissionFile = useCallback(
+    (file: SelectedProjectFile) => {
+      if (!draftLifecycle.ready || submissionFlightRef.current) return;
+      setSelectedFiles(current =>
+        current.filter(candidate => candidate.uri !== file.uri),
+      );
+      void removeLearnerDraftFile(file);
+    },
+    [draftLifecycle],
+  );
 
-  const changeNote = useCallback((value: string) => {
-    if (!submissionFlightRef.current) {
-      setNote(truncateGraphemes(value, 2000));
-    }
-  }, []);
+  const changeNote = useCallback(
+    (value: string) => {
+      if (draftLifecycle.ready && !submissionFlightRef.current) {
+        setNote(truncateGraphemes(value, 2000));
+      }
+    },
+    [draftLifecycle],
+  );
+
+  const restoreGeneration = draftGenerationRef.current;
+  const retryDraftRestore = () => {
+    if (
+      !draftRestoreError ||
+      !active ||
+      draftLifecycle.ready ||
+      identityRef.current.id !== project.id ||
+      draftGenerationRef.current !== restoreGeneration
+    )
+      return;
+    setDraftRestoreAttempt(attempt => attempt + 1);
+  };
 
   const reviewUpdatedProject = useCallback(
     async (confirmation?: {
@@ -819,6 +850,8 @@ export const useProjectSubmission = ({
     changeNote,
     chooseProjectFile,
     draftSaveError,
+    draftRestoreError,
+    retryDraftRestore,
     editRetry: () => setEditingRetry(true),
     filePickerDisabled,
     fileTypesLabel,

@@ -1,7 +1,10 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {ImageSourcePropType} from 'react-native';
 
-import type {AccountSessionBoundary} from '../../../constants/helpers';
+import {
+  assertAccountSessionBoundary,
+  type AccountSessionBoundary,
+} from '../../../constants/helpers';
 import type {EligibleProject} from '../../../services/roknApi';
 import {
   clearPortfolioEditorDraft,
@@ -43,6 +46,9 @@ export const usePortfolioDraftEditor = ({
     PortfolioDraftAsset[]
   >([]);
   const [draftReady, setDraftReady] = useState(false);
+  const [draftLoadError, setDraftLoadError] = useState(false);
+  const [draftLoadAttempt, setDraftLoadAttempt] = useState(0);
+  const draftReadyRef = useRef(false);
   const [clientRequestId, setClientRequestId] = useState(secureRandomUuid);
   const [draftSaveError, setDraftSaveError] = useState(false);
   const persistenceRevisionRef = useRef(0);
@@ -68,47 +74,63 @@ export const usePortfolioDraftEditor = ({
 
   useEffect(() => {
     let active = true;
+    draftReadyRef.current = false;
+    setDraftReady(false);
+    setDraftLoadError(false);
+    persistenceRevisionRef.current += 1;
     void (async () => {
       const boundary = await captureBoundary();
       if (!active) return;
       const draft = await readPortfolioEditorDraft(boundary);
-      if (!active || !draft) return;
-      setDraftTitle(draft.title);
-      setDraftSummary(draft.summary);
-      setDraftCoverAsset(draft.cover);
-      const restoredMedia = draft.media?.length
-        ? draft.media
-        : draft.cover
-        ? [draft.cover]
-        : [];
-      setDraftMediaAssets(restoredMedia);
-      const restoredCover = restoredMedia.find(
-        file =>
-          !String(file.type || '')
-            .toLowerCase()
-            .startsWith('video/'),
-      );
-      setDraftCover(restoredCover ? {uri: restoredCover.uri} : null);
-      setSelectedSourceProject(draft.selectedSource || null);
-      setClientRequestId(draft.clientRequestId);
-    })()
-      .catch(() => {
-        if (active) setDraftSaveError(true);
-      })
-      .finally(() => {
-        if (active) setDraftReady(true);
-      });
+      assertAccountSessionBoundary(boundary);
+      if (!active || !mountedRef.current) return;
+      if (draft) {
+        setDraftTitle(draft.title);
+        setDraftSummary(draft.summary);
+        setDraftCoverAsset(draft.cover);
+        const restoredMedia = draft.media?.length
+          ? draft.media
+          : draft.cover
+          ? [draft.cover]
+          : [];
+        setDraftMediaAssets(restoredMedia);
+        const restoredCover = restoredMedia.find(
+          file =>
+            !String(file.type || '')
+              .toLowerCase()
+              .startsWith('video/'),
+        );
+        setDraftCover(restoredCover ? {uri: restoredCover.uri} : null);
+        setSelectedSourceProject(draft.selectedSource || null);
+        setClientRequestId(draft.clientRequestId);
+      }
+      // Only a successful read (including confirmed absence) permits writes.
+      // A failed read must never turn this initially empty editor into a draft.
+      draftReadyRef.current = true;
+      setDraftReady(true);
+    })().catch(() => {
+      if (active && mountedRef.current) setDraftLoadError(true);
+    });
     return () => {
       active = false;
+      draftReadyRef.current = false;
+      persistenceRevisionRef.current += 1;
     };
-  }, [captureBoundary]);
+  }, [captureBoundary, draftLoadAttempt, mountedRef]);
+
+  const retryDraftLoad = useCallback(() => {
+    if (!draftLoadError) return;
+    setDraftLoadError(false);
+    setDraftLoadAttempt(attempt => attempt + 1);
+  }, [draftLoadError]);
 
   useEffect(() => {
-    if (!draftReady) return;
+    if (!draftReady || !draftReadyRef.current) return;
     const persistenceRevision = persistenceRevisionRef.current;
     const timer = setTimeout(() => {
       const flight = captureBoundary()
         .then(boundary =>
+          draftReadyRef.current &&
           persistenceRevision === persistenceRevisionRef.current
             ? writePortfolioEditorDraft(
                 {
@@ -156,10 +178,11 @@ export const usePortfolioDraftEditor = ({
   ]);
 
   useEffect(() => {
-    if (appActive || !draftReady) return;
+    if (appActive || !draftReady || !draftReadyRef.current) return;
     const persistenceRevision = persistenceRevisionRef.current;
     const flight = captureBoundary()
       .then(boundary =>
+        draftReadyRef.current &&
         persistenceRevision === persistenceRevisionRef.current
           ? writePortfolioEditorDraft(
               {...snapshotRef.current, updatedAt: Date.now()},
@@ -179,6 +202,7 @@ export const usePortfolioDraftEditor = ({
   }, [appActive, captureBoundary, draftReady, mountedRef]);
 
   const changeDraft = useCallback((change: () => void) => {
+    if (!draftReadyRef.current) return;
     change();
     setClientRequestId(secureRandomUuid());
   }, []);
@@ -220,10 +244,13 @@ export const usePortfolioDraftEditor = ({
     draftCover,
     draftCoverAsset,
     draftMediaAssets,
+    draftLoadError,
+    draftReady,
     draftSaveError,
     draftSummary,
     draftTitle,
     selectedSourceProject,
+    retryDraftLoad,
     setDraftCover,
     setDraftCoverAsset,
     setDraftMediaAssets,

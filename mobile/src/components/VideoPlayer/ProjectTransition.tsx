@@ -167,6 +167,8 @@ const ProjectTransition = ({
         canReply={controller.canReplyToFeedback}
         draft={controller.feedbackDraft}
         error={controller.feedbackError}
+        draftRestoreError={controller.feedbackDraftRestoreError}
+        onRetryDraftRestore={controller.retryFeedbackDraftRestore}
         feedbackLevel={controller.feedbackLevel}
         normalizedDraft={controller.normalizedFeedbackDraft}
         pending={controller.feedbackPending}
@@ -395,12 +397,31 @@ const ProjectTransition = ({
               </View>
             </>
           ) : controller.journeyState === 'details' ? (
-            <StatusHeading
-              busy
-              description="نجهّز بيانات التسليم"
-              title="نحمّل المشروع"
-              tone="progress"
-            />
+            <>
+              <StatusHeading
+                busy={!controller.submissionDraftRestoreError}
+                description={
+                  controller.submissionDraftRestoreError
+                    ? 'حاول مرة أخرى لاستعادة النص والملفات'
+                    : 'نجهّز بيانات التسليم'
+                }
+                title={
+                  controller.submissionDraftRestoreError
+                    ? 'تعذّر استعادة المسودة'
+                    : 'نحمّل المشروع'
+                }
+                tone="progress"
+              />
+              {controller.submissionDraftRestoreError && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="إعادة استعادة مسودة المشروع"
+                  style={styles.primaryButton}
+                  onPress={controller.retrySubmissionDraftRestore}>
+                  <Text style={styles.primaryButtonText}>إعادة المحاولة</Text>
+                </Pressable>
+              )}
+            </>
           ) : (
             <ProjectSubmissionEditor
               draftSaveError={controller.submissionDraftSaveError}

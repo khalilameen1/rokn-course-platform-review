@@ -28,6 +28,7 @@ import {CourseChatGate} from './courseChat/CourseChatGate';
 import {CourseChatConversation} from './courseChat/CourseChatConversation';
 import {courseAssistantEntryMode} from './courseEntitlements';
 import {courseChatSheetLayout} from './courseChat/layout';
+import {StatusView} from '../ui/PremiumUI';
 
 interface CourseChatOverlayProps {
   visible: boolean;
@@ -93,6 +94,9 @@ const CourseChatOverlay = ({
     chatAccessUnavailable,
     confirmUpgrade,
     input,
+    hydrated,
+    hydrationError,
+    retryHydration,
     loadUpgradeQuote,
     messages,
     planLimitReached,
@@ -141,7 +145,7 @@ const CourseChatOverlay = ({
   const {pickAttachments, pickerIsActive} = useCourseChatAttachments({
     attachments,
     courseId: String(course.id),
-    enabled: Boolean(course.chatAttachmentsEnabled),
+    enabled: hydrated && Boolean(course.chatAttachmentsEnabled),
     isSendInFlight,
     limit: attachmentLimit,
     sending,
@@ -289,6 +293,17 @@ const CourseChatOverlay = ({
                   planLimitReached={planLimitReached}
                   quote={upgradeQuote}
                   scholarshipAccess={scholarshipAccess}
+                />
+              ) : !hydrated ? (
+                <StatusView
+                  state={hydrationError ? 'error' : 'loading'}
+                  title={
+                    hydrationError
+                      ? 'تعذّر استعادة المحادثة'
+                      : 'جارٍ استعادة المحادثة'
+                  }
+                  actionLabel={hydrationError ? 'إعادة المحاولة' : undefined}
+                  onAction={hydrationError ? retryHydration : undefined}
                 />
               ) : (
                 <CourseChatConversation

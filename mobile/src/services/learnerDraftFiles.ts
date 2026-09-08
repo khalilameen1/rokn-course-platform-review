@@ -443,8 +443,22 @@ export const learnerDraftFileIsReadable = async (
   try {
     const stat = await RNFS.stat(filePath(file.uri));
     return Number(stat.size) > 0;
-  } catch {
-    return false;
+  } catch (error) {
+    const nativeError = error as {code?: unknown; message?: unknown} | null;
+    // RNFS stat uses platform-specific missing-file errors. An unavailable
+    // filesystem is not proof that a learner's saved attachment disappeared.
+    if (
+      [
+        'ENOENT',
+        'ENOTDIR',
+        'ENSCOCOAERRORDOMAIN260',
+        'ENSPOSIXERRORDOMAIN2',
+      ].includes(String(nativeError?.code || '')) ||
+      nativeError?.message === 'File does not exist'
+    ) {
+      return false;
+    }
+    throw error;
   }
 };
 

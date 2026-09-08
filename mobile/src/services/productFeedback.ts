@@ -854,29 +854,29 @@ export const loadProductFeedbackReplyDraft = async (
     const value = String((await AsyncStorage.getItem(key)) || '');
     assertAccountSessionBoundary(boundary);
     if (!value) return null;
+    let parsed: Partial<ProductFeedbackReplyDraft> | null = null;
     try {
-      const parsed = JSON.parse(value) as Partial<ProductFeedbackReplyDraft>;
-      if (
-        typeof parsed.message === 'string' &&
-        isUuid(parsed.clientRequestId)
-      ) {
-        let attachment = parsed.attachment;
-        let clientRequestId = String(parsed.clientRequestId);
-        if (attachment && !(await learnerDraftFileIsReadable(attachment))) {
-          await removeLearnerDraftFile(attachment);
-          attachment = undefined;
-          // The body no longer matches the original request fingerprint. A
-          // new logical attempt is safer than retrying one key with a changed
-          // multipart body and becoming permanently stuck on HTTP 409.
-          clientRequestId = '';
-        }
-        return {
-          attachment,
-          clientRequestId,
-          message: parsed.message.slice(0, 2000),
-        } satisfies ProductFeedbackReplyDraft;
-      }
+      parsed = JSON.parse(value) as Partial<ProductFeedbackReplyDraft>;
     } catch {}
+    if (typeof parsed?.message === 'string' && isUuid(parsed.clientRequestId)) {
+      let attachment = parsed.attachment;
+      let clientRequestId = String(parsed.clientRequestId);
+      if (attachment && !(await learnerDraftFileIsReadable(attachment))) {
+        assertAccountSessionBoundary(boundary);
+        await removeLearnerDraftFile(attachment);
+        attachment = undefined;
+        // The body no longer matches the original request fingerprint. A
+        // new logical attempt is safer than retrying one key with a changed
+        // multipart body and becoming permanently stuck on HTTP 409.
+        clientRequestId = '';
+      }
+      assertAccountSessionBoundary(boundary);
+      return {
+        attachment,
+        clientRequestId,
+        message: parsed.message.slice(0, 2000),
+      } satisfies ProductFeedbackReplyDraft;
+    }
     await AsyncStorage.removeItem(key);
     assertAccountSessionBoundary(boundary);
     return null;
@@ -925,39 +925,38 @@ export const loadProductFeedbackDraft = async (
     if (!raw) return null;
     let parsed: Partial<ProductFeedbackDraft> | null = null;
     try {
-      const draft = JSON.parse(raw) as Partial<ProductFeedbackDraft>;
-      parsed = draft;
-      const valid =
-        isProductFeedbackCategory(draft.category) &&
-        typeof draft.message === 'string' &&
-        draft.message.length <= 1600 &&
-        typeof draft.includeDiagnostics === 'boolean' &&
-        (draft.sourceScreen === undefined ||
-          (typeof draft.sourceScreen === 'string' &&
-            draft.sourceScreen.length <= 64)) &&
-        isUuid(draft.clientRequestId) &&
-        Number.isFinite(draft.updatedAt) &&
-        Number(draft.updatedAt) <= Date.now() + 5 * 60 * 1000 &&
-        Date.now() - Number(draft.updatedAt) <= DRAFT_TTL_MS;
-      if (valid) {
-        const value = draft as ProductFeedbackDraft;
-        if (
-          !value.attachment ||
-          (await learnerDraftFileIsReadable(value.attachment))
-        ) {
-          return value;
-        }
-        await removeLearnerDraftFile(value.attachment);
-        assertAccountSessionBoundary(boundary);
-        const repaired = {...value, attachment: undefined};
-        await AsyncStorage.setItem(key, JSON.stringify(repaired));
-        assertAccountSessionBoundary(boundary);
-        return repaired;
-      }
+      parsed = JSON.parse(raw) as Partial<ProductFeedbackDraft>;
     } catch {}
-    await removeLearnerDraftFile(parsed?.attachment);
-    assertAccountSessionBoundary(boundary);
+    const valid =
+      parsed &&
+      isProductFeedbackCategory(parsed.category) &&
+      typeof parsed.message === 'string' &&
+      parsed.message.length <= 1600 &&
+      typeof parsed.includeDiagnostics === 'boolean' &&
+      (parsed.sourceScreen === undefined ||
+        (typeof parsed.sourceScreen === 'string' &&
+          parsed.sourceScreen.length <= 64)) &&
+      isUuid(parsed.clientRequestId) &&
+      Number.isFinite(parsed.updatedAt) &&
+      Number(parsed.updatedAt) <= Date.now() + 5 * 60 * 1000 &&
+      Date.now() - Number(parsed.updatedAt) <= DRAFT_TTL_MS;
+    if (valid) {
+      const value = parsed as ProductFeedbackDraft;
+      const readable =
+        !value.attachment ||
+        (await learnerDraftFileIsReadable(value.attachment));
+      assertAccountSessionBoundary(boundary);
+      if (readable) return value;
+      const repaired = {...value, attachment: undefined};
+      await AsyncStorage.setItem(key, JSON.stringify(repaired));
+      assertAccountSessionBoundary(boundary);
+      await removeLearnerDraftFile(value.attachment);
+      assertAccountSessionBoundary(boundary);
+      return repaired;
+    }
     await AsyncStorage.removeItem(key);
+    assertAccountSessionBoundary(boundary);
+    await removeLearnerDraftFile(parsed?.attachment);
     assertAccountSessionBoundary(boundary);
     return null;
   });

@@ -3,6 +3,7 @@ import {
   accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
+  type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {publicRequest} from '../../constants/api';
 import {getLearningCourses, type CourseProgress} from './courses';
@@ -14,6 +15,7 @@ import {
   resourceList,
 } from './common';
 import {isServerTimestampFresh, serverNowMs} from '../../utils/serverClock';
+import {settleWithin} from '../../utils/settleWithin';
 
 type EarnedBadgeDto = {
   id?: unknown;
@@ -188,6 +190,56 @@ const getLearningPaths = async (): Promise<LearningPathProgress[]> => {
 
 const LEARNING_DASHBOARD_CACHE = '@rokn/learning-dashboard/v3';
 const LEARNING_DASHBOARD_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+const dashboardCacheStates = new Map<
+  string,
+  {request: number; write: Promise<void>}
+>();
+const dashboardCacheState = (scope: string) => {
+  let state = dashboardCacheStates.get(scope);
+  if (!state) {
+    state = {request: 0, write: Promise.resolve()};
+    dashboardCacheStates.set(scope, state);
+  }
+  return state;
+};
+
+const cacheLearningDashboard = (
+  dashboard: LearningDashboard,
+  boundary: AccountSessionBoundary,
+  request: number,
+) => {
+  const state = dashboardCacheState(boundary.scope);
+  // The caller may stop waiting, but native writes retain their actual order.
+  state.write = state.write
+    .then(async () => {
+      assertAccountSessionBoundary(boundary);
+      if (state.request !== request) return;
+      const key = await accountScopedStorageKey(
+        LEARNING_DASHBOARD_CACHE,
+        boundary,
+      );
+      assertAccountSessionBoundary(boundary);
+      if (state.request !== request) return;
+      await AsyncStorage.setItem(
+        key,
+        JSON.stringify({
+          version: 3,
+          savedAt: serverNowMs(),
+          dashboard: {...dashboard, courses: dashboard.courses.slice(0, 100)},
+        } satisfies LearningDashboardCache),
+      );
+      try {
+        assertAccountSessionBoundary(boundary);
+      } catch (error) {
+        // Logout may have removed this key while the native write was pending.
+        // Finish its cleanup before any new same-scope owner can write a cache.
+        await AsyncStorage.removeItem(key);
+        throw error;
+      }
+    })
+    .catch(() => undefined);
+  return state.write;
+};
 
 type LearningDashboardCache = {
   version: 3;
@@ -276,9 +328,12 @@ const normalizeCachedLearningDashboard = (
   };
 };
 
-export const getCachedLearningDashboard = async () => {
-  const accountBoundary = await captureAccountSessionBoundary();
+const readLearningDashboardCache = async (
+  accountBoundary: AccountSessionBoundary,
+) => {
   try {
+    await dashboardCacheState(accountBoundary.scope).write;
+    assertAccountSessionBoundary(accountBoundary);
     const raw = await AsyncStorage.getItem(
       await accountScopedStorageKey(LEARNING_DASHBOARD_CACHE, accountBoundary),
     );
@@ -302,12 +357,16 @@ export const getCachedLearningDashboard = async () => {
   }
 };
 
+export const getCachedLearningDashboard = async () => {
+  const boundary = await captureAccountSessionBoundary();
+  const cached = await settleWithin(readLearningDashboardCache(boundary), null);
+  assertAccountSessionBoundary(boundary);
+  return cached;
+};
+
 export const getLearningDashboard = async (): Promise<LearningDashboard> => {
   const accountBoundary = await captureAccountSessionBoundary();
-  const cacheKeyRequest = accountScopedStorageKey(
-    LEARNING_DASHBOARD_CACHE,
-    accountBoundary,
-  );
+  const cacheRequest = ++dashboardCacheState(accountBoundary.scope).request;
   const cachedDashboardRequest = getCachedLearningDashboard();
   const dashboardRequest = Promise.allSettled([
     publicRequest.get('user/profile', {
@@ -317,12 +376,10 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
     getLearningCourses(),
     getLearningPaths(),
   ]);
-  const [dashboardCacheKey, cachedDashboard, dashboardResults] =
-    await Promise.all([
-      cacheKeyRequest,
-      cachedDashboardRequest,
-      dashboardRequest,
-    ]);
+  const [cachedDashboard, dashboardResults] = await Promise.all([
+    cachedDashboardRequest,
+    dashboardRequest,
+  ]);
   const [profileResult, streakResult, learningResult, pathsResult] =
     dashboardResults;
   assertAccountSessionBoundary(accountBoundary);
@@ -394,14 +451,10 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
   // The backend already caps active courses at 100. Keeping the complete
   // metadata set prevents older active courses from disappearing offline.
   if (!partialFailure) {
-    await AsyncStorage.setItem(
-      dashboardCacheKey,
-      JSON.stringify({
-        version: 3,
-        savedAt: serverNowMs(),
-        dashboard: {...dashboard, courses: dashboard.courses.slice(0, 100)},
-      } satisfies LearningDashboardCache),
-    ).catch(() => undefined);
+    await settleWithin(
+      cacheLearningDashboard(dashboard, accountBoundary, cacheRequest),
+      undefined,
+    );
   }
   assertAccountSessionBoundary(accountBoundary);
   return dashboard;

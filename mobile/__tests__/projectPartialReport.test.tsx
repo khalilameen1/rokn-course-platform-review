@@ -200,6 +200,40 @@ const renderTransition = (
 };
 
 describe('project lifecycle presentation', () => {
+  it('offers local draft recovery without exposing submission or an endless spinner', () => {
+    const retrySubmissionDraftRestore = jest.fn();
+    const submit = jest.fn();
+    const retryReview = jest.fn();
+    const renderer = renderTransition(
+      controllerFor({
+        journeyState: 'details',
+        submissionDraftRestoreError: true,
+        retrySubmissionDraftRestore,
+        retryReview,
+        submit,
+      }),
+    );
+    try {
+      expect(renderer.root.findAllByType(ActivityIndicator)).toHaveLength(0);
+      expect(renderer.root.findAllByType(ProjectSubmissionEditor)).toHaveLength(
+        0,
+      );
+      expect(
+        renderer.root.findByProps({accessibilityLabel: 'عرض تفاصيل المشروع'}),
+      ).toBeTruthy();
+      act(() =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'إعادة استعادة مسودة المشروع'})
+          .props.onPress(),
+      );
+      expect(retrySubmissionDraftRestore).toHaveBeenCalledTimes(1);
+      expect(submit).not.toHaveBeenCalled();
+      expect(retryReview).not.toHaveBeenCalled();
+    } finally {
+      act(() => renderer.unmount());
+    }
+  });
+
   it.each([true, false])(
     'shows saved but unavailable review without a spinner or failed-project instruction (retry %s)',
     canRetry => {
@@ -282,7 +316,11 @@ describe('project lifecycle presentation', () => {
   it('keeps the accepted-course action available before optional details', () => {
     const onContinue = jest.fn();
     const renderer = renderTransition(
-      controllerFor({journeyState: 'passed', canContinue: true}),
+      controllerFor({
+        journeyState: 'passed',
+        canContinue: true,
+        submissionDraftRestoreError: true,
+      }),
       {onContinue},
     );
     try {

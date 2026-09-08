@@ -39,6 +39,8 @@ export const useFeedbackCases = (
     new Set(),
   );
   const [replyError, setReplyError] = useState('');
+  const [replyRestoreError, setReplyRestoreError] = useState(false);
+  const [replyRestoreRevision, setReplyRestoreRevision] = useState(0);
   const [previewArtifact, setPreviewArtifact] =
     useState<ProductFeedbackArtifact>();
   const [previewLoadFailed, setPreviewLoadFailed] = useState(false);
@@ -159,6 +161,7 @@ export const useFeedbackCases = (
     replyDraftOwnerScopeRef.current = '';
     setReplyStateOwnerId('');
     setReplyError('');
+    setReplyRestoreError(false);
     setReplyMessage('');
     setReplyRequestId(secureRandomUuid());
     setReplyAttachment(undefined);
@@ -207,7 +210,11 @@ export const useFeedbackCases = (
             {
               text: 'استعادة الآخر',
               onPress: () => {
+                if (!active || generation !== replyGenerationRef.current)
+                  return;
                 const restoreOwnerScope = boundary.scope;
+                replyDraftEpochRef.current += 1;
+                setReplyStateOwnerId('');
                 void (async () => {
                   try {
                     const restoreBoundary =
@@ -215,29 +222,41 @@ export const useFeedbackCases = (
                     if (restoreBoundary.scope !== restoreOwnerScope) {
                       throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
                     }
+                    if (!active || generation !== replyGenerationRef.current)
+                      return;
                     const restored = await restoreProductFeedbackDraftConflict(
                       alternative.id,
                       restoreBoundary,
                     );
-                    if (!restored || !mountedRef.current) return;
+                    if (
+                      !mountedRef.current ||
+                      !active ||
+                      generation !== replyGenerationRef.current
+                    )
+                      return;
+                    if (!restored) throw new Error('DRAFT_RESTORE_UNAVAILABLE');
                     const value = await loadProductFeedbackReplyDraft(
                       selectedCaseId,
                       restoreBoundary,
                     );
                     if (
-                      !value ||
                       !mountedRef.current ||
                       generation !== replyGenerationRef.current ||
                       dataOwnerRef.current !== identityKey
                     ) {
                       return;
                     }
+                    if (!value) throw new Error('DRAFT_RESTORE_UNAVAILABLE');
                     setReplyMessage(value.message);
                     setReplyAttachment(value.attachment);
                     setReplyRequestId(
                       value.clientRequestId || secureRandomUuid(),
                     );
-                  } catch {}
+                    setReplyStateOwnerId(selectedCaseId);
+                  } catch {
+                    if (active && generation === replyGenerationRef.current)
+                      setReplyRestoreError(true);
+                  }
                 })();
               },
             },
@@ -246,14 +265,14 @@ export const useFeedbackCases = (
       })
       .catch(() => {
         if (active && generation === replyGenerationRef.current) {
-          setReplyStateOwnerId(selectedCaseId);
+          setReplyRestoreError(true);
         }
       });
 
     return () => {
       active = false;
     };
-  }, [identityKey, selectedCaseId]);
+  }, [identityKey, selectedCaseId, replyRestoreRevision]);
 
   useEffect(() => {
     if (!selectedCaseId || replyStateOwnerId !== selectedCaseId) return;
@@ -269,6 +288,11 @@ export const useFeedbackCases = (
       }
       void captureAccountSessionBoundary()
         .then(boundary => {
+          if (
+            draftEpoch !== replyDraftEpochRef.current ||
+            dataOwnerRef.current !== identityKey
+          )
+            return;
           if (boundary.scope !== ownerScope) {
             throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
           }
@@ -311,7 +335,12 @@ export const useFeedbackCases = (
   }, []);
 
   const chooseReplyScreenshot = async () => {
-    if (pickerFlightRef.current || replyBusy) return;
+    if (
+      pickerFlightRef.current ||
+      replyBusy ||
+      replyStateOwnerId !== selectedCaseId
+    )
+      return;
     const ownerCaseId = selectedCaseId;
     const ownerGeneration = replyGenerationRef.current;
     pickerFlightRef.current = true;
@@ -336,7 +365,7 @@ export const useFeedbackCases = (
   };
 
   const removeReplyScreenshot = () => {
-    if (replyBusy) return;
+    if (replyBusy || replyStateOwnerId !== selectedCaseId) return;
     const previous = replyAttachment;
     setReplyAttachment(undefined);
     setReplyRequestId(secureRandomUuid());
@@ -344,7 +373,7 @@ export const useFeedbackCases = (
   };
 
   const setReply = (value: string) => {
-    if (replyBusy) return;
+    if (replyBusy || replyStateOwnerId !== selectedCaseId) return;
     setReplyMessage(value);
     setReplyRequestId(secureRandomUuid());
     setReplyError('');
@@ -530,6 +559,7 @@ export const useFeedbackCases = (
     }
   };
 
+  const restoreOwner = replyGenerationRef.current;
   return {
     casesBusy,
     casesError,
@@ -551,6 +581,18 @@ export const useFeedbackCases = (
     replyAttachment,
     replyBusy,
     replyError,
+    replyReady: Boolean(selectedCaseId) && replyStateOwnerId === selectedCaseId,
+    replyRestoreError,
+    retryReplyRestore: () => {
+      if (
+        replyRestoreError &&
+        !replyBusy &&
+        mountedRef.current &&
+        dataOwnerRef.current === identityKey &&
+        restoreOwner === replyGenerationRef.current
+      )
+        setReplyRestoreRevision(value => value + 1);
+    },
     replyMessage,
     selectCase: (caseId: string) => {
       if (!replyBusy && !casesBusy) setSelectedCaseId(caseId);

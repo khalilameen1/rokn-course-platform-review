@@ -53,6 +53,8 @@ export const useCourseChatConversation = ({
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachmentDraft[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [hydrationError, setHydrationError] = useState('');
+  const [hydrationAttempt, setHydrationAttempt] = useState(0);
   const [recoveryRevision, setRecoveryRevision] = useState(0);
   const messagesRef = useRef(messages);
   const attachmentsRef = useRef(attachments);
@@ -99,6 +101,7 @@ export const useCourseChatConversation = ({
     hydratedConversationRef.current = null;
     activeAccountScopeRef.current = null;
     setHydrated(false);
+    setHydrationError('');
     commitMessages([welcomeMessage(courseId)]);
     setInput('');
     const abandonedDrafts = attachmentsRef.current.filter(
@@ -158,7 +161,14 @@ export const useCourseChatConversation = ({
         // Local history is already usable. Reopening the chat retries server
         // reconciliation without discarding the account-scoped outbox.
       }
-    })();
+    })().catch(() => {
+      if (
+        generation === conversationGenerationRef.current &&
+        activeConversationRef.current === conversationScope
+      ) {
+        setHydrationError('تعذّر استعادة المحادثة المحفوظة\nحاول مرة أخرى');
+      }
+    });
 
     return () => {
       conversationGenerationRef.current += 1;
@@ -173,6 +183,7 @@ export const useCourseChatConversation = ({
     inFlightAttachmentIds,
     lessonId,
     remoteEnabled,
+    hydrationAttempt,
   ]);
 
   useEffect(() => {
@@ -211,6 +222,7 @@ export const useCourseChatConversation = ({
     });
   }, [commitMessages, messages]);
 
+  const hydrationOwner = conversationGenerationRef.current;
   return {
     activeAccountScopeRef,
     activeConversationRef,
@@ -220,6 +232,16 @@ export const useCourseChatConversation = ({
     commitMessages,
     conversationGenerationRef,
     hydrated,
+    hydrationError,
+    retryHydration: () => {
+      if (
+        hydrationError &&
+        !hydrated &&
+        hydrationOwner === conversationGenerationRef.current &&
+        activeConversationRef.current === conversationScope
+      )
+        setHydrationAttempt(value => value + 1);
+    },
     hydratedConversationRef,
     input,
     messages,

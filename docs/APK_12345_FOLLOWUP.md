@@ -1239,3 +1239,58 @@ No APK, push or deployment. This remains a local source checkpoint, not proof
 that every application operation is complete or defect-free. Deploy the paired
 backend contract before relying on the new client's definitive missing-receipt
 handoff; an older unmarked backend is deliberately treated as uncertain.
+
+## September 9 — preserve unread drafts and unblock paid-course loading
+
+This checkpoint preserves the existing features, submission receipts, request
+identities, account isolation and accepted project results. No feature, screen,
+course, project or stored learner record was deliberately removed. Moderator
+attachment editing/replacement/publication was also inspected; no new defect
+was established in that lane, so it was not rewritten.
+
+- Native file inspection now distinguishes a confirmed missing file from an
+  operational read failure. Missing-file codes were checked against the local
+  Android/iOS RNFS sources. Unknown native errors propagate instead of marking
+  an existing attachment absent. Real loader/registry tests cover all seven
+  consumers: project submissions, project replies, portfolio drafts, portfolio
+  media outbox, course chat, support drafts and support replies.
+- Loader parsing no longer catches storage/repair/ownership failures as corrupt
+  data and deletes valid work. Confirmed invalid or expired records still follow
+  their existing cleanup policy. Missing-file repair commits the surviving
+  record before releasing obsolete file ownership; failed repair writes retain
+  the previous durable draft. The native helper changes alone were insufficient:
+  all affected editable callers also had to distinguish failed restoration from
+  a successful read that found no draft.
+- Project, report-reply, portfolio, course-chat and support editors now expose
+  local restore failure and an explicit retry. An unread empty editor cannot
+  autosave over the original work, open a picker or submit as though hydration
+  succeeded. Existing accepted project progress/report remains independent of
+  local draft readiness. Presentation tests invoke the actual restore buttons
+  without submission, review or paid-message calls.
+- Retry accepts a fresh session epoch for the same owner, but ignores stale
+  account/project/conversation callbacks and responses. The project hooks retain
+  the failed attempt's owner and capture one fresh boundary for the retry itself.
+  Support conflict restoration also invalidates an earlier autosave still
+  awaiting the native account hash; checks after that await prevent an old body
+  replacing the newly restored alternate. Both overwrite cases were reproduced
+  using the actual conflict/draft services before the fix. Restore does not
+  create a new logical request or replay an accepted submission automatically.
+- MyCorner previously waited indefinitely on a local dashboard cache read or
+  write even after the real paid-course HTTP response arrived. Existing bounded
+  storage waits now allow fresh courses to appear. Native writes remain ordered
+  after the caller stops waiting; request ordering and same-scope logout cleanup
+  prevent a late old write replacing current data. Failed required HTTP reads
+  still report failure rather than turning an unavailable cache into ownership.
+
+The final root gate passed 32 explicitly named affected mobile suites / 282
+tests together, full TypeScript, scoped ESLint and diff checks. The first root
+invocation named one existing architecture test with the wrong .tsx extension;
+that invocation error was corrected to its actual .ts path before the complete
+green gate. The 53-case real-loader suite, 13-case project hydration suite,
+11-case chat/support hydration suite, six portfolio hydration cases and seven
+MyCorner storage cases are included in that total, not additional counts.
+Independent agent reviews checked the source boundaries and surrounding valid
+paths. These are local controlled native/storage/HTTP tests, not physical-device
+or live provider acceptance and not proof that every application defect is gone.
+
+No backend source change, APK, push or deployment in this checkpoint.

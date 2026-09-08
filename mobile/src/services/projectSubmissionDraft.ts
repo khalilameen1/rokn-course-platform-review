@@ -104,64 +104,72 @@ export const loadProjectSubmissionDraft = async (
   return withDraftLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const raw = await AsyncStorage.getItem(key);
+    assertAccountSessionBoundary(boundary);
     if (!raw) {
       await retainLearnerDraftFiles(
         submissionReferenceOwner(projectId),
         [],
         boundary.scope,
       );
+      assertAccountSessionBoundary(boundary);
       return null;
     }
-    let parsed: Partial<ProjectSubmissionDraft> | null = null;
+    let draft: Partial<ProjectSubmissionDraft> | null = null;
     try {
-      const draft = JSON.parse(raw) as Partial<ProjectSubmissionDraft>;
-      parsed = draft;
-      if (
-        typeof draft.note !== 'string' ||
-        !Number.isFinite(draft.updatedAt) ||
-        Date.now() - Number(draft.updatedAt) > TTL_MS
-      ) {
-        throw new Error('INVALID_PROJECT_DRAFT');
-      }
-      const files = Array.isArray(draft.files) ? draft.files : [];
-      const readable = (
-        await Promise.all(
-          files.map(async file =>
-            (await learnerDraftFileIsReadable(file)) ? file : null,
-          ),
-        )
-      ).filter((file): file is SelectedProjectFile => Boolean(file));
-      if (readable.length !== files.length) {
-        await Promise.all(
-          files
-            .filter(file => !readable.includes(file))
-            .map(removeLearnerDraftFile),
-        );
-        const repaired = {
-          files: readable,
-          note: draft.note,
-          updatedAt: Number(draft.updatedAt),
-        };
-        await AsyncStorage.setItem(key, JSON.stringify(repaired));
-        await retainLearnerDraftFiles(
-          submissionReferenceOwner(projectId),
-          readable,
-          boundary.scope,
-        );
-        assertAccountSessionBoundary(boundary);
-        return repaired;
-      }
-      return {...draft, files} as ProjectSubmissionDraft;
-    } catch {
+      draft = JSON.parse(raw) as Partial<ProjectSubmissionDraft>;
+    } catch {}
+    const files = Array.isArray(draft?.files) ? draft.files : [];
+    if (
+      !draft ||
+      typeof draft.note !== 'string' ||
+      !Number.isFinite(draft.updatedAt) ||
+      Date.now() - Number(draft.updatedAt) > TTL_MS
+    ) {
+      // Only confirmed invalid/expired data is disposable. Storage, native
+      // file inspection and ownership failures below must remain retryable.
+      await AsyncStorage.removeItem(key);
+      assertAccountSessionBoundary(boundary);
       await retainLearnerDraftFiles(
         submissionReferenceOwner(projectId),
         [],
         boundary.scope,
       );
-      await Promise.all((parsed?.files || []).map(removeLearnerDraftFile));
-      await AsyncStorage.removeItem(key);
+      assertAccountSessionBoundary(boundary);
+      await Promise.all(files.map(removeLearnerDraftFile));
+      assertAccountSessionBoundary(boundary);
       return null;
     }
+    const readable = (
+      await Promise.all(
+        files.map(async file =>
+          (await learnerDraftFileIsReadable(file)) ? file : null,
+        ),
+      )
+    ).filter((file): file is SelectedProjectFile => Boolean(file));
+    assertAccountSessionBoundary(boundary);
+    if (readable.length !== files.length) {
+      const repaired = {
+        files: readable,
+        note: draft.note,
+        updatedAt: Number(draft.updatedAt),
+      };
+      await AsyncStorage.setItem(key, JSON.stringify(repaired));
+      assertAccountSessionBoundary(boundary);
+      await retainLearnerDraftFiles(
+        submissionReferenceOwner(projectId),
+        readable,
+        boundary.scope,
+      );
+      assertAccountSessionBoundary(boundary);
+      await Promise.all(
+        files
+          .filter(file => !readable.includes(file))
+          .map(removeLearnerDraftFile),
+      );
+      assertAccountSessionBoundary(boundary);
+      return repaired;
+    }
+    return {...draft, files} as ProjectSubmissionDraft;
   });
 };
 
