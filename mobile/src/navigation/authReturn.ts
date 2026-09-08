@@ -217,6 +217,9 @@ export const resolveLoginReturnDestination = (
   if (mode === 'authenticated') return returnTo;
 
   if (
+    returnTo.name === 'Wallet' ||
+    returnTo.name === 'MyCorner' ||
+    returnTo.name === 'Profile' ||
     returnTo.name === 'EditAccount' ||
     returnTo.name === 'DeviceSessions' ||
     returnTo.name === 'Notifications'

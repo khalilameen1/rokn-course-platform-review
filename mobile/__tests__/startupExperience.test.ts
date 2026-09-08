@@ -61,7 +61,7 @@ describe('first-launch experience', () => {
     );
 
     expect(entry).not.toContain('PersistBootstrapGate');
-    expect(initializer).toContain('<Navigation />');
+    expect(initializer).toContain('<Navigation sessionReady={sessionReady} />');
     expect(initializer).not.toContain(
       'appLoaded && sessionReady ? <Navigation />',
     );

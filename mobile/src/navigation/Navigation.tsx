@@ -34,6 +34,10 @@ import {
 } from './roknLinking';
 import {useInterruptedJourneyRestore} from './useInterruptedJourneyRestore';
 import {Palette} from '../constants/designSystem';
+import {AuthenticatedScreenBoundary} from './AuthenticatedScreenBoundary';
+import {extractApiToken} from '../constants/helpers';
+import {useSelector} from 'react-redux';
+import type {RootState} from '../store/store';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const NavigationFallback = () => (
@@ -47,8 +51,11 @@ const NavigationFallback = () => (
   </View>
 );
 
-const Stacks = () => {
+const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
   const reducedMotion = useReducedMotion();
+  const authenticated = useSelector((state: RootState) =>
+    Boolean(extractApiToken(state.auth.userData)),
+  );
 
   return (
     <Stack.Navigator
@@ -58,25 +65,36 @@ const Stacks = () => {
       }}
       initialRouteName="Home">
       <Stack.Screen name="Login" component={Login} />
-      <Stack.Screen name="EditAccount" component={EditAccount} />
       <Stack.Screen name="Feedback" component={Feedback} />
       <Stack.Screen name="Home" component={Home} />
       <Stack.Screen name="Reels" component={Reels} />
       <Stack.Screen name="CourseDetails" component={CourseDetails} />
-      <Stack.Screen name="MyCorner" component={MyCorner} />
-      <Stack.Screen name="Wallet" component={Wallet} />
-      <Stack.Screen name="Profile" component={Profile} />
       <Stack.Screen name="AboutUs" component={AboutUs} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <Stack.Screen name="TermsOfUse" component={TermsOfUse} />
-      <Stack.Screen name="Notifications" component={Notifications} />
       <Stack.Screen name="Settings" component={Settings} />
-      <Stack.Screen name="DeviceSessions" component={DeviceSessions} />
+      <Stack.Group
+        screenLayout={({children, navigation, route}) => (
+          <AuthenticatedScreenBoundary
+            authenticated={authenticated}
+            navigation={navigation}
+            route={route}
+            sessionReady={sessionReady}>
+            {children}
+          </AuthenticatedScreenBoundary>
+        )}>
+        <Stack.Screen name="EditAccount" component={EditAccount} />
+        <Stack.Screen name="MyCorner" component={MyCorner} />
+        <Stack.Screen name="Wallet" component={Wallet} />
+        <Stack.Screen name="Profile" component={Profile} />
+        <Stack.Screen name="Notifications" component={Notifications} />
+        <Stack.Screen name="DeviceSessions" component={DeviceSessions} />
+      </Stack.Group>
     </Stack.Navigator>
   );
 };
 
-const Navigation = () => {
+const Navigation = ({sessionReady}: {sessionReady: boolean}) => {
   const {run: restoreInterruptedJourney, sessionKey} =
     useInterruptedJourneyRestore();
 
@@ -93,7 +111,7 @@ const Navigation = () => {
         });
       }}
       ref={navigationRef}>
-      <Stacks key={sessionKey} />
+      <Stacks key={sessionKey} sessionReady={sessionReady} />
     </NavigationContainer>
   );
 };

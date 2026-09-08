@@ -99,8 +99,23 @@ const outcomeFromSync = async (
   operation: ProjectSubmissionOperation,
 ): Promise<ProjectSubmissionOutcome> => {
   assertProjectSubmissionOwner(operation);
+  if (result.submissionStatus !== 'evaluating') {
+    try {
+      await clearPendingProjectSubmission(pending, operation);
+    } catch {
+      // Local cleanup cannot turn a received server decision into a failed
+      // upload. Any surviving outbox keeps its original idempotency key.
+      assertProjectSubmissionOwner(operation);
+      void import('../../../services/operationalTelemetry')
+        .then(({reportClientError}) =>
+          reportClientError(new Error('PROJECT_SUBMISSION_TERMINAL_CLEANUP'), {
+            source: 'project_submission_terminal_cleanup',
+          }),
+        )
+        .catch(() => undefined);
+    }
+  }
   if (result.submissionStatus === 'passed') {
-    await clearPendingProjectSubmission(pending, operation);
     return {
       ...result,
       submissionStatus: 'passed',
@@ -127,7 +142,6 @@ const outcomeFromSync = async (
         };
   }
 
-  await clearPendingProjectSubmission(pending, operation);
   if (result.submissionStatus === 'review_unavailable') {
     return {...result, accepted: true, canContinue: false};
   }

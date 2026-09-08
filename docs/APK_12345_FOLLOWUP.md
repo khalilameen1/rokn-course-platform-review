@@ -257,3 +257,45 @@ partial updates, first partial at 1.07 seconds and a 328-character report at
 command verified the original submission is still passed with continuation
 allowed, an unchanged review timestamp, a failed old report and no retained
 input. Recovering that old report still requires the student's actual work.
+
+## Guest access, chat window and confirmed outcomes — 1.0.46
+
+The September 8 report covers private guest navigation, a hidden chat composer
+and a project rejection visible only on a subsequent attempt. The changes are
+limited to those boundaries and confirmed counterparts, not another rewrite of
+the server review or payment state machines.
+
+- Guest taps on MyCorner, Wallet and Profile now ask for sign-in without
+  navigating or mounting private content. A shared navigator boundary also
+  covers direct routes while waiting for session restoration. Return intent is
+  preserved through login, including the selected Profile tab. Public course
+  browsing, existing chat access rules, support and legal routes remain intact.
+- The chat's native Modal measures its own safe area. Keyboard avoidance handles
+  the remaining overlap instead of assuming Android always resizes the dialog.
+  Navigation-bar space is no longer forced to zero. Regressions exercise the
+  installed React Native KeyboardAvoidingView and Yoga layout with resized and
+  unresized windows, landscape, tablets and large text. Windows Computer Use
+  initialization still fails with `failed to write kernel assets`; this is not
+  an authenticated emulator or physical-device acceptance result.
+- A received project decision no longer depends on successfully deleting its
+  local outbox. Cleanup failures preserve the original request identity, are
+  recorded through existing safe telemetry, and cannot adopt an old account's
+  result. The same proven defect was corrected for course purchase/upgrade
+  completion and confirmed portfolio-video claims. Pre-request persistence and
+  unknown server outcomes remain strict; they were not converted into success.
+
+Production readback found submission 2 for project 8, submitted September 7 at
+23:31:57 UTC and reviewed at 23:32:00 UTC. Its relevance review returned
+`needs_changes` with a concrete missing-evidence explanation, zero review retries
+and no failed queue jobs. No current client-error record identifies the first
+attempt's local failure. The cleanup failure was reproduced by a regression;
+it is a demonstrated possible cause, not falsely attributed as a logged fact.
+No student submission, review decision or balance was altered during this audit.
+
+Validation for this change set: all 180 mobile suites / 992 tests passed,
+including the failed-cleanup reproductions, same-identity video replay and
+account changes during cleanup. TypeScript, release ESLint and release version
+configuration checks passed. Android is 1.0.46 / versionCode 47 and the matching
+iOS source version is 1.0.46 / build 44. Native UI initialization was retried once
+after resetting the tool and failed with the same missing kernel-assets path;
+no native walkthrough is claimed.

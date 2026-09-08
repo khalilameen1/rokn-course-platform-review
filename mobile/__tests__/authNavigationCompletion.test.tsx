@@ -26,6 +26,7 @@ jest.mock('../src/services/secureSession', () => ({
     value?.user?.id ? `account-${value.user.id}` : 'guest',
 }));
 jest.mock('../src/constants/helpers', () => ({
+  extractApiToken: (value: {api_token?: string}) => value?.api_token || '',
   getCurrentAccountStorageScope: async () => 'guest-test',
   getCurrentGuestJourneyScope: async () => 'guest-test',
 }));
@@ -105,7 +106,7 @@ describe('completed login navigation', () => {
         await act(async () => {
           renderer = TestRenderer.create(
             <Provider store={store}>
-              <Navigation />
+              <Navigation sessionReady />
             </Provider>,
           );
         });

@@ -107,12 +107,26 @@ const removeRecord = (
 ) =>
   withRecordsLock(async () => {
     assertAccountSessionBoundary(boundary);
-    const records = await readRecordsUnlocked(key);
-    delete records[clientRequestId];
-    if (Object.keys(records).length) {
-      await AsyncStorage.setItem(key, JSON.stringify(records));
-    } else {
-      await AsyncStorage.removeItem(key);
+    try {
+      const records = await readRecordsUnlocked(key);
+      assertAccountSessionBoundary(boundary);
+      delete records[clientRequestId];
+      if (Object.keys(records).length) {
+        await AsyncStorage.setItem(key, JSON.stringify(records));
+      } else {
+        await AsyncStorage.removeItem(key);
+      }
+    } catch {
+      // Claim already attached the video. An old resume record must not make
+      // that confirmed media disappear or invite a second upload.
+      assertAccountSessionBoundary(boundary);
+      void import('./operationalTelemetry')
+        .then(({reportClientError}) =>
+          reportClientError(new Error('PORTFOLIO_VIDEO_TERMINAL_CLEANUP'), {
+            source: 'portfolio_video_terminal_cleanup',
+          }),
+        )
+        .catch(() => undefined);
     }
     assertAccountSessionBoundary(boundary);
   });

@@ -2,6 +2,7 @@ import {useNavigation, useRoute} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
 import React, {FC} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {useSelector} from 'react-redux';
 
 import {useTranslation} from 'react-i18next';
 import {
@@ -26,12 +27,17 @@ import {
 } from '../constants/designSystem';
 import {formatArabicDisplayText} from '../constants/arabicFormatting';
 import {selectRootTab} from '../navigation/journeyNavigation';
+import {extractApiToken} from '../constants/helpers';
+import type {RootState} from '../store/store';
 
 const TabBar: FC = () => {
   const route = useRoute();
   const active = route.name;
   const {t} = useTranslation();
   const navigation = useNavigation<RootNavigation>();
+  const authenticated = useSelector((state: RootState) =>
+    Boolean(extractApiToken(state.auth.userData)),
+  );
 
   return (
     <View style={styles.allTabsCon}>
@@ -42,7 +48,7 @@ const TabBar: FC = () => {
           accessibilityState={{selected: active === 'Home'}}
           style={[styles.tabCon]}
           onPress={() => {
-            selectRootTab(navigation, 'Home');
+            selectRootTab(navigation, 'Home', authenticated);
           }}>
           <View style={styles.tabSpace}>
             <HomeIcon
@@ -68,7 +74,7 @@ const TabBar: FC = () => {
           accessibilityState={{selected: active === 'MyCorner'}}
           style={[styles.tabCon]}
           onPress={() => {
-            selectRootTab(navigation, 'MyCorner');
+            selectRootTab(navigation, 'MyCorner', authenticated);
           }}>
           <View style={styles.tabSpace}>
             <MyCornerIcon
@@ -95,7 +101,7 @@ const TabBar: FC = () => {
           accessibilityState={{selected: active === 'Wallet'}}
           style={[styles.tabCon]}
           onPress={() => {
-            selectRootTab(navigation, 'Wallet');
+            selectRootTab(navigation, 'Wallet', authenticated);
           }}>
           <View style={styles.tabSpace}>
             <MyWalletIcon
@@ -122,7 +128,7 @@ const TabBar: FC = () => {
           accessibilityState={{selected: active === 'Profile'}}
           style={[styles.tabCon]}
           onPress={() => {
-            selectRootTab(navigation, 'Profile');
+            selectRootTab(navigation, 'Profile', authenticated);
           }}>
           <View style={styles.tabSpace}>
             <FullNameIcon

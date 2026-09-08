@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const mockPost = jest.fn();
 const mockGet = jest.fn();
+const mockReportClientError = jest.fn();
 let mockActiveBoundary = {epoch: 1, scope: 'user-a'};
 
 jest.mock('../src/constants/api', () => ({
@@ -27,6 +28,10 @@ jest.mock('../src/constants/helpers', () => ({
 
 jest.mock('../src/services/productFeatures', () => ({
   requireProductFeature: jest.fn(async () => undefined),
+}));
+
+jest.mock('../src/services/operationalTelemetry', () => ({
+  reportClientError: (...args: unknown[]) => mockReportClientError(...args),
 }));
 
 jest.mock('../src/config/projects', () => ({
@@ -75,6 +80,7 @@ describe('project submission outbox ownership', () => {
   beforeEach(async () => {
     jest.useRealTimers();
     jest.clearAllMocks();
+    mockReportClientError.mockResolvedValue(undefined);
     await AsyncStorage.clear();
     mockActiveBoundary = {epoch: 1, scope: 'user-a'};
     quiesceProjectSubmissionRuntime();
@@ -166,6 +172,73 @@ describe('project submission outbox ownership', () => {
       expect(mockPost).toHaveBeenCalledTimes(1);
     },
   );
+
+  it.each([false, true])(
+    'returns the first rejection reason even when terminal cleanup fails (diagnostics failure: %s)',
+    async diagnosticsFail => {
+      const reason = 'الصورة لا توضح النتيجة المطلوبة';
+      mockPost.mockResolvedValue({
+        data: {
+          data: {
+            submission_status: 'needs_changes',
+            can_continue: false,
+            feedback: reason,
+          },
+        },
+      });
+      jest
+        .mocked(AsyncStorage.removeItem)
+        .mockRejectedValueOnce(new Error('disk I/O failure'));
+      if (diagnosticsFail)
+        mockReportClientError.mockRejectedValueOnce(
+          new Error('diagnostics unavailable'),
+        );
+
+      await expect(
+        submitProjectAttempt('42', null, 'هذه محاولة واضحة'),
+      ).resolves.toEqual({
+        submissionStatus: 'needs_changes',
+        accepted: true,
+        canContinue: false,
+        reviewFeedback: reason,
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      await settleMicrotasks();
+      expect(mockReportClientError).toHaveBeenCalledTimes(1);
+      const [diagnostic, context] = mockReportClientError.mock.calls[0];
+      expect(diagnostic.message).toBe('PROJECT_SUBMISSION_TERMINAL_CLEANUP');
+      expect(context).toEqual({source: 'project_submission_terminal_cleanup'});
+      const firstKey = mockPost.mock.calls[0][2].headers['Idempotency-Key'];
+
+      await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+        {
+          projectId: '42',
+          submissionStatus: 'needs_changes',
+          accepted: true,
+          canContinue: false,
+          reviewFeedback: reason,
+        },
+      ]);
+      expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
+        firstKey,
+      );
+      expect(await retryPendingProjectSubmissions()).toEqual([]);
+    },
+  );
+
+  it('still rejects an old-account result when ownership changes during failed cleanup', async () => {
+    mockPost.mockResolvedValueOnce(passedResponse);
+    jest.mocked(AsyncStorage.removeItem).mockImplementationOnce(async () => {
+      mockActiveBoundary = {epoch: 2, scope: 'user-b'};
+      throw new Error('disk I/O failure');
+    });
+
+    await expect(
+      submitProjectAttempt('42', null, 'هذه محاولة واضحة'),
+    ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockReportClientError).not.toHaveBeenCalled();
+  });
 
   it('keeps the UI attached to the real request and shares it with resume recovery', async () => {
     jest.useFakeTimers();

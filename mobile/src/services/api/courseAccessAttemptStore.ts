@@ -102,9 +102,24 @@ const clearAttemptKey = <TIntent extends AttemptIntent>(
 ) =>
   serializeStorageMutation(async () => {
     assertAccountSessionBoundary(boundary);
-    const key = await storageKey(spec, boundary);
-    const storedKey = await readAttempt(key, spec.intent);
-    if (storedKey === expectedIdempotencyKey) await removeItem(key);
+    try {
+      const key = await storageKey(spec, boundary);
+      const storedKey = await readAttempt(key, spec.intent);
+      assertAccountSessionBoundary(boundary);
+      if (storedKey === expectedIdempotencyKey) await removeItem(key);
+    } catch {
+      // The server has confirmed access. Retaining its original request key
+      // is recoverable; replacing that result with a local error is not.
+      assertAccountSessionBoundary(boundary);
+      void import('../operationalTelemetry')
+        .then(({reportClientError}) =>
+          reportClientError(new Error('COURSE_ACCESS_TERMINAL_CLEANUP'), {
+            source: 'course_access_terminal_cleanup',
+          }),
+        )
+        .catch(() => undefined);
+    }
+    assertAccountSessionBoundary(boundary);
   });
 
 type CoursePurchaseIntent = {

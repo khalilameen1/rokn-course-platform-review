@@ -183,7 +183,14 @@ describe('login return navigation policy', () => {
     });
   });
 
-  it.each(['EditAccount', 'DeviceSessions', 'Notifications'] as const)(
+  it.each([
+    'Wallet',
+    'MyCorner',
+    'Profile',
+    'EditAccount',
+    'DeviceSessions',
+    'Notifications',
+  ] as const)(
     'does not return a guest to protected route %s',
     name => {
       expect(resolveLoginReturnDestination({name}, 'guest')).toEqual({

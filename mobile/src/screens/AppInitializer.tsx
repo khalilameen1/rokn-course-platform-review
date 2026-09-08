@@ -31,7 +31,7 @@ const AppInitializer: FC = () => {
 
   return (
     <>
-      <Navigation />
+      <Navigation sessionReady={sessionReady} />
       <AppUpdateGate notice={update.notice} onDismiss={update.dismiss} />
     </>
   );

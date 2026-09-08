@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   KeyboardAvoidingView,
+  Keyboard,
   Dimensions,
   Platform,
   ScrollView,
@@ -19,6 +20,7 @@ import type {ChatAttachmentDraft} from '../src/components/VideoPlayer/types';
 
 const {execPath} = require('node:process') as {execPath: string};
 const mockInsets = {top: 0, bottom: 0, left: 0, right: 0};
+jest.unmock('react-native/Libraries/Components/Keyboard/KeyboardAvoidingView');
 
 const mockChatState = {
   assistantIncluded: true,
@@ -66,6 +68,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => mockInsets,
+  SafeAreaListener: 'SafeAreaListener',
 }));
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
 
@@ -109,12 +112,83 @@ describe('course conversation keyboard ownership', () => {
       await render();
       expect(
         renderer.root.findByType(KeyboardAvoidingView).props.behavior,
-      ).toBe(os === 'ios' ? 'padding' : undefined);
+      ).toBe('padding');
       expect(
         renderer.root.findByType(ScrollView).props.keyboardShouldPersistTaps,
       ).toBe('always');
     },
   );
+
+  it('avoids only the remaining IME overlap and clears it after resize or hide', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await render();
+    // Exercise React Native's installed implementation, not a fake padding calculator.
+    const avoidance = renderer.root.findByType(KeyboardAvoidingView).instance;
+    const layout = async (height: number) => {
+      await act(async () =>
+        avoidance._onLayout({
+          persist: () => undefined,
+          nativeEvent: {layout: {x: 0, y: 0, width: 360, height}},
+        }),
+      );
+    };
+    await layout(800);
+    await act(async () =>
+      avoidance._onKeyboardChange({
+        duration: 0,
+        endCoordinates: {screenY: 480, screenX: 0, width: 360, height: 320},
+      }),
+    );
+    expect(avoidance.state.bottom).toBe(320);
+    expect(
+      StyleSheet.flatten(avoidance.render().props.style).paddingBottom,
+    ).toBe(320);
+    await layout(480); // Older Android already resized the native Dialog.
+    expect(avoidance.state.bottom).toBe(0);
+    expect(
+      StyleSheet.flatten(avoidance.render().props.style).paddingBottom,
+    ).toBe(0);
+    await layout(800); // Edge-to-edge viewport stays full height instead.
+    expect(avoidance.state.bottom).toBe(320);
+    await act(async () => avoidance._onKeyboardHide());
+    expect(avoidance.state.bottom).toBe(0);
+    expect(Keyboard.isVisible()).toBe(false);
+  });
+
+  it('uses the Modal safe area instead of the parent Activity or an Android zero', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await render();
+    const listener = renderer.root.findByType('SafeAreaListener' as any);
+    const composerPadding = () =>
+      StyleSheet.flatten(
+        renderer.root
+          .findAllByType(View)
+          .find(
+            node =>
+              Array.isArray(node.props.style) &&
+              node.props.style.includes(styles.composer),
+          )!.props.style,
+      ).paddingBottom;
+    await act(async () =>
+      listener.props.onChange({
+        frame: {x: 0, y: 0, width: 360, height: 800},
+        insets: {top: 24, bottom: 48, left: 32, right: 48},
+      }),
+    );
+    expect(composerPadding()).toBe(54);
+    expect(StyleSheet.flatten(listener.props.style)).toMatchObject({
+      paddingLeft: 32,
+      paddingRight: 48,
+    });
+    // Listener is inside avoidance: once above the IME it no longer intersects the nav bar.
+    await act(async () =>
+      listener.props.onChange({
+        frame: {x: 0, y: 0, width: 360, height: 480},
+        insets: {top: 24, bottom: 0, left: 0, right: 0},
+      }),
+    );
+    expect(composerPadding()).toBe(10);
+  });
 
   it('copies the message without closing the sheet or changing its layout and draft', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
@@ -191,6 +265,15 @@ describe('course conversation keyboard ownership', () => {
         dimensions.screen,
         dimensions.viewport,
       ]) {
+        await act(async () =>
+          renderer.root.findByType('SafeAreaListener' as any).props.onChange({
+            frame: {x: 0, y: 0, width: dimensions.width, height},
+            insets: {
+              ...mockInsets,
+              bottom: height === dimensions.screen ? 24 : 0,
+            },
+          }),
+        );
         await act(async () =>
           viewport.props.onLayout({nativeEvent: {layout: {height}}}),
         );
