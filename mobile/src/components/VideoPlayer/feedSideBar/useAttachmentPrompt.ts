@@ -26,6 +26,8 @@ export function useAttachmentPrompt({
   present: () => void;
 }) {
   const checkedScopeRef = useRef('');
+  const checkFlightRef = useRef<symbol | null>(null);
+  const scopeGenerationRef = useRef(0);
   const requestedScopeRef = useRef('');
   const visibleScopeRef = useRef('');
   const presentationOwnerRef = useRef<AccountSessionBoundary | null>(null);
@@ -35,6 +37,11 @@ export function useAttachmentPrompt({
 
   const sessionEpoch = peekSecureSession().epoch;
   const scopeKey = scope ? `${sessionEpoch}:${course.id}:${scope}` : '';
+  const promptDue = Boolean(
+    course.attachmentPrompt?.enabled &&
+      attachments.length &&
+      currentTime >= course.attachmentPrompt.atSeconds,
+  );
 
   const requestPresentation = useCallback(
     (owner: AccountSessionBoundary) => {
@@ -68,8 +75,12 @@ export function useAttachmentPrompt({
 
   const openAttachments = useCallback(() => {
     if (!scope || !attachments.length) return;
+    const generation = scopeGenerationRef.current;
     void captureAccountSessionBoundary()
-      .then(requestPresentation)
+      .then(owner => {
+        if (generation === scopeGenerationRef.current)
+          requestPresentation(owner);
+      })
       .catch(() => undefined);
   }, [attachments.length, requestPresentation, scope]);
 
@@ -98,49 +109,61 @@ export function useAttachmentPrompt({
 
   useEffect(
     () => () => {
+      scopeGenerationRef.current += 1;
+      checkFlightRef.current = null;
+      checkedScopeRef.current = '';
+      requestedScopeRef.current = '';
+      presentationOwnerRef.current = null;
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
     },
-    [],
+    [requestPresentation, scopeKey],
+  );
+
+  // Leaving the trigger window cancels an unfinished automatic check, but
+  // ordinary playback ticks must not retire that same storage read.
+  useEffect(
+    () => () => {
+      checkFlightRef.current = null;
+    },
+    [promptDue],
   );
 
   useEffect(() => {
-    const prompt = course.attachmentPrompt;
-    if (
-      !prompt?.enabled ||
-      !scope ||
-      !attachments.length ||
-      currentTime < prompt.atSeconds
-    ) {
-      return;
-    }
+    if (!promptDue || !scope) return;
 
     const checkId = scopeKey;
-    if (checkedScopeRef.current === checkId) return;
-    let cancelled = false;
+    if (checkedScopeRef.current === checkId || checkFlightRef.current) return;
+    const flight = Symbol('attachment-prompt-check');
+    checkFlightRef.current = flight;
+    const ownsCheck = () => checkFlightRef.current === flight;
     void captureAccountSessionBoundary()
       .then(async owner => {
-        if (cancelled || owner.epoch !== sessionEpoch) return;
+        if (!ownsCheck() || owner.epoch !== sessionEpoch) return;
         assertAccountSessionBoundary(owner);
-        if (checkedScopeRef.current === checkId) return;
-        checkedScopeRef.current = checkId;
         const seen = await hasSeenAttachmentPrompt(course.id, scope, owner);
-        if (seen || cancelled) return;
-        requestPresentation(owner);
+        if (!ownsCheck()) return;
+        checkedScopeRef.current = checkId;
+        if (
+          !seen &&
+          requestedScopeRef.current !== checkId &&
+          visibleScopeRef.current !== checkId
+        ) {
+          requestPresentation(owner);
+        }
       })
       .catch(() => {
-        if (!cancelled && checkedScopeRef.current === checkId) {
+        if (ownsCheck() && checkedScopeRef.current === checkId) {
           checkedScopeRef.current = '';
         }
+      })
+      .finally(() => {
+        if (ownsCheck()) checkFlightRef.current = null;
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [
-    attachments.length,
-    course.attachmentPrompt,
     course.id,
     currentTime,
+    promptDue,
     requestPresentation,
     scope,
     scopeKey,

@@ -88,6 +88,9 @@ export const useWalletCheckout = (data: WalletCheckoutData) => {
 
   const handleRecoveredCredit = useCallback(
     async (creditedOwnerScope?: string) => {
+      // The mounted initiating screen already refreshes and completes its
+      // return intent below. Other screens still observe the shared credit.
+      if (checkoutFlightRef.current) return;
       const operationIdentity = identityRef.current;
       let boundary: AccountSessionBoundary;
       try {

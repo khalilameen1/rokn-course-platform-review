@@ -920,3 +920,65 @@ TypeScript, scoped ESLint and diff checks.
 The source changes are verified locally, not accepted against live Google,
 Kashier, AI providers, a device or production. No APK, push, deployment or live
 account change was performed. The broader operation-review goal remains open.
+
+## September 8 — operation ownership across playback, credit and saved counts
+
+This source checkpoint closes three reproduced daily-flow failures, without
+replacing working provider, authoring or navigation implementations:
+
+- Attachment prompts previously cancelled their pending storage read on every
+  playback tick after recording the check as complete. A slow read or failure
+  could therefore suppress the prompt for the rest of the course. One owned
+  check now survives ordinary progress; course/account changes, unmount and
+  leaving the trigger window retire it. A delayed manual open also belongs to
+  its original scope. Automatic and manual presentation coalesce, the existing
+  presentation grace remains, and only actual visibility records the prompt as
+  seen. Three regressions failed before the fix; the expanded lifecycle cases
+  cover retry, seeking, unmount and delayed session restoration.
+- Confirmed direct-checkout credit now emits through the existing once-only
+  operation event, rather than relying on the initiating Wallet remaining
+  mounted. A replacement Wallet or CourseDetails receives the result even when
+  foreground recovery joined that checkout. Account/session ownership is
+  checked before notification. The mounted initiating Wallet retains its own
+  single refresh; native billing retains its existing verified event. Actual
+  shared checkout/coordinator and screen hooks reproduced three failures before
+  the fix, with HTTP/browser/storage primitives mocked, not a live payment.
+  The mounted course intentionally retains one full credit reload plus its
+  exact purchase requote: one bounded additional wallet read is preferable to
+  threading suppression state through unrelated hooks. No second debit or
+  automatic course purchase was added.
+- Saved row pagination no longer owns server folder totals. A refresh could
+  replace the first page before DELETE acknowledgement, leaving an old row
+  absent while its folder count remained present; success kept the old total,
+  and failure could increment it twice. Count snapshots and row restoration
+  now have separate ownership. Only a replaced count during a pending removal
+  requests a fresh authoritative index; ordinary removals do not add a full
+  refresh. A failed reconciliation leaves that count unknown, not a guessed
+  zero or a restored deleted row. Both pending-deletion cases were red first.
+- The same membership mutations previously left stale totals in the disk
+  index. One acknowledged-mutation helper invalidates only affected counts
+  through the existing ordered cache; global unsave invalidates all counts
+  because its memberships are unknown. Names/covers and unrelated known totals
+  remain. Four service regressions demonstrated the save, folder removal,
+  watch-later and global-unsave paths. Fresh-only index reads cannot silently
+  accept an offline cached total, and an offline read waits for queued repairs.
+- Independent review caught an unbounded storage wait in that initial cache
+  change before commit. Seven additional red regressions covered confirmed
+  mutations, fresh network reads and offline reads with stalled native storage.
+  Best-effort cache callers now use the existing bounded wait; the raw write
+  queue stays intact until its actual writes settle. The whole offline ordered
+  read is bounded, so timing out cannot expose the old count. A late-write
+  regression proves old writes still precede the repair and newer server data.
+
+Final root verification passed 17 affected mobile Jest suites / 177 tests,
+full TypeScript, scoped ESLint and diff checks. Read-only counterchecks found
+no additional matching premature-once-marker defect in Home engagement,
+daily-reward attempts, reel reminders or notification permission handling.
+Dashboard attachment optional-field clearing and staged publication/version
+paths were inspected without a new demonstrated defect; they were not rewritten.
+
+These are local source checks, not live provider, production or device acceptance.
+No APK, push or deployment was performed. The broader goal remains open; the
+next nonoverlapping operations are task rewards, profile identity propagation
+and contact-message delivery. Their in-progress work is not part of this
+checkpoint's verification claim.

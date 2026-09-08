@@ -524,6 +524,13 @@ export const openCoinCheckout = async (
     let result: CoinCheckoutResult | undefined;
     try {
       result = await runCoinCheckout(coinPackage, boundary);
+      assertAccountSessionBoundary(boundary);
+      // The initiating screen may have been removed while reconciliation was
+      // pending. Credit belongs to this operation, not that screen's lifetime.
+      // Native billing already emits its own verified purchase notification.
+      if (CAN_START_EXTERNAL_CHECKOUT && result.success) {
+        emitCoinCheckoutCreditOnce(boundary.scope, result);
+      }
       return result;
     } finally {
       // A pending/unknown provider outcome still owns its interrupted

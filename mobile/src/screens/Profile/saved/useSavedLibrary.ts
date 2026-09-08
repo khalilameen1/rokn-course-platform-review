@@ -1,5 +1,12 @@
 import {useFocusEffect} from '@react-navigation/native';
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type SetStateAction,
+} from 'react';
 import {Alert} from 'react-native';
 import {useSelector} from 'react-redux';
 import {
@@ -37,7 +44,7 @@ export function useSavedLibrary() {
   const identityKey = sessionIdentityKey(storedUser);
 
   const [saved, setSaved] = useState<SavedLesson[]>([]);
-  const [folders, setFolders] = useState<SavedFolderOption[]>([]);
+  const [folders, setFoldersState] = useState<SavedFolderOption[]>([]);
   const [activeFolderId, setActiveFolderId] = useState('all');
   const [serverSession, setServerSession] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,6 +70,23 @@ export function useSavedLibrary() {
   const removeFlightsRef = useRef(new Map<string, SavedMutationFlight>());
   const dataOwnerRef = useRef(identityKey);
   const savedRef = useRef<SavedLesson[]>([]);
+  const foldersRef = useRef<SavedFolderOption[]>([]);
+  // Row pagination and server folder totals are independent snapshots.
+  const folderCountSnapshotsRef = useRef(new Map<string, object>());
+  const setFolders = useCallback(
+    (
+      next: SetStateAction<SavedFolderOption[]>,
+      options?: {replaceCountSnapshots?: string[]},
+    ) => {
+      options?.replaceCountSnapshots?.forEach(id => {
+        folderCountSnapshotsRef.current.set(id, {});
+      });
+      foldersRef.current =
+        typeof next === 'function' ? next(foldersRef.current) : next;
+      setFoldersState(foldersRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     loadGenerationRef.current += 1;
@@ -70,6 +94,7 @@ export function useSavedLibrary() {
     createFolderFlightRef.current = null;
     deleteFolderFlightRef.current = null;
     removeFlightsRef.current.clear();
+    folderCountSnapshotsRef.current.clear();
     savedRef.current = [];
     setSaved([]);
     setFolders([]);
@@ -87,7 +112,7 @@ export function useSavedLibrary() {
     setDeletingFolder(false);
     setRemovingSaved(new Set());
     dataOwnerRef.current = identityKey;
-  }, [identityKey]);
+  }, [identityKey, setFolders]);
 
   const selectFolder = useCallback(
     (folderId: string) => {
@@ -178,18 +203,25 @@ export function useSavedLibrary() {
           ]);
           if (!ownsLoad()) return;
           if (folderResult.ok) {
-            setFolders(current => {
-              // The index may be an offline cache. A successful folder read is
-              // stronger evidence than its absence from that older index.
-              const selected = current.find(
-                folder => folder.id === activeFolderId,
-              );
-              return lessonResult.ok &&
-                selected &&
-                !folderResult.value.some(folder => folder.id === selected.id)
-                ? [...folderResult.value, selected]
-                : folderResult.value;
-            });
+            setFolders(
+              current => {
+                // The index may be an offline cache. A successful folder read is
+                // stronger evidence than its absence from that older index.
+                const selected = current.find(
+                  folder => folder.id === activeFolderId,
+                );
+                return lessonResult.ok &&
+                  selected &&
+                  !folderResult.value.some(folder => folder.id === selected.id)
+                  ? [...folderResult.value, selected]
+                  : folderResult.value;
+              },
+              {
+                replaceCountSnapshots: folderResult.value.map(
+                  folder => folder.id,
+                ),
+              },
+            );
             setFolderLoadError('');
           } else {
             setFolderLoadError('تعذّر تحديث القوائم\nالمحفوظات ما زالت موجودة');
@@ -210,12 +242,14 @@ export function useSavedLibrary() {
           savedRef.current = result.lessons;
           setSaved(result.lessons);
           if (activeFolderId !== 'all') {
-            setFolders(current =>
-              current.map(folder =>
-                folder.id === activeFolderId
-                  ? {...folder, lessonsCount: result.total}
-                  : folder,
-              ),
+            setFolders(
+              current =>
+                current.map(folder =>
+                  folder.id === activeFolderId
+                    ? {...folder, lessonsCount: result.total}
+                    : folder,
+                ),
+              {replaceCountSnapshots: [activeFolderId]},
             );
           }
           setNextPage(result.hasMore ? result.page + 1 : null);
@@ -254,7 +288,7 @@ export function useSavedLibrary() {
         loadGenerationRef.current += 1;
         loadingMoreRef.current = false;
       };
-    }, [activeFolderId, identityKey, reload, selectFolder]),
+    }, [activeFolderId, identityKey, reload, selectFolder, setFolders]),
   );
 
   const retry = useCallback(() => setReload(value => value + 1), []);
@@ -333,6 +367,7 @@ export function useSavedLibrary() {
     nextPage,
     selectFolder,
     serverSession,
+    setFolders,
   ]);
 
   const createFolder = useCallback(async () => {
@@ -359,10 +394,13 @@ export function useSavedLibrary() {
       const created = await createSavedFolderOption(name);
       if (!screenActiveRef.current || generation !== loadGenerationRef.current)
         return;
-      setFolders(current => [
-        ...current.filter(folder => folder.id !== created.id),
-        created,
-      ]);
+      setFolders(
+        current => [
+          ...current.filter(folder => folder.id !== created.id),
+          created,
+        ],
+        {replaceCountSnapshots: [created.id]},
+      );
       selectFolder(created.id);
       setNewFolderName('');
       setShowCreateFolder(false);
@@ -384,7 +422,14 @@ export function useSavedLibrary() {
         }
       }
     }
-  }, [creatingFolder, folders, identityKey, newFolderName, selectFolder]);
+  }, [
+    creatingFolder,
+    folders,
+    identityKey,
+    newFolderName,
+    selectFolder,
+    setFolders,
+  ]);
 
   const removeSaved = useCallback(
     async (item: SavedLesson) => {
@@ -397,6 +442,8 @@ export function useSavedLibrary() {
       setRemovingSaved(current => new Set(current).add(key));
       let optimisticIndex = -1;
       let optimisticApplied = false;
+      let optimisticCountSnapshot: object | undefined;
+      let optimisticCountApplied = false;
       let boundary: Awaited<
         ReturnType<typeof captureAccountSessionBoundary>
       > | null = null;
@@ -426,13 +473,6 @@ export function useSavedLibrary() {
         );
         savedRef.current = remainingRows;
         setSaved(remainingRows);
-        setFolders(current =>
-          current.map(folder =>
-            folder.id === item.folderId && folder.lessonsCount !== undefined
-              ? {...folder, lessonsCount: Math.max(0, folder.lessonsCount - 1)}
-              : folder,
-          ),
-        );
         return index;
       };
 
@@ -442,19 +482,84 @@ export function useSavedLibrary() {
         optimisticIndex = removeLocalRow();
         if (optimisticIndex < 0) return;
         optimisticApplied = true;
+        optimisticCountSnapshot = folderCountSnapshotsRef.current.get(
+          item.folderId,
+        );
+        const count = foldersRef.current.find(
+          folder => folder.id === item.folderId,
+        )?.lessonsCount;
+        if (count !== undefined && count > 0) {
+          optimisticCountApplied = true;
+          setFolders(current =>
+            current.map(folder =>
+              folder.id === item.folderId
+                ? {...folder, lessonsCount: count - 1}
+                : folder,
+            ),
+          );
+        }
 
         await removeLessonFromSavedFolder(item.id, item.folderId);
         assertAccountSessionBoundary(boundary);
         // A refresh may have restored its pre-delete snapshot while the write
         // was pending. The confirmed result must also win locally, exactly once.
-        if (stillOwned()) removeLocalRow();
+        if (!stillOwned()) return;
+        removeLocalRow();
+        if (
+          folderCountSnapshotsRef.current.get(item.folderId) !==
+          optimisticCountSnapshot
+        ) {
+          // A replacement total may have arrived before OR after the server
+          // delete. Neither row absence nor a second decrement can decide that.
+          setFolders(
+            current =>
+              current.map(folder =>
+                folder.id === item.folderId
+                  ? {...folder, lessonsCount: undefined}
+                  : folder,
+              ),
+            {replaceCountSnapshots: [item.folderId]},
+          );
+          const reconciliationSnapshot = folderCountSnapshotsRef.current.get(
+            item.folderId,
+          );
+          try {
+            const latest = await getSavedFolderOptions({requireFresh: true});
+            if (
+              !stillOwned() ||
+              folderCountSnapshotsRef.current.get(item.folderId) !==
+                reconciliationSnapshot
+            )
+              return;
+            const latestCount = latest.find(
+              folder => folder.id === item.folderId,
+            )?.lessonsCount;
+            setFolders(
+              current =>
+                current.map(folder =>
+                  folder.id === item.folderId
+                    ? {...folder, lessonsCount: latestCount}
+                    : folder,
+                ),
+              {replaceCountSnapshots: [item.folderId]},
+            );
+          } catch {
+            if (
+              stillOwned() &&
+              folderCountSnapshotsRef.current.get(item.folderId) ===
+                reconciliationSnapshot
+            ) {
+              // The delete succeeded: only its now-unknown count needs retry.
+              setError('تمت إزالة المقطع\nتعذّر تحديث عدد المقاطع');
+            }
+          }
+        }
       } catch {
         if (stillOwned()) {
           if (
-            optimisticApplied &&
-            !savedRef.current.some(
-              row => row.id === item.id && row.folderId === item.folderId,
-            )
+            optimisticCountApplied &&
+            folderCountSnapshotsRef.current.get(item.folderId) ===
+              optimisticCountSnapshot
           ) {
             setFolders(current =>
               current.map(folder =>
@@ -463,6 +568,13 @@ export function useSavedLibrary() {
                   : folder,
               ),
             );
+          }
+          if (
+            optimisticApplied &&
+            !savedRef.current.some(
+              row => row.id === item.id && row.folderId === item.folderId,
+            )
+          ) {
             const restored = [...savedRef.current];
             restored.splice(
               Math.min(Math.max(0, optimisticIndex), restored.length),
@@ -493,7 +605,7 @@ export function useSavedLibrary() {
         }
       }
     },
-    [identityKey, removingSaved],
+    [identityKey, removingSaved, setFolders],
   );
 
   const deleteActiveFolder = useCallback(() => {
@@ -624,7 +736,14 @@ export function useSavedLibrary() {
         },
       ],
     );
-  }, [activeFolderId, deletingFolder, folders, identityKey, selectFolder]);
+  }, [
+    activeFolderId,
+    deletingFolder,
+    folders,
+    identityKey,
+    selectFolder,
+    setFolders,
+  ]);
 
   const toggleCreateFolder = useCallback(() => {
     setShowCreateFolder(value => !value);

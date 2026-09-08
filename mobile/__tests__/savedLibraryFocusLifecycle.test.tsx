@@ -247,14 +247,157 @@ describe('saved library focus lifecycle', () => {
         });
         await act(async () => {
           void view.current.removeSaved(item);
-          if (succeeded) removal.resolve();
-          else removal.reject(new Error('offline'));
+          if (succeeded) {
+            mockGetSavedFolderOptions.mockResolvedValueOnce([
+              {...folders[0], lessonsCount: 0},
+            ]);
+            removal.resolve();
+          } else removal.reject(new Error('offline'));
           await flush();
         });
         expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
         expect(view.current.saved).toHaveLength(succeeded ? 0 : 1);
         expect(view.current.folderCounts.get('7')).toBe(succeeded ? 0 : 1);
         expect(view.current.removingSaved.size).toBe(0);
+      } finally {
+        await act(async () => view.renderer.unmount());
+      }
+    },
+  );
+
+  it.each([
+    'success',
+    'success-already-reflected',
+    'success-count-unavailable',
+    'failure',
+    'failure-index-unavailable',
+  ])(
+    'keeps the server folder count when a foreground refresh drops the removed page-two row (%s)',
+    async outcome => {
+      const succeeded = outcome.startsWith('success');
+      const indexUnavailable = outcome === 'failure-index-unavailable';
+      const folders = [
+        {id: '7', name: 'القديمة', lessonsCount: 1},
+        {id: '8', name: 'الجديدة', lessonsCount: 20},
+      ];
+      const firstPage = {
+        ...page(1, true),
+        lessons: Array.from({length: 20}, (_, index) => ({
+          ...page(1).lessons[0],
+          id: `new-${index}`,
+          folderId: '8',
+          folderName: 'الجديدة',
+        })),
+        total: 21,
+      };
+      const oldItem = {
+        ...page(2).lessons[0],
+        id: 'old',
+        folderId: '7',
+        folderName: 'القديمة',
+      };
+      mockGetSavedFolderOptions.mockResolvedValue(folders);
+      mockGetSavedLessonsPage.mockImplementation(async (requestedPage = 1) =>
+        requestedPage === 1
+          ? firstPage
+          : {...page(2), lessons: [oldItem], total: 21},
+      );
+      const view = await mountLibrary();
+      const removal = deferred<void>();
+      mockRemoveLessonFromSavedFolder.mockReturnValueOnce(removal.promise);
+      try {
+        await act(async () => {
+          await view.current.loadMore();
+        });
+        expect(mockGetSavedLessonsPage).toHaveBeenLastCalledWith(2);
+        expect(view.current.saved).toHaveLength(21);
+        const refreshedPage = deferred<typeof firstPage>();
+        const refreshedIndex = deferred<typeof folders>();
+        mockGetSavedLessonsPage.mockReturnValueOnce(refreshedPage.promise);
+        mockGetSavedFolderOptions.mockReturnValueOnce(refreshedIndex.promise);
+        await act(async () => {
+          view.current.retry();
+          await flush();
+        });
+        expect(view.current.loading).toBe(true);
+        // The old page-two row is still displayed while the first-page GET is
+        // pending. Start the DELETE in that same focus/read generation.
+        await act(async () => {
+          void view.current.removeSaved(oldItem);
+          await flush();
+        });
+        expect(view.current.folderCounts.get('7')).toBe(0);
+        await act(async () => {
+          // Both read responses arrive before DELETE settles, so the API's
+          // confirmed-mutation revision has not changed and cannot replay them.
+          refreshedPage.resolve(firstPage);
+          if (indexUnavailable) refreshedIndex.reject(new Error('offline'));
+          else
+            refreshedIndex.resolve(
+              outcome === 'success-already-reflected'
+                ? [{...folders[0], lessonsCount: 0}, folders[1]]
+                : folders,
+            );
+          await flush();
+        });
+        expect(view.current.loading).toBe(false);
+        expect(view.current.saved).toHaveLength(20);
+        expect(view.current.folderCounts.get('7')).toBe(
+          indexUnavailable || outcome === 'success-already-reflected' ? 0 : 1,
+        );
+        await act(async () => {
+          if (succeeded) {
+            if (outcome === 'success-count-unavailable') {
+              mockGetSavedFolderOptions.mockRejectedValueOnce(
+                new Error('offline'),
+              );
+            } else {
+              mockGetSavedFolderOptions.mockResolvedValueOnce([
+                {...folders[0], lessonsCount: 0},
+                folders[1],
+              ]);
+            }
+            removal.resolve();
+          } else removal.reject(new Error('offline'));
+          await flush();
+        });
+        expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
+        expect(view.current.saved.some(item => item.id === 'old')).toBe(
+          !succeeded,
+        );
+        expect(view.current.folderCounts.get('7')).toBe(
+          outcome === 'success-count-unavailable'
+            ? undefined
+            : succeeded
+            ? 0
+            : 1,
+        );
+        expect(view.current.folderCounts.get('8')).toBe(20);
+        expect(view.current.removingSaved.size).toBe(0);
+        expect(mockGetSavedLessonsPage).toHaveBeenCalledTimes(3);
+        expect(mockGetSavedFolderOptions).toHaveBeenCalledTimes(
+          succeeded ? 3 : 2,
+        );
+        if (succeeded) {
+          expect(mockGetSavedFolderOptions).toHaveBeenLastCalledWith({
+            requireFresh: true,
+          });
+        }
+        if (outcome === 'success-count-unavailable') {
+          expect(view.current.error).toContain('تعذّر تحديث عدد المقاطع');
+          expect(view.current.actionError).toBe('');
+          mockGetSavedFolderOptions.mockResolvedValueOnce([
+            {...folders[0], lessonsCount: 0},
+            folders[1],
+          ]);
+          await act(async () => {
+            view.current.retry();
+            await flush();
+          });
+          expect(view.current.folderCounts.get('7')).toBe(0);
+          expect(view.current.error).toBe('');
+          expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
+        }
       } finally {
         await act(async () => view.renderer.unmount());
       }
@@ -550,38 +693,48 @@ describe('saved library focus lifecycle', () => {
     }
   });
 
-  it('decrements and restores the server folder total for an optimistic failed membership removal', async () => {
-    mockGetSavedFolderOptions.mockResolvedValue([
-      {id: '7', name: 'قائمتي', lessonsCount: 21},
-    ]);
-    mockGetSavedLessonsPage.mockResolvedValue(page(1));
-    mockGetSavedFolderLessonsPage.mockResolvedValue({
-      ...folderPage('7', 1, true),
-      total: 21,
-    });
-    const removal = deferred<void>();
-    mockRemoveLessonFromSavedFolder.mockReturnValueOnce(removal.promise);
-    const view = await mountLibrary();
-    try {
-      await act(async () => {
-        view.current.selectFolder('7');
-        await flush();
+  it.each(['success', 'failure'])(
+    'owns an unchanged optimistic folder total without an extra metadata read (%s)',
+    async outcome => {
+      mockGetSavedFolderOptions.mockResolvedValue([
+        {id: '7', name: 'قائمتي', lessonsCount: 21},
+      ]);
+      mockGetSavedLessonsPage.mockResolvedValue(page(1));
+      mockGetSavedFolderLessonsPage.mockResolvedValue({
+        ...folderPage('7', 1, true),
+        total: 21,
       });
-      await act(async () => {
-        void view.current.removeSaved(view.current.saved[0]);
-        await flush();
-      });
-      expect(view.current.folderCounts.get('7')).toBe(20);
-      await act(async () => {
-        removal.reject(new Error('offline'));
-        await flush();
-      });
-      expect(view.current.folderCounts.get('7')).toBe(21);
-      expect(view.current.saved).toHaveLength(1);
-    } finally {
-      await act(async () => view.renderer.unmount());
-    }
-  });
+      const removal = deferred<void>();
+      mockRemoveLessonFromSavedFolder.mockReturnValueOnce(removal.promise);
+      const view = await mountLibrary();
+      try {
+        await act(async () => {
+          view.current.selectFolder('7');
+          await flush();
+        });
+        await act(async () => {
+          void view.current.removeSaved(view.current.saved[0]);
+          await flush();
+        });
+        expect(view.current.folderCounts.get('7')).toBe(20);
+        await act(async () => {
+          if (outcome === 'success') removal.resolve();
+          else removal.reject(new Error('offline'));
+          await flush();
+        });
+        expect(view.current.folderCounts.get('7')).toBe(
+          outcome === 'success' ? 20 : 21,
+        );
+        expect(view.current.saved).toHaveLength(outcome === 'success' ? 0 : 1);
+        expect(mockGetSavedFolderOptions).toHaveBeenCalledTimes(2);
+        expect(mockGetSavedLessonsPage).toHaveBeenCalledTimes(1);
+        expect(mockGetSavedFolderLessonsPage).toHaveBeenCalledTimes(1);
+        expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
+      } finally {
+        await act(async () => view.renderer.unmount());
+      }
+    },
+  );
 
   it('releases an interrupted pagination state when the screen returns', async () => {
     const secondPage = deferred<ReturnType<typeof page>>();
