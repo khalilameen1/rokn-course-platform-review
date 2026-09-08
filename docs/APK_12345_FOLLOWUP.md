@@ -361,3 +361,50 @@ blocks ZipArchive, and one MySQL-only case was skipped under SQLite. There were
 no assertion failures. Linux CI remains the gate for that environmental gap.
 Source version is 1.0.47 / Android 48 / iOS 45. Deployment, live recovery, live
 Gemini probe and the new APK are not claimed by this source-change entry.
+
+### Deployment and live readback for 1.0.47
+
+Source commit `e89e6e69ae7c3bc8cfd28a13259817f5d8ed7f39` passed Backend CI
+34208934672, including its Linux dependency/schema/full-test stages, and was
+deployed successfully as Laravel Cloud deployment 183. Only the default chat
+model and its allowlist changed in the environment; the project model, provider
+keys, empty fallback list and actual production output ceiling of 420 remain
+unchanged. The model's legacy `none` setting is mapped to supported `low` thinking
+by the new request adapter.
+
+Cloud command 123 recovered submission 3 through the existing evaluation service
+from its settled response. It is now `needs_resubmission` / evaluation `ready`,
+with the original concrete missing-evidence explanation. Readback in command 127
+confirmed event 21 remains the sole event for that request, with one provider
+attempt and cost USD 0.005274. No new review was generated and no false pass was
+granted.
+
+Command 126 made one independent, streaming Gemini request using the deployed
+course/lesson context and final response contract, without creating a student
+turn or spending a student's message allowance. Its question was different from
+the examples embedded in the prompt. First visible callback was 1787.9 ms,
+completion 2972.5 ms, with six partial callbacks. The response used two concise
+Egyptian-Arabic paragraphs without an introductory compliment or ordinary prose
+punctuation. Provider usage was 1078 input / 98 completion tokens, USD 0.001176.
+The generation metadata initially was not ready; one later read confirmed
+`google/gemini-3.8-flash-20260902` and the same cost. These are one server-side
+sample's measurements, not a mobile end-to-end or universal latency guarantee.
+
+Post-deployment readiness returned HTTP 200 with database/schema/identity/cache
+checks ready. Public course 3 details returned HTTP 200. The readiness route is
+`/api/health/ready`, outside the versioned learner endpoint prefix.
+
+APK build succeeded in 2m 47s from the clean source commit above. Artifact:
+`mobile/artifacts/12345678910.apk`, with matching `.apk.json` provenance.
+
+- Version 1.0.47 / Android 48, minimum API 24, target API 36
+- armeabi-v7a / arm64-v8a / x86_64; production API verified in the Hermes bundle
+- Bytes: 79,651,187
+- SHA-256: `63c61c9fa1974b67518f323f28683287042f16a1a3d57510797a459702105171`
+- Signer SHA-256: `af332099abab71759a75a51db654f4595b86d6b8ddd86e602385cbbc89e9fe85`
+- Existing internal-test signature, APK v2 verification successful
+
+Older numbered APKs remain unchanged. This is not a public-store release, a
+Drive upload or a device-installation result. Mobile CI 34208934653 was still
+building its Android/iOS jobs at the last snapshot, with no failures; the local
+mobile full test/lint/typecheck gates and internal APK build had completed.
