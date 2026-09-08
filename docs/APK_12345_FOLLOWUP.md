@@ -534,3 +534,30 @@ iOS 48; the final build and deployment are recorded after completion below.
 
 Final local mobile gates passed 187 suites / 1049 tests, TypeScript,
 release ESLint with zero warnings and the release configuration contract.
+
+### Final UID deployment and APK handoff
+
+Source commit `2908888f94f8f425df719c0c76d8c7ad255c857e` passed Backend CI
+34217304386: 1269 tests passed, 4 skipped, 12428 assertions; the independent
+MySQL suite passed 10 tests / 54 assertions. Laravel Cloud deployment 185
+completed successfully in 1m51s, and readiness checks returned ready.
+
+Live command 134 searched an existing student by `UID: 1` through the deployed
+student read service and returned exactly `[1]`. The initial probe for account
+6 returned no students; the follow-up confirmed account 6 is not in the student
+role scope. The existing student/staff separation was preserved, not removed
+to make the diagnostic pass. No account data was changed by either probe.
+
+The final internal APK is `mobile/artifacts/12345678910111213.apk`, with its
+matching `.apk.json` provenance, built from the clean source commit above.
+
+- Version 1.0.50 / Android 51, minimum API 24, target API 36
+- armeabi-v7a / arm64-v8a / x86_64; correct Laravel Cloud production API
+- Bytes: 79,657,855
+- SHA-256: `813da9c07ea6e984fc96ba20cdda10318f78d213610a400afad59fb5ff15d7f8`
+- Signer SHA-256: `af332099abab71759a75a51db654f4595b86d6b8ddd86e602385cbbc89e9fe85`
+- Existing internal-test signer, valid APK v2 signature, not public distribution
+
+Older artifacts are intact. No physical-device installation/walkthrough or
+Drive upload is claimed. Mobile CI 34217304214 was still running at the last
+snapshot; the full local mobile gates and internal APK build had completed.
