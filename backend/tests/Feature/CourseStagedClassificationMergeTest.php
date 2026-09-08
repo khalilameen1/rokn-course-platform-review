@@ -70,7 +70,8 @@ final class CourseStagedClassificationMergeTest extends TestCase
         );
     }
 
-    public function test_dashboard_row_removal_survives_publishing_an_unchanged_course_draft(): void
+    #[\PHPUnit\Framework\Attributes\DataProvider('rowRemovalModes')]
+    public function test_dashboard_row_removal_survives_publishing_an_unchanged_course_draft(bool $deleteRow): void
     {
         [$row] = $this->classifications();
         $canonical = $this->publishedCourse('كورس وصف رئيسي يتغير أثناء المسودة');
@@ -104,6 +105,13 @@ final class CourseStagedClassificationMergeTest extends TestCase
             'Home curation must not erase the hidden snapshot owned by the open draft.'
         );
 
+        if ($deleteRow) {
+            $this->delete(route('admin.classifications.destroy', $row))
+                ->assertRedirect(route('admin.classifications.index'))
+                ->assertSessionMissing('error');
+            $this->assertDatabaseMissing('classifications', ['id' => $row->id]);
+        }
+
         $published = $service->publish($draft->fresh(), (int) $draft->fresh()->authoring_version, true);
 
         self::assertFalse($published['course']->classifications()->whereKey($row->id)->exists());
@@ -111,6 +119,14 @@ final class CourseStagedClassificationMergeTest extends TestCase
             $published['archive']->classifications()->whereKey($row->id)->exists(),
             'The archive must receive the exact live membership that existed immediately before publish.'
         );
+    }
+
+    public static function rowRemovalModes(): array
+    {
+        return [
+            'remove membership only' => [false],
+            'delete emptied row before publishing' => [true],
+        ];
     }
 
     public function test_an_empty_clone_time_membership_is_still_a_valid_merge_base(): void

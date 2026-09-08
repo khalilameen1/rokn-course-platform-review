@@ -52,7 +52,7 @@ export const useProjectReview = ({
 
   useEffect(() => {
     pendingMapRefreshRef.current = null;
-  }, [course?.id]);
+  }, [course?.id, courseProjectKey]);
 
   const publishReviewResolution = useCallback(
     (projectId: string, resolution: ProjectResolution) => {
@@ -104,16 +104,16 @@ export const useProjectReview = ({
         const project = refreshed.modules
           .flatMap(module => module.projects || [])
           .find(item => item?.id === projectId);
-        // A missing project is not a fresh "draft". Publishing or account
-        // state changed while this review was resolving, so keep the current
-        // map and retry instead of replacing it with an unrelated journey.
+        // Publication can replace or remove this project after its decision.
+        // The guarded current course map still owns progression; never retain
+        // an archived map solely because its old project ID disappeared.
+        pendingMapRefreshRef.current = null;
+        setCourse(refreshed);
         if (!project) return null;
         const refreshedFeed = buildAccessibleFeed(refreshed);
         const projectFeedIndex = refreshedFeed.findIndex(
           item => item.type === 'project' && item.project.id === projectId,
         );
-        pendingMapRefreshRef.current = null;
-        setCourse(refreshed);
         return {
           status: project.status,
           canContinue:
@@ -130,22 +130,28 @@ export const useProjectReview = ({
   const watchProjectUntilResolved = useCallback(
     (projectId: string) => {
       if (!reviewActive) return;
+      if (
+        !refs.loadedCourse.current?.modules.some(module =>
+          module.projects?.some(project => project.id === projectId),
+        )
+      )
+        return;
       if (refs.watchedProject.current === projectId) return;
       stopReviewRef.current?.();
       refs.watchedProject.current = projectId;
       const watcher = ++refs.reviewWatcher.current;
+      const ownsWatcher = () =>
+        reviewActive &&
+        refs.mounted.current &&
+        refs.reviewWatcher.current === watcher;
       stopReviewRef.current = watchProjectResolution({
         projectId,
         resolve: async currentProjectId => {
           const resolution = await loadProjectResolution(currentProjectId);
+          if (!ownsWatcher()) return null;
           if (resolution.status === 'review_unavailable') {
-            if (
-              refs.reviewWatcher.current === watcher &&
-              refs.mounted.current
-            ) {
-              pendingMapRefreshRef.current = null;
-              publishReviewResolution(currentProjectId, resolution);
-            }
+            pendingMapRefreshRef.current = null;
+            publishReviewResolution(currentProjectId, resolution);
             return {status: resolution.status, canContinue: false};
           }
           if (
@@ -157,6 +163,7 @@ export const useProjectReview = ({
           // Reload the larger course contract only once after the decision so
           // its newly unlocked manifests and map state arrive together.
           const refreshed = await refreshProjectState(currentProjectId);
+          if (!ownsWatcher()) return null;
           if (refreshed) return refreshed;
 
           // Knowing the decision is not enough to advance: the course payload
@@ -167,10 +174,7 @@ export const useProjectReview = ({
           pendingMapRefreshRef.current = currentProjectId;
           return {status: 'evaluating' as const, canContinue: false};
         },
-        isActive: () =>
-          reviewActive &&
-          refs.mounted.current &&
-          refs.reviewWatcher.current === watcher,
+        isActive: ownsWatcher,
         initialDelayMs: 2500,
         onExhausted: () => {
           if (refs.reviewWatcher.current === watcher) {
@@ -204,10 +208,11 @@ export const useProjectReview = ({
     return () => {
       stopReviewRef.current?.();
       stopReviewRef.current = undefined;
+      mapRefreshSequenceRef.current += 1;
       refs.reviewWatcher.current += 1;
       refs.watchedProject.current = null;
     };
-  }, [course?.id, refs, reviewActive]);
+  }, [course?.id, courseProjectKey, refs, reviewActive]);
 
   useEffect(() => {
     if (!course || previewMode || !reviewActive) return;

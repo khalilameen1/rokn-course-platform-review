@@ -485,7 +485,35 @@ const showExternalDownloadFallback = (
         onPress: () => {
           void (async () => {
             try {
-              const current = await usableAttachment(attachment, operation);
+              // The prompt can remain open across a publication or access
+              // change. Its follow-up tap owns a fresh descriptor too.
+              const current = await usableAttachment(
+                attachment,
+                operation,
+                Boolean(attachment.downloadRefreshEndpoint),
+              );
+              if (current.platform === 'computer') {
+                await openCourseAttachmentInternal(current, operation, true);
+                return;
+              }
+              if (!current.external) {
+                Alert.alert(
+                  'تم تحديث المرفق',
+                  'أصبح ملفًا للتنزيل على الهاتف',
+                  [
+                    {text: 'إلغاء', style: 'cancel'},
+                    {
+                      text: 'تنزيل الملف',
+                      onPress: () => {
+                        if (attachmentOwnerIsActive(operation)) {
+                          void openCourseAttachment(current);
+                        }
+                      },
+                    },
+                  ],
+                );
+                return;
+              }
               const url = current.sourceUrl || current.url;
               if (
                 !isAllowedRemoteUrl(url) ||
@@ -906,18 +934,18 @@ const openCourseAttachmentInternal = async (
 export const openCourseAttachment = async (
   attachment: CourseAttachment,
 ): Promise<AttachmentResult> => {
+  const generation = privateDownloadGeneration;
   let boundary: AccountSessionBoundary;
   try {
     boundary = await captureAccountSessionBoundary();
   } catch {
     return emptyResult();
   }
-  const generation = privateDownloadGeneration;
   const key = attachmentFlightKey(attachment, boundary.scope);
-  const existing = downloadFlights.get(key);
-  if (existing) return existing;
   const operation: AttachmentOperation = {boundary, generation};
   if (!attachmentOwnerIsActive(operation)) return emptyResult();
+  const existing = downloadFlights.get(key);
+  if (existing) return existing;
   // Every caller gets the same user-facing terminal contract. Most expected
   // failures are handled close to their recovery path above; this boundary
   // catches platform/native surprises so a tap can never fail silently just

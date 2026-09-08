@@ -21,6 +21,7 @@ import {
 } from './shared';
 import {mapProjectFeedbackThread} from './projectFeedbackMapping';
 import {reviewFeedbackForStatus} from './projectJourney';
+import {publishCourseRevisionChange} from './playbackRevision';
 
 const PUBLIC_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -99,12 +100,20 @@ export const loadProjectFeedbackThread = async (
 
 export const loadProjectResolution = async (projectId: string) => {
   const boundary = await captureAccountSessionBoundary();
-  const response = await publicRequest.get(
-    `projects/${numericProjectId(projectId)}`,
-  );
-  assertAccountSessionBoundary(boundary);
-  const submission = asRecord(payloadFrom(response).latest_submission);
-  return projectResolutionFromSubmission(submission);
+  try {
+    const response = await publicRequest.get(
+      `projects/${numericProjectId(projectId)}`,
+    );
+    assertAccountSessionBoundary(boundary);
+    const submission = asRecord(payloadFrom(response).latest_submission);
+    return projectResolutionFromSubmission(submission);
+  } catch (error) {
+    assertAccountSessionBoundary(boundary);
+    // Staged publication archives project IDs too. Let the existing course
+    // reload owner replace the map without resubmitting this accepted attempt.
+    publishCourseRevisionChange(error);
+    throw error;
+  }
 };
 
 const projectResolutionFromSubmission = (submission: DataRecord) => {

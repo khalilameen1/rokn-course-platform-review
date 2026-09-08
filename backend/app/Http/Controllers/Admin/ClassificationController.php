@@ -168,8 +168,17 @@ class ClassificationController extends Controller
     public function destroy(Classification $classification)
     {
         $blocked = DB::transaction(function () use ($classification): bool {
+            $courseIds = $classification->courses()->pluck('courses.id')->all();
+            $lockedCourseIds = $this->lockCoursesForHomeMembership($courseIds);
             $locked = Classification::query()->whereKey($classification->id)->lockForUpdate()->firstOrFail();
-            if ($locked->courses()->exists()) return true;
+            if ($locked->courses()->whereNotIn('courses.id', $lockedCourseIds)->exists()) {
+                throw ValidationException::withMessages([
+                    'classification' => "تغيّرت كورسات هذا الصف\nأعد المحاولة",
+                ]);
+            }
+            // Revision snapshots are not editable home membership. Once the
+            // real courses are moved, their old snapshots cannot trap this row.
+            if ($this->onlyCanonicalCourses($locked->courses())->exists()) return true;
             $locked->delete();
             return false;
         }, 3);
@@ -296,8 +305,9 @@ class ClassificationController extends Controller
      * one operation completes before the other without a deadlock cycle.
      *
      * @param array<int, int> $courseIds
+     * @return array<int, int>
      */
-    private function lockCoursesForHomeMembership(array $courseIds): void
+    private function lockCoursesForHomeMembership(array $courseIds): array
     {
         $ids = collect($courseIds)
             ->map(fn ($id): int => (int) $id)
@@ -307,13 +317,19 @@ class ClassificationController extends Controller
             ->values()
             ->all();
         if ($ids === []) {
-            return;
+            return [];
         }
 
-        Course::query()
+        // Deleting an empty row can also detach revision snapshots. Their
+        // canonical owners publish first, so take that same parent lock order.
+        $ids = collect($ids)->merge(CourseAuthoringRevision::query()
+            ->whereIn('revision_course_id', $ids)->pluck('canonical_course_id'))
+            ->unique()->sort()->values()->all();
+
+        return Course::query()
             ->whereKey($ids)
             ->orderBy('id')
             ->lockForUpdate()
-            ->get(['id']);
+            ->pluck('id')->map(fn ($id): int => (int) $id)->all();
     }
 }

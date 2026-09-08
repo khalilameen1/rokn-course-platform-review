@@ -331,6 +331,115 @@ final class AdminHomeCurationTest extends TestCase
         );
     }
 
+    public function test_empty_row_can_be_deleted_when_only_a_course_revision_still_references_it(): void
+    {
+        $course = $this->publishedCourse('كورس له نسخة تحرير', 10);
+        $row = Classification::query()->create([
+            'name_ar' => 'صف انتهى استخدامه',
+            'name_en' => 'Retired row',
+            'show_on_home' => true,
+            'home_order' => 10,
+        ]);
+        $row->courses()->attach($course->id);
+        $draft = app(CourseStagedAuthoringService::class)->draftFor($course);
+        $edit = $this->get(route('admin.classifications.edit', $row))->assertOk();
+
+        $this->put(route('admin.classifications.update', $row), [
+            'name_ar' => $row->name_ar,
+            'name_en' => $row->name_en,
+            'show_on_home' => '1',
+            'home_order' => 10,
+            'course_ids' => [],
+            'editor_version' => (string) $edit->original->getData()['editorVersion'],
+        ])->assertRedirect(route('admin.classifications.index'));
+        $index = $this->get(route('admin.classifications.index'))->assertOk();
+        self::assertSame(0, (int) $index->original->getData()['classifications']
+            ->firstWhere('id', $row->id)->home_courses_count);
+        self::assertTrue($draft->classifications()->whereKey($row->id)->exists());
+
+        $queries = [];
+        DB::listen(static function ($query) use (&$queries): void {
+            $queries[] = strtolower($query->sql);
+        });
+        $this->delete(route('admin.classifications.destroy', $row))
+            ->assertRedirect(route('admin.classifications.index'))
+            ->assertSessionMissing('error');
+
+        $this->assertDatabaseMissing('classifications', ['id' => $row->id]);
+        $this->assertDatabaseMissing('classification_course', ['classification_id' => $row->id]);
+        $this->assertDatabaseHas('courses', ['id' => $course->id]);
+        $this->assertDatabaseHas('courses', ['id' => $draft->id]);
+        $courseLock = collect($queries)->search(fn (string $sql): bool =>
+            str_contains($sql, 'from "courses"') && str_contains($sql, 'order by "id" asc')
+                && str_contains($sql, 'in ('.$course->id.', '.$draft->id.')')
+        );
+        $rowLock = collect($queries)->search(fn (string $sql): bool =>
+            str_contains($sql, 'from "classifications"')
+                && str_contains($sql, '"classifications"."id" = ?')
+        );
+        self::assertNotFalse($courseLock, 'Canonical owner and revision must be selected before the row.');
+        self::assertNotFalse($rowLock);
+        self::assertLessThan($rowLock, $courseLock);
+    }
+
+    public function test_delete_retries_when_a_new_revision_membership_arrives_after_its_course_snapshot(): void
+    {
+        $first = $this->publishedCourse('كورس أول', 10);
+        $second = $this->publishedCourse('كورس ثان', 20);
+        $firstDraft = app(CourseStagedAuthoringService::class)->draftFor($first);
+        $secondDraft = app(CourseStagedAuthoringService::class)->draftFor($second);
+        $row = Classification::query()->create([
+            'name_ar' => 'صف يتغير أثناء الحذف',
+            'name_en' => 'Changing row',
+            'show_on_home' => true,
+            'home_order' => 10,
+        ]);
+        $row->courses()->attach($firstDraft->id);
+        $changed = false;
+        // Controlled interleaving, not a claim of concurrent SQLite row locks.
+        DB::listen(static function ($query) use (&$changed, $row, $secondDraft): void {
+            $sql = strtolower($query->sql);
+            if (!$changed && str_contains($sql, 'from "courses"')
+                && str_contains($sql, 'order by "id" asc')) {
+                $changed = true;
+                $row->courses()->attach($secondDraft->id);
+            }
+        });
+
+        $this->delete(route('admin.classifications.destroy', $row))
+            ->assertSessionHasErrors('classification');
+        self::assertTrue($changed);
+        $this->assertDatabaseHas('classifications', ['id' => $row->id]);
+
+        // A new action sees both owners and can delete the still-empty row.
+        $this->delete(route('admin.classifications.destroy', $row))
+            ->assertRedirect(route('admin.classifications.index'))
+            ->assertSessionMissing('error');
+        $this->assertDatabaseMissing('classifications', ['id' => $row->id]);
+    }
+
+    public function test_row_with_a_hidden_canonical_course_is_not_deleted(): void
+    {
+        $course = $this->course('كورس مخفي', false, false, 10);
+        $row = Classification::query()->create([
+            'name_ar' => 'تصنيف الكورس',
+            'name_en' => 'Course taxonomy',
+            'show_on_home' => false,
+            'home_order' => 10,
+        ]);
+        $row->courses()->attach($course->id);
+
+        $this->delete(route('admin.classifications.destroy', $row))
+            ->assertRedirect(route('admin.classifications.index'))
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('classifications', ['id' => $row->id]);
+        $this->assertDatabaseHas('classification_course', [
+            'classification_id' => $row->id,
+            'course_id' => $course->id,
+        ]);
+    }
+
     private function publishedCourse(string $name, int $order): Course
     {
         $course = $this->course($name, false, true, $order);

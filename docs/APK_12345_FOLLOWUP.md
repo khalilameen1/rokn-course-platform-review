@@ -1103,3 +1103,62 @@ transport/storage timing, not acceptance on the user's phone or production.
 
 No APK, push or deployment was performed. This checkpoint does not establish
 that every feature is complete or that the wider application is defect-free.
+
+## September 9 — delayed actions across course publication
+
+- The external-attachment fallback's later "open source" tap could bypass the
+  descriptor refresh used by the original download. Five failing action tests
+  reproduced opening the old URL after replacement, platform/source changes,
+  hiding or revoked access. That delayed tap now resolves current eligibility
+  and routing. External mobile sources open the current URL; computer files
+  use the existing copy flow. A change to an internal mobile file offers an
+  explicit download action, not an unexpected native write. Its next tap uses
+  the existing fresh-descriptor operation. Independent review also reproduced
+  an invalidated tap adopting a newer download generation while awaiting
+  session capture. The entry point now captures its generation before waiting
+  and checks it before joining an existing flight. A new later tap still works.
+- A lost course-chat acknowledgement followed by a missing turn status could
+  make an explicit Retry allocate a second request identity. The actual-hook
+  regression was red before the change. Missing status now re-sends the same
+  identity on explicit action only; a confirmed terminal retryable failure
+  still starts a new attempt. Existing server uniqueness, fingerprint checks
+  and paid-call settlement were retained, not replaced with question matching.
+- A project review could poll an archived project ID indefinitely after staged
+  publication, or discard a fresh course map because its old project ID was
+  absent. The existing owned course-revision reload signal now handles that
+  GET response. Current project membership retires old watchers, and the
+  authoritative same-course map can replace archived IDs. Independent review
+  found two further late-callback failures: an old response starting a map read
+  after cleanup, and an old map result poisoning the pending-project marker so
+  an evaluating replacement failed to resume after blur/refocus. Actual-journey
+  red tests covered both; the same watcher ownership check now guards those
+  writes after each await. No accepted submission is re-sent or evaluated again.
+- An emptied home row could show zero courses but refuse deletion because an
+  internal course revision still held its old classification snapshot. The
+  real dashboard route reproduced the failure. Deletion now checks canonical
+  courses, retaining the existing block for real hidden or visible courses.
+  Revision snapshots are detached by the existing classification FK cascade,
+  not by deleting course content. A publish-after-deletion regression preserves
+  the staged merge behavior. To avoid reversing publication's lock order, the
+  existing curation lock helper includes revision canonical owners before the
+  classification lock; a newly arrived unowned membership requests a retry.
+  Query ordering and controlled membership interleaving were verified in
+  SQLite. This is not a live MySQL concurrency result.
+
+Root verification passed 19 explicitly named affected mobile suites / 135 tests,
+full TypeScript, scoped ESLint and diff checks. The three affected backend
+curation/merge/authorization suites passed 21 tests / 1,088 assertions. Agents
+also ran the existing attachment backend gates (20 tests / 237 assertions),
+project completion/projection gates (15 / 43) and settled course-chat recovery
+gates (3 / 20), with no live provider calls. No APK, push or deployment.
+
+One distinct project path remains open: a not-yet-accepted draft submitted to
+an archived project gets `course_revision_changed`, but its editor currently
+labels any 409 as unmet prerequisites. Reloading alone would switch draft keys
+and hide the prepared note/files. Repair must use actual surviving project
+lineage, preserve editor drafts and existing destination drafts, show current
+requirements and require explicit submission; it must not migrate or replay
+an uncertain outbox as a new attempt. The existing public-ID/exact-key lookup
+already recovers ordinary lost acknowledgements. The narrower sequence of a
+lookup returning 404, an original acceptance arriving, and a retry receiving
+409 has not yet been reproduced and must not be described as proven failure.

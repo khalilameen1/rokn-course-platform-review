@@ -255,15 +255,20 @@ export const useCourseChatTurn = ({
           ? await pollCourseAssistantTurn(retryClientRequestId)
           : undefined;
         if (!ownsTurn()) return;
-        const freshRetryAllowed = Boolean(
+        const retrySendAllowed = Boolean(
           retryClientRequestId &&
           retryIntent === 'retry' &&
           !recoveryOnly &&
           response?.turnStatus === 'failed' &&
           courseChatFailureCanStartFreshTurn(response.canRetry),
         );
+        // A missing status is not a terminal receipt: the original POST may
+        // still be admitted after its acknowledgement timed out. Re-send only
+        // on explicit Retry and retain its idempotency identity in that case.
+        const freshRetryAllowed =
+          retrySendAllowed && response?.code !== 'chat_turn_not_found';
         let uploadedAttachments = selectedAttachments;
-        if (!recoveryOnly && (!retryClientRequestId || freshRetryAllowed)) {
+        if (!recoveryOnly && (!retryClientRequestId || retrySendAllowed)) {
           const uploadedWithLocalFiles = await Promise.all(
             selectedAttachments.map(async file => ({
               ...file,
@@ -321,7 +326,7 @@ export const useCourseChatTurn = ({
           );
           assertAccountSessionBoundary(turnBoundary);
         }
-        if (!response || freshRetryAllowed) {
+        if (!response || retrySendAllowed) {
           if (!ownsTurn()) return;
           attemptStartedAt = Date.now();
           response = await askCourseAssistant({

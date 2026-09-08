@@ -45,6 +45,7 @@ import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {publicRequest} from '../src/constants/api';
+import {captureAccountSessionBoundary} from '../src/constants/helpers';
 import {loadCourseLearningData} from '../src/components/VideoPlayer/courseLearning/mapping';
 import {
   openCourseAttachment,
@@ -127,6 +128,57 @@ describe('course attachment operation ownership', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     jest.useRealTimers();
+  });
+
+  it('invalidates a tap awaiting account capture without blocking a fresh tap after quiescence', async () => {
+    const capture =
+      deferred<Awaited<ReturnType<typeof captureAccountSessionBoundary>>>();
+    jest
+      .mocked(captureAccountSessionBoundary)
+      .mockReturnValueOnce(capture.promise);
+    const file = attachment({
+      id: '22',
+      downloadRefreshEndpoint: '/api/v1/courses/31/pdfs/22',
+    });
+    jest.mocked(publicRequest.get).mockResolvedValue({
+      data: {
+        data: {
+          id: 22,
+          title: file.title,
+          download_only: true,
+          download_url: 'https://api.example/current.pdf',
+          download_refresh_endpoint: file.downloadRefreshEndpoint,
+          download_version: 'version-2',
+          source_type: 'upload',
+          platform: 'mobile',
+          file_name: 'current.pdf',
+          file_type: 'pdf',
+          mime_type: 'application/pdf',
+        },
+      },
+    });
+    enqueue.mockResolvedValue({id: 109, status: 'started'});
+
+    const oldTap = openCourseAttachment(file);
+    await quiescePrivateAttachmentDownloads();
+    jest.clearAllMocks();
+    // Quiescence precedes session deletion: the same account and epoch can
+    // still be current when this older asynchronous capture finishes.
+    capture.resolve({...mockBoundary});
+    await expect(oldTap).resolves.toEqual({copied: false, downloaded: false});
+    expect(publicRequest.get).not.toHaveBeenCalled();
+    expect(loadCourse).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(RNFS.downloadFile).not.toHaveBeenCalled();
+    expect(Clipboard.setString).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
+
+    await expect(openCourseAttachment(file)).resolves.toMatchObject({
+      downloaded: true,
+    });
+    expect(publicRequest.get).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+    expect(enqueue.mock.calls[0][0]).toBe('https://api.example/current.pdf');
   });
 
   it('copies a computer attachment link without starting a download', async () => {
@@ -537,10 +589,12 @@ describe('course attachment operation ownership', () => {
         .mocked(RNFS.exists)
         .mockImplementation(async target => target === expectedTarget);
       await expect(
-        openCourseAttachment(attachment({
-          fileName: 'saved.pdf',
-          fileSizeBytes: 10,
-        })),
+        openCourseAttachment(
+          attachment({
+            fileName: 'saved.pdf',
+            fileSizeBytes: 10,
+          }),
+        ),
       ).resolves.toEqual({copied: false, downloaded: true});
       expect(RNFS.downloadFile).not.toHaveBeenCalled();
       expect(Share.open).toHaveBeenCalledWith(
@@ -567,12 +621,10 @@ describe('course attachment operation ownership', () => {
         ],
       },
     } as Awaited<ReturnType<typeof loadCourseLearningData>>);
-    jest
-      .mocked(RNFS.downloadFile)
-      .mockReturnValueOnce({
-        jobId: 14,
-        promise: Promise.resolve({jobId: 14, statusCode: 403, bytesWritten: 0}),
-      });
+    jest.mocked(RNFS.downloadFile).mockReturnValueOnce({
+      jobId: 14,
+      promise: Promise.resolve({jobId: 14, statusCode: 403, bytesWritten: 0}),
+    });
     await expect(openCourseAttachment(original)).resolves.toEqual({
       copied: true,
       downloaded: false,
@@ -615,6 +667,142 @@ describe('course attachment operation ownership', () => {
       buttons?.find(button => button.text === 'فتح المصدر')?.onPress?.();
       await settleMicrotasks();
       expect(browser).toHaveBeenCalledWith(source.sourceUrl);
+    },
+  );
+
+  it.each([
+    'external-mobile',
+    'external-computer',
+    'upload-mobile',
+    'upload-hidden-before-confirmation',
+    'upload-account-changed-before-confirmation',
+    'hidden',
+    'deleted',
+    'revoked',
+  ])(
+    'renews the descriptor when an open-source prompt outlives an attachment change (%s)',
+    async change => {
+      const currentPayload = {
+        id: 22,
+        title: 'ملف التطبيق',
+        download_only: true,
+        download_url: 'https://api.example/download-before-edit',
+        download_refresh_endpoint: '/api/v1/courses/31/pdfs/22',
+        download_url_is_temporary: true,
+        download_url_expires_at: '2099-01-01T00:00:00Z',
+        download_version: 'version-2',
+        source_type: 'external',
+        platform: 'mobile',
+        external_url: 'https://files.example/before-edit',
+      };
+      jest
+        .mocked(publicRequest.get)
+        .mockResolvedValueOnce({data: {data: currentPayload}});
+      inspectMetadata.mockResolvedValue({
+        url: currentPayload.external_url,
+        statusCode: 200,
+        contentType: 'text/html',
+      });
+      const browser = jest
+        .spyOn(Linking, 'openURL')
+        .mockResolvedValue(undefined);
+      jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+      enqueue.mockResolvedValue({id: 108, status: 'started'});
+      await openCourseAttachment(
+        attachment({
+          id: '11',
+          external: true,
+          temporary: true,
+          expiresAt: '2099-01-01T00:00:00Z',
+          downloadRefreshEndpoint: '/api/v1/courses/31/pdfs/11',
+        }),
+      );
+      const openSource = jest
+        .mocked(Alert.alert)
+        .mock.calls.at(-1)?.[2]
+        ?.find(button => button.text === 'فتح المصدر');
+      expect(openSource).toBeDefined();
+      const changedPayload = {
+        ...currentPayload,
+        id: 33,
+        download_version: 'version-3',
+        download_refresh_endpoint: '/api/v1/courses/31/pdfs/33',
+        download_url: 'https://api.example/download-after-edit',
+        external_url: 'https://files.example/after-edit',
+        platform: change === 'external-computer' ? 'computer' : 'mobile',
+        source_type: change.startsWith('upload-') ? 'upload' : 'external',
+        file_name: 'current.pdf',
+        file_type: 'pdf',
+        mime_type: 'application/pdf',
+      };
+      if (['hidden', 'deleted', 'revoked'].includes(change)) {
+        jest.mocked(publicRequest.get).mockRejectedValueOnce({
+          response: {status: change === 'revoked' ? 403 : 404},
+        });
+      } else {
+        jest
+          .mocked(publicRequest.get)
+          .mockResolvedValueOnce({data: {data: changedPayload}});
+      }
+      openSource?.onPress?.();
+      await settleMicrotasks(60);
+      if (change === 'external-mobile') {
+        expect(browser).toHaveBeenCalledWith(changedPayload.external_url);
+        expect(enqueue).not.toHaveBeenCalled();
+      } else {
+        expect(browser).not.toHaveBeenCalled();
+        if (change === 'external-computer') {
+          expect(Clipboard.setString).toHaveBeenCalledWith(
+            changedPayload.external_url,
+          );
+          expect(enqueue).not.toHaveBeenCalled();
+        } else if (change.startsWith('upload-')) {
+          expect(enqueue).not.toHaveBeenCalled();
+          const download = jest
+            .mocked(Alert.alert)
+            .mock.calls.at(-1)?.[2]
+            ?.find(button => button.text === 'تنزيل الملف');
+          expect(jest.mocked(Alert.alert).mock.calls.at(-1)?.[0]).toBe(
+            'تم تحديث المرفق',
+          );
+          expect(download).toBeDefined();
+          if (change === 'upload-hidden-before-confirmation') {
+            jest
+              .mocked(publicRequest.get)
+              .mockRejectedValueOnce({response: {status: 404}});
+          } else {
+            jest
+              .mocked(publicRequest.get)
+              .mockResolvedValueOnce({data: {data: changedPayload}});
+          }
+          if (change === 'upload-account-changed-before-confirmation') {
+            mockBoundary = {epoch: 2, scope: 'user-b'};
+          }
+          download?.onPress?.();
+          await settleMicrotasks(60);
+          if (change === 'upload-mobile') {
+            expect(enqueue.mock.calls[0][0]).toBe(changedPayload.download_url);
+            expect(enqueue.mock.calls[0][4]).toContain(
+              'user-a:31:33:version-3',
+            );
+          }
+        } else {
+          expect(enqueue).not.toHaveBeenCalled();
+          expect(Clipboard.setString).not.toHaveBeenCalled();
+        }
+      }
+      expect(publicRequest.get).toHaveBeenNthCalledWith(
+        2,
+        'courses/31/pdfs/22',
+        expect.anything(),
+      );
+      expect(inspectMetadata).toHaveBeenCalledTimes(1);
+      expect(enqueue).toHaveBeenCalledTimes(change === 'upload-mobile' ? 1 : 0);
+      expect(
+        jest
+          .mocked(Alert.alert)
+          .mock.calls.filter(call => call[0] === 'تعذّر التنزيل المباشر'),
+      ).toHaveLength(1);
     },
   );
 

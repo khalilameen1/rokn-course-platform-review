@@ -45,10 +45,56 @@ import type {
   CourseLearningData,
 } from '../src/components/VideoPlayer/types';
 import {useCourseChatTurn} from '../src/components/VideoPlayer/courseChat/useCourseChatTurn';
+import {secureRandomUuid} from '../src/utils/secureRandom';
+import {pollAcceptedCourseChatTurn} from '../src/components/VideoPlayer/courseChat/turnPolling';
 
 const requestId = 'b1644f1f-21ff-4a52-bfc3-cf98fd87a388';
 
 describe('course chat turn owner', () => {
+  it('keeps the original send identity when an explicit retry follows a lost ACK and missing status', async () => {
+    jest.clearAllMocks();
+    jest.mocked(secureRandomUuid).mockReturnValueOnce(requestId).mockReturnValueOnce('replacement-id');
+    const missing = {
+      text: 'لم يصل سؤالك', offline: false, turnStatus: 'failed' as const,
+      code: 'chat_turn_not_found', canRetry: true, clientRequestId: requestId,
+    };
+    jest.mocked(askCourseAssistant)
+      .mockResolvedValueOnce({text: '', offline: true, turnStatus: 'queued', code: 'chat_answer_in_progress', clientRequestId: requestId})
+      .mockResolvedValueOnce({text: 'الإجابة', offline: false, turnStatus: 'completed', clientRequestId: requestId});
+    jest.mocked(pollAcceptedCourseChatTurn).mockResolvedValueOnce({foregroundWaitExpired: false, response: missing});
+    jest.mocked(pollCourseAssistantTurn).mockResolvedValueOnce(missing);
+    const scope = 'user-a:1:course';
+    const messagesRef: {current: ChatMessage[]} = {current: []};
+    let turn!: ReturnType<typeof useCourseChatTurn>;
+    const Harness = () => {
+      turn = useCourseChatTurn({
+        activeAccountScope: {current: 'user-a'}, activeConversation: {current: scope},
+        assistantIncluded: true, attachmentsRef: {current: []}, commitAttachments: jest.fn(),
+        commitMessages: update => { messagesRef.current = typeof update === 'function' ? update(messagesRef.current) : update; },
+        conversationGeneration: {current: 1}, conversationScope: scope,
+        course: {id: '1', accessType: 'paid', chatAvailable: true} as CourseLearningData,
+        hydratedConversation: {current: scope}, hydrationRecoveryRevision: 0,
+        inFlightAttachmentIds: {current: new Set<string>()}, input: 'اشرح الفكرة',
+        interactive: true, messagesRef, recordServerBlock: jest.fn(),
+        scheduleScrollToEnd: jest.fn(), setInput: jest.fn(), upgraded: false,
+      });
+      return null;
+    };
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(async () => { renderer = ReactTestRenderer.create(<Harness />); });
+    try {
+      await ReactTestRenderer.act(async () => turn.send());
+      expect(askCourseAssistant).toHaveBeenCalledTimes(1);
+      expect(messagesRef.current).toContainEqual(expect.objectContaining({role: 'assistant', errorCode: 'chat_turn_not_found'}));
+      await ReactTestRenderer.act(async () => turn.retry(requestId));
+      expect(askCourseAssistant).toHaveBeenCalledTimes(2);
+      expect(jest.mocked(askCourseAssistant).mock.calls[1][0]).toMatchObject({clientRequestId: requestId, message: 'اشرح الفكرة'});
+      expect(secureRandomUuid).toHaveBeenCalledTimes(1);
+    } finally {
+      await ReactTestRenderer.act(async () => renderer.unmount());
+      jest.mocked(secureRandomUuid).mockReset().mockReturnValue('fresh-request-id');
+    }
+  });
   it.each([true, false])('releases a stale send only when server cancellation is confirmed (%s)', async cancelledAtServer => {
     jest.clearAllMocks();
     let finishSend!: (value: Awaited<ReturnType<typeof askCourseAssistant>>) => void;
@@ -105,8 +151,7 @@ describe('course chat turn owner', () => {
         turnStatus: 'failed' as const, code: 'provider_unavailable', canRetry: true,
       };
       if (mode === 'manual-offline') {
-        const {pollAcceptedCourseChatTurn} = require('../src/components/VideoPlayer/courseChat/turnPolling');
-        pollAcceptedCourseChatTurn.mockImplementationOnce(async ({initialResponse}: {initialResponse: unknown}) => ({
+        jest.mocked(pollAcceptedCourseChatTurn).mockImplementationOnce(async ({initialResponse}) => ({
           foregroundWaitExpired: true, response: initialResponse,
         }));
       }
@@ -160,6 +205,9 @@ describe('course chat turn owner', () => {
       expect(pollCourseAssistantTurn).toHaveBeenCalledWith(requestId);
       if (mode === 'manual') {
         expect(askCourseAssistant).toHaveBeenCalledTimes(1);
+        expect(askCourseAssistant).toHaveBeenCalledWith(expect.objectContaining({
+          clientRequestId: 'fresh-request-id', message: 'اشرح الفكرة',
+        }));
         expect(messagesRef.current).toContainEqual(expect.objectContaining({
           role: 'assistant', deliveryStatus: 'completed', clientRequestId: 'fresh-request-id',
         }));
