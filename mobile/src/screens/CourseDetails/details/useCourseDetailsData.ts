@@ -158,9 +158,10 @@ export const useCourseDetailsData = ({
           signal: controller.signal,
         });
         const details = snapshot.course;
-        const mappedLearningCourse = details.owned && snapshot.responsePayload
-          ? mapCoursePayload(snapshot.responsePayload)
-          : null;
+        const mappedLearningCourse =
+          details.owned && snapshot.responsePayload
+            ? mapCoursePayload(snapshot.responsePayload)
+            : null;
         if (details.owned && !mappedLearningCourse) {
           throw new Error('API_CONTRACT_INVALID_COURSE_LEARNING_SNAPSHOT');
         }
@@ -175,8 +176,23 @@ export const useCourseDetailsData = ({
             ownershipWriteEpochRef.current !== ownershipWriteEpoch;
           loadedOwnerRef.current = identityKey;
           setRemoteSnapshot(current => {
+            const currentRatingIsNewer =
+              current &&
+              (current.details.ratingVersion ?? 0) >
+                (details.ratingVersion ?? 0);
             const next = {
               ...details,
+              // A foreground read can predate an acknowledged rating edit or
+              // deletion. Its personal version is monotonic, including deletes.
+              // Equal versions still accept aggregates changed by other students.
+              ...(currentRatingIsNewer
+                ? {
+                    userRating: current.details.userRating,
+                    ratingVersion: current.details.ratingVersion,
+                    ratingAverage: current.details.ratingAverage,
+                    ratingsCount: current.details.ratingsCount,
+                  }
+                : {}),
               // Preserve a purchase that completed while this particular read
               // was in flight. Every later read is authoritative again, so a
               // refunded, held, or revoked enrollment cannot stay unlocked
@@ -299,9 +315,7 @@ export const useCourseDetailsData = ({
       setRemoteSnapshot(current => {
         const currentDetails = current?.details ?? null;
         const next =
-          typeof update === 'function'
-            ? update(currentDetails)
-            : update;
+          typeof update === 'function' ? update(currentDetails) : update;
         loadedCourseRef.current = next;
         return next
           ? {details: next, learning: current?.learning ?? null}

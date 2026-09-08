@@ -29,7 +29,7 @@ export const useCourseRating = ({
   setNotice,
 }: CourseRatingInput) => {
   const [busy, setBusy] = useState(false);
-  const [rating, setRating] = useState<number | null>(null);
+  const rating = course?.userRating ?? null;
   const inFlightRef = useRef(false);
   const generationRef = useRef(0);
   const scopeRef = useRef({courseId, identityKey});
@@ -39,12 +39,7 @@ export const useCourseRating = ({
     generationRef.current += 1;
     inFlightRef.current = false;
     setBusy(false);
-    setRating(null);
   }, [courseId, identityKey]);
-
-  useEffect(() => {
-    setRating(course?.userRating ?? null);
-  }, [course?.userRating, courseId, identityKey]);
 
   const owns = useCallback(
     (expectedCourseId: string, expectedIdentity: string, generation: number) =>
@@ -62,7 +57,9 @@ export const useCourseRating = ({
       ratingsCount: number;
     }) => {
       setCourse(current =>
-        current
+        // Equal means a read has already observed this mutation. Keep its
+        // aggregates, which may include newer ratings from other students.
+        current && result.version > (current.ratingVersion ?? 0)
           ? {
               ...current,
               userRating: result.rating,
@@ -89,25 +86,34 @@ export const useCourseRating = ({
       ) {
         return;
       }
-      const operation = {courseId, identityKey, generation: generationRef.current};
+      const operation = {
+        courseId,
+        identityKey,
+        generation: generationRef.current,
+      };
       inFlightRef.current = true;
       setBusy(true);
       setNotice('');
       try {
         const result = await rateCourse(courseId, value, version);
-        if (!owns(operation.courseId, operation.identityKey, operation.generation)) {
+        if (
+          !owns(operation.courseId, operation.identityKey, operation.generation)
+        ) {
           return;
         }
-        setRating(result.rating);
         updateCourse(result);
       } catch (error) {
-        if (!owns(operation.courseId, operation.identityKey, operation.generation)) {
+        if (
+          !owns(operation.courseId, operation.identityKey, operation.generation)
+        ) {
           return;
         }
         setNotice(learnerErrorMessage(error, 'تعذّر حفظ التقييم'));
         reload();
       } finally {
-        if (owns(operation.courseId, operation.identityKey, operation.generation)) {
+        if (
+          owns(operation.courseId, operation.identityKey, operation.generation)
+        ) {
           inFlightRef.current = false;
           setBusy(false);
         }
@@ -130,25 +136,34 @@ export const useCourseRating = ({
   const remove = useCallback(async () => {
     const version = course?.ratingVersion;
     if (inFlightRef.current || busy || !rating || !version) return;
-    const operation = {courseId, identityKey, generation: generationRef.current};
+    const operation = {
+      courseId,
+      identityKey,
+      generation: generationRef.current,
+    };
     inFlightRef.current = true;
     setBusy(true);
     setNotice('');
     try {
       const result = await deleteCourseRating(courseId, version);
-      if (!owns(operation.courseId, operation.identityKey, operation.generation)) {
+      if (
+        !owns(operation.courseId, operation.identityKey, operation.generation)
+      ) {
         return;
       }
-      setRating(null);
       updateCourse({...result, rating: null});
     } catch (error) {
-      if (!owns(operation.courseId, operation.identityKey, operation.generation)) {
+      if (
+        !owns(operation.courseId, operation.identityKey, operation.generation)
+      ) {
         return;
       }
       setNotice(learnerErrorMessage(error, 'تعذّر حذف التقييم'));
       reload();
     } finally {
-      if (owns(operation.courseId, operation.identityKey, operation.generation)) {
+      if (
+        owns(operation.courseId, operation.identityKey, operation.generation)
+      ) {
         inFlightRef.current = false;
         setBusy(false);
       }
