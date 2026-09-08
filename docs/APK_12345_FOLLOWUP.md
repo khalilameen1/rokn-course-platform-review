@@ -1015,3 +1015,37 @@ This was not a real WhatsApp message or production wallet transaction.
 No APK, push or deployment. Contact delivery, notification acknowledgement and
 portfolio-work cache coherence remain in progress in separate owned files and
 are not covered by this checkpoint's completion statement.
+
+## September 8 — portfolio cache coherence and notification read acknowledgement
+
+- Portfolio writes previously changed the server/current screen without
+  invalidating the existing aggregate cache. A deleted published work could
+  reappear with stale sharing readiness on an offline library remount. A GET
+  started before deletion could also write the old work back to disk. Both
+  cases failed using the actual portfolio service and library hook before the
+  fix. The existing aggregate now has a confirmed-mutation revision and ordered
+  writes. Create, edit, finalize, media append/removal and work removal
+  invalidate it after acknowledgement, including idempotent not-found deletes;
+  rejected writes do not discard the cache. An overtaken GET only repeats its
+  read, never the mutation. A fresh authoritative GET makes the aggregate
+  usable again after persistence; no publication state or counts are invented
+  from local edits. Cache reads have the existing bounded storage budget, and
+  native cache writes cannot hold a successful server mutation open. Delayed
+  disk writes retain their actual order rather than releasing the queue early.
+- Notification mark-all-read previously acknowledged whichever rows were on
+  screen when its POST returned. A notification delivered after the server's
+  update could therefore become falsely read after a late acknowledgement,
+  including in the local cache and subsequent refreshed rows. The local
+  acknowledgement now owns only the IDs captured for that request. New rows
+  retain the server's read state; old pre-acknowledgement reads still cannot
+  undo the acknowledged originals. Actual-hook regressions cover late delivery,
+  failure/retry, duplicate requests, account replacement, relogin and unmount.
+  The admin payload, scoped server read routes and existing push-tap ownership
+  were retained. No notification-delete feature or new protocol was invented.
+
+Root verification passed 11 affected mobile suites / 64 tests (ten suites / 57
+tests plus the seven-case learning async isolation suite), full TypeScript,
+scoped ESLint and diff checks. This is source/cache-state verification, not a
+physical device reboot with failed storage, real push delivery or public upload.
+No APK, push or deployment. Contact delivery, device-session actions and daily
+reward settlement are the next separately owned in-progress operations.

@@ -391,17 +391,24 @@ export function useNotificationsInbox() {
         markAllFlightRef.current = null;
         return;
       }
+      const acknowledgedIds = new Set(
+        serverNotificationsRef.current.map(item => item.id),
+      );
       try {
         assertAccountSessionBoundary(boundary);
         await markAllNotificationsRead(boundary);
         assertAccountSessionBoundary(boundary);
         if (markAllFlightRef.current === flight) {
           notificationMutationRevisionRef.current += 1;
-          serverNotificationsRef.current.forEach(item =>
-            locallyReadNotificationIdsRef.current.add(item.id),
+          // A newer delivery can appear during this request. Its read state
+          // belongs to the server response, not this earlier action's ACK.
+          acknowledgedIds.forEach(id =>
+            locallyReadNotificationIdsRef.current.add(id),
           );
           setServerNotifications(current => {
-            const next = current.map(item => ({...item, read: true}));
+            const next = current.map(item =>
+              acknowledgedIds.has(item.id) ? {...item, read: true} : item,
+            );
             void saveCachedNotifications(
               notificationCacheKeyRef.current,
               next,
