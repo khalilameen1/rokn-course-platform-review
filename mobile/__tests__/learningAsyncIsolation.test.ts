@@ -162,7 +162,7 @@ describe('learning async ownership contracts', () => {
     expect(playbackSession).toContain('`${accountScope}:${playbackSessionId}`');
   });
 
-  it('bounds a slow streaming chat without abandoning its immutable turn', () => {
+  it('bounds chat polling while keeping one owned project report read alive at a reduced cadence', () => {
     const chat = source('src/components/VideoPlayer/courseChat/turnPolling.ts');
     const chatController = source(
       'src/components/VideoPlayer/courseChat/useCourseChatTurn.ts',
@@ -178,7 +178,14 @@ describe('learning async ownership contracts', () => {
     const project = source(
       'src/components/VideoPlayer/projectTransition/useProjectResolution.ts',
     );
-    expect(project).toContain('attempts < 30');
+    expect(project).toMatch(
+      /if \(\s*!active \|\|\s*!appIsActive[\s\S]*resolution\.reportStatus !== 'queued'/,
+    );
+    expect(project).toMatch(
+      /const next = await loadProjectResolution\(projectId\);[\s\S]*if \(cancelled \|\| !ownsProject\(projectId\)\) return;[\s\S]*if \(next\.reportStatus === 'queued'\) schedule\(2200\)/,
+    );
+    expect(project).toMatch(/attempts > 30\s*\? 30000/);
+    expect(project).not.toContain('attempts < 30');
     expect(project).toContain("resolution.reportStatus !== 'queued'");
     expect(project).toContain("next.reportStatus === 'queued'");
   });

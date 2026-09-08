@@ -1,4 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  retainLearnerDraftFiles,
+  removeLearnerDraftFile,
+} from '../src/services/learnerDraftFiles';
 
 const mockPost = jest.fn();
 const mockGet = jest.fn();
@@ -80,6 +84,8 @@ describe('project submission outbox ownership', () => {
   beforeEach(async () => {
     jest.useRealTimers();
     jest.clearAllMocks();
+    mockPost.mockReset();
+    mockGet.mockReset();
     mockReportClientError.mockResolvedValue(undefined);
     await AsyncStorage.clear();
     mockActiveBoundary = {epoch: 1, scope: 'user-a'};
@@ -438,5 +444,140 @@ describe('project submission outbox ownership', () => {
       {timeout: 12000},
     );
     expect(await AsyncStorage.getItem(pendingKey!)).toBeNull();
+  });
+
+  it.each(['write', 'cleanup'])(
+    'keeps polling an accepted upload when local acknowledgement %s fails',
+    async failure => {
+      const id = '33333333-3333-4333-8333-333333333333';
+      const accepted = {
+        data: {
+          data: {id, submission_status: 'evaluating', can_continue: false},
+        },
+      };
+      const file = {
+        uri: 'file:///draft/work.jpg',
+        name: 'work.jpg',
+        type: 'image/jpeg',
+        size: 100,
+      };
+      mockPost.mockImplementationOnce(async () => {
+        if (failure === 'write') {
+          jest
+            .mocked(AsyncStorage.setItem)
+            .mockRejectedValueOnce(new Error('disk full'));
+        } else {
+          // Releasing references after the committed write is already guarded;
+          // the following file-cleanup release was not.
+          jest
+            .mocked(retainLearnerDraftFiles)
+            .mockRejectedValueOnce(new Error('registry unavailable'))
+            .mockRejectedValueOnce(new Error('registry unavailable'));
+        }
+        return accepted;
+      });
+      mockGet.mockRejectedValueOnce(new Error('temporary read outage'));
+
+      await expect(submitProjectAttempt('42', file)).resolves.toEqual({
+        submissionStatus: 'evaluating',
+        accepted: true,
+        canContinue: false,
+      });
+      expect(mockGet).toHaveBeenCalledWith(`project-submissions/${id}`, {
+        timeout: 12000,
+      });
+      expect(removeLearnerDraftFile).not.toHaveBeenCalled();
+      await settleMicrotasks();
+      expect(mockReportClientError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: 'PROJECT_SUBMISSION_ACKNOWLEDGEMENT',
+        }),
+        {source: 'project_submission_acknowledgement'},
+      );
+      const key = (await AsyncStorage.getAllKeys()).find(value =>
+        value.includes(':user-a:42'),
+      )!;
+      const pending = JSON.parse((await AsyncStorage.getItem(key))!);
+      expect(pending.clientSubmissionId).toBe(
+        mockPost.mock.calls[0][2].headers['Idempotency-Key'],
+      );
+      if (failure === 'write') expect(pending.selectedFiles).toEqual([file]);
+      else expect(pending.publicId).toBe(id);
+
+      mockPost.mockResolvedValueOnce(accepted);
+      mockGet.mockResolvedValueOnce(passedResponse);
+      await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+        {
+          projectId: '42',
+          submissionStatus: 'passed',
+          accepted: true,
+          canContinue: true,
+        },
+      ]);
+      expect(mockPost).toHaveBeenCalledTimes(failure === 'write' ? 2 : 1);
+      for (const call of mockPost.mock.calls) {
+        expect(call[2].headers['Idempotency-Key']).toBe(
+          pending.clientSubmissionId,
+        );
+      }
+    },
+  );
+
+  it('never discards an uncertain submission merely because its outbox read fails', async () => {
+    mockPost.mockRejectedValueOnce(new Error('response lost'));
+    await submitProjectAttempt('42', null, 'محاولة محفوظة');
+    const key = (await AsyncStorage.getAllKeys()).find(value =>
+      value.includes(':user-a:42'),
+    )!;
+    const saved = await AsyncStorage.getItem(key);
+    jest
+      .mocked(AsyncStorage.getItem)
+      .mockRejectedValueOnce(new Error('temporary disk failure'));
+
+    await expect(
+      submitProjectAttempt('42', null, 'محاولة محفوظة'),
+    ).rejects.toThrow('temporary disk failure');
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(await AsyncStorage.getItem(key)).toBe(saved);
+    expect(removeLearnerDraftFile).not.toHaveBeenCalled();
+
+    mockPost.mockResolvedValueOnce(passedResponse);
+    await submitProjectAttempt('42', null, 'محاولة محفوظة');
+    expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
+      mockPost.mock.calls[0][2].headers['Idempotency-Key'],
+    );
+  });
+
+  it('does not poll or adopt an accepted upload after an account change during acknowledgement', async () => {
+    const write = jest.mocked(AsyncStorage.setItem).getMockImplementation()!;
+    mockPost.mockImplementationOnce(async () => {
+      jest
+        .mocked(AsyncStorage.setItem)
+        .mockImplementationOnce(async (key, value) => {
+          await write(key, value);
+          mockActiveBoundary = {epoch: 2, scope: 'user-b'};
+        });
+      return {
+        data: {
+          data: {
+            id: '33333333-3333-4333-8333-333333333333',
+            submission_status: 'evaluating',
+            can_continue: false,
+          },
+        },
+      };
+    });
+
+    await expect(
+      submitProjectAttempt('42', null, 'محاولة محفوظة'),
+    ).rejects.toThrow('ACCOUNT_CHANGED_DURING_REQUEST');
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockReportClientError).not.toHaveBeenCalled();
+    const key = (await AsyncStorage.getAllKeys()).find(value =>
+      value.includes(':user-a:42'),
+    )!;
+    expect(JSON.parse((await AsyncStorage.getItem(key))!).publicId).toBe(
+      '33333333-3333-4333-8333-333333333333',
+    );
   });
 });

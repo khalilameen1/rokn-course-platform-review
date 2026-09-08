@@ -124,11 +124,13 @@ export const readPendingProjectSubmission = async (
   assertProjectSubmissionOwner(operation);
   const accountScope = operation.boundary.scope;
   const storageKey = projectSubmissionKey(projectId, accountScope);
+  // An unreadable outbox may still contain the only identity of an uncertain
+  // upload. Stop this attempt; only malformed data is safe to discard below.
+  const raw = await AsyncStorage.getItem(storageKey);
+  assertProjectSubmissionOwner(operation);
+  if (!raw) return null;
   let parsed: unknown;
   try {
-    const raw = await AsyncStorage.getItem(storageKey);
-    assertProjectSubmissionOwner(operation);
-    if (!raw) return null;
     parsed = JSON.parse(raw);
   } catch {
     assertProjectSubmissionOwner(operation);

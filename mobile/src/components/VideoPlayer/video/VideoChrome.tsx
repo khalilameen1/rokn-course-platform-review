@@ -58,12 +58,13 @@ export const VideoChrome = ({
 }: VideoChromeProps) => {
   const errorCopy = selectPlaybackErrorCopy(failureKind, unsupportedSource);
   const surfaceTap = React.useMemo(
-    () => Gesture.Tap()
-      .maxDistance(12)
-      .runOnJS(true)
-      .onEnd((_event, success) => {
-        if (success) onTogglePaused();
-      }),
+    () =>
+      Gesture.Tap()
+        .maxDistance(12)
+        .runOnJS(true)
+        .onEnd((_event, success) => {
+          if (success) onTogglePaused();
+        }),
     [onTogglePaused],
   );
 
@@ -104,7 +105,7 @@ export const VideoChrome = ({
           style={styles.centerState}>
           <SkeletonBlock height={54} radius={27} width={54} />
           <Text style={styles.stateText}>
-            {recoveryMessage || 'جارٍ استعادة المقطع'}
+            {recoveryMessage || 'جارٍ تجهيز الفيديو'}
           </Text>
         </View>
       )}
@@ -176,7 +177,7 @@ export const VideoChrome = ({
           style={styles.touchTrack}
           onLayout={event => onTrackWidth(event.nativeEvent.layout.width)}
           {...panHandlers}>
-          <View style={styles.track}>
+          <View pointerEvents="none" style={styles.track}>
             <View
               style={[
                 styles.bufferedTrack,
@@ -192,6 +193,7 @@ export const VideoChrome = ({
           </View>
           {previewTime !== null && (
             <View
+              pointerEvents="none"
               style={[
                 styles.scrubber,
                 {left: Math.max(0, timeline.progress * trackWidth - 6)},

@@ -259,7 +259,17 @@ final class ProjectSubmissionEvaluationService
 
     private function decision(string $message): ?array
     {
-        $decoded = json_decode(trim($message), true);
+        $message = trim($message);
+        if (str_starts_with($message, '```')) {
+            // A model may wrap its entire JSON answer in a code block. Accept
+            // only that complete envelope, never extract a decision from prose.
+            $lines = explode("\n", str_replace("\r\n", "\n", $message));
+            $opening = array_shift($lines);
+            $closing = array_pop($lines);
+            if (!in_array($opening, ['```json', '```'], true) || $closing !== '```') return null;
+            $message = implode("\n", $lines);
+        }
+        $decoded = json_decode($message, true);
         if (!is_array($decoded) || !in_array($decoded['decision'] ?? null, ['relevant_effort', 'needs_changes'], true)
             || !is_string($decoded['reason'] ?? null)) return null;
         $reason = mb_substr(UnicodeText::clean($decoded['reason']), 0, 400);

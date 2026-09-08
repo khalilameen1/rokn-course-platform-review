@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\AiEntitlementUsage;
-use App\Models\CourseEnrollment;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
@@ -95,12 +93,8 @@ final class ProjectSubmissionOrchestrator
         if ($reportEnabled && $files === [] && mb_strlen($learnerText) < 10) {
             return ['state' => 'report_note_required'];
         }
-        if ($reportEnabled) {
-            $budgetError = $this->reportBudgetError($project, $enrollment, $terms ?? [], $text, $files);
-            if ($budgetError !== null) {
-                return $this->invalid('submission_files', $budgetError);
-            }
-        }
+        // The platform-funded progression review is independent of report quota.
+        // GenerateProjectFeedback reserves that quota before any report call.
 
         return [
             'state' => 'submitted',
@@ -113,42 +107,6 @@ final class ProjectSubmissionOrchestrator
                 $metadata
             ),
         ];
-    }
-
-    /** @param list<UploadedFile> $files */
-    private function reportBudgetError(
-        Project $project,
-        CourseEnrollment $enrollment,
-        array $terms,
-        ?string $text,
-        array $files
-    ): ?string
-    {
-        $attachmentTokens = 0;
-        foreach ($files as $file) {
-            try {
-                $attachmentTokens += $this->attachments->estimatedUploadedFileTokens($file);
-            } catch (\UnexpectedValueException) {
-                return "أحد الملفات لا يمكن قراءته للتقرير\nاختر نسخة أخرى";
-            }
-        }
-
-        $maxOutputTokens = max(80, min((int) config('openrouter.max_tokens', 800), (int) ($terms['max_output_tokens'] ?? 320)));
-        $semanticText = implode("\n", [
-            UnicodeText::clean((string) $text),
-            UnicodeText::clean((string) $project->requirements_text),
-        ]);
-        $estimatedRequestTokens = $maxOutputTokens + (int) ceil(strlen($semanticText) / 4) + $attachmentTokens;
-        $reportBudget = max(0, (int) ($terms['project_feedback_token_budget'] ?? 0));
-        $usage = AiEntitlementUsage::query()
-            ->where('enrollment_id', $enrollment->id)
-            ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK)
-            ->first(['used_tokens', 'reserved_tokens']);
-        $remaining = max(0, $reportBudget - (int) ($usage?->used_tokens ?? 0) - (int) ($usage?->reserved_tokens ?? 0));
-
-        return $remaining <= 0 || $estimatedRequestTokens > $remaining
-            ? "الملفات أكبر من مساحة التقرير في فئتك\nاختر ملفات أقل أو صورًا أوضح وأصغر"
-            : null;
     }
 
     /** @return list<string> */

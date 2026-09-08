@@ -583,6 +583,16 @@ final class OpenRouterService
             true
         ) ? $effort : 'none';
 
+        if ($this->isGeminiThreeEightFlash($model)) {
+            // Gemini 3.8 requires thinking and accepts only these three levels.
+            // Keep the legacy no-thinking chat setting on its lowest latency level.
+            return match ($effort) {
+                'medium' => 'medium',
+                'high', 'xhigh', 'max' => 'high',
+                default => 'low',
+            };
+        }
+
         if ($this->isSonnetFive($model)) {
             return $effort === 'minimal' ? 'low' : $effort;
         }
@@ -640,7 +650,13 @@ final class OpenRouterService
 
         return !str_starts_with($normalized, 'openai/gpt-5')
             && !$this->isSonnetFive($normalized)
+            && !$this->isGeminiThreeEightFlash($normalized)
             && !preg_match('/^openai\/(?:o1|o3|o4)(?:-|$)/', $normalized);
+    }
+
+    private function isGeminiThreeEightFlash(string $model): bool
+    {
+        return strtolower(trim($model)) === 'google/gemini-3.8-flash';
     }
 
     private function circuitIsOpen(): bool

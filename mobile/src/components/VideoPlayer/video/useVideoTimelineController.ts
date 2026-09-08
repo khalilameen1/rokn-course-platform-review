@@ -23,6 +23,7 @@ export const useVideoTimelineController = ({
   const [currentTime, setCurrentTime] = useState(initialPosition);
   const [previewTime, setPreviewTime] = useState<number | null>(null);
   const [trackWidth, setTrackWidth] = useState(0);
+  const dragStartXRef = useRef(0);
 
   const seekTo = useCallback(
     (seconds: number) => {
@@ -69,17 +70,21 @@ export const useVideoTimelineController = ({
   const panResponder = useMemo(
     () =>
       PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: event =>
-          seekFromX(event.nativeEvent.locationX, false),
-        onPanResponderMove: event =>
-          seekFromX(event.nativeEvent.locationX, false),
-        onPanResponderRelease: event =>
-          seekFromX(event.nativeEvent.locationX, true),
+        onStartShouldSetPanResponder: () => trackWidth > 0 && duration > 0,
+        onMoveShouldSetPanResponder: () => trackWidth > 0 && duration > 0,
+        // This touch began on the scrub target, not the surrounding pager.
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: event => {
+          dragStartXRef.current = event.nativeEvent.locationX;
+          seekFromX(dragStartXRef.current, false);
+        },
+        onPanResponderMove: (_event, gesture) =>
+          seekFromX(dragStartXRef.current + gesture.dx, false),
+        onPanResponderRelease: (_event, gesture) =>
+          seekFromX(dragStartXRef.current + gesture.dx, true),
         onPanResponderTerminate: () => setPreviewTime(null),
       }),
-    [seekFromX],
+    [duration, seekFromX, trackWidth],
   );
 
   const timeline = selectVideoTimeline({

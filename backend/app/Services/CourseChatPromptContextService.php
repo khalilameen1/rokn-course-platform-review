@@ -64,6 +64,11 @@ final readonly class CourseChatPromptContextService
         return $this->promptPolicy->currentLesson($title, $description);
     }
 
+    public function responseContract(): string
+    {
+        return $this->promptPolicy->courseChatResponseContract();
+    }
+
     public function model(): string
     {
         return $this->openRouter->configuredModel();

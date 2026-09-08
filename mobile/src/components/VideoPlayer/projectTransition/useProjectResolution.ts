@@ -193,6 +193,62 @@ export const useProjectResolution = ({
     if (
       !active ||
       !appIsActive ||
+      resolution.status !== 'review_unavailable' ||
+      resolution.contract.canRetryReview
+    ) {
+      return;
+    }
+    const projectId = project.id;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let attempts = 0;
+    const ownsRead = () => !cancelled && ownsProject(projectId);
+    const schedule = () => {
+      attempts += 1;
+      timer = setTimeout(
+        () => void refresh(),
+        attempts < 6 ? 5000 : 30000,
+      );
+    };
+    const refresh = async () => {
+      if (reviewFlightRef.current) {
+        schedule();
+        return;
+      }
+      try {
+        const next = await loadProjectResolution(projectId);
+        if (!ownsRead()) return;
+        if (next.status !== 'review_unavailable') {
+          // The refreshed course map, not this small resolution response,
+          // owns the newly unlocked content and signed media.
+          applyResolution({...next, canContinue: false});
+          onReviewResolution?.(next);
+          return;
+        }
+        applyResolution(next);
+      } catch {}
+      if (ownsRead()) schedule();
+    };
+    void refresh();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [
+    active,
+    appIsActive,
+    applyResolution,
+    onReviewResolution,
+    ownsProject,
+    project.id,
+    resolution.contract.canRetryReview,
+    resolution.status,
+  ]);
+
+  useEffect(() => {
+    if (
+      !active ||
+      !appIsActive ||
       resolution.status !== 'passed' ||
       !resolution.contract.reportEnabled ||
       resolution.reportStatus !== 'queued'
@@ -206,10 +262,13 @@ export const useProjectResolution = ({
     let attempts = 0;
     const schedule = (minimumMs: number) => {
       attempts += 1;
-      const backoff = Math.min(
-        12000,
-        minimumMs * Math.pow(1.45, Math.min(8, attempts - 1)),
-      );
+      const backoff =
+        attempts > 30
+          ? 30000
+          : Math.min(
+              12000,
+              minimumMs * Math.pow(1.45, Math.min(8, attempts - 1)),
+            );
       timer = setTimeout(
         () => void refresh(),
         Math.round(backoff * pollJitterRef.current),
@@ -220,11 +279,9 @@ export const useProjectResolution = ({
         const next = await loadProjectResolution(projectId);
         if (cancelled || !ownsProject(projectId)) return;
         applyResolution(next);
-        if (attempts < 30 && next.reportStatus === 'queued') {
-          schedule(2200);
-        }
+        if (next.reportStatus === 'queued') schedule(2200);
       } catch {
-        if (!cancelled && ownsProject(projectId) && attempts < 30) {
+        if (!cancelled && ownsProject(projectId)) {
           schedule(3500);
         }
       }

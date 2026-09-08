@@ -22,6 +22,8 @@ use App\Services\AiEntitlementBudgetService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectSubmissionEvaluationService;
+use App\Services\ProjectSubmissionOrchestrator;
+use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
@@ -105,9 +107,77 @@ final class ProjectSubmissionEvaluationTest extends TestCase
 
     public static function unusableResponses(): array
     {
-        return ['malformed' => ['not a decision'], 'unreadable by model' => [json_encode([
+        $decision = '{"decision":"relevant_effort","reason":"محاولة مناسبة"}';
+        return ['malformed' => ['not a decision'],
+            'prefixed prose' => ["النتيجة\n```json\n{$decision}\n```"],
+            'suffixed prose' => ["```json\n{$decision}\n```\nتقدر تكمل"],
+            'multiple blocks' => ["```json\n{$decision}\n```\n```json\n{$decision}\n```"],
+            'unclosed block' => ["```json\n{$decision}"],
+            'non-json block' => ["```text\n{$decision}\n```"],
+            'truncated object' => ["```json\n{\"decision\":\"relevant_effort\"\n```"],
+            'fenced unavailable' => ["```json\n{\"decision\":\"unavailable\",\"reason\":\"الصورة غير واضحة\"}\n```"],
+            'unreadable by model' => [json_encode([
             'decision' => 'unavailable', 'reason' => 'مش قادر أشوف الملف بوضوح',
         ])]];
+    }
+
+    public static function completeDecisionBlocks(): array
+    {
+        return [
+            'json rejection' => ['json', "\n", 'needs_changes', 'needs_resubmission'],
+            'plain acceptance' => ['', "\n", 'relevant_effort', 'passed'],
+            'json windows lines' => ['json', "\r\n", 'relevant_effort', 'passed'],
+        ];
+    }
+
+    #[DataProvider('completeDecisionBlocks')]
+    public function test_complete_json_code_block_preserves_the_actual_review_decision(
+        string $language, string $newline, string $decision, string $status
+    ): void {
+        $reason = 'ارفع صورتين لنفس المشروع فيهم بداية ونهاية واضحة للحركة';
+        $message = "```{$language}{$newline}".json_encode(compact('decision', 'reason'))."{$newline}```";
+        Http::fake(['*' => Http::response($this->providerResult($message))]);
+        [$submission] = $this->submit();
+        app()->call([new EvaluateProjectSubmission($submission->id), 'handle']);
+        self::assertSame($status, $submission->fresh()->review_status);
+        self::assertSame($reason, $submission->fresh()->feedback);
+        self::assertSame('ready', data_get($submission->fresh()->submission_metadata, 'evaluation.status'));
+        self::assertSame('completed', AiUsageEvent::query()->sole()->status);
+        Http::assertSentCount(1);
+    }
+
+    public function test_previously_unavailable_fenced_paid_response_is_restored_without_another_generation_or_charge(): void
+    {
+        [$submission, $user, $enrollment] = $this->submit();
+        $budget = app(AiEntitlementBudgetService::class);
+        $calls = app(PaidAiCallExecutionService::class);
+        $requestId = data_get($submission->submission_metadata, 'evaluation.request_id');
+        $event = $budget->reserveProjectReview($enrollment, 1000, 'test/model', $requestId);
+        $execution = (string) Str::uuid();
+        $calls->beginForActiveUser($event, $execution, $user->id);
+        $reason = 'الصورتين مش بيوضحوا نفس الأوبچكت في وضعين مختلفين على نفس الخط الزمني، لازم ترفع صورتين لنفس المشروع فيهم بداية ونهاية واضحة للحركة.';
+        $result = ['message' => "```json\n".json_encode(['decision' => 'needs_changes', 'reason' => $reason])."\n```",
+            'usage' => ['prompt_tokens' => 2082, 'completion_tokens' => 111, 'total_tokens' => 2193, 'cost' => .005274],
+            'entitlement_delivered' => false];
+        $calls->landSuccessfulResultForActiveUser($event, $execution, $user->id, $result);
+        $budget->settle($event, $result);
+        $metadata = $submission->submission_metadata;
+        $metadata['evaluation'] = array_merge($metadata['evaluation'], [
+            'status' => 'unavailable', 'reason' => 'review_result_unavailable', 'retry_safe' => false,
+            'failed_at' => now()->toIso8601String(), 'worker_execution_id' => $execution,
+        ]);
+        $submission->forceFill(['submission_metadata' => $metadata, 'auto_pass_at' => null])->save();
+        $evaluations = app(ProjectSubmissionEvaluationService::class);
+        self::assertTrue($evaluations->canRetry($submission->fresh()));
+        $retry = $evaluations->retryEvaluation($submission->fresh(), $user);
+        app()->call([new EvaluateProjectSubmission($retry->id), 'handle']);
+        self::assertSame('needs_resubmission', $submission->fresh()->review_status);
+        self::assertSame($reason, $submission->fresh()->feedback);
+        self::assertSame($requestId, AiUsageEvent::query()->sole()->request_id);
+        self::assertSame('0.005274', $event->fresh()->cost_usd);
+        self::assertSame(1, (int) data_get($event->fresh()->metadata, 'provider_call_attempt'));
+        self::assertSame(1, ProjectSubmission::query()->count());
+        Http::assertNothingSent();
     }
 
     #[DataProvider('unusableResponses')]
@@ -252,6 +322,42 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         Bus::assertDispatched(GenerateProjectFeedback::class);
         self::assertSame('project_review', AiUsageEvent::query()->sole()->feature);
         self::assertSame(0, AiEntitlementUsage::query()->count());
+        Http::assertSentCount(1);
+    }
+
+    public function test_exhausted_report_quota_does_not_block_submission_or_platform_funded_review(): void
+    {
+        [$previous, $user, $enrollment] = $this->submit(report: true);
+        $previous->forceFill(['review_status' => ProjectSubmission::STATUS_NEEDS_RESUBMISSION])->save();
+        $project = $previous->project;
+        $project->forceFill(['submission_text_enabled' => true])->save();
+        $usage = AiEntitlementUsage::query()->create([
+            'enrollment_id' => $enrollment->id, 'access_plan_id' => $enrollment->access_plan_id,
+            'feature' => AiEntitlementUsage::FEATURE_PROJECT_FEEDBACK,
+            'used_tokens' => 4000, 'reserved_tokens' => 0, 'used_requests' => 1,
+            'used_cost_usd' => '.100000', 'reserved_cost_usd' => '0',
+        ]);
+        $result = app(ProjectSubmissionOrchestrator::class)->submit($user, $project,
+            'محاولة جديدة لتنفيذ الشعار باستخدام الأشكال', [], (string) Str::uuid(), []);
+        self::assertSame('submitted', $result['state']);
+        $submission = $result['submission'];
+        self::assertSame('pending', $submission->review_status);
+        $this->fakeDecision('relevant_effort', 'محاولة مناسبة');
+        app()->call([new EvaluateProjectSubmission($submission->id), 'handle']);
+        self::assertSame('passed', $submission->fresh()->review_status);
+        Bus::assertDispatched(GenerateProjectFeedback::class);
+        app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
+        $submission->refresh();
+        self::assertSame('passed', $submission->review_status);
+        self::assertSame('plan_budget_reached', data_get($submission->submission_metadata, 'ai_feedback.reason'));
+        $payload = app(ProjectSubmissionPresenter::class)->present($submission);
+        self::assertTrue($payload['can_continue']);
+        self::assertSame('failed', $payload['report_status']);
+        self::assertNull($submission->feedbackThread);
+        self::assertSame(4000, $usage->fresh()->used_tokens);
+        self::assertSame(0, $usage->fresh()->reserved_tokens);
+        self::assertSame('0.100000', $usage->fresh()->used_cost_usd);
+        self::assertSame('project_review', AiUsageEvent::query()->sole()->feature);
         Http::assertSentCount(1);
     }
 

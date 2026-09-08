@@ -3,9 +3,9 @@
 return [
     'api_key' => env('OPENROUTER_API_KEY'),
     'endpoint' => env('OPENROUTER_ENDPOINT', 'https://openrouter.ai/api/v1/chat/completions'),
-    // Course and project replies share the same coach. Provider failover stays
-    // within this model unless an operator explicitly configures alternatives.
-    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-sonnet-5'),
+    // Course chat uses Gemini. Project review/report keep their independently
+    // configured model; provider failover never silently changes that choice.
+    'default_model' => env('OPENROUTER_DEFAULT_MODEL', 'google/gemini-3.8-flash'),
     'project_model' => env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5'),
     'fallback_models' => array_values(array_filter(array_map(
         'trim',
@@ -68,7 +68,7 @@ return [
     'allowed_models' => (static function (): array {
         $explicit = trim((string) env('OPENROUTER_ALLOWED_MODELS', ''));
         $source = $explicit !== '' ? $explicit : implode(',', [
-            (string) env('OPENROUTER_DEFAULT_MODEL', 'anthropic/claude-sonnet-5'),
+            (string) env('OPENROUTER_DEFAULT_MODEL', 'google/gemini-3.8-flash'),
             (string) env('OPENROUTER_PROJECT_MODEL', 'anthropic/claude-sonnet-5'),
             (string) env('OPENROUTER_FALLBACK_MODELS', ''),
         ]);

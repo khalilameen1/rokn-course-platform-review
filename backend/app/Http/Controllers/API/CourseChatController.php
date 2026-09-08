@@ -609,6 +609,10 @@ final class CourseChatController extends Controller
             );
         }
         $messages = array_merge($messages, $history);
+        $messages[] = [
+            'role' => 'system',
+            'content' => $this->promptContext->responseContract(),
+        ];
         $messages[] = ['role' => 'user', 'content' => $question];
 
         $maxTokens = max(80, min(

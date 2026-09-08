@@ -544,7 +544,8 @@ export const useReelsController = () => {
     playbackSpeed,
     playbackBlocked:
       !isScreenFocused || !appIsActive || interactionLocked || paging,
-    preloadNext: canPreloadAdjacentVideo && !paging,
+    // Paging pauses playback, but must not discard the next decoder's preload.
+    preloadNext: canPreloadAdjacentVideo,
     positions: positionsRef,
     preview: params.preview === true,
     previewCount: params.previewCount,

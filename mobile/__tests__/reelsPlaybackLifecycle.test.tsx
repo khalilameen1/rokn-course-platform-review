@@ -61,6 +61,39 @@ describe('reels native playback lifecycle', () => {
     jest.useRealTimers();
   });
 
+  it('shows initial preparation without claiming recovery before a stall occurs', async () => {
+    const onRefreshSource = jest.fn();
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(
+        <VideoComponent
+          data={reel}
+          width={390}
+          height={844}
+          isVisible
+          onRefreshSource={onRefreshSource}
+        />,
+      );
+    });
+    expect(
+      renderer.root.findAllByProps({children: 'جارٍ تجهيز الفيديو'}).length,
+    ).toBeGreaterThan(0);
+    expect(
+      renderer.root.findAllByProps({children: 'جارٍ استعادة المقطع'}),
+    ).toHaveLength(0);
+    const player = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    await ReactTestRenderer.act(() => jest.advanceTimersByTime(11_999));
+    expect(onRefreshSource).not.toHaveBeenCalled();
+    expect(renderer.root.findAllByProps({testID: 'native-video'})[0]).toBe(
+      player,
+    );
+    await ReactTestRenderer.act(() => player.props.onLoad({duration: 60}));
+    expect(
+      renderer.root.findAllByProps({children: 'جارٍ تجهيز الفيديو'}),
+    ).toHaveLength(0);
+    await ReactTestRenderer.act(() => renderer.unmount());
+  });
+
   it('keeps the same paused decoder when a dialog takes window focus', async () => {
     let renderer!: ReactTestRenderer.ReactTestRenderer;
     const renderVideo = () => (

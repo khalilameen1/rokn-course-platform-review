@@ -200,7 +200,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('projectMarkupBudgetInputs')]
-    public function test_project_report_admission_counts_html_source_against_remaining_tokens(
+    public function test_project_submission_preserves_html_even_when_it_exceeds_remaining_report_tokens(
         bool $markupInRequirements
     ): void
     {
@@ -211,6 +211,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             upgradedToEnhanced: false,
             requirements: $markupInRequirements ? $code : null
         );
+        $fixture['submission']->forceFill(['review_status' => ProjectSubmission::STATUS_NEEDS_RESUBMISSION])->save();
         $fixture['project']->forceFill(['submission_text_enabled' => true])->save();
         AiEntitlementUsage::query()->create([
             'enrollment_id' => $fixture['enrollment']->id,
@@ -225,9 +226,13 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             [], (string) Str::uuid(), []
         );
 
-        self::assertSame('invalid', $result['state']);
-        self::assertSame('submission_files', $result['field']);
-        self::assertSame(1, ProjectSubmission::query()->count());
+        self::assertSame('submitted', $result['state']);
+        self::assertSame($markupInRequirements ? 'Learner notes about the form' : $code,
+            $result['submission']->submission_text);
+        self::assertSame($markupInRequirements ? $code : $fixture['project']->requirements_text,
+            data_get(ProjectSubmissionEvaluationSnapshot::fromSubmission($result['submission']), 'project.requirements_text'));
+        self::assertSame(2, ProjectSubmission::query()->count());
+        self::assertSame(3500, AiEntitlementUsage::query()->sole()->used_tokens);
         Http::assertNothingSent();
     }
 

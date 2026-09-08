@@ -13,7 +13,8 @@ final class AiPromptPolicyTest extends TestCase
     {
         $policy = new AiPromptPolicy();
         $prompts = [
-            $policy->courseChat('التصميم', 'الوحدة الأولى'),
+            $policy->courseChat('التصميم', 'الوحدة الأولى')
+                . "\n" . $policy->courseChatResponseContract(),
             $policy->projectReport('سلّم صورة'),
             $policy->projectFollowup('سلّم صورة', 'رفعت الصورة'),
         ];
@@ -23,16 +24,16 @@ final class AiPromptPolicyTest extends TestCase
             // generated replies, which requires a separate provider probe.
             self::assertStringContainsString('بالعامية المصرية الطبيعية الواضحة حتى لو كتب بالفصحى', $prompt);
             self::assertStringContainsString('لو طلب الطالب لغة أخرى التزم بها', $prompt);
-            self::assertStringContainsString('ابدأ بالإجابة مباشرة بلا تحية أو مدح أو إعادة للسؤال', $prompt);
+            self::assertStringContainsString('ابدأ بالمعلومة التي تجيب السؤال بلا تحية أو مدح أو إعادة للسؤال', $prompt);
             self::assertStringContainsString('لا تستبدل الحل بنصيحة عامة', $prompt);
-            self::assertStringContainsString('التحية أو التأكيد قد يحتاجان كلمة أو سطرا فقط', $prompt);
+            self::assertStringContainsString('حجم الرد على قدر الحاجة', $prompt);
             self::assertStringContainsString('لا تختم بعرض مساعدة أو سؤال لإطالة الكلام', $prompt);
             self::assertStringContainsString('صحح الافتراض الخاطئ بمعيار واضح', $prompt);
             self::assertStringContainsString('لا تخمن موضوعا لكلمة غامضة', $prompt);
-            self::assertStringContainsString('لا تستخدم الفاصلة أو النقطة', $prompt);
-            self::assertStringContainsString('ولا شرطات أو نجوما أو عناوين جاهزة', $prompt);
-            self::assertStringContainsString('بين الفكرتين سطر فارغ ولا تضع كل كلمة على سطر', $prompt);
-            self::assertStringContainsString('فقرة إلى ثلاث فقرات بفكرة مكتملة في كل فقرة', $prompt);
+            self::assertStringContainsString('لا تكتب الفاصلة أو النقطة', $prompt);
+            self::assertStringContainsString('ولا تستبدلها بشرطات أو نجوم أو نقاط تعداد', $prompt);
+            self::assertStringContainsString('فقرة قصيرة بفكرة مكتملة ثم سطرا فارغا', $prompt);
+            self::assertStringContainsString('التعريف المباشر يكفيه غالبا سطر واحد', $prompt);
             self::assertStringContainsString('حافظ على الكود والمصطلحات والروابط والمعادلات بعلاماتها الصحيحة', $prompt);
             self::assertStringContainsString('لا تدع أنك إنسان أو المحاضر', $prompt);
             self::assertStringContainsString('مساعد ركن التعليمي بالذكاء الاصطناعي ولا تخمن اسم النموذج أو المزود', $prompt);
@@ -50,6 +51,20 @@ final class AiPromptPolicyTest extends TestCase
         }
         self::assertStringContainsString('أجب عن السؤال العام أيضًا إن كنت تعرفه ولا تنسبه إلى الكورس', $policy->courseChat('التصميم'));
         self::assertStringContainsString('ابحث عندما تكون المعلومة حديثة أو تحتاج تحققًا', $policy->courseChat('التصميم'));
+    }
+
+    public function test_course_chat_final_contract_is_compact_and_preserves_technical_notation(): void
+    {
+        $contract = (new AiPromptPolicy())->courseChatResponseContract();
+
+        self::assertStringContainsString('الردود السابقة مرجع للمعلومات لا للطول أو الترقيم', $contract);
+        self::assertStringContainsString('احذف الكلام عن مكان الموضوع في الكورس', $contract);
+        self::assertStringContainsString('فقرة قصيرة بفكرة مكتملة ثم سطرا فارغا', $contract);
+        self::assertStringContainsString('ولا تجعل الرد ثلاث فقرات إلا إذا احتاج ثلاث أفكار مختلفة', $contract);
+        self::assertStringContainsString('لا تكتب الفاصلة أو النقطة', $contract);
+        self::assertStringContainsString('حافظ على الكود والمصطلحات والروابط والمعادلات بعلاماتها الصحيحة', $contract);
+        self::assertStringContainsString('احذف أي جملة لا يحتاجها جواب السؤال', $contract);
+        self::assertStringContainsString("سؤال يعني ايه ريندر؟\nرد الريندر هو تحويل المشهد", $contract);
     }
 
     public function test_project_context_uses_published_requirements_not_hidden_editor_policy(): void

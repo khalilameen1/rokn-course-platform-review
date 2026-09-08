@@ -317,3 +317,47 @@ This is the existing internal-test signing profile, not a public distribution
 release. No new backend deployment, Drive upload or device installation is
 claimed. CI run 34171959516 was still running without failures at the last
 read-only snapshot; local validation and APK build completed independently.
+
+## September 8 — saved project decision, playback gestures and Gemini chat
+
+Production submission 3 had a completed, settled relevance-review response in
+usage event 21. It returned a concrete `needs_changes` decision inside one JSON
+code fence. The strict raw-JSON parser rejected that envelope and presented an
+unavailable review. The parser now accepts a single whole fenced JSON object
+without accepting prose, multiple objects, invalid decisions or blank reasons.
+Recovery uses the existing accepted response and request identity, not a second
+paid generation. This is distinct from a network or queue timeout.
+
+Additional reproduced boundaries corrected in the same submission flow:
+
+- Failure to save/clean the local acknowledgement cannot stop polling an
+  already accepted server submission. Failure to read local storage cannot
+  discard the pending request and generate a new submission identity.
+- Mandatory relevance review is independent of the optional report allowance.
+  Exhausted report budget does not prevent completing a valid project; the
+  report job still enforces its own allowance without making a report call.
+- Pending report refresh slows after thirty attempts instead of stopping.
+  A terminal unavailable review also observes a later server recovery without
+  a new upload, respecting screen activity and account ownership.
+
+The reel scrubber now retains its gesture and calculates movement from the
+grant position. Paging no longer unmounts the preloaded next player. The initial
+loading label no longer falsely describes recovery. Live samples from the
+previous APK showed first frames around 1.2–3 seconds, not a measured speedup
+from these changes. No Bunny plan or decoder/data-saver policy was changed.
+
+Course chat now defaults to `google/gemini-3.8-flash`, as explicitly requested.
+Project review/report retain their separate model. Gemini request settings use
+supported thinking levels and omit sampling temperature. The shared server
+voice is v11; its concise Egyptian-Arabic response contract is placed after chat
+history, immediately before the question. No destructive punctuation stripping
+is applied to code, links or math. A real deployed Gemini response still needs
+verification; prompt instructions alone are not evidence of the result.
+
+Local verification: all 183 mobile suites / 1003 tests, TypeScript, release lint
+and version configuration passed. The combined backend run covered 201 tests /
+1368 assertions: 199 passed, one Word fixture could not run because Windows
+blocks ZipArchive, and one MySQL-only case was skipped under SQLite. There were
+no assertion failures. Linux CI remains the gate for that environmental gap.
+Source version is 1.0.47 / Android 48 / iOS 45. Deployment, live recovery, live
+Gemini probe and the new APK are not claimed by this source-change entry.

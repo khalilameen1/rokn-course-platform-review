@@ -21,6 +21,77 @@ final class OpenRouterTransportTest extends TestCase
 {
     private ?Process $server = null;
 
+    public static function geminiReasoningPayloads(): array
+    {
+        return [
+            'legacy none' => ['none', 'low'],
+            'unsupported minimal' => ['minimal', 'low'],
+            'low' => ['low', 'low'],
+            'medium' => ['medium', 'medium'],
+            'high' => ['high', 'high'],
+            'unsupported xhigh' => ['xhigh', 'high'],
+            'unsupported max' => ['max', 'high'],
+        ];
+    }
+
+    #[DataProvider('geminiReasoningPayloads')]
+    public function test_gemini_chat_preserves_supported_reasoning_and_omits_sampling_without_implicit_project_fallback(
+        string $effort, string $expectedEffort
+    ): void {
+        config([
+            'openrouter.api_key' => 'local-test-only',
+            'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
+            'openrouter.default_model' => 'google/gemini-3.8-flash',
+            'openrouter.project_model' => 'anthropic/claude-sonnet-5',
+            'openrouter.allowed_models' => ['google/gemini-3.8-flash', 'anthropic/claude-sonnet-5'],
+            'openrouter.fallback_models' => [],
+            'openrouter.reasoning_effort' => $effort,
+            'openrouter.max_tokens' => 800,
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['openrouter.test/*' => Http::response([
+            'id' => 'gemini-payload-test', 'model' => 'google/gemini-3.8-flash',
+            'choices' => [['finish_reason' => 'stop', 'message' => ['content' => 'المثال محتاج تعديل ترتيب التنفيذ']]],
+            'usage' => ['prompt_tokens' => 1000, 'completion_tokens' => 800, 'total_tokens' => 1800, 'cost' => .00375],
+        ])]);
+        $provider = app(OpenRouterService::class);
+        self::assertSame('google/gemini-3.8-flash', $provider->configuredModel());
+        self::assertSame('anthropic/claude-sonnet-5', $provider->configuredModel('project_model'));
+        $result = $provider->chat($provider->configuredModel(), [['role' => 'user', 'content' => 'اشرح المثال']], .35, 800);
+        self::assertSame('المثال محتاج تعديل ترتيب التنفيذ', $result['message']);
+        self::assertSame(.00375, $result['usage']['cost']);
+        Http::assertSent(function ($request) use ($expectedEffort): bool {
+            $payload = $request->data();
+            self::assertSame('google/gemini-3.8-flash', $payload['model']);
+            self::assertArrayNotHasKey('models', $payload);
+            foreach (['temperature', 'top_p', 'top_k'] as $parameter) self::assertArrayNotHasKey($parameter, $payload);
+            self::assertSame(['effort' => $expectedEffort, 'exclude' => true], $payload['reasoning']);
+            self::assertSame(800, $payload['max_tokens']);
+            return true;
+        });
+        Http::assertSentCount(1);
+    }
+
+    public function test_gemini_uses_another_model_only_when_explicitly_configured_as_fallback(): void
+    {
+        config([
+            'openrouter.api_key' => 'local-test-only',
+            'openrouter.endpoint' => 'https://openrouter.test/chat/completions',
+            'openrouter.allowed_models' => ['google/gemini-3.8-flash', 'anthropic/claude-sonnet-5'],
+            'openrouter.fallback_models' => ['anthropic/claude-sonnet-5'],
+            'openrouter.reasoning_effort' => 'none',
+        ]);
+        Http::fake(['openrouter.test/*' => Http::response([
+            'choices' => [['message' => ['content' => 'رد الاختبار']]], 'usage' => ['total_tokens' => 30, 'cost' => .001],
+        ])]);
+        app(OpenRouterService::class)->chat('google/gemini-3.8-flash', [['role' => 'user', 'content' => 'السؤال']], .35, 800);
+        Http::assertSent(static fn ($request): bool =>
+            $request['models'] === ['google/gemini-3.8-flash', 'anthropic/claude-sonnet-5']
+            && $request['reasoning'] === ['effort' => 'low', 'exclude' => true]
+        );
+        Http::assertSentCount(1);
+    }
+
     public static function sonnetReasoningPayloads(): array
     {
         return [

@@ -181,6 +181,38 @@ describe('retrying an unavailable saved review', () => {
     }
   });
 
+  it('adopts a recovered server decision on the still-open unavailable screen', async () => {
+    mockGet.mockResolvedValueOnce(
+      response({
+        latest_submission: {
+          ...submission('needs_changes'),
+          feedback: 'عدّل التباين ثم أرسل من جديد',
+          review_retry_endpoint: null,
+        },
+      }),
+    );
+    const screen = mount({
+      ...project,
+      canRetryReview: false,
+      reviewRetryEndpoint: undefined,
+    });
+    try {
+      await act(async () => {
+        await Promise.resolve();
+      });
+      expect(mockGet).toHaveBeenCalledWith('projects/7');
+      expect(screen.current.status).toBe('needs_changes');
+      expect(screen.current.reviewFeedback).toBe(
+        'عدّل التباين ثم أرسل من جديد',
+      );
+      expect(screen.onResolution).toHaveBeenCalledWith(
+        expect.objectContaining({status: 'needs_changes'}),
+      );
+    } finally {
+      screen.close();
+    }
+  });
+
   it('recovers an uncertain POST through GET and never starts a second review', async () => {
     mockPost.mockRejectedValueOnce(new Error('timeout'));
     mockGet.mockResolvedValueOnce(response({latest_submission: submission()}));

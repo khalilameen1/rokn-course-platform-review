@@ -1552,16 +1552,16 @@ final class BackendHardeningTest extends TestCase
                 $job->messages[0]['content']
             );
             self::assertStringContainsString(
-                'لا تستخدم الفاصلة أو النقطة',
-                $job->messages[0]['content']
+                'لا تكتب الفاصلة أو النقطة',
+                $job->messages[count($job->messages) - 2]['content']
             );
             self::assertStringContainsString(
-                'فقرة إلى ثلاث فقرات بفكرة مكتملة في كل فقرة',
-                $job->messages[0]['content']
+                'الردود السابقة مرجع للمعلومات لا للطول أو الترقيم',
+                $job->messages[count($job->messages) - 2]['content']
             );
             self::assertStringContainsString(
                 'حافظ على الكود والمصطلحات والروابط والمعادلات بعلاماتها الصحيحة',
-                $job->messages[0]['content']
+                $job->messages[count($job->messages) - 2]['content']
             );
             self::assertStringContainsString(
                 "BEGIN COURSE DESCRIPTION\n{$courseDescription}\nEND COURSE DESCRIPTION",
@@ -1571,6 +1571,8 @@ final class BackendHardeningTest extends TestCase
                 "BEGIN CURRENT LESSON CONTEXT\n{$lessonDescription}\nEND CURRENT LESSON CONTEXT",
                 $job->messages[1]['content']
             );
+            self::assertSame('system', $job->messages[count($job->messages) - 2]['role']);
+            self::assertSame('user', $job->messages[count($job->messages) - 1]['role']);
             $conversation = array_values(array_filter(
                 $job->messages,
                 static fn (array $message): bool => $message['role'] !== 'system'

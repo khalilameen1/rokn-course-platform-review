@@ -142,6 +142,34 @@ const pollProjectSubmission = async (
   };
 };
 
+const persistAcceptedSubmission = async (
+  pending: PendingProjectSubmission,
+  operation: ProjectSubmissionOperation,
+) => {
+  const uploadedFiles = pending.selectedFiles || [];
+  try {
+    // Keep the old durable files and idempotency key until the server identity
+    // is committed locally. A failed write must not delete the retry payload.
+    await savePendingProjectSubmission(
+      {...pending, selectedFiles: []},
+      operation,
+      uploadedFiles,
+    );
+    pending.selectedFiles = [];
+    await removePendingProjectFiles({...pending, selectedFiles: uploadedFiles});
+  } catch {
+    assertProjectSubmissionOwner(operation);
+    void import('../../../services/operationalTelemetry')
+      .then(({reportClientError}) =>
+        reportClientError(new Error('PROJECT_SUBMISSION_ACKNOWLEDGEMENT'), {
+          source: 'project_submission_acknowledgement',
+        }),
+      )
+      .catch(() => undefined);
+  }
+  assertProjectSubmissionOwner(operation);
+};
+
 const performProjectSubmissionSync = async (
   pending: PendingProjectSubmission,
   operation: ProjectSubmissionOperation,
@@ -152,13 +180,7 @@ const performProjectSubmissionSync = async (
   }
   if (pending.publicId) {
     if (pending.selectedFiles?.length) {
-      const uploadedFiles = pending.selectedFiles;
-      pending.selectedFiles = [];
-      await savePendingProjectSubmission(pending, operation, uploadedFiles);
-      await removePendingProjectFiles({
-        ...pending,
-        selectedFiles: uploadedFiles,
-      });
+      await persistAcceptedSubmission(pending, operation);
     }
     return pollProjectSubmission(pending, operation);
   }
@@ -210,11 +232,7 @@ const performProjectSubmissionSync = async (
   }
   pending.publicId = publicId.toLowerCase();
   pending.pollAfterSeconds = Number(payload.poll_after_seconds) || 1;
-  const uploadedFiles = pending.selectedFiles || [];
-  pending.selectedFiles = [];
-  await savePendingProjectSubmission(pending, operation, uploadedFiles);
-  await removePendingProjectFiles({...pending, selectedFiles: uploadedFiles});
-  assertProjectSubmissionOwner(operation);
+  await persistAcceptedSubmission(pending, operation);
   return pollProjectSubmission(pending, operation);
 };
 
