@@ -1353,3 +1353,56 @@ and installed native-wrapper source; they are not a physical iPhone test,
 live Bunny transfer, real payment or production acceptance.
 
 No APK, push or deployment. All changes are a local source checkpoint.
+
+## September 9 — daily catalogue, saved-reel acknowledgement and portfolio choice
+
+The next separately owned review covered public discovery, ordinary playback,
+saved collections and portfolio interaction. It did not reopen working features
+for cosmetic cleanup or replace the application.
+
+- Opening a portfolio work, or renewing its media URLs, could replace the image
+  the student had just selected with the first/previous image when a delayed
+  response arrived. Both paths now use the existing remote-item commit, which
+  preserves the current thumbnail by ID while renewing its URL. Independent
+  review also reproduced the same failure when selection and response were
+  batched before the next render; the selection ref is updated at the tap.
+  Four failing cases became green. Nine new hook/render cases retain valid
+  fallback for removed/unavailable media, failed-refresh retry and rejection of
+  the previous work's response. No gallery controls or media capabilities were
+  removed; duplicate response-application code was reduced.
+- Saving a reel already open before a course publication correctly stored its
+  surviving published replacement on the backend. However, the save endpoint
+  acknowledged the replacement ID instead of the requested visible ID. The
+  mobile save contract then rejected that successful mutation and rolled back
+  its bookmark. The response now echoes the validated requested ID, consistent
+  with saved-state lookups. Membership still targets the current published
+  lesson and access checks remain authoritative. A real HTTP test asserts the
+  committed row and exact shared response fixture; actual mobile hook/service
+  tests consume that fixture for selected-folder and watch-later saves. The
+  HTTP case and both mobile cases failed before the change. Current-ID saves,
+  historical retries, one membership, state/list/removal, nonexistent lessons
+  and current access rejection are covered. No mobile production change or new
+  response field was needed.
+- A definitive unavailable-course response removed an account-scoped catalogue
+  key even though public discovery writes account-neutral cache keys. Offline
+  reopening could resurrect that course, as could a catalogue GET begun before
+  the unavailability response. Invalidation now uses the existing public-cache
+  write queue and a generation fence for in-flight reads/writes. Its entire
+  native queued read has the bounded storage wait; the raw queue is not released
+  early. Failed deletion keeps old cache unusable until deletion or a fresh
+  page-one write succeeds. Existing single revision-recovery read preserves
+  search and page-two reset behavior. Eleven cases include three original red
+  regressions, native failures/stalls, current reappearance, capped retry and
+  account-specific 403 leaving public discovery intact. No permanent course
+  tombstone, entitlement change or home-screen rewrite was introduced.
+
+The playback lane inspected current source and existing coverage for source
+ownership, hidden preload events, background/foreground, seeking, renewal and
+resume. It found no new proven defect in that bounded review and changed no
+playback source. This was not a physical-device or network-speed measurement.
+
+Root verification passed 27 mobile suites / 193 tests across two exact-path
+runs, and two backend suites / 18 tests / 91 assertions. TypeScript, scoped
+ESLint, PHP syntax and diff checks passed. No live provider calls, APK, push or
+deployment. These are local behavioral proofs, not a claim that every remaining
+journey or physical-device condition has been accepted.

@@ -9,7 +9,11 @@ import {settleWithin} from '../../utils/settleWithin';
 import {truncateGraphemes} from '../../utils/unicodeText';
 import {transientReadFailureAllowsCache} from '../networkExperience';
 import {payload} from './common';
-import {cacheCatalogueResult, readCatalogueCache} from './courseCache';
+import {
+  cacheCatalogueResult,
+  getCatalogueGeneration,
+  readCatalogueCache,
+} from './courseCache';
 import {
   mapCatalogueCoursesPayload,
   type PublishedCoursesPage,
@@ -67,6 +71,7 @@ export const getPublishedCoursesPage = async ({
     Math.min(normalizedSearch ? 20 : 50, Math.floor(perPage)),
   );
   const retryDeadlineAt = Date.now() + DEFAULT_READ_RECOVERY_BUDGET_MS;
+  const generation = getCatalogueGeneration();
 
   try {
     const response = await publicRequest.get(
@@ -90,6 +95,11 @@ export const getPublishedCoursesPage = async ({
       } as RoknRequestConfig,
     );
     const data = payload(response);
+    if (generation !== getCatalogueGeneration()) {
+      throw Object.assign(new Error('CATALOGUE_CHANGED'), {
+        code: 'catalogue_changed',
+      });
+    }
     const responseRevision = Number(data?.catalogue_revision);
     if (!Number.isSafeInteger(responseRevision) || responseRevision < 1) {
       throw new Error('COURSE_CATALOGUE_CONTRACT_INVALID');
@@ -130,11 +140,13 @@ export const getPublishedCoursesPage = async ({
       revision: responseRevision,
     };
     if (!normalizedSearch) {
-      void cacheCatalogueResult(result).catch(() => undefined);
+      void cacheCatalogueResult(result, generation).catch(() => undefined);
     }
     return {...result, fromCache: false};
   } catch (error) {
-    const catalogueChanged = isCatalogueChanged(error);
+    const catalogueChanged =
+      !signal?.aborted &&
+      (generation !== getCatalogueGeneration() || isCatalogueChanged(error));
     if (catalogueChanged && revisionConflictRetry) {
       const replacement = await getPublishedCoursesPage({
         page: safePage > 1 ? 1 : safePage,

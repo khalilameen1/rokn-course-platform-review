@@ -20,7 +20,17 @@ const COURSE_DETAILS_CACHE_LIMIT = 8;
 const COURSE_COVER_FALLBACK = require('../../assets/images/courseSlider.jpg');
 
 let catalogueWriteTail: Promise<void> = Promise.resolve();
+let catalogueGeneration = 0;
+let catalogueCacheUsable = true;
 let courseDetailsWriteTail: Promise<void> = Promise.resolve();
+
+export const getCatalogueGeneration = () => catalogueGeneration;
+
+const queueCatalogueWrite = (operation: () => Promise<void>) => {
+  const write = catalogueWriteTail.then(operation, operation);
+  catalogueWriteTail = write.catch(() => undefined);
+  return write;
+};
 
 type CatalogueCacheRecord = {
   version: 6;
@@ -43,19 +53,23 @@ type CourseDetailsCacheRecord = {
 const catalogueCacheKey = (page: number, baseKey = CATALOGUE_CACHE_KEY) =>
   `${baseKey}:${page}`;
 
-export const readCatalogueCache = async (
+const readCatalogueCacheAfterWrites = async (
   page: number,
   scopedBaseKey?: string,
   expectedRevision?: number,
   allowStale = false,
 ): Promise<PublishedCoursesPage | null> => {
   if (page > CATALOGUE_CACHE_PAGE_LIMIT) return null;
+  const generation = catalogueGeneration;
   try {
-    await settleWithin(catalogueWriteTail, undefined);
+    await catalogueWriteTail;
+    if (!catalogueCacheUsable || generation !== catalogueGeneration)
+      return null;
     const raw = await AsyncStorage.getItem(
       catalogueCacheKey(page, scopedBaseKey),
     );
-    if (!raw) return null;
+    if (!raw || !catalogueCacheUsable || generation !== catalogueGeneration)
+      return null;
     const cached = JSON.parse(raw) as CatalogueCacheRecord;
     if (
       cached.version !== 6 ||
@@ -98,6 +112,22 @@ export const readCatalogueCache = async (
     return null;
   }
 };
+
+export const readCatalogueCache = (
+  page: number,
+  scopedBaseKey?: string,
+  expectedRevision?: number,
+  allowStale = false,
+): Promise<PublishedCoursesPage | null> =>
+  settleWithin(
+    readCatalogueCacheAfterWrites(
+      page,
+      scopedBaseKey,
+      expectedRevision,
+      allowStale,
+    ),
+    null,
+  );
 
 const writeCatalogueCache = async (
   result: Omit<PublishedCoursesPage, 'fromCache'>,
@@ -146,19 +176,32 @@ export const removeCatalogueCachePages = async (
 
 export const cacheCatalogueResult = (
   result: Omit<PublishedCoursesPage, 'fromCache'>,
+  generation = catalogueGeneration,
 ) => {
-  const write = catalogueWriteTail
-    .catch(() => undefined)
-    .then(async () => {
-      if (result.page === 1) {
-        await removeCatalogueCachePages(2);
-      } else if (!result.hasMore) {
-        await removeCatalogueCachePages(result.page + 1);
-      }
-      await writeCatalogueCache(result);
-    });
-  catalogueWriteTail = write.catch(() => undefined);
-  return write;
+  return queueCatalogueWrite(async () => {
+    if (generation !== catalogueGeneration) return;
+    if (result.page === 1) {
+      await removeCatalogueCachePages(2);
+    } else if (!result.hasMore) {
+      await removeCatalogueCachePages(result.page + 1);
+    }
+    await writeCatalogueCache(result);
+    if (result.page === 1 && generation === catalogueGeneration) {
+      catalogueCacheUsable = true;
+    }
+  });
+};
+
+/** Retire the public snapshot, not an account's learning entitlement. */
+export const invalidateCatalogueCache = () => {
+  const generation = ++catalogueGeneration;
+  catalogueCacheUsable = false;
+  return queueCatalogueWrite(async () => {
+    await removeCatalogueCachePages(1);
+    // A failed native deletion must not make the old disk snapshot usable.
+    // A later successful fresh page-one write can establish it again.
+    if (generation === catalogueGeneration) catalogueCacheUsable = true;
+  });
 };
 
 const courseDetailsCacheKey = async (

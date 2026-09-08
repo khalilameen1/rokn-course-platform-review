@@ -385,7 +385,6 @@ final class SavedSectionController extends Controller
                     'data' => null,
                 ], 404);
             }
-            $lesson = $result['lesson'];
             $folder = $result['folder'];
             $inserted = $result['inserted'];
 
@@ -394,7 +393,9 @@ final class SavedSectionController extends Controller
                 'success' => true,
                 'message' => $inserted ? 'تم حفظ المقطع' : 'المقطع محفوظ بالفعل',
                 'data' => [
-                    'lesson_id' => (int) $lesson->id,
+                    // A visible historical reel may resolve to a published clone.
+                    // Acknowledge this command's identity, as the state endpoint does.
+                    'lesson_id' => $request->integer('lesson_id'),
                     'folder_id' => (int) $folder->id,
                     'folder_name' => (string) $folder->name,
                     'is_saved' => true,

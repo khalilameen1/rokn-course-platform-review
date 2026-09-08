@@ -12,11 +12,10 @@ import {settleWithin} from '../../utils/settleWithin';
 import {payload} from './common';
 import {publishUnavailableCourse} from './courseAvailability';
 import {
-  CATALOGUE_CACHE_KEY,
   COURSE_DETAILS_CACHE_KEY,
   cacheCourseDetails,
   readCourseDetailsCache,
-  removeCatalogueCachePages,
+  invalidateCatalogueCache,
   removeCourseDetailsCache,
   touchCourseDetailsCache,
 } from './courseCache';
@@ -72,14 +71,7 @@ export const getCourseDetailsSnapshot = async (
     if (isCourseUnavailableError(error)) {
       await settleWithin(removeCourseDetailsCache(id, cacheKey), undefined);
       if ([404, 410].includes(errorStatus(error))) {
-        const catalogueKey = await accountScopedStorageKey(
-          CATALOGUE_CACHE_KEY,
-          account,
-        );
-        await settleWithin(
-          removeCatalogueCachePages(1, catalogueKey),
-          undefined,
-        );
+        await settleWithin(invalidateCatalogueCache(), undefined);
         publishUnavailableCourse(id);
       }
       throw error;

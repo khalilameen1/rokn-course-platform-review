@@ -78,6 +78,7 @@ export const usePortfolioProjectSelection = ({
         detailGenerationRef.current === detailGeneration &&
         selectedRef.current?.id === next.id
       ) {
+        // A response updates the media, not the student's newer thumbnail choice.
         const previewId = previewMediaRef.current?.id;
         setSelected(next);
         setPreviewMedia(
@@ -145,7 +146,6 @@ export const usePortfolioProjectSelection = ({
       mediaRefreshFlightRef.current = true;
       const generation = detailGenerationRef.current;
       const projectId = current.id;
-      const previewId = currentPreview?.id;
       try {
         const boundary = await captureBoundary();
         const item = await getPortfolioItem(projectId, boundary);
@@ -157,18 +157,7 @@ export const usePortfolioProjectSelection = ({
         ) {
           return;
         }
-        const next = toPortfolioProject(item);
-        setSelected(next);
-        setPreviewMedia(
-          next.media.find(media => media.id === previewId && media.uri) ||
-            next.media.find(media => media.uri) ||
-            null,
-        );
-        setLibraryProjects(currentProjects =>
-          currentProjects.map(project =>
-            project.id === next.id ? next : project,
-          ),
-        );
+        commitRemoteProject(item, generation);
       } catch {
         // Keep the last visible media; foreground or explicit reopen renews it.
       } finally {
@@ -177,10 +166,10 @@ export const usePortfolioProjectSelection = ({
     },
     [
       captureBoundary,
+      commitRemoteProject,
       isCreateBusy,
       mountedRef,
       mutationFlightRef,
-      setLibraryProjects,
     ],
   );
 
@@ -201,14 +190,7 @@ export const usePortfolioProjectSelection = ({
           ) {
             return;
           }
-          const next = toPortfolioProject(item);
-          setSelected(next);
-          setPreviewMedia(next.media.find(media => media.uri) || null);
-          setLibraryProjects(current =>
-            current.map(candidate =>
-              candidate.id === next.id ? next : candidate,
-            ),
-          );
+          commitRemoteProject(item, generation);
         })
         .catch(error => {
           if (
@@ -236,6 +218,7 @@ export const usePortfolioProjectSelection = ({
     },
     [
       captureBoundary,
+      commitRemoteProject,
       isCreateBusy,
       mountedRef,
       mutationFlightRef,
@@ -278,7 +261,9 @@ export const usePortfolioProjectSelection = ({
   );
 
   const selectPreviewMedia = useCallback((media: PortfolioMedia) => {
-    if (media.uri) setPreviewMedia(media);
+    if (!media.uri) return;
+    previewMediaRef.current = media;
+    setPreviewMedia(media);
   }, []);
 
   const handleMediaDeliveryError = useCallback(

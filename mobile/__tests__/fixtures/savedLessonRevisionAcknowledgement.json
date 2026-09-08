@@ -1,0 +1,13 @@
+{
+  "status": 200,
+  "success": true,
+  "server_time": "2026-09-09T00:00:00+00:00",
+  "message": "تم حفظ المقطع",
+  "data": {
+    "lesson_id": 10,
+    "folder_id": 1,
+    "folder_name": "Folder 1",
+    "is_saved": true,
+    "already_saved": false
+  }
+}
