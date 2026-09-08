@@ -107,12 +107,16 @@ describe('course gate contracts', () => {
 
     expect(feedback).toContain("feedbackLevel === 'enhanced'");
     expect(feedbackPanel).toContain("feedbackLevel === 'report'");
-    expect(feedbackPanel).toContain('فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة');
+    expect(feedbackPanel).toContain(
+      'فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة',
+    );
     expect(feedbackPanel).toContain('اعرف فئة الرد على التقرير');
     expect(feedbackPanel).toContain('الرد على التقرير');
     expect(feedbackPanel).toContain('الردود متاحة في فئة المتابعة');
     expect(feedback).toContain('!canReply ||');
-    expect(submission).toContain('if (outcome.accepted)');
+    expect(submission).toContain(
+      'if (outcome.accepted && !outcome.preserveDraft)',
+    );
     expect(submission).toContain('setDraftReady(false)');
     expect(submission).toContain('submissionAllowed: boolean');
     expect(submission).not.toContain('canSubmit ?? project.canSubmit');
@@ -179,5 +183,33 @@ describe('course gate contracts', () => {
 
     const types = source('src/components/VideoPlayer/types.ts');
     expect(types).not.toContain('submissionAttachments?:');
+  });
+
+  it('cleans the matching accepted editor draft but preserves a new draft when recovering a previous pass', () => {
+    const submission = source(
+      'src/components/VideoPlayer/projectTransition/useProjectSubmission.ts',
+    );
+    const outbox = source(
+      'src/components/VideoPlayer/courseLearning/projectSubmissionOutbox.ts',
+    );
+    const acceptedCleanup = submission.match(
+      /if \(outcome\.accepted && !outcome\.preserveDraft\) \{([\s\S]*?)\n {8}\}/,
+    )?.[1];
+
+    // The rendered hook cases in projectSubmissionHydration exercise both
+    // outcomes. This source contract also keeps their destructive cleanup
+    // inside the ownership guard rather than merely checking a flag exists.
+    expect(acceptedCleanup).toBeDefined();
+    expect(acceptedCleanup).toContain('setSelectedFiles([])');
+    expect(acceptedCleanup).toContain("setNote('')");
+    expect(acceptedCleanup).toContain(
+      'clearProjectSubmissionDraft(id, files, boundary)',
+    );
+    expect(outbox).toMatch(
+      /recovered\.result\.submissionStatus === 'passed'[\s\S]*?outcomeFromSync\(recovered\.result, previous, operation\)[\s\S]*?preserveDraft: true/,
+    );
+    expect(submission).not.toContain(
+      'clearProjectSubmissionDraft(project.id, [], boundary)',
+    );
   });
 });

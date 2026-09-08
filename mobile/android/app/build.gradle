@@ -258,6 +258,9 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // Compile the native partial Custom Tab bridge against the same browser
+    // runtime already brought in by expo-web-browser.
+    implementation("androidx.browser:browser:1.6.0")
     // Used by RoknPushTokens to invalidate this installation after logout,
     // even when the API cannot remove its device-token row.
     implementation("com.google.firebase:firebase-messaging:25.0.1")

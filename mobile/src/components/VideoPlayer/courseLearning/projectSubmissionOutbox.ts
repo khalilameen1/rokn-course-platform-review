@@ -14,9 +14,13 @@ import {
   clearPendingProjectSubmission,
   getOrCreatePendingProjectSubmission,
   listPendingProjectSubmissions,
+  pendingSubmissionMatchesInput,
+  readPendingProjectSubmission,
 } from './projectSubmissionStore';
 import {
   retryableProjectSubmissionFailure,
+  assertSubmissionRetryWindow,
+  recoverSubmissionAcknowledgement,
   syncProjectSubmission,
 } from './projectSubmissionTransport';
 import type {
@@ -163,6 +167,43 @@ const performForegroundSubmission = async (
     assertProjectSubmissionOwner(operation);
     await requireProductFeature('project_uploads');
     assertProjectSubmissionOwner(operation);
+
+    const previous = await readPendingProjectSubmission(projectId, operation);
+    if (previous && !previous.publicId) assertSubmissionRetryWindow(previous);
+    if (
+      previous &&
+      (previous.publicId || previous.uploadAttempted !== false) &&
+      !pendingSubmissionMatchesInput(previous, selectedFiles, submissionText)
+    ) {
+      // Editing a draft does not settle an upload whose response was lost.
+      // Resolve the old identity before replacing its durable retry payload.
+      const recovered = await recoverSubmissionAcknowledgement(
+        previous,
+        operation,
+      );
+      assertProjectSubmissionOwner(operation);
+      if (
+        recovered.kind === 'found' &&
+        recovered.result.submissionStatus === 'passed'
+      ) {
+        return {
+          ...(await outcomeFromSync(recovered.result, previous, operation)),
+          preserveDraft: true,
+        };
+      }
+      if (
+        recovered.kind !== 'missing' &&
+        !(
+          recovered.kind === 'found' &&
+          recovered.result.submissionStatus === 'needs_changes'
+        )
+      ) {
+        throw new Error('PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING');
+      }
+      // An absent or rejected old attempt can be replaced. Require the local
+      // removal to succeed before allocating a new identity for the new input.
+      await clearPendingProjectSubmission(previous, operation);
+    }
 
     const pending = await getOrCreatePendingProjectSubmission(
       projectId,

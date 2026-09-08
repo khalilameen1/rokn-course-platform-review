@@ -80,6 +80,22 @@ const passedResponse = {
   },
 };
 
+const lookupResponse = (
+  clientSubmissionId: string,
+  fields: Record<string, unknown> = {},
+) => ({
+  data: {
+    data: {
+      id: '33333333-3333-4333-8333-333333333333',
+      project_id: 42,
+      client_submission_id: clientSubmissionId,
+      submission_status: 'passed',
+      can_continue: true,
+      ...fields,
+    },
+  },
+});
+
 describe('project submission outbox ownership', () => {
   beforeEach(async () => {
     jest.useRealTimers();
@@ -215,6 +231,13 @@ describe('project submission outbox ownership', () => {
       expect(diagnostic.message).toBe('PROJECT_SUBMISSION_TERMINAL_CLEANUP');
       expect(context).toEqual({source: 'project_submission_terminal_cleanup'});
       const firstKey = mockPost.mock.calls[0][2].headers['Idempotency-Key'];
+      mockGet.mockResolvedValueOnce(
+        lookupResponse(firstKey, {
+          submission_status: 'needs_changes',
+          can_continue: false,
+          feedback: reason,
+        }),
+      );
 
       await expect(retryPendingProjectSubmissions()).resolves.toEqual([
         {
@@ -225,9 +248,7 @@ describe('project submission outbox ownership', () => {
           reviewFeedback: reason,
         },
       ]);
-      expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
-        firstKey,
-      );
+      expect(mockPost).toHaveBeenCalledTimes(1);
       expect(await retryPendingProjectSubmissions()).toEqual([]);
     },
   );
@@ -350,7 +371,9 @@ describe('project submission outbox ownership', () => {
       canContinue: false,
     });
 
-    mockPost.mockResolvedValueOnce(passedResponse);
+    mockGet.mockResolvedValueOnce(
+      lookupResponse(mockPost.mock.calls[0][2].headers['Idempotency-Key']),
+    );
     const ownerBoundary = {...mockActiveBoundary};
     const liveOwner = jest.fn();
     const stopLiveOwner = subscribeProjectSubmissionRecovery(
@@ -412,17 +435,11 @@ describe('project submission outbox ownership', () => {
     expect(pendingKey).toBeDefined();
     const pending = JSON.parse((await AsyncStorage.getItem(pendingKey!))!);
     const submissionId = '33333333-3333-4333-8333-333333333333';
-    mockPost.mockResolvedValueOnce({
-      data: {
-        data: {
-          id: submissionId,
-          submission_status: 'evaluating',
-          can_continue: false,
-          poll_after_seconds: 1,
-        },
-      },
-    });
-    mockGet.mockResolvedValueOnce(passedResponse);
+    mockGet.mockResolvedValueOnce(
+      lookupResponse(pending.clientSubmissionId, {
+        id: submissionId,
+      }),
+    );
 
     await expect(retryPendingProjectSubmissions()).resolves.toEqual([
       {
@@ -432,17 +449,21 @@ describe('project submission outbox ownership', () => {
         canContinue: true,
       },
     ]);
-    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost).toHaveBeenCalledTimes(1);
     expect(mockPost.mock.calls[0][2].headers['Idempotency-Key']).toBe(
       pending.clientSubmissionId,
     );
-    expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
-      pending.clientSubmissionId,
-    );
     expect(mockGet).toHaveBeenCalledWith(
-      `project-submissions/${submissionId}`,
-      {timeout: 12000},
+      'projects/42/submissions/lookup',
+      expect.objectContaining({
+        params: {client_submission_id: pending.clientSubmissionId},
+      }),
     );
+    expect(
+      mockGet.mock.calls.some(call =>
+        call[0].startsWith('project-submissions/'),
+      ),
+    ).toBe(false);
     expect(await AsyncStorage.getItem(pendingKey!)).toBeNull();
   });
 
@@ -504,8 +525,11 @@ describe('project submission outbox ownership', () => {
       if (failure === 'write') expect(pending.selectedFiles).toEqual([file]);
       else expect(pending.publicId).toBe(id);
 
-      mockPost.mockResolvedValueOnce(accepted);
-      mockGet.mockResolvedValueOnce(passedResponse);
+      mockGet.mockResolvedValueOnce(
+        failure === 'write'
+          ? lookupResponse(pending.clientSubmissionId)
+          : passedResponse,
+      );
       await expect(retryPendingProjectSubmissions()).resolves.toEqual([
         {
           projectId: '42',
@@ -514,7 +538,7 @@ describe('project submission outbox ownership', () => {
           canContinue: true,
         },
       ]);
-      expect(mockPost).toHaveBeenCalledTimes(failure === 'write' ? 2 : 1);
+      expect(mockPost).toHaveBeenCalledTimes(1);
       for (const call of mockPost.mock.calls) {
         expect(call[2].headers['Idempotency-Key']).toBe(
           pending.clientSubmissionId,
@@ -542,6 +566,7 @@ describe('project submission outbox ownership', () => {
     expect(removeLearnerDraftFile).not.toHaveBeenCalled();
 
     mockPost.mockResolvedValueOnce(passedResponse);
+    mockGet.mockRejectedValueOnce({status: 404});
     await submitProjectAttempt('42', null, 'محاولة محفوظة');
     expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
       mockPost.mock.calls[0][2].headers['Idempotency-Key'],
@@ -580,4 +605,285 @@ describe('project submission outbox ownership', () => {
       '33333333-3333-4333-8333-333333333333',
     );
   });
+
+  it.each(['response lost', 'server error', 'invalid acknowledgement'])(
+    'reads the exact committed image attempt after %s without uploading again',
+    async failure => {
+      const file = {
+        uri: 'file:///draft/private-work.jpg',
+        name: 'private-work.jpg',
+        type: 'image/jpeg',
+        size: 149394,
+      };
+      if (failure === 'invalid acknowledgement') {
+        mockPost.mockResolvedValueOnce({data: {data: {}}});
+      } else {
+        mockPost.mockRejectedValueOnce(
+          failure === 'server error'
+            ? {status: 500}
+            : new Error('connection closed'),
+        );
+      }
+      mockGet.mockImplementationOnce(async (route, config) => {
+        expect(route).toBe('projects/42/submissions/lookup');
+        return lookupResponse(config.params.client_submission_id, {
+          submission_status: 'needs_changes',
+          can_continue: false,
+          feedback: 'أضف صورة قبل التنفيذ وبعده',
+        });
+      });
+
+      await expect(submitProjectAttempt('42', file)).resolves.toMatchObject({
+        accepted: true,
+        submissionStatus: 'needs_changes',
+        reviewFeedback: 'أضف صورة قبل التنفيذ وبعده',
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockGet).toHaveBeenCalledTimes(1);
+      expect(await AsyncStorage.getAllKeys()).toEqual([]);
+      await settleMicrotasks();
+      const source =
+        failure === 'invalid acknowledgement'
+          ? 'invalid_ack'
+          : 'unknown_upload';
+      expect(mockReportClientError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: `PROJECT_SUBMISSION_${source.toUpperCase()}`,
+        }),
+        {source: `project_submission_${source}`},
+      );
+      expect(JSON.stringify(mockReportClientError.mock.calls)).not.toContain(
+        file.name,
+      );
+      expect(JSON.stringify(mockReportClientError.mock.calls)).not.toContain(
+        file.uri,
+      );
+    },
+  );
+
+  it.each([
+    {client_submission_id: 'older-attempt'},
+    {project_id: 99},
+    {id: 'not-a-public-id'},
+  ])(
+    'never adopts unrelated history or an invalid lookup identity: %j',
+    async fields => {
+      mockPost.mockRejectedValueOnce(new Error('response lost'));
+      mockGet.mockImplementation(async (_route, config) =>
+        lookupResponse(config.params.client_submission_id, fields),
+      );
+      await expect(
+        submitProjectAttempt('42', null, 'محاولة جديدة'),
+      ).resolves.toMatchObject({
+        accepted: false,
+        submissionStatus: 'draft',
+      });
+      await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+        expect.objectContaining({accepted: false, submissionStatus: 'draft'}),
+      ]);
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      const key = (await AsyncStorage.getAllKeys())[0];
+      expect(
+        JSON.parse((await AsyncStorage.getItem(key))!).publicId,
+      ).toBeUndefined();
+      expect(
+        mockGet.mock.calls.every(
+          call => call[0] === 'projects/42/submissions/lookup',
+        ),
+      ).toBe(true);
+    },
+  );
+
+  it('does not replay an uncertain upload while identity lookup is unavailable', async () => {
+    mockPost.mockRejectedValueOnce(new Error('response lost'));
+    mockGet.mockRejectedValue(new Error('lookup unavailable'));
+    await submitProjectAttempt('42', null, 'محاولة محفوظة');
+    await submitProjectAttempt('42', null, 'محاولة محفوظة');
+    await retryPendingProjectSubmissions();
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockGet).toHaveBeenCalledTimes(3);
+    expect(await AsyncStorage.getAllKeys()).toHaveLength(1);
+
+    // Only a confirmed absence permits another multipart dispatch, and it
+    // retains the original idempotency key rather than creating a new review.
+    mockGet.mockRejectedValueOnce({status: 404});
+    mockPost.mockResolvedValueOnce(passedResponse);
+    await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+      expect.objectContaining({accepted: true, submissionStatus: 'passed'}),
+    ]);
+    expect(mockPost).toHaveBeenCalledTimes(2);
+    expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
+      mockPost.mock.calls[0][2].headers['Idempotency-Key'],
+    );
+  });
+
+  it('recovers a legacy outbox by identity before any upload', async () => {
+    mockPost.mockRejectedValueOnce(new Error('response lost'));
+    await submitProjectAttempt('42', null, 'محاولة من النسخة السابقة');
+    const key = (await AsyncStorage.getAllKeys())[0];
+    const pending = JSON.parse((await AsyncStorage.getItem(key))!);
+    delete pending.uploadAttempted;
+    await AsyncStorage.setItem(key, JSON.stringify(pending));
+    mockGet.mockResolvedValueOnce(lookupResponse(pending.clientSubmissionId));
+    await expect(retryPendingProjectSubmissions()).resolves.toEqual([
+      expect.objectContaining({accepted: true, submissionStatus: 'passed'}),
+    ]);
+    expect(mockPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not adopt or clean up the old account after an identity lookup changes owner', async () => {
+    mockPost.mockRejectedValueOnce(new Error('response lost'));
+    mockGet.mockImplementationOnce(async (_route, config) => {
+      mockActiveBoundary = {epoch: 2, scope: 'user-b'};
+      return lookupResponse(config.params.client_submission_id);
+    });
+    await expect(submitProjectAttempt('42', null, 'عمل خاص')).rejects.toThrow(
+      'ACCOUNT_CHANGED_DURING_REQUEST',
+    );
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    const key = (await AsyncStorage.getAllKeys())[0];
+    expect(key).toContain(':user-a:42');
+    expect(
+      JSON.parse((await AsyncStorage.getItem(key))!).publicId,
+    ).toBeUndefined();
+    expect(removeLearnerDraftFile).not.toHaveBeenCalled();
+  });
+
+  it('waits briefly for a committed identity after the first lookup returns 404', async () => {
+    jest.useFakeTimers();
+    mockPost.mockRejectedValueOnce(new Error('response lost before commit'));
+    mockGet.mockRejectedValueOnce({status: 404});
+    mockGet.mockImplementationOnce(async (_route, config) =>
+      lookupResponse(config.params.client_submission_id),
+    );
+    const flight = submitProjectAttempt('42', null, 'محاولة قيد الحفظ');
+    await settleMicrotasks(100);
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    await jest.advanceTimersByTimeAsync(1000);
+    await expect(flight).resolves.toMatchObject({
+      accepted: true,
+      submissionStatus: 'passed',
+    });
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(mockGet.mock.calls[1][1].timeout).toBeLessThanOrEqual(11000);
+  });
+
+  it.each(['unavailable', 'evaluating'])(
+    'does not replace an uncertain attempt with edited input while the old identity is %s',
+    async state => {
+      mockPost.mockRejectedValueOnce(new Error('lost acknowledgement'));
+      await submitProjectAttempt('42', null, 'المحاولة الأولى');
+      const key = (await AsyncStorage.getAllKeys())[0];
+      const saved = JSON.parse((await AsyncStorage.getItem(key))!);
+      if (state === 'unavailable')
+        mockGet.mockRejectedValueOnce(new Error('read unavailable'));
+      else
+        mockGet.mockResolvedValueOnce(
+          lookupResponse(saved.clientSubmissionId, {
+            submission_status: 'evaluating',
+            can_continue: false,
+          }),
+        );
+      await expect(
+        submitProjectAttempt('42', null, 'تعديلات جديدة يجب ألا تضيع'),
+      ).rejects.toThrow('PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING');
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(
+        JSON.parse((await AsyncStorage.getItem(key))!).clientSubmissionId,
+      ).toBe(saved.clientSubmissionId);
+    },
+  );
+
+  it.each(['missing', 'needs_changes'])(
+    'allows edited input only after the previous identity is confirmed %s',
+    async state => {
+      mockPost.mockRejectedValueOnce(new Error('lost acknowledgement'));
+      await submitProjectAttempt('42', null, 'المحاولة الأولى');
+      const oldKey = mockPost.mock.calls[0][2].headers['Idempotency-Key'];
+      if (state === 'missing') mockGet.mockRejectedValueOnce({status: 404});
+      else
+        mockGet.mockResolvedValueOnce(
+          lookupResponse(oldKey, {
+            submission_status: 'needs_changes',
+            can_continue: false,
+          }),
+        );
+      mockPost.mockResolvedValueOnce(passedResponse);
+      await expect(
+        submitProjectAttempt('42', null, 'تعديلات جديدة'),
+      ).resolves.toMatchObject({accepted: true});
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).not.toBe(
+        oldKey,
+      );
+      expect(mockGet.mock.calls[1][1].params.client_submission_id).toBe(oldKey);
+    },
+  );
+
+  it('adopts a previous pass without uploading or claiming the edited draft', async () => {
+    mockPost.mockRejectedValueOnce(new Error('lost acknowledgement'));
+    await submitProjectAttempt('42', null, 'المحاولة الأولى');
+    const oldKey = mockPost.mock.calls[0][2].headers['Idempotency-Key'];
+    mockGet.mockResolvedValueOnce(lookupResponse(oldKey));
+    const file = {
+      uri: 'file:///new-draft.jpg',
+      name: 'new.jpg',
+      type: 'image/jpeg',
+      size: 100,
+    };
+    await expect(
+      submitProjectAttempt('42', file, 'تعديلات جديدة'),
+    ).resolves.toMatchObject({
+      accepted: true,
+      submissionStatus: 'passed',
+      preserveDraft: true,
+    });
+    expect(mockPost).toHaveBeenCalledTimes(1);
+    expect(removeLearnerDraftFile).not.toHaveBeenCalledWith(file);
+  });
+
+  it.each([false, true])(
+    'honors the 429 Retry-After cooldown across taps and restart (date header: %s)',
+    async dateHeader => {
+      jest.useFakeTimers();
+      const retryAfter = dateHeader
+        ? new Date(Date.now() + 60000).toUTCString()
+        : '60';
+      mockPost.mockRejectedValueOnce({
+        status: 429,
+        headers: {'retry-after': retryAfter},
+      });
+      await expect(
+        submitProjectAttempt('42', null, 'المشروع'),
+      ).rejects.toMatchObject({
+        message: 'PROJECT_SUBMISSION_RATE_LIMITED',
+        status: 429,
+        retryAfterSeconds: 60,
+      });
+      expect(mockGet).not.toHaveBeenCalled();
+      expect(mockReportClientError).not.toHaveBeenCalled();
+      quiesceProjectSubmissionRuntime();
+      await expect(
+        submitProjectAttempt('42', null, 'تعديل لا يتجاوز الحظر'),
+      ).rejects.toMatchObject({status: 429});
+      await retryPendingProjectSubmissions();
+      await jest.advanceTimersByTimeAsync(59000);
+      await expect(
+        submitProjectAttempt('42', null, 'المشروع'),
+      ).rejects.toMatchObject({status: 429, retryAfterSeconds: 1});
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockGet).not.toHaveBeenCalled();
+      await jest.advanceTimersByTimeAsync(1000);
+      mockGet.mockRejectedValueOnce({status: 404});
+      mockPost.mockResolvedValueOnce(passedResponse);
+      await expect(
+        submitProjectAttempt('42', null, 'المشروع'),
+      ).resolves.toMatchObject({accepted: true});
+      expect(mockPost).toHaveBeenCalledTimes(2);
+      expect(mockPost.mock.calls[1][2].headers['Idempotency-Key']).toBe(
+        mockPost.mock.calls[0][2].headers['Idempotency-Key'],
+      );
+    },
+  );
 });

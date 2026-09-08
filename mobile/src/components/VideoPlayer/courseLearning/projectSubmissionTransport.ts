@@ -84,6 +84,58 @@ export const retryableProjectSubmissionFailure = (error: unknown) => {
   return status === null || status === 408 || status === 429 || status >= 500;
 };
 
+const reportUncertainSubmission = (
+  source: 'unknown_upload' | 'invalid_ack',
+) => {
+  void import('../../../services/operationalTelemetry')
+    .then(({reportClientError}) =>
+      reportClientError(
+        new Error(`PROJECT_SUBMISSION_${source.toUpperCase()}`),
+        {
+          source: `project_submission_${source}`,
+        },
+      ),
+    )
+    .catch(() => undefined);
+};
+
+const unconfirmedSubmission = (): SubmissionSyncResult => ({
+  submissionStatus: 'evaluating',
+  accepted: false,
+  canContinue: false,
+});
+
+export const assertSubmissionRetryWindow = (
+  pending: PendingProjectSubmission,
+) => {
+  const seconds = Math.ceil(
+    (Number(pending.retryAfterAt || 0) - Date.now()) / 1000,
+  );
+  if (seconds > 0) {
+    throw Object.assign(new Error('PROJECT_SUBMISSION_RATE_LIMITED'), {
+      status: 429,
+      retryAfterSeconds: seconds,
+    });
+  }
+};
+
+const submissionRetryAfterSeconds = (error: unknown) => {
+  const root = asRecord(error);
+  const response = asRecord(root.response || error);
+  const headers = asRecord(response.headers);
+  const raw =
+    typeof headers.get === 'function'
+      ? headers.get.call(response.headers, 'retry-after')
+      : headers['retry-after'] ?? headers['Retry-After'];
+  const seconds = Number(raw);
+  if (raw !== undefined && Number.isFinite(seconds) && seconds > 0)
+    return Math.ceil(seconds);
+  const date = Date.parse(String(raw || ''));
+  return Number.isFinite(date) && date > Date.now()
+    ? Math.ceil((date - Date.now()) / 1000)
+    : 60;
+};
+
 const pollProjectSubmission = async (
   pending: PendingProjectSubmission,
   operation: ProjectSubmissionOperation,
@@ -170,6 +222,89 @@ const persistAcceptedSubmission = async (
   assertProjectSubmissionOwner(operation);
 };
 
+export const recoverSubmissionAcknowledgement = async (
+  pending: PendingProjectSubmission,
+  operation: ProjectSubmissionOperation,
+  waitForCommit = false,
+): Promise<
+  | {kind: 'found'; result: SubmissionSyncResult}
+  | {kind: 'missing' | 'unavailable'}
+> => {
+  // A response can be lost before the server transaction commits. Bound the
+  // complete read recovery, including short 404 waits, to one read budget.
+  const deadline = Date.now() + 12000;
+  const attempts = waitForCommit ? 3 : 1;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (attempt)
+      await waitFor(Math.max(0, Math.min(1000, deadline - Date.now())));
+    assertProjectSubmissionOwner(operation);
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return {kind: 'unavailable'};
+    let payload: DataRecord;
+    try {
+      const response = await publicRequest.get(
+        `projects/${pending.projectId}/submissions/lookup`,
+        {
+          params: {client_submission_id: pending.clientSubmissionId},
+          timeout: remaining,
+        },
+      );
+      assertProjectSubmissionOwner(operation);
+      payload = unwrapResponseData(response);
+    } catch (error) {
+      assertProjectSubmissionOwner(operation);
+      if (requestStatus(error) !== 404) return {kind: 'unavailable'};
+      if (attempt + 1 === attempts) return {kind: 'missing'};
+      continue;
+    }
+
+    // Never substitute the latest project attempt or another owner's result
+    // for this outbox identity, even when its status happens to be terminal.
+    const id = valueAsString(payload.id);
+    if (
+      payload.client_submission_id !== pending.clientSubmissionId ||
+      String(payload.project_id) !== pending.projectId ||
+      !PUBLIC_SUBMISSION_ID_PATTERN.test(id)
+    ) {
+      reportUncertainSubmission('invalid_ack');
+      return {kind: 'unavailable'};
+    }
+    let result: SubmissionSyncResult;
+    try {
+      result = parseSubmissionResult(payload);
+      if (result.submissionStatus === 'draft') {
+        throw new Error('PROJECT_SUBMISSION_CONTRACT_INVALID');
+      }
+    } catch {
+      reportUncertainSubmission('invalid_ack');
+      return {kind: 'unavailable'};
+    }
+    pending.publicId = id.toLowerCase();
+    pending.pollAfterSeconds = Number(payload.poll_after_seconds) || 1;
+    await persistAcceptedSubmission(pending, operation);
+    // The course watcher owns any remaining review wait. Identity recovery
+    // must not append a second polling budget to the bounded lookup itself.
+    return {kind: 'found', result};
+  }
+  return {kind: 'missing'};
+};
+
+const resolveUncertainSubmission = async (
+  pending: PendingProjectSubmission,
+  operation: ProjectSubmissionOperation,
+  source: 'unknown_upload' | 'invalid_ack',
+) => {
+  reportUncertainSubmission(source);
+  const recovered = await recoverSubmissionAcknowledgement(
+    pending,
+    operation,
+    true,
+  );
+  return recovered.kind === 'found'
+    ? recovered.result
+    : unconfirmedSubmission();
+};
+
 const performProjectSubmissionSync = async (
   pending: PendingProjectSubmission,
   operation: ProjectSubmissionOperation,
@@ -184,6 +319,26 @@ const performProjectSubmissionSync = async (
     }
     return pollProjectSubmission(pending, operation);
   }
+  assertSubmissionRetryWindow(pending);
+
+  // Legacy outboxes have no marker and may already exist on the server. A
+  // failed lookup is not permission to replay their multipart upload.
+  if (pending.uploadAttempted !== false) {
+    const recovered = await recoverSubmissionAcknowledgement(
+      pending,
+      operation,
+    );
+    if (recovered.kind === 'found') return recovered.result;
+    if (recovered.kind === 'unavailable') return unconfirmedSubmission();
+  }
+
+  pending.uploadAttempted = true;
+  await savePendingProjectSubmission(
+    pending,
+    operation,
+    pending.selectedFiles || [],
+  );
+  assertProjectSubmissionOwner(operation);
 
   let response: unknown;
   try {
@@ -202,18 +357,32 @@ const performProjectSubmissionSync = async (
     assertProjectSubmissionOwner(operation);
   } catch (error) {
     assertProjectSubmissionOwner(operation);
+    if (requestStatus(error) === 429) {
+      // This POST was explicitly refused, not lost in transit. Persist the
+      // server's cooldown so taps, resume and process restart cannot bypass it.
+      pending.retryAfterAt =
+        Date.now() + submissionRetryAfterSeconds(error) * 1000;
+      await savePendingProjectSubmission(
+        pending,
+        operation,
+        pending.selectedFiles || [],
+      );
+      assertProjectSubmissionOwner(operation);
+      assertSubmissionRetryWindow(pending);
+    }
     if (retryableProjectSubmissionFailure(error)) {
-      return {
-        submissionStatus: 'evaluating',
-        accepted: false,
-        canContinue: false,
-      };
+      return resolveUncertainSubmission(pending, operation, 'unknown_upload');
     }
     throw error;
   }
 
   const payload = unwrapResponseData(response);
-  const immediateResult = parseSubmissionResult(payload);
+  let immediateResult: SubmissionSyncResult;
+  try {
+    immediateResult = parseSubmissionResult(payload);
+  } catch {
+    return resolveUncertainSubmission(pending, operation, 'invalid_ack');
+  }
   if (
     immediateResult.submissionStatus === 'passed' ||
     immediateResult.submissionStatus === 'review_unavailable' ||
@@ -224,11 +393,7 @@ const performProjectSubmissionSync = async (
 
   const publicId = valueAsString(payload.id);
   if (!PUBLIC_SUBMISSION_ID_PATTERN.test(publicId)) {
-    return {
-      submissionStatus: 'evaluating',
-      accepted: false,
-      canContinue: false,
-    };
+    return resolveUncertainSubmission(pending, operation, 'invalid_ack');
   }
   pending.publicId = publicId.toLowerCase();
   pending.pollAfterSeconds = Number(payload.poll_after_seconds) || 1;

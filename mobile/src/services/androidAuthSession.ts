@@ -1,4 +1,5 @@
-import {AppState, Linking} from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import {AppState, Linking, NativeModules} from 'react-native';
 
 export type AndroidAuthSessionResult =
   | {type: 'success'; url: string}
@@ -15,6 +16,27 @@ type CallbackOwner = {
 
 let activeCallbackOwner: CallbackOwner | null = null;
 let recentlyHandledCallback: (CallbackOwner & {until: number}) | null = null;
+
+type NativeAuthBrowser = {
+  open: (url: string) => Promise<boolean | void>;
+};
+
+const openAuthBrowser = async (url: string) => {
+  const nativeBrowser = NativeModules.RoknAuthBrowser as
+    | NativeAuthBrowser
+    | undefined;
+  if (typeof nativeBrowser?.open === 'function') {
+    await nativeBrowser.open(url);
+    return;
+  }
+
+  await WebBrowser.openBrowserAsync(url, {
+    createTask: false,
+    showInRecents: false,
+    showTitle: true,
+    enableDefaultShareMenuItem: false,
+  });
+};
 
 const queryValue = (url: string, key: string) => {
   const query = url.split('?')[1]?.split('#')[0] || '';
@@ -120,5 +142,5 @@ export const openAndroidAuthSession = (
       reject(new Error('LOGIN_BROWSER_UNAVAILABLE'));
     }
 
-    void Linking.openURL(startUrl).catch(fail);
+    void openAuthBrowser(startUrl).catch(fail);
   });

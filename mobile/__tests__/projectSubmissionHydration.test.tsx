@@ -66,6 +66,118 @@ describe('project submission draft hydration', () => {
     jest.useRealTimers();
   });
 
+  it.each([
+    'matching acceptance',
+    'previous pass',
+    'previous pending',
+    'rate limited',
+  ])('keeps editor ownership correct for %s', async outcomeKind => {
+    const file = {
+      uri: 'file:///new-work.docx',
+      name: 'new-work.docx',
+      type: DOCX,
+      size: 100,
+    };
+    const onOutcome = jest.fn();
+    const onSubmit = jest.fn(async () => {
+      if (outcomeKind === 'previous pending')
+        throw new Error('PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING');
+      if (outcomeKind === 'rate limited') {
+        throw Object.assign(new Error('PROJECT_SUBMISSION_RATE_LIMITED'), {
+          status: 429,
+          retryAfterSeconds: 37,
+        });
+      }
+      return {
+        accepted: true,
+        submissionStatus: 'passed' as const,
+        canContinue: true,
+        ...(outcomeKind === 'previous pass' ? {preserveDraft: true} : {}),
+      };
+    });
+    jest.mocked(pickProjectFilesOwned).mockResolvedValueOnce({
+      files: [file],
+      ownerBoundary: {scope: 'user-a', epoch: 1},
+    });
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    let current!: ReturnType<typeof useProjectSubmission>;
+    function Harness({value}: {value: CourseProject}) {
+      current = useProjectSubmission({
+        appIsActive: true,
+        project: value,
+        status: value.status,
+        submissionAllowed: value.canSubmit === true,
+        onSubmit,
+        onOutcome,
+      });
+      return null;
+    }
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness value={project()} />);
+      });
+      await act(async () => {
+        await current.chooseProjectFile();
+      });
+      act(() => current.changeNote('هذه تعديلات جديدة محفوظة'));
+      // Submit before the debounce fires, as a quick real learner tap can.
+      await act(async () => {
+        await current.submit();
+      });
+      expect(mockSaveDraft).toHaveBeenCalledWith(
+        '41',
+        expect.objectContaining({
+          files: [file],
+          note: 'هذه تعديلات جديدة محفوظة',
+        }),
+        {scope: 'user-a', epoch: 1},
+      );
+      expect(mockSaveDraft.mock.invocationCallOrder[0]).toBeLessThan(
+        onSubmit.mock.invocationCallOrder[0],
+      );
+      if (outcomeKind === 'matching acceptance') {
+        expect(current.selectedFiles).toEqual([]);
+        expect(current.note).toBe('');
+        expect(mockClearDraft).toHaveBeenCalledWith('41', [file], {
+          scope: 'user-a',
+          epoch: 1,
+        });
+      } else {
+        if (outcomeKind === 'previous pass') {
+          await act(async () => {
+            renderer.update(
+              <Harness
+                value={{...project(), status: 'passed', canSubmit: false}}
+              />,
+            );
+          });
+        }
+        expect(current.selectedFiles).toEqual([file]);
+        expect(current.note).toBe('هذه تعديلات جديدة محفوظة');
+        expect(mockClearDraft).not.toHaveBeenCalled();
+      }
+      if (outcomeKind === 'rate limited') {
+        expect(alert).toHaveBeenCalledWith(
+          'انتظر قليلًا قبل الإرسال',
+          expect.stringContaining('٣٧ ثانية'),
+        );
+        expect(JSON.stringify(alert.mock.calls)).not.toContain(
+          'استقرار الاتصال',
+        );
+      }
+      if (outcomeKind === 'previous pending') {
+        expect(alert).toHaveBeenCalledWith(
+          'نتحقق من المحاولة السابقة',
+          expect.stringContaining('تعديلاتك الجديدة محفوظة'),
+        );
+      }
+    } finally {
+      act(() => renderer.unmount());
+      alert.mockRestore();
+    }
+  });
+
   it.each([9, 8])(
     'enforces the project server limit before caching or upload for a %s MiB file',
     async mebibytes => {
@@ -80,12 +192,10 @@ describe('project submission draft hydration', () => {
         type: 'application/pdf',
         size: mebibytes * 1024 * 1024,
       };
-      jest
-        .mocked(pickProjectFilesOwned)
-        .mockResolvedValueOnce({
-          files: [selected],
-          ownerBoundary: {scope: 'user-a', epoch: 1},
-        });
+      jest.mocked(pickProjectFilesOwned).mockResolvedValueOnce({
+        files: [selected],
+        ownerBoundary: {scope: 'user-a', epoch: 1},
+      });
       const onSubmit = jest.fn(async () => ({
         accepted: true,
         submissionStatus: 'evaluating' as const,

@@ -217,15 +217,9 @@ export const useProjectSubmission = ({
       .then(boundary => {
         if (generation !== draftGenerationRef.current) return null;
         draftLifecycle.boundary = boundary;
-        if (
-          ['passed', 'evaluating', 'review_unavailable'].includes(
-            project.status,
-          )
-        ) {
-          return clearProjectSubmissionDraft(project.id, [], boundary).then(
-            () => null,
-          );
-        }
+        // A status refresh can describe an older upload whose response was
+        // lost. Only the matching accepted outcome below may clear this
+        // editor's files; the draft loader still enforces its normal TTL.
         return loadProjectSubmissionDraft(project.id, boundary);
       })
       .then(async draft => {
@@ -260,7 +254,6 @@ export const useProjectSubmission = ({
     draftLifecycle,
     fileSubmissionEnabled,
     project.id,
-    project.status,
     textSubmissionEnabled,
   ]);
 
@@ -382,13 +375,25 @@ export const useProjectSubmission = ({
       assertAccountSessionBoundary(boundary);
       setSyncNote('');
       try {
+        // Commit the editor snapshot before resolving an older uncertain
+        // attempt: its result may refresh the project and close this screen.
+        await saveProjectSubmissionDraft(
+          id,
+          {
+            files: fileSubmissionEnabled ? files : [],
+            note: textSubmissionEnabled ? note : '',
+            updatedAt: Date.now(),
+          },
+          boundary,
+        );
+        assertAccountSessionBoundary(boundary);
         const outcome = await onSubmit(
           fileSubmissionEnabled ? files : [],
           textSubmissionEnabled ? normalizedNote : undefined,
         );
         if (!ownsProject(id, generation)) return;
         onOutcome(outcome);
-        if (outcome.accepted) {
+        if (outcome.accepted && !outcome.preserveDraft) {
           // Another rejected attempt can keep the same server status, so no
           // hydration effect will run. Its empty replacement draft is ready
           // here; a saved submission closes the editor until a change is requested.
@@ -420,6 +425,35 @@ export const useProjectSubmission = ({
         }
       } catch (error: unknown) {
         if (!ownsProject(id, generation)) return;
+        if (
+          error instanceof Error &&
+          error.message === 'PROJECT_SUBMISSION_RATE_LIMITED'
+        ) {
+          const seconds = Math.max(
+            1,
+            Number(
+              (error as Error & {retryAfterSeconds?: number})
+                .retryAfterSeconds || 60,
+            ),
+          );
+          Alert.alert(
+            'انتظر قليلًا قبل الإرسال',
+            `يمكنك إعادة المحاولة بعد ${formatArabicNumber(
+              seconds,
+            )} ثانية\nملفاتك وتعديلاتك محفوظة على هذا الجهاز`,
+          );
+          return;
+        }
+        if (
+          error instanceof Error &&
+          error.message === 'PROJECT_SUBMISSION_PREVIOUS_ATTEMPT_PENDING'
+        ) {
+          Alert.alert(
+            'نتحقق من المحاولة السابقة',
+            'تعديلاتك الجديدة محفوظة على هذا الجهاز\nانتظر تأكيد حالة المحاولة السابقة ثم حاول مرة أخرى',
+          );
+          return;
+        }
         const responseStatus = Number(
           error && typeof error === 'object'
             ? (error as {status?: unknown; response?: {status?: unknown}})
@@ -447,6 +481,7 @@ export const useProjectSubmission = ({
       allowedMimeTypes,
       fileSubmissionEnabled,
       normalizedNote,
+      note,
       maximumFileBytes,
       maximumFileSizeLabel,
       onOutcome,

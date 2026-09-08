@@ -408,3 +408,53 @@ Older numbered APKs remain unchanged. This is not a public-store release, a
 Drive upload or a device-installation result. Mobile CI 34208934653 was still
 building its Android/iOS jobs at the last snapshot, with no failures; the local
 mobile full test/lint/typecheck gates and internal APK build had completed.
+
+## September 8 — submission throttling, physical seek direction and sign-in sheet
+
+This report's project-send failure was HTTP 429, not a demonstrated connection
+failure or a lost acknowledgement. Production access logs show three refused
+POSTs to project 8 at 09:44:50, 09:44:56 and 09:45:00 UTC. The subsequent POST
+at 09:47:32 returned 202, followed by successful status reads. Submission 4
+finished its review at 09:47:37 with `needs_changes`. Its storage write took
+about one second. Cloud commands 128–130 read these records without submitting
+a project, regenerating a review or changing student data.
+
+The numeric Laravel throttle middleware used one user counter across unrelated
+controller operations. A local regression reproduced eight chat status reads
+blocking the first project POST. Numeric API counters now include the request
+method and controller action. Resource IDs and endpoint aliases do not create
+new quotas; intentionally shared named limiters remain shared. Existing limits
+were not raised. The targeted backend run passed 37 tests / 351 assertions,
+including the original failure, project-ID and purchase-alias quota continuity,
+and availability of the read-only lookup after the upload quota is exhausted.
+
+The mobile outbox now distinguishes 429 from an unknown upload outcome and
+persists the server's Retry-After deadline across taps, resume and restart.
+Unknown acknowledgements have a separate bounded, read-only lookup by exact
+account, project and client submission identity. A failed lookup does not
+authorize another multipart upload. Editing a still-uncertain attempt preserves
+the new draft while settling the previous identity. This is additional recovery
+hardening, not a claim that the successful production attempt lost its response.
+
+The video seek calculations already used physical touch coordinates, but RTL
+layout mirrored the rendered thumb. The timeline now explicitly uses an LTR
+coordinate space and logical start positions while Arabic text remains RTL.
+Regression coverage checks that moving right increases both time and the
+rendered thumb position.
+
+Android sign-in now opens a partial Custom Tab above the current activity via
+a small native bridge. The existing OAuth state, callback ownership and account
+completion flow remain unchanged. A compatible browser can display the 85%
+height sheet; unsupported browsers/orientations may use a full-size Custom Tab.
+This is not an embedded WebView. iOS keeps its existing system auth session.
+The existing AndroidX Browser 1.6.0 dependency is now also explicitly available
+at compile time. Gradle lock generation and release Kotlin compilation passed.
+
+Final mobile verification passed all 183 suites / 1029 tests, TypeScript,
+release ESLint with zero warnings and the release configuration contract.
+Two old mock/source expectations were updated to the new browser transport
+and accepted-draft ownership; behavioral cancellation and draft preservation
+coverage remain in place.
+
+Source version: 1.0.48 / Android 49 / iOS 46. Deployment, APK build and physical
+device results are not claimed by this source-change entry.

@@ -9,6 +9,8 @@ export type PendingProjectSubmission = {
   submissionText?: string;
   publicId?: string;
   pollAfterSeconds?: number;
+  uploadAttempted?: boolean;
+  retryAfterAt?: number;
 };
 
 export type SubmissionSyncResult = {
@@ -21,7 +23,9 @@ export type SubmissionSyncResult = {
   reviewFailureCategory?: string;
 };
 
-export type ProjectSubmissionOutcome = SubmissionSyncResult;
+export type ProjectSubmissionOutcome = SubmissionSyncResult & {
+  preserveDraft?: boolean;
+};
 
 export type ProjectSubmissionRetryOutcome = SubmissionSyncResult & {
   projectId: string;

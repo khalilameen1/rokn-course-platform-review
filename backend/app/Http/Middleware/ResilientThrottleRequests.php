@@ -26,6 +26,27 @@ final class ResilientThrottleRequests extends ThrottleRequests
         parent::__construct($limiter);
     }
 
+    protected function resolveRequestSignature($request)
+    {
+        $identity = parent::resolveRequestSignature($request);
+        $route = $request->route();
+        if (!$request->is('api/*') || !$route) {
+            return $identity;
+        }
+
+        // Laravel's numeric limiter otherwise shares one counter across all
+        // routes for this user/IP. Polling must not exhaust submission limits.
+        // Controller aliases share a quota; resource IDs never create new ones.
+        // Named limiters do not call this method and retain their shared keys.
+        $action = $route->getActionName();
+        if ($action === 'Closure') {
+            $action = $route->uri();
+        }
+        $method = $request->isMethod('HEAD') ? 'GET' : $request->method();
+
+        return hash('sha256', $identity.'|'.$method.'|'.$action);
+    }
+
     protected function handleRequest($request, Closure $next, array $limits)
     {
         try {

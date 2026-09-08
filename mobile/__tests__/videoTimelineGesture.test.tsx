@@ -1,7 +1,10 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import type {GestureResponderEvent} from 'react-native';
+import {StyleSheet, type GestureResponderEvent} from 'react-native';
+import {VideoChrome} from '../src/components/VideoPlayer/video/VideoChrome';
 import {useVideoTimelineController} from '../src/components/VideoPlayer/video/useVideoTimelineController';
+
+jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 
 const touch = (
   x: number,
@@ -79,6 +82,61 @@ describe('video scrub gesture ownership', () => {
     expect(h.seek).toHaveBeenCalledWith(60);
     expect(h.current.previewTime).toBeNull();
     await act(() => h.renderer.unmount());
+  });
+
+  it('keeps the visual timeline on the same physical left-to-right axis as touch coordinates', async () => {
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(() => {
+      renderer = TestRenderer.create(
+        <VideoChrome
+          bottomInset={0}
+          currentTime={60}
+          failureKind="source"
+          isBuffering={false}
+          isLoaded
+          onRetry={jest.fn()}
+          onSeekBy={jest.fn()}
+          onTogglePaused={jest.fn()}
+          onTrackWidth={jest.fn()}
+          panHandlers={{}}
+          pausedByUser={false}
+          previewTime={60}
+          recoveryMessage=""
+          sourceFailed={false}
+          timeline={{
+            accessibilityDuration: 100,
+            accessibilityPosition: 60,
+            bufferedProgress: 0.8,
+            displayedTime: 60,
+            duration: 100,
+            progress: 0.6,
+            remaining: 40,
+          }}
+          trackWidth={200}
+          unsupportedSource={false}
+        />,
+      );
+    });
+
+    const touchTrack = StyleSheet.flatten(
+      renderer.root.findByProps({testID: 'video-timeline-touch-track'}).props
+        .style,
+    );
+    const played = StyleSheet.flatten(
+      renderer.root.findByProps({testID: 'video-timeline-played'}).props.style,
+    );
+    const scrubber = StyleSheet.flatten(
+      renderer.root.findByProps({testID: 'video-timeline-scrubber'}).props.style,
+    );
+
+    expect(touchTrack.direction).toBe('ltr');
+    expect(played.start).toBe(0);
+    expect(played.width).toBe('60%');
+    expect(scrubber.start).toBe(114);
+    expect(played.left).toBeUndefined();
+    expect(scrubber.left).toBeUndefined();
+
+    await act(() => renderer.unmount());
   });
 
   it('does not capture paging touches before the duration is available', async () => {

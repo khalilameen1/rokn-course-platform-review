@@ -104,6 +104,8 @@ $registerCourseApiRoutes = function () {
                 Route::get('projects/{project}', [\App\Http\Controllers\API\ProjectController::class, 'show']);
                 Route::post('projects/{project}/submissions', [\App\Http\Controllers\API\ProjectController::class, 'submit'])
                     ->middleware(['product.feature:project_uploads', 'throttle:8,1']);
+                Route::get('projects/{project}/submissions/lookup', [\App\Http\Controllers\API\ProjectController::class, 'lookupSubmission'])
+                    ->whereNumber('project');
                 Route::get('project-submissions/{submission}', [\App\Http\Controllers\API\ProjectController::class, 'submissionStatus']);
                 Route::post('project-submissions/{submission}/review/retry', [\App\Http\Controllers\API\ProjectController::class, 'retryEvaluation'])
                     ->middleware(['product.feature:project_uploads', 'recovery.write', 'throttle:3,1']);

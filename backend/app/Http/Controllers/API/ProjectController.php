@@ -244,6 +244,38 @@ final class ProjectController extends Controller
         }
     }
 
+    /** Recover a committed upload whose HTTP acknowledgement did not arrive. */
+    public function lookupSubmission(Request $request, int $project): JsonResponse
+    {
+        $user = auth('api')->user();
+        if (!$user) return $this->error('سجّل الدخول أولًا', 401);
+        $validated = $request->validate([
+            'client_submission_id' => ['required', 'string', 'max:100'],
+        ]);
+        $key = $validated['client_submission_id'];
+        $submission = ProjectSubmission::query()
+            ->where('user_id', $user->id)
+            ->where('project_id', $project)
+            ->where('idempotency_key', $key)
+            ->first();
+        // MySQL's case-insensitive collation must not turn a different opaque
+        // client key into an acknowledgement of this upload.
+        if (!$submission || !hash_equals((string) $submission->idempotency_key, $key)) {
+            return $this->error('التسليم غير موجود', 404);
+        }
+
+        // This is a read receipt, not review recovery or a new submission.
+        // In particular, do not dispatch work for an overdue pending row.
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'message' => 'تم العثور على التسليم',
+            'data' => array_merge($this->submissions->present($submission), [
+                'client_submission_id' => (string) $submission->idempotency_key,
+            ]),
+        ]);
+    }
+
     public function submissionStatus(ProjectSubmission $submission): JsonResponse
     {
         $user = auth('api')->user();

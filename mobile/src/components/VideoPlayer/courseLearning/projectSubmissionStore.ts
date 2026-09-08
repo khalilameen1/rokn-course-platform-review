@@ -53,6 +53,14 @@ const submissionFingerprint = (
     ].join('|'),
   );
 
+export const pendingSubmissionMatchesInput = (
+  pending: PendingProjectSubmission,
+  selectedFiles: SelectedProjectFile[],
+  submissionText?: string,
+) =>
+  pending.fingerprint ===
+  submissionFingerprint(pending.projectId, selectedFiles, submissionText);
+
 const createClientSubmissionId = (projectId: string, fingerprint: string) =>
   `rokn-${projectId
     .replace(/[^a-zA-Z0-9_-]/g, '')
@@ -265,6 +273,7 @@ export const getOrCreatePendingProjectSubmission = async (
       submissionText: normalizedSubmissionText || undefined,
       fingerprint,
       clientSubmissionId: createClientSubmissionId(projectId, fingerprint),
+      uploadAttempted: false,
     };
     await savePendingProjectSubmission(
       pending,

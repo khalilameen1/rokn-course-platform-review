@@ -11,6 +11,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 import com.facebook.react.modules.i18nmanager.I18nUtil
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
+import com.rokn.auth.RoknAuthBrowserPackage
 import com.rokn.checkout.RoknCheckoutPackage
 import com.rokn.downloads.RoknDownloadsPackage
 import com.rokn.diagnostics.RoknDiagnosticsPackage
@@ -29,6 +30,7 @@ class MainApplication : Application(), ReactApplication {
       packageList =
         PackageList(this).packages.apply {
           // Packages that cannot be autolinked yet can be added manually here, for example:
+          add(RoknAuthBrowserPackage())
           add(RoknCheckoutPackage())
           add(RoknDownloadsPackage())
           add(RoknDiagnosticsPackage())

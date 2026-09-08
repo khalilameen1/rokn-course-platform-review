@@ -1,11 +1,17 @@
 const mockOpenAuthSession = jest.fn();
-const mockOpenUrl = jest.fn();
+const mockOpenBrowser = jest.fn();
+const mockNativeAuthBrowser = jest.fn();
 let redirectHandler: ((event: {url: string}) => void) | undefined;
 
 jest.mock('react-native', () => ({
   Platform: {OS: 'android'},
   Dimensions: {get: () => ({width: 390, height: 844})},
-  NativeModules: {StatusBarManager: {HEIGHT: 24}},
+  NativeModules: {
+    StatusBarManager: {HEIGHT: 24},
+    RoknAuthBrowser: {
+      open: (...args: unknown[]) => mockNativeAuthBrowser(...args),
+    },
+  },
   StatusBar: {currentHeight: 24},
   StyleSheet: {create: (styles: unknown) => styles},
   Linking: {
@@ -15,7 +21,7 @@ jest.mock('react-native', () => ({
         return {remove: jest.fn()};
       },
     ),
-    openURL: (...args: unknown[]) => mockOpenUrl(...args),
+    openURL: jest.fn(),
   },
   AppState: {
     addEventListener: jest.fn(() => ({remove: jest.fn()})),
@@ -35,6 +41,7 @@ jest.mock('expo-apple-authentication', () => ({
 jest.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: jest.fn(),
   openAuthSessionAsync: (...args: unknown[]) => mockOpenAuthSession(...args),
+  openBrowserAsync: (...args: unknown[]) => mockOpenBrowser(...args),
 }));
 
 jest.mock('../src/constants/api', () => ({
@@ -69,7 +76,7 @@ import {
 
 describe('browser social auth launch', () => {
   it('opens a deterministic encoded PKCE request on Android', async () => {
-    mockOpenUrl.mockImplementation(async (url: string) => {
+    mockNativeAuthBrowser.mockImplementation(async (url: string) => {
       const attempt = new URL(url).searchParams.get('code_challenge');
       redirectHandler?.({
         url: `rokn://auth?attempt=${encodeURIComponent(
@@ -91,12 +98,13 @@ describe('browser social auth launch', () => {
       }),
     ).rejects.toThrow('LOGIN_CANCELLED');
 
-    expect(mockOpenUrl).toHaveBeenCalledWith(
+    expect(mockNativeAuthBrowser).toHaveBeenCalledWith(
       expect.stringMatching(
         /^https:\/\/rokn\.app\/api\/v1\/social-auth\/google\/start\?return_to=rokn%3A%2F%2Fauth&code_challenge=[A-Za-z0-9_-]{43}&code_challenge_method=S256$/,
       ),
     );
     expect(mockOpenAuthSession).not.toHaveBeenCalled();
+    expect(mockOpenBrowser).not.toHaveBeenCalled();
     expect(savePendingSocialAuthAttempt).toHaveBeenCalledWith(
       expect.objectContaining({
         authorizationApiUrl: 'https://rokn.app/api/v1',
@@ -105,7 +113,9 @@ describe('browser social auth launch', () => {
   });
 
   it('retires the exact PKCE attempt when the browser cannot open', async () => {
-    mockOpenUrl.mockRejectedValueOnce(new Error('browser unavailable'));
+    mockNativeAuthBrowser.mockRejectedValueOnce(
+      new Error('browser unavailable'),
+    );
 
     await expect(
       signInWithSocialProvider('google', {

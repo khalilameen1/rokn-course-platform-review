@@ -167,6 +167,7 @@ export const VideoChrome = ({
                 ]
               : []
           }
+          testID="video-timeline-touch-track"
           onAccessibilityAction={event => {
             if (event.nativeEvent.actionName === 'increment') {
               onSeekBy(10);
@@ -177,14 +178,19 @@ export const VideoChrome = ({
           style={styles.touchTrack}
           onLayout={event => onTrackWidth(event.nativeEvent.layout.width)}
           {...panHandlers}>
-          <View pointerEvents="none" style={styles.track}>
+          <View
+            pointerEvents="none"
+            style={styles.track}
+            testID="video-timeline-track">
             <View
+              testID="video-timeline-buffered"
               style={[
                 styles.bufferedTrack,
                 {width: `${timeline.bufferedProgress * 100}%`},
               ]}
             />
             <View
+              testID="video-timeline-played"
               style={[
                 styles.playedTrack,
                 {width: `${timeline.progress * 100}%`},
@@ -194,9 +200,10 @@ export const VideoChrome = ({
           {previewTime !== null && (
             <View
               pointerEvents="none"
+              testID="video-timeline-scrubber"
               style={[
                 styles.scrubber,
-                {left: Math.max(0, timeline.progress * trackWidth - 6)},
+                {start: Math.max(0, timeline.progress * trackWidth - 6)},
               ]}
             />
           )}
@@ -302,6 +309,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 48,
     justifyContent: 'center',
+    // Playback time follows the physical screen: start on the left and end
+    // on the right. Do not let the application's Arabic layout mirror it.
+    direction: 'ltr',
   },
   track: {
     height: 3,
@@ -311,7 +321,7 @@ const styles = StyleSheet.create({
   },
   bufferedTrack: {
     position: 'absolute',
-    left: 0,
+    start: 0,
     top: 0,
     height: '100%',
     borderRadius: 2,
@@ -319,7 +329,7 @@ const styles = StyleSheet.create({
   },
   playedTrack: {
     position: 'absolute',
-    left: 0,
+    start: 0,
     top: 0,
     height: '100%',
     borderRadius: 2,
