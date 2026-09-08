@@ -217,6 +217,11 @@
             const previous = editing;
             const creating = !previous;
             const type = sectionType.value;
+            if (type === 'project' && !form.querySelector('[name="project_submission_types[]"]:checked')) {
+                core.showFeedback(feedback, 'اختر طريقة تسليم واحدة على الأقل');
+                form.querySelector('[name="project_submission_types[]"]')?.focus();
+                return;
+            }
             const claimRequired = type === 'lesson' && videoInput.dataset.videoRequired === 'true';
             if (claimRequired && !String(form.elements.bunny_video_claim?.value || '').trim()) return;
             const moduleId = Number(form.elements.module_id.value);
@@ -229,6 +234,9 @@
                     ? pendingCreateVersion
                     : core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
+                // This editor saves the visible checkbox state; omission in a PATCH means keep the old value.
+                const flag = type === 'lesson' ? 'is_opened' : 'is_graduation_project';
+                body.set(flag, form.elements[flag].checked ? '1' : '0');
                 let response;
                 let nextVersion;
                 try {

@@ -4,6 +4,7 @@ jest.mock('react-native-fs', () => ({
   exists: jest.fn(async () => false),
   getFSInfo: jest.fn(async () => ({freeSpace: 1024 * 1024 * 1024})),
   mkdir: jest.fn(async () => undefined),
+  read: jest.fn(async () => '%PDF-1.7'),
   stat: jest.fn(async () => ({size: 10})),
   stopDownload: jest.fn(),
   unlink: jest.fn(async () => undefined),
@@ -20,6 +21,7 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
 jest.mock('../src/components/VideoPlayer/courseLearning/mapping', () => ({
   loadCourseLearningData: jest.fn(),
 }));
+jest.mock('../src/constants/api', () => ({publicRequest: {get: jest.fn()}}));
 
 let mockBoundary = {epoch: 1, scope: 'user-a'};
 jest.mock('../src/constants/helpers', () => ({
@@ -31,8 +33,11 @@ jest.mock('../src/constants/helpers', () => ({
   captureAccountSessionBoundary: jest.fn(async () => ({...mockBoundary})),
 }));
 
-import {Alert, NativeModules, Platform} from 'react-native';
+import {Alert, Linking, NativeModules, Platform} from 'react-native';
+import RNFS from 'react-native-fs';
+import Share from 'react-native-share';
 import Clipboard from '@react-native-clipboard/clipboard';
+import {publicRequest} from '../src/constants/api';
 import {loadCourseLearningData} from '../src/components/VideoPlayer/courseLearning/mapping';
 import {
   openCourseAttachment,
@@ -74,6 +79,7 @@ const attachment = (
 
 describe('course attachment operation ownership', () => {
   const enqueue = jest.fn();
+  const inspectMetadata = jest.fn();
   const cancelIfActive = jest.fn(async () => true);
   const cancelAllActive = jest.fn(async () => true);
 
@@ -91,11 +97,19 @@ describe('course attachment operation ownership', () => {
   beforeEach(async () => {
     jest.useRealTimers();
     mockBoundary = {epoch: 1, scope: 'user-a'};
-    NativeModules.RoknDownloads = {enqueue, cancelIfActive, cancelAllActive};
+    NativeModules.RoknDownloads = {
+      enqueue,
+      enqueueExternal: enqueue,
+      inspectMetadata,
+      cancelIfActive,
+      cancelAllActive,
+    };
     enqueue.mockReset();
+    inspectMetadata.mockReset();
     cancelIfActive.mockClear();
     cancelAllActive.mockClear();
     loadCourse.mockReset();
+    jest.mocked(publicRequest.get).mockReset();
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await quiescePrivateAttachmentDownloads();
     jest.clearAllMocks();
@@ -130,7 +144,10 @@ describe('course attachment operation ownership', () => {
       downloaded: false,
     });
     expect(Alert.alert).toHaveBeenCalledTimes(1);
-    expect(Alert.alert).toHaveBeenCalledWith('تعذّر نسخ الرابط', 'حاول مرة أخرى');
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'تعذّر نسخ الرابط',
+      'حاول مرة أخرى',
+    );
     expect(enqueue).not.toHaveBeenCalled();
     await expect(openCourseAttachment(file)).resolves.toEqual({
       copied: true,
@@ -196,6 +213,356 @@ describe('course attachment operation ownership', () => {
       0,
     );
   });
+
+  it('downloads an external mobile file with the resolved filename and MIME instead of opening a browser', async () => {
+    const source = attachment({
+      url: 'https://api.example/attachments/1/download?signature=abc',
+      external: true,
+      fileType: undefined,
+      mimeType: undefined,
+    });
+    inspectMetadata.mockResolvedValue({
+      url: 'https://files.example/download?id=1',
+      statusCode: 200,
+      contentType: 'application/zip',
+      contentDisposition: "attachment; filename*=UTF-8''lesson-files.zip",
+      contentLength: 123,
+    });
+    enqueue.mockResolvedValue({id: 101, status: 'started'});
+    const browser = jest.spyOn(Linking, 'openURL');
+    await expect(openCourseAttachment(source)).resolves.toEqual({
+      copied: false,
+      downloaded: true,
+      downloadId: 101,
+    });
+    expect(inspectMetadata).toHaveBeenCalledWith(source.url);
+    expect(enqueue).toHaveBeenCalledWith(
+      'https://files.example/download?id=1',
+      source.title,
+      'lesson-files.zip',
+      'application/zip',
+      expect.any(String),
+      123,
+    );
+    expect(browser).not.toHaveBeenCalled();
+  });
+
+  it('preserves the uploaded original filename even when the signed URL has no extension', async () => {
+    enqueue.mockResolvedValue({id: 104, status: 'started'});
+    await openCourseAttachment(
+      attachment({
+        url: 'https://api.example/download?signature=abc',
+        fileName: 'original-workbook.xlsx',
+        fileType: undefined,
+        mimeType: undefined,
+      }),
+    );
+    expect(enqueue.mock.calls[0][2]).toBe('original-workbook.xlsx');
+    expect(enqueue.mock.calls[0][3]).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+  });
+
+  it('copies the original public source for computer attachments without probing or downloading', async () => {
+    const file = attachment({
+      external: true,
+      platform: 'computer',
+      sourceUrl: 'https://drive.google.com/file/d/public/view',
+    });
+    await expect(openCourseAttachment(file)).resolves.toEqual({
+      copied: true,
+      downloaded: false,
+    });
+    expect(Clipboard.setString).toHaveBeenCalledWith(file.sourceUrl);
+    expect(inspectMetadata).not.toHaveBeenCalled();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it('renews an external signed route once when metadata lookup rejects the signature', async () => {
+    const original = attachment({
+      external: true,
+      temporary: true,
+      expiresAt: '2099-01-01T00:00:00Z',
+    });
+    const refreshed = {...original, url: 'https://api.example/fresh-signature'};
+    loadCourse.mockResolvedValue({
+      course: {attachments: [refreshed]},
+    } as Awaited<ReturnType<typeof loadCourseLearningData>>);
+    inspectMetadata
+      .mockResolvedValueOnce({
+        url: original.url,
+        statusCode: 403,
+        contentType: 'text/html',
+      })
+      .mockResolvedValueOnce({
+        url: 'https://files.example/current.pdf',
+        statusCode: 200,
+        contentType: 'application/pdf',
+      });
+    enqueue.mockResolvedValue({id: 102, status: 'started'});
+    await expect(openCourseAttachment(original)).resolves.toMatchObject({
+      downloaded: true,
+    });
+    expect(inspectMetadata.mock.calls).toEqual([
+      [original.url],
+      [refreshed.url],
+    ]);
+    expect(loadCourse).toHaveBeenCalledTimes(1);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it('deduplicates external metadata and download work across repeated taps', async () => {
+    const metadata = deferred<{
+      url: string;
+      statusCode: number;
+      contentType: string;
+    }>();
+    inspectMetadata.mockReturnValue(metadata.promise);
+    enqueue.mockResolvedValue({id: 103, status: 'started'});
+    const file = attachment({external: true});
+    const first = openCourseAttachment(file);
+    const second = openCourseAttachment(file);
+    await settleMicrotasks();
+    expect(inspectMetadata).toHaveBeenCalledTimes(1);
+    metadata.resolve({
+      url: 'https://files.example/current.pdf',
+      statusCode: 200,
+      contentType: 'application/pdf',
+    });
+    await Promise.all([first, second]);
+    expect(enqueue).toHaveBeenCalledTimes(1);
+  });
+
+  it('refreshes an old attachment ID through the published-revision alias endpoint', async () => {
+    jest.mocked(publicRequest.get).mockResolvedValue({
+      data: {
+        data: {
+          id: 22,
+          download_only: true,
+          download_url: 'https://api.example/current-download',
+          download_refresh_endpoint: '/api/v1/courses/31/pdfs/22',
+          download_url_is_temporary: true,
+          download_url_expires_at: '2099-01-01T00:00:00Z',
+          source_type: 'external',
+          mime_type: null,
+          file_type: null,
+        },
+      },
+    });
+    inspectMetadata.mockResolvedValue({
+      url: 'https://files.example/current.pdf',
+      statusCode: 200,
+      contentType: 'application/pdf',
+    });
+    enqueue.mockResolvedValue({id: 105, status: 'started'});
+    await expect(
+      openCourseAttachment(
+        attachment({
+          id: '11',
+          external: true,
+          temporary: true,
+          expiresAt: '2099-01-01T00:00:00Z',
+          downloadRefreshEndpoint: '/api/v1/courses/31/pdfs/11',
+        }),
+      ),
+    ).resolves.toMatchObject({downloaded: true});
+    expect(publicRequest.get).toHaveBeenCalledWith(
+      'courses/31/pdfs/11',
+      expect.objectContaining({timeout: 10_000}),
+    );
+    expect(loadCourse).not.toHaveBeenCalled();
+    expect(inspectMetadata).toHaveBeenCalledWith(
+      'https://api.example/current-download',
+    );
+    expect(enqueue.mock.calls[0][4]).toContain('user-a:31:22:');
+  });
+
+  it('settles an HTML begin callback even if cancelling the native iOS task never resolves its promise', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    inspectMetadata.mockResolvedValue({
+      url: 'https://files.example/file',
+      statusCode: 200,
+      contentType: 'application/pdf',
+    });
+    const transfer =
+      deferred<Awaited<ReturnType<typeof RNFS.downloadFile>['promise']>>();
+    let begin: Parameters<typeof RNFS.downloadFile>[0]['begin'];
+    jest.mocked(RNFS.downloadFile).mockImplementationOnce(options => {
+      begin = options.begin;
+      return {jobId: 13, promise: transfer.promise};
+    });
+    const result = openCourseAttachment(attachment({external: true}));
+    await settleMicrotasks(40);
+    expect(begin).toBeDefined();
+    begin?.({
+      jobId: 13,
+      statusCode: 200,
+      contentLength: 10,
+      headers: {'Content-Type': 'text/html'},
+    });
+    await expect(result).resolves.toEqual({copied: false, downloaded: false});
+    expect(RNFS.stopDownload).toHaveBeenCalledWith(13);
+    expect(Share.open).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenLastCalledWith(
+      'تعذّر التنزيل المباشر',
+      'افتح المصدر لإكمال التنزيل\nقد يتطلب تسجيل دخول أو تأكيد',
+      expect.any(Array),
+    );
+  });
+
+  it('re-enters source and device routing when an expired iOS upload was replaced with a computer link', async () => {
+    jest.replaceProperty(Platform, 'OS', 'ios');
+    const original = attachment({
+      temporary: true,
+      expiresAt: '2099-01-01T00:00:00Z',
+    });
+    loadCourse.mockResolvedValue({
+      course: {
+        attachments: [
+          {
+            ...original,
+            external: true,
+            platform: 'computer',
+            sourceUrl: 'https://drive.google.com/file/d/new/view',
+          },
+        ],
+      },
+    } as Awaited<ReturnType<typeof loadCourseLearningData>>);
+    jest
+      .mocked(RNFS.downloadFile)
+      .mockReturnValueOnce({
+        jobId: 14,
+        promise: Promise.resolve({jobId: 14, statusCode: 403, bytesWritten: 0}),
+      });
+    await expect(openCourseAttachment(original)).resolves.toEqual({
+      copied: true,
+      downloaded: false,
+    });
+    expect(RNFS.downloadFile).toHaveBeenCalledTimes(1);
+    expect(Clipboard.setString).toHaveBeenCalledWith(
+      'https://drive.google.com/file/d/new/view',
+    );
+    expect(Share.open).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {statusCode: 200, contentType: 'text/html; charset=utf-8'},
+    {statusCode: 200, contentType: 'application/xhtml+xml'},
+    {statusCode: 200, contentType: ''},
+    {statusCode: 405, contentType: 'text/plain'},
+  ])(
+    'never saves a host page or unsupported metadata response: %p',
+    async metadata => {
+      const source = attachment({
+        external: true,
+        sourceUrl: 'https://drive.google.com/file/d/public/view',
+      });
+      inspectMetadata.mockResolvedValue({url: source.url, ...metadata});
+      const browser = jest
+        .spyOn(Linking, 'openURL')
+        .mockResolvedValue(undefined);
+      jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
+      await expect(openCourseAttachment(source)).resolves.toEqual({
+        copied: false,
+        downloaded: false,
+      });
+      expect(enqueue).not.toHaveBeenCalled();
+      expect(browser).not.toHaveBeenCalled();
+      const buttons = jest.mocked(Alert.alert).mock.calls.at(-1)?.[2];
+      expect(buttons?.map(button => button.text)).toEqual([
+        'إلغاء',
+        'فتح المصدر',
+      ]);
+      buttons?.find(button => button.text === 'فتح المصدر')?.onPress?.();
+      await settleMicrotasks();
+      expect(browser).toHaveBeenCalledWith(source.sourceUrl);
+    },
+  );
+
+  it('does not start an external transfer after the account changes during metadata lookup', async () => {
+    const metadata = deferred<{
+      url: string;
+      statusCode: number;
+      contentType: string;
+    }>();
+    inspectMetadata.mockReturnValue(metadata.promise);
+    const result = openCourseAttachment(attachment({external: true}));
+    await settleMicrotasks();
+    mockBoundary = {epoch: 2, scope: 'user-b'};
+    metadata.resolve({
+      url: 'https://files.example/course.pdf',
+      statusCode: 200,
+      contentType: 'application/pdf',
+    });
+    await expect(result).resolves.toEqual({copied: false, downloaded: false});
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it('settles a stalled metadata lookup and ignores its late result', async () => {
+    jest.useFakeTimers();
+    const metadata = deferred<{
+      url: string;
+      statusCode: number;
+      contentType: string;
+    }>();
+    inspectMetadata.mockReturnValue(metadata.promise);
+    const result = openCourseAttachment(attachment({external: true}));
+    await settleMicrotasks();
+    await jest.advanceTimersByTimeAsync(10_000);
+    await expect(result).resolves.toEqual({copied: false, downloaded: false});
+    metadata.resolve({
+      url: 'https://files.example/course.pdf',
+      statusCode: 200,
+      contentType: 'application/pdf',
+    });
+    await settleMicrotasks();
+    expect(enqueue).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])(
+    'validates external iOS staging before Save to Files (HTML=%s)',
+    async html => {
+      jest.replaceProperty(Platform, 'OS', 'ios');
+      inspectMetadata.mockResolvedValue({
+        url: 'https://files.example/download',
+        statusCode: 200,
+        contentType: 'application/pdf',
+        contentDisposition: 'attachment; filename="workbook.pdf"',
+      });
+      jest
+        .mocked(RNFS.read)
+        .mockResolvedValueOnce(
+          html ? '<!DOCTYPE html><html>Sign in' : '%PDF-1.7',
+        );
+      jest.mocked(RNFS.downloadFile).mockReturnValueOnce({
+        jobId: 12,
+        promise: Promise.resolve({
+          jobId: 12,
+          statusCode: 200,
+          bytesWritten: 10,
+        }),
+      });
+      await expect(
+        openCourseAttachment(attachment({external: true})),
+      ).resolves.toEqual({
+        copied: false,
+        downloaded: !html,
+      });
+      expect(RNFS.downloadFile).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fromUrl: 'https://files.example/download',
+          toFile: expect.stringMatching(/\/workbook\.pdf$/),
+        }),
+      );
+      if (html) expect(Share.open).not.toHaveBeenCalled();
+      else
+        expect(Share.open).toHaveBeenCalledWith(
+          expect.objectContaining({saveToFiles: true}),
+        );
+      expect(RNFS.unlink).toHaveBeenCalled();
+    },
+  );
 
   it('cancels a native result that settles after its account changed', async () => {
     const nativeRequest = deferred<{id: number; status: string}>();

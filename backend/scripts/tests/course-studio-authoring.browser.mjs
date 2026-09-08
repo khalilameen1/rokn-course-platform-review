@@ -23,6 +23,7 @@ const sectionReceipts = new Map();
 const committedSections = [];
 let sectionPostCount = 0;
 let sectionReceiptGetCount = 0;
+const sectionEdits = [];
 
 const modulePayload = () => ({
     id: 7,
@@ -163,7 +164,7 @@ const server = createServer(async (request, response) => {
             success: true,
             authoring_version: receiptVersion,
             section: type === 'project'
-                ? {id, module_id: 7, type, title: 'مشروع الوحدة', title_ar: 'مشروع الوحدة', order: 2, update_url: '/sections/35', delete_url: '/sections/35', row_label: 'مشروع عبور بعد الوحدة'}
+                ? {id, module_id: 7, type, title: 'مشروع الوحدة', title_ar: 'مشروع الوحدة', order: 2, update_url: '/sections/35', delete_url: '/sections/35', row_label: 'مشروع عبور بعد الوحدة', is_graduation_project: true, project_submission_types: ['text'], project_requirements_ar: 'ارفع نتيجة المشروع'}
                 : {id, module_id: 7, type, title: 'المقطع الأول', title_ar: 'المقطع الأول', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: true, row_label: 'مقطع · مجاني'},
         };
         sectionReceipts.set(intent, payload);
@@ -185,10 +186,23 @@ const server = createServer(async (request, response) => {
         } : {state: 'absent', authoring_version: version});
     }
     if (request.method === 'POST' && path === '/sections/34') {
+        const body = await requestBody(request);
+        const isOpened = multipartValue(body, 'is_opened');
+        sectionEdits.push({id: 34, flag: isOpened});
         return json(response, {
             success: true,
             authoring_version: ++version,
-            section: {id: 34, module_id: 7, type: 'lesson', title: 'المقطع المعدّل', title_ar: 'المقطع المعدّل', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: true, row_label: 'مقطع · مجاني'},
+            section: {id: 34, module_id: 7, type: 'lesson', title: 'المقطع المعدّل', title_ar: 'المقطع المعدّل', order: 1, update_url: '/sections/34', delete_url: '/sections/34', has_video: true, is_opened: isOpened === '1', row_label: 'مقطع'},
+        });
+    }
+    if (request.method === 'POST' && path === '/sections/35') {
+        const body = await requestBody(request);
+        const graduation = multipartValue(body, 'is_graduation_project');
+        sectionEdits.push({id: 35, flag: graduation});
+        return json(response, {
+            success: true,
+            authoring_version: ++version,
+            section: {...committedSections.find(section => section.id === 35), is_graduation_project: graduation === '1'},
         });
     }
     response.statusCode = 404;
@@ -270,15 +284,39 @@ try {
     assert.equal(sectionReceiptGetCount, 1, 'a truncated successful JSON response must query its committed receipt before refreshing');
     assert.equal(await page.locator('#courseStudio').getAttribute('data-authoring-version'), '22', 'a concurrent advance must come from the refreshed canonical graph');
 
+    await page.locator('[name="is_opened"]').uncheck();
+    await page.locator('#studioInlineSaveSection').click();
+    await page.waitForFunction(() => document.getElementById('sectionForm').getAttribute('aria-busy') === 'false');
+    assert.deepEqual(sectionEdits, [{id: 34, flag: '0'}], 'unchecking free preview must explicitly save false, not omit the existing true value');
+    await page.locator('[data-inline-section-edit="34"]').click();
+    assert.equal(await page.locator('[name="is_opened"]').isChecked(), false, 'reopening the lesson must retain the unchecked state');
+
     await page.locator('[data-inline-editor-close]').first().click();
     await page.locator('[data-inline-editor-open="project"][data-module-id="7"]').click();
     await page.locator('#sectionTitle').fill('مشروع الوحدة');
     await page.locator('[name="project_requirements_ar"]').fill('ارفع نتيجة المشروع');
+    await page.locator('[name="project_submission_types[]"]').uncheck();
+    await page.locator('#studioInlineSaveSection').click();
+    assert.equal(await page.locator('#studioInlineFeedback').textContent(), 'اختر طريقة تسليم واحدة على الأقل');
+    assert.equal(sectionPostCount, 1, 'an empty submission-type selection must not pretend to save old choices');
+    await page.locator('[name="project_submission_types[]"]').check();
+    await page.locator('[name="is_graduation_project"]').check();
     await page.locator('#studioInlineSaveSection').click();
     await page.locator('.outline-item[data-section-id="35"]').waitFor();
     assert.equal(sectionPostCount, 2, 'a lost project response must resolve its receipt without a duplicate POST');
     assert.equal(sectionReceiptGetCount, 2, 'both invalid JSON and a lost network response must use the receipt endpoint');
     assert.equal(await page.locator('.outline-item[data-section-id="35"]').count(), 1, 'the recovered project receipt must create one canonical row');
+
+    await page.locator('[data-inline-section-edit="35"]').click();
+    await page.locator('[name="is_graduation_project"]').uncheck();
+    await page.locator('#studioInlineSaveSection').click();
+    await page.waitForFunction(() => document.getElementById('sectionForm').getAttribute('aria-busy') === 'false');
+    assert.deepEqual(sectionEdits.at(-1), {id: 35, flag: '0'}, 'unchecking final project must explicitly save false');
+    await page.locator('[data-inline-section-edit="35"]').click();
+    await page.locator('[name="project_submission_types[]"]').uncheck();
+    await page.locator('#studioInlineSaveSection').click();
+    assert.equal(await page.locator('#studioInlineFeedback').textContent(), 'اختر طريقة تسليم واحدة على الأقل');
+    assert.equal(sectionEdits.length, 2, 'clearing all choices during editing must not silently preserve the old saved types');
 
     await page.evaluate(intentId => sessionStorage.setItem('rokn-course-studio-pending-module:42:3', JSON.stringify({
         expectedVersion: 14,

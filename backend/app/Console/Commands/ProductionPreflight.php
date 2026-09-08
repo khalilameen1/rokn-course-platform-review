@@ -1048,6 +1048,7 @@ class ProductionPreflight extends Command
                     $legacyCount = DB::table('course_pdfs')->count();
                 } else {
                     $legacyCount = DB::table('course_pdfs')
+                        ->when(Schema::hasColumn('course_pdfs', 'source_type'), fn ($query) => $query->where('source_type', 'upload'))
                         ->where(function ($query) use ($targetDisk): void {
                             $query->whereNull('storage_disk')->orWhere('storage_disk', '<>', $targetDisk);
                         })

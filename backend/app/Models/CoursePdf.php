@@ -22,6 +22,11 @@ class CoursePdf extends Model
         'original_filename',
         'file_size',
         'content_sha256',
+        'source_type',
+        'platform',
+        'external_url',
+        'mime_type',
+        'file_extension',
         'order',
         'is_active'
     ];
@@ -74,6 +79,9 @@ class CoursePdf extends Model
      */
     public function getFormattedFileSizeAttribute()
     {
+        if ($this->isExternal() || $this->file_size === null) {
+            return '';
+        }
         $bytes = $this->file_size;
         if ($bytes >= 1073741824) {
             return number_format($bytes / 1073741824, 2) . ' GB';
@@ -102,12 +110,38 @@ class CoursePdf extends Model
         $disk = trim((string) $this->storage_disk);
         $path = trim((string) $this->file_path);
 
-        return $disk !== '' && $path !== '' && is_array(config("filesystems.disks.{$disk}"));
+        return !$this->isExternal() && $disk !== '' && $path !== '' && is_array(config("filesystems.disks.{$disk}"));
     }
 
     /**
-     * Scope active PDFs.
+     * Keep existing uploaded PDF records compatible with the source contract.
      */
+    public function getSourceTypeAttribute($value): string
+    {
+        return $value ?: 'upload';
+    }
+
+    public function getPlatformAttribute($value): string
+    {
+        return $value ?: 'mobile';
+    }
+
+    public function isExternal(): bool
+    {
+        return $this->source_type === 'external';
+    }
+
+    public function getMimeTypeAttribute($value): ?string
+    {
+        return $this->isExternal() ? null : ($value ?: 'application/pdf');
+    }
+
+    public function getFileExtensionAttribute($value): ?string
+    {
+        return $this->isExternal() ? null : ($value ?: 'pdf');
+    }
+
+    /** Scope active attachments. */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

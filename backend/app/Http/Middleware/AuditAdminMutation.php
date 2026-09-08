@@ -33,11 +33,15 @@ final class AuditAdminMutation
         $requestId = $this->requestId($request);
         $request->headers->set('X-Request-ID', $requestId);
 
+        $request->attributes->remove(AdminAuthoringCreateIntentService::CLAIM_ATTRIBUTE);
         $createIntent = $this->createIntents->claim($request);
         if ($createIntent instanceof \Symfony\Component\HttpFoundation\Response) {
             $createIntent->headers->set('X-Request-ID', $requestId);
             $this->consumeDraftReceipt($request, $createIntent);
             return $createIntent;
+        }
+        if (is_array($createIntent)) {
+            $request->attributes->set(AdminAuthoringCreateIntentService::CLAIM_ATTRIBUTE, $createIntent);
         }
 
         try {

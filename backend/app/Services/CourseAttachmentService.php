@@ -32,16 +32,24 @@ final class CourseAttachmentService
             'order' => (int) $pdf->order,
             ...$download,
             'download_only' => true,
+            'source_type' => $pdf->source_type,
+            'platform' => $pdf->platform,
+            'external' => $pdf->isExternal(),
+            'external_url' => $pdf->isExternal() ? $pdf->external_url : null,
+            'file_name' => $pdf->isExternal() ? null : $pdf->original_filename,
             'download_refresh_endpoint' => "/api/v1/courses/{$course->id}/pdfs/{$pdf->id}",
-            'file_type' => 'pdf',
-            'mime_type' => 'application/pdf',
-            'file_size_bytes' => max(0, (int) $pdf->file_size),
+            'file_type' => $pdf->file_extension,
+            'mime_type' => $pdf->mime_type,
+            'file_size_bytes' => $pdf->isExternal() ? null : max(0, (int) $pdf->file_size),
             'file_size' => (int) $pdf->file_size > 0 ? $pdf->formatted_file_size : null,
             'download_version' => $this->version(
                 $pdf->id,
                 $pdf->updated_at,
                 $pdf->file_path,
-                $pdf->file_size
+                $pdf->file_size,
+                $pdf->source_type,
+                $pdf->external_url,
+                $pdf->platform
             ),
         ];
     }
@@ -49,6 +57,9 @@ final class CourseAttachmentService
     /** @return array{disk:FilesystemAdapter,disk_name:string,path:string,name:string,mime:string,expires_at:\DateTimeInterface}|null */
     public function pdfFile(CoursePdf $pdf): ?array
     {
+        if ($pdf->isExternal()) {
+            return null;
+        }
         $configuredDisk = trim((string) config('course_pdfs.disk'));
         if ($configuredDisk === '' || trim((string) $pdf->storage_disk) !== $configuredDisk) {
             return null;
@@ -59,8 +70,8 @@ final class CourseAttachmentService
             (string) $pdf->file_path,
             (string) ($pdf->original_filename ?: $pdf->title),
             'rokn-file',
-            'pdf',
-            'application/pdf'
+            (string) $pdf->file_extension,
+            (string) $pdf->mime_type
         );
     }
 

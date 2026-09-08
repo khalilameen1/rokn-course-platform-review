@@ -579,3 +579,53 @@ downloads and the intentionally locked report-reply control are unchanged.
 Verification: six targeted suites / 60 tests, TypeScript and changed-file ESLint.
 No APK rebuild, device visual acceptance or backend deployment is claimed for
 this follow-up. The APK and hash above still describe the preceding source.
+
+## Course attachments — source/device lifecycle (source only)
+
+The existing course attachment record/editor now separates `source_type`
+(`upload` or `external`) from `platform` (`mobile` or `computer`). Historical
+`course_pdfs` table and route names stay compatible; there is no second file
+subsystem. Small internal documents, images and ZIP assets keep their validated
+MIME, filename and extension and remain capped at 50 MiB. Large external files
+download from their host, not through a PHP worker or into the APK.
+
+The moderator can create, edit, replace, switch source, reorder, hide and delete
+an attachment. Student actions renew the current attachment contract before
+using it, including old identifiers after a staged course revision is published.
+Phone actions use the existing native download flow; computer actions copy the
+usable link. External metadata is inspected without buffering a file or sending
+account credentials to its host. Share/login/confirmation HTML is not treated
+as a downloaded file. Hosts requiring an interactive step receive an explicit
+source-opening fallback, not a promise that every web page is a direct file.
+
+The complete-operation review also fixed these proven omissions:
+
+- A visibility toggle or drag order could be reversed by saving an already-open
+  attachment editor
+- Canonical-course to draft resolution changed the create receipt's parent
+  identity, so a successful save could remain `processing` and fail on replay
+- Clearing free-preview/final-project checkboxes omitted the field and preserved
+  the previous true value; clearing all project submission choices silently
+  preserved them
+- File-type assumptions in previews, signed download responses, shared-storage
+  migration and production checks did not describe external/non-PDF attachments
+
+Backend integration gate: 60 tests, 534 assertions, one Office/ZIP case skipped
+because this Windows PHP invocation lacks ZIP. After the final response-header
+and file-policy changes, the affected 17-test subset passed 199 assertions with
+that same one skip. ZIP is now explicit in Linux backend CI extensions. Both
+headless Chrome authoring suites passed, including recovery, source switching,
+replacement, visibility/order preservation and the unchecked-field regressions.
+
+Mobile checks: 43 attachment/mapping/lifecycle tests plus four per-row busy
+feedback tests passed, along with TypeScript and scoped ESLint. Android Kotlin
+compilation (not an APK build) passed, and the merged manifest retains the
+permission-protected DownloadManager completion receiver. The receiver was
+checked against Android 7 and current AOSP contracts, not an OEM device matrix.
+iOS source registration and response-header cancellation are implemented, but
+iOS native compilation/device verification is unavailable on this Windows host.
+
+The broader requested review remains active. This is evidence for these paths,
+not a claim that every application journey is defect-free. No new APK, live
+course-content mutation, production deployment or physical-device acceptance
+is claimed by this source-only entry.

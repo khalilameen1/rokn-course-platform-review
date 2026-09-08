@@ -522,4 +522,24 @@ class ProductionPreflightTest extends TestCase
             Schema::dropIfExists('users');
         }
     }
+
+    public function test_preflight_does_not_treat_external_attachment_as_unmigrated_storage(): void
+    {
+        Schema::create('course_pdfs', function (Blueprint $table): void {
+            $table->id();
+            $table->string('source_type')->default('upload');
+            $table->string('file_path');
+            $table->string('storage_disk')->nullable();
+        });
+        try {
+            DB::table('course_pdfs')->insert(['source_type' => 'external', 'file_path' => '', 'storage_disk' => null]);
+            Artisan::call('rokn:preflight');
+            self::assertStringNotContainsString('course PDF(s) are not on the configured shared disk', Artisan::output());
+            DB::table('course_pdfs')->insert(['source_type' => 'upload', 'file_path' => 'legacy.pdf', 'storage_disk' => null]);
+            Artisan::call('rokn:preflight');
+            self::assertStringContainsString('1 course PDF(s) are not on the configured shared disk', Artisan::output());
+        } finally {
+            Schema::dropIfExists('course_pdfs');
+        }
+    }
 }

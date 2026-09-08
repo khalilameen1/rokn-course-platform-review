@@ -37,6 +37,7 @@ final class MigrateCoursePdfsToSharedStorage extends Command
         }
 
         $query = CoursePdf::withTrashed()
+            ->where('source_type', 'upload')
             ->where(function ($query) use ($targetName): void {
                 $query->whereNull('storage_disk')->orWhere('storage_disk', '<>', $targetName);
             })
@@ -65,7 +66,9 @@ final class MigrateCoursePdfsToSharedStorage extends Command
         foreach ($pdfs as $pdf) {
             $sourceName = trim((string) $pdf->getRawOriginal('storage_disk')) ?: 'local';
             $sourcePath = ltrim((string) $pdf->file_path, '/');
-            $targetPath = 'courses/' . (int) $pdf->course_id . '/' . Str::uuid() . '.pdf';
+            $extension = (string) $pdf->file_extension;
+            $extension = preg_match('/^[a-z0-9]{1,10}$/', $extension) === 1 ? $extension : 'bin';
+            $targetPath = 'courses/' . (int) $pdf->course_id . '/' . Str::uuid() . '.' . $extension;
             $metadataUpdated = false;
 
             try {

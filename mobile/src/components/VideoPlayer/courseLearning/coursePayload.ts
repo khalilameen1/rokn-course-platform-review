@@ -26,7 +26,7 @@ export const normaliseAttachmentPlatform = (
   const platform = valueAsString(value).toLowerCase();
   return ['computer', 'mobile', 'app', 'file', 'any'].includes(platform)
     ? (platform as AttachmentPlatform)
-    : 'any';
+    : 'mobile';
 };
 
 const mapAttachment = (
@@ -40,10 +40,20 @@ const mapAttachment = (
 
   const platform = normaliseAttachmentPlatform(raw.platform);
   const fileSizeBytes = Number(raw.file_size_bytes);
+  const external =
+    raw.source_type === 'external' || valueAsBoolean(raw.external);
   return {
     id: valueAsString(raw.id, fallbackId),
     title: valueAsString(raw.title, 'ملف مرفق'),
     url: valueAsString(url),
+    fileName: valueAsString(raw.file_name) || undefined,
+    sourceType: external ? 'external' : 'upload',
+    external,
+    sourceUrl: external
+      ? valueAsString(raw.external_url) || undefined
+      : undefined,
+    downloadRefreshEndpoint:
+      valueAsString(raw.download_refresh_endpoint) || undefined,
     fileType: raw.file_type ? valueAsString(raw.file_type) : undefined,
     mimeType: raw.mime_type ? valueAsString(raw.mime_type) : undefined,
     fileSize: raw.file_size ? valueAsString(raw.file_size) : undefined,
@@ -52,7 +62,11 @@ const mapAttachment = (
         ? fileSizeBytes
         : undefined,
     downloadVersion: valueAsString(raw.download_version) || undefined,
-    platform: platform === 'any' ? fallbackPlatform : platform,
+    platform:
+      platform === 'computer' ||
+      (platform === 'any' && fallbackPlatform === 'computer')
+        ? 'computer'
+        : 'mobile',
     courseId,
     temporary: valueAsBoolean(raw.download_url_is_temporary),
     expiresAt:

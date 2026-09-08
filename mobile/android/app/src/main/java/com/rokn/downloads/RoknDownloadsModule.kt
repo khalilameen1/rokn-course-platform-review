@@ -22,6 +22,17 @@ class RoknDownloadsModule(
   override fun getName(): String = "RoknDownloads"
 
   @ReactMethod
+  fun inspectMetadata(url: String, promise: Promise) {
+    Thread({
+      try {
+        promise.resolve(AttachmentMetadataProbe.inspect(url))
+      } catch (error: Exception) {
+        promise.reject("DOWNLOAD_METADATA_FAILED", "The host could not provide file metadata", error)
+      }
+    }, "rokn-attachment-metadata").start()
+  }
+
+  @ReactMethod
   fun enqueue(
     url: String,
     title: String,
@@ -30,13 +41,35 @@ class RoknDownloadsModule(
     stableKey: String,
     expectedBytes: Double,
     promise: Promise,
+  ) = enqueueFile(url, title, fileName, mimeType, stableKey, expectedBytes, false, promise)
+
+  @ReactMethod
+  fun enqueueExternal(
+    url: String,
+    title: String,
+    fileName: String,
+    mimeType: String,
+    stableKey: String,
+    expectedBytes: Double,
+    promise: Promise,
+  ) = enqueueFile(url, title, fileName, mimeType, stableKey, expectedBytes, true, promise)
+
+  private fun enqueueFile(
+    url: String,
+    title: String,
+    fileName: String,
+    mimeType: String,
+    stableKey: String,
+    expectedBytes: Double,
+    external: Boolean,
+    promise: Promise,
   ) {
     try {
       val uri = url.toUri()
       val scheme = uri.scheme.orEmpty()
       val allowed = scheme.equals("https", ignoreCase = true) ||
         (BuildConfig.DEBUG && scheme.equals("http", ignoreCase = true))
-      if (!allowed || uri.host.isNullOrBlank()) {
+      if (!allowed || uri.host.isNullOrBlank() || !uri.userInfo.isNullOrEmpty()) {
         promise.reject("INVALID_DOWNLOAD_URL", "Only secure download links are supported")
         return
       }
@@ -103,7 +136,8 @@ class RoknDownloadsModule(
       request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeName)
 
       val downloadId = manager.enqueue(request)
-      preferences.edit().putLong(preferenceKey, downloadId).apply()
+      preferences.edit().putLong(preferenceKey, downloadId)
+        .putBoolean("external:$downloadId", external).apply()
       promise.resolve(downloadResult(downloadId, "started", false))
     } catch (error: Exception) {
       promise.reject("DOWNLOAD_FAILED", "The download could not be started", error)
@@ -124,6 +158,7 @@ class RoknDownloadsModule(
         manager.remove(id)
         val preferences = reactContext.getSharedPreferences("rokn_downloads", Context.MODE_PRIVATE)
         val editor = preferences.edit()
+        editor.remove("external:$id")
         preferences.all
           .filterValues { value -> (value as? Long) == id }
           .keys
@@ -198,6 +233,7 @@ class RoknDownloadsModule(
   ): Boolean {
     val uri = manager.getUriForDownloadedFile(downloadId) ?: return false
     return try {
+      if (AttachmentFileValidation.isHtml(reactContext, manager, downloadId)) return false
       reactContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use {
         it.length > 0L && (expectedBytes <= 0L || it.length == expectedBytes)
       } ?: false

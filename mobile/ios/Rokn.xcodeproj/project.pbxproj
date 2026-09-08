@@ -18,6 +18,8 @@
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		761780EF2CA45674006654EE /* RoknDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EE /* RoknDiagnostics.swift */; };
 		761780F12CA45674006654EE /* RoknDiagnosticsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 761780F02CA45674006654EE /* RoknDiagnosticsBridge.m */; };
+		761780F32CA45674006654EE /* RoknDownloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780F22CA45674006654EE /* RoknDownloads.swift */; };
+		761780F52CA45674006654EE /* RoknDownloadsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = 761780F42CA45674006654EE /* RoknDownloadsBridge.m */; };
 		7F60882085E942B4922CFCA6 /* Cairo-ExtraLight.ttf in Resources */ = {isa = PBXBuildFile; fileRef = AAB26636EEF941D7BE1488CC /* Cairo-ExtraLight.ttf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		84329ACE3858409485F47CA0 /* Cairo-Black.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1284178F8DFC468F921A6A90 /* Cairo-Black.ttf */; };
@@ -54,6 +56,8 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Rokn/AppDelegate.swift; sourceTree = "<group>"; };
 		761780EE2CA45674006654EE /* RoknDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RoknDiagnostics.swift; path = Rokn/RoknDiagnostics.swift; sourceTree = "<group>"; };
 		761780F02CA45674006654EE /* RoknDiagnosticsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RoknDiagnosticsBridge.m; path = Rokn/RoknDiagnosticsBridge.m; sourceTree = "<group>"; };
+		761780F22CA45674006654EE /* RoknDownloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RoknDownloads.swift; path = Rokn/RoknDownloads.swift; sourceTree = "<group>"; };
+		761780F42CA45674006654EE /* RoknDownloadsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = RoknDownloadsBridge.m; path = Rokn/RoknDownloadsBridge.m; sourceTree = "<group>"; };
 		7C0FB578D24143C4A8476BFE /* Cairo-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Cairo-ExtraBold.ttf"; path = "../src/assets/fonts/Cairo/Cairo-ExtraBold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Rokn/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		82E87154AD2045AFAA47182B /* Bitter-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Bitter-Regular.ttf"; path = "../src/assets/fonts/Bitter/Bitter-Regular.ttf"; sourceTree = "<group>"; };
@@ -94,6 +98,8 @@
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				761780EE2CA45674006654EE /* RoknDiagnostics.swift */,
 				761780F02CA45674006654EE /* RoknDiagnosticsBridge.m */,
+				761780F22CA45674006654EE /* RoknDownloads.swift */,
+				761780F42CA45674006654EE /* RoknDownloadsBridge.m */,
 				3A2E65A12B7B4A9F8C1D0E11 /* GoogleService-Info.plist */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
@@ -478,6 +484,8 @@
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 				761780EF2CA45674006654EE /* RoknDiagnostics.swift in Sources */,
 				761780F12CA45674006654EE /* RoknDiagnosticsBridge.m in Sources */,
+				761780F32CA45674006654EE /* RoknDownloads.swift in Sources */,
+				761780F52CA45674006654EE /* RoknDownloadsBridge.m in Sources */,
 				BD02E1F026BFC278B6C291B8 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -327,6 +327,7 @@
 }
 .studio-attachment__drag { color: var(--rokn-admin-muted); text-align: center; cursor: grab; }
 .studio-attachment__icon { display: grid; width: 40px; height: 40px; color: var(--rokn-admin-danger); border-radius: 10px; background: var(--rokn-admin-surface-soft); place-items: center; }
+.studio-attachment__icon--link { color: var(--rokn-admin-primary); }
 .studio-attachment__copy { display: grid; min-width: 0; gap: 3px; }
 .studio-attachment__copy strong { overflow: hidden; color: var(--rokn-admin-text); font-size: .83rem; text-overflow: ellipsis; white-space: nowrap; }
 .studio-attachment__copy small { color: var(--rokn-admin-muted); font-size: .68rem; }
@@ -351,7 +352,13 @@
 .studio-attachment-editor .form-group { margin-bottom: 12px; }
 .studio-attachment-editor .form-label { display: block; margin-bottom: 6px; color: var(--rokn-admin-text); font-size: .76rem; font-weight: 800; }
 .studio-attachment-editor .form-control { width: 100%; color: var(--rokn-admin-text); border: 1px solid var(--rokn-admin-border); border-radius: 9px; background: var(--rokn-admin-surface); font: inherit; }
-.studio-attachment-editor input.form-control { min-height: 42px; }
+.studio-attachment-editor input.form-control,
+.studio-attachment-editor select.form-control { min-height: 42px; min-width: 0; }
+.studio-attachment-editor .attachment-source-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.studio-attachment-editor .attachment-source-controls .form-group { min-width: 0; }
+.studio-attachment-editor .attachment-delivery-hint { margin: 0 0 14px; color: var(--rokn-admin-muted); font-size: .76rem; line-height: 1.7; }
+.studio-attachment-editor [data-attachment-upload-fields][hidden],
+.studio-attachment-editor [data-attachment-external-fields][hidden] { display: none; }
 .studio-attachment-editor textarea.form-control { min-height: 78px; resize: vertical; }
 .studio-attachment-editor .file-upload-area { position: relative; padding: 22px; border: 1px dashed var(--rokn-admin-border); border-radius: 10px; background: var(--rokn-admin-surface); text-align: center; }
 .studio-attachment-editor .file-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }

@@ -4,7 +4,7 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
 } from '@gorhom/bottom-sheet';
-import React, {useCallback, useEffect, useMemo, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import {formatArabicNumber} from '../../constants/arabicFormatting';
 import {SavedFolderOption} from './courseLearningApi';
-import {CourseLearningData, CourseReel} from './types';
+import {CourseAttachment, CourseLearningData, CourseReel} from './types';
 import {openCourseAttachment} from './attachmentActions';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
@@ -63,6 +63,11 @@ const FeedSideBar = ({
   const indexSheetRef = useRef<BottomSheetModal>(null);
   const saveSheetRef = useRef<BottomSheetModal>(null);
   const attachmentSheetRef = useRef<BottomSheetModal>(null);
+  const pendingAttachmentsRef = useRef(new Set<string>());
+  const [pendingAttachments, setPendingAttachments] = useState(
+    new Set<string>(),
+  );
+  const mountedRef = useRef(true);
   const openSheetsRef = useRef(new Set<'index' | 'save' | 'attachment'>());
   const snapPoints = useMemo(() => ['78%', '94%'], []);
   const saveSnapPoints = useMemo(() => ['52%', '72%'], []);
@@ -122,6 +127,28 @@ const FeedSideBar = ({
       onOverlayVisibilityChange?.(false);
     };
   }, [onOverlayVisibilityChange]);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const handleAttachment = async (attachment: CourseAttachment) => {
+    const key = `${course.id}:${attachment.id}`;
+    if (pendingAttachmentsRef.current.has(key)) return;
+    pendingAttachmentsRef.current.add(key);
+    setPendingAttachments(new Set(pendingAttachmentsRef.current));
+    try {
+      await openCourseAttachment(attachment);
+    } catch {
+      // The attachment action owns error feedback; this row only owns its busy state.
+    } finally {
+      pendingAttachmentsRef.current.delete(key);
+      if (mountedRef.current) {
+        setPendingAttachments(new Set(pendingAttachmentsRef.current));
+      }
+    }
+  };
   const progress = courseLearningProgress(course.modules);
 
   const renderBackdrop = useCallback(
@@ -244,40 +271,51 @@ const FeedSideBar = ({
               'حمّل الملفات واستخدمها مع محتوى الكورس'}
           </Text>
           <View style={styles.attachmentList}>
-            {attachments.map(attachment => (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${
-                  attachment.platform === 'computer' ? 'نسخ رابط' : 'تنزيل'
-                } ${attachment.title}`}
-                key={attachment.id}
-                onPress={() => void openCourseAttachment(attachment)}
-                style={({pressed}) => [
-                  styles.attachmentRow,
-                  pressed && styles.pressed,
-                ]}>
-                <View style={styles.attachmentGlyph}>
-                  <AttachmentIcon />
-                </View>
-                <View style={styles.attachmentCopy}>
-                  <Text style={styles.attachmentName}>{attachment.title}</Text>
-                  <Text style={styles.attachmentMeta}>
-                    {attachment.platform === 'computer'
-                      ? 'يُفتح من الكمبيوتر'
-                      : attachment.fileSize ||
-                        attachment.fileType ||
-                        'ملف مرفق'}
-                  </Text>
-                </View>
-                {attachment.platform === 'computer' ? (
-                  <CopyIcon />
-                ) : (
-                  <Text style={styles.attachmentAction}>
-                    {course.attachmentPrompt?.buttonText || 'تحميل'}
-                  </Text>
-                )}
-              </Pressable>
-            ))}
+            {attachments.map(attachment => {
+              const busy = pendingAttachments.has(
+                `${course.id}:${attachment.id}`,
+              );
+              return (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${
+                    attachment.platform === 'computer' ? 'نسخ رابط' : 'تنزيل'
+                  } ${attachment.title}`}
+                  accessibilityState={{busy, disabled: busy}}
+                  disabled={busy}
+                  key={attachment.id}
+                  onPress={() => void handleAttachment(attachment)}
+                  style={({pressed}) => [
+                    styles.attachmentRow,
+                    pressed && styles.pressed,
+                  ]}>
+                  <View style={styles.attachmentGlyph}>
+                    <AttachmentIcon />
+                  </View>
+                  <View style={styles.attachmentCopy}>
+                    <Text style={styles.attachmentName}>
+                      {attachment.title}
+                    </Text>
+                    <Text style={styles.attachmentMeta}>
+                      {attachment.platform === 'computer'
+                        ? 'يُفتح من الكمبيوتر'
+                        : attachment.fileSize ||
+                          attachment.fileType ||
+                          'ملف مرفق'}
+                    </Text>
+                  </View>
+                  {busy ? (
+                    <ActivityIndicator color="#76A9FF" size="small" />
+                  ) : attachment.platform === 'computer' ? (
+                    <CopyIcon />
+                  ) : (
+                    <Text style={styles.attachmentAction}>
+                      {course.attachmentPrompt?.buttonText || 'تحميل'}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </BottomSheetScrollView>
       </BottomSheetModal>

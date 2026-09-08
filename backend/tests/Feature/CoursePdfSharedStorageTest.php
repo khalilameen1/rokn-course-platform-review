@@ -101,6 +101,7 @@ final class CoursePdfSharedStorageTest extends TestCase
             $table->softDeletes();
         });
         (require database_path('migrations/2026_08_07_000022_create_account_file_deletions_table.php'))->up();
+        (require database_path('migrations/2026_09_08_000001_add_source_and_platform_to_course_pdfs.php'))->up();
 
         DB::table('courses')->insert(['id' => 7, 'name_ar' => 'اختبار', 'is_coming_soon' => false, 'created_at' => now(), 'updated_at' => now()]);
         DB::table('users')->insert(['id' => 42, 'active' => true, 'created_at' => now(), 'updated_at' => now()]);
@@ -392,6 +393,213 @@ final class CoursePdfSharedStorageTest extends TestCase
         self::assertSame(2, (int) $course->fresh()->authoring_version);
     }
 
+    public function test_external_attachment_create_deduplicates_per_device_and_preserves_patch_omissions(): void
+    {
+        $course = Course::findOrFail(7);
+        $course->forceFill(['is_coming_soon' => true])->save();
+        $controller = app(AdminCoursePdfController::class);
+        $data = [
+            'title' => 'ملفات التصميم', 'source_type' => 'external', 'platform' => 'computer',
+            'external_url' => 'https://files.example.org/large-assets.zip',
+            'authoring_version' => 1, 'authoring_request_id' => (string) Str::uuid(),
+        ];
+        $request = CoursePdfRequest::create('/admin/course-pdf', 'POST', $data);
+        $request->headers->set('Accept', 'application/json');
+        $this->prepareFormRequest($request, $course);
+        $payload = $controller->store($request, $course)->getData(true);
+        self::assertSame('external', $payload['pdf']['source_type']);
+        self::assertSame('computer', $payload['pdf']['platform']);
+        self::assertNull($payload['pdf']['file_size']);
+        self::assertSame('', $payload['pdf']['formatted_file_size']);
+        self::assertSame([], Storage::disk('course-pdfs-shared')->allFiles());
+        self::assertSame(0, DB::table('account_file_deletions')->count());
+
+        $duplicate = CoursePdfRequest::create('/admin/course-pdf', 'POST', array_replace($data, [
+            'authoring_version' => 2, 'authoring_request_id' => (string) Str::uuid(),
+        ]));
+        $duplicate->headers->set('Accept', 'application/json');
+        $this->prepareFormRequest($duplicate, $course->fresh());
+        $same = $controller->store($duplicate, $course->fresh())->getData(true);
+        self::assertSame($payload['pdf']['id'], $same['pdf']['id']);
+        self::assertSame(2, $same['authoring_version']);
+        self::assertSame('هذا الرابط مضاف بالفعل لهذا الجهاز', $same['message']);
+
+        $pdf = CoursePdf::findOrFail($payload['pdf']['id']);
+        $patch = CoursePdfRequest::create('/admin/course-pdf/'.$pdf->id, 'PATCH', [
+            'title' => 'عنوان جديد', 'authoring_version' => 2,
+        ]);
+        $patch->headers->set('Accept', 'application/json');
+        $this->prepareFormRequest($patch, $course->fresh(), $pdf);
+        $updated = $controller->update($patch, $course->fresh(), $pdf)->getData(true);
+        self::assertSame('computer', $updated['pdf']['platform']);
+        self::assertSame($data['external_url'], $updated['pdf']['external_url']);
+        self::assertSame(3, $updated['authoring_version']);
+
+        $mobile = CoursePdfRequest::create('/admin/course-pdf', 'POST', array_replace($data, [
+            'platform' => 'mobile', 'authoring_version' => 3, 'authoring_request_id' => (string) Str::uuid(),
+        ]));
+        $mobile->headers->set('Accept', 'application/json');
+        $this->prepareFormRequest($mobile, $course->fresh());
+        $other = $controller->store($mobile, $course->fresh())->getData(true);
+        self::assertNotSame($pdf->id, $other['pdf']['id']);
+        self::assertSame(2, CoursePdf::count());
+    }
+
+    public function test_external_download_and_preview_redirect_only_after_existing_access_checks(): void
+    {
+        $pdf = CoursePdf::create([
+            'course_id' => 7, 'title' => 'المصدر', 'source_type' => 'external',
+            'platform' => 'computer', 'external_url' => 'https://drive.google.com/file/d/abc123/view?resourcekey=key',
+            'file_path' => '', 'is_active' => true,
+        ]);
+        DB::table('course_enrollments')->insert([
+            'user_id' => 42, 'course_id' => 7, 'is_active' => true,
+            'expires_at' => now()->addHour(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->authenticate(42);
+        $metadata = $this->getJson('/api/v1/courses/7/pdfs/'.$pdf->id)->assertOk()->json('data');
+        self::assertTrue($metadata['external']);
+        self::assertSame('computer', $metadata['platform']);
+        self::assertSame($pdf->external_url, $metadata['external_url']);
+        foreach (['file_type', 'mime_type', 'file_size', 'file_size_bytes', 'file_name'] as $field) {
+            self::assertNull($metadata[$field]);
+        }
+        self::assertStringNotContainsString('drive.google.com', $metadata['download_url']);
+        $target = \App\Support\CourseAttachmentExternalUrl::normalize($pdf->external_url);
+        $this->get($metadata['download_url'])->assertRedirect($target)->assertHeader('Referrer-Policy', 'no-referrer');
+        self::assertSame($target, app(AdminCoursePdfController::class)->preview(Course::findOrFail(7), $pdf)->getTargetUrl());
+        $this->get($metadata['download_url'].'&tampered=1')->assertForbidden();
+        $pdf->update(['is_active' => false]);
+        $this->get($metadata['download_url'])->assertForbidden();
+        $pdf->update(['is_active' => true]);
+        DB::table('course_enrollments')->update(['is_active' => false]);
+        $this->get($metadata['download_url'])->assertForbidden();
+        $this->getJson('/api/v1/courses/7/pdfs/'.$pdf->id)->assertForbidden();
+        self::assertSame([], Storage::disk('course-pdfs-shared')->allFiles());
+    }
+
+    public function test_source_switch_requires_replacement_and_only_cleans_replaced_local_file(): void
+    {
+        $course = Course::findOrFail(7);
+        $course->forceFill(['is_coming_soon' => true])->save();
+        $pdf = CoursePdf::create([
+            'course_id' => 7, 'title' => 'ملف', 'file_path' => 'courses/7/old.pdf',
+            'storage_disk' => 'course-pdfs-shared', 'file_size' => 10,
+        ]);
+        Storage::disk('course-pdfs-shared')->put($pdf->file_path, '%PDF-old');
+        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        $service->update($course, $pdf, [
+            'source_type' => 'external', 'external_url' => 'https://example.org/archive.zip',
+        ], 1, null);
+        self::assertTrue($pdf->fresh()->isExternal());
+        self::assertSame('', $pdf->fresh()->file_path);
+        self::assertTrue(DB::table('account_file_deletions')->where('path_hash', hash('sha256', 'courses/7/old.pdf'))->exists());
+        Storage::disk('course-pdfs-shared')->assertMissing('courses/7/old.pdf');
+        $deletions = DB::table('account_file_deletions')->count();
+        $switch = CoursePdfRequest::create('/admin/course-pdf/'.$pdf->id, 'PATCH', [
+            'source_type' => 'upload', 'authoring_version' => 2,
+        ]);
+        try {
+            $this->prepareFormRequest($switch, $course->fresh(), $pdf->fresh());
+            self::fail('An external link cannot become an upload without replacement bytes.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            self::assertArrayHasKey('pdf_file', $exception->errors());
+        }
+        self::assertSame(2, (int) $course->fresh()->authoring_version);
+        self::assertSame($deletions, DB::table('account_file_deletions')->count());
+        $service->update($course->fresh(), $pdf->fresh(), ['source_type' => 'upload'], 2,
+            UploadedFile::fake()->createWithContent('replacement.pdf', "%PDF-1.4\n%%EOF"));
+        $restored = $pdf->fresh();
+        self::assertFalse($restored->isExternal());
+        self::assertNull($restored->external_url);
+        Storage::disk('course-pdfs-shared')->assertExists($restored->file_path);
+    }
+
+    public function test_external_delete_and_toggle_preserve_version_contract_without_storage_cleanup(): void
+    {
+        $course = Course::findOrFail(7);
+        $course->forceFill(['is_coming_soon' => true])->save();
+        $pdf = CoursePdf::create([
+            'course_id' => 7, 'title' => 'ملف خارجي', 'file_path' => '',
+            'source_type' => 'external', 'external_url' => 'https://example.org/large.zip',
+        ]);
+        $service = app(\App\Services\AdminCoursePdfApplicationService::class);
+        self::assertFalse($service->toggle($course, $pdf, 1)['pdf']['is_active']);
+        try {
+            $service->destroy($course->fresh(), $pdf->fresh(), 1);
+            self::fail('Stale version must not delete the attachment.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            self::assertSame(409, $exception->status);
+        }
+        self::assertTrue($service->destroy($course->fresh(), $pdf->fresh(), 2)['pdf']['deleted']);
+        self::assertSame(0, DB::table('account_file_deletions')->count());
+    }
+
+    public function test_invalid_external_and_mixed_source_requests_are_rejected(): void
+    {
+        $course = Course::findOrFail(7);
+        foreach (['http://example.org/file', 'https://user:password@example.org/file', '', str_repeat('a', 2001), ['https://example.org/file']] as $url) {
+            $request = CoursePdfRequest::create('/admin/course-pdf', 'POST', [
+                'title' => 'ملف', 'source_type' => 'external', 'external_url' => $url,
+                'authoring_version' => 1, 'authoring_request_id' => (string) Str::uuid(),
+            ]);
+            try {
+                $this->prepareFormRequest($request, $course);
+                self::fail('Invalid external URL must be rejected.');
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                self::assertArrayHasKey('external_url', $exception->errors());
+            }
+        }
+        $request = CoursePdfRequest::create('/admin/course-pdf', 'POST', [
+            'title' => 'ملف', 'source_type' => 'external', 'external_url' => 'https://example.org/file',
+            'authoring_version' => 1, 'authoring_request_id' => (string) Str::uuid(),
+        ]);
+        $request->files->set('pdf_file', UploadedFile::fake()->createWithContent('file.pdf', '%PDF-1.4'));
+        try {
+            $this->prepareFormRequest($request, $course);
+            self::fail('Mixed file and external source must be rejected.');
+        } catch (\Illuminate\Validation\ValidationException $exception) {
+            self::assertArrayHasKey('pdf_file', $exception->errors());
+        }
+        self::assertSame(0, CoursePdf::count());
+    }
+
+    public function test_uploaded_text_attachment_preserves_validated_type_filename_and_download_bytes(): void
+    {
+        $course = Course::findOrFail(7);
+        $course->forceFill(['is_coming_soon' => true])->save();
+        $request = CoursePdfRequest::create('/admin/course-pdf', 'POST', [
+            'title' => 'ملاحظات', 'platform' => 'computer', 'authoring_version' => 1,
+            'authoring_request_id' => (string) Str::uuid(),
+        ]);
+        $bytes = "Project setup instructions\nKeep exact source text\n";
+        $request->files->set('pdf_file', UploadedFile::fake()->createWithContent('setup-notes.txt', $bytes));
+        $request->headers->set('Accept', 'application/json');
+        $this->prepareFormRequest($request, $course);
+        $created = app(AdminCoursePdfController::class)->store($request, $course)->getData(true);
+        $pdf = CoursePdf::findOrFail($created['pdf']['id']);
+        self::assertSame('text/plain', $pdf->mime_type);
+        self::assertSame('txt', $pdf->file_extension);
+        self::assertStringEndsWith('.txt', $pdf->file_path);
+        self::assertSame('setup-notes.txt', $pdf->original_filename);
+        $preview = app(AdminCoursePdfController::class)->preview($course, $pdf);
+        self::assertSame('text/plain', $preview->headers->get('Content-Type'));
+        self::assertStringStartsWith('attachment;', $preview->headers->get('Content-Disposition'));
+        $course->forceFill(['is_coming_soon' => false])->save();
+        DB::table('course_enrollments')->insert([
+            'user_id' => 42, 'course_id' => 7, 'is_active' => true,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+        $this->authenticate(42);
+        $metadata = $this->getJson('/api/v1/courses/7/pdfs/'.$pdf->id)->assertOk()->json('data');
+        self::assertSame('txt', $metadata['file_type']);
+        self::assertSame('text/plain', $metadata['mime_type']);
+        self::assertSame('setup-notes.txt', $metadata['file_name']);
+        self::assertSame('computer', $metadata['platform']);
+        $download = $this->get($metadata['download_url'])->assertOk()->assertHeader('Content-Type', 'text/plain; charset=utf-8');
+        self::assertSame($bytes, file_get_contents($download->baseResponse->getFile()->getPathname()));
+    }
+
     /** @param array<string, mixed> $payload */
     private function assertPdfPayload(array $payload): void
     {
@@ -404,11 +612,14 @@ final class CoursePdfSharedStorageTest extends TestCase
         }
     }
 
-    private function prepareFormRequest(FormRequest $request, Course $course): void
+    private function prepareFormRequest(FormRequest $request, Course $course, ?CoursePdf $pdf = null): void
     {
         $route = new Route([$request->method()], $request->path(), static fn () => null);
         $route->bind($request);
         $route->setParameter('course', $course);
+        if ($pdf !== null) {
+            $route->setParameter('pdf', $pdf);
+        }
         $request->setRouteResolver(static fn () => $route);
         $request->setContainer($this->app);
         $request->setRedirector($this->app->make('redirect'));

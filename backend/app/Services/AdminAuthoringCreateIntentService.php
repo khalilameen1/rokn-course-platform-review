@@ -15,6 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class AdminAuthoringCreateIntentService
 {
     private const TABLE = 'admin_authoring_create_intents';
+    public const CLAIM_ATTRIBUTE = 'rokn.authoring.claimed_create_intent';
 
     /**
      * Read a create receipt without repeating the original multipart request.
@@ -162,7 +163,7 @@ final class AdminAuthoringCreateIntentService
         string $resourceType,
         string|int $resourceId
     ): void {
-        $identity = $this->identity($request);
+        $identity = $this->completionIdentity($request);
         if (!$identity || !Schema::hasTable(self::TABLE) || !$this->supportsReplayColumns()) return;
         DB::table(self::TABLE)
             ->where($identity)
@@ -252,7 +253,7 @@ final class AdminAuthoringCreateIntentService
         ?string $resourceType,
         string|int|null $resourceId
     ): void {
-        $identity = $this->identity($request);
+        $identity = $this->completionIdentity($request);
         if (!$identity || !Schema::hasTable(self::TABLE)) return;
 
         $values = [
@@ -343,6 +344,30 @@ final class AdminAuthoringCreateIntentService
                 ->with('success', 'تم الحفظ بالفعل');
         }
         return redirect()->back()->with('success', 'تم الحفظ بالفعل');
+    }
+
+    /**
+     * Draft resolution can change route parent models after the receipt was
+     * claimed. Complete that exact request-local claim, not a new draft scope.
+     * Actor, operation and request ID must still match; no state is retained
+     * on the service between requests or accepted from submitted fields.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function completionIdentity(Request $request): ?array
+    {
+        $current = $this->identity($request);
+        $claimed = $request->attributes->get(self::CLAIM_ATTRIBUTE);
+        if (!is_array($claimed)) {
+            return $current;
+        }
+        foreach (['actor_id', 'route_name', 'intent_id'] as $field) {
+            if ($current === null || (string) ($current[$field] ?? '') !== (string) ($claimed[$field] ?? '')) {
+                return null;
+            }
+        }
+
+        return $claimed;
     }
 
     /** @return array<string, mixed>|null */

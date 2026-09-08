@@ -12,6 +12,7 @@ use App\Services\CourseAttachmentService;
 use App\Services\CourseModuleAccessService;
 use App\Services\CourseStagedAuthoringService;
 use App\Support\ResumableDownloadResponse;
+use App\Support\CourseAttachmentExternalUrl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -105,6 +106,16 @@ final class CoursePdfController extends Controller
             ->where('course_id', $courseModel->id)
             ->firstOrFail();
         abort_unless($this->access->canDownloadPdf($user, $courseModel, $pdfModel), 403);
+
+        if ($pdfModel->isExternal()) {
+            $url = CourseAttachmentExternalUrl::normalize((string) $pdfModel->external_url);
+            abort_unless($url !== null, 404);
+
+            return redirect()->away($url, 302, [
+                'Cache-Control' => 'private, no-store',
+                'Referrer-Policy' => 'no-referrer',
+            ]);
+        }
 
         $file = $this->attachments->pdfFile($pdfModel);
         abort_unless($file !== null, 404);

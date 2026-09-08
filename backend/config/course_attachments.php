@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'allowed_upload_extensions' => ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png', 'webp', 'zip'],
+    'max_upload_kilobytes' => 51200,
     // System download managers refresh an expired capability through the API.
     // Keep copied links short-lived and re-check entitlement on every request.
     'signed_url_minutes' => (int) env('COURSE_ATTACHMENT_SIGNED_URL_MINUTES', 30),

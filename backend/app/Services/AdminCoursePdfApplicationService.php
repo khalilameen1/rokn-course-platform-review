@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CoursePdf;
 use App\Support\DownloadFilename;
+use App\Support\CourseAttachmentExternalUrl;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -29,20 +30,28 @@ final class AdminCoursePdfApplicationService
      */
     public function store(
         Course $course,
-        UploadedFile $file,
+        ?UploadedFile $file,
         array $data,
         int $expectedVersion,
         string $requestId,
         Closure $completeIntent
     ): array {
         $this->assertDraft($course);
-        $metadata = $this->filePolicy->pdf($file);
-        $existing = $course->pdfs()->where('content_sha256', $metadata['sha256'])->first();
+        if (($data['source_type'] ?? 'upload') === 'external') {
+            return $this->storeExternal($course, $data, $expectedVersion, $completeIntent);
+        }
+        if (!$file) {
+            throw ValidationException::withMessages(['pdf_file' => 'اختر ملفًا صالحًا']);
+        }
+        $metadata = $this->filePolicy->attachment($file);
+        $platform = $data['platform'] ?? 'mobile';
+        $existing = $course->pdfs()->where('platform', $platform)->where('content_sha256', $metadata['sha256'])->first();
         if ($existing) {
             $existingPayload = DB::transaction(function () use (
                 $course,
                 $expectedVersion,
                 $metadata,
+                $platform,
                 $completeIntent
             ): ?array {
                 $lockedCourse = $this->authoring->lockExpected($course, $expectedVersion);
@@ -50,6 +59,7 @@ final class AdminCoursePdfApplicationService
                 $lockedPdf = CoursePdf::query()
                     ->where('course_id', $lockedCourse->id)
                     ->where('content_sha256', $metadata['sha256'])
+                    ->where('platform', $platform)
                     ->lockForUpdate()
                     ->first();
                 if (!$lockedPdf) {
@@ -73,7 +83,8 @@ final class AdminCoursePdfApplicationService
         $stored = $this->storePdf(
             $file,
             $course,
-            'course-pdf|'.$course->id.'|'.$metadata['sha256'].'|'.$requestId
+            'course-pdf|'.$course->id.'|'.$metadata['sha256'].'|'.$requestId,
+            $metadata['extension']
         );
         try {
             $result = DB::transaction(function () use (
@@ -82,6 +93,7 @@ final class AdminCoursePdfApplicationService
                 $data,
                 $expectedVersion,
                 $metadata,
+                $platform,
                 $stored,
                 $completeIntent
             ): array {
@@ -90,6 +102,7 @@ final class AdminCoursePdfApplicationService
                 $existingPdf = CoursePdf::query()
                     ->where('course_id', $lockedCourse->id)
                     ->where('content_sha256', $metadata['sha256'])
+                    ->where('platform', $platform)
                     ->lockForUpdate()
                     ->first();
                 if ($existingPdf) {
@@ -105,13 +118,17 @@ final class AdminCoursePdfApplicationService
 
                 $pdf = CoursePdf::query()->create([
                     'course_id' => $lockedCourse->id,
+                    'source_type' => 'upload',
+                    'platform' => $platform,
                     'title' => $data['title'],
                     'title_en' => $data['title_en'] ?? null,
                     'description' => $data['description'] ?? null,
                     'description_en' => $data['description_en'] ?? null,
                     'file_path' => $stored['path'],
                     'storage_disk' => $stored['disk'],
-                    'original_filename' => $this->safeOriginalFilename($file),
+                    'original_filename' => $this->safeOriginalFilename($file, $metadata['extension']),
+                    'mime_type' => $metadata['mime'],
+                    'file_extension' => $metadata['extension'],
                     'file_size' => $file->getSize(),
                     'content_sha256' => $metadata['sha256'],
                     'order' => $data['order'] ?? (($lockedCourse->pdfs()->max('order') ?? 0) + 1),
@@ -121,7 +138,7 @@ final class AdminCoursePdfApplicationService
                 ]);
                 $version = $this->authoring->advance($lockedCourse);
                 $payload = $this->payload(
-                    'تم رفع ملف PDF بنجاح',
+                    'تم رفع المرفق بنجاح',
                     $version,
                     ['pdf' => $this->presenter->one($lockedCourse, $pdf)]
                 );
@@ -155,7 +172,7 @@ final class AdminCoursePdfApplicationService
         $oldDisk = (string) $pdf->storage_disk;
         $oldPath = (string) $pdf->file_path;
         $attributes = [];
-        foreach (['title', 'title_en', 'description', 'description_en'] as $field) {
+        foreach (['title', 'title_en', 'description', 'description_en', 'platform'] as $field) {
             if (array_key_exists($field, $data)) {
                 $attributes[$field] = $data[$field];
             }
@@ -167,17 +184,44 @@ final class AdminCoursePdfApplicationService
             $attributes['is_active'] = (bool) $data['is_active'];
         }
 
+        $source = $data['source_type'] ?? $pdf->source_type;
+        if ($source === 'external') {
+            if ($replacement) {
+                throw ValidationException::withMessages(['pdf_file' => 'احذف الملف عند اختيار رابط خارجي']);
+            }
+            $url = trim((string) ($data['external_url'] ?? ($pdf->isExternal() ? $pdf->external_url : '')));
+            $this->assertExternalUrl($url);
+            $attributes += [
+                'source_type' => 'external',
+                'external_url' => $url,
+                'file_path' => '',
+                'storage_disk' => null,
+                'original_filename' => null,
+                'file_size' => null,
+                'content_sha256' => null,
+                'mime_type' => null,
+                'file_extension' => null,
+            ];
+        } elseif ($pdf->isExternal() && !$replacement) {
+            throw ValidationException::withMessages(['pdf_file' => 'اختر ملفًا بدل الرابط الخارجي']);
+        }
+
         if ($replacement) {
-            $metadata = $this->filePolicy->pdf($replacement);
+            $metadata = $this->filePolicy->attachment($replacement);
             $stored = $this->storePdf(
                 $replacement,
                 $course,
-                'course-pdf|'.$course->id.'|'.$metadata['sha256']
+                'course-pdf|'.$course->id.'|'.$metadata['sha256'],
+                $metadata['extension']
             );
             $attributes += [
+                'source_type' => 'upload',
+                'external_url' => null,
                 'file_path' => $stored['path'],
                 'storage_disk' => $stored['disk'],
-                'original_filename' => $this->safeOriginalFilename($replacement),
+                'original_filename' => $this->safeOriginalFilename($replacement, $metadata['extension']),
+                'mime_type' => $metadata['mime'],
+                'file_extension' => $metadata['extension'],
                 'file_size' => $replacement->getSize(),
                 'content_sha256' => $metadata['sha256'],
             ];
@@ -200,9 +244,14 @@ final class AdminCoursePdfApplicationService
                     ->where('course_id', $course->id)
                     ->lockForUpdate()
                     ->firstOrFail();
-                if (!empty($attributes['content_sha256']) && CoursePdf::query()
+                $source = $attributes['source_type'] ?? $lockedPdf->source_type;
+                $hash = $source === 'upload'
+                    ? ($attributes['content_sha256'] ?? $lockedPdf->content_sha256)
+                    : null;
+                if ($hash && CoursePdf::query()
                     ->where('course_id', $course->id)
-                    ->where('content_sha256', $attributes['content_sha256'])
+                    ->where('content_sha256', $hash)
+                    ->where('platform', $attributes['platform'] ?? $lockedPdf->platform)
                     ->where('id', '<>', $lockedPdf->id)
                     ->lockForUpdate()
                     ->exists()) {
@@ -211,14 +260,24 @@ final class AdminCoursePdfApplicationService
                     ]);
                 }
 
+                if ($source === 'external' && CoursePdf::query()
+                    ->where('course_id', $course->id)
+                    ->where('source_type', 'external')
+                    ->where('external_url', $attributes['external_url'])
+                    ->where('platform', $attributes['platform'] ?? $lockedPdf->platform)
+                    ->where('id', '<>', $lockedPdf->id)
+                    ->lockForUpdate()->get()->contains(fn (CoursePdf $other): bool => $other->external_url === $attributes['external_url'])) {
+                    throw ValidationException::withMessages(['external_url' => 'هذا الرابط مضاف بالفعل لهذا الجهاز']);
+                }
+
                 $lockedPdf->update($attributes);
-                if ($stored) {
+                if (($stored || $lockedPdf->isExternal()) && $oldDisk !== '' && $oldPath !== '') {
                     $this->fileDeletion->deleteOrQueue($oldDisk, $oldPath);
                 }
                 $version = $this->authoring->advance($lockedCourse);
 
                 return $this->payload(
-                    'تم تحديث ملف PDF بنجاح',
+                    'تم تحديث المرفق بنجاح',
                     $version,
                     ['pdf' => $this->presenter->one($lockedCourse, $lockedPdf)]
                 );
@@ -247,14 +306,16 @@ final class AdminCoursePdfApplicationService
                 ->firstOrFail();
             $deletedPdf = $this->presenter->one($lockedCourse, $lockedPdf) + ['deleted' => true];
             $lockedPdf->delete();
-            $this->fileDeletion->deleteOrQueue(
-                (string) $lockedPdf->storage_disk,
-                (string) $lockedPdf->file_path
-            );
+            if (!$lockedPdf->isExternal()) {
+                $this->fileDeletion->deleteOrQueue(
+                    (string) $lockedPdf->storage_disk,
+                    (string) $lockedPdf->file_path
+                );
+            }
             $version = $this->authoring->advance($lockedCourse);
 
             return $this->payload(
-                'تم حذف ملف PDF بنجاح',
+                'تم حذف المرفق بنجاح',
                 $version,
                 ['pdf' => $deletedPdf]
             );
@@ -332,6 +393,57 @@ final class AdminCoursePdfApplicationService
         }, 3);
     }
 
+    /** @param array<string, mixed> $data @return array<string, mixed> */
+    private function storeExternal(Course $course, array $data, int $expectedVersion, Closure $completeIntent): array
+    {
+        $url = trim((string) ($data['external_url'] ?? ''));
+        $this->assertExternalUrl($url);
+
+        return DB::transaction(function () use ($course, $data, $url, $expectedVersion, $completeIntent): array {
+            $lockedCourse = $this->authoring->lockExpected($course, $expectedVersion);
+            $this->assertDraft($lockedCourse);
+            $platform = $data['platform'] ?? 'mobile';
+            $pdf = $lockedCourse->pdfs()->where('source_type', 'external')
+                ->where('external_url', $url)->where('platform', $platform)->lockForUpdate()->get()
+                ->first(fn (CoursePdf $existing): bool => $existing->external_url === $url);
+            $version = (int) $lockedCourse->authoring_version;
+            $duplicate = $pdf !== null;
+            if (!$pdf) {
+                $pdf = $lockedCourse->pdfs()->create([
+                    'title' => $data['title'],
+                    'title_en' => $data['title_en'] ?? null,
+                    'description' => $data['description'] ?? null,
+                    'description_en' => $data['description_en'] ?? null,
+                    'source_type' => 'external',
+                    'platform' => $platform,
+                    'external_url' => $url,
+                    'file_path' => '',
+                    'storage_disk' => null,
+                    'original_filename' => null,
+                    'file_size' => null,
+                    'content_sha256' => null,
+                    'mime_type' => null,
+                    'file_extension' => null,
+                    'order' => $data['order'] ?? (($lockedCourse->pdfs()->max('order') ?? 0) + 1),
+                    'is_active' => array_key_exists('is_active', $data) ? (bool) $data['is_active'] : true,
+                ]);
+                $version = $this->authoring->advance($lockedCourse);
+            }
+            $payload = $this->payload($duplicate ? 'هذا الرابط مضاف بالفعل لهذا الجهاز' : 'تم حفظ المرفق',
+                $version, ['pdf' => $this->presenter->one($lockedCourse, $pdf)]);
+            $completeIntent($lockedCourse, $pdf, $payload);
+
+            return $payload;
+        }, 3);
+    }
+
+    private function assertExternalUrl(string $url): void
+    {
+        if (CourseAttachmentExternalUrl::normalize($url) === null) {
+            throw ValidationException::withMessages(['external_url' => 'أدخل رابط HTTPS صالحًا دون بيانات تسجيل دخول']);
+        }
+    }
+
     /** @param array<string, mixed> $extra @return array<string, mixed> */
     private function payload(string $message, int $version, array $extra): array
     {
@@ -347,27 +459,26 @@ final class AdminCoursePdfApplicationService
     private function storePdf(
         UploadedFile $file,
         Course $course,
-        string $operationIdentity
+        string $operationIdentity,
+        string $extension
     ): array {
         $disk = trim((string) config('course_pdfs.disk'));
         if ($disk === '' || in_array($disk, ['local', 'public'], true)) {
             throw new \RuntimeException('Course PDF storage is not configured as a private shared disk.');
         }
 
-        $path = $this->fileDeletion->storeTrackedUpload(
-            $file,
-            'courses/'.$course->id,
-            $disk,
-            60,
-            $operationIdentity
-        );
+        // The extension comes from the content policy, not the browser name
+        // or the generic ZIP MIME used by some valid Office documents.
+        $path = 'courses/'.$course->id.'/'.hash('sha256', $operationIdentity).'.'.$extension;
+        $mightAlreadyBeStored = $this->fileDeletion->trackPotentialOrphan($disk, $path, 60);
+        $this->fileDeletion->writeTrackedUpload($file, $path, $disk, $mightAlreadyBeStored);
 
         return ['disk' => $disk, 'path' => $path];
     }
 
-    private function safeOriginalFilename(UploadedFile $file): string
+    private function safeOriginalFilename(UploadedFile $file, string $extension): string
     {
-        return DownloadFilename::safe($file->getClientOriginalName(), 'document', 'pdf');
+        return DownloadFilename::safe($file->getClientOriginalName(), 'document', $extension);
     }
 
     private function assertBelongsToCourse(Course $course, CoursePdf $pdf): void

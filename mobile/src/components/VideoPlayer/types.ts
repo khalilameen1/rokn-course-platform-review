@@ -10,6 +10,10 @@ export interface CourseAttachment {
   id: string;
   title: string;
   url: string;
+  fileName?: string;
+  sourceType?: 'upload' | 'external';
+  sourceUrl?: string;
+  downloadRefreshEndpoint?: string;
   fileType?: string;
   mimeType?: string;
   fileSize?: string;

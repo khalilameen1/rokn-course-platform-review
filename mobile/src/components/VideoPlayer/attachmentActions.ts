@@ -14,11 +14,21 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {CourseAttachment} from './types';
+import {publicRequest, type RoknRequestConfig} from '../../constants/api';
 import {loadCourseLearningData} from './courseLearning/mapping';
+import {mapCourseAttachments} from './courseLearning/coursePayload';
+import {asRecord} from './courseLearning/shared';
 import {remainingServerMilliseconds} from '../../utils/serverClock';
 import {settleWithin} from '../../utils/settleWithin';
 import {safeFilenameStem} from '../../utils/unicodeText';
 import {nativeAttachmentRecovery} from './attachmentDownloadPolicy';
+import {
+  attachmentHeaderFilename,
+  attachmentPrefixIsHtml,
+  attachmentResponseIsHtml,
+  safeAttachmentName,
+  type AttachmentMetadata,
+} from './attachmentMetadata';
 
 const downloadFlights = new Map<
   string,
@@ -86,14 +96,30 @@ const mimeTypeFor = (attachment: CourseAttachment, fileName: string) => {
 };
 
 const safeFileName = (attachment: CourseAttachment) => {
+  if (attachment.fileName) return safeAttachmentName(attachment.fileName);
   const fromUrl = attachment.url.split('?')[0].split('/').pop();
   const extensionFromUrl = fromUrl?.includes('.')
     ? normalizeExtension(fromUrl.split('.').pop())
     : '';
+  if (fromUrl && extensionFromUrl) {
+    try {
+      return safeAttachmentName(decodeURIComponent(fromUrl));
+    } catch {
+      return safeAttachmentName(fromUrl);
+    }
+  }
   const extension =
-    extensionFromUrl || normalizeExtension(attachment.fileType) || 'file';
+    extensionFromUrl ||
+    normalizeExtension(attachment.fileType) ||
+    MIME_EXTENSIONS[String(attachment.mimeType || '').split(';')[0]] ||
+    '';
+  if (/\.[a-z0-9]{1,10}$/i.test(attachment.title)) {
+    return safeAttachmentName(attachment.title);
+  }
   const cleanTitle = safeFilenameStem(attachment.title);
-  return `${cleanTitle || `rokn-${attachment.id}`}.${extension}`;
+  return `${cleanTitle || `rokn-${attachment.id}`}${
+    extension ? `.${extension}` : ''
+  }`;
 };
 
 const isAllowedRemoteUrl = (value: string) => {
@@ -101,9 +127,13 @@ const isAllowedRemoteUrl = (value: string) => {
     const parsed = new URL(value) as unknown as {
       hostname: string;
       protocol: string;
+      username: string;
+      password: string;
     };
     return (
       Boolean(parsed.hostname) &&
+      !parsed.username &&
+      !parsed.password &&
       (parsed.protocol === 'https:' || (__DEV__ && parsed.protocol === 'http:'))
     );
   } catch {
@@ -174,6 +204,32 @@ const refreshAttachment = async (
 ) => {
   if (!attachment.courseId) return null;
   assertAttachmentOwner(operation);
+  const endpoint = /^\/api\/v1\/courses\/([1-9]\d*)\/pdfs\/([1-9]\d*)$/.exec(
+    attachment.downloadRefreshEndpoint || '',
+  );
+  if (
+    endpoint &&
+    endpoint[1] === attachment.courseId &&
+    endpoint[2] === attachment.id
+  ) {
+    // The endpoint resolves published-revision aliases even when the original
+    // card's attachment ID no longer appears in a full course response.
+    const response = await publicRequest.get(
+      `courses/${endpoint[1]}/pdfs/${endpoint[2]}`,
+      {
+        timeout: 10_000,
+        roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
+      } as RoknRequestConfig,
+    );
+    assertAttachmentOwner(operation);
+    return (
+      mapCourseAttachments(
+        [asRecord(asRecord(response.data).data)],
+        'mobile',
+        attachment.courseId,
+      )[0] || null
+    );
+  }
   const {course} = await loadCourseLearningData(attachment.courseId, {
     reconcilePending: false,
   });
@@ -232,6 +288,10 @@ const hasLocalSpace = async (expectedBytes?: number) => {
 };
 
 const downloadPrivateFile = (fromUrl: string, toFile: string) => {
+  let rejectResponse!: (error: Error) => void;
+  const responseRejected = new Promise<never>((_, reject) => {
+    rejectResponse = reject;
+  });
   const task = RNFS.downloadFile({
     fromUrl,
     toFile,
@@ -239,11 +299,24 @@ const downloadPrivateFile = (fromUrl: string, toFile: string) => {
     discretionary: true,
     readTimeout: 45_000,
     backgroundTimeout: IOS_DOWNLOAD_TIMEOUT_MS,
+    begin: response => {
+      const mime = Object.entries(response.headers || {}).find(
+        ([name]) => name.toLowerCase() === 'content-type',
+      )?.[1];
+      if (attachmentResponseIsHtml(mime)) {
+        rejectResponse(new Error('ATTACHMENT_HOST_PAGE'));
+        try {
+          RNFS.stopDownload(response.jobId);
+        } catch {
+          // The rejection still prevents a save/share handoff.
+        }
+      }
+    },
   });
   activePrivateDownloadJobs.add(task.jobId);
   return {
     jobId: task.jobId,
-    promise: task.promise.finally(() => {
+    promise: Promise.race([responseRejected, task.promise]).finally(() => {
       activePrivateDownloadJobs.delete(task.jobId);
     }),
   };
@@ -259,6 +332,7 @@ const nativeDownloadId = (value: unknown) => {
 const enqueueNativeDownload = (
   args: [string, string, string, string, string, number],
   operation: AttachmentOperation,
+  external = false,
 ) =>
   new Promise<unknown>((resolve, reject) => {
     let settled = false;
@@ -274,9 +348,10 @@ const enqueueNativeDownload = (
 
     let enqueueResult: Promise<unknown>;
     try {
-      enqueueResult = Promise.resolve(
-        NativeModules.RoknDownloads.enqueue(...args),
-      );
+      const enqueue = external
+        ? NativeModules.RoknDownloads.enqueueExternal
+        : NativeModules.RoknDownloads.enqueue;
+      enqueueResult = Promise.resolve(enqueue(...args));
     } catch (error) {
       clearTimeout(timer);
       settled = true;
@@ -313,6 +388,49 @@ const enqueueNativeDownload = (
     );
   });
 
+const showExternalDownloadFallback = (
+  attachment: CourseAttachment,
+  operation: AttachmentOperation,
+) => {
+  if (!attachmentOwnerIsActive(operation)) return;
+  Alert.alert(
+    'تعذّر التنزيل المباشر',
+    'افتح المصدر لإكمال التنزيل\nقد يتطلب تسجيل دخول أو تأكيد',
+    [
+      {text: 'إلغاء', style: 'cancel'},
+      {
+        text: 'فتح المصدر',
+        onPress: () => {
+          void (async () => {
+            try {
+              const current = await usableAttachment(attachment, operation);
+              const url = current.sourceUrl || current.url;
+              if (
+                !isAllowedRemoteUrl(url) ||
+                !(await openRemoteDownload(url, operation))
+              ) {
+                if (attachmentOwnerIsActive(operation)) {
+                  Alert.alert(
+                    'تعذّر فتح المصدر',
+                    'تحقق من الاتصال ثم حاول مرة أخرى',
+                  );
+                }
+              }
+            } catch {
+              if (attachmentOwnerIsActive(operation)) {
+                Alert.alert(
+                  'تعذّر فتح المصدر',
+                  'تحقق من الاتصال ثم حاول مرة أخرى',
+                );
+              }
+            }
+          })();
+        },
+      },
+    ],
+  );
+};
+
 const openCourseAttachmentInternal = async (
   attachment: CourseAttachment,
   operation: AttachmentOperation,
@@ -320,7 +438,11 @@ const openCourseAttachmentInternal = async (
 ) => {
   let currentAttachment: CourseAttachment;
   try {
-    currentAttachment = await usableAttachment(attachment, operation);
+    currentAttachment = await usableAttachment(
+      attachment,
+      operation,
+      Boolean(attachment.downloadRefreshEndpoint) && !signedUrlRefreshAttempted,
+    );
   } catch {
     if (!attachmentOwnerIsActive(operation)) {
       return emptyResult();
@@ -339,13 +461,19 @@ const openCourseAttachmentInternal = async (
   }
 
   if (currentAttachment.platform === 'computer') {
+    const computerUrl =
+      currentAttachment.external && currentAttachment.sourceUrl
+        ? currentAttachment.sourceUrl
+        : currentAttachment.url;
+    if (!isAllowedRemoteUrl(computerUrl)) return emptyResult();
     try {
-      Clipboard.setString(currentAttachment.url);
+      Clipboard.setString(computerUrl);
     } catch {
       Alert.alert('تعذّر نسخ الرابط', 'حاول مرة أخرى');
       return emptyResult();
     }
-    const temporaryLink = currentAttachment.temporary;
+    const temporaryLink =
+      currentAttachment.temporary && computerUrl === currentAttachment.url;
     Alert.alert(
       'تم نسخ الرابط',
       temporaryLink
@@ -355,16 +483,61 @@ const openCourseAttachmentInternal = async (
     return {copied: true, downloaded: false};
   }
 
+  let transferAttachment = currentAttachment;
   if (currentAttachment.external) {
-    if (await openRemoteDownload(currentAttachment.url, operation)) {
+    try {
+      if (!NativeModules.RoknDownloads?.inspectMetadata)
+        throw new Error('METADATA_UNAVAILABLE');
+      const metadata = await settleWithin<AttachmentMetadata | null>(
+        NativeModules.RoknDownloads.inspectMetadata(currentAttachment.url),
+        null,
+        10_000,
+      );
+      assertAttachmentOwner(operation);
+      if (!metadata) throw new Error('DOWNLOAD_METADATA_TIMEOUT');
+      if (
+        currentAttachment.temporary &&
+        !signedUrlRefreshAttempted &&
+        [401, 403, 404, 410].includes(metadata.statusCode)
+      ) {
+        const refreshed = await usableAttachment(
+          currentAttachment,
+          operation,
+          true,
+        );
+        return openCourseAttachmentInternal(refreshed, operation, true);
+      }
+      if (
+        metadata.statusCode < 200 ||
+        metadata.statusCode >= 300 ||
+        !isAllowedRemoteUrl(metadata.url) ||
+        !metadata.contentType ||
+        attachmentResponseIsHtml(metadata.contentType)
+      ) {
+        throw new Error('ATTACHMENT_HOST_PAGE');
+      }
+      transferAttachment = {
+        ...currentAttachment,
+        url: metadata.url,
+        fileName:
+          attachmentHeaderFilename(metadata.contentDisposition) ||
+          currentAttachment.fileName,
+        mimeType: metadata.contentType.split(';')[0].trim(),
+        fileType:
+          MIME_EXTENSIONS[metadata.contentType.split(';')[0].trim()] ||
+          undefined,
+        fileSizeBytes:
+          metadata.contentLength && metadata.contentLength > 0
+            ? metadata.contentLength
+            : undefined,
+      };
+    } catch {
+      showExternalDownloadFallback(currentAttachment, operation);
       return emptyResult();
     }
-    if (!attachmentOwnerIsActive(operation)) return emptyResult();
-    Alert.alert('تعذّر فتح الرابط', 'تحقق من الاتصال ثم حاول مرة أخرى');
-    return emptyResult();
   }
 
-  const fileName = safeFileName(currentAttachment);
+  const fileName = safeFileName(transferAttachment);
   if (Platform.OS === 'android' && NativeModules.RoknDownloads?.enqueue) {
     try {
       const canSaveToDownloads = await allowPublicAndroidDownload();
@@ -380,14 +553,15 @@ const openCourseAttachmentInternal = async (
       }
       const nativeResult = await enqueueNativeDownload(
         [
-          currentAttachment.url,
+          transferAttachment.url,
           currentAttachment.title,
           fileName,
-          mimeTypeFor(currentAttachment, fileName),
+          mimeTypeFor(transferAttachment, fileName),
           nativeStableKey(currentAttachment, operation.boundary.scope),
-          currentAttachment.fileSizeBytes || 0,
+          transferAttachment.fileSizeBytes || 0,
         ],
         operation,
+        Boolean(currentAttachment.external),
       );
       const downloadId = nativeDownloadId(nativeResult);
       const status =
@@ -476,7 +650,7 @@ const openCourseAttachmentInternal = async (
       !currentAttachment.temporary &&
       (await openRemoteDownload(currentAttachment.url, operation))
     ) {
-      return {copied: false, downloaded: true};
+      return emptyResult();
     }
     if (!attachmentOwnerIsActive(operation)) return emptyResult();
     Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
@@ -486,7 +660,7 @@ const openCourseAttachmentInternal = async (
   // iOS needs a local staging file before the system Save/Share sheet. Keep
   // that copy in cache and remove it after the handoff so every attachment
   // does not leave a hidden duplicate inside the app.
-  const hasSpace = await hasLocalSpace(currentAttachment.fileSizeBytes);
+  const hasSpace = await hasLocalSpace(transferAttachment.fileSizeBytes);
   if (!attachmentOwnerIsActive(operation)) {
     return emptyResult();
   }
@@ -520,8 +694,8 @@ const openCourseAttachmentInternal = async (
       : 0;
     assertAttachmentOwner(operation);
     const recoveredBackgroundDownload = Boolean(
-      currentAttachment.fileSizeBytes &&
-        stagedSize === currentAttachment.fileSizeBytes,
+      transferAttachment.fileSizeBytes &&
+        stagedSize === transferAttachment.fileSizeBytes,
     );
     let result: {jobId: number; statusCode: number; bytesWritten: number};
     let download: ReturnType<typeof RNFS.downloadFile> | undefined;
@@ -530,7 +704,7 @@ const openCourseAttachmentInternal = async (
     } else {
       await RNFS.unlink(target).catch(() => undefined);
       assertAttachmentOwner(operation);
-      download = downloadPrivateFile(currentAttachment.url, target);
+      download = downloadPrivateFile(transferAttachment.url, target);
       activeJobId = download.jobId;
       Alert.alert(
         'جارٍ تنزيل الملف',
@@ -560,18 +734,14 @@ const openCourseAttachmentInternal = async (
       [401, 403, 404, 410].includes(result.statusCode)
     ) {
       await RNFS.unlink(target).catch(() => undefined);
-      currentAttachment = await usableAttachment(
+      if (signedUrlRefreshAttempted)
+        throw new Error('ATTACHMENT_DOWNLOAD_REJECTED');
+      const refreshed = await usableAttachment(
         currentAttachment,
         operation,
         true,
       );
-      download = downloadPrivateFile(currentAttachment.url, target);
-      activeJobId = download.jobId;
-      result = await download.promise;
-      if (cancelled || !attachmentOwnerIsActive(operation)) {
-        await RNFS.unlink(cacheFolder).catch(() => undefined);
-        return emptyResult();
-      }
+      return openCourseAttachmentInternal(refreshed, operation, true);
     }
     if (result.statusCode >= 200 && result.statusCode < 300) {
       const localSize = Number((await RNFS.stat(target)).size);
@@ -580,10 +750,30 @@ const openCourseAttachmentInternal = async (
         throw new Error('ATTACHMENT_EMPTY_DOWNLOAD');
       }
       if (
-        currentAttachment.fileSizeBytes &&
-        localSize !== currentAttachment.fileSizeBytes
+        transferAttachment.fileSizeBytes &&
+        localSize !== transferAttachment.fileSizeBytes
       ) {
+        if (currentAttachment.temporary && !signedUrlRefreshAttempted) {
+          await RNFS.unlink(cacheFolder).catch(() => undefined);
+          const refreshed = await usableAttachment(
+            currentAttachment,
+            operation,
+            true,
+          );
+          return openCourseAttachmentInternal(refreshed, operation, true);
+        }
         throw new Error('ATTACHMENT_TRUNCATED_DOWNLOAD');
+      }
+      if (currentAttachment.external) {
+        const prefix = await RNFS.read(
+          target,
+          Math.min(512, localSize),
+          0,
+          'utf8',
+        );
+        assertAttachmentOwner(operation);
+        if (attachmentPrefixIsHtml(prefix))
+          throw new Error('ATTACHMENT_HOST_PAGE');
       }
       try {
         assertAttachmentOwner(operation);
@@ -608,11 +798,15 @@ const openCourseAttachmentInternal = async (
     if (cancelled || !attachmentOwnerIsActive(operation)) {
       return emptyResult();
     }
+    if (currentAttachment.external) {
+      showExternalDownloadFallback(currentAttachment, operation);
+      return emptyResult();
+    }
     if (
       !currentAttachment.temporary &&
       (await openRemoteDownload(currentAttachment.url, operation))
     ) {
-      return {copied: false, downloaded: true};
+      return emptyResult();
     }
     if (attachmentOwnerIsActive(operation)) {
       Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');

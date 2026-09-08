@@ -21,8 +21,6 @@
         const feedback = form.querySelector('[data-pdf-feedback]');
         const fileInput = form.elements.pdf_file;
         const submitLabel = form.querySelector('[data-studio-pdf-submit-label]');
-        const fileHelp = form.querySelector('[data-studio-pdf-file-help]');
-        const fileRequired = form.querySelector('[data-studio-pdf-file-required]');
         const deleteButton = form.querySelector('[data-studio-pdf-delete]');
         const filePreview = document.getElementById('filePreview');
         const fileName = document.getElementById('fileName');
@@ -32,9 +30,16 @@
         const createUrl = String(graph.store_url || '');
         let editingId = null;
 
+        const sourceType = pdf => pdf?.source_type || 'upload';
+        const platform = pdf => pdf?.platform || 'mobile';
+
         const validPdf = pdf => Number.isSafeInteger(Number(pdf?.id))
             && typeof pdf?.title === 'string' && pdf.title.trim() !== ''
-            && typeof pdf?.formatted_file_size === 'string'
+            && ['upload', 'external'].includes(sourceType(pdf))
+            && ['mobile', 'computer'].includes(platform(pdf))
+            && (sourceType(pdf) === 'external'
+                ? typeof pdf?.external_url === 'string' && pdf.external_url.startsWith('https://')
+                : typeof pdf?.formatted_file_size === 'string')
             && typeof pdf?.preview_url === 'string' && pdf.preview_url !== ''
             && typeof pdf?.update_url === 'string' && pdf.update_url !== ''
             && typeof pdf?.toggle_url === 'string' && pdf.toggle_url !== ''
@@ -47,9 +52,17 @@
         };
         const clearFileSelection = () => {
             fileInput.value = '';
+            fileInput.setCustomValidity('');
             filePreview?.classList.remove('show');
             if (fileName) fileName.textContent = '';
             if (fileSize) fileSize.textContent = '';
+        };
+        const setAttachmentContext = pdf => {
+            form.elements.source_type.value = sourceType(pdf);
+            form.elements.platform.value = platform(pdf);
+            form.elements.external_url.value = sourceType(pdf) === 'external' ? pdf.external_url || '' : '';
+            form.dataset.hasUploadedFile = pdf && sourceType(pdf) === 'upload' ? '1' : '0';
+            form.dispatchEvent(new Event('rokn:attachment-context'));
         };
         const setActive = active => {
             if (activeInput) activeInput.checked = active;
@@ -63,13 +76,20 @@
             const node = document.createElement('article');
             node.className = 'studio-attachment';
             node.dataset.pdfId = String(pdf.id);
-            node.innerHTML = '<span class="studio-attachment__drag" aria-label="اسحب لترتيب الملف"><i class="fa fa-bars" aria-hidden="true"></i></span><span class="studio-attachment__icon"><i class="fa fa-file-pdf-o" aria-hidden="true"></i></span><span class="studio-attachment__copy"><strong></strong><small></small></span><span class="studio-attachment__actions"><a target="_blank" rel="noopener" aria-label="فتح الملف"><i class="fa fa-eye" aria-hidden="true"></i></a><button type="button" data-studio-pdf-toggle aria-label=""><i class="fa" aria-hidden="true"></i></button><button type="button" data-studio-pdf-edit aria-label="تعديل الملف"><i class="fa fa-pencil" aria-hidden="true"></i></button></span>';
+            node.innerHTML = '<span class="studio-attachment__drag" aria-label="اسحب لترتيب المرفق"><i class="fa fa-bars" aria-hidden="true"></i></span><span class="studio-attachment__icon"><i class="fa" aria-hidden="true"></i></span><span class="studio-attachment__copy"><strong></strong><small></small></span><span class="studio-attachment__actions"><a target="_blank" rel="noopener" aria-label="فتح المرفق"><i class="fa fa-eye" aria-hidden="true"></i></a><button type="button" data-studio-pdf-toggle aria-label=""><i class="fa" aria-hidden="true"></i></button><button type="button" data-studio-pdf-edit aria-label="تعديل المرفق"><i class="fa fa-pencil" aria-hidden="true"></i></button></span>';
+            const external = sourceType(pdf) === 'external';
+            node.querySelector('.studio-attachment__icon').classList.toggle('studio-attachment__icon--link', external);
+            node.querySelector('.studio-attachment__icon i').classList.add(external ? 'fa-link' : 'fa-file-o');
             node.querySelector('strong').textContent = pdf.title;
-            node.querySelector('small').textContent = `${pdf.formatted_file_size} · ${pdf.is_active ? 'ظاهر للطلاب' : 'مخفي'}`;
+            node.querySelector('small').textContent = [
+                external ? 'رابط' : pdf.formatted_file_size,
+                platform(pdf) === 'computer' ? 'للكمبيوتر · نسخ الرابط' : 'للهاتف · تحميل',
+                pdf.is_active ? 'ظاهر للطلاب' : 'مخفي',
+            ].filter(Boolean).join(' · ');
             node.querySelector('a').href = pdf.preview_url;
             const toggle = node.querySelector('[data-studio-pdf-toggle]');
             toggle.dataset.studioPdfToggle = String(pdf.id);
-            toggle.setAttribute('aria-label', pdf.is_active ? 'إخفاء الملف' : 'إظهار الملف');
+            toggle.setAttribute('aria-label', pdf.is_active ? 'إخفاء المرفق' : 'إظهار المرفق');
             toggle.querySelector('i').classList.add(pdf.is_active ? 'fa-eye-slash' : 'fa-eye');
             node.querySelector('[data-studio-pdf-edit]').dataset.studioPdfEdit = String(pdf.id);
             return node;
@@ -103,10 +123,8 @@
             form.elements.authoring_version.value = String(core.authoringVersion);
             form.elements.order.value = String(Math.max(0, ...Array.from(pdfs.values()).map(pdf => Number(pdf.order) || 0)) + 1);
             setActive(true);
-            fileInput.required = true;
-            if (fileHelp) fileHelp.textContent = 'اسحب الملف هنا أو انقر للاختيار';
-            if (fileRequired) fileRequired.hidden = false;
-            if (submitLabel) submitLabel.textContent = 'حفظ الملف';
+            setAttachmentContext(null);
+            if (submitLabel) submitLabel.textContent = 'حفظ المرفق';
             deleteButton.hidden = true;
             core.showFeedback(feedback);
         };
@@ -132,9 +150,7 @@
             form.elements.description_en.value = pdf.description_en || '';
             form.elements.order.value = String(pdf.order);
             setActive(Boolean(pdf.is_active));
-            fileInput.required = false;
-            if (fileHelp) fileHelp.textContent = 'اختر ملفًا جديدًا للاستبدال أو اتركه كما هو';
-            if (fileRequired) fileRequired.hidden = true;
+            setAttachmentContext(pdf);
             if (submitLabel) submitLabel.textContent = 'حفظ التغييرات';
             deleteButton.hidden = false;
             core.showFeedback(feedback);
@@ -170,7 +186,8 @@
                     core.syncVersion(nextVersion);
                     pdfs.set(id, response.pdf);
                     render(Array.from(pdfs.values()));
-                    core.notify(response.message || 'تم تحديث ظهور الملف');
+                    if (editingId === id) setActive(Boolean(response.pdf.is_active));
+                    core.notify(response.message || 'تم تحديث ظهور المرفق');
                 }, {reloadOnError: true});
             }
         });
@@ -180,14 +197,24 @@
         form.addEventListener('submit', event => {
             event.preventDefault();
             if (form.getAttribute('aria-busy') === 'true') return;
+            if (!form.reportValidity()) return;
             const targetId = editingId;
+            const requestedSource = form.elements.source_type.value;
+            const requestedPlatform = form.elements.platform.value;
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
+                // Only the selected source travels with this mutation. An
+                // unselected file or URL must never replace the active source.
+                if (requestedSource === 'external') body.delete('pdf_file');
+                else body.delete('external_url');
                 const response = await core.request(form.action, {
                     method: 'POST', headers: core.mutationHeaders(form), body, timeout: 120000,
                 });
-                if (!validPdf(response.pdf) || (targetId && Number(response.pdf.id) !== targetId)) throw core.invalid();
+                if (!validPdf(response.pdf)
+                    || (targetId && Number(response.pdf.id) !== targetId)
+                    || sourceType(response.pdf) !== requestedSource
+                    || platform(response.pdf) !== requestedPlatform) throw core.invalid();
                 const duplicateCreate = !targetId && pdfs.has(Number(response.pdf.id));
                 const nextVersion = core.requireMutation(response, expectedVersion, !duplicateCreate);
                 core.syncVersion(nextVersion);
@@ -195,14 +222,14 @@
                 render(Array.from(pdfs.values()));
                 resetCreate();
                 editor.hidden = true;
-                core.notify(response.message || 'تم حفظ الملف');
+                core.notify(response.message || 'تم حفظ المرفق');
             }, {feedback, form});
         });
 
         deleteButton.addEventListener('click', () => {
             const id = editingId;
             const pdf = pdfs.get(Number(id));
-            if (!pdf || !window.confirm('حذف هذا الملف من الكورس؟')) return;
+            if (!pdf || !window.confirm('حذف هذا المرفق من الكورس؟')) return;
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
                 const response = await core.request(pdf.delete_url, {
@@ -217,7 +244,7 @@
                 render(Array.from(pdfs.values()));
                 resetCreate();
                 editor.hidden = true;
-                core.notify(response.message || 'تم حذف الملف');
+                core.notify(response.message || 'تم حذف المرفق');
             }, {feedback, form});
         });
 
@@ -244,7 +271,9 @@
                             || response.pdfs.some((pdf, index) => Number(pdf.id) !== order[index])) throw core.invalid();
                         core.syncVersion(nextVersion);
                         render(response.pdfs);
-                        core.notify(response.message || 'تم حفظ ترتيب الملفات');
+                        const editing = pdfs.get(Number(editingId));
+                        if (editing) form.elements.order.value = String(editing.order);
+                        core.notify(response.message || 'تم حفظ ترتيب المرفقات');
                     }, {reloadOnError: true});
                 },
             });

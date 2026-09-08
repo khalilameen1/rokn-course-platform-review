@@ -10,6 +10,7 @@ use App\Http\Requests\Admin\CoursePdfRequest;
 use App\Http\Requests\Admin\CoursePdfVersionRequest;
 use App\Models\Course;
 use App\Models\CoursePdf;
+use App\Support\CourseAttachmentExternalUrl;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCoursePdfApplicationService;
 use Closure;
@@ -42,8 +43,8 @@ final class CoursePdfController extends Controller
     {
         $data = $request->validated();
         $file = $request->file('pdf_file');
-        if (!$file instanceof UploadedFile) {
-            throw ValidationException::withMessages(['pdf_file' => 'اختر ملف PDF صالحًا']);
+        if (($data['source_type'] ?? 'upload') === 'upload' && !$file instanceof UploadedFile) {
+            throw ValidationException::withMessages(['pdf_file' => 'اختر ملفًا صالحًا']);
         }
 
         return $this->mutationResponse(
@@ -143,15 +144,25 @@ final class CoursePdfController extends Controller
     public function preview(Course $course, CoursePdf $pdf): Response
     {
         $this->assertPdfBelongsToCourse($course, $pdf);
+        if ($pdf->isExternal()) {
+            $url = CourseAttachmentExternalUrl::normalize((string) $pdf->external_url);
+            abort_unless($url !== null, 404);
+
+            return redirect()->away($url, 302, [
+                'Cache-Control' => 'private, no-store',
+                'Referrer-Policy' => 'no-referrer',
+            ]);
+        }
         if (!$pdf->fileExists()) {
             abort(404, 'الملف غير موجود');
         }
 
-        return Storage::disk($pdf->storage_disk)->response($pdf->file_path, 'document.pdf', [
-            'Content-Type' => 'application/pdf',
+        return Storage::disk($pdf->storage_disk)->response($pdf->file_path,
+            \App\Support\DownloadFilename::safe((string) $pdf->original_filename, 'document', (string) $pdf->file_extension), [
+            'Content-Type' => (string) $pdf->mime_type,
             'X-Content-Type-Options' => 'nosniff',
             'Cache-Control' => 'private, no-store',
-        ], 'inline');
+        ], in_array($pdf->mime_type, ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'], true) ? 'inline' : 'attachment');
     }
 
     /** @param Closure(): array<string, mixed> $operation */

@@ -151,6 +151,12 @@ class CoursePublishingService
             $mediaStates->get($lesson->id)
         ));
         foreach ($course->activePdfs as $pdf) {
+            if ($pdf->isExternal()) {
+                if (\App\Support\CourseAttachmentExternalUrl::normalize((string) $pdf->external_url) === null) {
+                    $issues[] = "رابط المرفق «{$pdf->title}» غير صالح";
+                }
+                continue;
+            }
             if (!$this->storedFileExists((string) $pdf->storage_disk, (string) $pdf->file_path)) {
                 $issues[] = "ملف «{$pdf->title}» غير موجود في التخزين";
             }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Admin;
 
 use App\Support\UnicodeText;
+use App\Models\CoursePdf;
+use App\Support\CourseAttachmentExternalUrl;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class CoursePdfRequest extends FormRequest
@@ -18,6 +20,11 @@ final class CoursePdfRequest extends FormRequest
     public function rules(): array
     {
         $creating = $this->isMethod('POST');
+        $pdf = $this->route('pdf');
+        $existingSource = $pdf instanceof CoursePdf ? $pdf->source_type : 'upload';
+        $source = $this->input('source_type', $existingSource);
+        $requiresFile = $source === 'upload' && ($creating || $existingSource === 'external');
+        $requiresUrl = $source === 'external' && ($creating || $existingSource !== 'external');
 
         return [
             'title' => $creating
@@ -32,9 +39,24 @@ final class CoursePdfRequest extends FormRequest
             'description_en' => $creating
                 ? ['nullable', 'string', 'max:1000']
                 : ['sometimes', 'nullable', 'string', 'max:1000'],
-            'pdf_file' => $creating
-                ? ['required', 'file', 'mimes:pdf', 'max:51200']
-                : ['sometimes', 'nullable', 'file', 'mimes:pdf', 'max:51200'],
+            'source_type' => ['sometimes', 'required', 'in:upload,external'],
+            'platform' => ['sometimes', 'required', 'in:mobile,computer'],
+            'external_url' => [
+                'bail',
+                $requiresUrl ? 'required' : ($source === 'external' ? 'sometimes' : 'nullable'),
+                $source === 'external' ? 'required' : 'prohibited',
+                'string', 'max:2000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (CourseAttachmentExternalUrl::normalize((string) $value) === null) {
+                        $fail('أدخل رابط HTTPS صالحًا دون بيانات تسجيل دخول');
+                    }
+                },
+            ],
+            'pdf_file' => [
+                $requiresFile ? 'required' : 'nullable',
+                $source === 'external' ? 'prohibited' : 'file',
+                'max:'.(int) config('course_attachments.max_upload_kilobytes', 51200),
+            ],
             'order' => $creating
                 ? ['nullable', 'integer', 'min:0']
                 : ['sometimes', 'nullable', 'integer', 'min:0'],
