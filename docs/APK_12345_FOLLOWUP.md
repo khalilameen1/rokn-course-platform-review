@@ -458,3 +458,45 @@ coverage remain in place.
 
 Source version: 1.0.48 / Android 49 / iOS 46. Deployment, APK build and physical
 device results are not claimed by this source-change entry.
+
+### Deployed submission fix and in-app provider sheet
+
+Commit `c1932dc8ef17f336e1bd18525583736da64e595d` passed Backend CI
+34214495137: 1266 tests passed, 4 skipped, 12413 assertions. The independent
+MySQL contracts passed 10 tests / 54 assertions. Laravel Cloud deployment 184
+completed successfully. Readiness and public course 3 details returned HTTP 200.
+
+Cloud command 132 verified the deployed numeric signature separates chat reads
+from project POSTs while project IDs still share their submission quota. The
+controller's exact-identity lookup returned HTTP 200 and the existing
+`needs_changes` result. This called only the signature method and read-only
+controller; it did not consume rate counters or issue a paid review. Command
+131 first failed because the diagnostic constructed a localhost request;
+the corrected diagnostic used APP_URL without weakening trusted-host checks.
+
+An intermediate 1.0.48 / 49 APK was built from the clean commit above and
+preserved as `mobile/artifacts/1234567891011.apk` with provenance JSON. It was
+not handed off after the learner supplied the provider-selection screenshot.
+Its SHA-256 is
+`6b876cc9566dbd0afdc7914755e4efc67f3c74fd11e6312b0e484be8884c9bcf`.
+
+The reference shows the app's provider-selection sheet, distinct from the
+provider's account/consent UI. Login now uses a transparent native-stack modal
+with the existing SocialAuthView rendered as a scrollable bottom sheet, using
+Rokn's palette, server-provided provider order/recommendation and existing
+policy links. No second authentication flow, duplicate screen or UI library
+was introduced. Google/Facebook/TikTok retain PKCE and provider authorization;
+Apple retains its native system authentication.
+
+Guest private-tab taps open this sheet directly without a preceding native
+alert or mounting the private screen. A private deep link presents it above
+Home. Closing cleans abandoned login state and pops only the sheet, keeping the
+mounted page underneath. Duplicate close/backdrop taps are ignored, and a
+concurrently restored secure session is adopted rather than logged out. The
+canonical guest reset remains the fallback when there is no underlying page.
+
+The final 1.0.49 / Android 50 / iOS 47 source passes all 185 mobile suites /
+1041 tests, TypeScript, release lint with zero warnings and configuration
+verification. Sheet tests cover provider/close/legal actions, busy states,
+safe-area and viewport changes; they are render/behavior contracts, not a
+physical device or native-layout walkthrough.

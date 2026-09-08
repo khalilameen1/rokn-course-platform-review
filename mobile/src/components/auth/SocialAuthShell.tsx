@@ -119,6 +119,7 @@ export default function SocialAuthShell() {
   const authMethodsRequestRef = useRef<Promise<SocialAuthMethods> | null>(null);
   const authIntentGenerationRef = useRef(0);
   const authAttemptInFlightRef = useRef(false);
+  const dismissingRef = useRef(false);
 
   const loadAuthMethods = useCallback(async () => {
     const generation = ++authMethodsGenerationRef.current;
@@ -201,6 +202,7 @@ export default function SocialAuthShell() {
 
   const continueWith = async (provider: SocialProvider) => {
     if (
+      dismissingRef.current ||
       authAttemptInFlightRef.current ||
       authFlow.phase !== 'ready' ||
       !authFlow.methods.providers.includes(provider)
@@ -287,6 +289,8 @@ export default function SocialAuthShell() {
   };
 
   const enterFreePreview = async () => {
+    if (authAttemptInFlightRef.current || dismissingRef.current) return;
+    dismissingRef.current = true;
     authIntentGenerationRef.current += 1;
     authAttemptInFlightRef.current = false;
     sendAuthFlow({type: 'authorization_finished'});
@@ -307,7 +311,12 @@ export default function SocialAuthShell() {
     ]).then(() => undefined);
     await settleWithin(cleanupAbandonedLogin, undefined, 600);
     dispatch(LogOut());
-    navigation.reset(loginReturnResetState(route.params?.returnTo, 'guest'));
+    if (navigation.canGoBack()) {
+      // Closing a sheet must reveal the same mounted page and scroll position.
+      navigation.goBack();
+    } else {
+      navigation.reset(loginReturnResetState(route.params?.returnTo, 'guest'));
+    }
   };
 
   const recommendedProvider = authMethods?.recommendedProvider;

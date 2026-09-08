@@ -6,10 +6,13 @@ import {
   type ImageSourcePropType,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Svg, {Path} from 'react-native-svg';
 import {
   Accessibility,
@@ -24,8 +27,6 @@ import type {
   SocialAuthMethods,
   SocialProvider,
 } from '../../services/socialAuth';
-import {Container, Content} from '../containers/Containers';
-import {ResponsiveFrame} from '../ui/PremiumUI';
 
 type Props = {
   phase: 'discovering' | 'discovery_failed' | 'ready' | 'authorizing';
@@ -103,233 +104,287 @@ export default function SocialAuthView({
   onOpenTerms,
   onOpenPrivacy,
 }: Props) {
+  const insets = useSafeAreaInsets();
+  const {height} = useWindowDimensions();
+  const busy = Boolean(loading) || phase === 'authorizing';
+  const dismiss = () => {
+    if (!busy) onExplore();
+  };
   const orderedProviders = orderedProviderIds.flatMap(providerId => {
     const provider = providerDefinitions.find(item => item.id === providerId);
     return provider ? [provider] : [];
   });
 
   return (
-    <Container noPadding>
-      <Content
-        noPadding
-        contentContainerStyle={styles.scrollContent}
-        paddingBottom={Spacing.xl}>
-        <ResponsiveFrame style={styles.frame}>
-          <View style={styles.hero}>
-            <Image
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-              source={require('../../assets/images/authLogo.png')}
-              style={styles.logo}
-            />
-            <Text accessibilityRole="header" style={styles.title}>
-              سجّل دخولك إلى ركن
-            </Text>
-            <Text style={styles.subtitle}>
-              احفظ تقدمك ومحفوظاتك وارجع لها في أي وقت
-            </Text>
+    <View
+      accessibilityViewIsModal
+      style={[
+        styles.overlay,
+        {
+          paddingTop: insets.top + Spacing.sm,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}>
+      <Pressable
+        accessibilityLabel="إغلاق خيارات تسجيل الدخول"
+        accessibilityRole="button"
+        accessibilityState={{disabled: busy}}
+        disabled={busy}
+        onPress={dismiss}
+        style={styles.backdrop}
+      />
+      <View
+        testID="social-auth-sheet"
+        style={[
+          styles.sheet,
+          {maxHeight: Math.max(0, height - insets.top - Spacing.sm)},
+        ]}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={{
+            paddingBottom: Math.max(insets.bottom, Spacing.md) + Spacing.sm,
+          }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator>
+          <View style={styles.header}>
+            <View style={styles.heading}>
+              <Text accessibilityRole="header" style={styles.title}>
+                الدخول إلى ركن
+              </Text>
+              <Text style={styles.subtitle}>اختر حسابك للمتابعة</Text>
+            </View>
+            <Pressable
+              accessibilityLabel="إغلاق"
+              accessibilityRole="button"
+              accessibilityState={{disabled: busy}}
+              disabled={busy}
+              onPress={dismiss}
+              style={({pressed}) => [
+                styles.closeButton,
+                busy && styles.providerDisabled,
+                pressed && styles.pressed,
+              ]}>
+              <Svg
+                accessibilityElementsHidden
+                width={20}
+                height={20}
+                viewBox="0 0 24 24">
+                <Path
+                  d="M6 6l12 12M18 6L6 18"
+                  stroke={Palette.text}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                />
+              </Svg>
+            </Pressable>
           </View>
+          <View style={styles.body}>
+            <View style={styles.providers}>
+              {orderedProviders.map(provider => {
+                const disabled = busy;
+                if (provider.id === 'apple') {
+                  return (
+                    <View
+                      key={provider.id}
+                      pointerEvents={disabled ? 'none' : 'auto'}
+                      style={disabled ? styles.providerDisabled : undefined}>
+                      <AppleAuthentication.AppleAuthenticationButton
+                        buttonStyle={
+                          AppleAuthentication.AppleAuthenticationButtonStyle
+                            .WHITE
+                        }
+                        buttonType={
+                          AppleAuthentication.AppleAuthenticationButtonType
+                            .CONTINUE
+                        }
+                        cornerRadius={14}
+                        onPress={() => {
+                          if (!busy) onContinue('apple');
+                        }}
+                        style={styles.appleProvider}
+                      />
+                    </View>
+                  );
+                }
 
-          <View style={styles.providers}>
-            {orderedProviders.map(provider => {
-              const disabled = Boolean(loading);
-              if (provider.id === 'apple') {
                 return (
                   <View
                     key={provider.id}
-                    pointerEvents={disabled ? 'none' : 'auto'}
-                    style={disabled ? styles.providerDisabled : undefined}>
-                    <AppleAuthentication.AppleAuthenticationButton
-                      buttonStyle={
-                        AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-                      }
-                      buttonType={
-                        AppleAuthentication.AppleAuthenticationButtonType
-                          .CONTINUE
-                      }
-                      cornerRadius={14}
-                      onPress={() => onContinue('apple')}
-                      style={styles.appleProvider}
-                    />
+                    style={
+                      provider.id === recommendedProvider && recommendationText
+                        ? styles.recommendedProviderWrap
+                        : undefined
+                    }>
+                    {provider.id === recommendedProvider &&
+                      recommendationText && (
+                        <View
+                          pointerEvents="none"
+                          style={styles.recommendedBadge}>
+                          <Text
+                            maxFontSizeMultiplier={1.6}
+                            style={styles.recommendedText}>
+                            {recommendationText}
+                          </Text>
+                        </View>
+                      )}
+                    <Pressable
+                      accessibilityLabel={provider.label}
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        busy: loading === provider.id,
+                        disabled,
+                      }}
+                      disabled={disabled}
+                      onPress={() => {
+                        if (!busy) onContinue(provider.id);
+                      }}
+                      style={({pressed}) => [
+                        styles.provider,
+                        provider.id === 'google' && styles.googleProvider,
+                        provider.id === 'tiktok' && styles.tiktokProvider,
+                        provider.id === 'facebook' && styles.facebookProvider,
+                        loading &&
+                          loading !== provider.id &&
+                          styles.providerDisabled,
+                        pressed && styles.pressed,
+                      ]}>
+                      <View style={styles.providerIcon}>
+                        {loading === provider.id ? (
+                          <ActivityIndicator
+                            color={
+                              provider.id === 'google'
+                                ? Palette.canvas
+                                : '#FFFFFF'
+                            }
+                            size="small"
+                          />
+                        ) : provider.image ? (
+                          <Image
+                            accessibilityElementsHidden
+                            importantForAccessibility="no"
+                            source={provider.image}
+                            style={styles.providerImage}
+                          />
+                        ) : provider.brandMark === 'tiktok' ? (
+                          <TikTokMark />
+                        ) : null}
+                      </View>
+                      <Text
+                        style={[
+                          styles.providerLabel,
+                          provider.id === 'google' && styles.googleLabel,
+                        ]}>
+                        {provider.label}
+                      </Text>
+                    </Pressable>
                   </View>
                 );
-              }
-
-              return (
-                <View
-                  key={provider.id}
-                  style={
-                    provider.id === recommendedProvider && recommendationText
-                      ? styles.recommendedProviderWrap
-                      : undefined
-                  }>
-                  {provider.id === recommendedProvider &&
-                    recommendationText && (
-                      <View
-                        pointerEvents="none"
-                        style={styles.recommendedBadge}>
-                        <Text
-                          maxFontSizeMultiplier={1.6}
-                          numberOfLines={2}
-                          style={styles.recommendedText}>
-                          {recommendationText}
-                        </Text>
-                      </View>
-                    )}
-                  <Pressable
-                    accessibilityLabel={provider.label}
-                    accessibilityRole="button"
-                    accessibilityState={{
-                      busy: loading === provider.id,
-                      disabled,
-                    }}
-                    disabled={disabled}
-                    onPress={() => onContinue(provider.id)}
-                    style={({pressed}) => [
-                      styles.provider,
-                      provider.id === 'google' && styles.googleProvider,
-                      provider.id === 'tiktok' && styles.tiktokProvider,
-                      provider.id === 'facebook' && styles.facebookProvider,
-                      loading &&
-                        loading !== provider.id &&
-                        styles.providerDisabled,
-                      pressed && styles.pressed,
-                    ]}>
-                    <View style={styles.providerIcon}>
-                      {loading === provider.id ? (
-                        <ActivityIndicator
-                          color={
-                            provider.id === 'google'
-                              ? Palette.canvas
-                              : '#FFFFFF'
-                          }
-                          size="small"
-                        />
-                      ) : provider.image ? (
-                        <Image
-                          accessibilityElementsHidden
-                          importantForAccessibility="no"
-                          source={provider.image}
-                          style={styles.providerImage}
-                        />
-                      ) : provider.brandMark === 'tiktok' ? (
-                        <TikTokMark />
-                      ) : null}
-                    </View>
-                    <Text
-                      style={[
-                        styles.providerLabel,
-                        provider.id === 'google' && styles.googleLabel,
-                      ]}>
-                      {provider.label}
-                    </Text>
-                  </Pressable>
-                </View>
-              );
-            })}
-          </View>
-
-          {phase === 'discovering' && (
-            <View accessibilityLiveRegion="polite" style={styles.authStatus}>
-              <ActivityIndicator color={Palette.primary} size="small" />
-              <Text style={styles.authStatusText}>جارٍ تحميل طرق الدخول</Text>
+              })}
             </View>
-          )}
-          {phase === 'discovery_failed' && (
-            <View accessibilityRole="alert" style={styles.authStatus}>
-              <Text style={styles.authStatusText}>
-                {failureMessage(failureCode)}
-              </Text>
+
+            {phase === 'discovering' && (
+              <View accessibilityLiveRegion="polite" style={styles.authStatus}>
+                <ActivityIndicator color={Palette.primary} size="small" />
+                <Text style={styles.authStatusText}>جارٍ تحميل طرق الدخول</Text>
+              </View>
+            )}
+            {(phase === 'discovery_failed' ||
+              (methods && orderedProviders.length === 0)) && (
+              <View accessibilityRole="alert" style={styles.authStatus}>
+                <Text style={styles.authStatusText}>
+                  {phase === 'discovery_failed'
+                    ? failureMessage(failureCode)
+                    : 'طرق تسجيل الدخول غير متاحة الآن'}
+                </Text>
+                <Pressable
+                  accessibilityLabel="إعادة تحميل طرق تسجيل الدخول"
+                  accessibilityRole="button"
+                  accessibilityState={{disabled: busy}}
+                  disabled={busy}
+                  onPress={onRetry}
+                  style={styles.retryMethods}>
+                  <Text style={styles.retryMethodsText}>حاول مرة أخرى</Text>
+                </Pressable>
+              </View>
+            )}
+
+            <View
+              accessibilityLabel="بالمتابعة أنت توافق على شروط الاستخدام وسياسة الخصوصية"
+              style={styles.legal}>
+              <Text style={styles.legalCopy}>بالمتابعة أنت توافق على</Text>
               <Pressable
-                accessibilityLabel="إعادة تحميل طرق تسجيل الدخول"
-                accessibilityRole="button"
-                onPress={onRetry}
-                style={styles.retryMethods}>
-                <Text style={styles.retryMethodsText}>حاول مرة أخرى</Text>
+                accessibilityLabel="فتح شروط الاستخدام"
+                accessibilityRole="link"
+                onPress={onOpenTerms}
+                style={styles.legalLinkButton}>
+                <Text style={styles.legalLink}>شروط الاستخدام</Text>
+              </Pressable>
+              <Text style={styles.legalCopy}>و</Text>
+              <Pressable
+                accessibilityLabel="فتح سياسة الخصوصية"
+                accessibilityRole="link"
+                onPress={onOpenPrivacy}
+                style={styles.legalLinkButton}>
+                <Text style={styles.legalLink}>سياسة الخصوصية</Text>
               </Pressable>
             </View>
-          )}
-          {methods && orderedProviders.length === 0 && (
-            <View accessibilityRole="alert" style={styles.authStatus}>
-              <Text style={styles.authStatusText}>
-                طرق تسجيل الدخول غير متاحة الآن
-              </Text>
-              <Pressable
-                accessibilityLabel="إعادة تحميل طرق تسجيل الدخول"
-                accessibilityRole="button"
-                onPress={onRetry}
-                style={styles.retryMethods}>
-                <Text style={styles.retryMethodsText}>حاول مرة أخرى</Text>
-              </Pressable>
-            </View>
-          )}
-
-          <View
-            accessibilityLabel="بالمتابعة أنت توافق على شروط الاستخدام وسياسة الخصوصية"
-            style={styles.legal}>
-            <Text style={styles.legalCopy}>بالمتابعة أنت توافق على</Text>
-            <Pressable
-              accessibilityLabel="فتح شروط الاستخدام"
-              accessibilityRole="link"
-              onPress={onOpenTerms}
-              style={styles.legalLinkButton}>
-              <Text style={styles.legalLink}>شروط الاستخدام</Text>
-            </Pressable>
-            <Text style={styles.legalCopy}>و</Text>
-            <Pressable
-              accessibilityLabel="فتح سياسة الخصوصية"
-              accessibilityRole="link"
-              onPress={onOpenPrivacy}
-              style={styles.legalLinkButton}>
-              <Text style={styles.legalLink}>سياسة الخصوصية</Text>
-            </Pressable>
           </View>
-
-          <Pressable
-            accessibilityLabel="استكشاف المحتوى المجاني دون تسجيل دخول"
-            accessibilityRole="button"
-            accessibilityState={{disabled: Boolean(loading)}}
-            disabled={Boolean(loading)}
-            onPress={onExplore}
-            style={({pressed}) => [
-              styles.reviewButton,
-              loading && styles.providerDisabled,
-              pressed && styles.pressed,
-            ]}>
-            <Text style={styles.reviewButtonText}>استكشف المحتوى المجاني</Text>
-          </Pressable>
-        </ResponsiveFrame>
-      </Content>
-    </Container>
+        </ScrollView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContent: {flexGrow: 1, justifyContent: 'center'},
-  frame: {
-    maxWidth: 520,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.xl,
-  },
-  hero: {
+  overlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingTop: Spacing.xl,
-    paddingBottom: Spacing.xxl,
+    backgroundColor: 'transparent',
   },
-  logo: {width: 92, height: 92, resizeMode: 'contain'},
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Palette.overlay,
+  },
+  sheet: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: Palette.surface,
+    borderTopLeftRadius: Radius.xl,
+    borderTopRightRadius: Radius.xl,
+    overflow: 'hidden',
+  },
+  scroll: {flexGrow: 0, flexShrink: 1},
+  body: {paddingHorizontal: Spacing.xl},
+  header: {
+    ...rtlRowStyle,
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.lg,
+  },
+  heading: {flex: 1, minWidth: 0},
+  closeButton: {
+    width: Accessibility.minTouchTarget,
+    height: Accessibility.minTouchTarget,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.pill,
+    backgroundColor: Palette.surfaceRaised,
+  },
   title: {
-    ...Type.title,
-    writingDirection: 'rtl',
+    ...Type.section,
+    ...textDirection,
     color: Palette.text,
-    textAlign: 'center',
-    marginTop: Spacing.lg,
   },
   subtitle: {
-    ...Type.body,
-    writingDirection: 'rtl',
+    ...Type.caption,
+    ...textDirection,
     color: Palette.textMuted,
-    textAlign: 'center',
-    marginTop: Spacing.xs,
+    marginTop: Spacing.xxs,
   },
   providers: {direction: 'rtl', gap: Spacing.sm},
   recommendedProviderWrap: {direction: 'rtl'},
@@ -340,6 +395,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     borderWidth: 1,
     paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
   },
   googleProvider: {backgroundColor: '#FFFFFF', borderColor: '#FFFFFF'},
   tiktokProvider: {backgroundColor: '#111111', borderColor: '#30343B'},
@@ -420,21 +476,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryMethods: {
-    minHeight: 32,
+    minHeight: Accessibility.minTouchTarget,
     justifyContent: 'center',
     paddingHorizontal: Spacing.sm,
     borderRadius: Radius.pill,
     backgroundColor: Palette.primarySoft,
   },
   retryMethodsText: {...Type.caption, color: '#8BB5FF'},
-  reviewButton: {
-    alignSelf: 'center',
-    minHeight: Accessibility.minTouchTarget,
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.md,
-    marginTop: Spacing.sm,
-  },
-  reviewButtonText: {...Type.caption, color: Palette.textMuted},
   providerDisabled: {opacity: 0.46},
   pressed: {opacity: 0.78, transform: [{scale: 0.99}]},
 });

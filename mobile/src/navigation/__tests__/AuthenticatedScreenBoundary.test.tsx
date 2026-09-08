@@ -16,7 +16,7 @@ const navigation = () =>
 describe('AuthenticatedScreenBoundary', () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it('does not mount private content and replaces a confirmed deep link with Login', async () => {
+  it('does not mount private content and opens Login above Home for a private deep link', async () => {
     const nav = navigation();
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     let renderer: TestRenderer.ReactTestRenderer;
@@ -36,8 +36,7 @@ describe('AuthenticatedScreenBoundary', () => {
     expect(renderer!.root.findAllByProps({testID: 'private-wallet'})).toEqual(
       [],
     );
-    expect(alert).toHaveBeenCalledTimes(1);
-    await act(async () => alert.mock.calls[0][2]?.[1]?.onPress?.());
+    expect(alert).not.toHaveBeenCalled();
     expect(nav.reset).toHaveBeenCalledWith({
       index: 1,
       routes: [
@@ -65,6 +64,7 @@ describe('AuthenticatedScreenBoundary', () => {
       );
     });
     expect(alert).not.toHaveBeenCalled();
+    expect(nav.reset).not.toHaveBeenCalled();
     expect(renderer!.root.findAllByProps({testID: 'private-profile'})).toEqual(
       [],
     );

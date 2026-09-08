@@ -3,8 +3,6 @@ import {StyleSheet, View} from 'react-native';
 
 import {Palette} from '../constants/designSystem';
 import {safeLoginReturnToFromRoute} from './authReturn';
-import {goBackOrHome} from './RootNavigationHelper';
-import {promptGuestLogin} from './journeyNavigation';
 import type {RootNavigation, RootStackParamList} from './types';
 
 type RouteSnapshot = {
@@ -35,20 +33,15 @@ export const AuthenticatedScreenBoundary = ({
   useEffect(() => {
     if (!sessionReady || authenticated) return;
     const returnTo = safeLoginReturnToFromRoute(route);
-    const prompted = promptGuestLogin(navigation, returnTo, {
-      onCancel: () => goBackOrHome(navigation),
-      onLogin: () =>
-        navigation.reset({
-          index: 1,
-          routes: [
-            {name: 'Home'},
-            {name: 'Login', params: returnTo ? {returnTo} : undefined},
-          ],
-        }),
+    // A private deep link has no guest page to show. Present the same login
+    // sheet above Home without mounting the private screen or an extra alert.
+    navigation.reset({
+      index: 1,
+      routes: [
+        {name: 'Home'},
+        {name: 'Login', params: returnTo ? {returnTo} : undefined},
+      ],
     });
-    // Another prompt can already own the native alert. Never leave a private
-    // route blank underneath it if this destination could not claim the gate.
-    if (!prompted) goBackOrHome(navigation);
   }, [authenticated, navigation, route, sessionReady]);
 
   if (!sessionReady || !authenticated)

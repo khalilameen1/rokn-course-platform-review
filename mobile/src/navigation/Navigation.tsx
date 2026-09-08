@@ -64,7 +64,16 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
         headerShown: false,
       }}
       initialRouteName="Home">
-      <Stack.Screen name="Login" component={Login} />
+      <Stack.Screen
+        name="Login"
+        component={Login}
+        options={{
+          presentation: 'transparentModal',
+          animation: reducedMotion ? 'none' : 'fade',
+          contentStyle: {backgroundColor: 'transparent'},
+          gestureEnabled: false,
+        }}
+      />
       <Stack.Screen name="Feedback" component={Feedback} />
       <Stack.Screen name="Home" component={Home} />
       <Stack.Screen name="Reels" component={Reels} />
