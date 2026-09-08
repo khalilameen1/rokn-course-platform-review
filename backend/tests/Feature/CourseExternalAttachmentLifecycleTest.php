@@ -11,9 +11,11 @@ use App\Models\User;
 use App\Services\AdminCoursePdfApplicationService;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,16 +23,23 @@ use Tests\TestCase;
 
 final class CourseExternalAttachmentLifecycleTest extends TestCase
 {
-    use RefreshDatabase;
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Real upload admission commits its cleanup ledger before writing bytes;
+        // it cannot run inside RefreshDatabase's enclosing test transaction.
+        $this->artisan('migrate:fresh')->assertExitCode(0);
+    }
 
     #[DataProvider('createRouteSources')]
-    public function test_external_create_receipt_replays_without_allocating_a_second_attachment(bool $hiddenDraft): void
+    public function test_external_create_receipt_replays_without_allocating_a_second_attachment(bool $hiddenDraft, string $role): void
     {
         Http::preventStrayRequests();
         $admin = new User();
         $admin->forceFill([
             'name_ar' => 'مدير', 'email' => 'attachment-admin@example.test',
-            'role' => 'admin', 'active' => true,
+            'role' => $role, 'active' => true,
         ])->save();
         $this->withoutMiddleware(RequireAdminMfa::class);
         $this->actingAs($admin, 'web');
@@ -58,6 +67,127 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         ]))->assertStatus(409);
         self::assertSame(1, CoursePdf::count());
         self::assertSame(0, DB::table('account_file_deletions')->count());
+        Http::assertNothingSent();
+    }
+
+    public function test_moderator_can_complete_attachment_authoring_and_publish_through_http_routes(): void
+    {
+        Http::preventStrayRequests();
+        Queue::fake();
+        Storage::fake('course-pdfs-shared');
+        config(['course_pdfs.disk' => 'course-pdfs-shared', 'course_pdfs.shared_storage' => true]);
+        $moderator = new User();
+        $moderator->forceFill([
+            'name_ar' => 'مشرف', 'email' => 'attachment-moderator@example.test',
+            'role' => 'moderator', 'active' => true,
+        ])->save();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($moderator, 'web');
+        $canonical = $this->course(false);
+        $old = $canonical->pdfs()->create([
+            'title' => 'المصدر المنشور', 'source_type' => 'external', 'platform' => 'computer',
+            'external_url' => 'https://example.org/original.zip', 'file_path' => '', 'is_active' => true,
+        ]);
+        $started = $this->postJson(route('admin.courses.draft.start', $canonical))->assertOk();
+        $draft = Course::findOrFail($started->json('draft_course_id'));
+        $copy = $draft->pdfs()->firstOrFail();
+        $version = $started->json('authoring_version');
+
+        $this->patchJson(route('admin.courses.pdfs.update', [$draft, $copy]), [
+            'source_type' => 'upload', 'platform' => 'computer', 'authoring_version' => $version,
+        ])->assertUnprocessable()->assertJsonValidationErrors('pdf_file');
+        self::assertSame($version, (int) $draft->fresh()->authoring_version);
+        self::assertSame($old->external_url, $copy->fresh()->external_url);
+
+        $uploaded = $this->patchJson(route('admin.courses.pdfs.update', [$draft, $copy]), [
+            'source_type' => 'upload', 'platform' => 'computer', 'title' => 'دليل محدث',
+            'pdf_file' => UploadedFile::fake()->createWithContent('guide.txt', "First guide\n"),
+            'authoring_version' => $version,
+        ])->assertOk()->assertJsonPath('pdf.source_type', 'upload')->assertJsonPath('pdf.platform', 'computer');
+        $version = $uploaded->json('authoring_version');
+        $firstPath = $copy->fresh()->file_path;
+        Storage::disk('course-pdfs-shared')->assertExists($firstPath);
+        self::assertNull($copy->fresh()->external_url);
+
+        $replaced = $this->patchJson(route('admin.courses.pdfs.update', [$draft, $copy]), [
+            'pdf_file' => UploadedFile::fake()->createWithContent('guide-v2.txt', "Replacement guide\n"),
+            'authoring_version' => $version,
+        ])->assertOk()->assertJsonPath('pdf.platform', 'computer');
+        $version = $replaced->json('authoring_version');
+        $currentPath = $copy->fresh()->file_path;
+        self::assertNotSame($firstPath, $currentPath);
+        self::assertSame("Replacement guide\n", Storage::disk('course-pdfs-shared')->get($currentPath));
+        $retargeted = $this->patchJson(route('admin.courses.pdfs.update', [$draft, $copy]), [
+            'platform' => 'mobile', 'title' => 'دليل الهاتف', 'authoring_version' => $version,
+        ])->assertOk()->assertJsonPath('pdf.source_type', 'upload')->assertJsonPath('pdf.platform', 'mobile');
+        $version = $retargeted->json('authoring_version');
+        self::assertSame($currentPath, $copy->fresh()->file_path);
+
+        $workFile = UploadedFile::fake()->createWithContent('work.txt', "Working notes\n");
+        $created = $this->post(route('admin.courses.pdfs.store', $draft), [
+            'title' => 'ملفات العمل', 'source_type' => 'upload', 'platform' => 'mobile',
+            'pdf_file' => new UploadedFile($workFile->getPathname(), 'work.txt', 'text/plain', null, true),
+            'authoring_version' => $version, 'authoring_request_id' => (string) Str::uuid(),
+        ], ['Accept' => 'application/json'])->assertOk()->assertJsonPath('pdf.source_type', 'upload')->assertJsonPath('pdf.platform', 'mobile');
+        $version = $created->json('authoring_version');
+        $external = CoursePdf::findOrFail($created->json('pdf.id'));
+        $switched = $this->patchJson(route('admin.courses.pdfs.update', [$draft, $external]), [
+            'source_type' => 'external', 'platform' => 'computer',
+            'external_url' => 'https://example.org/work.zip', 'authoring_version' => $version,
+        ])->assertOk()->assertJsonPath('pdf.source_type', 'external')->assertJsonPath('pdf.platform', 'computer')
+            ->assertJsonPath('pdf.external_url', 'https://example.org/work.zip')->assertJsonPath('pdf.file_size', null);
+        $version = $switched->json('authoring_version');
+        self::assertSame('', $external->fresh()->file_path);
+        $this->get(route('admin.courses.pdfs.preview', [$draft, $external]))->assertRedirect('https://example.org/work.zip');
+
+        $temporary = $this->postJson(route('admin.courses.pdfs.store', $draft), [
+            'title' => 'ملف سيحذف', 'source_type' => 'external', 'platform' => 'mobile',
+            'external_url' => 'https://example.org/temporary.zip',
+            'authoring_version' => $version, 'authoring_request_id' => (string) Str::uuid(),
+        ])->assertOk();
+        $version = $temporary->json('authoring_version');
+        $temporaryId = $temporary->json('pdf.id');
+        $hidden = $this->postJson(route('admin.courses.pdfs.toggle-status', [$draft, $external]), [
+            'authoring_version' => $version,
+        ])->assertOk()->assertJsonPath('pdf.is_active', false);
+        $version = $hidden->json('authoring_version');
+        $ordered = $this->postJson(route('admin.courses.pdfs.reorder', $draft), [
+            'order' => [$external->id, $copy->id, $temporaryId], 'authoring_version' => $version,
+        ])->assertOk();
+        $version = $ordered->json('authoring_version');
+        self::assertSame([$external->id, $copy->id, $temporaryId], $draft->pdfs()->orderBy('order')->pluck('id')->all());
+        $this->deleteJson(route('admin.courses.pdfs.destroy', [$draft, $temporaryId]), [
+            'authoring_version' => $version - 1,
+        ])->assertStatus(409);
+        self::assertNotNull(CoursePdf::find($temporaryId));
+        $deleted = $this->deleteJson(route('admin.courses.pdfs.destroy', [$draft, $temporaryId]), [
+            'authoring_version' => $version,
+        ])->assertOk()->assertJsonPath('pdf.deleted', true);
+        $version = $deleted->json('authoring_version');
+        self::assertNull(CoursePdf::find($temporaryId));
+        self::assertSame([$old->id], $canonical->pdfs()->pluck('id')->all());
+        self::assertSame('https://example.org/original.zip', $old->fresh()->external_url);
+
+        // This fixture omits unrelated course content. Only readiness is stubbed;
+        // the moderator route, draft swap and attachment payload remain real.
+        $publishing = Mockery::mock(CoursePublishingService::class);
+        $publishing->shouldReceive('audit')->twice()->andReturn(['ready' => true, 'issues' => []]);
+        $this->app->instance(CoursePublishingService::class, $publishing);
+        $this->patchJson(route('admin.courses.update', $draft), [
+            'authoring_version' => $version, 'publishing_intent' => 'publish', 'is_catalog_visible' => true,
+        ])->assertOk()->assertJsonPath('saved', true)->assertJsonPath('published', true)->assertJsonPath('course.id', $canonical->id);
+        self::assertSame([$external->id, $copy->id], $canonical->pdfs()->orderBy('order')->pluck('id')->all());
+        self::assertSame('external', $external->fresh()->source_type);
+        self::assertSame('computer', $external->fresh()->platform);
+        self::assertFalse($external->fresh()->is_active);
+        self::assertSame('https://example.org/work.zip', $external->fresh()->external_url);
+        self::assertSame('upload', $copy->fresh()->source_type);
+        self::assertSame('mobile', $copy->fresh()->platform);
+        self::assertSame('دليل الهاتف', $copy->fresh()->title);
+        self::assertSame($currentPath, $copy->fresh()->file_path);
+        Storage::disk('course-pdfs-shared')->assertExists($currentPath);
+        self::assertSame($copy->id, app(CourseStagedAuthoringService::class)->currentEntityId(CoursePdf::class, $old->id));
+        self::assertSame('https://example.org/original.zip', $old->fresh()->external_url);
         Http::assertNothingSent();
     }
 
@@ -118,7 +248,12 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
 
     public static function createRouteSources(): array
     {
-        return ['isolated draft' => [true], 'published course resolved to draft' => [false]];
+        return [
+            'admin isolated draft' => [true, 'admin'],
+            'admin published course resolved to draft' => [false, 'admin'],
+            'moderator isolated draft' => [true, 'moderator'],
+            'moderator published course resolved to draft' => [false, 'moderator'],
+        ];
     }
 
     public function test_claimed_receipt_cannot_be_completed_under_another_actor_route_or_request_id(): void

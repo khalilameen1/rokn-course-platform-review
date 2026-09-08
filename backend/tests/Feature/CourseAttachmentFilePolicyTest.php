@@ -50,19 +50,39 @@ final class CourseAttachmentFilePolicyTest extends TestCase
     public function test_zip_assets_and_office_documents_keep_distinct_types(): void
     {
         if (!class_exists(\ZipArchive::class)) self::markTestSkipped('ZIP extension unavailable on this host');
-        $package = $this->file('guide.docx', '');
-        $zip = new \ZipArchive();
-        self::assertTrue($zip->open($package->getRealPath(), \ZipArchive::OVERWRITE) === true);
-        $zip->addFromString('[Content_Types].xml', '<Types/>');
-        $zip->addFromString('word/document.xml', '<document/>');
-        $zip->close();
         $policy = app(CourseMediaFilePolicy::class);
-        self::assertSame('docx', $policy->attachment($package)['extension']);
-        $archive = new UploadedFile($package->getRealPath(), 'assets.zip', null, null, true);
-        self::assertSame('application/zip', $policy->attachment($archive)['mime']);
+        foreach ([
+            'docx' => ['word/document.xml', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+            'xlsx' => ['xl/workbook.xml', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+            'pptx' => ['ppt/presentation.xml', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+        ] as $extension => [$mainPart, $mime]) {
+            $package = $this->officeFile($extension, $mainPart);
+            $metadata = $policy->attachment($package);
+            self::assertSame($extension, $metadata['extension']);
+            self::assertSame($mime, $metadata['mime']);
+            self::assertSame(hash_file('sha256', $package->getRealPath()), $metadata['sha256']);
+            $archive = new UploadedFile($package->getRealPath(), 'assets.zip', null, null, true);
+            self::assertSame('application/zip', $policy->attachment($archive)['mime']);
+        }
 
         $this->expectException(ValidationException::class);
-        $policy->attachment(new UploadedFile($package->getRealPath(), 'slides.pptx', null, null, true));
+        $policy->attachment(new UploadedFile($package->getRealPath(), 'guide.docx', null, null, true));
+    }
+
+    private function officeFile(string $extension, string $mainPart): UploadedFile
+    {
+        // Laravel's fake retains an open tmpfile handle. Windows then prevents
+        // ZipArchive from replacing it when close() writes the finished package.
+        $path = tempnam(sys_get_temp_dir(), 'rokn-course-office-');
+        self::assertIsString($path);
+        $this->beforeApplicationDestroyed(static fn () => unlink($path));
+        $zip = new \ZipArchive();
+        self::assertTrue($zip->open($path, \ZipArchive::OVERWRITE) === true);
+        $zip->addFromString('[Content_Types].xml', '<Types/>');
+        $zip->addFromString($mainPart, '<document/>');
+        self::assertTrue($zip->close());
+
+        return new UploadedFile($path, "guide.{$extension}", null, null, true);
     }
 
     private function file(string $name, string $bytes): UploadedFile

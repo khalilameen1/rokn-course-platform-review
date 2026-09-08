@@ -1406,3 +1406,55 @@ runs, and two backend suites / 18 tests / 91 assertions. TypeScript, scoped
 ESLint, PHP syntax and diff checks passed. No live provider calls, APK, push or
 deployment. These are local behavioral proofs, not a claim that every remaining
 journey or physical-device condition has been accepted.
+
+## September 9 — attachment lifecycle evidence gaps closed without production churn
+
+This pass returned to the goal's explicit attachment operations and identified
+missing evidence rather than assuming that every inspection must change source.
+No new production defect was established in these bounded paths, and no runtime
+code, feature, layout, dependency or environment value was changed.
+
+- The previously skipped course Office/ZIP case now runs with PHP ZIP enabled.
+  Its first Windows failure was fixture-only: Laravel's fake retained an open
+  temporary-file handle and prevented ZipArchive from replacing the file on
+  close. A closed temporary pathname fixes the fixture. The same policy now has
+  executable proof for DOCX/XLSX/PPTX, distinct ZIP naming, matching MIME/hash,
+  and rejection of a mismatched Office extension. The existing PDF/image/text,
+  internal size limit, renamed HTML and unsupported-type cases remain.
+- Actual moderator HTTP tests exercise create/receipt replay on an isolated
+  draft and on a canonical course resolved to its draft. The complete route
+  sequence proves required replacement validation without mutation, external
+  to upload, byte replacement, computer to mobile, upload to external, preview,
+  hide, reorder, stale-version delete rejection, deletion and publication. The
+  canonical course retains its old attachments until publish; the resulting
+  source/device/visibility/order/file and lineage are asserted afterwards.
+  Upload fixtures use real UploadedFile wrappers and the repository's existing
+  no-outer-transaction migrate:fresh pattern, so tracked file admission commits
+  its cleanup receipt normally. Only unrelated publishing readiness and MFA
+  are bypassed in the fixture; route permissions and authoring work are real.
+- A learner's original metadata ID and signed download URL were exercised over
+  two real staged publications: upload/mobile to external/computer and back.
+  Unpublished changes remain invisible, old IDs reach the current attachment,
+  and HTTP returns the current redirect or exact replacement bytes. Hidden,
+  deleted, unpublished-course and revoked-enrollment cases reject the old link.
+  Existing signature tampering, access and storage tests remain in the gate.
+  These tests use SQLite and a fake private disk, with no outgoing HTTP.
+- Ten actual mobile action tests cover the Android permission handoff, with
+  API 24 and 28 explicitly exercised and API 29/36 skipping the legacy prompt.
+  Denied/never-ask-again results do not claim a transfer; a later granted retry
+  starts one system download. Computer copy bypasses permission and transfer,
+  external phone files use native downloads, and an account change during the
+  permission prompt discards the stale action. Existing source renewal, native
+  cancellation, binary-file, HTML fallback and per-row busy tests were retained.
+
+Final root gates: 40 backend tests / 461 assertions across two exact-path runs,
+72 mobile tests / seven suites, both current attachment/authoring browser
+scripts, full TypeScript, scoped lint, PHP syntax and diff checks passed.
+The existing Android Release Kotlin target also compiled successfully offline
+for the direct/test profile (minSdk 24), without assembling an APK. Existing
+toolchain/deprecation warnings were not treated as new functional defects.
+
+This closes these explicit local evidence gaps, not physical-device acceptance.
+iOS compilation, OEM behavior, live external-host transfers and production
+acceptance are not established by these checks. No APK, push or deployment;
+the broader requested review remains active.
