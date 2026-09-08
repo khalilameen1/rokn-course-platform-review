@@ -96,6 +96,10 @@ document.addEventListener('DOMContentLoaded', function () {
         'bunny_upload_allocation_in_progress',
     ]);
     const serverRejectedClaim = @json($errors->has('bunny_video_claim_terminal'));
+    // Allocation provides a resumable identity before any video bytes arrive.
+    // Only a completed transfer (or a completed claim returned by the form)
+    // may bypass upload on Save.
+    let completedClaim = serverRejectedClaim ? '' : String(claimInput.value || '');
     let currentFile = null;
     let currentRecord = null;
     let currentRequest = null;
@@ -304,6 +308,7 @@ document.addEventListener('DOMContentLoaded', function () {
         currentStorageKey = null;
         currentRecord = null;
         claimInput.value = '';
+        completedClaim = '';
         fileInput.disabled = false;
         syncVideoRequired(fileInput.dataset.videoRequired === 'true');
     };
@@ -317,6 +322,7 @@ document.addEventListener('DOMContentLoaded', function () {
             currentStorageKey = null;
             currentRecord = null;
             claimInput.value = '';
+            completedClaim = '';
             fileInput.disabled = false;
             syncVideoRequired(fileInput.dataset.videoRequired === 'true');
         }
@@ -590,6 +596,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         claimInput.value = record.claim;
+        completedClaim = record.claim;
         fileInput.removeAttribute('required');
         fileInput.removeAttribute('data-required');
         fileInput.disabled = true;
@@ -642,6 +649,7 @@ document.addEventListener('DOMContentLoaded', function () {
     fileInput.addEventListener('change', function () {
         currentFile = this.files?.[0] || null;
         claimInput.value = '';
+        completedClaim = '';
         this.disabled = false;
         if (this.dataset.videoRequired === 'true') this.setAttribute('data-required', 'true');
         if (!currentFile) return;
@@ -669,7 +677,12 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         if (sectionType?.value !== 'lesson') return;
-        if (claimInput.value) {
+        if (uploading) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return;
+        }
+        if (claimInput.value && completedClaim === claimInput.value) {
             fileInput.disabled = true;
             return;
         }

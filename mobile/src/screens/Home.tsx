@@ -89,6 +89,7 @@ const Home = () => {
     catalogue,
     error: catalogueError,
     handleScroll: handleCatalogueScroll,
+    hasMore,
     loadMore: loadMoreCatalogue,
     loading: catalogueLoading,
     loadingMore,
@@ -265,6 +266,7 @@ const Home = () => {
         <HomeCatalogueFeed
           active={screenFocused && appIsInteractive}
           error={catalogueError}
+          hasMore={hasMore}
           hasSearchQuery={hasSearchQuery}
           heroCourses={heroCourses}
           loadMoreError={loadMoreError}

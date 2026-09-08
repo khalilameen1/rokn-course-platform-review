@@ -326,6 +326,7 @@ export const usePublishedCourseCatalogue = ({
     courses,
     error,
     handleScroll,
+    hasMore: hasMore && loadedQueryRef.current === activeQueryRef.current,
     loadMore: retryLoadMore,
     loading,
     loadingMore,

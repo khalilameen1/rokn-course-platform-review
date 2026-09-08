@@ -97,7 +97,7 @@ describe('profile recovery contracts', () => {
     expect(details).toContain('{cancelable: true, onDismiss: release}');
     expect(details).toContain('if (!deleteStarted) finishMutation(flight)');
     expect(details).toContain(
-      'projectId === openProjectId ? openProjectGeneration : undefined',
+      'if (projectId) invalidatePublication(projectId)',
     );
     expect(details).toContain(
       'const pending = await listPortfolioMediaUploads(projectId, boundary)',

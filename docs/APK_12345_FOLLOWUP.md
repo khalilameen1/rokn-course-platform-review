@@ -713,3 +713,48 @@ reply, revoked reply permission, real player-controller remounts, partial and
 delayed native deletion, logout retry and same/different-account replacement.
 These are local source checks, not a live provider, device or production
 acceptance result. No APK, push or deployment was performed for this entry.
+
+## September 8 — authoring retry and catalogue continuation (source only)
+
+The next pass followed moderator uploads through student discovery and profile
+editing. It changed only three demonstrated operation gaps:
+
+- The direct-video upload editor treated an allocated claim as a completed
+  transfer. After cancelling or interrupting an upload, ordinary Save submitted
+  that incomplete claim rather than resuming bytes. Allocation identity and
+  locally completed transfer identity are now separate. Save resumes the same
+  TUS upload, including after reload and file reselection; a completed upload
+  or unchanged lesson still saves without uploading again. The backend's
+  incomplete-upload rejection remains in place.
+- Search shows one horizontal course row, but its next-page request was wired
+  only to vertical page scrolling. On a short page, learners could not reach
+  results beyond the first twenty. The search row now connects its native end
+  callback to the existing guarded pagination. Both search and Home expose an
+  explicit More action while the current query has another page. Curated Home
+  rows do not individually trigger global pagination on mount, avoiding an
+  eager fetch of every course merely because some rows are short. Existing
+  deduplication, revision ownership and explicit failure retry are retained.
+- Profile name and headline remained editable while their previous values
+  were being saved, then the successful response closed the screen and lost
+  the newer text. Those two inputs now follow the same saving lock as the
+  existing avatar and Save controls. Failure retains the draft and unlocks the
+  editor; retry submits the learner's corrected values.
+
+The bounded progression/certificate review found existing coverage rather than
+another demonstrated defect: authored projects remain required regardless of
+their graduation flag; review outcomes own completion; courses without projects
+can finish through their lesson evidence while empty courses cannot qualify.
+Issuance recovery retains an accepted pending request and guards account/screen
+changes. Profile/public-share checks likewise retained the current identity
+revision, unique avatar URLs and works-only public payload. These source
+counterchecks are not a new live-service acceptance result.
+
+Final root mobile gate: 11 suites / 51 tests passed, full TypeScript and scoped
+ESLint passed. The Bunny recovery browser regression failed before its fix and
+passed afterwards, including interrupted/reloaded Save and completed-claim
+counterexamples. The adjacent course-studio authoring browser suite passed.
+An obsolete portfolio test assertion was updated to the current synchronous
+publication invalidation wiring; the actual stale-publication behavior suite
+also passed. Native horizontal-end wiring is covered, but a physical-device
+gesture test is not claimed. Diff checks passed. No APK, push, production
+deployment or live course-content mutation was performed for this entry.

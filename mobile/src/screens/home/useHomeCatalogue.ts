@@ -85,6 +85,7 @@ export const useHomeCatalogue = ({
     catalogue,
     error: publicCatalogue.error,
     handleScroll: publicCatalogue.handleScroll,
+    hasMore: publicCatalogue.hasMore,
     loadMore: publicCatalogue.loadMore,
     loading: publicCatalogue.loading,
     loadingMore: publicCatalogue.loadingMore,

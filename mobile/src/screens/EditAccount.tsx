@@ -450,6 +450,7 @@ export default function EditAccount() {
                 <TextInput
                   accessibilityLabel="الاسم الظاهر"
                   autoCapitalize="words"
+                  editable={!saving}
                   maxLength={120}
                   onChangeText={setName}
                   style={styles.input}
@@ -460,6 +461,7 @@ export default function EditAccount() {
                 </Text>
                 <TextInput
                   accessibilityLabel="العنوان المهني في البورتفوليو"
+                  editable={!saving}
                   maxLength={160}
                   onChangeText={setPortfolioHeadline}
                   placeholder="مصمم منتجات رقمية"

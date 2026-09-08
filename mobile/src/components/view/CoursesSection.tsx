@@ -12,10 +12,11 @@ interface CoursesSectionProps {
   data: Course[];
   title?: string;
   onCoursePress: (course: Course) => void;
+  onLoadMore?: () => void;
 }
 
 const CoursesSection = memo<CoursesSectionProps>(
-  ({data, title = 'كورسات مختارة لك', onCoursePress}) => {
+  ({data, title = 'كورسات مختارة لك', onCoursePress, onLoadMore}) => {
     const {gutter} = useResponsiveLayout();
     const renderCourse = useCallback(
       ({item}: ListRenderItemInfo<Course>) => (
@@ -44,6 +45,8 @@ const CoursesSection = memo<CoursesSectionProps>(
           initialNumToRender={5}
           keyExtractor={item => item.id}
           maxToRenderPerBatch={6}
+          onEndReached={onLoadMore}
+          onEndReachedThreshold={0.5}
           removeClippedSubviews
           renderItem={renderCourse}
           showsHorizontalScrollIndicator={false}
@@ -55,6 +58,7 @@ const CoursesSection = memo<CoursesSectionProps>(
   (previous, next) =>
     previous.title === next.title &&
     previous.onCoursePress === next.onCoursePress &&
+    previous.onLoadMore === next.onLoadMore &&
     previous.data.length === next.data.length &&
     previous.data.every((item, index) => item === next.data[index]),
 );

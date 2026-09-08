@@ -337,4 +337,83 @@ describe('profile identity editing', () => {
     await act(async () => renderer.unmount());
     jest.restoreAllMocks();
   });
+
+  it('locks text during a pending save and retains an editable draft after failure', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    let rejectSave!: (error: Error) => void;
+    mockUpdateProfile.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectSave = reject;
+      }),
+    );
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<EditAccount />);
+    });
+    const nameInput = () =>
+      renderer.root.findByProps({accessibilityLabel: 'الاسم الظاهر'});
+    const headlineInput = () =>
+      renderer.root.findByProps({
+        accessibilityLabel: 'العنوان المهني في البورتفوليو',
+      });
+    const save = () =>
+      renderer.root.findByProps({accessibilityLabel: 'حفظ التغييرات'}).props
+        .onPress();
+
+    try {
+      await act(async () => {
+        nameInput().props.onChangeText('الاسم المكتوب');
+        headlineInput().props.onChangeText('مصمم واجهات');
+      });
+      let saveFlight!: Promise<void>;
+      await act(async () => {
+        saveFlight = save();
+      });
+
+      expect(nameInput().props.editable).toBe(false);
+      expect(headlineInput().props.editable).toBe(false);
+      expect(mockUpdateProfile.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          name: 'الاسم المكتوب',
+          portfolioHeadline: 'مصمم واجهات',
+        }),
+      );
+      expect(mockGoBack).not.toHaveBeenCalled();
+
+      await act(async () => {
+        rejectSave(new Error('temporary failure'));
+        await saveFlight;
+      });
+      expect(nameInput().props.editable).toBe(true);
+      expect(headlineInput().props.editable).toBe(true);
+      expect(nameInput().props.value).toBe('الاسم المكتوب');
+      expect(headlineInput().props.value).toBe('مصمم واجهات');
+      expect(mockGoBack).not.toHaveBeenCalled();
+      expect(mockUpdateSecureSessionForOwner).not.toHaveBeenCalled();
+
+      await act(async () => {
+        nameInput().props.onChangeText('الاسم المصحح');
+        headlineInput().props.onChangeText('مصمم منتجات');
+      });
+      mockUpdateProfile.mockResolvedValueOnce(
+        profile(
+          'الاسم المصحح',
+          'https://cdn.example.test/old.jpg',
+          3,
+          'مصمم منتجات',
+        ),
+      );
+      await act(async () => save());
+      expect(mockUpdateProfile.mock.calls[1][0]).toEqual(
+        expect.objectContaining({
+          name: 'الاسم المصحح',
+          portfolioHeadline: 'مصمم منتجات',
+        }),
+      );
+      expect(mockGoBack).toHaveBeenCalledTimes(1);
+    } finally {
+      await act(async () => renderer.unmount());
+      alert.mockRestore();
+    }
+  });
 });

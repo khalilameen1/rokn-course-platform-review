@@ -18,6 +18,7 @@ import type {HomeCourseSection} from './homeCatalogue';
 type HomeCatalogueFeedProps = {
   active: boolean;
   error: string;
+  hasMore: boolean;
   hasSearchQuery: boolean;
   heroCourses: Course[];
   loadMoreError: string;
@@ -53,6 +54,7 @@ const HomeCatalogueFeed = memo<HomeCatalogueFeedProps>(
   ({
     active,
     error,
+    hasMore,
     hasSearchQuery,
     heroCourses,
     loadMoreError,
@@ -115,6 +117,11 @@ const HomeCatalogueFeed = memo<HomeCatalogueFeedProps>(
         <CoursesSection
           data={searchMatches}
           onCoursePress={onOpenCourse}
+          onLoadMore={
+            active && hasMore && !loadingMore && !loadMoreError
+              ? onLoadMore
+              : undefined
+          }
           title="نتائج البحث"
         />
       ) : hasSearchQuery && !loading && !error ? (
@@ -142,6 +149,22 @@ const HomeCatalogueFeed = memo<HomeCatalogueFeedProps>(
       {!!loadMoreError && !error && (
         <RetryNotice message={loadMoreError} onPress={onLoadMore} />
       )}
+
+      {active &&
+        hasMore &&
+        !loading &&
+        !error &&
+        !loadingMore &&
+        !loadMoreError && (
+          <ResponsiveFrame>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onLoadMore}
+              style={({pressed}) => [styles.more, pressed && styles.pressed]}>
+              <Text style={styles.moreText}>عرض المزيد</Text>
+            </Pressable>
+          </ResponsiveFrame>
+        )}
 
       {loadingMore && !loadMoreError && (
         <View accessibilityRole="progressbar" style={styles.loadingMore}>
@@ -175,6 +198,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxs,
   },
   pressed: {opacity: 0.78},
+  more: {
+    minHeight: Accessibility.minTouchTarget,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: Spacing.sm,
+  },
+  moreText: {...Type.body, ...textDirection, color: Palette.primary},
   loadingMore: {alignItems: 'center', paddingVertical: Spacing.lg},
 });
 

@@ -35,6 +35,7 @@ window.__initAttempts = [];
 window.__initFailureMode = 'none';
 window.__renewCalls = 0;
 window.__submittedClaim = null;
+window.__submissionCount = 0;
 window.__blockedMutations = 0;
 window.RoknAdminRequest = {
  request: async (url, options) => {
@@ -78,18 +79,26 @@ window.RoknAdminRequest = {
 };
 document.getElementById('sectionForm').addEventListener('submit', event => {
  const claim = document.getElementById('bunny_video_claim').value;
- if (!claim) return;
+ if (!claim && document.getElementById('sectionForm').dataset.sectionId !== 'existing') return;
  event.preventDefault();
  window.__submittedClaim = claim;
+ window.__submissionCount += 1;
 });
 </script>
 <script>${uploadScript}</script>
 </body></html>`;
 
 const server = createServer((request, response) => {
-    if (request.url === '/') {
+    const url = new URL(request.url, 'http://localhost');
+    if (url.pathname === '/') {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
-        response.end(fixture);
+        const initial = url.searchParams.get('initial');
+        response.end(initial === 'existing-claim'
+            ? fixture.replace('id="bunny_video_claim" name="bunny_video_claim"', 'id="bunny_video_claim" name="bunny_video_claim" value="completed-initial-claim"')
+            : initial === 'existing-lesson'
+                ? fixture.replace('data-section-id=""', 'data-section-id="existing"')
+                    .replace('data-video-required="true" required', 'data-video-required="false"')
+                : fixture);
         return;
     }
     response.statusCode = 404;
@@ -105,6 +114,20 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS,HEAD',
     'Access-Control-Expose-Headers': 'Location,Upload-Offset,Tus-Resumable',
     'Tus-Resumable': '1.0.0',
+};
+
+const selectScenarioFile = async (page, mode) => {
+    await page.evaluate(name => {
+        const input = document.getElementById('bunny_video');
+        const files = new DataTransfer();
+        files.items.add(new File([new Uint8Array([1, 2, 3, 4])], name, {
+            type: 'video/mp4',
+            // Reselecting the same disk file after reload keeps its identity.
+            lastModified: 1000,
+        }));
+        input.files = files.files;
+        input.dispatchEvent(new Event('change', {bubbles: true}));
+    }, mode === 'transport-retry' ? 'retry.mp4' : 'cancel.mp4');
 };
 
 const openScenario = async (mode, initFailureMode = 'none') => {
@@ -156,13 +179,9 @@ const openScenario = async (mode, initFailureMode = 'none') => {
         }
         await route.abort();
     });
-    await page.goto(`http://127.0.0.1:${server.address().port}`);
+    await page.goto(`http://127.0.0.1:${server.address().port}/?initial=${mode}`);
     await page.evaluate(value => { window.__initFailureMode = value; }, initFailureMode);
-    await page.locator('#bunny_video').setInputFiles({
-        name: mode === 'transport-retry' ? 'retry.mp4' : 'cancel.mp4',
-        mimeType: 'video/mp4',
-        buffer: Buffer.from([1, 2, 3, 4]),
-    });
+    if (!mode.startsWith('existing-')) await selectScenarioFile(page, mode);
     return {
         context,
         page,
@@ -173,6 +192,48 @@ const openScenario = async (mode, initFailureMode = 'none') => {
 
 try {
     browser = await chromium.launch({channel: 'chrome', headless: true});
+
+    for (const reload of [false, true]) {
+        const paused = await openScenario('cancel-head');
+        await paused.page.locator('#save').click();
+        await paused.page.waitForFunction(() => document.getElementById('bunny_video_claim').value !== '');
+        const deadline = Date.now() + 3000;
+        while (paused.calls.head < 1 && Date.now() < deadline) await new Promise(done => setTimeout(done, 10));
+        assert.equal(paused.calls.head, 1);
+        await paused.page.locator('#bunny_upload_cancel').click();
+        paused.releasePendingHead();
+        await paused.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
+        if (reload) {
+            await paused.page.reload();
+            await selectScenarioFile(paused.page, 'cancel-head');
+            await paused.page.waitForFunction(() => document.getElementById('bunny_upload_status').textContent.includes('يمكن متابعة'));
+        }
+        await paused.page.locator('#save').click();
+        await paused.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
+        assert.equal(paused.calls.head, 2, `Save must resume the incomplete transfer${reload ? ' after reload' : ''}`);
+        assert.equal(paused.calls.patch, 1, 'Save must upload the remaining bytes before submitting the claim');
+        assert.equal(paused.calls.post, 1, 'Save must reuse the existing TUS upload');
+        assert.equal(await paused.page.evaluate(() => window.__initCalls.length), reload ? 0 : 1);
+        assert.equal(await paused.page.evaluate(() => window.__submissionCount), 1);
+        // A later save retry uses the now-completed claim without reuploading.
+        await paused.page.locator('#save').click();
+        assert.equal(await paused.page.evaluate(() => window.__submissionCount), 2);
+        assert.equal(paused.calls.head, 2);
+        assert.equal(paused.calls.patch, 1);
+        await paused.context.close();
+    }
+
+    for (const mode of ['existing-claim', 'existing-lesson']) {
+        const existing = await openScenario(mode);
+        await existing.page.locator('#save').click();
+        await existing.page.waitForFunction(() => window.__submissionCount === 1);
+        assert.equal(await existing.page.evaluate(() => window.__submittedClaim),
+            mode === 'existing-claim' ? 'completed-initial-claim' : '');
+        assert.equal(existing.calls.post + existing.calls.head + existing.calls.patch, 0,
+            'an existing completed claim or unchanged lesson must save without uploading');
+        assert.equal(await existing.page.evaluate(() => window.__initCalls.length), 0);
+        await existing.context.close();
+    }
 
     const lostAllocationResponse = await openScenario('normal', 'mutation-once');
     await lostAllocationResponse.page.locator('#save').click();
