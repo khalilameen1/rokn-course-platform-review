@@ -6,6 +6,7 @@ import {
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
+import {settleWithin} from '../../utils/settleWithin';
 import {notifyWalletSettlement} from '../walletSettlement';
 import {
   firstBoolean,
@@ -142,7 +143,8 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
     throw new Error('API_CONTRACT_INVALID_COIN_TASKS');
   }
   const items = resourceList<CoinTaskDto>(data);
-  const rememberedUrls = await readActionUrls(boundary);
+  const rememberedUrls = await settleWithin(readActionUrls(boundary), {});
+  assertAccountSessionBoundary(boundary);
   const seenTaskIds = new Set<string>();
   if (
     items.some(item => {
@@ -261,13 +263,14 @@ export const startCoinTask = async (
     ) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
-    if (status === 'claimed' || (status === 'ready_to_claim' && !url)) {
-      await forgetActionUrl(task.serverId, boundary).catch(() => undefined);
-    } else {
-      await rememberActionUrl(task.serverId, url, boundary).catch(
-        () => undefined,
-      );
-    }
+    // The server owns the attempt and its current destination. This cache is
+    // display recovery only; its raw write remains ordered after our wait ends.
+    await settleWithin(
+      status === 'claimed' || (status === 'ready_to_claim' && !url)
+        ? forgetActionUrl(task.serverId, boundary)
+        : rememberActionUrl(task.serverId, url, boundary),
+      undefined,
+    );
     assertAccountSessionBoundary(boundary);
     return {status, url};
   })().finally(() => {
@@ -312,7 +315,7 @@ export const claimCoinTask = async (
     // This shared claim can outlive its Wallet. A valid replay also confirms
     // the ledger after a lost acknowledgement without awarding coins again.
     notifyWalletSettlement(boundary);
-    await forgetActionUrl(task.serverId, boundary).catch(() => undefined);
+    await settleWithin(forgetActionUrl(task.serverId, boundary), undefined);
     assertAccountSessionBoundary(boundary);
     return result;
   })().finally(() => {
