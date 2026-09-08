@@ -48,13 +48,24 @@ final readonly class AdminStudentReadService
 
         $search = trim((string) ($filters['search'] ?? ''));
         if ($search !== '') {
-            $query->where(function (Builder $users) use ($search): void {
+            $accountId = preg_match('/^(?:(UID\s*:\s*|#\s*))?([1-9][0-9]*)$/iD', $search, $identity) === 1
+                ? filter_var($identity[2], FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]])
+                : false;
+            $explicitId = $accountId !== false && ($identity[1] ?? '') !== '';
+            $query->where(function (Builder $users) use ($search, $accountId, $explicitId): void {
+                if ($explicitId) {
+                    $users->whereKey($accountId);
+                    return;
+                }
                 $pattern = "%{$search}%";
                 $users->where('name', 'like', $pattern)
                     ->orWhere('name_ar', 'like', $pattern)
                     ->orWhere('name_en', 'like', $pattern)
                     ->orWhere('email', 'like', $pattern)
                     ->orWhere('phone', 'like', $pattern);
+                if ($accountId !== false) {
+                    $users->orWhere('id', $accountId);
+                }
             });
         }
 

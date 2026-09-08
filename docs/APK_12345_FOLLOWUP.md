@@ -500,3 +500,37 @@ The final 1.0.49 / Android 50 / iOS 47 source passes all 185 mobile suites /
 verification. Sheet tests cover provider/close/legal actions, busy states,
 safe-area and viewport changes; they are render/behavior contracts, not a
 physical device or native-layout walkthrough.
+
+The 1.0.49 / 50 internal APK subsequently built from clean commit
+`0787e4c0ab1e51cea8124e43a3e3f7a4300eecf7` and was preserved as
+`mobile/artifacts/123456789101112.apk`, with matching provenance JSON.
+SHA-256: `122b947656d37f34cb809a98e43bded33f613eb78fa4d314ecece24f7c9c8179`;
+79,655,851 bytes; existing internal signer; minimum API 24, target API 36,
+armeabi-v7a / arm64-v8a / x86_64 and the correct production API. It was not
+installed or uploaded to Drive. A later live auth-methods read advertised
+Google and TikTok; this sheet change does not claim to activate Facebook.
+
+## September 8 — account UID in settings and dashboard lookup
+
+Rokn already returns its stable `users.id` in the profile and sign-in contracts,
+and the dashboard already displays that ID. Settings now shows the account name
+and `UID: <id>` for an authenticated learner, with a copy button that copies
+only the original digits and reports success/failure inline. The UID text is
+LTR inside the Arabic interface. Guest sessions, invalid IDs and provider-only
+identities do not invent or display an account number. No migration, random
+number, new API or identity registry was added.
+
+The existing dashboard student search now accepts exact `UID: 123` and `#123`.
+A raw number adds exact ID matching while retaining existing phone/name/email
+search. It does not reinterpret numbers inside arbitrary phrases or match an
+ID prefix. Existing student-role and active-account filters remain in force.
+The targeted backend run passed 13 tests / 1011 assertions, including the
+authorization matrix and existing student workspace contracts.
+
+Mobile UID tests cover the existing session identity, guest/stale data,
+unchanged IDs after name changes, clipboard contents, failure/retry and
+feedback reset on account changes. Source version is 1.0.50 / Android 51 /
+iOS 48; the final build and deployment are recorded after completion below.
+
+Final local mobile gates passed 187 suites / 1049 tests, TypeScript,
+release ESLint with zero warnings and the release configuration contract.

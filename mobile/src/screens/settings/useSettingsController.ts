@@ -1,6 +1,6 @@
 import {useNavigation} from '@react-navigation/native';
 import {useDispatch, useSelector} from 'react-redux';
-import {extractApiToken} from '../../constants/helpers';
+import {extractApiToken, extractUserProfile} from '../../constants/helpers';
 import type {AppDispatch, RootState} from '../../store/store';
 import type {SettingsSectionsProps} from './settingsData';
 import type {SettingsNavigation} from './types';
@@ -13,6 +13,16 @@ export const useSettingsController = () => {
   const dispatch = useDispatch<AppDispatch>();
   const userData = useSelector((state: RootState) => state.auth.userData);
   const authenticated = Boolean(extractApiToken(userData));
+  const user = extractUserProfile(userData);
+  const accountId = user.id ?? user.user_id;
+  const accountName = typeof user.name === 'string' ? user.name.trim() : '';
+  const validAccountId =
+    /^[1-9]\d*$/.test(String(accountId ?? '')) &&
+    (typeof accountId !== 'number' || Number.isSafeInteger(accountId));
+  const accountIdentity =
+    authenticated && validAccountId
+      ? {id: String(accountId), name: accountName || 'حسابي'}
+      : null;
   const preferences = useSettingsPreferences({
     hasAuthenticatedAccount: authenticated,
     userData,
@@ -49,6 +59,7 @@ export const useSettingsController = () => {
   };
 
   return {
+    accountIdentity,
     choiceModal: preferences.choiceModal,
     closeChoiceModal: preferences.closeChoiceModal,
     closeNotificationPrimer: preferences.closeNotificationPrimer,

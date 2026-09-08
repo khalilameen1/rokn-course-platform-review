@@ -37,7 +37,7 @@
                             <div class="users-filter-grid">
                                 <div class="users-filter-control users-filter-control--search">
                                     <div class="search-input-group">
-                                        <input type="text" name="search" class="form-control" placeholder="🔍 البحث بالاسم، البريد، أو الجوال..." value="{{ request('search') }}">
+                                        <input type="text" name="search" class="form-control" placeholder="البحث برقم الحساب UID أو الاسم أو البريد أو الجوال" value="{{ request('search') }}">
                                     </div>
                                 </div>
                                 <div class="users-filter-control">

@@ -2,6 +2,7 @@ import React from 'react';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Container, Content} from '../components/containers/Containers';
 import {SettingsChoiceModal} from '../components/settings/SettingsChoiceModal';
+import {SettingsAccountIdentity} from '../components/settings/SettingsAccountIdentity';
 import NotificationPermissionPrimer from '../components/ui/NotificationPermissionPrimer';
 import {ResponsiveFrame} from '../components/ui/PremiumUI';
 import HeaderWithBack from '../components/view/HeaderWithBack';
@@ -20,6 +21,12 @@ export default function Settings() {
         paddingBottom={Math.max(Spacing.section, insets.bottom + Spacing.xl)}>
         <ResponsiveFrame>
           <HeaderWithBack title="الإعدادات" />
+          {controller.accountIdentity && (
+            <SettingsAccountIdentity
+              key={controller.accountIdentity.id}
+              {...controller.accountIdentity}
+            />
+          )}
           <SettingsSections {...controller.sectionsProps} />
         </ResponsiveFrame>
       </Content>
