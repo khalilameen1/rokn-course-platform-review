@@ -16,6 +16,7 @@ import {
 } from '../../../constants/helpers';
 import {friendlyNetworkMessage} from '../../../services/networkExperience';
 import {
+  getSavedFolderLessonsPage,
   getSavedLessonsPage,
   hasSession,
   type SavedLesson,
@@ -88,6 +89,24 @@ export function useSavedLibrary() {
     dataOwnerRef.current = identityKey;
   }, [identityKey]);
 
+  const selectFolder = useCallback(
+    (folderId: string) => {
+      if (folderId === activeFolderId) return;
+      // Invalidate immediately: an earlier page must not land in the new scope.
+      loadGenerationRef.current += 1;
+      loadingMoreRef.current = false;
+      savedRef.current = [];
+      setSaved([]);
+      setNextPage(null);
+      setLoading(true);
+      setLoadingMore(false);
+      setError('');
+      setLoadMoreError('');
+      setActiveFolderId(folderId);
+    },
+    [activeFolderId],
+  );
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -144,21 +163,60 @@ export function useSavedLibrary() {
             return;
           }
 
-          const [result, folderResult] = await Promise.all([
-            getSavedLessonsPage(1),
+          const [lessonResult, folderResult] = await Promise.all([
+            (activeFolderId === 'all'
+              ? getSavedLessonsPage(1)
+              : getSavedFolderLessonsPage(activeFolderId, 1)
+            ).then(
+              value => ({ok: true as const, value}),
+              reason => ({ok: false as const, reason}),
+            ),
             getSavedFolderOptions().then(
               value => ({ok: true as const, value}),
               () => ({ok: false as const}),
             ),
           ]);
           if (!ownsLoad()) return;
-          savedRef.current = result.lessons;
-          setSaved(result.lessons);
           if (folderResult.ok) {
-            setFolders(folderResult.value);
+            setFolders(current => {
+              // The index may be an offline cache. A successful folder read is
+              // stronger evidence than its absence from that older index.
+              const selected = current.find(
+                folder => folder.id === activeFolderId,
+              );
+              return lessonResult.ok &&
+                selected &&
+                !folderResult.value.some(folder => folder.id === selected.id)
+                ? [...folderResult.value, selected]
+                : folderResult.value;
+            });
             setFolderLoadError('');
           } else {
             setFolderLoadError('تعذّر تحديث القوائم\nالمحفوظات ما زالت موجودة');
+          }
+          if (
+            activeFolderId !== 'all' &&
+            !lessonResult.ok &&
+            lessonResult.reason?.response?.status === 404
+          ) {
+            setFolders(current =>
+              current.filter(folder => folder.id !== activeFolderId),
+            );
+            selectFolder('all');
+            return;
+          }
+          if (!lessonResult.ok) throw lessonResult.reason;
+          const result = lessonResult.value;
+          savedRef.current = result.lessons;
+          setSaved(result.lessons);
+          if (activeFolderId !== 'all') {
+            setFolders(current =>
+              current.map(folder =>
+                folder.id === activeFolderId
+                  ? {...folder, lessonsCount: result.total}
+                  : folder,
+              ),
+            );
           }
           setNextPage(result.hasMore ? result.page + 1 : null);
           setError(
@@ -196,7 +254,7 @@ export function useSavedLibrary() {
         loadGenerationRef.current += 1;
         loadingMoreRef.current = false;
       };
-    }, [identityKey, reload]),
+    }, [activeFolderId, identityKey, reload, selectFolder]),
   );
 
   const retry = useCallback(() => setReload(value => value + 1), []);
@@ -204,6 +262,7 @@ export function useSavedLibrary() {
   const loadMore = useCallback(async () => {
     if (
       !nextPage ||
+      loading ||
       loadingMore ||
       loadingMoreRef.current ||
       serverSession !== true
@@ -216,7 +275,9 @@ export function useSavedLibrary() {
     setLoadMoreError('');
     try {
       const boundary = await captureAccountSessionBoundary();
-      const result = await getSavedLessonsPage(nextPage);
+      const result = await (activeFolderId === 'all'
+        ? getSavedLessonsPage(nextPage)
+        : getSavedFolderLessonsPage(activeFolderId, nextPage));
       assertAccountSessionBoundary(boundary);
       if (
         !screenActiveRef.current ||
@@ -239,13 +300,24 @@ export function useSavedLibrary() {
         return next;
       });
       setNextPage(result.hasMore ? result.page + 1 : null);
-    } catch {
+    } catch (requestError) {
       if (
         screenActiveRef.current &&
         generation === loadGenerationRef.current &&
         dataOwnerRef.current === identityKey
       ) {
-        setLoadMoreError('تعذّر تحميل باقي المحفوظات');
+        if (
+          activeFolderId !== 'all' &&
+          (requestError as {response?: {status?: number}})?.response?.status ===
+            404
+        ) {
+          setFolders(current =>
+            current.filter(folder => folder.id !== activeFolderId),
+          );
+          selectFolder('all');
+        } else {
+          setLoadMoreError('تعذّر تحميل باقي المحفوظات');
+        }
       }
     } finally {
       if (generation === loadGenerationRef.current) {
@@ -253,7 +325,15 @@ export function useSavedLibrary() {
         setLoadingMore(false);
       }
     }
-  }, [identityKey, loadingMore, nextPage, serverSession]);
+  }, [
+    activeFolderId,
+    identityKey,
+    loading,
+    loadingMore,
+    nextPage,
+    selectFolder,
+    serverSession,
+  ]);
 
   const createFolder = useCallback(async () => {
     const name = newFolderName.trim();
@@ -264,7 +344,7 @@ export function useSavedLibrary() {
         name.toLocaleLowerCase('ar'),
     );
     if (existing) {
-      setActiveFolderId(existing.id);
+      selectFolder(existing.id);
       setNewFolderName('');
       setShowCreateFolder(false);
       return;
@@ -283,7 +363,7 @@ export function useSavedLibrary() {
         ...current.filter(folder => folder.id !== created.id),
         created,
       ]);
-      setActiveFolderId(created.id);
+      selectFolder(created.id);
       setNewFolderName('');
       setShowCreateFolder(false);
     } catch {
@@ -304,7 +384,7 @@ export function useSavedLibrary() {
         }
       }
     }
-  }, [creatingFolder, folders, identityKey, newFolderName]);
+  }, [creatingFolder, folders, identityKey, newFolderName, selectFolder]);
 
   const removeSaved = useCallback(
     async (item: SavedLesson) => {
@@ -336,43 +416,61 @@ export function useSavedLibrary() {
           return false;
         }
       };
+      const removeLocalRow = () => {
+        const index = savedRef.current.findIndex(
+          row => row.id === item.id && row.folderId === item.folderId,
+        );
+        if (index < 0) return index;
+        const remainingRows = savedRef.current.filter(
+          row => !(row.id === item.id && row.folderId === item.folderId),
+        );
+        savedRef.current = remainingRows;
+        setSaved(remainingRows);
+        setFolders(current =>
+          current.map(folder =>
+            folder.id === item.folderId && folder.lessonsCount !== undefined
+              ? {...folder, lessonsCount: Math.max(0, folder.lessonsCount - 1)}
+              : folder,
+          ),
+        );
+        return index;
+      };
 
       try {
         boundary = await captureAccountSessionBoundary();
         if (!stillOwned()) return;
-        optimisticIndex = savedRef.current.findIndex(
-          row => row.id === item.id && row.folderId === item.folderId,
-        );
+        optimisticIndex = removeLocalRow();
         if (optimisticIndex < 0) return;
-        const optimisticRows = savedRef.current.filter(
-          row => !(row.id === item.id && row.folderId === item.folderId),
-        );
-        savedRef.current = optimisticRows;
-        setSaved(optimisticRows);
         optimisticApplied = true;
 
         await removeLessonFromSavedFolder(item.id, item.folderId);
         assertAccountSessionBoundary(boundary);
+        // A refresh may have restored its pre-delete snapshot while the write
+        // was pending. The confirmed result must also win locally, exactly once.
+        if (stillOwned()) removeLocalRow();
       } catch {
         if (stillOwned()) {
-          if (optimisticApplied) {
-            setSaved(current => {
-              if (
-                current.some(
-                  row => row.id === item.id && row.folderId === item.folderId,
-                )
-              ) {
-                return current;
-              }
-              const restored = [...current];
-              restored.splice(
-                Math.min(Math.max(0, optimisticIndex), restored.length),
-                0,
-                item,
-              );
-              savedRef.current = restored;
-              return restored;
-            });
+          if (
+            optimisticApplied &&
+            !savedRef.current.some(
+              row => row.id === item.id && row.folderId === item.folderId,
+            )
+          ) {
+            setFolders(current =>
+              current.map(folder =>
+                folder.id === item.folderId && folder.lessonsCount !== undefined
+                  ? {...folder, lessonsCount: folder.lessonsCount + 1}
+                  : folder,
+              ),
+            );
+            const restored = [...savedRef.current];
+            restored.splice(
+              Math.min(Math.max(0, optimisticIndex), restored.length),
+              0,
+              item,
+            );
+            savedRef.current = restored;
+            setSaved(restored);
           }
           setActionError('تعذّرت إزالة المقطع\nحاول مرة أخرى');
         }
@@ -455,11 +553,16 @@ export function useSavedLibrary() {
                 setFolders(current =>
                   current.filter(item => item.id !== folder.id),
                 );
-                setActiveFolderId('all');
                 optimisticApplied = true;
 
                 await deleteSavedFolderOption(folder.id);
                 assertAccountSessionBoundary(boundary);
+                if (stillOwned()) {
+                  setFolders(current =>
+                    current.filter(item => item.id !== folder.id),
+                  );
+                  selectFolder('all');
+                }
               } catch {
                 if (stillOwned()) {
                   if (optimisticApplied) {
@@ -521,7 +624,7 @@ export function useSavedLibrary() {
         },
       ],
     );
-  }, [activeFolderId, deletingFolder, folders, identityKey]);
+  }, [activeFolderId, deletingFolder, folders, identityKey, selectFolder]);
 
   const toggleCreateFolder = useCallback(() => {
     setShowCreateFolder(value => !value);
@@ -531,7 +634,12 @@ export function useSavedLibrary() {
   const derived = useMemo(() => {
     const folderMap = new Map<string, SavedFolderOption>();
     const folderCounts = new Map<string, number>();
-    folders.forEach(folder => folderMap.set(folder.id, folder));
+    folders.forEach(folder => {
+      folderMap.set(folder.id, folder);
+      if (folder.lessonsCount !== undefined) {
+        folderCounts.set(folder.id, folder.lessonsCount);
+      }
+    });
     saved.forEach(item => {
       if (!folderMap.has(item.folderId)) {
         folderMap.set(item.folderId, {
@@ -539,10 +647,6 @@ export function useSavedLibrary() {
           name: item.folderName,
         });
       }
-      folderCounts.set(
-        item.folderId,
-        (folderCounts.get(item.folderId) ?? 0) + 1,
-      );
     });
     const visible =
       activeFolderId === 'all'
@@ -589,7 +693,7 @@ export function useSavedLibrary() {
     removingSaved,
     retry,
     saved,
-    selectFolder: setActiveFolderId,
+    selectFolder,
     serverSession,
     setNewFolderName,
     showCreateFolder,

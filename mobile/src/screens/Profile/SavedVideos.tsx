@@ -56,11 +56,22 @@ export default function SavedVideos() {
     visibleSaved,
   } = useSavedLibrary();
 
-  if (!identityOwned || (loading && !saved.length)) {
+  if (
+    !identityOwned ||
+    (loading &&
+      !saved.length &&
+      !folderOptions.length &&
+      activeFolderId === 'all')
+  ) {
     return <SavedLibrarySkeleton />;
   }
 
-  if (error && !saved.length) {
+  if (
+    error &&
+    !saved.length &&
+    !folderOptions.length &&
+    activeFolderId === 'all'
+  ) {
     return (
       <StatusView
         actionLabel="إعادة المحاولة"
@@ -170,11 +181,11 @@ export default function SavedVideos() {
               styles.folderChipText,
               activeFolderId === 'all' && styles.folderChipTextActive,
             ]}>
-            الكل · {formatArabicNumber(saved.length)}
+            الكل
           </Text>
         </Pressable>
         {folderOptions.map(folder => {
-          const count = folderCounts.get(folder.id) ?? 0;
+          const count = folderCounts.get(folder.id);
           return (
             <Pressable
               accessibilityRole="button"
@@ -191,8 +202,8 @@ export default function SavedVideos() {
                   styles.folderChipText,
                   activeFolderId === folder.id && styles.folderChipTextActive,
                 ]}>
-                {formatAuthoredDisplayText(folder.name)} ·{' '}
-                {formatArabicNumber(count)}
+                {formatAuthoredDisplayText(folder.name)}
+                {count !== undefined ? ` · ${formatArabicNumber(count)}` : ''}
               </Text>
             </Pressable>
           );
@@ -227,7 +238,17 @@ export default function SavedVideos() {
         </Text>
       )}
 
-      {!saved.length ? (
+      {loading && !saved.length ? (
+        <SavedLibrarySkeleton />
+      ) : error && !saved.length ? (
+        <StatusView
+          actionLabel="إعادة المحاولة"
+          description={error}
+          onAction={() => retry()}
+          state="error"
+          title="تعذّر تحميل المحفوظات"
+        />
+      ) : !saved.length && activeFolderId === 'all' ? (
         <StatusView
           description="اضغط حفظ أثناء المشاهدة واختر القائمة المناسبة"
           state="empty"

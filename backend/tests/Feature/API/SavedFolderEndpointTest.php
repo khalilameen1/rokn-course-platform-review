@@ -140,8 +140,26 @@ class SavedFolderEndpointTest extends ApiTestCase
         $this->actingAs($this->user, 'api')
             ->getJson('/api/v1/saved-folders/1/lessons')
             ->assertOk()
+            ->assertJsonPath('data.folder.id', 1)
+            ->assertJsonPath('data.pagination.current_page', 1)
+            ->assertJsonPath('data.pagination.total', 1)
             ->assertJsonPath('data.lessons.0.id', 10)
+            ->assertJsonMissingPath('data.lessons.0.folder_memberships')
             ->assertJsonPath('data.lessons.0.duration_minutes', 15);
+    }
+
+    public function test_folder_page_beyond_the_current_end_is_an_empty_success(): void
+    {
+        // A loaded first page can lose its next page after a removal. Laravel
+        // retains the requested page number; the client must stop pagination.
+        $this->actingAs($this->user, 'api')
+            ->getJson('/api/v1/saved-folders/1/lessons?per_page=1&page=2')
+            ->assertOk()
+            ->assertJsonPath('data.folder.id', 1)
+            ->assertJsonPath('data.pagination.current_page', 2)
+            ->assertJsonPath('data.pagination.last_page', 1)
+            ->assertJsonPath('data.pagination.total', 1)
+            ->assertJsonCount(0, 'data.lessons');
     }
 
     public function test_can_save_lesson_to_folder(): void

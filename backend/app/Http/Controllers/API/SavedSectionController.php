@@ -218,7 +218,7 @@ final class SavedSectionController extends Controller
         $result = $this->savedLibrary->folderLessons(
             $user,
             (int) $id,
-            $validated['per_page'] ?? 20
+            isset($validated['per_page']) ? (int) $validated['per_page'] : 20
         );
 
         if ($result === null) {

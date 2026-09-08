@@ -233,7 +233,19 @@ const readLocalSavedFolders = async (
     const raw = await AsyncStorage.getItem(localSavedFoldersKey(accountScope));
     const parsed = raw ? JSON.parse(raw) : [];
     if (Array.isArray(parsed) && parsed.length) {
-      return parsed.filter(validSavedFolderOption).map(mapSavedFolder);
+      return parsed.filter(validSavedFolderOption).map(folder => {
+        const cached = folder as SavedFolderDto & {
+          imageUrl?: unknown;
+          lessonsCount?: unknown;
+        };
+        // This cache stores normalized options. Older server-shaped entries
+        // remain readable without changing the remote response contract.
+        return mapSavedFolder({
+          ...cached,
+          image: cached.imageUrl ?? cached.image,
+          lessons_count: cached.lessonsCount ?? cached.lessons_count,
+        });
+      });
     }
   } catch {
     // A damaged local folder index should never block saving a reel.

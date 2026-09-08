@@ -808,3 +808,56 @@ open; no archive or retention-policy expansion has been made.
 
 No APK, Git push, deployment, live notification or provider mutation was made.
 The wider end-to-end review goal remains open.
+
+## September 8 — saved library as one operation (source only)
+
+The saved-library follow-through covered the existing API, selection, pagination,
+mutations and offline cache together. It adds no new storage or server feature:
+
+- Selecting a folder now reads that folder's paginated endpoint, not a filtered
+  global first page. One mapper and one read-ownership path handle both views;
+  the folder response supplies its authenticated outer membership, while the
+  global response retains every membership and its distinct-lesson total.
+  Folder chips use server counts instead of the number of rows loaded so far.
+- Folder navigation stays available during loading and failures. A definite
+  folder 404 returns to All, but an older cached index cannot overrule a
+  successful specific-folder response. An empty requested page beyond the
+  current last page ends pagination after deletions rather than trapping retry.
+- A real backend endpoint test exposed a missing integer conversion that the
+  screen mocks could not: query `per_page` remained a string after validation
+  and caused a strict service-argument TypeError. The folder controller now
+  performs the same validated conversion as its global-list sibling. Other
+  typed pagination boundaries were checked; no second counterpart was found.
+- Global and folder reads retain the account and a confirmed-mutation revision.
+  A read overtaken by an acknowledged deletion reads the same page again; it
+  never repeats the deletion. Cache replacements and removal transforms share
+  the existing cache's ordered write path, and offline fallback waits within
+  the existing storage budget. Concurrent removals no longer restore each
+  other's rows, and a late GET cannot restore a confirmed deletion to the
+  displayed page or disk cache.
+- The folder index cache stores normalized names for optional cover/count
+  fields. Its reader now intentionally accepts those names as well as the old
+  server-shaped cache, preserving covers and zero counts through offline reads
+  and queued folder edits without changing the remote response contract.
+- The focused UI regressions also covered a refresh arriving before a pending
+  deletion's acknowledgement. Confirmed removal is idempotently reasserted
+  locally; rollback only restores a row/count still absent. A response already
+  reflecting the deletion is not decremented twice. Folder deletion likewise
+  removes a restored stale chip and retains rollback on failure. No extra
+  DELETE request or unconditional full refresh was introduced.
+
+Final root gate for this and the preceding native-response batch: 28 mobile
+Jest suites passed 240 tests; full TypeScript, scoped ESLint and diff checks
+passed. The actual backend SavedFolderEndpoint suite passed 14 tests / 59
+assertions, including the outer-folder contract and empty exhausted page. The
+per-page 500, missing old folder, cache races, metadata round-trip and pending
+deletion UI races were demonstrated before their corresponding fixes.
+
+Read-only checks of social-login completion, exact-course entitlement, preview
+vs ownership, purchase/project gates and payment acknowledgement recovery did
+not establish another ordinary-flow defect. Catalogue and notification
+pagination already handle exhausted results. These counterchecks and local
+regressions are not a live Google, Kashier, iPhone or production acceptance test.
+The confirmed lower-priority report-retry capability gap after temporary input
+retention expires remains open for a later pass. No APK, push or deployment was
+performed; this is a source checkpoint, not completion of the broader goal.
