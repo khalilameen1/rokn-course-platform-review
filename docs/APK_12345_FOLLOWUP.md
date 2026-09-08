@@ -1516,3 +1516,66 @@ Final root gates: 11 mobile suites / 78 tests and 53 backend tests / 491
 assertions across two exact-path runs passed. TypeScript, scoped ESLint,
 formatting, PHP syntax and diff checks passed. All changes remain local source
 work: no APK, push or deployment, and no claim of complete app acceptance.
+
+## September 9 — rating ordering and confirmed wallet/portfolio mutations
+
+The next local changes preserve the current features and their existing
+contracts rather than replacing the screens or adding alternate state owners.
+
+- A foreground course read could overwrite an acknowledged rating creation,
+  edit or deletion. Rating acknowledgements could also overwrite a newer read.
+  The screen now uses the backend's existing personal rating version and a
+  single rating value from the course snapshot. Older personal versions cannot
+  overwrite newer ones. Equal-version reads still accept aggregate ratings
+  changed by other students; equal-version acknowledgements do not replace a
+  newer read's aggregates. This is not a global ordering of all students' votes.
+- Coin-task requests and confirmed claims could wait indefinitely for their
+  optional remembered-link cache. The caller now has a bounded wait while the
+  actual account-scoped storage queue remains ordered. The server still owns
+  the task attempt, current destination, eligibility and awarded balance.
+- Confirmed portfolio uploads, publication and deletion could remain busy
+  behind native outbox/file cleanup. Only the terminal result's caller wait is
+  bounded. New staging still requires durable storage and queues behind the
+  real cleanup operation. A failed pending-intent removal retains its original
+  UUID and file; it does not fabricate a new upload identity.
+
+Checking that retained identity exposed a separate backend defect: replaying
+an accepted image after the student deleted it recreated the image because the
+deleted row had been its only receipt. This was reproduced through actual
+append, finalize, delete and replay HTTP endpoints before source changes.
+Deleted upload identities now require a minimal item-scoped receipt, not
+retaining the media itself. The new database migration is part of this fix and
+must be deployed with its backend source before any release using the fix.
+Terminal `422 media_deleted` is deliberately file-scoped: the mobile delivery
+policy removes that old attempt and continues its siblings, unlike `404`,
+which means the entire remote project is unavailable.
+
+The same lifecycle check exposed video issue/renew responses claiming that an
+already-deleted video was still attached, followed by an expired-upload response
+on claim. Those old attempts are now terminal across issue, renew and claim.
+The existing attached-video receipt also detects historical deletions without
+a new tombstone. A surviving attached video still replays after its lease
+expires, while genuinely pending expired uploads retain their expiry behavior.
+An intentionally new UUID can upload the same file again. Checks also prevent
+reusing a deleted image's UUID to allocate a video.
+
+Receipts contain only the item ID and upload UUID and cascade with item
+deletion. A failed cleanup reservation rolls back both media deletion and its
+receipt. Image requests check deletion before provider upload and again inside
+the existing User-to-Item transaction after remote IO. Tests inject that
+interleaving explicitly; they do not establish concurrent MySQL behavior.
+Images hard-deleted before this migration have no surviving request receipt
+to reconstruct; this change does not invent a historical backfill for them.
+
+Final root gates passed: 19 mobile suites / 151 tests and 65 backend tests /
+534 assertions across exact-path runs, plus full mobile TypeScript and scoped
+ESLint. Backend HTTP fixtures exercise real controllers, services, database
+state and the migration; Bunny responses are mocked. The mobile sibling-upload
+case uses the actual replay/delivery/outbox stack and a terminal HTTP fixture,
+separately from the backend HTTP proof. None of these are live-provider or
+physical-device acceptance claims.
+
+The inspected home-row curation, coming-soon navigation and portfolio/QR share
+paths supplied no additional proven defect in this pass and were not changed.
+In particular, no coming-soon reminder subscription feature was added or
+claimed. All verification here is local; no APK, push or deployment occurred.

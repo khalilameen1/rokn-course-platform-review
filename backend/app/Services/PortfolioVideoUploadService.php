@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Exceptions\PortfolioOperationException;
 use App\Models\BunnyVideoCleanupCandidate;
+use App\Models\PortfolioDeletedUpload;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\PortfolioVideoUpload;
@@ -65,6 +66,7 @@ final readonly class PortfolioVideoUploadService
             ->block(10, function () use (
                 $user, $item, $idempotencyKey, $size, $mime, $originalName, $sha256, $hash
             ): array {
+                $this->assertNotDeleted((int) $item->id, $idempotencyKey);
                 $session = PortfolioVideoUpload::query()
                     ->where('user_id', $user->id)
                     ->where('portfolio_item_id', $item->id)
@@ -84,6 +86,7 @@ final readonly class PortfolioVideoUploadService
                             if ($lockedItem->deletion_started_at) {
                                 throw new PortfolioOperationException(PortfolioOperationException::ITEM_UNAVAILABLE);
                             }
+                            $this->assertNotDeleted((int) $lockedItem->id, (string) $session->idempotency_key);
                             $lockedSession = PortfolioVideoUpload::query()->whereKey($session->id)
                                 ->lockForUpdate()->firstOrFail();
                             if ($lockedSession->status !== 'pending' || !$lockedSession->expires_at->isFuture()) {
@@ -94,6 +97,7 @@ final readonly class PortfolioVideoUploadService
                         return $this->payload($session);
                     }
                     if ($session->status === 'attached') {
+                        $this->mediaForSession($session);
                         return $this->payload($session);
                     }
                     if ($session->status === 'allocating' && $session->updated_at?->gt(now()->subMinutes(2))) {
@@ -116,6 +120,7 @@ final readonly class PortfolioVideoUploadService
                     if ($lockedItem->deletion_started_at) {
                         throw new PortfolioOperationException(PortfolioOperationException::ITEM_UNAVAILABLE);
                     }
+                    $this->assertNotDeleted((int) $lockedItem->id, $idempotencyKey);
                     $mediaCount = $lockedItem->mediaFiles()->count();
                     $capacity = $this->mediaCapacity();
                     if ($mediaCount >= $capacity) {
@@ -216,6 +221,7 @@ final readonly class PortfolioVideoUploadService
     {
         $session = $this->sessionFromClaim($user, $itemId, $claim, false);
         if ($session->status === 'attached') {
+            $this->mediaForSession($session);
             return [
                 'video_id' => (string) $session->video_guid,
                 'claim_expires_at' => $session->expires_at->toIso8601String(),
@@ -232,6 +238,7 @@ final readonly class PortfolioVideoUploadService
             if ($item->deletion_started_at) {
                 throw new PortfolioOperationException(PortfolioOperationException::ITEM_UNAVAILABLE);
             }
+            $this->assertNotDeleted((int) $item->id, (string) $session->idempotency_key);
 
             $locked = PortfolioVideoUpload::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
             if ($locked->status !== 'pending' || !$locked->expires_at->isFuture()) {
@@ -260,10 +267,7 @@ final readonly class PortfolioVideoUploadService
     public function attach(User $user, int $itemId, string $claim, ?string $caption): PortfolioMedia
     {
         $session = $this->sessionFromClaim($user, $itemId, $claim, false);
-        $existing = PortfolioMedia::query()
-            ->where('portfolio_item_id', $session->portfolio_item_id)
-            ->where('client_request_id', $session->idempotency_key)
-            ->first();
+        $existing = $this->mediaForSession($session);
         if ($session->status === 'attached' && $existing) {
             if (trim((string) $existing->caption) !== trim((string) $caption)) {
                 throw new PortfolioOperationException(PortfolioOperationException::IDENTITY_CONFLICT);
@@ -287,7 +291,7 @@ final readonly class PortfolioVideoUploadService
                 throw new PortfolioOperationException(PortfolioOperationException::ITEM_UNAVAILABLE);
             }
             $locked = PortfolioVideoUpload::query()->whereKey($session->id)->lockForUpdate()->firstOrFail();
-            $existing = $item->mediaFiles()->where('client_request_id', $locked->idempotency_key)->first();
+            $existing = $this->mediaForSession($locked);
             if ($existing) {
                 if (trim((string) $existing->caption) !== trim((string) $caption)) {
                     throw new PortfolioOperationException(PortfolioOperationException::IDENTITY_CONFLICT);
@@ -332,6 +336,32 @@ final readonly class PortfolioVideoUploadService
             $candidate->delete();
             return $media;
         }, 3);
+    }
+
+    private function assertNotDeleted(int $itemId, string $requestId): void
+    {
+        if (PortfolioDeletedUpload::query()
+            ->where('portfolio_item_id', $itemId)
+            ->where('client_request_id', strtolower($requestId))
+            ->exists()) {
+            throw new PortfolioOperationException(PortfolioOperationException::MEDIA_DELETED);
+        }
+    }
+
+    private function mediaForSession(PortfolioVideoUpload $session): ?PortfolioMedia
+    {
+        $this->assertNotDeleted((int) $session->portfolio_item_id, (string) $session->idempotency_key);
+        $media = PortfolioMedia::query()
+            ->where('portfolio_item_id', $session->portfolio_item_id)
+            ->where('client_request_id', $session->idempotency_key)
+            ->first();
+        // Attached sessions are durable acceptance receipts, including older
+        // deletions from before deleted-upload identities were recorded.
+        if ($session->status === 'attached' && (!$media || $media->deletion_started_at)) {
+            throw new PortfolioOperationException(PortfolioOperationException::MEDIA_DELETED);
+        }
+
+        return $media;
     }
 
     private function sessionFromClaim(

@@ -177,13 +177,14 @@ final class PortfolioMediaController extends Controller
         ]);
     }
 
-    private function error(string $message, int $httpStatus): JsonResponse
+    private function error(string $message, int $httpStatus, ?string $code = null): JsonResponse
     {
         return response()->json([
             'status' => $httpStatus,
             'success' => false,
             'message' => $message,
             'data' => null,
+            ...($code !== null ? ['code' => $code] : []),
         ], $httpStatus);
     }
 
@@ -207,9 +208,14 @@ final class PortfolioMediaController extends Controller
             PortfolioOperationException::UPLOAD_FAILED => [503, "تعذّر رفع الملف الآن\nحاول مرة أخرى"],
             PortfolioOperationException::UPLOAD_EXPIRED => [410, "انتهت صلاحية الرفع\nابدأ رفع الفيديو مرة أخرى"],
             PortfolioOperationException::IDENTITY_CONFLICT => [409, 'تعذر استكمال رفع هذا الملف'],
+            PortfolioOperationException::MEDIA_DELETED => [422, 'تم حذف هذا الملف'],
             default => [409, 'هذا المشروع غير متاح الآن'],
         };
 
-        return $this->error($message, $status);
+        return $this->error(
+            $message,
+            $status,
+            $exception->reason === PortfolioOperationException::MEDIA_DELETED ? $exception->reason : null
+        );
     }
 }

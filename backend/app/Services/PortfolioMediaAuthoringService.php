@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\PortfolioOperationException;
+use App\Models\PortfolioDeletedUpload;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\PortfolioVideoUpload;
@@ -109,6 +110,7 @@ final class PortfolioMediaAuthoringService
             $caption
         ): array {
             $item = $this->ownedItem($user, (int) $item->id);
+            $this->assertUploadNotDeleted((int) $item->id, $clientRequestId);
             $existing = $item->mediaFiles()
                 ->where('client_request_id', $clientRequestId)
                 ->first();
@@ -159,6 +161,7 @@ final class PortfolioMediaAuthoringService
                     if ($lockedItem->deletion_started_at !== null) {
                         throw new PortfolioOperationException(PortfolioOperationException::ITEM_UNAVAILABLE);
                     }
+                    $this->assertUploadNotDeleted((int) $lockedItem->id, $clientRequestId);
 
                     $existing = $lockedItem->mediaFiles()
                         ->where('client_request_id', $clientRequestId)
@@ -208,6 +211,16 @@ final class PortfolioMediaAuthoringService
 
             return ['media' => $media, 'replayed' => $replayed];
         });
+    }
+
+    private function assertUploadNotDeleted(int $itemId, string $clientRequestId): void
+    {
+        if (PortfolioDeletedUpload::query()
+            ->where('portfolio_item_id', $itemId)
+            ->where('client_request_id', strtolower($clientRequestId))
+            ->exists()) {
+            throw new PortfolioOperationException(PortfolioOperationException::MEDIA_DELETED);
+        }
     }
 
     private function assertImage(UploadedFile $file, string $field): void

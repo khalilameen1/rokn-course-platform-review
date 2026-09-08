@@ -50,9 +50,9 @@ describe('portfolio media outbox durability', () => {
     >;
     remove.mockRejectedValueOnce(new Error('STORAGE_FULL'));
 
-    await expect(completePortfolioMediaUpload(staged, owner)).rejects.toThrow(
-      'STORAGE_FULL',
-    );
+    await expect(
+      completePortfolioMediaUpload(staged, owner),
+    ).resolves.toBeUndefined();
 
     expect(mockRetain).not.toHaveBeenCalled();
     expect(mockRemoveFile).not.toHaveBeenCalled();

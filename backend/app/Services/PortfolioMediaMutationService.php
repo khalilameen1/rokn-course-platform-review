@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\PortfolioOperationException;
+use App\Models\PortfolioDeletedUpload;
 use App\Models\PortfolioItem;
 use App\Models\User;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -52,6 +53,12 @@ final class PortfolioMediaMutationService
             $media = $item->mediaFiles()->lockForUpdate()->find($mediaId);
             if (!$media) return false;
 
+            if (Str::isUuid((string) $media->client_request_id)) {
+                PortfolioDeletedUpload::query()->firstOrCreate([
+                    'portfolio_item_id' => $item->id,
+                    'client_request_id' => strtolower((string) $media->client_request_id),
+                ]);
+            }
             $media->forceFill([
                 'deletion_lease_id' => (string) Str::uuid(),
                 'deletion_started_at' => now(),

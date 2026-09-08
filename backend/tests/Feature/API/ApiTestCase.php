@@ -1079,12 +1079,14 @@ abstract class ApiTestCase extends TestCase
         (require database_path('migrations/2026_09_01_000068_add_portfolio_lifecycle_state.php'))->up();
         (require database_path('migrations/2026_09_01_000070_add_public_id_to_portfolio_media.php'))->up();
         (require database_path('migrations/2026_09_01_000073_create_portfolio_video_uploads_table.php'))->up();
+        (require database_path('migrations/2026_09_09_000001_create_portfolio_deleted_uploads_table.php'))->up();
         (require database_path('migrations/2026_09_01_000078_create_internal_signals_table.php'))->up();
 
     }
 
     private function tearDownSchema(): void
     {
+        Schema::dropIfExists('portfolio_deleted_uploads');
         $tables = [
             'internal_signals', 'social_identity_guards', 'social_oauth_attempts', 'course_grant_claims', 'course_code_usages', 'student_section_progress', 'account_file_deletions', 'api_tokens', 'photos', 'verification_codes', 'user_device_tokens', 'deleted_social_reward_tombstones', 'social_accounts', 'user_coin_task_attempts', 'user_coin_earnings', 'coin_earning_methods',
             'notification_push_deliveries', 'admin_notifications', 'financial_entitlement_holds',

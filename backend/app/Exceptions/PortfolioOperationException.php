@@ -14,6 +14,7 @@ final class PortfolioOperationException extends RuntimeException
     public const UPLOAD_EXPIRED = 'upload_expired';
     public const INCOMPLETE_ITEM = 'incomplete_item';
     public const MEDIA_NOT_READY = 'media_not_ready';
+    public const MEDIA_DELETED = 'media_deleted';
 
     public function __construct(public readonly string $reason)
     {

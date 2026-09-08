@@ -13,6 +13,7 @@ import {
   retainLearnerDraftFiles,
 } from './learnerDraftFiles';
 import {readJsonOrQuarantine} from './recoverableJsonStorage';
+import {settleWithin} from '../utils/settleWithin';
 
 export type PortfolioMediaOutboxEntry = {
   projectId: string;
@@ -202,7 +203,7 @@ export const completePortfolioMediaUpload = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await scopedKey(boundary, entry.storageKey);
-  await withLock(key, async () => {
+  const cleanup = withLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const entries = await readStored(key);
     const completed = entries.find(
@@ -212,13 +213,18 @@ export const completePortfolioMediaUpload = async (
       candidate => candidate.clientRequestId !== entry.clientRequestId,
     );
     await writeStored(key, remaining);
-    // The durable removal is the acknowledgement. Registry/file cleanup is
-    // maintenance and must not turn a successful server upload into a false
-    // retry after its outbox entry is already gone.
+    // The server outcome is already terminal. Remove its pending intent
+    // durably before releasing references or cleaning the local file; a failed
+    // removal must leave that exact intent and its file available for replay.
     await retainStoredFiles(remaining, boundary.scope).catch(() => undefined);
     await removeLearnerDraftFile(completed?.file).catch(() => undefined);
     assertAccountSessionBoundary(boundary);
   });
+  // The remote result is already terminal. Keep the actual outbox/file locks
+  // until cleanup settles, but never hold that result behind native storage.
+  // A failed removal retains the original UUID and file for idempotent replay.
+  await settleWithin(cleanup, undefined);
+  assertAccountSessionBoundary(boundary);
 };
 
 export const discardPortfolioMediaUploads = async (
@@ -227,7 +233,7 @@ export const discardPortfolioMediaUploads = async (
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await scopedKey(boundary);
-  await withLock(key, async () => {
+  const cleanup = withLock(key, async () => {
     assertAccountSessionBoundary(boundary);
     const entries = await readStored(key);
     const discarded = entries.filter(
@@ -245,4 +251,8 @@ export const discardPortfolioMediaUploads = async (
     );
     assertAccountSessionBoundary(boundary);
   });
+  // Finalize, deletion and a missing remote project have already settled.
+  // New staging still queues behind this exact account's raw cleanup flight.
+  await settleWithin(cleanup, undefined);
+  assertAccountSessionBoundary(boundary);
 };
