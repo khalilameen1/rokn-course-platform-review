@@ -25,6 +25,7 @@ import CourseIndexModule from './feedSideBar/CourseIndexModule';
 import {feedSideBarStyles as styles} from './feedSideBar/styles';
 import {useAttachmentPrompt} from './feedSideBar/useAttachmentPrompt';
 import {useSavedFolderPicker} from './feedSideBar/useSavedFolderPicker';
+import {CopyIcon} from '../ui/CopyIcon';
 
 interface FeedSideBarProps {
   course: CourseLearningData;
@@ -246,7 +247,9 @@ const FeedSideBar = ({
             {attachments.map(attachment => (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`تنزيل ${attachment.title}`}
+                accessibilityLabel={`${
+                  attachment.platform === 'computer' ? 'نسخ رابط' : 'تنزيل'
+                } ${attachment.title}`}
                 key={attachment.id}
                 onPress={() => void openCourseAttachment(attachment)}
                 style={({pressed}) => [
@@ -266,9 +269,13 @@ const FeedSideBar = ({
                         'ملف مرفق'}
                   </Text>
                 </View>
-                <Text style={styles.attachmentAction}>
-                  {course.attachmentPrompt?.buttonText || 'تحميل'}
-                </Text>
+                {attachment.platform === 'computer' ? (
+                  <CopyIcon />
+                ) : (
+                  <Text style={styles.attachmentAction}>
+                    {course.attachmentPrompt?.buttonText || 'تحميل'}
+                  </Text>
+                )}
               </Pressable>
             ))}
           </View>

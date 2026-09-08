@@ -32,6 +32,7 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 
 import {Alert, NativeModules, Platform} from 'react-native';
+import Clipboard from '@react-native-clipboard/clipboard';
 import {loadCourseLearningData} from '../src/components/VideoPlayer/courseLearning/mapping';
 import {
   openCourseAttachment,
@@ -103,6 +104,38 @@ describe('course attachment operation ownership', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     jest.useRealTimers();
+  });
+
+  it('copies a computer attachment link without starting a download', async () => {
+    const file = attachment({platform: 'computer'});
+    await expect(openCourseAttachment(file)).resolves.toEqual({
+      copied: true,
+      downloaded: false,
+    });
+    expect(Clipboard.setString).toHaveBeenCalledWith(file.url);
+    expect(enqueue).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'تم نسخ الرابط',
+      'افتح الرابط على الكمبيوتر لتنزيل الملفات',
+    );
+  });
+
+  it('reports a clipboard failure as copying failure and permits another tap', async () => {
+    jest.mocked(Clipboard.setString).mockImplementationOnce(() => {
+      throw new Error('clipboard unavailable');
+    });
+    const file = attachment({platform: 'computer'});
+    await expect(openCourseAttachment(file)).resolves.toEqual({
+      copied: false,
+      downloaded: false,
+    });
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    expect(Alert.alert).toHaveBeenCalledWith('تعذّر نسخ الرابط', 'حاول مرة أخرى');
+    expect(enqueue).not.toHaveBeenCalled();
+    await expect(openCourseAttachment(file)).resolves.toEqual({
+      copied: true,
+      downloaded: false,
+    });
   });
 
   it('refreshes one expiring link and coalesces repeated taps across URL changes', async () => {

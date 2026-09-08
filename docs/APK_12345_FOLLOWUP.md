@@ -561,3 +561,21 @@ matching `.apk.json` provenance, built from the clean source commit above.
 Older artifacts are intact. No physical-device installation/walkthrough or
 Drive upload is claimed. Mobile CI 34217304214 was still running at the last
 snapshot; the full local mobile gates and internal APK build had completed.
+
+## Copy actions follow-up — source only
+
+UID, course conversations and project reports now share an icon-only copy
+control with a fixed touch target and a two-second checkmark. Clipboard errors
+remain recoverable; success no longer adds a paragraph, changes the sheet's
+layout or emits an extra Android toast. Native selection remains disabled over
+the video surface. User text stays copyable after a failed send, and settled
+partial chat text stays copyable without being mislabelled as a completed answer.
+
+Project reports previously had no copy action. Computer-only course files now
+show a copy icon and accurate accessible label instead of claiming to download
+on the phone; native copy failures no longer blame the network. Actual mobile
+downloads and the intentionally locked report-reply control are unchanged.
+
+Verification: six targeted suites / 60 tests, TypeScript and changed-file ESLint.
+No APK rebuild, device visual acceptance or backend deployment is claimed for
+this follow-up. The APK and hash above still describe the preceding source.

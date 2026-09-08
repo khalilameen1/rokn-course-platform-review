@@ -139,14 +139,6 @@ export const courseChatStyles = StyleSheet.create({
     fontSize: 12,
     marginTop: 8,
   },
-  copyText: {
-    color: 'rgba(255,255,255,.58)',
-    fontFamily: Fonts.medium,
-    fontSize: 11,
-    marginTop: 7,
-    width: 34,
-    textAlign: 'center',
-  },
   messageAttachment: {
     ...textDirection,
     color: 'rgba(255,255,255,.78)',

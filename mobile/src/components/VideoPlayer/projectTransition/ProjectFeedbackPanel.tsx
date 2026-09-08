@@ -27,6 +27,8 @@ import type {
   ProjectFeedbackThread,
 } from '../types';
 import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
+import {cleanUnicodeText} from '../../../utils/unicodeText';
+import {CopyButton} from '../../ui/CopyButton';
 
 type Props = {
   attachments: ChatAttachmentDraft[];
@@ -92,63 +94,77 @@ const FeedbackMessage = ({
   threadId: string;
   onRetry: (message: ProjectFeedbackMessage) => void;
   report?: boolean;
-}) => (
-  <View
-    style={[
-      styles.messageBlock,
-      !report && message.role === 'user' && styles.bubbleUser,
-    ]}>
-    {!!message.text && (
-      <Text style={styles.message}>
-        {formatAuthoredDisplayText(message.text)}
-      </Text>
-    )}
-    <MessageAttachments
-      message={message}
-      projectId={projectId}
-      threadId={threadId}
-    />
-    {message.role === 'assistant' &&
-      ['queued', 'sent', 'streaming'].includes(message.status) && (
-        <View accessibilityLiveRegion="polite" style={styles.pendingState}>
-          <ActivityIndicator color={Palette.textMuted} size="small" />
-          <Text style={styles.state}>
-            {message.status === 'streaming'
-              ? 'يكتب الآن'
-              : report
-              ? 'جارٍ تجهيز التقرير'
-              : 'جارٍ تجهيز الرد'}
-          </Text>
-        </View>
+}) => {
+  const copyValue = cleanUnicodeText(message.text);
+  const canCopy =
+    Boolean(copyValue) &&
+    (message.role === 'user' ||
+      ['completed', 'failed'].includes(message.status));
+
+  return (
+    <View
+      style={[
+        styles.messageBlock,
+        !report && message.role === 'user' && styles.bubbleUser,
+      ]}>
+      {!!message.text && (
+        <Text selectable={false} style={styles.message}>
+          {formatAuthoredDisplayText(message.text)}
+        </Text>
       )}
-    {message.role === 'assistant' && message.status === 'failed' && (
-      <Text style={styles.state}>
-        {message.text?.trim()
-          ? 'لم يكتمل الرد'
-          : projectFeedbackFailureText(message.errorCode, message.canRetry)}
-      </Text>
-    )}
-    {message.role === 'user' && message.status === 'queued' && (
-      <Text style={styles.state}>جارٍ الإرسال</Text>
-    )}
-    {message.status === 'failed' &&
-      message.role === 'user' &&
-      projectFeedbackMessageCanRetry(message) && (
-        <Pressable
-          accessibilityRole="button"
-          disabled={sending}
-          style={styles.retryAction}
-          onPress={() => onRetry(message)}>
-          <Text style={styles.retry}>إرسال مرة أخرى</Text>
-        </Pressable>
+      {canCopy && (
+        <CopyButton
+          value={copyValue}
+          accessibilityLabel={report ? 'نسخ تقرير المشروع' : 'نسخ الرسالة'}
+        />
       )}
-    {message.status === 'failed' &&
-      message.role === 'user' &&
-      projectFeedbackMessageRequiresFreshAttachments(message) && (
-        <Text style={styles.state}>أضف الملف مرة أخرى ثم أرسل الرسالة</Text>
+      <MessageAttachments
+        message={message}
+        projectId={projectId}
+        threadId={threadId}
+      />
+      {message.role === 'assistant' &&
+        ['queued', 'sent', 'streaming'].includes(message.status) && (
+          <View accessibilityLiveRegion="polite" style={styles.pendingState}>
+            <ActivityIndicator color={Palette.textMuted} size="small" />
+            <Text style={styles.state}>
+              {message.status === 'streaming'
+                ? 'يكتب الآن'
+                : report
+                ? 'جارٍ تجهيز التقرير'
+                : 'جارٍ تجهيز الرد'}
+            </Text>
+          </View>
+        )}
+      {message.role === 'assistant' && message.status === 'failed' && (
+        <Text style={styles.state}>
+          {message.text?.trim()
+            ? 'لم يكتمل الرد'
+            : projectFeedbackFailureText(message.errorCode, message.canRetry)}
+        </Text>
       )}
-  </View>
-);
+      {message.role === 'user' && message.status === 'queued' && (
+        <Text style={styles.state}>جارٍ الإرسال</Text>
+      )}
+      {message.status === 'failed' &&
+        message.role === 'user' &&
+        projectFeedbackMessageCanRetry(message) && (
+          <Pressable
+            accessibilityRole="button"
+            disabled={sending}
+            style={styles.retryAction}
+            onPress={() => onRetry(message)}>
+            <Text style={styles.retry}>إرسال مرة أخرى</Text>
+          </Pressable>
+        )}
+      {message.status === 'failed' &&
+        message.role === 'user' &&
+        projectFeedbackMessageRequiresFreshAttachments(message) && (
+          <Text style={styles.state}>أضف الملف مرة أخرى ثم أرسل الرسالة</Text>
+        )}
+    </View>
+  );
+};
 
 const ProjectFeedbackPanel = ({
   attachments,

@@ -6,7 +6,6 @@ import {
   Platform,
   ScrollView,
   Text,
-  ToastAndroid,
   StyleSheet,
   TextInput,
   View,
@@ -16,7 +15,12 @@ import TestRenderer, {act} from 'react-test-renderer';
 import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {courseChatStyles as styles} from '../src/components/VideoPlayer/courseChat/styles';
-import type {ChatAttachmentDraft} from '../src/components/VideoPlayer/types';
+import {CopyButton} from '../src/components/ui/CopyButton';
+import {welcomeMessage} from '../src/components/VideoPlayer/courseChat/conversation';
+import type {
+  ChatAttachmentDraft,
+  ChatMessage,
+} from '../src/components/VideoPlayer/types';
 
 const {execPath} = require('node:process') as {execPath: string};
 const mockInsets = {top: 0, bottom: 0, left: 0, right: 0};
@@ -27,23 +31,17 @@ const mockChatState = {
   assistantPresence: 'connected',
   attachments: [] as ChatAttachmentDraft[],
   input: 'سؤال مكتوب',
-  messages: [
-    {
-      id: 'answer-1',
-      role: 'assistant',
-      text: 'ابدأ بتحديد الهدف',
-      deliveryStatus: 'completed',
-    },
-  ],
+  messages: [] as ChatMessage[],
   sending: false,
   answerPending: false,
   isSendInFlight: () => false,
   scrollRef: {current: null},
   setInput: jest.fn(),
 };
+const mockUseCourseChat = jest.fn(() => mockChatState);
 jest.unmock('react-native/Libraries/Components/ScrollView/ScrollView');
 jest.mock('../src/components/VideoPlayer/courseChat/useCourseChat', () => ({
-  useCourseChat: () => mockChatState,
+  useCourseChat: () => mockUseCourseChat(),
 }));
 jest.mock(
   '../src/components/VideoPlayer/courseChat/useCourseChatAttachments',
@@ -93,7 +91,15 @@ describe('course conversation keyboard ownership', () => {
   };
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(ToastAndroid, 'show').mockImplementation(() => undefined);
+    mockChatState.messages = [
+      {
+        id: 'answer-1',
+        role: 'assistant',
+        text: 'ابدأ بتحديد الهدف',
+        deliveryStatus: 'completed',
+        createdAt: 0,
+      },
+    ];
     mockChatState.attachments = [];
     mockChatState.answerPending = false;
     mockChatState.input = 'سؤال مكتوب';
@@ -193,20 +199,125 @@ describe('course conversation keyboard ownership', () => {
   it('copies the message without closing the sheet or changing its layout and draft', async () => {
     jest.replaceProperty(Platform, 'OS', 'android');
     await render();
-    const before = renderer.toJSON();
+    const historyProps = renderer.root.findByType(ScrollView).props;
+    const inputProps = renderer.root.findByType(TextInput).props;
+    const sheetProps = renderer.root.findByProps({
+      accessibilityViewIsModal: true,
+    }).props;
+    const overlayRenderCount = mockUseCourseChat.mock.calls.length;
     const message = renderer.root
       .findAllByType(Text)
       .find(node => node.props.children === 'ابدأ بتحديد الهدف');
     expect(message?.props.selectable).toBe(false);
-    await act(async () => {
+    expect(
       renderer.root
-        .findByProps({accessibilityLabel: 'نسخ الرسالة'})
-        .props.onPress();
-    });
+        .findAllByType(Text)
+        .some(node => node.props.children === 'نسخ'),
+    ).toBe(false);
+    const copyButton = renderer.root.findByType(CopyButton);
+    expect(copyButton.props.accessibilityLabel).toBe('نسخ الرسالة');
+    await act(async () =>
+      copyButton.findByProps({accessibilityRole: 'button'}).props.onPress(),
+    );
     expect(Clipboard.setString).toHaveBeenCalledWith('ابدأ بتحديد الهدف');
     expect(onClose).not.toHaveBeenCalled();
     expect(mockChatState.setInput).not.toHaveBeenCalled();
-    expect(renderer.toJSON()).toEqual(before);
+    expect(mockUseCourseChat).toHaveBeenCalledTimes(overlayRenderCount);
+    expect(renderer.root.findByType(ScrollView).props).toBe(historyProps);
+    expect(renderer.root.findByType(TextInput).props).toBe(inputProps);
+    expect(
+      renderer.root.findByProps({accessibilityViewIsModal: true}).props,
+    ).toBe(sheetProps);
+  });
+
+  it('offers copy for authored questions even when delivery is unresolved or failed', async () => {
+    mockChatState.messages = (
+      ['submitting', 'sent', 'completed', 'failed', 'cancelled'] as const
+    ).map((deliveryStatus, index) => ({
+      id: `question-${index}`,
+      role: 'user',
+      text: `سؤالي ${index}`,
+      createdAt: 0,
+      deliveryStatus,
+      contextEligible: deliveryStatus === 'completed',
+    }));
+    await render();
+    expect(
+      renderer.root.findAllByType(CopyButton).map(button => button.props.value),
+    ).toEqual(mockChatState.messages.map(message => message.text));
+  });
+
+  it('preserves settled assistant text for copy and hides welcome, empty, and active replies', async () => {
+    const assistantMessage = (
+      id: string,
+      overrides: Partial<ChatMessage> = {},
+    ): ChatMessage => ({
+      id,
+      role: 'assistant',
+      text: `رد ${id}`,
+      createdAt: 0,
+      deliveryStatus: 'completed',
+      ...overrides,
+    });
+    mockChatState.messages = [
+      welcomeMessage('7'),
+      assistantMessage('answer', {
+        text: '  إجابة مكتملة  ',
+        contextEligible: true,
+      }),
+      assistantMessage('legacy', {
+        text: 'إجابة محفوظة',
+        deliveryStatus: undefined,
+      }),
+      assistantMessage('system', {contextEligible: false}),
+      assistantMessage('empty', {text: ' \u200b '}),
+      assistantMessage('error', {
+        deliveryStatus: 'failed',
+        contextEligible: false,
+        errorCode: 'ai_temporarily_unavailable',
+      }),
+      ...(
+        [
+          'submitting',
+          'checking',
+          'queued',
+          'sent',
+          'streaming',
+          'interrupted',
+          'failed',
+          'cancelled',
+        ] as const
+      ).map(deliveryStatus =>
+        assistantMessage(deliveryStatus, {
+          deliveryStatus,
+          contextEligible: false,
+        }),
+      ),
+      assistantMessage('attachment-only', {
+        role: 'user',
+        text: '',
+        attachments: [
+          {
+            uploadId: 'file-1',
+            name: 'مشروعي.pdf',
+            type: 'application/pdf',
+            uri: 'file:///project.pdf',
+          },
+        ],
+      }),
+    ];
+    await render();
+    expect(
+      renderer.root.findAllByType(CopyButton).map(button => button.props.value),
+    ).toEqual([
+      'إجابة مكتملة',
+      'إجابة محفوظة',
+      'رد system',
+      'رد error',
+      'رد interrupted',
+      'رد failed',
+      'رد cancelled',
+    ]);
   });
 
   it('does not dismiss a focused composer when a plain message receives a tap', async () => {

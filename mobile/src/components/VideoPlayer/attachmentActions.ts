@@ -339,7 +339,12 @@ const openCourseAttachmentInternal = async (
   }
 
   if (currentAttachment.platform === 'computer') {
-    Clipboard.setString(currentAttachment.url);
+    try {
+      Clipboard.setString(currentAttachment.url);
+    } catch {
+      Alert.alert('تعذّر نسخ الرابط', 'حاول مرة أخرى');
+      return emptyResult();
+    }
     const temporaryLink = currentAttachment.temporary;
     Alert.alert(
       'تم نسخ الرابط',

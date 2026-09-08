@@ -1,7 +1,7 @@
 import Clipboard from '@react-native-clipboard/clipboard';
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {StyleSheet, Text} from 'react-native';
+import {AccessibilityInfo, Alert, StyleSheet, Text} from 'react-native';
 import {SettingsAccountIdentity} from '../src/components/settings/SettingsAccountIdentity';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 
@@ -20,8 +20,20 @@ describe('settings account identity view', () => {
       .findAllByType(Text)
       .map(node => cleanUnicodeText(node.props.children));
 
-  beforeEach(() => jest.mocked(Clipboard.setString).mockReset());
-  afterEach(() => act(() => renderer?.unmount()));
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+    jest.mocked(Clipboard.setString).mockReset();
+    jest
+      .spyOn(AccessibilityInfo, 'announceForAccessibility')
+      .mockImplementation(() => {});
+    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    act(() => renderer?.unmount());
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
 
   it('preserves the authored RTL name and renders the exact UID in LTR', () => {
     const name = 'مريم Grease Pencil 2026';
@@ -45,7 +57,7 @@ describe('settings account identity view', () => {
     expect(identity.props.selectable).toBe(true);
   });
 
-  it('copies only the raw id and confirms inline with an accessible touch target', () => {
+  it('copies only the raw id and confirms within the icon without adding visible text', () => {
     act(() => {
       renderer = TestRenderer.create(
         <SettingsAccountIdentity id="000123" name="محمد" />,
@@ -53,19 +65,27 @@ describe('settings account identity view', () => {
     });
     const target = copyButton();
     const style = StyleSheet.flatten(target.props.style({pressed: false}));
-    expect(style.minWidth).toBeGreaterThanOrEqual(44);
-    expect(style.minHeight).toBeGreaterThanOrEqual(44);
+    expect(style.minWidth).toBeGreaterThanOrEqual(48);
+    expect(style.minHeight).toBeGreaterThanOrEqual(48);
+    const beforeText = visibleText();
+    expect(beforeText).not.toContain('نسخ');
     act(() => target.props.onPress());
     expect(Clipboard.setString).toHaveBeenCalledWith('000123');
     expect(Clipboard.setString).toHaveBeenCalledTimes(1);
-    expect(visibleText()).toContain('تم النسخ');
-    const feedback = renderer.root
-      .findAllByType(Text)
-      .find(node => node.props.children === 'تم النسخ')!;
-    expect(feedback.props.accessibilityLiveRegion).toBe('polite');
+    expect(copyButton().props.accessibilityValue).toEqual({text: 'تم النسخ'});
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith(
+      'تم النسخ',
+    );
+    expect(visibleText()).toEqual(beforeText);
+    expect(
+      StyleSheet.flatten(copyButton().props.style({pressed: false})),
+    ).toEqual(style);
+    act(() => jest.advanceTimersByTime(2000));
+    expect(copyButton().props.accessibilityValue).toEqual({text: ''});
+    expect(visibleText()).toEqual(beforeText);
   });
 
-  it('shows a useful two-line failure and allows another copy attempt', () => {
+  it('reports a clipboard failure without false success and permits recovery', () => {
     jest.mocked(Clipboard.setString).mockImplementationOnce(() => {
       throw new Error('clipboard unavailable');
     });
@@ -75,11 +95,14 @@ describe('settings account identity view', () => {
       );
     });
     expect(() => act(() => copyButton().props.onPress())).not.toThrow();
-    expect(visibleText()).toContain('تعذّر النسخ\nحاول مرة أخرى');
-    expect(visibleText()).not.toContain('تم النسخ');
+    expect(Alert.alert).toHaveBeenCalledWith('تعذّر النسخ', 'حاول مرة أخرى');
+    expect(copyButton().props.accessibilityValue).toEqual({text: ''});
+    expect(AccessibilityInfo.announceForAccessibility).not.toHaveBeenCalled();
+    expect(visibleText()).toEqual(['محمد', 'UID: 123']);
     act(() => copyButton().props.onPress());
-    expect(visibleText()).toContain('تم النسخ');
-    expect(visibleText()).not.toContain('تعذّر النسخ\nحاول مرة أخرى');
+    expect(copyButton().props.accessibilityValue).toEqual({text: 'تم النسخ'});
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledTimes(1);
+    expect(visibleText()).toEqual(['محمد', 'UID: 123']);
   });
 
   it('resets copy feedback when the parent keys a different account', () => {
@@ -89,12 +112,13 @@ describe('settings account identity view', () => {
       );
     });
     act(() => copyButton().props.onPress());
+    expect(copyButton().props.accessibilityValue).toEqual({text: 'تم النسخ'});
     act(() =>
       renderer.update(
         <SettingsAccountIdentity key="456" id="456" name="مريم" />,
       ),
     );
-    expect(visibleText()).not.toContain('تم النسخ');
+    expect(copyButton().props.accessibilityValue).toEqual({text: ''});
     expect(visibleText()).toContain('UID: 456');
     act(() => copyButton().props.onPress());
     expect(Clipboard.setString).toHaveBeenLastCalledWith('456');

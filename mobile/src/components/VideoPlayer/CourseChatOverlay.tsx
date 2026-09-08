@@ -1,8 +1,6 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {useNavigation} from '@react-navigation/native';
-import Clipboard from '@react-native-clipboard/clipboard';
 import {
-  AccessibilityInfo,
   Alert,
   Dimensions,
   KeyboardAvoidingView,
@@ -10,7 +8,6 @@ import {
   Platform,
   Pressable,
   Text,
-  ToastAndroid,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -198,17 +195,6 @@ const CourseChatOverlay = ({
     retry(clientRequestId);
   };
 
-  const copyMessage = (text: string) => {
-    Clipboard.setString(text);
-    // Native feedback avoids re-rendering and re-laying out the transparent
-    // Modal above an Android video surface. That layout churn was visible as a
-    // shaking reel and could expose touches to the screen underneath.
-    if (Platform.OS === 'android') {
-      ToastAndroid.show('تم النسخ', ToastAndroid.SHORT);
-    }
-    void AccessibilityInfo.announceForAccessibility('تم النسخ');
-  };
-
   return (
     <Modal
       visible={visible}
@@ -316,7 +302,6 @@ const CourseChatOverlay = ({
                   hasSendableInput={hasSendableInput}
                   input={input}
                   messages={messages}
-                  onCopy={copyMessage}
                   onInputChange={value =>
                     setInput(truncateGraphemes(value, 1600))
                   }

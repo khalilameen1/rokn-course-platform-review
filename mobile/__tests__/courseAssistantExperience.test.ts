@@ -370,9 +370,7 @@ describe('course assistant waiting experience', () => {
       jest.mocked(publicRequest.get).mockRejectedValue({status});
 
       await expect(
-        pollCourseAssistantTurn(
-          'b1644f1f-21ff-4a52-bfc3-cf98fd87a388',
-        ),
+        pollCourseAssistantTurn('b1644f1f-21ff-4a52-bfc3-cf98fd87a388'),
       ).resolves.toMatchObject({
         offline: false,
         unavailable: true,
@@ -403,8 +401,9 @@ describe('course assistant waiting experience', () => {
       'utf8',
     );
 
-    expect(overlay).toContain('Clipboard.setString(text)');
-    expect(overlay).toContain("ToastAndroid.show('تم النسخ'");
+    expect(overlay).not.toContain('Clipboard');
+    expect(overlay).not.toContain('ToastAndroid');
+    expect(overlay).not.toContain('onCopy=');
     const conversation = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -413,6 +412,8 @@ describe('course assistant waiting experience', () => {
       'utf8',
     );
     expect(conversation).toContain('accessibilityLabel="نسخ الرسالة"');
+    expect(conversation).toContain('<CopyButton');
+    expect(conversation).toContain('selectable={false}');
     expect(conversation).toContain(
       'accessibilityLabel="محادثة استفسارات الكورس"',
     );

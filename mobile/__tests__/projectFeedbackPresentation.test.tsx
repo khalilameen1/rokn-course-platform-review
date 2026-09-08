@@ -1,8 +1,20 @@
 import React from 'react';
+import Clipboard from '@react-native-clipboard/clipboard';
 import TestRenderer, {act} from 'react-test-renderer';
 import {Alert, StyleSheet, Text, TextInput} from 'react-native';
 import ProjectFeedbackPanel from '../src/components/VideoPlayer/projectTransition/ProjectFeedbackPanel';
+import {CopyButton} from '../src/components/ui/CopyButton';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
+
+jest.mock('@react-native-clipboard/clipboard', () => ({
+  setString: jest.fn(),
+}));
+jest.mock('react-native-svg', () => ({
+  __esModule: true,
+  default: 'Svg',
+  Path: 'Path',
+  Rect: 'Rect',
+}));
 
 const mockOpenAttachment = jest.fn(async (..._args: unknown[]) => undefined);
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
@@ -75,6 +87,7 @@ describe('project feedback report and conversation presentation', () => {
     if (renderer) act(() => renderer.unmount());
     jest.restoreAllMocks();
     mockOpenAttachment.mockClear();
+    jest.mocked(Clipboard.setString).mockClear();
   });
 
   it('renders the report first at full width with authored paragraphs and readable type', () => {
@@ -95,6 +108,7 @@ describe('project feedback report and conversation presentation', () => {
       writingDirection: 'rtl',
     });
     expect(body.props.numberOfLines).toBeUndefined();
+    expect(body.props.selectable).toBe(false);
     const reportContainer = StyleSheet.flatten(body.parent!.props.style);
     expect(reportContainer.alignSelf).toBe('stretch');
     expect(reportContainer.maxWidth).toBeUndefined();
@@ -105,10 +119,90 @@ describe('project feedback report and conversation presentation', () => {
     expect(StyleSheet.flatten(input.props.style).width).toBe('100%');
     expect(actions(renderer).length).toBeGreaterThan(1);
     for (const action of actions(renderer)) {
-      expect(
-        StyleSheet.flatten(action.props.style).minHeight,
-      ).toBeGreaterThanOrEqual(48);
+      const actionStyle =
+        typeof action.props.style === 'function'
+          ? action.props.style({pressed: false})
+          : action.props.style;
+      expect(StyleSheet.flatten(actionStyle).minHeight).toBeGreaterThanOrEqual(
+        48,
+      );
     }
+  });
+
+  it('copies completed report and follow-up content without display controls or native text selection', () => {
+    const inquiry = 'value = ٣ + 2;\n\nهل أغيّر Grease Pencil 4؟';
+    const answer = 'غيّر value فقط\n\nاحتفظ بالإصدار 4';
+    const base = props();
+    base.thread = {
+      ...base.thread,
+      messages: [
+        report,
+        {id: 'user-copy', role: 'user', status: 'failed', text: inquiry},
+        {
+          id: 'answer-copy',
+          role: 'assistant',
+          status: 'completed',
+          text: answer,
+        },
+      ],
+    };
+    render(base);
+
+    const copyActions = renderer.root.findAllByType(CopyButton);
+    expect(copyActions.map(action => action.props.value)).toEqual([
+      reportText,
+      inquiry,
+      answer,
+    ]);
+    expect(copyActions.map(action => action.props.accessibilityLabel)).toEqual([
+      'نسخ تقرير المشروع',
+      'نسخ الرسالة',
+      'نسخ الرسالة',
+    ]);
+    for (const copyAction of copyActions) {
+      const action = copyAction.findAll(
+        node =>
+          typeof node.props.onPress === 'function' &&
+          node.props.accessibilityRole === 'button',
+      )[0];
+      act(() => action.props.onPress());
+    }
+    expect(jest.mocked(Clipboard.setString).mock.calls).toEqual([
+      [reportText],
+      [inquiry],
+      [answer],
+    ]);
+    expect(texts(renderer)).not.toContain('نسخ');
+    for (const text of renderer.root.findAllByType(Text)) {
+      expect(text.props.selectable).not.toBe(true);
+    }
+  });
+
+  it.each(['queued', 'sent', 'streaming', 'cancelled'] as const)(
+    'does not offer copy for an assistant %s placeholder or unfinished report',
+    status => {
+      const base = props({pending: true, error: 'تعذّر الاتصال'});
+      base.thread = {
+        ...base.thread,
+        messages: [{...report, status, text: 'تقرير لم يكتمل بعد'}],
+      };
+      render(base);
+      expect(renderer.root.findAllByType(CopyButton)).toHaveLength(0);
+    },
+  );
+
+  it('keeps failure guidance without a copy action when no report body was received', () => {
+    const base = props({error: 'تعذّر الاتصال'});
+    base.thread = {
+      ...base.thread,
+      messages: [
+        {...report, status: 'failed', text: '', errorCode: 'provider_timeout'},
+      ],
+    };
+    render(base);
+    expect(texts(renderer)).toContain('تعذّر الرد الآن\nأرسل رسالتك مرة أخرى');
+    expect(texts(renderer)).toContain('تعذّر الاتصال');
+    expect(renderer.root.findAllByType(CopyButton)).toHaveLength(0);
   });
 
   it('keeps report-only inquiry explanatory and never mounts an inactive composer', () => {
@@ -160,6 +254,9 @@ describe('project feedback report and conversation presentation', () => {
     expect(texts(renderer)).toContain(partial);
     expect(texts(renderer)).toContain('يكتب الآن');
     expect(texts(renderer)).not.toContain('جارٍ تجهيز الرد');
+    expect(
+      renderer.root.findAllByType(CopyButton).map(action => action.props.value),
+    ).not.toContain(partial);
     act(() =>
       renderer.update(
         <ProjectFeedbackPanel
@@ -178,6 +275,9 @@ describe('project feedback report and conversation presentation', () => {
     );
     expect(texts(renderer)).toContain(partial);
     expect(texts(renderer)).toContain('لم يكتمل الرد');
+    expect(
+      renderer.root.findAllByType(CopyButton).map(action => action.props.value),
+    ).toContain(partial);
   });
 
   it.each(['queued', 'sent'] as const)(

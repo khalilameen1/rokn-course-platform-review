@@ -11,8 +11,10 @@ import {
   View,
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
+import {Palette} from '../../../constants/designSystem';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
+import {CopyButton} from '../../ui/CopyButton';
 import type {ChatAttachmentDraft, ChatMessage} from '../types';
 import {
   courseChatTurnHasRetryAction,
@@ -21,6 +23,12 @@ import {
 } from './policy';
 import {courseChatStyles as styles} from './styles';
 import type {AssistantPresence} from './conversation';
+
+const canCopyMessage = (message: ChatMessage): boolean =>
+  Boolean(cleanUnicodeText(message.text)) &&
+  !message.id.startsWith('welcome-') &&
+  (message.role === 'user' ||
+    !courseChatTurnShowsActivity(message.deliveryStatus));
 
 const SendIcon = () => (
   <Svg width={21} height={21} viewBox="0 0 24 24">
@@ -103,7 +111,6 @@ export const CourseChatConversation = ({
   input,
   inputMaxHeight = 110,
   messages,
-  onCopy,
   onInputChange,
   onOpenAttachment,
   onPickAttachments,
@@ -124,7 +131,6 @@ export const CourseChatConversation = ({
   input: string;
   inputMaxHeight?: number;
   messages: ChatMessage[];
-  onCopy: (text: string) => void;
   onInputChange: (text: string) => void;
   onOpenAttachment: (file: ChatAttachmentDraft) => void;
   onPickAttachments: () => void;
@@ -198,14 +204,12 @@ export const CourseChatConversation = ({
                     </Text>
                   </Pressable>
                 ))}
-                {!!cleanUnicodeText(message.text) && (
-                  <Pressable
-                    accessibilityRole="button"
+                {canCopyMessage(message) && (
+                  <CopyButton
                     accessibilityLabel="نسخ الرسالة"
-                    hitSlop={6}
-                    onPress={() => onCopy(cleanUnicodeText(message.text))}>
-                    <Text style={styles.copyText}>نسخ</Text>
-                  </Pressable>
+                    value={cleanUnicodeText(message.text)}
+                    color={message.role === 'user' ? Palette.text : undefined}
+                  />
                 )}
                 {message.role === 'assistant' &&
                   message.clientRequestId &&
