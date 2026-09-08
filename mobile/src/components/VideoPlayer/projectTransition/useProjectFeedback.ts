@@ -14,7 +14,7 @@ import {
   loadProjectFeedbackDraft,
   saveProjectFeedbackDraft,
 } from '../../../services/projectFeedbackDraft';
-import {learnerErrorMessage} from '../../../utils/errorPayload';
+import {errorStatus, learnerErrorMessage} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
 import {
@@ -103,8 +103,28 @@ export const useProjectFeedback = ({
   const pending = projectFeedbackThreadIsPending(thread?.messages || []);
 
   useEffect(() => {
-    setThread(seedThread);
-  }, [seedThread, setThread]);
+    setThreadState(current => {
+      if (
+        seedThread?.transcriptIncluded === false &&
+        current.projectId === projectId &&
+        current.thread?.id === seedThread.id
+      ) {
+        // Course maps intentionally omit messages, quota and attachment limits.
+        // Keep the full read/send result, but apply the summary's real access
+        // verdict so a revoked permission cannot leave the composer enabled.
+        return {
+          projectId,
+          thread: {
+            ...current.thread,
+            canReply: seedThread.canReply,
+            feedbackLevel: seedThread.feedbackLevel,
+            status: seedThread.status,
+          },
+        };
+      }
+      return {projectId, thread: seedThread};
+    });
+  }, [projectId, seedThread]);
 
   useEffect(() => {
     generationRef.current += 1;
@@ -446,12 +466,42 @@ export const useProjectFeedback = ({
         if (!ownsContext()) return;
         setAttachments(uploaded);
         requestRef.current = {id: requestId, fingerprint: durableFingerprint};
-        const next = await sendProjectFeedbackMessage(
-          threadId,
-          value,
-          requestId,
-          uploaded.map(file => file.serverId!).filter(Boolean),
-        );
+        let next: ProjectFeedbackThread;
+        try {
+          next = await sendProjectFeedbackMessage(
+            threadId,
+            value,
+            requestId,
+            uploaded.map(file => file.serverId!).filter(Boolean),
+          );
+        } catch (sendError) {
+          assertAccountSessionBoundary(boundary);
+          if (!ownsContext()) return;
+          const status = errorStatus(sendError);
+          if (status >= 400 && status < 500 && status !== 408) throw sendError;
+
+          // A lost acknowledgement is not proof that the message was rejected.
+          // Read the existing thread once; never start a second paid request.
+          const recovered = await loadProjectFeedbackThread(
+            projectId,
+            threadId,
+          ).catch(() => null);
+          assertAccountSessionBoundary(boundary);
+          if (!ownsContext()) return;
+          if (
+            recovered?.id !== threadId ||
+            !recovered.messages.some(
+              message =>
+                message.role === 'user' &&
+                message.clientRequestId === requestId,
+            )
+          ) {
+            // The durable draft retains this same request ID for explicit retry.
+            setError('تعذّر تأكيد إرسال الرسالة\nمسودتك محفوظة حاول مرة أخرى');
+            return;
+          }
+          next = recovered;
+        }
         assertAccountSessionBoundary(boundary);
         if (!ownsContext()) return;
         void clearProjectFeedbackDraft(threadId, uploaded, boundary).catch(

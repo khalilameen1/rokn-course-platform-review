@@ -671,3 +671,45 @@ Final combined gate for this follow-through: 25 affected Jest suites passed
 The Home cases and saved-folder stale read/cache-order cases were reproduced
 as failures before their fixes. No new APK, Git push, live payment or production
 deployment was performed for this entry; the larger review goal stays open.
+
+## September 8 — interrupted chat, playback and logout (source only)
+
+This pass followed three existing operations through their interrupted states:
+
+- A project follow-up message could reach the backend while its POST
+  acknowledgement was lost. The screen now reads the existing thread once and
+  recognizes that exact `client_request_id` before resuming its existing reply
+  polling. It never sends another paid message automatically. An unconfirmed
+  result keeps the draft, uploaded attachment identities and request ID for an
+  explicit retry. Definitive client errors do not enter this recovery path.
+- A course refresh contains a project-thread summary, not its transcript or
+  quota. Applying that summary to an already open thread erased the report and
+  pending reply. The mapper now identifies this known summary source explicitly.
+  The same thread retains its full data while applying the summary's current
+  reply permission; a different project or thread still hydrates independently.
+- Background, quality and source remounts reused the fresh-open near-end replay
+  rule. A live position such as 17.5 seconds of a 20-second reel could restart
+  from zero. Live restoration now keeps its bounded position, including zero,
+  without changing the existing replay policy for a genuinely fresh opening.
+- Local logout could announce success after a native credential deletion
+  failed, and its retry then had no cached owner to delete. Durable failure now
+  rejects and keeps the in-process owner for retry; `false` means only that a
+  replacement session owns the device. All sibling native deletions settle
+  before the session mutation queue accepts another login. Shared Settings
+  cleanup checks session ownership between stages, so an older logout cannot
+  reset a replacement account. Server account deletion and device logout have
+  separate truthful outcomes when only local cleanup fails.
+
+The project summary producer was checked in `ProjectSubmissionPresenter` and
+`CourseResource`, and all production callers of token-guarded session deletion
+were reviewed. The existing API 401 retry and replacement-owner behavior were
+retained. The adjacent partial-report test needed only its missing native
+Clipboard mock before its actual assertions could run.
+
+Final root verification: 22 affected Jest suites passed 204 tests, full mobile
+TypeScript passed, scoped ESLint reported no warnings and `git diff --check`
+passed. Regressions cover lost acknowledgements, summaries arriving during a
+reply, revoked reply permission, real player-controller remounts, partial and
+delayed native deletion, logout retry and same/different-account replacement.
+These are local source checks, not a live provider, device or production
+acceptance result. No APK, push or deployment was performed for this entry.

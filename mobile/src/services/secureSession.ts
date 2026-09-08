@@ -419,15 +419,21 @@ export const restoreSecureAuthState = async () => {
 
 const performDeleteSecureSession = async () => {
   sessionCacheEpoch += 1;
-  cachedSession = null;
+  // Keep the current in-process owner until durable deletion succeeds. A
+  // partial failure must allow the same token-guarded logout to be retried,
+  // even when its token or profile has already been removed from storage.
   sessionCacheReady = true;
   sessionLoadPromise = null;
   const results = await Promise.allSettled([
-    deleteSecureTokens(),
-    secureDeleteItem(PENDING_SOCIAL_AUTH_KEY),
-    AsyncStorage.removeItem(USER_DATA_KEY),
+    Promise.resolve().then(deleteSecureTokens),
+    Promise.resolve().then(() => secureDeleteItem(PENDING_SOCIAL_AUTH_KEY)),
+    Promise.resolve().then(() => AsyncStorage.removeItem(USER_DATA_KEY)),
   ]);
-  return results.every(result => result.status === 'fulfilled');
+  if (results.some(result => result.status === 'rejected')) return false;
+  // Invalidate requests which started while deletion was in progress too.
+  sessionCacheEpoch += 1;
+  cachedSession = null;
+  return true;
 };
 
 export const deleteSecureSession = () =>
@@ -438,13 +444,17 @@ export const deleteSecureSession = () =>
  * may commit a replacement while the old request is still unwinding; keeping
  * the comparison inside the session mutation queue prevents that old response
  * from deleting the newly authenticated owner.
+ * False means the bearer no longer owns this session. Storage failure rejects
+ * so callers keep their retry path instead of treating it as an account switch.
  */
 export const deleteSecureSessionIfToken = (expectedToken: string) =>
   serializeSessionMutation(async () => {
     const normalized = expectedToken.trim();
     const current = await loadSecureSession();
     if (!normalized || extractApiToken(current) !== normalized) return false;
-    await performDeleteSecureSession();
+    if (!(await performDeleteSecureSession())) {
+      throw new Error('SESSION_STORAGE_UNAVAILABLE_DELETE');
+    }
     return true;
   });
 
@@ -453,10 +463,13 @@ const performClearSecureSessionStorage = async () => {
   cachedSession = null;
   sessionCacheReady = true;
   sessionLoadPromise = null;
-  await Promise.all([
-    deleteSecureTokens(),
-    secureDeleteItem(PENDING_SOCIAL_AUTH_KEY),
+  const results = await Promise.allSettled([
+    Promise.resolve().then(deleteSecureTokens),
+    Promise.resolve().then(() => secureDeleteItem(PENDING_SOCIAL_AUTH_KEY)),
   ]);
+  if (results.some(result => result.status === 'rejected')) {
+    throw new Error('SESSION_STORAGE_UNAVAILABLE_DELETE');
+  }
   await AsyncStorage.clear();
 };
 

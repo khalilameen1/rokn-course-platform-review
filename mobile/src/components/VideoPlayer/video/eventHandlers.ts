@@ -119,12 +119,24 @@ export const createVideoEventHandlers = (
     context.setRecoveryMessage('');
     context.diagnosticRequest.current += 1;
     if (!context.hasRestored.current) {
+      const isLiveResume = context.retryPosition.current !== null;
       const requestedPosition =
         context.retryPosition.current ?? context.reelInitialPosition.current;
+      const validPosition = Number.isFinite(requestedPosition)
+        ? Math.max(0, requestedPosition)
+        : 0;
+      const boundedPosition =
+        loadedDuration > 0
+          ? Math.min(validPosition, loadedDuration)
+          : validPosition;
+      // Only a fresh reopen applies the near-end replay policy. Background,
+      // quality and manifest remounts continue the live position, including 0.
       const resumeAt =
-        loadedDuration > 0 && requestedPosition >= loadedDuration - 3
+        !isLiveResume &&
+        loadedDuration > 0 &&
+        boundedPosition >= loadedDuration - 3
           ? 0
-          : Math.max(0, requestedPosition);
+          : boundedPosition;
       // A native source remount starts a new decoder generation. A seek that
       // belonged to the detached decoder cannot remain authoritative when
       // the new source intentionally resumes from the beginning.

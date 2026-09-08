@@ -42,7 +42,9 @@ export const mapCourseProject = (
     : valueAsBoolean(projectFeedback.report_enabled);
   const feedbackThread =
     reportEnabled && ['report', 'enhanced'].includes(projectFeedbackLevel)
-      ? mapProjectFeedbackThread(submission.feedback_thread) || undefined
+      ? mapProjectFeedbackThread(submission.feedback_thread, {
+          transcriptIncluded: false,
+        }) || undefined
       : undefined;
 
   return {

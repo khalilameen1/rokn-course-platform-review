@@ -4,6 +4,9 @@ import {NativeModules, Platform} from 'react-native';
 import {
   assertSecureSessionStorageAvailable,
   deleteSecureSession,
+  deleteSecureSessionIfToken,
+  clearSecureSessionStorage,
+  loadSecureSession,
   peekSecureSession,
   resetSecureSessionForTests,
   restoreSecureAuthState,
@@ -16,6 +19,24 @@ import {
   secureStoreOptionsForPlatform,
   sessionIdentityKey,
 } from '../src/services/secureSession';
+
+jest.mock('../src/services/smartReminders', () => ({
+  cancelLearningReminders: jest.fn(),
+  setSmartRemindersEnabled: jest.fn(async () => undefined),
+}));
+jest.mock('../src/services/pushNotifications', () => ({
+  getCurrentPushDeviceToken: jest.fn(async () => null),
+  clearCurrentPushDeviceRegistration: jest.fn(async () => undefined),
+}));
+jest.mock('../src/services/deviceSessions', () => ({
+  revokeCurrentDeviceSession: jest.fn(async () => undefined),
+}));
+jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
+  clearCurrentAccountLearningFiles: jest.fn(async () => undefined),
+}));
+jest.mock('../src/utils/fileCache', () => ({
+  clearTransientChatCache: jest.fn(async () => undefined),
+}));
 
 const secureValues = new Map<string, string>();
 const secureGet = SecureStore.getItemAsync as jest.MockedFunction<
@@ -33,6 +54,7 @@ const secureIsAvailable = SecureStore.isAvailableAsync as jest.MockedFunction<
 
 describe('secure mobile session persistence', () => {
   beforeEach(async () => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     secureValues.clear();
     resetSecureSessionForTests();
@@ -203,6 +225,198 @@ describe('secure mobile session persistence', () => {
 
     expect(secureValues.has('rokn.auth.api-token.v2')).toBe(false);
     expect(await AsyncStorage.getItem('USER_DATA')).toBeNull();
+  });
+
+  it.each([
+    'rokn.auth.api-token.v2',
+    'rokn.auth.session-binding.v1',
+    'rokn.auth.pending-social.v1',
+    'USER_DATA',
+  ])('keeps logout retryable after partial deletion of %s fails', async key => {
+    const session = {api_token: 'retry-token', user: {id: 7}};
+    await saveSecureSession(session);
+    secureValues.set('rokn.auth.pending-social.v1', 'completed-auth-journal');
+    const originalEpoch = peekSecureSession().epoch;
+    if (key === 'USER_DATA') {
+      jest
+        .spyOn(AsyncStorage, 'removeItem')
+        .mockRejectedValueOnce(new Error('profile removal failed'));
+    } else {
+      secureDelete.mockImplementation(async deletingKey => {
+        if (deletingKey === key) throw new Error('native deletion failed');
+        secureValues.delete(deletingKey);
+      });
+    }
+
+    await expect(deleteSecureSessionIfToken('retry-token')).rejects.toThrow(
+      'SESSION_STORAGE_UNAVAILABLE_DELETE',
+    );
+    expect(await loadSecureSession()).toEqual(session);
+    expect(peekSecureSession().epoch).toBeGreaterThan(originalEpoch);
+    expect(
+      key === 'USER_DATA'
+        ? await AsyncStorage.getItem(key)
+        : secureValues.get(key),
+    ).toBeTruthy();
+    // Partial removal is not proof that the account can be restored on cold
+    // start, but it is not a completed local logout either.
+    secureDelete.mockImplementation(async deletingKey => {
+      secureValues.delete(deletingKey);
+    });
+    await expect(deleteSecureSessionIfToken('retry-token')).resolves.toBe(true);
+    expect(await loadSecureSession()).toBeNull();
+    expect(secureValues.size).toBe(0);
+    expect(await AsyncStorage.getItem('USER_DATA')).toBeNull();
+  });
+
+  it('preserves the direct deletion boolean and permits retry after failure', async () => {
+    await saveSecureSession({api_token: 'direct-token', user: {id: 7}});
+    secureDelete.mockRejectedValueOnce(new Error('native deletion failed'));
+
+    await expect(deleteSecureSession()).resolves.toBe(false);
+    expect(peekSecureSession().session).toMatchObject({
+      api_token: 'direct-token',
+    });
+    await expect(deleteSecureSession()).resolves.toBe(true);
+    expect(peekSecureSession().session).toBeNull();
+  });
+
+  it('attempts all deletion keys even when a native bridge throws synchronously', async () => {
+    await saveSecureSession({api_token: 'old-token', user: {id: 7}});
+    secureValues.set('rokn.auth.pending-social.v1', 'journal');
+    secureDelete.mockImplementation(key => {
+      if (key === 'rokn.auth.api-token.v2')
+        throw new Error('bridge unavailable');
+      secureValues.delete(key);
+      return Promise.resolve();
+    });
+
+    await expect(deleteSecureSessionIfToken('old-token')).rejects.toThrow(
+      'SESSION_STORAGE_UNAVAILABLE_DELETE',
+    );
+    expect(secureValues.has('rokn.auth.session-binding.v1')).toBe(false);
+    expect(secureValues.has('rokn.auth.pending-social.v1')).toBe(false);
+    expect(await AsyncStorage.getItem('USER_DATA')).toBeNull();
+  });
+
+  it('does not let an older native restore resurrect a successfully deleted session', async () => {
+    await saveSecureSession({api_token: 'old-token', user: {id: 7}});
+    resetSecureSessionForTests();
+    let releaseRead!: () => void;
+    const readGate = new Promise<void>(resolve => {
+      releaseRead = resolve;
+    });
+    let readStarted!: () => void;
+    const started = new Promise<void>(resolve => {
+      readStarted = resolve;
+    });
+    secureGet.mockImplementation(async key => {
+      const captured = secureValues.get(key) ?? null;
+      if (key === 'rokn.auth.api-token.v2') {
+        readStarted();
+        await readGate;
+      }
+      return captured;
+    });
+    const oldRestore = loadSecureSession();
+    await started;
+    await expect(deleteSecureSession()).resolves.toBe(true);
+    releaseRead();
+
+    await expect(oldRestore).resolves.toBeNull();
+    expect(peekSecureSession().session).toBeNull();
+  });
+
+  it.each([7, 8])(
+    'waits for a delayed native sibling before account %s can replace the session',
+    async nextOwner => {
+      await saveSecureSession({api_token: 'old-token', user: {id: 7}});
+      let releaseBinding!: () => void;
+      const bindingGate = new Promise<void>(resolve => {
+        releaseBinding = resolve;
+      });
+      let bindingStarted!: () => void;
+      const started = new Promise<void>(resolve => {
+        bindingStarted = resolve;
+      });
+      secureDelete.mockImplementation(async key => {
+        if (key === 'rokn.auth.api-token.v2')
+          throw new Error('token delete failed');
+        if (key === 'rokn.auth.session-binding.v1') {
+          bindingStarted();
+          await bindingGate;
+        }
+        secureValues.delete(key);
+      });
+      const logout = deleteSecureSessionIfToken('old-token').catch(
+        error => error,
+      );
+      await started;
+      secureSet.mockClear();
+      const replacement = saveSecureSession({
+        api_token: 'new-token',
+        user: {id: nextOwner},
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(secureSet).not.toHaveBeenCalled();
+
+      releaseBinding();
+      expect(await logout).toEqual(
+        new Error('SESSION_STORAGE_UNAVAILABLE_DELETE'),
+      );
+      await replacement;
+      const deletes = secureDelete.mock.calls.length;
+      await expect(deleteSecureSessionIfToken('old-token')).resolves.toBe(
+        false,
+      );
+      expect(secureDelete).toHaveBeenCalledTimes(deletes);
+      resetSecureSessionForTests();
+      await expect(loadSecureSession()).resolves.toEqual({
+        api_token: 'new-token',
+        user: {id: nextOwner},
+      });
+    },
+  );
+
+  it('keeps a failed full clear queued until pending journal deletion settles', async () => {
+    await saveSecureSession({api_token: 'old-token', user: {id: 7}});
+    await AsyncStorage.setItem('unrelated-preference', 'keep');
+    let releaseJournal!: () => void;
+    const journalGate = new Promise<void>(resolve => {
+      releaseJournal = resolve;
+    });
+    let journalStarted!: () => void;
+    const started = new Promise<void>(resolve => {
+      journalStarted = resolve;
+    });
+    secureDelete.mockImplementation(async key => {
+      if (key === 'rokn.auth.api-token.v2')
+        throw new Error('token delete failed');
+      if (key === 'rokn.auth.pending-social.v1') {
+        journalStarted();
+        await journalGate;
+      }
+      secureValues.delete(key);
+    });
+    const clearing = clearSecureSessionStorage().catch(error => error);
+    await started;
+    secureSet.mockClear();
+    const replacement = saveSecureSession({
+      api_token: 'new-token',
+      user: {id: 7},
+    });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(secureSet).not.toHaveBeenCalled();
+
+    releaseJournal();
+    expect(await clearing).toEqual(
+      new Error('SESSION_STORAGE_UNAVAILABLE_DELETE'),
+    );
+    await replacement;
+    expect(await AsyncStorage.getItem('unrelated-preference')).toBe('keep');
+    expect(peekSecureSession().session).toMatchObject({api_token: 'new-token'});
   });
 
   it('hydrates the keychain once and serves later request interceptors from memory', async () => {

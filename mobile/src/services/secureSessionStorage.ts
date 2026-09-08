@@ -80,11 +80,18 @@ export const writeSecureToken = async (token: string) => {
   await secureSetItem(SECURE_TOKEN_KEY, normalized);
 };
 
-export const deleteSecureTokens = () =>
-  Promise.all([
-    secureDeleteItem(SECURE_TOKEN_KEY),
-    secureDeleteItem(SECURE_SESSION_BINDING_KEY),
-  ]);
+export const deleteSecureTokens = async () => {
+  // A failed native delete must not release the session mutation queue while
+  // its sibling can still remove a subsequently committed account's binding.
+  const results = await Promise.allSettled(
+    [SECURE_TOKEN_KEY, SECURE_SESSION_BINDING_KEY].map(key =>
+      Promise.resolve().then(() => secureDeleteItem(key)),
+    ),
+  );
+  if (results.some(result => result.status === 'rejected')) {
+    throw storageFailure('DELETE');
+  }
+};
 
 export const sessionBinding = async (owner: string, token: string) =>
   JSON.stringify({owner, tokenHash: await sha256Hex(token)});

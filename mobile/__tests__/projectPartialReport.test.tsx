@@ -5,6 +5,9 @@ import type {CourseProject} from '../src/components/VideoPlayer/types';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 const mockController = jest.fn();
+jest.mock('@react-native-clipboard/clipboard', () => ({
+  setString: jest.fn(),
+}));
 jest.mock('../src/components/VideoPlayer/projectTransition/pickers', () => ({
   pickProjectFilesOwned: jest.fn(),
 }));

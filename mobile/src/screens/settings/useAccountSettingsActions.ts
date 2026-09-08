@@ -46,6 +46,7 @@ import {openExternalUrlOnce} from '../../services/systemActions';
 import {revokeReauthenticationSession} from '../../services/accountDeletion';
 import {
   deleteSecureSessionIfToken,
+  peekSecureSession,
   updateSecureSessionForOwner,
 } from '../../services/secureSession';
 
@@ -129,6 +130,41 @@ export const useAccountSettingsActions = ({
     }
   };
 
+  const completeLocalLogout = async (
+    sessionToken: string,
+    accountScope: string,
+    preserveFinancialRecovery = false,
+  ) => {
+    // False is an ownership change, while failed durable deletion rejects and
+    // leaves the same account available for an explicit logout retry.
+    if (!(await deleteSecureSessionIfToken(sessionToken))) return false;
+    const deletedEpoch = peekSecureSession().epoch;
+    const stillLoggedOut = () => {
+      const current = peekSecureSession();
+      return (
+        current.epoch === deletedEpoch && !extractApiToken(current.session)
+      );
+    };
+    if (!stillLoggedOut()) return false;
+    await clearCurrentAccountLearningFiles(accountScope).catch(() => undefined);
+    if (!stillLoggedOut()) return false;
+    await clearTransientChatCache({accountBoundary: true}).catch(
+      () => undefined,
+    );
+    if (!stillLoggedOut()) return false;
+    await clearAccountScopedStorage(accountScope, {
+      preserveFinancialRecovery,
+    }).catch(() => undefined);
+    if (!stillLoggedOut()) return false;
+    await clearPendingLoginReturnTo().catch(() => undefined);
+    if (!stillLoggedOut()) return false;
+    await rotateGuestStorageScope().catch(() => undefined);
+    if (!stillLoggedOut()) return false;
+    dispatch(LogOut());
+    navigation.reset({index: 0, routes: [{name: 'Home'}]});
+    return true;
+  };
+
   const logout = () =>
     Alert.alert('تسجيل الخروج', 'سيخرج حسابك من هذا الجهاز فقط', [
       {text: 'إلغاء', style: 'cancel'},
@@ -179,27 +215,7 @@ export const useAccountSettingsActions = ({
             // Secure credential deletion is the durable device-side logout
             // boundary. Do not reset the UI while a bearer or completed OAuth
             // receipt may still be recoverable on the next cold start.
-            const secureSessionDeleted = await deleteSecureSessionIfToken(
-              sessionToken,
-            );
-            if (!secureSessionDeleted) {
-              // Another account won the session mutation while this logout
-              // was in flight. Its UI and bearer must remain untouched.
-              return;
-            }
-            await clearCurrentAccountLearningFiles(accountScope).catch(
-              () => undefined,
-            );
-            await clearTransientChatCache({accountBoundary: true}).catch(
-              () => undefined,
-            );
-            await clearAccountScopedStorage(accountScope, {
-              preserveFinancialRecovery: true,
-            }).catch(() => undefined);
-            await clearPendingLoginReturnTo().catch(() => undefined);
-            await rotateGuestStorageScope().catch(() => undefined);
-            dispatch(LogOut());
-            navigation.reset({index: 0, routes: [{name: 'Home'}]});
+            await completeLocalLogout(sessionToken, accountScope, true);
           } catch (error) {
             if (
               !(
@@ -241,6 +257,7 @@ export const useAccountSettingsActions = ({
     let reauthenticationMatchesCurrentAccount = false;
     let reauthenticationCommitted = false;
     let deletedSessionToken = '';
+    let deletedAccountScope = '';
     const deletionOwner = String(
       extractUserProfile(userData).id ??
         extractUserProfile(userData).user_id ??
@@ -275,34 +292,18 @@ export const useAccountSettingsActions = ({
       const deletion = await dispatch(deleteAccount({reauthToken})).unwrap();
       accountDeleted = true;
       deletedSessionToken = reauthToken;
+      deletedAccountScope = accountScope;
+      reauthenticationToken = '';
       cancelLearningReminders();
       await setSmartRemindersEnabled(false, deletionBoundary).catch(
         () => undefined,
       );
-      // Once the server confirms deletion, no ancillary cache or notification
-      // failure may leave the deleted identity active on this device.
+      // The server deletion is final, but local logout still needs a durable
+      // storage commit before this device can report that it has signed out.
       await clearCurrentPushDeviceRegistration(deletionBoundary).catch(
         () => undefined,
       );
-      const secureSessionDeleted = await deleteSecureSessionIfToken(
-        deletedSessionToken,
-      );
-      if (secureSessionDeleted) {
-        await clearCurrentAccountLearningFiles(accountScope).catch(
-          () => undefined,
-        );
-        await clearTransientChatCache({accountBoundary: true}).catch(
-          () => undefined,
-        );
-      }
-      await clearAccountScopedStorage(accountScope).catch(() => undefined);
-      reauthenticationToken = '';
-      if (secureSessionDeleted) {
-        await clearPendingLoginReturnTo().catch(() => undefined);
-        await rotateGuestStorageScope().catch(() => undefined);
-        dispatch(LogOut());
-        navigation.reset({index: 0, routes: [{name: 'Home'}]});
-      }
+      await completeLocalLogout(deletedSessionToken, accountScope);
       Alert.alert(
         deletion.cleanupPending ? 'تم إغلاق الحساب' : 'تم حذف الحساب',
         deletion.cleanupPending
@@ -342,7 +343,10 @@ export const useAccountSettingsActions = ({
           const originalSessionDeleted = await deleteSecureSessionIfToken(
             token,
           ).catch(() => false);
-          if (originalSessionDeleted) {
+          if (
+            originalSessionDeleted &&
+            !extractApiToken(peekSecureSession().session)
+          ) {
             dispatch(LogOut());
             navigation.reset({index: 0, routes: [{name: 'Home'}]});
           }
@@ -354,16 +358,15 @@ export const useAccountSettingsActions = ({
         reauthenticationToken = '';
       }
       if (accountDeleted) {
-        const deletedLocalSession = deletedSessionToken
-          ? await deleteSecureSessionIfToken(deletedSessionToken).catch(
-              () => false,
-            )
-          : false;
-        if (deletedLocalSession) {
-          dispatch(LogOut());
-          navigation.reset({index: 0, routes: [{name: 'Home'}]});
+        try {
+          await completeLocalLogout(deletedSessionToken, deletedAccountScope);
+          Alert.alert('تم حذف الحساب', 'حُذفت بيانات الحساب من ركن');
+        } catch {
+          Alert.alert(
+            'تم حذف الحساب',
+            'لم يكتمل تسجيل الخروج\nحاول تسجيل الخروج مرة أخرى',
+          );
         }
-        Alert.alert('تم حذف الحساب', 'حُذفت بيانات الحساب من ركن');
       } else {
         const mismatch =
           error instanceof Error &&

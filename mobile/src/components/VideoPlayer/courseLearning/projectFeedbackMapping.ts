@@ -11,6 +11,7 @@ import {
 // Initial course data and later thread reads must preserve the same capabilities.
 export const mapProjectFeedbackThread = (
   value: unknown,
+  {transcriptIncluded = true}: {transcriptIncluded?: boolean} = {},
 ): ProjectFeedbackThread | null => {
   const thread = asRecord(value);
   const level = valueAsString(thread.feedback_level);
@@ -18,6 +19,7 @@ export const mapProjectFeedbackThread = (
 
   return {
     id: valueAsString(thread.id),
+    transcriptIncluded,
     feedbackLevel: level as 'report' | 'enhanced',
     canReply: valueAsBoolean(thread.can_reply),
     status: valueAsString(thread.status, 'ready'),

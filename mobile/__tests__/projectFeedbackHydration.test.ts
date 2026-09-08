@@ -129,8 +129,12 @@ describe('project feedback hydration parity', () => {
       const hydrated = await loadProjectFeedbackThread('7', THREAD_ID);
       const resolution = await loadProjectResolution('7');
 
-      expect(hydrated).toEqual(initial);
-      expect(resolution.feedbackThread).toEqual(initial);
+      expect(initial?.transcriptIncluded).toBe(false);
+      expect(hydrated).toEqual({...initial, transcriptIncluded: true});
+      expect(resolution.feedbackThread).toEqual({
+        ...initial,
+        transcriptIncluded: true,
+      });
       expect(resolution.reviewFeedback).toBeUndefined();
       expect(initial?.messages[0]).toMatchObject({
         canRetry,
@@ -157,9 +161,10 @@ describe('project feedback hydration parity', () => {
     mockGet.mockResolvedValueOnce(
       axiosResponse({latest_submission: submissionPayload(true)}),
     );
-    await expect(loadProjectFeedbackThread('7')).resolves.toEqual(
-      initialThreadFromCourseMap(true),
-    );
+    await expect(loadProjectFeedbackThread('7')).resolves.toEqual({
+      ...initialThreadFromCourseMap(true),
+      transcriptIncluded: true,
+    });
   });
 
   it('keeps a successful feedback send and attachment upload from becoming false transport failures', async () => {
@@ -168,7 +173,10 @@ describe('project feedback hydration parity', () => {
       .mockResolvedValueOnce(axiosResponse({id: THREAD_ID}));
     await expect(
       sendProjectFeedbackMessage(THREAD_ID, 'هذا سؤالي', THREAD_ID),
-    ).resolves.toEqual(initialThreadFromCourseMap(true));
+    ).resolves.toEqual({
+      ...initialThreadFromCourseMap(true),
+      transcriptIncluded: true,
+    });
     await expect(
       uploadProjectFeedbackAttachment(THREAD_ID, {
         uploadId: THREAD_ID,

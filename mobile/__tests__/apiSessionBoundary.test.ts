@@ -34,10 +34,19 @@ jest.mock('../src/store/store', () => ({store: {dispatch: jest.fn()}}));
 jest.mock('../src/store/reducers/auth', () => ({LogOut: jest.fn()}));
 jest.mock('../src/services/smartReminders', () => ({
   cancelLearningReminders: jest.fn(),
-  setSmartRemindersEnabled: jest.fn(),
+  setSmartRemindersEnabled: jest.fn(async () => undefined),
 }));
 jest.mock('../src/services/pushDeviceState', () => ({
-  invalidateLocalPushDeviceRegistration: jest.fn(),
+  invalidateLocalPushDeviceRegistration: jest.fn(async () => undefined),
+}));
+jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
+  quiesceLearningRuntime: jest.fn(),
+}));
+jest.mock('../src/components/VideoPlayer/courseChat/persistence', () => ({
+  quiesceCourseChatPersistence: jest.fn(),
+}));
+jest.mock('../src/components/VideoPlayer/attachmentActions', () => ({
+  quiescePrivateAttachmentDownloads: jest.fn(),
 }));
 jest.mock('../src/utils/serverClock', () => ({observeServerTime: jest.fn()}));
 jest.mock('../src/utils/secureRandom', () => ({
@@ -58,12 +67,17 @@ import {
   responseConfig,
   type RoknRequestConfig,
 } from '../src/constants/api';
+import {deleteSecureSessionIfToken} from '../src/services/secureSession';
+import {navigate} from '../src/navigation/RootNavigationHelper';
+import {rotateGuestStorageScope} from '../src/constants/helpers';
+import {store} from '../src/store/store';
 
 describe('public request session boundary', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetItem.mockResolvedValue(null);
     mockPeekSession.mockReturnValue({ready: false, session: null, epoch: 1});
+    jest.mocked(rotateGuestStorageScope).mockResolvedValue(undefined as never);
     mockSecureRandomUuid.mockReturnValue(
       '11111111-1111-4111-8111-111111111111',
     );
@@ -164,6 +178,70 @@ describe('public request session boundary', () => {
       }),
     ).rejects.toBe(response);
     expect(mockGetItem).not.toHaveBeenCalledWith('USER_DATA');
+  });
+
+  it('does not log out on a failed durable 401 cleanup and retries the same bearer later', async () => {
+    const response = {status: 401};
+    const failure = {
+      response,
+      config: {
+        headers: new AxiosHeaders({
+          Authorization: 'Bearer expired-retry-token',
+        }),
+      },
+    };
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'expired-retry-token'},
+      epoch: 5,
+    });
+    jest
+      .mocked(deleteSecureSessionIfToken)
+      .mockRejectedValueOnce(new Error('SESSION_STORAGE_UNAVAILABLE_DELETE'))
+      .mockImplementationOnce(async () => {
+        mockPeekSession.mockReturnValue({ready: true, session: null, epoch: 7});
+        return true;
+      });
+
+    await expect(onRejectedResponse(failure)).rejects.toThrow(
+      'SESSION_STORAGE_UNAVAILABLE_DELETE',
+    );
+    expect(navigate).not.toHaveBeenCalled();
+    expect(store.dispatch).not.toHaveBeenCalled();
+    await expect(onRejectedResponse(failure)).rejects.toBe(response);
+
+    expect(deleteSecureSessionIfToken).toHaveBeenCalledTimes(2);
+    expect(store.dispatch).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith('Login', undefined);
+  });
+
+  it('leaves a newer login untouched when token guarded 401 deletion returns false', async () => {
+    const response = {status: 401};
+    mockPeekSession.mockReturnValue({
+      ready: true,
+      session: {api_token: 'superseded-token'},
+      epoch: 10,
+    });
+    jest.mocked(deleteSecureSessionIfToken).mockImplementationOnce(async () => {
+      mockPeekSession.mockReturnValue({
+        ready: true,
+        session: {api_token: 'new-token'},
+        epoch: 11,
+      });
+      return false;
+    });
+
+    await expect(
+      onRejectedResponse({
+        response,
+        config: {
+          headers: new AxiosHeaders({Authorization: 'Bearer superseded-token'}),
+        },
+      }),
+    ).rejects.toBe(response);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(store.dispatch).not.toHaveBeenCalled();
+    expect(rotateGuestStorageScope).not.toHaveBeenCalled();
   });
 
   it.each([

@@ -104,6 +104,8 @@ export interface ProjectFeedbackMessage {
 
 export interface ProjectFeedbackThread {
   id: string;
+  /** False only for the course-map summary, which omits transcript and quota. */
+  transcriptIncluded?: boolean;
   feedbackLevel: 'report' | 'enhanced';
   canReply: boolean;
   status: string;
