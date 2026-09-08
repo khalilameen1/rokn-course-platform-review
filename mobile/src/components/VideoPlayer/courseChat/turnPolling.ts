@@ -75,6 +75,17 @@ export const pollAcceptedCourseChatTurn = async ({
     response.partial && response.text ? response.text : '';
   let observedPartialLength = latestPartialText.length;
 
+  // Recovery's first status read already contains a usable checkpoint. The
+  // caller has not rendered it yet; waiting for growth hides an unchanged
+  // answer until completion even though it has reached this device.
+  if (
+    response.code === 'chat_answer_in_progress' &&
+    latestPartialText &&
+    isActive()
+  ) {
+    onPartial(latestPartialText);
+  }
+
   while (
     response.code === 'chat_answer_in_progress' &&
     Date.now() < currentDeadline() &&

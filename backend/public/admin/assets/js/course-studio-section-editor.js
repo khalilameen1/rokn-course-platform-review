@@ -234,6 +234,9 @@
                     ? pendingCreateVersion
                     : core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
+                // Content edits do not move a section. Sibling insertions or
+                // deletions may have changed its saved position since rendering.
+                if (!creating) body.delete('order');
                 // This editor saves the visible checkbox state; omission in a PATCH means keep the old value.
                 const flag = type === 'lesson' ? 'is_opened' : 'is_graduation_project';
                 body.set(flag, form.elements[flag].checked ? '1' : '0');

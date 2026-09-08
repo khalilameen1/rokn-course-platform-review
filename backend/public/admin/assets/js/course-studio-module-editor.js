@@ -151,6 +151,9 @@
             void core.mutate(async () => {
                 const expectedVersion = creating ? submittedVersion : core.authoringVersion;
                 const body = core.authoringFormData(form, expectedVersion);
+                // Renaming does not move a module. Keep the server's current
+                // position after any sibling insertion or deletion.
+                if (!creating) body.delete('order');
                 const response = await core.request(form.action, {
                     method: 'POST', headers: core.mutationHeaders(form), body,
                 });

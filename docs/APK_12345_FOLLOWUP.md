@@ -1294,3 +1294,62 @@ paths. These are local controlled native/storage/HTTP tests, not physical-device
 or live provider acceptance and not proof that every application defect is gone.
 
 No backend source change, APK, push or deployment in this checkpoint.
+
+## September 9 — daily authoring, accepted access and received content
+
+Four independent operations were inspected from their real callers and shared
+implementations. Existing working features and layout were retained; this is
+not a replacement application or a completion claim for the broader goal.
+
+- After inserting/deleting a sibling, the inline section/module editor could
+  submit its stale hidden `order` when only the title/content was edited. The
+  server correctly treated that submitted order as an explicit move, silently
+  undoing the moderator's layout. Four actual-browser cases reproduced this.
+  These two content-only PATCH forms now omit hidden order; create/insert and
+  explicit drag-reorder requests retain their positions. Real PHP HTTP tests
+  verify the existing locked-current-order fallback, video identity, caption,
+  preview checkbox, terminal gateway project and outline/learner sequence.
+  Reload and failed-save retry are also covered. No production PHP service or
+  outline representation was rewritten.
+- A recovered course-chat status already contained partial reply text, but the
+  poller treated that text only as the baseline for future growth. It never
+  rendered the initial checkpoint, leaving an empty bubble until more text or
+  completion arrived. Two real turn-hook/poller tests reproduced foreground and
+  hydration recovery. The first partial checkpoint is now delivered once to
+  the active owner; later monotonic progress, final completion and cancellation
+  behavior remain. Project follow-up hydration/polling already applies its
+  returned thread and was checked without changes. No second question, file
+  upload, provider request, model setting or provider timeout was introduced.
+- Confirmed course purchase/upgrade still awaited terminal intent cleanup on
+  native storage. A stalled cleanup kept checkout busy after a valid server
+  acknowledgement; its global local-storage tail also blocked another course.
+  Four local service/hook regressions were red before the fix. Only terminal
+  cleanup now has a bounded caller wait. Raw queues remain ordered per exact
+  account/intent storage key, including after that wait expires, so late removal
+  cannot delete a newly stored attempt. Initial durable identity is still
+  required before POST. Thirteen cases cover success, same-key ordering,
+  different courses, account replacement, invalid ACK, unavailable pre-send
+  storage and reuse of the original key after an uncertain response.
+- iOS successfully downloaded binary PDF/PNG/ZIP files but the following
+  512-byte HTML sniff used RNFS's strict UTF-8 decoder and threw on normal binary
+  bytes. Three real-action tests using the installed RNFS decoder reproduced
+  the rejection. The bounded read now uses raw-byte `ascii` decoding; HTML with
+  UTF-8/UTF-16 BOM remains rejected, without reading whole large files into JS.
+  Independent native-source review then reproduced the real iOS Save to Files
+  cancel rejection (`CANCELLED`), not merely a resolved `success:false` fixture.
+  That exact handoff cancellation is quiet and still cleans temporary files;
+  actual save/read errors retain recovery and no saved result is invented.
+  Cancel/retry and a simulated large native transfer with only a 512-byte JS
+  sniff are covered. The only other RNFS read consumer uses base64 chunks; this
+  is the only react-native-share Save to Files caller in the current mobile app.
+
+Final root verification: 19 affected mobile suites / 139 tests passed together;
+full TypeScript, scoped ESLint, JS syntax and diff checks passed. The three local
+headless-browser scripts passed (content ordering, authoring receipt recovery,
+Bunny allocation/transport/claim/cancellation recovery). Five affected PHP
+suites passed 16 tests / 97 assertions with no outgoing provider calls. These
+checks use local fixtures plus actual application services/hooks/browser code
+and installed native-wrapper source; they are not a physical iPhone test,
+live Bunny transfer, real payment or production acceptance.
+
+No APK, push or deployment. All changes are a local source checkpoint.

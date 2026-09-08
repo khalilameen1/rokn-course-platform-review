@@ -16,10 +16,16 @@ export const attachmentResponseIsHtml = (mime?: string): boolean =>
       .toLowerCase(),
   );
 
-export const attachmentPrefixIsHtml = (prefix: string): boolean =>
-  /^\s*(?:\uFEFF)?\s*(?:<!doctype\s+html|<html\b|<head\b|<body\b)/i.test(
-    prefix,
+export const attachmentPrefixIsHtml = (prefix: string): boolean => {
+  // RNFS ascii reads preserve raw bytes without trying to decode binary files.
+  // Keep BOM-prefixed host pages detectable in that bounded byte string too.
+  const sample = /^(?:\xFF\xFE|\xFE\xFF)/.test(prefix)
+    ? prefix.slice(2).split('\x00').join('')
+    : prefix;
+  return /^\s*(?:\uFEFF|\xEF\xBB\xBF)?\s*(?:<!doctype\s+html|<html\b|<head\b|<body\b)/i.test(
+    sample,
   );
+};
 
 export const attachmentHeaderFilename = (
   disposition?: string,

@@ -7,6 +7,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {secureRandomUuid} from '../../utils/secureRandom';
+import {settleWithin} from '../../utils/settleWithin';
 import {isApiRecord} from './common';
 
 type AttemptValue = string | number;
@@ -22,16 +23,22 @@ type AttemptSpec<TIntent extends AttemptIntent> = {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-let storageTail: Promise<void> = Promise.resolve();
+const storageTails = new Map<string, Promise<void>>();
 
 const serializeStorageMutation = <T>(
+  key: string,
   operation: () => Promise<T>,
 ): Promise<T> => {
-  const result = storageTail.then(operation, operation);
-  storageTail = result.then(
+  const previous = storageTails.get(key) ?? Promise.resolve();
+  const result = previous.then(operation, operation);
+  const tail = result.then(
     () => undefined,
     () => undefined,
   );
+  storageTails.set(key, tail);
+  void tail.then(() => {
+    if (storageTails.get(key) === tail) storageTails.delete(key);
+  });
   return result;
 };
 
@@ -79,13 +86,13 @@ const readAttempt = async <TIntent extends AttemptIntent>(
   }
 };
 
-const getOrCreateAttemptKey = <TIntent extends AttemptIntent>(
+const getOrCreateAttemptKey = async <TIntent extends AttemptIntent>(
   spec: AttemptSpec<TIntent>,
   boundary: AccountSessionBoundary,
-): Promise<string> =>
-  serializeStorageMutation(async () => {
+): Promise<string> => {
+  const key = await storageKey(spec, boundary);
+  return serializeStorageMutation(key, async () => {
     assertAccountSessionBoundary(boundary);
-    const key = await storageKey(spec, boundary);
     const storedKey = await readAttempt(key, spec.intent);
     if (storedKey) return storedKey;
 
@@ -94,16 +101,17 @@ const getOrCreateAttemptKey = <TIntent extends AttemptIntent>(
     if (!persisted) throw new Error(spec.unavailableCode);
     return idempotencyKey;
   });
+};
 
-const clearAttemptKey = <TIntent extends AttemptIntent>(
+const clearAttemptKey = async <TIntent extends AttemptIntent>(
   spec: AttemptSpec<TIntent>,
   expectedIdempotencyKey: string,
   boundary: AccountSessionBoundary,
-) =>
-  serializeStorageMutation(async () => {
+) => {
+  const key = await storageKey(spec, boundary);
+  const cleanup = serializeStorageMutation(key, async () => {
     assertAccountSessionBoundary(boundary);
     try {
-      const key = await storageKey(spec, boundary);
       const storedKey = await readAttempt(key, spec.intent);
       assertAccountSessionBoundary(boundary);
       if (storedKey === expectedIdempotencyKey) await removeItem(key);
@@ -121,6 +129,12 @@ const clearAttemptKey = <TIntent extends AttemptIntent>(
     }
     assertAccountSessionBoundary(boundary);
   });
+  // Access is already confirmed. Its optional cleanup cannot hold that result
+  // or unrelated purchases open. Keep the real per-intent queue intact so a
+  // late removal still precedes any new request stored under this same key.
+  await settleWithin(cleanup, undefined);
+  assertAccountSessionBoundary(boundary);
+};
 
 type CoursePurchaseIntent = {
   courseId: number;

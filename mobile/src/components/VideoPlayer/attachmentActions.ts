@@ -884,7 +884,7 @@ const openCourseAttachmentInternal = async (
           target,
           Math.min(512, localSize),
           0,
-          'utf8',
+          'ascii',
         );
         assertAttachmentOwner(operation);
         if (attachmentPrefixIsHtml(prefix))
@@ -903,6 +903,10 @@ const openCourseAttachmentInternal = async (
           return emptyResult();
         }
         assertAttachmentOwner(operation);
+      } catch (error) {
+        // The iOS document picker rejects cancellation even with failOnCancel:false.
+        if (asRecord(error).code === 'CANCELLED') return emptyResult();
+        throw error;
       } finally {
         await RNFS.unlink(cacheFolder).catch(() => undefined);
       }

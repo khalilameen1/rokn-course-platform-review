@@ -247,8 +247,28 @@ describe('course chat foreground polling', () => {
       foregroundWaitExpired: false,
       response: expect.objectContaining({turnStatus: 'completed'}),
     });
-    expect(onPartial).toHaveBeenCalledTimes(1);
-    expect(onPartial).toHaveBeenCalledWith('مرحبا بك اليوم');
+    expect(onPartial.mock.calls).toEqual([['مرحبا بك'], ['مرحبا بك اليوم']]);
+  });
+
+  it('does not publish an initial checkpoint after its foreground owner is gone', async () => {
+    const onPartial = jest.fn();
+    const onStatus = jest.fn();
+    await pollAcceptedCourseChatTurn({
+      clientRequestId: requestId,
+      initialResponse: {
+        text: 'جزء وصل بعد المغادرة',
+        offline: false,
+        partial: true,
+        code: 'chat_answer_in_progress',
+        turnStatus: 'streaming',
+      },
+      isActive: () => false,
+      onPartial,
+      onStatus,
+    });
+    expect(onPartial).not.toHaveBeenCalled();
+    expect(onStatus).not.toHaveBeenCalled();
+    expect(pollCourseAssistantTurn).not.toHaveBeenCalled();
   });
 
   it('receives a healthy answer after 45 seconds within the server window', async () => {
@@ -258,7 +278,9 @@ describe('course chat foreground polling', () => {
       return elapsed >= 55_000
         ? {text: 'الإجابة مكتملة', offline: false, turnStatus: 'completed'}
         : {
-            text: `جزء متزايد من الإجابة ${'أ'.repeat(Math.floor(elapsed / 1000))}`,
+            text: `جزء متزايد من الإجابة ${'أ'.repeat(
+              Math.floor(elapsed / 1000),
+            )}`,
             offline: false,
             code: 'chat_answer_in_progress',
             turnStatus: 'streaming',
@@ -353,9 +375,9 @@ describe('course chat foreground polling', () => {
       response: expect.objectContaining({turnStatus: 'completed'}),
     });
     expect(
-      jest.mocked(pollCourseAssistantTurn).mock.calls.every(
-        ([id]) => id === requestId,
-      ),
+      jest
+        .mocked(pollCourseAssistantTurn)
+        .mock.calls.every(([id]) => id === requestId),
     ).toBe(true);
   });
 
