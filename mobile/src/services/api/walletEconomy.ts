@@ -5,6 +5,10 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {IS_STORE_DISTRIBUTION} from '../../constants/distribution';
+import {
+  notifyWalletSettlement,
+  subscribeWalletSettlements,
+} from '../walletSettlement';
 import type {CoinPackage} from './coinPackageMapper';
 import {mapCoinPackages} from './coinPackageMapper';
 import {
@@ -98,7 +102,7 @@ export const claimDailyReward = async (
     assertAccountSessionBoundary(boundary);
     const data = payload(await publicRequest.post('rewards/daily'));
     assertAccountSessionBoundary(boundary);
-    return {
+    const result = {
       awarded: requireNonNegativeNumber(data.awarded, 'REWARD_AWARDED'),
       balance: requireNonNegativeNumber(data.balance, 'REWARD_BALANCE'),
       rewardBalance: requireNonNegativeNumber(
@@ -106,6 +110,10 @@ export const claimDailyReward = async (
         'REWARD_BUCKET_BALANCE',
       ),
     };
+    // The daily operation can outlive Home. Even an idempotent replay can
+    // confirm a credit whose original acknowledgement was lost.
+    notifyWalletSettlement(boundary);
+    return result;
   })().finally(() => {
     if (dailyRewardFlights.get(flightKey) === flight) {
       dailyRewardFlights.delete(flightKey);
@@ -117,8 +125,30 @@ export const claimDailyReward = async (
 
 export const getWallet = async (): Promise<WalletSnapshot> => {
   const boundary = await captureAccountSessionBoundary();
-  const data = payload<WalletDto>(await publicRequest.get('wallet'));
-  assertAccountSessionBoundary(boundary);
+  let settledDuringRead = false;
+  const unsubscribe = subscribeWalletSettlements(settlement => {
+    if (
+      settlement.scope === boundary.scope &&
+      settlement.epoch === boundary.epoch
+    ) {
+      settledDuringRead = true;
+    }
+  });
+  let data: WalletDto;
+  try {
+    data = payload<WalletDto>(await publicRequest.get('wallet'));
+    assertAccountSessionBoundary(boundary);
+    if (settledDuringRead) {
+      // Do not wait for a pending reward. Only discard a read overtaken by an
+      // acknowledged mutation, including imperative purchase requote reads.
+      settledDuringRead = false;
+      data = payload<WalletDto>(await publicRequest.get('wallet'));
+      assertAccountSessionBoundary(boundary);
+      if (settledDuringRead) throw new Error('WALLET_CHANGED_DURING_REQUEST');
+    }
+  } finally {
+    unsubscribe();
+  }
   const {balance, paidBalance, rewardBalance, spendableBalance} =
     financialSnapshot(data);
   const rewardContributionCap = requireNonNegativeNumber(

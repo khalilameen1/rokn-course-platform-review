@@ -14,11 +14,13 @@ import {
   type FeedbackAttachment,
   type ProductFeedbackArtifact,
   type ProductFeedbackCase,
+  type ProductFeedbackReceipt,
   replyToProductFeedback,
   restoreProductFeedbackDraftConflict,
   saveProductFeedbackReplyDraft,
 } from '../../services/productFeedback';
 import {secureRandomUuid} from '../../utils/secureRandom';
+import {settleWithin} from '../../utils/settleWithin';
 import {pickFeedbackScreenshot} from './pickFeedbackScreenshot';
 
 export const useFeedbackCases = (
@@ -85,13 +87,27 @@ export const useFeedbackCases = (
     setPreviewLoadFailed(false);
   }, [identityKey]);
 
-  const reloadCases = async (preferredCaseId = '') => {
+  const reloadCases = async (
+    preferredCaseId = '',
+    received?: ProductFeedbackReceipt,
+  ) => {
     const generation = ++casesGenerationRef.current;
     setCasesBusy(true);
     setCasesError('');
     try {
       const boundary = await captureAccountSessionBoundary();
-      const loaded = await loadProductFeedbackCases(boundary);
+      const loaded = received
+        ? [
+            {
+              ...(await loadProductFeedbackCase(
+                received.publicId,
+                received.accessToken,
+                boundary,
+              )),
+              accessToken: received.accessToken,
+            },
+          ]
+        : await loadProductFeedbackCases(boundary);
       assertAccountSessionBoundary(boundary);
       if (
         !mountedRef.current ||
@@ -100,7 +116,14 @@ export const useFeedbackCases = (
       ) {
         return;
       }
-      setSupportCases(loaded);
+      setSupportCases(current =>
+        received
+          ? [
+              ...current.filter(item => item.publicId !== received.publicId),
+              ...loaded,
+            ]
+          : loaded,
+      );
       const targetCaseId = preferredCaseId || requestedCaseId;
       if (targetCaseId && loaded.some(item => item.publicId === targetCaseId)) {
         setSelectedCaseId(targetCaseId);
@@ -387,8 +410,9 @@ export const useFeedbackCases = (
         boundary,
       );
       assertAccountSessionBoundary(boundary);
-      await saveProductFeedbackReplyDraft(caseId, null, boundary).catch(
-        () => undefined,
+      await settleWithin(
+        saveProductFeedbackReplyDraft(caseId, null, boundary),
+        undefined,
       );
       assertAccountSessionBoundary(boundary);
       if (!mountedRef.current) return;
@@ -415,9 +439,7 @@ export const useFeedbackCases = (
           replyFailure.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
         )
       ) {
-        setReplyError(
-          'لم يصل الرد\nتحقق من الاتصال ثم حاول مرة أخرى\nنصك محفوظ',
-        );
+        setReplyError('تعذّر تأكيد وصول الرد\nحاول مرة أخرى\nنصك محفوظ');
       }
     } finally {
       const ownsFlight = replyFlightsRef.current.get(caseId) === flight;

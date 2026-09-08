@@ -1049,3 +1049,57 @@ scoped ESLint and diff checks. This is source/cache-state verification, not a
 physical device reboot with failed storage, real push delivery or public upload.
 No APK, push or deployment. Contact delivery, device-session actions and daily
 reward settlement are the next separately owned in-progress operations.
+
+## September 8 — confirmed delivery and cross-screen operation ownership
+
+The three remaining operations reached a local source checkpoint without
+replacing their existing server routes, account model or payment workflow:
+
+- A successful feedback POST could appear failed or stay busy when receipt
+  persistence or draft cleanup failed or stalled. Delivery now follows the
+  validated server acknowledgement; ancillary persistence has a bounded wait
+  while its raw per-owner queue keeps actual write order. An untracked guest
+  retains the accepted receipt/token and original recovery draft, can open and
+  reply to that case, and retries local tracking without another POST. The
+  recovery draft also retains its original source screen so a cold replay does
+  not change the server idempotency fingerprint. Guest migration waits for the
+  relevant receipt tails, merges the latest account receipts and does not
+  remove the recovery source prematurely. Signed-in cases remain recoverable
+  from the existing account index. Four initial delivery cases were red before
+  the change; the final delivery suite covers fourteen cases. A separate agent
+  checked receipt access, cold replay and migration integration read-only.
+- A device-list refresh could restore a revoked session after DELETE success,
+  and an interrupted refresh could leave its spinner running. Only one
+  requested refresh now follows an owned revocation; older reads cannot own
+  its result. Device confirmation dialogs belong to the account and screen
+  visit that opened them, including the interval awaiting session capture.
+  The same demonstrated stale-dialog problem in watch-history clearing now
+  captures its original boundary and rejects a replacement account, relogin,
+  screen visit or duplicate confirmation. Existing offline history-clear
+  recovery and backend device grouping were retained. The old device test had
+  an optional no-op button lookup; it now invokes and asserts the actual
+  action before checking the delayed result.
+- Daily and explicit task reward claims could finish after their originating
+  screen was gone, leaving a newer Wallet or CourseDetails at the old balance.
+  A small owner-scoped settlement signal is emitted once inside each validated
+  shared claim, including zero-award replays that confirm a lost receipt. It
+  invalidates existing readers; it never initiates a purchase or re-awards
+  coins. A wallet GET overtaken by an acknowledged claim is read again once,
+  including imperative purchase requotes. A second intervening mutation fails
+  that read rather than publishing a known stale snapshot. There is no wait
+  for an unconfirmed daily claim. Task-button busy and catalogue refresh
+  semantics stay intact; the still-mounted task screen can perform one bounded
+  extra read, not another claim. Transport/contract failures and old account
+  epochs emit no settlement. Two replacement-screen claim cases were red
+  before the producer-only change; independent integration review found no
+  further blocker in the affected signal path.
+
+Final root verification passed all 21 explicitly named affected mobile suites
+and 207 tests together, full TypeScript, scoped ESLint and diff checks. The
+support agent also ran the existing backend support gates: 19 tests / 92
+assertions and the anonymous-feedback contract case / 10 assertions, without
+backend edits or live requests. These are source-level checks with controlled
+transport/storage timing, not acceptance on the user's phone or production.
+
+No APK, push or deployment was performed. This checkpoint does not establish
+that every feature is complete or that the wider application is defect-free.

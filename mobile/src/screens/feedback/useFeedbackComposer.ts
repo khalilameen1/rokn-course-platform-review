@@ -14,6 +14,8 @@ import {
   loadProductFeedbackDraftConflicts,
   type FeedbackAttachment,
   type ProductFeedbackCategory,
+  type ProductFeedbackReceipt,
+  persistProductFeedbackReceipt,
   restoreProductFeedbackDraftConflict,
   saveProductFeedbackDraft,
   submitProductFeedback,
@@ -42,9 +44,10 @@ export const useFeedbackComposer = ({
   const [sent, setSent] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [draftSaveError, setDraftSaveError] = useState(false);
+  const [draftSourceScreen, setDraftSourceScreen] = useState(sourceScreen);
   const [clientRequestId, setClientRequestId] = useState(secureRandomUuid);
-  const [receiptId, setReceiptId] = useState('');
-  const [receiptPublicId, setReceiptPublicId] = useState('');
+  const [receipt, setReceipt] = useState<ProductFeedbackReceipt>();
+  const [trackingRecoveryNeeded, setTrackingRecoveryNeeded] = useState(false);
   const mountedRef = useRef(true);
   const pickerFlightRef = useRef(false);
   const submitFlightRef = useRef(false);
@@ -57,6 +60,7 @@ export const useFeedbackComposer = ({
     clientRequestId,
     includeDiagnostics,
     message,
+    sourceScreen: draftSourceScreen,
     updatedAt: Date.now(),
   });
   draftSnapshotRef.current = {
@@ -65,12 +69,17 @@ export const useFeedbackComposer = ({
     clientRequestId,
     includeDiagnostics,
     message,
+    sourceScreen: draftSourceScreen,
     updatedAt: Date.now(),
   };
 
   const canSubmit = useMemo(
-    () => draftReady && message.trim().length >= 10 && !busy,
-    [busy, draftReady, message],
+    () =>
+      draftReady &&
+      message.trim().length >= 10 &&
+      !busy &&
+      !trackingRecoveryNeeded,
+    [busy, draftReady, message, trackingRecoveryNeeded],
   );
 
   useEffect(() => {
@@ -90,9 +99,10 @@ export const useFeedbackComposer = ({
     setDraftReady(false);
     setDraftSaveError(false);
     setClientRequestId(secureRandomUuid());
-    setReceiptId('');
-    setReceiptPublicId('');
-  }, [identityKey]);
+    setReceipt(undefined);
+    setTrackingRecoveryNeeded(false);
+    setDraftSourceScreen(sourceScreen);
+  }, [identityKey, sourceScreen]);
 
   useEffect(() => {
     let active = true;
@@ -125,6 +135,7 @@ export const useFeedbackComposer = ({
           setAttachment(draft.attachment);
           setClientRequestId(draft.clientRequestId);
           setIncludeDiagnostics(draft.includeDiagnostics);
+          setDraftSourceScreen(draft.sourceScreen || sourceScreen);
         }
         const alternative = conflicts.find(conflict => conflict.type === 'new');
         if (!alternative) return;
@@ -174,6 +185,7 @@ export const useFeedbackComposer = ({
                     setAttachment(value.attachment);
                     setClientRequestId(value.clientRequestId);
                     setIncludeDiagnostics(value.includeDiagnostics);
+                    setDraftSourceScreen(value.sourceScreen || sourceScreen);
                   } catch {
                     if (
                       mountedRef.current &&
@@ -213,10 +225,10 @@ export const useFeedbackComposer = ({
     return () => {
       active = false;
     };
-  }, [identityKey]);
+  }, [identityKey, sourceScreen]);
 
   useEffect(() => {
-    if (!draftReady || sent) return;
+    if (!draftReady || sent || busy || trackingRecoveryNeeded) return;
     const ownerScope = draftOwnerScopeRef.current;
     if (!ownerScope) return;
     const timer = setTimeout(() => {
@@ -232,6 +244,7 @@ export const useFeedbackComposer = ({
               clientRequestId,
               includeDiagnostics,
               message,
+              sourceScreen: draftSourceScreen,
               updatedAt: Date.now(),
             },
             boundary,
@@ -256,16 +269,20 @@ export const useFeedbackComposer = ({
     return () => clearTimeout(timer);
   }, [
     attachment,
+    busy,
     category,
     clientRequestId,
     draftReady,
+    draftSourceScreen,
     includeDiagnostics,
     message,
     sent,
+    trackingRecoveryNeeded,
   ]);
 
   useEffect(() => {
-    if (appActive || !draftReady || sent) return;
+    if (appActive || !draftReady || sent || busy || trackingRecoveryNeeded)
+      return;
     const ownerScope = draftOwnerScopeRef.current;
     if (!ownerScope) return;
     void captureAccountSessionBoundary()
@@ -292,7 +309,7 @@ export const useFeedbackComposer = ({
           setDraftSaveError(true);
         }
       });
-  }, [appActive, draftReady, sent]);
+  }, [appActive, busy, draftReady, sent, trackingRecoveryNeeded]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -303,9 +320,11 @@ export const useFeedbackComposer = ({
   }, []);
 
   const changeDraft = (change: () => void) => {
-    if (busy || !draftReady) return;
+    if (busy || !draftReady || trackingRecoveryNeeded) return;
     change();
     setClientRequestId(secureRandomUuid());
+    setDraftSourceScreen(sourceScreen);
+    setReceipt(undefined);
     setError('');
   };
 
@@ -360,6 +379,7 @@ export const useFeedbackComposer = ({
         clientRequestId,
         includeDiagnostics,
         message,
+        sourceScreen: draftSourceScreen,
         updatedAt: Date.now(),
       } satisfies Parameters<typeof saveProductFeedbackDraft>[0];
       try {
@@ -375,18 +395,20 @@ export const useFeedbackComposer = ({
         }
         return;
       }
-      const receipt = await submitProductFeedback(
+      const received = await submitProductFeedback(
         {
           attachment,
           category,
           clientRequestId,
-          context: {includeDiagnostics, locale, sourceScreen},
+          context: {
+            includeDiagnostics,
+            locale,
+            sourceScreen: draftSourceScreen,
+          },
           message,
         },
         boundary,
       );
-      assertAccountSessionBoundary(boundary);
-      await clearProductFeedbackDraft(boundary).catch(() => undefined);
       assertAccountSessionBoundary(boundary);
       if (
         !mountedRef.current ||
@@ -395,14 +417,16 @@ export const useFeedbackComposer = ({
       ) {
         return;
       }
-      setReceiptId(receipt.caseNumber);
-      setReceiptPublicId(receipt.publicId);
-      setCategory('problem');
-      setMessage('');
-      setAttachment(undefined);
-      setIncludeDiagnostics(false);
-      setClientRequestId(secureRandomUuid());
-      setDraftSaveError(false);
+      setReceipt(received);
+      const needsTracking =
+        !received.trackingSaved && !boundary.scope.startsWith('user-');
+      setTrackingRecoveryNeeded(needsTracking);
+      if (!needsTracking) {
+        // The account index or durable guest receipt retains access. Cleanup is
+        // ancillary and stays on the existing draft queue, even if it is slow.
+        void clearProductFeedbackDraft(boundary).catch(() => undefined);
+        resetDraft();
+      }
       setSent(true);
     } catch (submitError: unknown) {
       if (
@@ -414,8 +438,48 @@ export const useFeedbackComposer = ({
           submitError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
         )
       ) {
-        setError('لم تصل الرسالة\nتحقق من الاتصال ثم حاول مرة أخرى\nنصك محفوظ');
+        setError('تعذّر تأكيد وصول الرسالة\nحاول مرة أخرى\nنصك محفوظ');
       }
+    } finally {
+      if (generation === submitGenerationRef.current) {
+        submitFlightRef.current = false;
+        if (mountedRef.current) setBusy(false);
+      }
+    }
+  };
+
+  const resetDraft = () => {
+    setCategory('problem');
+    setMessage('');
+    setAttachment(undefined);
+    setIncludeDiagnostics(false);
+    setClientRequestId(secureRandomUuid());
+    setDraftSourceScreen(sourceScreen);
+    setDraftSaveError(false);
+  };
+
+  const retryTracking = async () => {
+    if (!receipt || !trackingRecoveryNeeded || submitFlightRef.current) return;
+    const generation = submitGenerationRef.current;
+    submitFlightRef.current = true;
+    setBusy(true);
+    try {
+      const boundary = await captureAccountSessionBoundary();
+      if (boundary.scope !== draftOwnerScopeRef.current) return;
+      const saved = await persistProductFeedbackReceipt(receipt, boundary);
+      if (
+        !saved ||
+        !mountedRef.current ||
+        generation !== submitGenerationRef.current ||
+        dataOwnerRef.current !== identityKey
+      )
+        return;
+      setTrackingRecoveryNeeded(false);
+      void clearProductFeedbackDraft(boundary).catch(() => undefined);
+      resetDraft();
+    } catch {
+      // The receipt remains received and its original guest recovery draft is
+      // untouched. This action retries tracking only, never the server send.
     } finally {
       if (generation === submitGenerationRef.current) {
         submitFlightRef.current = false;
@@ -435,8 +499,11 @@ export const useFeedbackComposer = ({
     error,
     includeDiagnostics,
     message,
-    receiptId,
-    receiptPublicId,
+    receipt: dataOwnerRef.current === identityKey ? receipt : undefined,
+    receiptId: receipt?.caseNumber || '',
+    receiptPublicId: receipt?.publicId || '',
+    retryTracking,
+    trackingRecoveryNeeded,
     ready: draftReady,
     removeScreenshot,
     selectCategory: (value: ProductFeedbackCategory) =>

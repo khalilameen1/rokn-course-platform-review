@@ -16,6 +16,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {settleWithin} from '../../utils/settleWithin';
+import {subscribeWalletSettlements} from '../../services/walletSettlement';
 import {
   readWalletCache,
   saveWalletCache,
@@ -232,6 +233,14 @@ export const useWalletData = (identityKey: string) => {
     queuedRefreshRef.current = queued;
     return queued;
   }, [refresh]);
+
+  useEffect(
+    () =>
+      subscribeWalletSettlements(boundary => {
+        if (ownsBoundary(boundary)) void refreshAfterCurrent();
+      }),
+    [ownsBoundary, refreshAfterCurrent],
+  );
 
   const refreshManually = useCallback(async () => {
     const operation = Symbol('wallet-manual-refresh');

@@ -6,6 +6,7 @@ import {
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
+import {notifyWalletSettlement} from '../walletSettlement';
 import {
   firstBoolean,
   isApiRecord,
@@ -235,7 +236,9 @@ export const startCoinTask = async (
     if (!isApiRecord(data)) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
-    const status = String(data.task_state || '') as CoinTaskStartResult['status'];
+    const status = String(
+      data.task_state || '',
+    ) as CoinTaskStartResult['status'];
     if (!['started', 'ready_to_claim', 'claimed'].includes(status)) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
@@ -306,6 +309,9 @@ export const claimCoinTask = async (
         'COIN_TASK_EARNED_AMOUNT',
       ),
     };
+    // This shared claim can outlive its Wallet. A valid replay also confirms
+    // the ledger after a lost acknowledgement without awarding coins again.
+    notifyWalletSettlement(boundary);
     await forgetActionUrl(task.serverId, boundary).catch(() => undefined);
     assertAccountSessionBoundary(boundary);
     return result;

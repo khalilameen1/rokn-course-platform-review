@@ -15,6 +15,7 @@ import {
 } from '../../../services/networkExperience';
 import {CAN_START_NATIVE_CHECKOUT} from '../../../constants/distribution';
 import {subscribeCoinCheckoutCredits} from '../../../services/coinCheckout';
+import {subscribeWalletSettlements} from '../../../services/walletSettlement';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -270,6 +271,10 @@ export const useCourseDetailsData = ({
     let unsubscribe: () => void = () => undefined;
     const reloadAfterCredit = () => setRemoteReload(value => value + 1);
     const unsubscribeExternal = subscribeCoinCheckoutCredits(reloadAfterCredit);
+    const unsubscribeWallet = subscribeWalletSettlements(boundary => {
+      assertAccountSessionBoundary(boundary);
+      reloadAfterCredit();
+    });
     if (CAN_START_NATIVE_CHECKOUT) {
       void import('../../../services/nativeStoreBilling').then(storeBilling => {
         if (!active) return;
@@ -281,6 +286,7 @@ export const useCourseDetailsData = ({
       active = false;
       unsubscribe();
       unsubscribeExternal();
+      unsubscribeWallet();
     };
   }, []);
 

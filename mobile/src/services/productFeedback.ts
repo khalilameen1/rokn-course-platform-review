@@ -11,6 +11,7 @@ import {
 } from '../constants/helpers';
 import {firstBoolean} from './api/common';
 import {secureRandomUuid} from '../utils/secureRandom';
+import {settleWithin} from '../utils/settleWithin';
 import {
   learnerDraftFileIsReadable,
   removeLearnerDraftFile,
@@ -41,6 +42,7 @@ export type ProductFeedbackDraft = {
   clientRequestId: string;
   includeDiagnostics: boolean;
   message: string;
+  sourceScreen?: string;
   updatedAt: number;
 };
 
@@ -102,6 +104,26 @@ const DRAFT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let draftOperation: Promise<unknown> = Promise.resolve();
+const receiptWrites = new Map<string, Promise<void>>();
+
+const withReceiptWrite = <T>(
+  key: string,
+  operation: () => Promise<T>,
+): Promise<T> => {
+  const result = (receiptWrites.get(key) || Promise.resolve()).then(
+    operation,
+    operation,
+  );
+  const tail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  receiptWrites.set(key, tail);
+  void tail.then(() => {
+    if (receiptWrites.get(key) === tail) receiptWrites.delete(key);
+  });
+  return result;
+};
 
 const withDraftLock = <T>(operation: () => Promise<T>) => {
   const result = draftOperation.then(operation, operation);
@@ -300,7 +322,7 @@ export const submitProductFeedback = async (
     clientRequestId: string;
   },
   ownerBoundary?: AccountSessionBoundary,
-): Promise<ProductFeedbackReceipt> => {
+): Promise<ProductFeedbackReceipt & {trackingSaved: boolean}> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   if (
     !isUuid(input.clientRequestId) ||
@@ -340,8 +362,8 @@ export const submitProductFeedback = async (
     replayed: firstBoolean(payload.replayed) ?? false,
     messages: parseMessages(payload.messages),
   };
-  await rememberCaseReceipt(receipt, boundary);
-  return receipt;
+  const trackingSaved = await persistProductFeedbackReceipt(receipt, boundary);
+  return {...receipt, trackingSaved};
 };
 
 const safeAccessToken = (value: unknown) => {
@@ -510,17 +532,40 @@ export const migrateGuestProductFeedback = async (
 
   const guestReceiptsKey = scopedFeedbackKey(RECEIPTS_KEY, guestScope);
   const accountReceiptsKey = scopedFeedbackKey(RECEIPTS_KEY, accountScope);
-  const [guestReceipts, accountReceipts] = await Promise.all([
-    loadStoredReceiptsFromKey(guestReceiptsKey, accountBoundary),
-    loadStoredReceiptsFromKey(accountReceiptsKey, accountBoundary),
-  ]);
-  const merged = new Map<string, StoredCaseReceipt>();
-  [...accountReceipts, ...guestReceipts]
-    .sort((left, right) => left.updatedAt - right.updatedAt)
-    .forEach(receipt => merged.set(receipt.publicId, receipt));
-  let receipts = [...merged.values()]
-    .sort((left, right) => right.updatedAt - left.updatedAt)
-    .slice(0, 20);
+  // A timed-out native write can still land. Do not declare migration complete
+  // or remove the guest's original recovery draft ahead of that raw queue.
+  const ready = await settleWithin(
+    Promise.all([
+      receiptWrites.get(guestReceiptsKey),
+      receiptWrites.get(accountReceiptsKey),
+    ]).then(() => true),
+    false,
+  );
+  if (!ready) return false;
+  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+  const copied = await settleWithin(
+    withReceiptWrite(accountReceiptsKey, async () => {
+      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+      const [guestReceipts, accountReceipts] = await Promise.all([
+        loadStoredReceiptsFromKey(guestReceiptsKey, accountBoundary),
+        loadStoredReceiptsFromKey(accountReceiptsKey, accountBoundary),
+      ]);
+      const merged = new Map<string, StoredCaseReceipt>();
+      [...accountReceipts, ...guestReceipts]
+        .sort((left, right) => left.updatedAt - right.updatedAt)
+        .forEach(receipt => merged.set(receipt.publicId, receipt));
+      const receipts = [...merged.values()]
+        .sort((left, right) => right.updatedAt - left.updatedAt)
+        .slice(0, 20);
+      await AsyncStorage.setItem(accountReceiptsKey, JSON.stringify(receipts));
+      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+      return {guestReceipts, receipts};
+    }),
+    null,
+  );
+  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+  if (!copied) return false;
+  const {guestReceipts, receipts} = copied;
 
   const conflictsKey = scopedFeedbackKey(
     MIGRATED_DRAFT_CONFLICTS_KEY,
@@ -559,13 +604,21 @@ export const migrateGuestProductFeedback = async (
     }
   };
 
-  await AsyncStorage.setItem(accountReceiptsKey, JSON.stringify(receipts));
   await moveIfMissing(DRAFT_KEY);
   for (const receipt of guestReceipts) {
     await moveIfMissing(`${REPLY_DRAFT_PREFIX}${receipt.publicId}`);
   }
   if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  await AsyncStorage.removeItem(guestReceiptsKey);
+  const removed = await settleWithin(
+    withReceiptWrite(guestReceiptsKey, async () => {
+      if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+      await AsyncStorage.removeItem(guestReceiptsKey);
+      return true;
+    }),
+    false,
+  );
+  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+  if (!removed) return false;
 
   if (!claimRemote) return true;
   if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
@@ -587,12 +640,28 @@ export const migrateGuestProductFeedback = async (
   );
   if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
   if (claimedIds.size) {
-    receipts = receipts.map(receipt =>
-      claimedIds.has(receipt.publicId)
-        ? {...receipt, accessToken: undefined}
-        : receipt,
+    const tracked = await settleWithin(
+      withReceiptWrite(accountReceiptsKey, async () => {
+        const latest = await loadStoredReceiptsFromKey(
+          accountReceiptsKey,
+          accountBoundary,
+        );
+        await AsyncStorage.setItem(
+          accountReceiptsKey,
+          JSON.stringify(
+            latest.map(receipt =>
+              claimedIds.has(receipt.publicId)
+                ? {...receipt, accessToken: undefined}
+                : receipt,
+            ),
+          ),
+        );
+        return true;
+      }),
+      false,
     );
-    await AsyncStorage.setItem(accountReceiptsKey, JSON.stringify(receipts));
+    if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+    if (!tracked) return false;
   }
   return results.every(result => result.status === 'fulfilled');
 };
@@ -606,17 +675,35 @@ const rememberCaseReceipt = async (
   // Read and write through one resolved owner. Recomputing the key after an
   // account switch could otherwise merge the next learner's case ids into the
   // previous learner's receipt list.
-  const current = await loadStoredReceiptsFromKey(key, boundary);
-  const next = [
-    {
-      publicId: receipt.publicId,
-      accessToken: receipt.accessToken,
-      updatedAt: Date.now(),
-    },
-    ...current.filter(item => item.publicId !== receipt.publicId),
-  ].slice(0, 20);
-  await AsyncStorage.setItem(key, JSON.stringify(next));
+  await withReceiptWrite(key, async () => {
+    assertAccountSessionBoundary(boundary);
+    const current = await loadStoredReceiptsFromKey(key, boundary);
+    const next = [
+      {
+        publicId: receipt.publicId,
+        accessToken: receipt.accessToken,
+        updatedAt: Date.now(),
+      },
+      ...current.filter(item => item.publicId !== receipt.publicId),
+    ].slice(0, 20);
+    await AsyncStorage.setItem(key, JSON.stringify(next));
+    assertAccountSessionBoundary(boundary);
+  });
+};
+
+export const persistProductFeedbackReceipt = async (
+  receipt: ProductFeedbackReceipt,
+  boundary: AccountSessionBoundary,
+): Promise<boolean> => {
   assertAccountSessionBoundary(boundary);
+  // Delivery is already confirmed. Keep late local writes ordered without
+  // holding the received state hostage to native storage availability.
+  const saved = await settleWithin(
+    rememberCaseReceipt(receipt, boundary).then(() => true),
+    false,
+  );
+  assertAccountSessionBoundary(boundary);
+  return saved;
 };
 
 const accessHeaders = (accessToken?: string) =>
@@ -845,6 +932,9 @@ export const loadProductFeedbackDraft = async (
         typeof draft.message === 'string' &&
         draft.message.length <= 1600 &&
         typeof draft.includeDiagnostics === 'boolean' &&
+        (draft.sourceScreen === undefined ||
+          (typeof draft.sourceScreen === 'string' &&
+            draft.sourceScreen.length <= 64)) &&
         isUuid(draft.clientRequestId) &&
         Number.isFinite(draft.updatedAt) &&
         Number(draft.updatedAt) <= Date.now() + 5 * 60 * 1000 &&
@@ -885,6 +975,9 @@ export const saveProductFeedbackDraft = async (
       !isProductFeedbackCategory(draft.category) ||
       !isUuid(draft.clientRequestId) ||
       typeof draft.includeDiagnostics !== 'boolean' ||
+      (draft.sourceScreen !== undefined &&
+        (typeof draft.sourceScreen !== 'string' ||
+          draft.sourceScreen.length > 64)) ||
       typeof draft.message !== 'string' ||
       !Number.isFinite(draft.updatedAt) ||
       draft.message.length > 1600

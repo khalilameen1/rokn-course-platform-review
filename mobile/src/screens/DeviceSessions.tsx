@@ -51,10 +51,12 @@ import type {RootState} from '../store/store';
 
 const dateLabel = (value?: string | null) => {
   if (!value) return 'غير معروف';
-  return formatRoknDate(value, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }) || 'غير معروف';
+  return (
+    formatRoknDate(value, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }) || 'غير معروف'
+  );
 };
 
 const deviceClassForSession = (session: DeviceSession): RoknDeviceClass =>
@@ -83,12 +85,7 @@ const SessionDeviceIcon = ({deviceClass}: {deviceClass: RoknDeviceClass}) => {
         x={tablet ? 4.5 : 6.5}
         y={tablet ? 3 : 2}
       />
-      <Circle
-        cx={13}
-        cy={tablet ? 19.5 : 20.5}
-        fill={Palette.primary}
-        r={1}
-      />
+      <Circle cx={13} cy={tablet ? 19.5 : 20.5} fill={Palette.primary} r={1} />
     </Svg>
   );
 };
@@ -105,57 +102,66 @@ export default function DeviceSessions() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState('');
   const loadGenerationRef = useRef(0);
-  const mutationFlightRef = useRef(false);
+  const mutationFlightRef = useRef<{identity: string} | null>(null);
+  const pendingRefreshRef = useRef<string | null>(null);
   const screenActiveRef = useRef(false);
+  const screenVisitRef = useRef(0);
   const accountIdentityRef = useRef(accountIdentity);
   accountIdentityRef.current = accountIdentity;
 
-  const load = useCallback(async (
-    refresh = false,
-    requestedIdentity = accountIdentityRef.current,
-  ) => {
-    const generation = ++loadGenerationRef.current;
-    refresh ? setRefreshing(true) : setLoading(true);
-    setError('');
-    try {
-      const boundary = await captureAccountSessionBoundary();
-      const nextSessions = await getDeviceSessions();
-      assertAccountSessionBoundary(boundary);
-      if (
-        generation !== loadGenerationRef.current ||
-        requestedIdentity !== accountIdentityRef.current
-      )
-        return;
-      setSessions(nextSessions);
-    } catch (requestError) {
-      if (
-        generation !== loadGenerationRef.current ||
-        requestedIdentity !== accountIdentityRef.current
-      )
-        return;
-      if (
-        requestError instanceof Error &&
-        requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
-      ) {
-        setSessions([]);
+  const load = useCallback(
+    async (refresh = false, requestedIdentity = accountIdentityRef.current) => {
+      if (mutationFlightRef.current?.identity === requestedIdentity) {
+        pendingRefreshRef.current = requestedIdentity;
+        if (refresh) setRefreshing(true);
         return;
       }
-      setError('تعذّر تحميل الأجهزة الآن');
-    } finally {
-      if (
-        generation === loadGenerationRef.current &&
-        requestedIdentity === accountIdentityRef.current
-      ) {
-        setLoading(false);
-        setRefreshing(false);
+      const generation = ++loadGenerationRef.current;
+      refresh ? setRefreshing(true) : setLoading(true);
+      setError('');
+      try {
+        const boundary = await captureAccountSessionBoundary();
+        const nextSessions = await getDeviceSessions();
+        assertAccountSessionBoundary(boundary);
+        if (
+          generation !== loadGenerationRef.current ||
+          requestedIdentity !== accountIdentityRef.current
+        )
+          return;
+        setSessions(nextSessions);
+      } catch (requestError) {
+        if (
+          generation !== loadGenerationRef.current ||
+          requestedIdentity !== accountIdentityRef.current
+        )
+          return;
+        if (
+          requestError instanceof Error &&
+          requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
+        ) {
+          setSessions([]);
+          return;
+        }
+        setError('تعذّر تحميل الأجهزة الآن');
+      } finally {
+        if (
+          generation === loadGenerationRef.current &&
+          requestedIdentity === accountIdentityRef.current
+        ) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
-    }
-  }, []);
+    },
+    [],
+  );
 
   useFocusEffect(
     useCallback(() => {
       screenActiveRef.current = true;
-      if (!mutationFlightRef.current) setRemoving(null);
+      if (mutationFlightRef.current?.identity !== accountIdentity) {
+        setRemoving(null);
+      }
       if (authenticated) {
         void load(false, accountIdentity);
       } else {
@@ -167,13 +173,52 @@ export default function DeviceSessions() {
       }
       return () => {
         screenActiveRef.current = false;
+        screenVisitRef.current += 1;
         loadGenerationRef.current += 1;
+        pendingRefreshRef.current = null;
       };
     }, [accountIdentity, authenticated, load]),
   );
 
+  const beginRevocation = (id: string) => {
+    const identity = accountIdentityRef.current;
+    if (mutationFlightRef.current?.identity === identity) return null;
+    const owner = {identity};
+    mutationFlightRef.current = owner;
+    // An interrupted pull-to-refresh still deserves one fresh result, but no
+    // read may restore a session using a snapshot from inside revocation.
+    pendingRefreshRef.current = refreshing ? identity : null;
+    loadGenerationRef.current += 1;
+    setLoading(false);
+    setRefreshing(false);
+    setRemoving(id);
+    return owner;
+  };
+
+  const finishRevocation = (owner: {identity: string}) => {
+    if (mutationFlightRef.current !== owner) return;
+    mutationFlightRef.current = null;
+    const refreshRequested = pendingRefreshRef.current === owner.identity;
+    pendingRefreshRef.current = null;
+    if (
+      screenActiveRef.current &&
+      owner.identity === accountIdentityRef.current
+    ) {
+      setRemoving(null);
+      setRefreshing(false);
+      if (refreshRequested) void load(true, owner.identity);
+    }
+  };
+
   const revoke = (session: DeviceSession) => {
-    if (session.current || removing || mutationFlightRef.current) return;
+    if (
+      session.current ||
+      removing ||
+      mutationFlightRef.current?.identity === accountIdentityRef.current
+    )
+      return;
+    const dialogIdentity = accountIdentityRef.current;
+    const dialogVisit = screenVisitRef.current;
     Alert.alert(
       'تسجيل الخروج من الجهاز',
       'سيحتاج تسجيل الدخول من جديد على هذا الجهاز فقط',
@@ -183,13 +228,24 @@ export default function DeviceSessions() {
           text: 'تسجيل الخروج',
           style: 'destructive',
           onPress: async () => {
-            if (mutationFlightRef.current) return;
-            const requestedIdentity = accountIdentityRef.current;
-            mutationFlightRef.current = true;
-            loadGenerationRef.current += 1;
-            setRemoving(session.id);
+            if (
+              !screenActiveRef.current ||
+              dialogVisit !== screenVisitRef.current ||
+              dialogIdentity !== accountIdentityRef.current
+            )
+              return;
+            const owner = beginRevocation(session.id);
+            if (!owner) return;
+            const requestedIdentity = owner.identity;
             try {
               const boundary = await captureAccountSessionBoundary();
+              assertAccountSessionBoundary(boundary);
+              if (
+                !screenActiveRef.current ||
+                dialogVisit !== screenVisitRef.current ||
+                dialogIdentity !== accountIdentityRef.current
+              )
+                return;
               await revokeDeviceSession(session.id);
               assertAccountSessionBoundary(boundary);
               if (
@@ -215,12 +271,7 @@ export default function DeviceSessions() {
                 }
               }
             } finally {
-              mutationFlightRef.current = false;
-              if (
-                screenActiveRef.current &&
-                requestedIdentity === accountIdentityRef.current
-              )
-                setRemoving(null);
+              finishRevocation(owner);
             }
           },
         },
@@ -231,10 +282,12 @@ export default function DeviceSessions() {
   const revokeOthers = () => {
     if (
       removing ||
-      mutationFlightRef.current ||
+      mutationFlightRef.current?.identity === accountIdentityRef.current ||
       !sessions.some(session => !session.current)
     )
       return;
+    const dialogIdentity = accountIdentityRef.current;
+    const dialogVisit = screenVisitRef.current;
     Alert.alert(
       'تسجيل الخروج من الأجهزة الأخرى',
       'سيبقى هذا الجهاز مسجّلًا فقط',
@@ -244,13 +297,24 @@ export default function DeviceSessions() {
           text: 'تسجيل الخروج',
           style: 'destructive',
           onPress: async () => {
-            if (mutationFlightRef.current) return;
-            const requestedIdentity = accountIdentityRef.current;
-            mutationFlightRef.current = true;
-            loadGenerationRef.current += 1;
-            setRemoving('all');
+            if (
+              !screenActiveRef.current ||
+              dialogVisit !== screenVisitRef.current ||
+              dialogIdentity !== accountIdentityRef.current
+            )
+              return;
+            const owner = beginRevocation('all');
+            if (!owner) return;
+            const requestedIdentity = owner.identity;
             try {
               const boundary = await captureAccountSessionBoundary();
+              assertAccountSessionBoundary(boundary);
+              if (
+                !screenActiveRef.current ||
+                dialogVisit !== screenVisitRef.current ||
+                dialogIdentity !== accountIdentityRef.current
+              )
+                return;
               await revokeOtherDeviceSessions();
               assertAccountSessionBoundary(boundary);
               if (
@@ -276,12 +340,7 @@ export default function DeviceSessions() {
                 }
               }
             } finally {
-              mutationFlightRef.current = false;
-              if (
-                screenActiveRef.current &&
-                requestedIdentity === accountIdentityRef.current
-              )
-                setRemoving(null);
+              finishRevocation(owner);
             }
           },
         },
@@ -332,25 +391,25 @@ export default function DeviceSessions() {
                 onRefresh={() => void load(true)}
               />
             }>
-            <Text style={styles.intro}>
-              أنهِ أي جلسة على جهاز لا تستخدمه
-            </Text>
+            <Text style={styles.intro}>أنهِ أي جلسة على جهاز لا تستخدمه</Text>
 
-            {sessions.some(session => !session.current) && !loading && !error && (
-              <Pressable
-                accessibilityRole="button"
-                disabled={Boolean(removing)}
-                onPress={revokeOthers}
-                style={styles.logoutOthersButton}>
-                {removing === 'all' ? (
-                  <ActivityIndicator color={Palette.danger} />
-                ) : (
-                  <Text style={styles.logoutText}>
-                    تسجيل الخروج من الأجهزة الأخرى
-                  </Text>
-                )}
-              </Pressable>
-            )}
+            {sessions.some(session => !session.current) &&
+              !loading &&
+              !error && (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={Boolean(removing)}
+                  onPress={revokeOthers}
+                  style={styles.logoutOthersButton}>
+                  {removing === 'all' ? (
+                    <ActivityIndicator color={Palette.danger} />
+                  ) : (
+                    <Text style={styles.logoutText}>
+                      تسجيل الخروج من الأجهزة الأخرى
+                    </Text>
+                  )}
+                </Pressable>
+              )}
 
             {loading ? (
               <ActivityIndicator color={Palette.primary} size="large" />

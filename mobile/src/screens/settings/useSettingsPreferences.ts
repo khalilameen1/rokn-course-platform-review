@@ -1,4 +1,5 @@
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
+import {useFocusEffect} from '@react-navigation/native';
 import {Alert} from 'react-native';
 import {
   accountScopedStorageKey,
@@ -90,6 +91,17 @@ export const useSettingsPreferences = ({
     usePrivacyPreferenceSync();
   const preferenceRevisionRef = useRef<Record<string, number>>({});
   const accountIdentity = sessionIdentityKey(userData);
+  const confirmationOwnerRef = useRef<object | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const owner = {accountIdentity};
+      confirmationOwnerRef.current = owner;
+      return () => {
+        if (confirmationOwnerRef.current === owner)
+          confirmationOwnerRef.current = null;
+      };
+    }, [accountIdentity]),
+  );
 
   const markPreferenceMutation = (key: string) => {
     const revision = (preferenceRevisionRef.current[key] || 0) + 1;
@@ -517,7 +529,16 @@ export const useSettingsPreferences = ({
     setChoiceModal(null);
   };
 
-  const confirmClearWatchHistory = () =>
+  const confirmClearWatchHistory = () => {
+    const owner = confirmationOwnerRef.current;
+    if (!owner) return;
+    // Capture at display time. Confirmation must never acquire a replacement
+    // account merely because its native dialog outlived the original screen.
+    const boundaryFlight = captureAccountSessionBoundary().then(
+      boundary => ({boundary}),
+      (error: unknown) => ({error}),
+    );
+    let confirmed = false;
     Alert.alert(
       'مسح سجل المشاهدة',
       'سنمسح آخر ما شاهدته فقط\nويبقى تقدمك وشهاداتك محفوظة',
@@ -527,44 +548,64 @@ export const useSettingsPreferences = ({
           text: 'مسح السجل',
           style: 'destructive',
           onPress: async () => {
-            const boundary = await captureAccountSessionBoundary();
-            await clearLocalWatchHistory(boundary);
-            assertAccountSessionBoundary(boundary);
-            let serverSynced = true;
-            if (extractApiToken(userData)) {
-              const pendingKey = await accountScopedStorageKey(
-                PENDING_WATCH_HISTORY_CLEAR_KEY,
-                boundary,
-              );
-              try {
-                await clearWatchHistory(boundary);
-                assertAccountSessionBoundary(boundary);
-                await removeItem(pendingKey);
-                assertAccountSessionBoundary(boundary);
-              } catch {
-                assertAccountSessionBoundary(boundary);
-                serverSynced = false;
-                const queued = await saveItem(pendingKey, true);
-                assertAccountSessionBoundary(boundary);
-                if (!queued) {
-                  Alert.alert(
-                    'لم يكتمل المسح',
-                    'تعذّر حفظ طلب المسح على الجهاز\nحاول مرة أخرى عند عودة الاتصال',
-                  );
-                  return;
+            if (confirmed || confirmationOwnerRef.current !== owner) return;
+            confirmed = true;
+            try {
+              const captured = await boundaryFlight;
+              if (confirmationOwnerRef.current !== owner) return;
+              if ('error' in captured) throw captured.error;
+              const boundary = captured.boundary;
+              assertAccountSessionBoundary(boundary);
+              await clearLocalWatchHistory(boundary);
+              assertAccountSessionBoundary(boundary);
+              let serverSynced = true;
+              if (extractApiToken(userData)) {
+                const pendingKey = await accountScopedStorageKey(
+                  PENDING_WATCH_HISTORY_CLEAR_KEY,
+                  boundary,
+                );
+                try {
+                  await clearWatchHistory(boundary);
+                  assertAccountSessionBoundary(boundary);
+                  await removeItem(pendingKey);
+                  assertAccountSessionBoundary(boundary);
+                } catch {
+                  assertAccountSessionBoundary(boundary);
+                  serverSynced = false;
+                  const queued = await saveItem(pendingKey, true);
+                  assertAccountSessionBoundary(boundary);
+                  if (!queued) {
+                    Alert.alert(
+                      'لم يكتمل المسح',
+                      'تعذّر حفظ طلب المسح على الجهاز\nحاول مرة أخرى عند عودة الاتصال',
+                    );
+                    return;
+                  }
                 }
               }
+              if (confirmationOwnerRef.current !== owner) return;
+              Alert.alert(
+                'تم مسح السجل',
+                serverSynced
+                  ? 'بقي تقدمك في الكورسات محفوظًا'
+                  : 'مسحناه من هذا الجهاز\nوسيكتمل من حسابك عند عودة الاتصال',
+              );
+            } catch (error) {
+              if (
+                confirmationOwnerRef.current === owner &&
+                !(
+                  error instanceof Error &&
+                  error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
+                )
+              ) {
+                Alert.alert('لم يكتمل المسح', 'حاول مرة أخرى');
+              }
             }
-            Alert.alert(
-              'تم مسح السجل',
-              serverSynced
-                ? 'بقي تقدمك في الكورسات محفوظًا'
-                : 'مسحناه من هذا الجهاز\nوسيكتمل من حسابك عند عودة الاتصال',
-            );
           },
         },
       ],
     );
+  };
 
   return {
     choiceModal,

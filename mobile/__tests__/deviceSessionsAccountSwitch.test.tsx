@@ -1,14 +1,18 @@
 import React from 'react';
-import {Alert, Pressable, Text} from 'react-native';
+import {Alert, ScrollView, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 let mockUser: Record<string, unknown> = {id: 1, api_token: 'token-a'};
+let mockFocused = true;
 
 jest.mock('@react-navigation/native', () => {
   const ReactModule = require('react');
   return {
     useFocusEffect: (effect: () => void | (() => void)) =>
-      ReactModule.useEffect(effect, [effect]),
+      ReactModule.useEffect(
+        () => (mockFocused ? effect() : undefined),
+        [effect, mockFocused],
+      ),
     useNavigation: () => ({reset: jest.fn()}),
   };
 });
@@ -76,9 +80,11 @@ jest.mock('../src/services/deviceSessions', () => ({
 }));
 
 import DeviceSessions from '../src/screens/DeviceSessions';
+import {captureAccountSessionBoundary} from '../src/constants/helpers';
 import {
   getDeviceSessions,
   revokeDeviceSession,
+  revokeOtherDeviceSessions,
 } from '../src/services/deviceSessions';
 
 const deferred = <T,>() => {
@@ -98,6 +104,19 @@ const renderedText = (renderer: TestRenderer.ReactTestRenderer) =>
     .filter(value => typeof value === 'string')
     .join(' ');
 
+const buttonForText = (
+  renderer: TestRenderer.ReactTestRenderer,
+  label: string,
+) => {
+  let node: TestRenderer.ReactTestInstance | null =
+    renderer.root
+      .findAllByType(Text)
+      .find(candidate => candidate.props.children === label) || null;
+  while (node && typeof node.props.onPress !== 'function') node = node.parent;
+  if (!node) throw new Error(`Missing button: ${label}`);
+  return node;
+};
+
 const session = (id: string, current = true) => ({
   app_build: '1',
   app_version: '1.0.0',
@@ -113,12 +132,243 @@ const session = (id: string, current = true) => ({
 describe('device sessions account ownership', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(revokeDeviceSession).mockReset();
+    jest.mocked(revokeOtherDeviceSessions).mockReset();
+    mockFocused = true;
     mockUser = {id: 1, api_token: 'token-a'};
     jest
       .mocked(getDeviceSessions)
       .mockResolvedValueOnce([session('11111111-1111-4111-8111-111111111111')])
       .mockResolvedValueOnce([session('22222222-2222-4222-8222-222222222222')]);
   });
+
+  it.each(
+    ['تسجيل الخروج من الجهاز', 'تسجيل الخروج من الأجهزة الأخرى'].flatMap(
+      label => ['account switch', 'blur'].map(exit => [label, exit]),
+    ),
+  )(
+    'does not send %s after ownership changes during session capture: %s',
+    async (label, exit) => {
+      jest
+        .mocked(getDeviceSessions)
+        .mockReset()
+        .mockResolvedValue([
+          session('11111111-1111-4111-8111-111111111111'),
+          session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false),
+        ]);
+      const capture = deferred<{epoch: number; scope: string}>();
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation((_title, _message, buttons) => {
+          void buttons
+            ?.find(button => button.style === 'destructive')
+            ?.onPress?.();
+        });
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<DeviceSessions />);
+      });
+      try {
+        jest
+          .mocked(captureAccountSessionBoundary)
+          .mockReturnValueOnce(capture.promise);
+        await act(async () => buttonForText(renderer, label).props.onPress());
+        if (exit === 'account switch') mockUser = {id: 2, api_token: 'token-b'};
+        else mockFocused = false;
+        await act(async () => renderer.update(<DeviceSessions />));
+        await act(async () =>
+          capture.resolve({epoch: 2, scope: `user-${mockUser.id}`}),
+        );
+        expect(revokeDeviceSession).not.toHaveBeenCalled();
+        expect(revokeOtherDeviceSessions).not.toHaveBeenCalled();
+      } finally {
+        alert.mockRestore();
+        await act(async () => renderer.unmount());
+      }
+    },
+  );
+
+  it.each(['success', 'failure'])(
+    'settles an interrupted refresh and coalesces queued refreshes after revoke %s',
+    async outcome => {
+      const current = session('11111111-1111-4111-8111-111111111111');
+      const other = session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false);
+      const stale = deferred<ReturnType<typeof session>[]>();
+      const mutation = deferred<void>();
+      jest
+        .mocked(getDeviceSessions)
+        .mockReset()
+        .mockResolvedValueOnce([current, other])
+        .mockReturnValueOnce(stale.promise)
+        .mockResolvedValueOnce(
+          outcome === 'success' ? [current] : [current, other],
+        );
+      jest.mocked(revokeDeviceSession).mockReturnValueOnce(mutation.promise);
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation((_title, _message, buttons) => {
+          void buttons
+            ?.find(button => button.style === 'destructive')
+            ?.onPress?.();
+        });
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<DeviceSessions />);
+      });
+      try {
+        const refresh = () =>
+          renderer.root
+            .findByType(ScrollView)
+            .props.refreshControl.props.onRefresh();
+        const revokeButton = buttonForText(renderer, 'تسجيل الخروج من الجهاز');
+        await act(async () => refresh());
+        await act(async () => revokeButton.props.onPress());
+        await act(async () => {
+          revokeButton.props.onPress();
+          refresh();
+          refresh();
+        });
+        expect(revokeDeviceSession).toHaveBeenCalledTimes(1);
+        expect(getDeviceSessions).toHaveBeenCalledTimes(2);
+        await act(async () => {
+          if (outcome === 'success') mutation.resolve();
+          else mutation.reject(new Error('offline'));
+        });
+        await act(async () => stale.resolve([current, other]));
+        expect(getDeviceSessions).toHaveBeenCalledTimes(3);
+        expect(
+          renderer.root.findByType(ScrollView).props.refreshControl.props
+            .refreshing,
+        ).toBe(false);
+        expect(
+          renderedText(renderer).includes('تسجيل الخروج من الأجهزة الأخرى'),
+        ).toBe(outcome === 'failure');
+      } finally {
+        alert.mockRestore();
+        await act(async () => renderer.unmount());
+      }
+    },
+  );
+
+  it.each(['blur', 'unmount'])(
+    'does not run a queued refresh after %s',
+    async exit => {
+      const mutation = deferred<void>();
+      jest
+        .mocked(getDeviceSessions)
+        .mockReset()
+        .mockResolvedValue([
+          session('11111111-1111-4111-8111-111111111111'),
+          session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false),
+        ]);
+      jest.mocked(revokeDeviceSession).mockReturnValueOnce(mutation.promise);
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation((_title, _message, buttons) => {
+          void buttons
+            ?.find(button => button.style === 'destructive')
+            ?.onPress?.();
+        });
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<DeviceSessions />);
+      });
+      await act(async () =>
+        buttonForText(renderer, 'تسجيل الخروج من الجهاز').props.onPress(),
+      );
+      await act(async () =>
+        renderer.root
+          .findByType(ScrollView)
+          .props.refreshControl.props.onRefresh(),
+      );
+      await act(async () => {
+        if (exit === 'unmount') renderer.unmount();
+        else {
+          mockFocused = false;
+          renderer.update(<DeviceSessions />);
+        }
+      });
+      await act(async () => mutation.resolve());
+      expect(getDeviceSessions).toHaveBeenCalledTimes(1);
+      if (exit === 'blur') {
+        await act(async () => {
+          mockFocused = true;
+          renderer.update(<DeviceSessions />);
+        });
+        expect(getDeviceSessions).toHaveBeenCalledTimes(2);
+        await act(async () => renderer.unmount());
+      }
+      alert.mockRestore();
+    },
+  );
+
+  it.each(['selected', 'other devices'])(
+    'does not restore revoked %s from a refresh started during revocation',
+    async target => {
+      const current = session('11111111-1111-4111-8111-111111111111');
+      const other = session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false);
+      const mutation = deferred<void>();
+      const staleRead = deferred<ReturnType<typeof session>[]>();
+      let revoked = false;
+      jest
+        .mocked(getDeviceSessions)
+        .mockReset()
+        .mockResolvedValueOnce([current, other]);
+      jest.mocked(revokeDeviceSession).mockReturnValueOnce(mutation.promise);
+      jest
+        .mocked(revokeOtherDeviceSessions)
+        .mockImplementationOnce(async () => {
+          await mutation.promise;
+          return 1;
+        });
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation((_title, _message, buttons) => {
+          void buttons
+            ?.find(button => button.style === 'destructive')
+            ?.onPress?.();
+        });
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<DeviceSessions />);
+      });
+      try {
+        expect(renderedText(renderer)).toContain(
+          'تسجيل الخروج من الأجهزة الأخرى',
+        );
+        jest
+          .mocked(getDeviceSessions)
+          .mockImplementation(() =>
+            revoked ? Promise.resolve([current]) : staleRead.promise,
+          );
+        const label =
+          target === 'selected'
+            ? 'تسجيل الخروج من الجهاز'
+            : 'تسجيل الخروج من الأجهزة الأخرى';
+        const revokeButton = buttonForText(renderer, label);
+        await act(async () => revokeButton.props.onPress());
+        await act(async () =>
+          renderer.root
+            .findByType(ScrollView)
+            .props.refreshControl.props.onRefresh(),
+        );
+        revoked = true;
+        await act(async () => mutation.resolve());
+        await act(async () => staleRead.resolve([current, other]));
+        expect(renderedText(renderer)).not.toContain(
+          'تسجيل الخروج من الأجهزة الأخرى',
+        );
+        expect(renderedText(renderer)).toContain('هذا الجهاز');
+        expect(
+          renderer.root.findByType(ScrollView).props.refreshControl.props
+            .refreshing,
+        ).toBe(false);
+      } finally {
+        alert.mockRestore();
+        await act(async () => renderer.unmount());
+      }
+    },
+  );
 
   it('reloads when one authenticated account replaces another on the open screen', async () => {
     let renderer!: TestRenderer.ReactTestRenderer;
@@ -136,15 +386,68 @@ describe('device sessions account ownership', () => {
     await act(async () => renderer.unmount());
   });
 
+  it.each(
+    ['تسجيل الخروج من الجهاز', 'تسجيل الخروج من الأجهزة الأخرى'].flatMap(
+      label =>
+        ['account switch', 'blur and return', 'unmount'].map(exit => [
+          label,
+          exit,
+        ]),
+    ),
+  )('does not confirm an old dialog for %s after %s', async (label, exit) => {
+    jest
+      .mocked(getDeviceSessions)
+      .mockReset()
+      .mockResolvedValue([
+        session('11111111-1111-4111-8111-111111111111'),
+        session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false),
+      ]);
+    let confirm: (() => void) | undefined;
+    const alert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation((_title, _message, buttons) => {
+        confirm = buttons?.find(
+          button => button.style === 'destructive',
+        )?.onPress;
+      });
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<DeviceSessions />);
+    });
+    try {
+      await act(async () => buttonForText(renderer, label).props.onPress());
+      expect(confirm).toBeDefined();
+      if (exit === 'account switch') {
+        mockUser = {id: 2, api_token: 'token-b'};
+        await act(async () => renderer.update(<DeviceSessions />));
+      } else if (exit === 'blur and return') {
+        await act(async () => {
+          mockFocused = false;
+          renderer.update(<DeviceSessions />);
+        });
+        await act(async () => {
+          mockFocused = true;
+          renderer.update(<DeviceSessions />);
+        });
+      } else {
+        await act(async () => renderer.unmount());
+      }
+      await act(async () => confirm!());
+      expect(revokeDeviceSession).not.toHaveBeenCalled();
+      expect(revokeOtherDeviceSessions).not.toHaveBeenCalled();
+    } finally {
+      alert.mockRestore();
+      if (exit !== 'unmount') await act(async () => renderer.unmount());
+    }
+  });
+
   it('ignores a rejected list request owned by the previous account', async () => {
     const oldRequest = deferred<ReturnType<typeof session>[]>();
     jest.mocked(getDeviceSessions).mockReset();
     jest
       .mocked(getDeviceSessions)
       .mockReturnValueOnce(oldRequest.promise)
-      .mockResolvedValueOnce([
-        session('22222222-2222-4222-8222-222222222222'),
-      ]);
+      .mockResolvedValueOnce([session('22222222-2222-4222-8222-222222222222')]);
 
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
@@ -172,28 +475,23 @@ describe('device sessions account ownership', () => {
         session('11111111-1111-4111-8111-111111111111'),
         session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false),
       ])
-      .mockResolvedValueOnce([
-        session('22222222-2222-4222-8222-222222222222'),
-      ]);
+      .mockResolvedValueOnce([session('22222222-2222-4222-8222-222222222222')]);
     jest.mocked(revokeDeviceSession).mockReturnValueOnce(oldMutation.promise);
     const alert = jest
       .spyOn(Alert, 'alert')
       .mockImplementation((_title, _message, buttons) => {
-        void buttons?.find(button => button.style === 'destructive')?.onPress?.();
+        void buttons
+          ?.find(button => button.style === 'destructive')
+          ?.onPress?.();
       });
 
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       renderer = TestRenderer.create(<DeviceSessions />);
     });
-    const oldRevoke = renderer.root
-      .findAllByType(Pressable)
-      .find(node =>
-        String(renderedText({root: node} as TestRenderer.ReactTestRenderer)).includes(
-          'تسجيل الخروج من الجهاز',
-        ),
-      );
-    await act(async () => oldRevoke?.props.onPress());
+    const oldRevoke = buttonForText(renderer, 'تسجيل الخروج من الجهاز');
+    await act(async () => oldRevoke.props.onPress());
+    expect(revokeDeviceSession).toHaveBeenCalledTimes(1);
 
     mockUser = {id: 2, api_token: 'token-b'};
     await act(async () => renderer.update(<DeviceSessions />));

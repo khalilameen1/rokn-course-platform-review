@@ -40,8 +40,10 @@ export default function Feedback() {
               description="وصلتنا رسالتك\nيمكنك متابعة الرد من هنا"
               onAction={() => {
                 composer.dismissReceipt();
-                cases.selectCase(composer.receiptPublicId);
-                void cases.reloadCases(composer.receiptPublicId);
+                void cases.reloadCases(
+                  composer.receiptPublicId,
+                  composer.receipt,
+                );
               }}
               title="تم الإرسال"
             />
@@ -71,7 +73,12 @@ export default function Feedback() {
             onOpenArtifact={(artifact, forceRefresh) =>
               void cases.openArtifact(artifact, forceRefresh)
             }
-            onRefresh={() => void cases.reloadCases()}
+            onRefresh={() =>
+              void cases.reloadCases(
+                '',
+                composer.trackingRecoveryNeeded ? composer.receipt : undefined,
+              )
+            }
             onRemoveReplyAttachment={cases.removeReplyScreenshot}
             onReplyChange={cases.setReply}
             onSelectCase={cases.selectCase}
@@ -85,23 +92,32 @@ export default function Feedback() {
             selectedCase={cases.selectedCase}
             selectedCaseId={cases.selectedCaseId}
           />
-          <FeedbackForm
-            attachment={composer.attachment}
-            busy={composer.busy}
-            canSubmit={composer.canSubmit}
-            category={composer.category}
-            draftSaveError={composer.draftSaveError}
-            error={composer.error}
-            includeDiagnostics={composer.includeDiagnostics}
-            message={composer.message}
-            onChooseAttachment={() => void composer.chooseScreenshot()}
-            onMessageChange={composer.setMessage}
-            onRemoveAttachment={composer.removeScreenshot}
-            onSelectCategory={composer.selectCategory}
-            onToggleDiagnostics={composer.setIncludeDiagnostics}
-            onSubmit={() => void composer.submit()}
-            ready={composer.ready}
-          />
+          {composer.trackingRecoveryNeeded ? (
+            <StatusView
+              title="رسالتك وصلت"
+              description="تعذّر حفظ رقم المتابعة على الجهاز\nاحفظ المتابعة قبل إرسال رسالة جديدة"
+              actionLabel={composer.busy ? 'جارٍ الحفظ' : 'إعادة المحاولة'}
+              onAction={() => void composer.retryTracking()}
+            />
+          ) : (
+            <FeedbackForm
+              attachment={composer.attachment}
+              busy={composer.busy}
+              canSubmit={composer.canSubmit}
+              category={composer.category}
+              draftSaveError={composer.draftSaveError}
+              error={composer.error}
+              includeDiagnostics={composer.includeDiagnostics}
+              message={composer.message}
+              onChooseAttachment={() => void composer.chooseScreenshot()}
+              onMessageChange={composer.setMessage}
+              onRemoveAttachment={composer.removeScreenshot}
+              onSelectCategory={composer.selectCategory}
+              onToggleDiagnostics={composer.setIncludeDiagnostics}
+              onSubmit={() => void composer.submit()}
+              ready={composer.ready}
+            />
+          )}
         </ResponsiveFrame>
       </Content>
     </Container>
