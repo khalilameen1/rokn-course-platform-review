@@ -1,7 +1,9 @@
 const mockPost = jest.fn();
+const mockGet = jest.fn();
 
 jest.mock('../src/constants/api', () => ({
   publicRequest: {
+    get: (...args: unknown[]) => mockGet(...args),
     post: (...args: unknown[]) => mockPost(...args),
   },
 }));
@@ -13,7 +15,7 @@ jest.mock('../src/constants/helpers', () => ({
   })),
 }));
 
-import {updateProfile} from '../src/services/api/accountProfile';
+import {getProfile, updateProfile} from '../src/services/api/accountProfile';
 
 const formFieldNames = (body: unknown): string[] => {
   const candidate = body as {
@@ -48,6 +50,55 @@ const response = (profileRevision: number) => ({
 
 describe('profile identity write contract', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it.each(['', null])(
+    'honors the explicit cleared headline %p returned by the server',
+    async headline => {
+      const data = response(3);
+      const authoritative = {
+        data: {
+          data: {
+            ...data.data.data,
+            portfolio_headline: headline,
+            job_title: headline,
+          },
+        },
+      };
+      mockGet.mockResolvedValue(authoritative);
+      mockPost.mockResolvedValue(authoritative);
+
+      expect(await getProfile()).toEqual(
+        expect.objectContaining({portfolioHeadline: '', jobTitle: ''}),
+      );
+      expect(
+        await updateProfile({
+          clientRequestId: '11111111-1111-4111-8111-111111111111',
+          expectedProfileRevision: 2,
+          name: 'الاسم الجديد',
+          portfolioHeadline: 'القيمة المرسلة',
+          jobTitle: 'قيمة الوظيفة المرسلة',
+        }),
+      ).toEqual(expect.objectContaining({portfolioHeadline: '', jobTitle: ''}));
+    },
+  );
+
+  it('uses the submitted headline only when the write response omits the field', async () => {
+    mockPost.mockResolvedValue(response(3));
+    expect(
+      await updateProfile({
+        clientRequestId: '11111111-1111-4111-8111-111111111111',
+        expectedProfileRevision: 2,
+        name: 'الاسم الجديد',
+        portfolioHeadline: 'القيمة المرسلة',
+        jobTitle: 'قيمة الوظيفة المرسلة',
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        portfolioHeadline: 'القيمة المرسلة',
+        jobTitle: 'قيمة الوظيفة المرسلة',
+      }),
+    );
+  });
 
   it('requires the server revision to advance before the app adopts the identity', async () => {
     mockPost.mockResolvedValue(response(2));

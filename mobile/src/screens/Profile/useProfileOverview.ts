@@ -60,16 +60,18 @@ export function useProfileOverview() {
     (sessionIdentityIsNewer ? user.name : visibleRemoteProfile?.name) ||
     (authenticatedIdentity ? user.name : '') ||
     '';
+  // Empty is an intentional removal; only an absent field may use another
+  // profile source. Do not revive an older portfolio headline after a save.
+  const sessionHeadline =
+    authenticatedIdentity && typeof user.portfolio_headline === 'string'
+      ? user.portfolio_headline
+      : undefined;
   const role =
     (sessionIdentityIsNewer
-      ? typeof user.portfolio_headline === 'string'
-        ? user.portfolio_headline
-        : ''
-      : visibleRemoteProfile?.portfolioHeadline) ||
-    visiblePortfolioProfile?.headline ||
-    (authenticatedIdentity && typeof user.portfolio_headline === 'string'
-      ? user.portfolio_headline
-      : '') ||
+      ? sessionHeadline
+      : visibleRemoteProfile?.portfolioHeadline) ??
+    visiblePortfolioProfile?.headline ??
+    sessionHeadline ??
     '';
   const username =
     visiblePortfolioProfile?.slug ||

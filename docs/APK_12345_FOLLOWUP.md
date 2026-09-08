@@ -982,3 +982,36 @@ No APK, push or deployment was performed. The broader goal remains open; the
 next nonoverlapping operations are task rewards, profile identity propagation
 and contact-message delivery. Their in-progress work is not part of this
 checkpoint's verification claim.
+
+## September 8 — retired task rewards and authoritative profile clearing
+
+Two subsequent, separately owned operations reached a source checkpoint:
+
+- A WhatsApp task could be opened while active, deleted from the real admin
+  route, rejected by the regular claim endpoint, then still credited by its
+  already-open inbound link. The HTTP regression reproduced 43 coins instead
+  of zero. The shared `CoinEarningMethod::isAvailableNow` decision now excludes
+  a soft-deleted campaign. Historical lookup remains necessary for token and
+  earned-receipt replay and was not removed. The number can still be linked;
+  a retired/disabled/expired/exhausted reward is not paid. Previously earned
+  rewards remain recorded and idempotent after campaign retirement.
+- Clearing a portfolio headline could resurrect the older portfolio text in
+  the app because an explicit empty account value was treated as missing. The
+  existing profile revision still chooses the newest owner; fallback now
+  applies only to an absent value. Two actual-hook cases reproduced the empty
+  session/fresh response failures. The profile response mapper had the same
+  behavior for nullable headline and job title during updates; explicit server
+  null/empty now wins over the submitted fallback, while genuine omission
+  retains the fallback. Required name, avatar upload, issued certificate holder
+  snapshots and public portfolio publication rules were inspected and retained.
+
+Root verification passed the four profile suites / 20 tests and four backend
+reward suites / 27 tests / 276 assertions. The agent also verified 50 adjacent
+mobile wallet/commerce tests; scoped lint, type and syntax checks passed. Reward
+fixtures used the actual task start, versioned admin deletion, inbound handling,
+claim and wallet routes with outgoing jobs faked and stray HTTP prohibited.
+This was not a real WhatsApp message or production wallet transaction.
+
+No APK, push or deployment. Contact delivery, notification acknowledgement and
+portfolio-work cache coherence remain in progress in separate owned files and
+are not covered by this checkpoint's completion statement.

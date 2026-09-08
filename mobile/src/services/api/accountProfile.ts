@@ -49,12 +49,18 @@ const profileFromPayload = (
     id: String(value.id),
     name: String(value.name || fallback.name || 'طالب ركن'),
     email: String(value.email || ''),
-    jobTitle: String(value.job_title || fallback.jobTitle || ''),
+    jobTitle: String(
+      Object.prototype.hasOwnProperty.call(value, 'job_title')
+        ? value.job_title ?? ''
+        : fallback.jobTitle ?? '',
+    ),
     portfolioSlug: value.portfolio_slug
       ? String(value.portfolio_slug)
       : undefined,
     portfolioHeadline: String(
-      value.portfolio_headline || fallback.portfolioHeadline || '',
+      Object.prototype.hasOwnProperty.call(value, 'portfolio_headline')
+        ? value.portfolio_headline ?? ''
+        : fallback.portfolioHeadline ?? '',
     ),
     portfolioUrl: value.portfolio_url ? String(value.portfolio_url) : undefined,
     avatar: profileAvatar(value.profile_image, value.image),

@@ -141,7 +141,8 @@ class CoinEarningMethod extends Model
 
     public function isAvailableNow(): bool
     {
-        return (bool) $this->is_active
+        return !$this->trashed()
+            && (bool) $this->is_active
             && ($this->starts_at === null || !$this->starts_at->isFuture())
             && ($this->ends_at === null || $this->ends_at->isFuture());
     }
