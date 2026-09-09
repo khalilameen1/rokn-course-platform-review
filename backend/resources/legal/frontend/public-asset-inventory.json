@@ -14,7 +14,7 @@
     },
     {
       "path": "public/admin/assets/css/admin-reports.css",
-      "sha256": "a841d8c378f1f3fd3bd5e305a535fe153bab7db2298746b2922ec2f6440ce951",
+      "sha256": "be360712db83f79e53ac782d0e6e2d679a9aa63684f69e54dec3547807758519",
       "classification": "first_party"
     },
     {
@@ -142,7 +142,7 @@
     },
     {
       "path": "public/admin/assets/css/home-dashboard.css",
-      "sha256": "8f804a3fdacbfcd4dfc5e9db3656be84bb0f527ed9efbfb97d732898726a7a0a",
+      "sha256": "e03310ae6d72bda98761a07045eda06bef7c4a4a676cd9b6251ed72c67a4e205",
       "classification": "first_party"
     },
     {
