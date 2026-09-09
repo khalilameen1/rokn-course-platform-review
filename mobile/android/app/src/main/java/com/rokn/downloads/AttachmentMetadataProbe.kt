@@ -38,28 +38,31 @@ internal object AttachmentMetadataProbe {
         .method(method, null)
         .apply { if (method == "GET") header("Range", "bytes=0-511") }
         .build()
-      client.newBuilder().callTimeout(remaining, TimeUnit.MILLISECONDS).build()
-        .newCall(request).execute().use { response ->
-          if (response.code in listOf(301, 302, 303, 307, 308)) {
-            check(++redirects <= 5) { "DOWNLOAD_REDIRECT_LIMIT" }
-            url = url.resolve(response.header("Location").orEmpty())
-              ?: error("INVALID_DOWNLOAD_REDIRECT")
-          } else if (method == "HEAD" && response.code in listOf(401, 403, 405, 501)) {
-            // Read headers only and close immediately, even if the server ignores Range.
-            method = "GET"
-          } else {
-            return Arguments.createMap().apply {
-              putString("url", url.toString())
-              putInt("statusCode", response.code)
-              putString("contentType", response.header("Content-Type"))
-              putString("contentDisposition", response.header("Content-Disposition"))
-              val total = if (response.code == 206) {
-                response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
-              } else response.header("Content-Length")?.toLongOrNull()
-              if (total != null && total > 0L) putDouble("contentLength", total.toDouble())
-            }
+      val call = client.newBuilder().callTimeout(remaining, TimeUnit.MILLISECONDS).build()
+        .newCall(request)
+      call.execute().use { response ->
+        // Closing alone may drain a large response to reuse the connection.
+        // We need only headers, so stop the transfer before closing its body.
+        call.cancel()
+        if (response.code in listOf(301, 302, 303, 307, 308)) {
+          check(++redirects <= 5) { "DOWNLOAD_REDIRECT_LIMIT" }
+          url = url.resolve(response.header("Location").orEmpty())
+            ?: error("INVALID_DOWNLOAD_REDIRECT")
+        } else if (method == "HEAD" && response.code in listOf(401, 403, 405, 501)) {
+          method = "GET"
+        } else {
+          return Arguments.createMap().apply {
+            putString("url", url.toString())
+            putInt("statusCode", response.code)
+            putString("contentType", response.header("Content-Type"))
+            putString("contentDisposition", response.header("Content-Disposition"))
+            val total = if (response.code == 206) {
+              response.header("Content-Range")?.substringAfterLast('/')?.toLongOrNull()
+            } else response.header("Content-Length")?.toLongOrNull()
+            if (total != null && total > 0L) putDouble("contentLength", total.toDouble())
           }
         }
+      }
     }
     error("DOWNLOAD_REDIRECT_LIMIT")
   }
