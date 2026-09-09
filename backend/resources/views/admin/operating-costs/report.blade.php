@@ -45,7 +45,13 @@
         <div class="stat-card"><span class="stat-counter">{{ $report['average_net_per_student_egp'] === null ? '—' : number_format($report['average_net_per_student_egp'], 2).' ج.م' }}</span><span class="stat-label">متوسط الصافي لكل طالب</span></div>
         <div class="stat-card"><span class="stat-counter">{{ $report['average_cost_per_student_egp'] === null ? '—' : number_format($report['average_cost_per_student_egp'], 2).' ج.م' }}</span><span class="stat-label">متوسط التكلفة لكل طالب</span></div>
         <div class="stat-card">
-            <span class="stat-counter">{{ !($report['ai_measurement_available'] ?? true) ? 'غير متاح' : (!$report['ai_cost_complete'] && $report['ai_cost_usd'] == 0 ? 'بانتظار التأكيد' : '$'.number_format($report['ai_cost_usd'], 6)) }}</span>
+            <span class="stat-counter">
+                @if($report['ai_measurement_available'] ?? true)
+                    @include('admin.reports.confirmed-usd', ['amount' => $report['ai_cost_usd'], 'complete' => $report['ai_cost_complete']])
+                @else
+                    غير متاح
+                @endif
+            </span>
             <span class="stat-label">OpenRouter مؤكد · {{ number_format($report['ai_requests']) }} ناجح · {{ number_format($report['ai_failed_requests']) }} فاشل · {{ number_format($report['ai_unanswered_requests']) }} بلا نتيجة</span>
             @include('admin.reports.growth', ['change' => $report['comparisons']['ai_cost_usd'], 'neutral' => true])
             @if(($report['ai_estimated_requests'] ?? 0) > 0)<small class="text-warning">{{ number_format($report['ai_estimated_requests']) }} طلبًا بانتظار تكلفة المزود</small>@endif
@@ -79,8 +85,7 @@
                 @if($service['key'] === 'openrouter')
                     {{ number_format($service['requests']) }} ناجح · {{ number_format($service['failed_requests']) }} فاشل · {{ number_format($report['ai_unanswered_requests']) }} بلا نتيجة · {{ number_format($service['units']) }} توكن<br>
                     <small>
-                        {{ !$report['ai_cost_complete'] && $service['cost_usd'] == 0 ? 'بانتظار التأكيد' : '$'.number_format($service['cost_usd'], 6) }}
-                        @if(!$report['ai_cost_complete'] && $service['cost_usd'] > 0) · مؤكد جزئيًا@endif
+                        @include('admin.reports.confirmed-usd', ['amount' => $service['cost_usd'], 'complete' => $report['ai_cost_complete']])
                         @if($report['ai_cost_per_1000_tokens_usd'] !== null) · ${{ number_format($report['ai_cost_per_1000_tokens_usd'], 6) }}/1000 توكن@endif
                         @if($report['ai_failure_rate_percentage'] !== null) · لم تكتمل {{ number_format($report['ai_failure_rate_percentage'], 2) }}٪ من الطلبات@endif
                     </small>

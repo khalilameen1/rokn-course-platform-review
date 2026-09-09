@@ -262,22 +262,10 @@
                             {{ number_format($row['ai_requests']) }} طلب AI · {{ number_format($row['ai_tokens']) }} توكن<br>
                             @foreach(($row['ai_by_feature'] ?? []) as $feature => $featureUsage)
                                 <small>{{ \App\Services\CourseCostReportService::aiFeatureLabels()[$feature] ?? $feature }} · {{ number_format($featureUsage['delivered_requests']) }} مكتمل · {{ number_format($featureUsage['unanswered_requests']) }} بلا نتيجة ·
-                                    @if($featureUsage['cost_complete'])
-                                        ${{ number_format($featureUsage['cost_usd'], 6) }}
-                                    @elseif($featureUsage['cost_usd'] > 0)
-                                        ${{ number_format($featureUsage['cost_usd'], 6) }} مؤكد جزئيًا
-                                    @else
-                                        <span class="text-warning">بانتظار التأكيد</span>
-                                    @endif
+                                    @include('admin.reports.confirmed-usd', ['amount' => $featureUsage['cost_usd'], 'complete' => $featureUsage['cost_complete']])
                                 </small><br>
                             @endforeach
-                            @if($row['ai_cost_complete'])
-                                ${{ number_format($row['ai_cost_usd'], 6) }}
-                            @elseif($row['ai_cost_usd'] > 0)
-                                ${{ number_format($row['ai_cost_usd'], 6) }} مؤكد جزئيًا
-                            @else
-                                <span class="text-warning">بانتظار التأكيد</span>
-                            @endif
+                            @include('admin.reports.confirmed-usd', ['amount' => $row['ai_cost_usd'], 'complete' => $row['ai_cost_complete']])
                             · {{ number_format($row['playback_minutes'], 0) }} دقيقة
                         </td>
                         <td>
