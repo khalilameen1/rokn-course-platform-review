@@ -36,6 +36,13 @@ export const usePlaybackInterruption = ({
     setPausedForInterruption(false);
   }, []);
 
+  const pauseAtEnd = useCallback(() => {
+    resumeAfterFocusLossRef.current = false;
+    isPlayingRef.current = false;
+    setPausedForInterruption(false);
+    setPausedByUser(true);
+  }, [isPlayingRef]);
+
   const handleAudioBecomingNoisy = useCallback(() => {
     if (!isVisible) return;
     resumeAfterFocusLossRef.current = false;
@@ -86,6 +93,7 @@ export const usePlaybackInterruption = ({
     clearTransientInterruption,
     handleAudioBecomingNoisy,
     handleAudioFocusChanged,
+    pauseAtEnd,
     pausedByUser,
     playbackPaused,
     resetInterruption,

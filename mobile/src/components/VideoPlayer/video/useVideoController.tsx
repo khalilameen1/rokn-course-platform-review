@@ -1,4 +1,10 @@
-import {type ForwardedRef, useEffect, useImperativeHandle, useRef} from 'react';
+import {
+  type ForwardedRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import {VideoRef} from 'react-native-video';
 import {CourseReel, VideoQuality} from '../types';
 import {
@@ -170,16 +176,39 @@ export const useVideoController = (
     clearTransientInterruption,
     handleAudioBecomingNoisy,
     handleAudioFocusChanged,
+    pauseAtEnd,
     pausedByUser,
     playbackPaused,
     resetInterruption,
-    togglePaused,
+    togglePaused: togglePlaybackPaused,
   } = usePlaybackInterruption({
     emitPlaybackEvent,
     isPlayingRef,
     isVisible,
     playbackEligible,
   });
+
+  const togglePaused = useCallback(() => {
+    // An ended decoder does not restart from changing `paused` alone. Keep
+    // autoplay/navigation owned by completion; only an explicit play tap
+    // rewinds, and respect a seek the learner made after the reel ended.
+    if (
+      playbackPaused &&
+      durationRef.current > 0 &&
+      lastPositionRef.current >= durationRef.current
+    ) {
+      seekTo(0);
+      setCurrentTime(0);
+    }
+    togglePlaybackPaused();
+  }, [
+    durationRef,
+    lastPositionRef,
+    playbackPaused,
+    seekTo,
+    setCurrentTime,
+    togglePlaybackPaused,
+  ]);
 
   if (reelIdentityRef.current !== data.id) {
     reelIdentityRef.current = data.id;
@@ -493,7 +522,10 @@ export const useVideoController = (
     lastPosition: lastPositionRef,
     loadStartedAt: loadStartedAtRef,
     longBufferTimer: longBufferTimerRef,
-    onComplete,
+    onComplete: () => {
+      pauseAtEnd();
+      onComplete?.();
+    },
     onPlaybackHealthy: markPlaybackHealthy,
     onProgressChange: onProgress,
     ownsPlayback: () => activePlayerOwnerRef.current === playerOwner,
