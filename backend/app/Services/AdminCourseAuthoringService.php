@@ -235,6 +235,16 @@ final readonly class AdminCourseAuthoringService
                 $course = $published['course'];
                 $ownedVersion = (int) $published['published_revision'];
             } catch (ValidationException $exception) {
+                // The editor save above already committed. A readiness rejection
+                // must acknowledge that version just like a first publication;
+                // real revision conflicts still require reconciliation.
+                if ($exception->status === 422 && array_keys($exception->errors()) === ['course']) {
+                    return [
+                        'status' => 'not_ready',
+                        'course' => $course,
+                        'issues' => $exception->errors()['course'],
+                    ];
+                }
                 throw $exception;
             } catch (\Throwable $exception) {
                 report($exception);
