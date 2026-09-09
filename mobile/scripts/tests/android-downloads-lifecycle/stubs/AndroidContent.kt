@@ -52,9 +52,16 @@ open class Context(
   private val preferences: SharedPreferences,
 ) {
   val activities = mutableListOf<Intent>()
+  val activityAttempts = mutableListOf<Intent>()
+  var abortActivityStarts = false
+  var activityFailure: ((Intent) -> Exception?)? = null
   fun getSystemService(name: String): Any = manager
   fun getSharedPreferences(name: String, mode: Int): SharedPreferences = preferences
-  fun startActivity(intent: Intent) { activities.add(intent) }
+  fun startActivity(intent: Intent) {
+    activityAttempts.add(intent)
+    activityFailure?.invoke(intent)?.let { throw it }
+    if (!abortActivityStarts) activities.add(intent)
+  }
   companion object { const val DOWNLOAD_SERVICE = "download"; const val MODE_PRIVATE = 0 }
 }
 
@@ -62,8 +69,9 @@ class Intent(val action: String) {
   private val extras = mutableMapOf<String, Long>()
   var data: Uri? = null
   var mime: String? = null
+  var flags = 0
   fun setDataAndType(uri: Uri, type: String) = apply { data = uri; mime = type }
-  fun addFlags(flags: Int) = this
+  fun addFlags(flags: Int) = apply { this.flags = this.flags or flags }
   fun putExtra(key: String, value: Long) = apply { extras[key] = value }
   fun getLongExtra(key: String, fallback: Long): Long = extras[key] ?: fallback
   companion object {
@@ -72,4 +80,5 @@ class Intent(val action: String) {
     const val FLAG_GRANT_READ_URI_PERMISSION = 2
   }
 }
+class ActivityNotFoundException(message: String) : RuntimeException(message)
 abstract class BroadcastReceiver { abstract fun onReceive(context: Context, intent: Intent) }

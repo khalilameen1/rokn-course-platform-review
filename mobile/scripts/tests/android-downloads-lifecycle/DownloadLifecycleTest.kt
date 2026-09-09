@@ -1,8 +1,10 @@
 package com.rokn.downloads
 
 import android.app.DownloadManager
+import android.app.Activity
 import android.content.ContentResolver
 import android.content.Intent
+import android.content.ActivityNotFoundException
 import android.content.SharedPreferences
 import android.os.Environment
 import android.system.Os
@@ -10,6 +12,7 @@ import android.system.OsConstants
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.WritableMap
+import com.facebook.react.common.LifecycleState
 import java.io.Closeable
 import java.io.File
 import java.nio.file.Files
@@ -104,6 +107,83 @@ fun main() {
         val result = f.tap().map()
         check(result["id"] == id.toDouble() && result["status"] == "opened" && result["existing"] == true)
         check(f.manager.enqueueCount == 1 && f.context.activities.size == 1)
+      }
+    },
+    "a completed file does not claim opened after its host leaves the foreground" to {
+      Fixture().use { f ->
+        val id = f.complete()
+        f.context.lifecycleState = LifecycleState.BEFORE_RESUME
+        // Android START_ABORTED is nonfatal: startActivity may return without launching.
+        f.context.abortActivityStarts = true
+        val receipt = f.tap().map()
+        check(receipt["status"] == "completed") { "A background host received opened although Android launched nothing" }
+        check(f.context.activityAttempts.isEmpty() && f.context.activities.isEmpty())
+        check(f.tracked(id) && f.manager.removed.isEmpty() && f.manager.enqueueCount == 1)
+        f.context.lifecycleState = LifecycleState.RESUMED
+        f.context.abortActivityStarts = false
+        check(f.context.activityAttempts.isEmpty()) // No automatic presentation on return.
+        check(f.tap().map()["status"] == "opened" && f.manager.enqueueCount == 1)
+      }
+    },
+    "a completed file without an attached activity remains an actionable completed receipt" to {
+      Fixture().use { f ->
+        val id = f.complete()
+        f.context.currentActivity = null
+        f.context.abortActivityStarts = true
+        val receipt = f.tap().map()
+        check(receipt["status"] == "completed") { "A detached host received an opened receipt" }
+        check(f.context.activityAttempts.isEmpty() && f.tracked(id) && f.manager.removed.isEmpty())
+        f.context.currentActivity = Activity()
+        f.context.abortActivityStarts = false
+        check(f.tap().map()["status"] == "opened" && f.manager.enqueueCount == 1)
+      }
+    },
+    "a viewer launch carries the read grant and starts a new task from the React context" to {
+      Fixture().use { f ->
+        val id = f.complete()
+        check(f.tap().map()["status"] == "opened")
+        val intent = f.context.activities.single()
+        check(intent.action == Intent.ACTION_VIEW && intent.data.toString() == "content://downloads/$id")
+        check(intent.mime == "application/pdf")
+        check(intent.flags and Intent.FLAG_GRANT_READ_URI_PERMISSION != 0)
+        check(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
+        check(f.manager.enqueueCount == 1 && f.manager.removed.isEmpty())
+      }
+    },
+    "a finishing or destroyed activity cannot claim a completed file was opened" to {
+      listOf("finishing", "destroyed").forEach { kind ->
+        Fixture().use { f ->
+          val id = f.complete()
+          checkNotNull(f.context.currentActivity).apply {
+            isFinishing = kind == "finishing"
+            isDestroyed = kind == "destroyed"
+          }
+          check(f.tap().map()["status"] == "completed")
+          check(f.context.activityAttempts.isEmpty() && f.tracked(id) && f.manager.enqueueCount == 1)
+          f.context.currentActivity = Activity()
+          check(f.tap().map()["status"] == "opened")
+        }
+      }
+    },
+    "missing or denied viewer falls back to Downloads without discarding the completed file" to {
+      listOf("missing", "denied", "no-handlers").forEach { kind ->
+        Fixture().use { f ->
+          val id = f.complete()
+          f.context.activityFailure = { intent ->
+            if (intent.action == Intent.ACTION_VIEW || kind == "no-handlers") {
+              if (kind == "denied") SecurityException("Provider grant unavailable")
+              else ActivityNotFoundException("No handler")
+            } else null
+          }
+          check(f.tap().map()["status"] == "completed")
+          check(f.context.activityAttempts.map { it.action } == listOf(Intent.ACTION_VIEW, DownloadManager.ACTION_VIEW_DOWNLOADS))
+          check(f.tracked(id) && f.manager.removed.isEmpty() && f.manager.enqueueCount == 1)
+          check(checkNotNull(f.manager.entries[id]).file.exists())
+          if (kind == "no-handlers") check(f.context.activities.isEmpty())
+          else check(f.context.activities.single().action == DownloadManager.ACTION_VIEW_DOWNLOADS)
+          f.context.activityFailure = null
+          check(f.tap().map()["status"] == "opened" && f.manager.enqueueCount == 1)
+        }
       }
     },
     "nullable provider reads retain file and receipt until the provider returns" to {

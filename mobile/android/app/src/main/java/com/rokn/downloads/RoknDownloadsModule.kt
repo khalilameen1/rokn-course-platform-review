@@ -16,6 +16,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.common.LifecycleState
 import com.rokn.BuildConfig
 import java.io.FileNotFoundException
 import java.io.IOException
@@ -216,6 +217,13 @@ class RoknDownloadsModule(
   private fun openDownloadedFile(manager: DownloadManager, downloadId: Long): Boolean {
     val uri = manager.getUriForDownloadedFile(downloadId) ?: return false
     val mime = manager.getMimeTypeForDownloadedFile(downloadId) ?: "application/octet-stream"
+    // Android may silently abort a background activity launch. Keep a completed
+    // receipt instead of claiming the viewer opened, and never defer an auto-open.
+    val activity = reactContext.currentActivity
+    if (
+      reactContext.lifecycleState != LifecycleState.RESUMED || activity == null ||
+      activity.isFinishing || activity.isDestroyed
+    ) return false
     return try {
       reactContext.startActivity(
         Intent(Intent.ACTION_VIEW)
