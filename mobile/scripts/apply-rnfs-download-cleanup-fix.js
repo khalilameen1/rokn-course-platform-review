@@ -74,6 +74,7 @@ function applyFix({root = MOBILE_ROOT, check = false} = {}) {
       'index.d.ts',
       'Downloader.h',
       'Downloader.m',
+      'RNFSManager.h',
       'RNFSManager.m',
     ].map(name => [
       name,

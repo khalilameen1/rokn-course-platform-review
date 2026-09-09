@@ -9,17 +9,28 @@ const hashes = {
   'Downloader.h': {
     original:
       'ec14ca8cdfd4cdf1c5fda2c82bc81ab381a83d9e068355c1ef23247b366ecf96',
-    fixed: '15d824c98510cd689543a707f019c26b62ea62537520c57494345f9ad8651c26',
+    priorFixed:
+      '15d824c98510cd689543a707f019c26b62ea62537520c57494345f9ad8651c26',
+    fixed: 'e8a5a3e0703fee23a16c14d8e4545bd5567bbf538a9f2aeedebd99ccd2cad72d',
   },
   'Downloader.m': {
     original:
       '9d90b19ddcf1ca87be792b1d7aece0697009154253c682b0175b2a41841ab13b',
-    fixed: '3ea9d21fe5cd91eac059c4bfaa339dd2b2f8e70e3ca1829cdb36d796a11b84ba',
+    priorFixed:
+      '3ea9d21fe5cd91eac059c4bfaa339dd2b2f8e70e3ca1829cdb36d796a11b84ba',
+    fixed: '2088172721ebb889a94228acf9e448c29914ea08e5f08b5f373e645e4a3fd209',
+  },
+  'RNFSManager.h': {
+    original:
+      '39db66aa8c557655c8a2bbe3d569e553bc8fe66b70ca7c236095b094812dac03',
+    fixed: 'adba1f4800b07197b2accd8c31d150f0639afcbb31a2e64125411a3db9fc4e8e',
   },
   'RNFSManager.m': {
     original:
       '1f198866bd424f97cd4d183e0c4d81b19b7a0e4cfd6e000ccb9fd3118f867c9c',
-    fixed: '12e5e79d2b6df77e49a841e8a6226def741632b562961af639d8bdc86baf53cf',
+    priorFixed:
+      '12e5e79d2b6df77e49a841e8a6226def741632b562961af639d8bdc86baf53cf',
+    fixed: 'a375876b39cc276539517b7decd783f5ca8b599e1a3b3f259c421bfac425d48a',
   },
 };
 
@@ -312,6 +323,209 @@ RCT_EXPORT_METHOD(resumeDownload:`,
   return source;
 }
 
+function backgroundHandoffSource(name, source) {
+  if (name === 'Downloader.h') {
+    return replaceOnce(
+      source,
+      '- (void)cancelDownload;',
+      `- (void)cancelDownload;
++ (BOOL)handleBackgroundEventsForIdentifier:(NSString *)identifier completionHandler:(void (^)(void))completionHandler;`,
+    );
+  }
+  if (name === 'RNFSManager.h') {
+    return replaceOnce(
+      source,
+      '@end',
+      `+ (BOOL)handleBackgroundEventsForIdentifier:(NSString *)identifier completionHandler:(CompletionHandler)completionHandler NS_SWIFT_NAME(handleBackgroundEvents(identifier:completionHandler:));
+
+@end`,
+    );
+  }
+  if (name === 'RNFSManager.m') {
+    source = replaceOnce(
+      source,
+      '@property (retain) NSMutableDictionary* uuids;\n',
+      '',
+    );
+    source = replaceOnce(
+      source,
+      'static NSMutableDictionary *completionHandlers;\n',
+      '',
+    );
+    source = replaceOnce(
+      source,
+      `  NSString *uuid = [downloader downloadFile:params];
+  if (uuid) {
+    @synchronized (self) {
+      if (!self.uuids) self.uuids = [[NSMutableDictionary alloc] init];
+      [self.uuids setObject:uuid forKey:jobKey];
+    }
+  }`,
+      '  [downloader downloadFile:params];',
+    );
+    const start = source.indexOf('RCT_EXPORT_METHOD(completeHandlerIOS:');
+    const end = source.indexOf('RCT_EXPORT_METHOD(uploadFiles:', start);
+    if (start < 0 || end < 0)
+      throw new Error('Unexpected RNFS legacy acknowledgement');
+    source =
+      source.slice(0, start) +
+      `RCT_EXPORT_METHOD(completeHandlerIOS:(nonnull NSNumber *)jobId
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  // Compatibility API: native session events now own the UIKit completion.
+  // A JS acknowledgement cannot finish it early or wait for a Save sheet.
+  resolve(nil);
+}
+
+` +
+      source.slice(end);
+    const setter = source.indexOf('+(void)setCompletionHandlerForIdentifier:');
+    const close = source.indexOf('\n@end', setter);
+    if (setter < 0 || close < 0)
+      throw new Error('Unexpected RNFS legacy registration');
+    return (
+      source.slice(0, setter) +
+      `+(void)setCompletionHandlerForIdentifier: (NSString *)identifier completionHandler: (CompletionHandler)completionHandler
+{
+  // Preserve the public legacy registration API, including an already-retired
+  // identifier, without maintaining a second completion-handler registry.
+  if (![self handleBackgroundEventsForIdentifier:identifier completionHandler:completionHandler] && completionHandler) {
+    dispatch_async(dispatch_get_main_queue(), completionHandler);
+  }
+}
+
++ (BOOL)handleBackgroundEventsForIdentifier:(NSString *)identifier completionHandler:(CompletionHandler)completionHandler
+{
+  return [RNFSDownloader handleBackgroundEventsForIdentifier:identifier completionHandler:completionHandler];
+}
+` +
+      source.slice(close)
+    );
+  }
+  source = replaceOnce(
+    source,
+    '@property (assign) BOOL terminal;',
+    `@property (assign) BOOL terminal;
+@property (copy) NSString *backgroundIdentifier;
+@property (retain) NSMutableArray *backgroundCompletionHandlers;
+@property (retain) NSHashTable *backgroundSeenHandlers;
+@property (assign) BOOL backgroundEventsFinished;
+
+- (BOOL)registerBackgroundCompletionForIdentifier:(NSString *)identifier completionHandler:(void (^)(void))completionHandler;
+- (void)finishBackgroundEvents;
+- (void)drainBackgroundCompletionHandlers;`,
+  );
+  source = replaceOnce(
+    source,
+    '@implementation RNFSDownloader\n',
+    `@implementation RNFSDownloader
+
+// Only live sessions are routable. NSURLSession retains its delegate through
+// invalidation; this weak index neither retains finished jobs nor restores a
+// job from a previous process without its destination/account ownership.
+static NSMapTable<NSString *, RNFSDownloader *> *backgroundDownloaders;
+`,
+  );
+  source = replaceOnce(
+    source,
+    '      uuid = [[NSUUID UUID] UUIDString];',
+    `      uuid = [[NSUUID UUID] UUIDString];
+      _backgroundIdentifier = uuid;
+      @synchronized ([RNFSDownloader class]) {
+        if (!backgroundDownloaders) backgroundDownloaders = [NSMapTable strongToWeakObjectsMapTable];
+        [backgroundDownloaders setObject:self forKey:uuid];
+      }`,
+  );
+  const end = source.lastIndexOf('\n@end');
+  if (end < 0) throw new Error('Unexpected RNFS downloader implementation');
+  return (
+    source.slice(0, end) +
+    `
++ (BOOL)handleBackgroundEventsForIdentifier:(NSString *)identifier completionHandler:(void (^)(void))completionHandler
+{
+  if (!identifier.length || !completionHandler) return NO;
+  RNFSDownloader *downloader;
+  @synchronized ([RNFSDownloader class]) {
+    downloader = [backgroundDownloaders objectForKey:identifier];
+  }
+  return [downloader registerBackgroundCompletionForIdentifier:identifier completionHandler:completionHandler];
+}
+
+- (BOOL)registerBackgroundCompletionForIdentifier:(NSString *)identifier completionHandler:(void (^)(void))completionHandler
+{
+  @synchronized (self) {
+    if (![_backgroundIdentifier isEqualToString:identifier]) return NO;
+    void (^ownedHandler)(void) = [completionHandler copy];
+    if (!_backgroundSeenHandlers) {
+      _backgroundSeenHandlers = [NSHashTable hashTableWithOptions:NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPointerPersonality];
+    }
+    // Only duplicate registrations of the same block are suppressed. A later
+    // authentication/completion wake for this session has its own handler.
+    // Weak identities do not retain historical UIKit handlers or their owners.
+    if ([_backgroundSeenHandlers containsObject:ownedHandler]) return YES;
+    [_backgroundSeenHandlers addObject:ownedHandler];
+    if (!_backgroundCompletionHandlers) _backgroundCompletionHandlers = [NSMutableArray array];
+    [_backgroundCompletionHandlers addObject:ownedHandler];
+    [self drainBackgroundCompletionHandlers];
+    return YES;
+  }
+}
+
+- (void)finishBackgroundEvents
+{
+  @synchronized (self) {
+    _backgroundEventsFinished = YES;
+    [self drainBackgroundCompletionHandlers];
+  }
+}
+
+- (void)drainBackgroundCompletionHandlers
+{
+  NSArray *completionHandlers;
+  @synchronized (self) {
+    if (!_backgroundEventsFinished || !_backgroundCompletionHandlers.count) return;
+    // Readiness is consumed by this batch. Resume does not erase an earlier
+    // undelivered event, and the next wake must wait for its own native drain.
+    _backgroundEventsFinished = NO;
+    completionHandlers = [_backgroundCompletionHandlers copy];
+    _backgroundCompletionHandlers = nil;
+  }
+  dispatch_async(dispatch_get_main_queue(), ^{
+    for (void (^completionHandler)(void) in completionHandlers) completionHandler();
+  });
+}
+
+- (void)URLSessionDidFinishEventsForBackgroundURLSession:(NSURLSession *)session
+{
+  @synchronized (self) {
+    if (![_backgroundIdentifier isEqualToString:session.configuration.identifier]) return;
+    [self finishBackgroundEvents];
+  }
+}
+
+- (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:(NSError *)error
+{
+  @synchronized (self) {
+    NSString *identifier = session.configuration.identifier;
+    if (![_backgroundIdentifier isEqualToString:identifier]) return;
+    // Invalidation is the final delegate event, including foreground finish,
+    // terminal error and cancellation where no background event batch follows.
+    [self finishBackgroundEvents];
+    @synchronized ([RNFSDownloader class]) {
+      if ([backgroundDownloaders objectForKey:identifier] == self) {
+        [backgroundDownloaders removeObjectForKey:identifier];
+      }
+    }
+    _backgroundIdentifier = nil;
+    _backgroundSeenHandlers = nil;
+  }
+}
+` +
+    source.slice(end)
+  );
+}
+
 function transformNativeSources(sources) {
   const transformed = {...sources};
   for (const [name, expected] of Object.entries(hashes)) {
@@ -320,12 +534,14 @@ function transformNativeSources(sources) {
       throw new Error(`Missing RNFS iOS source: ${name}`);
     const current = digest(source);
     if (current === expected.fixed) continue;
-    if (current !== expected.original)
+    if (current !== expected.original && current !== expected.priorFixed)
       throw new Error(
         `Unexpected RNFS iOS source: ${name}; re-audit lifecycle patch.`,
       );
-    transformed[name] =
-      name === 'Downloader.h'
+    const base =
+      current === expected.priorFixed
+        ? source
+        : name === 'Downloader.h'
         ? replaceOnce(
             source,
             '- (void)stopDownload;',
@@ -333,7 +549,10 @@ function transformNativeSources(sources) {
           )
         : name === 'Downloader.m'
         ? downloaderSource(source)
-        : managerSource(source);
+        : name === 'RNFSManager.m'
+        ? managerSource(source)
+        : source;
+    transformed[name] = backgroundHandoffSource(name, base);
     if (digest(transformed[name]) !== expected.fixed) {
       throw new Error(`Unexpected RNFS iOS patch output: ${name}`);
     }

@@ -2,6 +2,7 @@ internal import Expo
 import Firebase
 import React
 import ReactAppDependencyProvider
+import RNFS
 @main
 class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
@@ -40,6 +41,26 @@ class AppDelegate: ExpoAppDelegate {
     )
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  public override func application(
+    _ application: UIApplication,
+    handleEventsForBackgroundURLSession identifier: String,
+    completionHandler: @escaping () -> Void
+  ) {
+    // Only live RNFS sessions belong to this handoff. Unknown identifiers,
+    // including sessions from a previous process, remain with Expo.
+    if RNFSManager.handleBackgroundEvents(
+      identifier: identifier,
+      completionHandler: completionHandler
+    ) {
+      return
+    }
+    super.application(
+      application,
+      handleEventsForBackgroundURLSession: identifier,
+      completionHandler: completionHandler
+    )
   }
 
   public override func application(

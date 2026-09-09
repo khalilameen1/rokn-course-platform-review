@@ -145,6 +145,7 @@ test('an unknown native source or package version aborts before any dependency f
       'index.d.ts',
       'Downloader.h',
       'Downloader.m',
+      'RNFSManager.h',
       'RNFSManager.m',
     ];
     for (const name of files)
@@ -157,12 +158,14 @@ test('an unknown native source or package version aborts before any dependency f
     );
     assert.notEqual(needsRepair, installedJs);
     fs.writeFileSync(jsPath, needsRepair);
-    const nativePath = path.join(packageRoot, 'RNFSManager.m');
-    const nativeSource = fs.readFileSync(nativePath, 'utf8');
-    fs.appendFileSync(nativePath, '\n// Unreviewed source change\n');
-    assert.throws(() => applyFix({root}), /Unexpected RNFS iOS source/);
-    assert.equal(fs.readFileSync(jsPath, 'utf8'), needsRepair);
-    fs.writeFileSync(nativePath, nativeSource);
+    for (const name of ['RNFSManager.m', 'RNFSManager.h']) {
+      const nativePath = path.join(packageRoot, name);
+      const nativeSource = fs.readFileSync(nativePath, 'utf8');
+      fs.appendFileSync(nativePath, '\n// Unreviewed source change\n');
+      assert.throws(() => applyFix({root}), /Unexpected RNFS iOS source/);
+      assert.equal(fs.readFileSync(jsPath, 'utf8'), needsRepair);
+      fs.writeFileSync(nativePath, nativeSource);
+    }
     const manifestPath = path.join(packageRoot, 'package.json');
     const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
     fs.writeFileSync(

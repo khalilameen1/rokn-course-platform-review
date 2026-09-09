@@ -7,7 +7,12 @@ const test = require('node:test');
 const {transformNativeSources} = require('../rnfs-ios-download-lifecycle-fix');
 
 const nativeRoot = path.dirname(require.resolve('react-native-fs'));
-const names = ['Downloader.h', 'Downloader.m', 'RNFSManager.m'];
+const names = [
+  'Downloader.h',
+  'Downloader.m',
+  'RNFSManager.h',
+  'RNFSManager.m',
+];
 const installed = Object.fromEntries(
   names.map(name => [
     name,
@@ -123,26 +128,239 @@ test('the manager registers before starting and retires only its exact terminal 
   );
 });
 
-test('background acknowledgement consumes only its registered handler before removing UUID routing', () => {
+test('background completion belongs to drained native events, never an early JS acknowledgement', () => {
   const source = fixed['RNFSManager.m'];
   const handler = source.slice(
     source.indexOf('RCT_EXPORT_METHOD(completeHandlerIOS:'),
     source.indexOf('RCT_EXPORT_METHOD(uploadFiles:'),
   );
-  assert.match(handler, /if \(uuid\)/);
-  assert.match(handler, /@synchronized \(\[RNFSManager class\]\)/);
-  assert.match(
+  assert.match(handler, /resolve\(nil\)/);
+  assert.doesNotMatch(
     handler,
-    /if \(completionHandler\) \{[\s\S]*isEqualToString:uuid[\s\S]*removeObjectForKey:jobKey/,
+    /dispatch_async|completionHandler\(|finishBackgroundEvents/,
+  );
+  assert.doesNotMatch(source, /self\.uuids|completionHandlers/);
+  assert.match(
+    source,
+    /\[RNFSDownloader handleBackgroundEventsForIdentifier:identifier/,
+  );
+  assert.match(fixed['RNFSManager.h'], /setCompletionHandlerForIdentifier:/);
+  assert.match(
+    fixed['RNFSManager.h'],
+    /NS_SWIFT_NAME\(handleBackgroundEvents\(identifier:completionHandler:\)\)/,
+  );
+});
+
+test('a live weak identifier owner is registered before resume and released on session invalidation', () => {
+  const source = fixed['Downloader.m'];
+  assert.match(source, /strongToWeakObjectsMapTable/);
+  assert.ok(
+    source.indexOf('[backgroundDownloaders setObject:self forKey:uuid]') <
+      source.indexOf('[_task resume]'),
+  );
+  assert.match(source, /URLSessionDidFinishEventsForBackgroundURLSession:/);
+  const invalidation = source.slice(
+    source.indexOf(
+      '- (void)URLSession:(NSURLSession *)session didBecomeInvalidWithError:',
+    ),
+  );
+  assert.match(invalidation, /\[self finishBackgroundEvents\]/);
+  assert.match(
+    invalidation,
+    /if \(\[backgroundDownloaders objectForKey:identifier\] == self\)/,
+  );
+  assert.match(
+    invalidation,
+    /\[backgroundDownloaders removeObjectForKey:identifier\]/,
+  );
+  assert.match(invalidation, /_backgroundIdentifier = nil/);
+  const route = source.slice(
+    source.indexOf('+ (BOOL)handleBackgroundEventsForIdentifier:'),
+    source.lastIndexOf('- (BOOL)registerBackgroundCompletionForIdentifier:'),
+  );
+  assert.match(
+    route,
+    /@synchronized \(\[RNFSDownloader class\]\) \{\s*downloader = \[backgroundDownloaders objectForKey:identifier\];\s*\}\s*return \[downloader/,
+  );
+});
+
+test('native handoff consumes each event batch without a task-lifetime delivered flag', () => {
+  const source = fixed['Downloader.m'];
+  const registration = source.slice(
+    source.lastIndexOf('- (BOOL)registerBackgroundCompletionForIdentifier:'),
+    source.lastIndexOf('- (void)finishBackgroundEvents'),
+  );
+  assert.match(
+    registration,
+    /if \(!\[_backgroundIdentifier isEqualToString:identifier\]\) return NO/,
+  );
+  assert.match(
+    registration,
+    /if \(\[_backgroundSeenHandlers containsObject:ownedHandler\]\) return YES/,
+  );
+  assert.match(
+    registration,
+    /\[_backgroundCompletionHandlers addObject:ownedHandler\]/,
+  );
+  assert.match(registration, /\[self drainBackgroundCompletionHandlers\]/);
+  const finish = source.slice(
+    source.lastIndexOf('- (void)finishBackgroundEvents'),
+    source.indexOf('- (void)URLSessionDidFinishEventsForBackgroundURLSession:'),
+  );
+  assert.match(finish, /_backgroundEventsFinished = YES/);
+  assert.match(
+    finish,
+    /if \(!_backgroundEventsFinished \|\| !_backgroundCompletionHandlers.count\) return/,
   );
   assert.ok(
-    handler.indexOf('[completionHandlers removeObjectForKey:uuid]') <
-      handler.indexOf(
-        'dispatch_async(dispatch_get_main_queue(), completionHandler)',
-      ),
+    finish.indexOf('_backgroundEventsFinished = NO') <
+      finish.indexOf('dispatch_async(dispatch_get_main_queue()'),
+  );
+  assert.match(finish, /_backgroundCompletionHandlers = nil/);
+  assert.match(
+    finish,
+    /for \(void \(\^completionHandler\)\(void\) in completionHandlers\) completionHandler\(\)/,
   );
   assert.match(
-    source.slice(source.indexOf('+(void)setCompletionHandlerForIdentifier:')),
-    /@synchronized \(\[RNFSManager class\]\)/,
+    source,
+    /NSPointerFunctionsWeakMemory \| NSPointerFunctionsObjectPointerPersonality/,
+  );
+  assert.doesNotMatch(source, /backgroundHandlerDelivered/);
+  const resume = source.slice(
+    source.indexOf('- (void)resumeDownload'),
+    source.indexOf('- (BOOL)isResumable'),
+  );
+  assert.doesNotMatch(resume, /_background/);
+});
+
+// JavaScript state simulation of the source contract above, not execution of
+// Objective-C, UIKit, NSURLSession, or an iOS simulator.
+function simulateBackgroundHandoff() {
+  let ready = false;
+  let live = true;
+  let pending = [];
+  const seen = new WeakSet();
+  const mainQueue = [];
+  const drain = () => {
+    if (!ready || !pending.length) return;
+    ready = false;
+    const handlers = pending;
+    pending = [];
+    mainQueue.push(() => handlers.forEach(handler => handler()));
+  };
+  return {
+    register(handler) {
+      if (!live) return false;
+      if (seen.has(handler)) return true;
+      seen.add(handler);
+      pending.push(handler);
+      drain();
+      return true;
+    },
+    events() {
+      if (!live) return;
+      ready = true;
+      drain();
+    },
+    resume() {}, // A task restart does not own an earlier UIKit event batch.
+    invalidate() {
+      if (!live) return;
+      ready = true;
+      drain();
+      live = false;
+    },
+    flushMain() {
+      while (mainQueue.length) mainQueue.shift()();
+    },
+  };
+}
+
+test('JS handoff simulation completes two distinct batches without resume in either handler/event order', () => {
+  for (const eventFirst of [false, true]) {
+    const owner = simulateBackgroundHandoff();
+    const calls = [];
+    for (const batch of [1, 2]) {
+      const handler = () => calls.push(batch);
+      if (eventFirst) owner.events();
+      owner.register(handler);
+      if (!eventFirst) {
+        owner.flushMain();
+        assert.deepEqual(calls, batch === 1 ? [] : [1]);
+        owner.events();
+      }
+      assert.equal(
+        calls.length,
+        batch - 1,
+        'UIKit completion waits for main dispatch',
+      );
+      owner.flushMain();
+      assert.equal(calls.length, batch);
+    }
+    assert.deepEqual(calls, [1, 2]);
+  }
+});
+
+test('JS handoff simulation preserves distinct pending callbacks, suppresses duplicates without spending the next event, and survives resume', () => {
+  const owner = simulateBackgroundHandoff();
+  const calls = [];
+  const first = () => calls.push(1);
+  const second = () => calls.push(2);
+  const third = () => calls.push(3);
+  owner.register(first);
+  owner.register(first);
+  owner.register(second);
+  owner.resume();
+  owner.flushMain();
+  assert.deepEqual(calls, []);
+  owner.events();
+  owner.flushMain();
+  assert.deepEqual(calls, [1, 2]);
+  owner.events();
+  owner.register(first);
+  owner.resume();
+  owner.register(third);
+  owner.flushMain();
+  assert.deepEqual(calls, [1, 2, 3]);
+  owner.register(third);
+  owner.flushMain();
+  assert.deepEqual(calls, [1, 2, 3]);
+});
+
+test('JS handoff simulation drains a pending handler on terminal invalidation and does not own later callbacks', () => {
+  const owner = simulateBackgroundHandoff();
+  let calls = 0;
+  const handler = () => calls++;
+  owner.register(handler);
+  owner.invalidate();
+  owner.invalidate();
+  owner.events();
+  assert.equal(owner.register(handler), false);
+  assert.equal(calls, 0);
+  owner.flushMain();
+  assert.equal(calls, 1);
+});
+
+test('the Swift app delegates only recognized live RNFS sessions and leaves other Expo subscribers intact', () => {
+  const app = fs.readFileSync(
+    path.resolve(__dirname, '../../ios/Rokn/AppDelegate.swift'),
+    'utf8',
+  );
+  assert.match(app, /import RNFS/);
+  assert.equal(
+    app.split('handleEventsForBackgroundURLSession identifier: String').length -
+      1,
+    1,
+  );
+  assert.match(
+    app,
+    /if RNFSManager\.handleBackgroundEvents\([\s\S]*completionHandler: completionHandler\s*\) \{\s*return\s*\}\s*super\.application\(/,
+  );
+  assert.match(
+    fs.readFileSync(path.join(nativeRoot, 'RNFS.podspec'), 'utf8'),
+    /s\.name\s*=\s*"RNFS"/,
+  );
+  assert.match(
+    fs.readFileSync(path.resolve(__dirname, '../../ios/Podfile'), 'utf8'),
+    /use_frameworks! :linkage => linkage.to_sym/,
   );
 });
