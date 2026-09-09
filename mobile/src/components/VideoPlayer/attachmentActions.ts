@@ -7,7 +7,6 @@ import {
   Platform,
 } from 'react-native';
 import RNFS from 'react-native-fs';
-import Share from 'react-native-share';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -24,6 +23,14 @@ import {safeFilenameStem} from '../../utils/unicodeText';
 import {secureRandomUuid} from '../../utils/secureRandom';
 import {nativeAttachmentRecovery} from './attachmentDownloadPolicy';
 import {
+  cancelPendingAttachmentSaves,
+  saveAttachmentToFiles,
+} from './attachmentSavePresentation';
+import {
+  beginAttachmentDownloadNotice,
+  cancelAttachmentDownloadNotices,
+} from './attachmentDownloadNotice';
+import {
   attachmentHeaderFilename,
   attachmentPrefixIsHtml,
   attachmentResponseIsHtml,
@@ -39,7 +46,6 @@ const activePrivateDownloadJobs = new Map<number, () => void>();
 const retiredPrivateDownloadTargets = new Set<string>();
 const activeAndroidDownloadIds = new Set<number>();
 let privateDownloadGeneration = 0;
-let savePresentationTail: Promise<void> = Promise.resolve();
 type AttachmentResult = {
   copied: boolean;
   downloaded: boolean;
@@ -797,6 +803,10 @@ const openCourseAttachmentInternal = async (
     .slice(0, 120)}`;
   let cacheFolder = `${attachmentCacheFolder}/attempt-${secureRandomUuid()}`;
   let cancelled = false;
+  const saveCancellation = new AbortController();
+  let downloadNotice:
+    | ReturnType<typeof beginAttachmentDownloadNotice>
+    | undefined;
 
   try {
     // A cancelled/failed attempt can leave a partial cache file with the same
@@ -830,24 +840,22 @@ const openCourseAttachmentInternal = async (
       await RNFS.unlink(target).catch(() => undefined);
       assertAttachmentOwner(operation);
       const download = downloadPrivateFile(transferAttachment.url, target);
-      Alert.alert(
-        'جارٍ تنزيل الملف',
-        currentAttachment.fileSize
-          ? `${currentAttachment.fileSize}\nسنفتح خيارات الحفظ عند اكتماله`
-          : 'سنفتح خيارات الحفظ عند اكتماله',
-        [
-          {
-            text: 'إلغاء',
-            style: 'cancel',
-            onPress: () => {
-              cancelled = true;
-              download.cancel();
-            },
-          },
-          {text: 'إخفاء'},
-        ],
+      downloadNotice = beginAttachmentDownloadNotice(
+        currentAttachment.title,
+        currentAttachment.fileSize,
+        () => {
+          cancelled = true;
+          saveCancellation.abort();
+          download.cancel();
+        },
       );
-      result = await download.promise;
+      try {
+        result = await download.promise;
+      } finally {
+        // The native progress modal must actually dismiss before another
+        // controller presents either Save to Files or an error notice.
+        await downloadNotice.dismiss();
+      }
     }
     if (cancelled || !attachmentOwnerIsActive(operation)) {
       await RNFS.unlink(cacheFolder).catch(() => undefined);
@@ -902,23 +910,12 @@ const openCourseAttachmentInternal = async (
       try {
         assertAttachmentOwner(operation);
         if (cancelled) return emptyResult();
-        // RNShare's Files picker has one native delegate receipt slot. Only
-        // presentation waits its turn; downloads and per-attempt cleanup do not.
-        const presentation = savePresentationTail.then(() => {
-          assertAttachmentOwner(operation);
-          if (cancelled) return null;
-          return Share.open({
-            url: `file://${target}`,
-            saveToFiles: true,
-            failOnCancel: false,
-            title: currentAttachment.title,
-          });
-        });
-        savePresentationTail = presentation.then(
-          () => undefined,
-          () => undefined,
+        const handoff = await saveAttachmentToFiles(
+          target,
+          currentAttachment.title,
+          () => attachmentOwnerIsActive(operation),
+          saveCancellation.signal,
         );
-        const handoff = await presentation;
         if (!handoff?.success || handoff.dismissedAction) {
           return emptyResult();
         }
@@ -952,6 +949,11 @@ const openCourseAttachmentInternal = async (
       Alert.alert('تعذّر تنزيل الملف', 'تحقق من الاتصال ثم حاول مرة أخرى');
     }
     return emptyResult();
+  } finally {
+    if (downloadNotice) {
+      await downloadNotice.dismiss();
+      downloadNotice.release();
+    }
   }
 };
 
@@ -997,6 +999,8 @@ export const openCourseAttachment = async (
 export const quiescePrivateAttachmentDownloads = async (): Promise<void> => {
   privateDownloadGeneration += 1;
   downloadFlights.clear();
+  cancelPendingAttachmentSaves();
+  cancelAttachmentDownloadNotices();
   activePrivateDownloadJobs.forEach(cancel => cancel());
   activePrivateDownloadJobs.clear();
   if (NativeModules.RoknDownloads?.cancelIfActive) {

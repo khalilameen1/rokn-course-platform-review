@@ -1,6 +1,7 @@
 import React, {useEffect} from 'react';
 import './src/localization/i18n.config';
 import AppInitializer from './src/screens/AppInitializer';
+import {AttachmentDownloadNoticeHost} from './src/components/VideoPlayer/AttachmentDownloadNoticeHost';
 import {
   flushProductEvents,
   trackProductEvent,
@@ -17,6 +18,11 @@ const App = () => {
     void bootstrapOperationalDiagnostics().catch(() => undefined);
     void bootstrapProductFeatures().catch(() => undefined);
   }, []);
-  return <AppInitializer />;
+  return (
+    <>
+      <AppInitializer />
+      <AttachmentDownloadNoticeHost />
+    </>
+  );
 };
 export default App;

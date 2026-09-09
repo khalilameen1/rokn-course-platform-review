@@ -1,4 +1,4 @@
-import {Alert, NativeModules, Platform} from 'react-native';
+import {Alert, AppState, NativeModules, Platform} from 'react-native';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -7,6 +7,13 @@ jest.mock('react-native-share', () => ({
   open: jest.fn(async () => ({success: true})),
 }));
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
+jest.mock('../src/components/VideoPlayer/attachmentDownloadNotice', () => ({
+  beginAttachmentDownloadNotice: jest.fn(() => ({
+    dismiss: jest.fn(async () => undefined),
+    release: jest.fn(),
+  })),
+  cancelAttachmentDownloadNotices: jest.fn(),
+}));
 jest.mock('../src/components/VideoPlayer/courseLearning/mapping', () => ({
   loadCourseLearningData: jest.fn(),
 }));
@@ -67,6 +74,7 @@ describe('binary-safe iOS external attachment save', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    AppState.currentState = 'active';
     nativeBytes = pdf;
     fileSize = pdf.length;
     jest.replaceProperty(Platform, 'OS', 'ios');

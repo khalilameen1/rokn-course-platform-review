@@ -4,6 +4,7 @@
 
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 
 jest.mock('../src/screens/AppInitializer', () => () => null);
 jest.mock('../src/localization/i18n.config', () => ({
@@ -30,7 +31,15 @@ import App from '../App';
 test('renders correctly', async () => {
   let renderer: ReactTestRenderer.ReactTestRenderer;
   await ReactTestRenderer.act(() => {
-    renderer = ReactTestRenderer.create(<App />);
+    renderer = ReactTestRenderer.create(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: {x: 0, y: 0, width: 390, height: 844},
+          insets: {top: 44, right: 0, bottom: 34, left: 0},
+        }}>
+        <App />
+      </SafeAreaProvider>,
+    );
   });
   await ReactTestRenderer.act(() => {
     renderer.unmount();

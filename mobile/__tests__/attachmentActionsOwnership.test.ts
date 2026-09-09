@@ -19,6 +19,13 @@ jest.mock('react-native-share', () => ({
 jest.mock('@react-native-clipboard/clipboard', () => ({
   setString: jest.fn(),
 }));
+jest.mock('../src/components/VideoPlayer/attachmentDownloadNotice', () => ({
+  beginAttachmentDownloadNotice: jest.fn(() => ({
+    dismiss: jest.fn(async () => undefined),
+    release: jest.fn(),
+  })),
+  cancelAttachmentDownloadNotices: jest.fn(),
+}));
 
 jest.mock('../src/components/VideoPlayer/courseLearning/mapping', () => ({
   loadCourseLearningData: jest.fn(),
@@ -41,7 +48,7 @@ jest.mock('../src/constants/helpers', () => ({
   captureAccountSessionBoundary: jest.fn(async () => ({...mockBoundary})),
 }));
 
-import {Alert, Linking, NativeModules, Platform} from 'react-native';
+import {Alert, AppState, Linking, NativeModules, Platform} from 'react-native';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import Clipboard from '@react-native-clipboard/clipboard';
@@ -53,6 +60,7 @@ import {
   quiescePrivateAttachmentDownloads,
 } from '../src/components/VideoPlayer/attachmentActions';
 import type {CourseAttachment} from '../src/components/VideoPlayer/types';
+import {beginAttachmentDownloadNotice} from '../src/components/VideoPlayer/attachmentDownloadNotice';
 
 const loadCourse = loadCourseLearningData as jest.MockedFunction<
   typeof loadCourseLearningData
@@ -105,6 +113,7 @@ describe('course attachment operation ownership', () => {
 
   beforeEach(async () => {
     jest.useRealTimers();
+    AppState.currentState = 'active';
     mockBoundary = {epoch: 1, scope: 'user-a'};
     NativeModules.RoknDownloads = {
       enqueue,
@@ -500,10 +509,8 @@ describe('course attachment operation ownership', () => {
       });
       const first = openCourseAttachment(file);
       await settleMicrotasks(50);
-      const cancel = jest
-        .mocked(Alert.alert)
-        .mock.calls.find(([title]) => title === 'جارٍ تنزيل الملف')?.[2]
-        ?.find(button => button.text === 'إلغاء')?.onPress;
+      const cancel = jest.mocked(beginAttachmentDownloadNotice).mock
+        .calls[0]?.[2];
       expect(cancel).toBeDefined();
       expect(oldOptions.resumable).toEqual(expect.any(Function));
       jest.mocked(Alert.alert).mockClear();

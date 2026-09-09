@@ -1,10 +1,23 @@
-import {Alert, NativeModules, Platform} from 'react-native';
+import {
+  Alert,
+  AppState,
+  NativeModules,
+  Platform,
+  type AppStateStatus,
+} from 'react-native';
 import RNFS from 'react-native-fs';
 import Share from 'react-native-share';
 import Clipboard from '@react-native-clipboard/clipboard';
 
 jest.mock('react-native-share', () => ({open: jest.fn()}));
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
+jest.mock('../src/components/VideoPlayer/attachmentDownloadNotice', () => ({
+  beginAttachmentDownloadNotice: jest.fn(() => ({
+    dismiss: jest.fn(async () => undefined),
+    release: jest.fn(),
+  })),
+  cancelAttachmentDownloadNotices: jest.fn(),
+}));
 jest.mock('../src/components/VideoPlayer/courseLearning/mapping', () => ({
   loadCourseLearningData: jest.fn(),
 }));
@@ -29,6 +42,7 @@ import {
   quiescePrivateAttachmentDownloads,
 } from '../src/components/VideoPlayer/attachmentActions';
 import type {CourseAttachment} from '../src/components/VideoPlayer/types';
+import {beginAttachmentDownloadNotice} from '../src/components/VideoPlayer/attachmentDownloadNotice';
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -62,11 +76,26 @@ type DownloadReceipt = Awaited<ReturnType<typeof RNFS.downloadFile>['promise']>;
 describe('iOS attachment Save to Files presentation ownership', () => {
   const downloads: ReturnType<typeof deferred<DownloadReceipt>>[] = [];
   const pickerReceipts: ReturnType<typeof deferred<SaveReceipt>>[] = [];
+  const stateListeners = new Set<(state: AppStateStatus) => void>();
   let nativeDelegate: ReturnType<typeof deferred<SaveReceipt>>;
+  const changeState = (state: AppStateStatus) => {
+    AppState.currentState = state;
+    [...stateListeners].forEach(listener => listener(state));
+  };
 
   beforeEach(async () => {
     mockOwner = {scope: 'user-a', epoch: 1};
     jest.replaceProperty(Platform, 'OS', 'ios');
+    AppState.currentState = 'active';
+    stateListeners.clear();
+    jest
+      .spyOn(AppState, 'addEventListener')
+      .mockImplementation((event, listener) => {
+        if (event !== 'change')
+          throw new Error('Unexpected AppState subscription');
+        stateListeners.add(listener);
+        return {remove: () => stateListeners.delete(listener)};
+      });
     NativeModules.RoknDownloads = {};
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     jest.mocked(RNFS.exists).mockResolvedValue(false);
@@ -99,6 +128,7 @@ describe('iOS attachment Save to Files presentation ownership', () => {
   });
 
   afterEach(async () => {
+    changeState('active');
     // Drain even after a RED assertion so no test-owned native promise leaks
     // into the next case. Real assertions below use only the active delegate.
     for (let turn = 0; turn < 5; turn += 1) {
@@ -106,6 +136,7 @@ describe('iOS attachment Save to Files presentation ownership', () => {
       await flush();
     }
     await quiescePrivateAttachmentDownloads();
+    expect(stateListeners.size).toBe(0);
     jest.restoreAllMocks();
   });
 
@@ -137,6 +168,127 @@ describe('iOS attachment Save to Files presentation ownership', () => {
     await expect(second).resolves.toEqual({copied: false, downloaded: true});
     expect(RNFS.downloadFile).toHaveBeenCalledTimes(2);
   });
+
+  it.each(['background', 'inactive'] as const)(
+    'retains a completed file in %s and opens Save to Files once on return',
+    async state => {
+      const action = openCourseAttachment(file('a'));
+      await flush();
+      changeState(state);
+      await finishDownload(0);
+      expect(Share.open).not.toHaveBeenCalled();
+      expect(RNFS.unlink).not.toHaveBeenCalledWith(
+        expect.stringMatching(/\/attempt-[^/]+$/),
+      );
+      expect(stateListeners.size).toBe(1);
+
+      changeState('active');
+      changeState('active');
+      await flush();
+      expect(Share.open).toHaveBeenCalledTimes(1);
+      expect(stateListeners.size).toBe(0);
+      nativeDelegate.resolve(saved);
+      await expect(action).resolves.toEqual({copied: false, downloaded: true});
+      expect(RNFS.downloadFile).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each(['success', 'failure'] as const)(
+    'waits for its progress modal to dismiss before presenting the %s result',
+    async outcome => {
+      const dismissal = deferred<void>();
+      const release = jest.fn();
+      const dismiss = jest.fn(() => dismissal.promise);
+      jest
+        .mocked(beginAttachmentDownloadNotice)
+        .mockReturnValueOnce({dismiss, release});
+      const action = openCourseAttachment(file('a'));
+      await flush();
+      if (outcome === 'success') await finishDownload(0);
+      else downloads[0].reject(new Error('transfer failed'));
+      await flush();
+      expect(dismiss).toHaveBeenCalledTimes(1);
+      expect(Share.open).not.toHaveBeenCalled();
+      expect(Alert.alert).not.toHaveBeenCalledWith(
+        'تعذّر تنزيل الملف',
+        expect.anything(),
+      );
+      expect(release).not.toHaveBeenCalled();
+
+      dismissal.resolve();
+      await flush();
+      if (outcome === 'success') {
+        expect(Share.open).toHaveBeenCalledTimes(1);
+        expect(release).not.toHaveBeenCalled();
+        nativeDelegate.resolve(saved);
+      } else {
+        expect(Share.open).not.toHaveBeenCalled();
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'تعذّر تنزيل الملف',
+          expect.anything(),
+        );
+      }
+      await expect(action).resolves.toEqual({
+        copied: false,
+        downloaded: outcome === 'success',
+      });
+      expect(release).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('checks foreground again when a queued file takes the native presentation slot', async () => {
+    const first = openCourseAttachment(file('a'));
+    const second = openCourseAttachment(file('b'));
+    await flush();
+    await finishDownload(0);
+    await finishDownload(1);
+    changeState('background');
+    nativeDelegate.resolve(saved);
+    await expect(first).resolves.toEqual({copied: false, downloaded: true});
+    await flush();
+    expect(Share.open).toHaveBeenCalledTimes(1);
+    changeState('active');
+    await flush();
+    expect(Share.open).toHaveBeenCalledTimes(2);
+    nativeDelegate.resolve(saved);
+    await expect(second).resolves.toEqual({copied: false, downloaded: true});
+  });
+
+  it.each(['account retirement', 'user cancellation'] as const)(
+    'releases an unpresented save on %s without waiting for the app to return',
+    async reason => {
+      const action = openCourseAttachment(file('a'));
+      await flush();
+      const cancel = jest.mocked(beginAttachmentDownloadNotice).mock
+        .calls[0]?.[2];
+      changeState('background');
+      await finishDownload(0);
+      expect(Share.open).not.toHaveBeenCalled();
+
+      if (reason === 'account retirement') {
+        await quiescePrivateAttachmentDownloads();
+        mockOwner = {scope: 'user-b', epoch: 2};
+      } else {
+        cancel?.();
+      }
+      await expect(action).resolves.toEqual({copied: false, downloaded: false});
+      expect(stateListeners.size).toBe(0);
+      expect(Alert.alert).not.toHaveBeenCalledWith(
+        'تعذّر تنزيل الملف',
+        expect.anything(),
+      );
+      changeState('active');
+      const current = openCourseAttachment(file('b'));
+      await flush();
+      await finishDownload(1);
+      expect(Share.open).toHaveBeenCalledTimes(1);
+      expect(jest.mocked(Share.open).mock.calls[0][0]?.url).toMatch(
+        /\/b\.pdf$/,
+      );
+      nativeDelegate.resolve(saved);
+      await expect(current).resolves.toEqual({copied: false, downloaded: true});
+    },
+  );
 
   it.each(['cancelled', 'rejected', 'synchronous failure'])(
     'releases the presentation slot after %s without losing the next file',
@@ -217,12 +369,8 @@ describe('iOS attachment Save to Files presentation ownership', () => {
     const first = openCourseAttachment(file('a'));
     const waiting = openCourseAttachment(file('b'));
     await flush();
-    const downloadAlerts = jest
-      .mocked(Alert.alert)
-      .mock.calls.filter(call => call[0] === 'جارٍ تنزيل الملف');
-    const cancelWaiting = downloadAlerts[1][2]?.find(
-      button => button.text === 'إلغاء',
-    )?.onPress;
+    const cancelWaiting = jest.mocked(beginAttachmentDownloadNotice).mock
+      .calls[1]?.[2];
     expect(cancelWaiting).toBeDefined();
     await finishDownload(0);
     await finishDownload(1);
