@@ -68,6 +68,7 @@ describe('authored text is not localized as interface copy', () => {
         learningOwnershipFresh
         onOpenCourse={onOpenCourse}
         onResume={onResume}
+        onRetry={jest.fn()}
         orderedCourses={[course]}
         primaryResumeId={course.id}
       />,

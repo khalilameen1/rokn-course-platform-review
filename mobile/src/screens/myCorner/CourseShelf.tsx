@@ -18,6 +18,7 @@ type Props = {
   learningOwnershipFresh: boolean;
   onOpenCourse: (courseId: string) => void;
   onResume: (target: LearningResumeTarget) => void;
+  onRetry: () => void;
   orderedCourses: LearningCourse[];
   primaryResumeId?: string;
 };
@@ -39,6 +40,7 @@ export const CourseShelf = ({
   learningOwnershipFresh,
   onOpenCourse,
   onResume,
+  onRetry,
   orderedCourses,
   primaryResumeId,
 }: Props) => (
@@ -46,6 +48,13 @@ export const CourseShelf = ({
     {!!error && (
       <View accessibilityRole="alert" style={styles.offlineNote}>
         <Text style={styles.offlineNoteText}>{error}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="إعادة المحاولة"
+          onPress={onRetry}
+          style={styles.offlineRetry}>
+          <Text style={styles.offlineRetryText}>إعادة المحاولة</Text>
+        </Pressable>
       </View>
     )}
     {orderedCourses.map((course, index) => {
@@ -68,9 +77,13 @@ export const CourseShelf = ({
             />
           )}
           <Pressable
-            accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(course.title)}${
+            accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(
+              course.title,
+            )}${
               course.progress > 0
-                ? formatArabicDisplayText(`، اكتمل ${Math.round(course.progress)}٪`)
+                ? formatArabicDisplayText(
+                    `، اكتمل ${Math.round(course.progress)}٪`,
+                  )
                 : ''
             }`}
             accessibilityRole="button"
@@ -132,7 +145,9 @@ export const CourseShelf = ({
               </Text>
               {resumeTarget && (
                 <Pressable
-                  accessibilityLabel={`${hasProgress ? 'استكمال' : 'بدء'} ${formatAuthoredDisplayText(course.title)}`}
+                  accessibilityLabel={`${
+                    hasProgress ? 'استكمال' : 'بدء'
+                  } ${formatAuthoredDisplayText(course.title)}`}
                   accessibilityRole="button"
                   onPress={event => {
                     event.stopPropagation();

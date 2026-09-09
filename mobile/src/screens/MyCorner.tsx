@@ -1,5 +1,6 @@
 import {useNavigation} from '@react-navigation/native';
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import {RefreshControl} from 'react-native';
 import {useSelector} from 'react-redux';
 import TabBar from '../components/TabBar';
 import {Container, Content} from '../components/containers/Containers';
@@ -73,13 +74,23 @@ export default function MyCorner() {
   }
 
   const coursesUnavailable =
-    data.serverSession === null || (data.dashboardLoading && !data.dashboard);
+    !data.dashboardError &&
+    (data.serverSession === null || (data.dashboardLoading && !data.dashboard));
   const signedOut = data.serverSession === false;
-  const empty = data.serverSession === true && !model.courses.length;
+  const empty = !model.courses.length;
 
   return (
     <Container noPadding>
-      <Content noPadding>
+      <Content
+        noPadding
+        refreshControl={
+          data.serverSession === true ? (
+            <RefreshControl
+              refreshing={data.dashboardLoading}
+              onRefresh={data.reload}
+            />
+          ) : undefined
+        }>
         <ResponsiveFrame>
           <HeaderWithBack hasArrow={false} title="ركني" />
           <SectionHeading
@@ -115,12 +126,18 @@ export default function MyCorner() {
             />
           ) : empty ? (
             <StatusView
-              actionLabel="فتح الرئيسية"
+              actionLabel={
+                data.dashboardError ? 'إعادة المحاولة' : 'فتح الرئيسية'
+              }
               description={
                 data.dashboardError ||
                 'الكورسات التي تفتحها ستظهر هنا مع آخر نقطة وصلت إليها'
               }
-              onAction={() => navigation.navigate('Home')}
+              onAction={
+                data.dashboardError
+                  ? data.reload
+                  : () => navigation.navigate('Home')
+              }
               state={data.dashboardError ? 'error' : 'empty'}
               title={
                 data.dashboardError
@@ -136,6 +153,7 @@ export default function MyCorner() {
               learningOwnershipFresh={data.learningOwnershipFresh}
               onOpenCourse={openCourse}
               onResume={resumeCourse}
+              onRetry={data.reload}
               orderedCourses={model.orderedCourses}
               primaryResumeId={model.primaryResumeId}
             />

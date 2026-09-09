@@ -23,6 +23,8 @@ export const useMyCornerData = (identityKey: string) => {
   const [learningOwnershipFresh, setLearningOwnershipFresh] = useState(false);
   const [dashboardError, setDashboardError] = useState('');
   const [dashboardLoading, setDashboardLoading] = useState(false);
+  const reloadRef = useRef<(() => void) | null>(null);
+  const reload = useCallback(() => reloadRef.current?.(), []);
 
   useEffect(() => {
     ownerRef.current = identityKey;
@@ -37,6 +39,7 @@ export const useMyCornerData = (identityKey: string) => {
     useCallback(() => {
       if (!appIsActive) return () => undefined;
       let active = true;
+      let loading = false;
       const stillOwned = (
         boundary: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
       ) => {
@@ -52,8 +55,7 @@ export const useMyCornerData = (identityKey: string) => {
         }
       };
 
-      void (async () => {
-        setLearningOwnershipFresh(false);
+      const load = async () => {
         const boundary = await captureAccountSessionBoundary().catch(
           () => null,
         );
@@ -85,8 +87,7 @@ export const useMyCornerData = (identityKey: string) => {
         );
         const cached = await settleWithin(getCachedLearningDashboard(), null);
         if (!stillOwned(boundary)) return;
-        if (cached) setDashboard(cached);
-        setDashboardLoading(!cached);
+        if (cached) setDashboard(current => current || cached);
         try {
           const result = await freshDashboardRequest;
           if (!result.ok) throw result.error;
@@ -105,20 +106,35 @@ export const useMyCornerData = (identityKey: string) => {
                 : `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
             );
           }
-        } finally {
-          if (stillOwned(boundary)) setDashboardLoading(false);
         }
-      })().catch(error => {
-        if (!active) return;
+      };
+
+      // Focus, foreground and explicit retry share one screen-owned read.
+      const refresh = () => {
+        if (!active || loading) return;
+        loading = true;
+        setDashboardLoading(true);
+        setDashboardError('');
         setLearningOwnershipFresh(false);
-        setDashboardLoading(false);
-        setDashboardError(
-          `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
-        );
-      });
+        void load()
+          .catch(error => {
+            if (!active) return;
+            setLearningOwnershipFresh(false);
+            setDashboardError(
+              `${friendlyNetworkMessage(error, 'كورساتك')}\nتقدمك محفوظ`,
+            );
+          })
+          .finally(() => {
+            loading = false;
+            if (active) setDashboardLoading(false);
+          });
+      };
+      reloadRef.current = refresh;
+      refresh();
 
       return () => {
         active = false;
+        if (reloadRef.current === refresh) reloadRef.current = null;
       };
     }, [appIsActive, identityKey]),
   );
@@ -129,6 +145,7 @@ export const useMyCornerData = (identityKey: string) => {
     dashboardLoading,
     learningOwnershipFresh,
     owned: ownerRef.current === identityKey,
+    reload,
     serverSession,
   };
 };
