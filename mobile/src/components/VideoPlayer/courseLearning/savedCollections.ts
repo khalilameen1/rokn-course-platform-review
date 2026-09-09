@@ -30,6 +30,7 @@ const folderListFlights = new Map<string, Promise<SavedFolderOption[]>>();
 const folderListRevisions = new Map<string, number>();
 const folderCacheWrites = new Map<string, Promise<void>>();
 const watchLaterFolderFlights = new Map<string, Promise<string | null>>();
+const watchLaterHintOperations = new Map<string, Promise<void>>();
 const createFolderFlights = new Map<string, Promise<SavedFolderOption>>();
 const deleteFolderFlights = new Map<string, Promise<void>>();
 const saveMembershipFlights = new Map<string, Promise<boolean>>();
@@ -90,7 +91,9 @@ const acceptRemoteCacheRepair = async (
 ) => {
   try {
     assertAccountSessionBoundary(accountBoundary);
-    await repair();
+    // Only the caller's wait is bounded. Each cache keeps its raw queue so a
+    // late native write cannot overtake a newer repair or authoritative read.
+    await settleWithin(repair(), undefined);
     assertAccountSessionBoundary(accountBoundary);
   } catch (error) {
     if (
@@ -113,6 +116,41 @@ const deleteIdempotently = async (route: string) => {
   }
 };
 
+const withWatchLaterHint = <T>(
+  boundary: AccountSessionBoundary,
+  operation: (key: string) => Promise<T>,
+): Promise<T> => {
+  const key = `${WATCH_LATER_FOLDER_KEY}:${boundary.scope}`;
+  const result = (watchLaterHintOperations.get(key) ?? Promise.resolve()).then(
+    async () => {
+      assertAccountSessionBoundary(boundary);
+      const value = await operation(key);
+      assertAccountSessionBoundary(boundary);
+      return value;
+    },
+  );
+  const tail = result.then(
+    () => undefined,
+    () => undefined,
+  );
+  watchLaterHintOperations.set(key, tail);
+  void tail.then(() => {
+    if (watchLaterHintOperations.get(key) === tail)
+      watchLaterHintOperations.delete(key);
+  });
+  return result;
+};
+
+const forgetWatchLaterHint = (
+  boundary: AccountSessionBoundary,
+  expectedId: string,
+) =>
+  withWatchLaterHint(boundary, async key => {
+    const current = await AsyncStorage.getItem(key);
+    assertAccountSessionBoundary(boundary);
+    if (current === expectedId) await AsyncStorage.removeItem(key);
+  });
+
 const ensureWatchLaterFolder = async (
   accountBoundary: AccountSessionBoundary,
   ignoreCached = false,
@@ -121,9 +159,16 @@ const ensureWatchLaterFolder = async (
     watchLaterFolderFlights,
     `${ownerKey(accountBoundary)}:${ignoreCached ? 'refresh' : 'cached'}`,
     async () => {
-      const expectedScope = accountBoundary.scope;
-      const storageKey = `${WATCH_LATER_FOLDER_KEY}:${expectedScope}`;
-      const cached = await AsyncStorage.getItem(storageKey).catch(() => null);
+      // This is only a destination hint. A blocked old cleanup may delay its
+      // raw queue, but the server can still identify the current default list.
+      const cached = ignoreCached
+        ? null
+        : await settleWithin(
+            withWatchLaterHint(accountBoundary, key =>
+              AsyncStorage.getItem(key),
+            ),
+            null,
+          );
       assertAccountSessionBoundary(accountBoundary);
       if (
         !ignoreCached &&
@@ -136,7 +181,11 @@ const ensureWatchLaterFolder = async (
         // Older builds occasionally persisted an object/stringified response here
         // instead of the folder id. It is not an entitlement; discard it and ask
         // the server for the authoritative folder on this launch.
-        await AsyncStorage.removeItem(storageKey);
+        await settleWithin(
+          forgetWatchLaterHint(accountBoundary, cached),
+          undefined,
+        );
+        assertAccountSessionBoundary(accountBoundary);
       }
       const sessionAvailable = await hasSession();
       assertAccountSessionBoundary(accountBoundary);
@@ -165,7 +214,12 @@ const ensureWatchLaterFolder = async (
         throw new Error('WATCH_LATER_FOLDER_CONTRACT_INVALID');
       }
       const id = valueAsString(folder.id);
-      await AsyncStorage.setItem(storageKey, id).catch(() => undefined);
+      await settleWithin(
+        withWatchLaterHint(accountBoundary, key =>
+          AsyncStorage.setItem(key, id),
+        ),
+        undefined,
+      );
       assertAccountSessionBoundary(accountBoundary);
       return id;
     },
@@ -300,21 +354,18 @@ const invalidateMembershipCounts = async (
   // A read may already include the committed write, so invalidate rather than
   // guessing a +/- delta. Enqueue before any other asynchronous cache repairs.
   await acceptRemoteCacheRepair(boundary, () =>
-    settleWithin(
-      writeLocalSavedFolders(
-        boundary.scope,
-        current =>
-          current.map(folder =>
-            folderId === null || folder.id === folderId
-              ? {...folder, lessonsCount: undefined}
-              : folder,
-          ),
-        () => {
-          assertAccountSessionBoundary(boundary);
-          return true;
-        },
-      ),
-      undefined,
+    writeLocalSavedFolders(
+      boundary.scope,
+      current =>
+        current.map(folder =>
+          folderId === null || folder.id === folderId
+            ? {...folder, lessonsCount: undefined}
+            : folder,
+        ),
+      () => {
+        assertAccountSessionBoundary(boundary);
+        return true;
+      },
     ),
   );
 };
@@ -411,15 +462,12 @@ export const createSavedFolderOption = async (
       throw new Error('SAVED_FOLDER_CREATE_FAILED');
     }
     const created = mapSavedFolder(payload);
-    await acceptRemoteCacheRepair(accountBoundary, async () => {
-      await settleWithin(
-        writeLocalSavedFolders(accountScope, latest => [
-          ...latest.filter(item => item.id !== created.id),
-          created,
-        ]),
-        undefined,
-      );
-    });
+    await acceptRemoteCacheRepair(accountBoundary, () =>
+      writeLocalSavedFolders(accountScope, latest => [
+        ...latest.filter(item => item.id !== created.id),
+        created,
+      ]),
+    );
     return created;
   });
 };
@@ -445,35 +493,32 @@ export const deleteSavedFolderOption = async (folderId: string) => {
       assertAccountSessionBoundary(accountBoundary);
       invalidateFolderList(accountBoundary);
 
-      const repair = async () => {
-        assertAccountSessionBoundary(accountBoundary);
-        await removeSavedFolderFromCache(normalizedFolderId, accountBoundary);
-        await settleWithin(
+      // Independent repairs must all enter their own queues after the ACK;
+      // stalled lesson storage must not leave the folder index/player untouched.
+      const repair = () =>
+        Promise.all([
+          removeSavedFolderFromCache(normalizedFolderId, accountBoundary),
           writeLocalSavedFolders(accountScope, current =>
             current.filter(folder => folder.id !== normalizedFolderId),
           ),
-          undefined,
-        );
-        const watchLaterKey = `${WATCH_LATER_FOLDER_KEY}:${accountScope}`;
-        const watchLaterFolderId = await AsyncStorage.getItem(watchLaterKey);
-        if (watchLaterFolderId === normalizedFolderId) {
-          await AsyncStorage.removeItem(watchLaterKey);
-        }
-        await updatePlayerStateForScope(
-          accountScope,
-          state => {
-            const nextFolders = {...state.savedFolderLessons};
-            delete nextFolders[normalizedFolderId];
-            const stillSaved = new Set(Object.values(nextFolders).flat());
-            return {
-              ...state,
-              savedFolderLessons: nextFolders,
-              savedLessons: state.savedLessons.filter(id => stillSaved.has(id)),
-            };
-          },
-          accountBoundary,
-        );
-      };
+          forgetWatchLaterHint(accountBoundary, normalizedFolderId),
+          updatePlayerStateForScope(
+            accountScope,
+            state => {
+              const nextFolders = {...state.savedFolderLessons};
+              delete nextFolders[normalizedFolderId];
+              const stillSaved = new Set(Object.values(nextFolders).flat());
+              return {
+                ...state,
+                savedFolderLessons: nextFolders,
+                savedLessons: state.savedLessons.filter(id =>
+                  stillSaved.has(id),
+                ),
+              };
+            },
+            accountBoundary,
+          ),
+        ]);
       await acceptRemoteCacheRepair(accountBoundary, repair);
     },
   );
@@ -569,9 +614,11 @@ export const toggleWatchLater = async (
         } catch (error) {
           if (responseStatus(error) !== 404) throw error;
           assertAccountSessionBoundary(accountBoundary);
-          await AsyncStorage.removeItem(
-            `${WATCH_LATER_FOLDER_KEY}:${accountScope}`,
-          ).catch(() => undefined);
+          await settleWithin(
+            forgetWatchLaterHint(accountBoundary, folderId),
+            undefined,
+          );
+          assertAccountSessionBoundary(accountBoundary);
           folderId = await ensureWatchLaterFolder(accountBoundary, true);
           if (!folderId) throw new Error('WATCH_LATER_FOLDER_UNAVAILABLE');
           await saveMembershipOnServer(folderId, normalizedLessonId);
@@ -614,15 +661,17 @@ export const toggleWatchLater = async (
           }),
           accountBoundary,
         );
-      await acceptRemoteCacheRepair(accountBoundary, async () => {
-        if (!nextSaved) {
-          await removeSavedLessonEverywhereFromCache(
-            normalizedLessonId,
-            accountBoundary,
-          );
-        }
-        await repair();
-      });
+      await acceptRemoteCacheRepair(accountBoundary, () =>
+        Promise.all([
+          !nextSaved
+            ? removeSavedLessonEverywhereFromCache(
+                normalizedLessonId,
+                accountBoundary,
+              )
+            : Promise.resolve(),
+          repair(),
+        ]),
+      );
 
       return nextSaved;
     },
@@ -758,14 +807,16 @@ export const removeLessonFromSavedFolder = async (
           },
           accountBoundary,
         );
-      await acceptRemoteCacheRepair(accountBoundary, async () => {
-        await removeSavedLessonFromCache(
-          normalizedFolderId,
-          normalizedLessonId,
-          accountBoundary,
-        );
-        await repair();
-      });
+      await acceptRemoteCacheRepair(accountBoundary, () =>
+        Promise.all([
+          removeSavedLessonFromCache(
+            normalizedFolderId,
+            normalizedLessonId,
+            accountBoundary,
+          ),
+          repair(),
+        ]),
+      );
     },
   );
 };
