@@ -12,7 +12,11 @@ import Clipboard from '@react-native-clipboard/clipboard';
 jest.mock('react-native-share', () => ({open: jest.fn()}));
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
 jest.mock('../src/components/VideoPlayer/attachmentDownloadNotice', () => ({
+  ...jest.requireActual(
+    '../src/components/VideoPlayer/attachmentDownloadNotice',
+  ),
   beginAttachmentDownloadNotice: jest.fn(() => ({
+    transferFinished: jest.fn(),
     dismiss: jest.fn(async () => undefined),
     release: jest.fn(),
   })),
@@ -201,7 +205,7 @@ describe('iOS attachment Save to Files presentation ownership', () => {
       const dismiss = jest.fn(() => dismissal.promise);
       jest
         .mocked(beginAttachmentDownloadNotice)
-        .mockReturnValueOnce({dismiss, release});
+        .mockReturnValueOnce({dismiss, release, transferFinished: jest.fn()});
       const action = openCourseAttachment(file('a'));
       await flush();
       if (outcome === 'success') await finishDownload(0);

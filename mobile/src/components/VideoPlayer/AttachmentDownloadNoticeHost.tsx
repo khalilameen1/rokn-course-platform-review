@@ -73,13 +73,17 @@ export const AttachmentDownloadNoticeHost = () => {
                     <Text style={styles.secondary}>{notice.size}</Text>
                   ) : null}
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`إلغاء تنزيل ${notice.title}`}
-                  onPress={() => host.cancel(state.id, notice.id)}
-                  style={styles.button}>
-                  <Text style={styles.cancel}>إلغاء</Text>
-                </Pressable>
+                {notice.transferPending &&
+                  !notice.cancelled &&
+                  notice.isCurrent() && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`إلغاء تنزيل ${notice.title}`}
+                      onPress={() => host.cancel(state.id, notice.id)}
+                      style={styles.button}>
+                      <Text style={styles.cancel}>إلغاء</Text>
+                    </Pressable>
+                  )}
               </View>
             ))}
           </ScrollView>

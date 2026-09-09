@@ -1,4 +1,6 @@
 import {Platform} from 'react-native';
+import {useSyncExternalStore} from 'react';
+import type {CourseAttachment} from './types';
 
 type Notice = {
   id: number;
@@ -6,6 +8,9 @@ type Notice = {
   size?: string;
   onCancel: () => void;
   cancelled: boolean;
+  attachmentIdentity?: string;
+  isCurrent: () => boolean;
+  transferPending: boolean;
 };
 type Cycle = {
   id: number;
@@ -20,6 +25,7 @@ type Cycle = {
 };
 type Snapshot = {id: number; visible: boolean; notices: Notice[]} | null;
 export type AttachmentDownloadNotice = {
+  transferFinished: () => void;
   dismiss: () => Promise<void>;
   release: () => void;
 };
@@ -72,9 +78,14 @@ export const beginAttachmentDownloadNotice = (
   title: string,
   size: string | undefined,
   onCancel: () => void,
+  attachment?: {identity: string; isCurrent: () => boolean},
 ): AttachmentDownloadNotice => {
   if (Platform.OS !== 'ios')
-    return {dismiss: async () => {}, release: () => {}};
+    return {
+      transferFinished: () => {},
+      dismiss: async () => {},
+      release: () => {},
+    };
   if (!cycle) {
     let resolve!: () => void;
     const receipt = new Promise<void>(accept => {
@@ -99,11 +110,19 @@ export const beginAttachmentDownloadNotice = (
     size,
     onCancel,
     cancelled: false,
+    attachmentIdentity: attachment?.identity,
+    isCurrent: attachment?.isCurrent || (() => true),
+    transferPending: true,
   };
   owner.notices.set(notice.id, notice);
   emit();
   let released = false;
   return {
+    transferFinished: () => {
+      if (released || !notice.transferPending) return;
+      notice.transferPending = false;
+      emit();
+    },
     dismiss: () => (released ? Promise.resolve() : dismiss(owner)),
     release: () => {
       if (released) return;
@@ -158,7 +177,8 @@ export const attachmentDownloadNoticeHost = {
     if (cycle?.id !== id) return;
     const owner = cycle;
     const notice = owner.notices.get(noticeId);
-    if (notice) cancelNotice(owner, notice);
+    if (!notice?.transferPending || !notice.isCurrent()) return;
+    cancelNotice(owner, notice);
     void dismiss(owner);
   },
   retire: () => {
@@ -167,4 +187,38 @@ export const attachmentDownloadNoticeHost = {
     cancelAttachmentDownloadNotices();
     if (owner) attachmentDownloadNoticeHost.dismissed(owner.id);
   },
+};
+
+type AttachmentIdentity = Pick<
+  CourseAttachment,
+  'id' | 'courseId' | 'downloadVersion'
+>;
+export const attachmentDownloadIdentity = (attachment: AttachmentIdentity) =>
+  [
+    attachment.courseId || 'course',
+    attachment.id,
+    attachment.downloadVersion || 'current',
+  ].join('|');
+
+/** Inline controls reuse the notice's original owner, even after its modal hides. */
+export const useAttachmentDownloadCancellation = () => {
+  const state = useSyncExternalStore(
+    attachmentDownloadNoticeHost.subscribe,
+    attachmentDownloadNoticeHost.getSnapshot,
+    attachmentDownloadNoticeHost.getSnapshot,
+  );
+  return (attachment: AttachmentIdentity | null): (() => void) | undefined => {
+    if (!attachment || !state) return undefined;
+    const identity = attachmentDownloadIdentity(attachment);
+    const notice = state.notices.find(
+      item =>
+        item.attachmentIdentity === identity &&
+        item.transferPending &&
+        !item.cancelled &&
+        item.isCurrent(),
+    );
+    return notice
+      ? () => attachmentDownloadNoticeHost.cancel(state.id, notice.id)
+      : undefined;
+  };
 };

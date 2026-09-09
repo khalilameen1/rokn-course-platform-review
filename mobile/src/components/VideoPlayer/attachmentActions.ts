@@ -27,6 +27,7 @@ import {
   saveAttachmentToFiles,
 } from './attachmentSavePresentation';
 import {
+  attachmentDownloadIdentity,
   beginAttachmentDownloadNotice,
   cancelAttachmentDownloadNotices,
 } from './attachmentDownloadNotice';
@@ -54,6 +55,7 @@ type AttachmentResult = {
 type AttachmentOperation = {
   boundary: AccountSessionBoundary;
   generation: number;
+  downloadIdentity: string;
 };
 const STORAGE_RESERVE_BYTES = 32 * 1024 * 1024;
 const IOS_DOWNLOAD_TIMEOUT_MS = 30 * 60 * 1000;
@@ -848,10 +850,15 @@ const openCourseAttachmentInternal = async (
           saveCancellation.abort();
           download.cancel();
         },
+        {
+          identity: operation.downloadIdentity,
+          isCurrent: () => attachmentOwnerIsActive(operation),
+        },
       );
       try {
         result = await download.promise;
       } finally {
+        downloadNotice.transferFinished();
         // The native progress modal must actually dismiss before another
         // controller presents either Save to Files or an error notice.
         await downloadNotice.dismiss();
@@ -968,7 +975,11 @@ export const openCourseAttachment = async (
     return emptyResult();
   }
   const key = attachmentFlightKey(attachment, boundary.scope);
-  const operation: AttachmentOperation = {boundary, generation};
+  const operation: AttachmentOperation = {
+    boundary,
+    generation,
+    downloadIdentity: attachmentDownloadIdentity(attachment),
+  };
   if (!attachmentOwnerIsActive(operation)) return emptyResult();
   const existing = downloadFlights.get(key);
   if (existing) return existing;

@@ -17,6 +17,7 @@ import {formatArabicNumber} from '../../constants/arabicFormatting';
 import {SavedFolderOption} from './courseLearningApi';
 import {CourseAttachment, CourseLearningData, CourseReel} from './types';
 import {openCourseAttachment} from './attachmentActions';
+import {useAttachmentDownloadCancellation} from './attachmentDownloadNotice';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
 import {courseLearningProgress} from './courseLearning/sequence';
@@ -72,6 +73,7 @@ const FeedSideBar = ({
   const snapPoints = useMemo(() => ['78%', '94%'], []);
   const saveSnapPoints = useMemo(() => ['52%', '72%'], []);
   const attachmentSnapPoints = useMemo(() => ['48%', '72%'], []);
+  const cancellationForAttachment = useAttachmentDownloadCancellation();
   const presentAttachments = useCallback(
     () => attachmentSheetRef.current?.present(),
     [],
@@ -274,19 +276,26 @@ const FeedSideBar = ({
           </Text>
           <View style={styles.attachmentList}>
             {attachments.map(attachment => {
-              const busy = pendingAttachments.has(
-                `${course.id}:${attachment.id}`,
-              );
+              const cancelDownload = cancellationForAttachment(attachment);
+              const busy =
+                Boolean(cancelDownload) ||
+                pendingAttachments.has(`${course.id}:${attachment.id}`);
               return (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`${
-                    attachment.platform === 'computer' ? 'نسخ رابط' : 'تنزيل'
+                    cancelDownload
+                      ? 'إلغاء تنزيل'
+                      : attachment.platform === 'computer'
+                      ? 'نسخ رابط'
+                      : 'تنزيل'
                   } ${attachment.title}`}
-                  accessibilityState={{busy, disabled: busy}}
-                  disabled={busy}
+                  accessibilityState={{busy, disabled: busy && !cancelDownload}}
+                  disabled={busy && !cancelDownload}
                   key={attachment.id}
-                  onPress={() => void handleAttachment(attachment)}
+                  onPress={
+                    cancelDownload || (() => void handleAttachment(attachment))
+                  }
                   style={({pressed}) => [
                     styles.attachmentRow,
                     pressed && styles.pressed,
@@ -306,7 +315,9 @@ const FeedSideBar = ({
                           'ملف مرفق'}
                     </Text>
                   </View>
-                  {busy ? (
+                  {cancelDownload ? (
+                    <Text style={styles.attachmentAction}>إلغاء التنزيل</Text>
+                  ) : busy ? (
                     <ActivityIndicator color="#76A9FF" size="small" />
                   ) : attachment.platform === 'computer' ? (
                     <CopyIcon />

@@ -20,7 +20,11 @@ jest.mock('@react-native-clipboard/clipboard', () => ({
   setString: jest.fn(),
 }));
 jest.mock('../src/components/VideoPlayer/attachmentDownloadNotice', () => ({
+  ...jest.requireActual(
+    '../src/components/VideoPlayer/attachmentDownloadNotice',
+  ),
   beginAttachmentDownloadNotice: jest.fn(() => ({
+    transferFinished: jest.fn(),
     dismiss: jest.fn(async () => undefined),
     release: jest.fn(),
   })),

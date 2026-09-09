@@ -22,10 +22,13 @@ import {
 import type {RootState} from '../../../store/store';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import {openCourseAttachment} from '../../../components/VideoPlayer/attachmentActions';
+import {useAttachmentDownloadCancellation} from '../../../components/VideoPlayer/attachmentDownloadNotice';
+import type {CourseAttachment} from '../../../components/VideoPlayer/types';
 import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {settleWithin} from '../../../utils/settleWithin';
 
 export function useCertificatesController(resolvedDisplayName?: string) {
+  const cancellationForAttachment = useAttachmentDownloadCancellation();
   const screenFocused = useIsFocused();
   const appIsActive = useAppForegroundState();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
@@ -308,28 +311,31 @@ export function useCertificatesController(resolvedDisplayName?: string) {
     }
   };
 
+  const asPdf = Boolean(selectedCertificate?.certificatePdfUrl);
+  const certificateAttachment: CourseAttachment | null =
+    selectedCertificate &&
+    (selectedCertificate.certificatePdfUrl ||
+      selectedCertificate.certificateUrl)
+      ? {
+          id: `certificate-${selectedCertificate.publicId}`,
+          title: `شهادة ${selectedCertificate.courseName}`,
+          url:
+            selectedCertificate.certificatePdfUrl ||
+            selectedCertificate.certificateUrl ||
+            '',
+          fileType: asPdf ? 'pdf' : 'image/png',
+          mimeType: asPdf ? 'application/pdf' : 'image/png',
+          downloadVersion: selectedCertificate.publicId,
+          external: false,
+          platform: 'mobile',
+          temporary: false,
+        }
+      : null;
+  const cancelCertificateDownload = cancellationForAttachment(
+    certificateAttachment,
+  );
   const saveCertificate = () => {
-    if (
-      !selectedCertificate?.certificatePdfUrl &&
-      !selectedCertificate?.certificateUrl
-    ) {
-      return;
-    }
-    const asPdf = Boolean(selectedCertificate.certificatePdfUrl);
-    void openCourseAttachment({
-      id: `certificate-${selectedCertificate.publicId}`,
-      title: `شهادة ${selectedCertificate.courseName}`,
-      url:
-        selectedCertificate.certificatePdfUrl ||
-        selectedCertificate.certificateUrl ||
-        '',
-      fileType: asPdf ? 'pdf' : 'image/png',
-      mimeType: asPdf ? 'application/pdf' : 'image/png',
-      downloadVersion: selectedCertificate.publicId,
-      external: false,
-      platform: 'mobile',
-      temporary: false,
-    });
+    if (certificateAttachment) void openCourseAttachment(certificateAttachment);
   };
 
   const openIssueCertificate = (course: CourseProgress) => {
@@ -461,6 +467,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
     recoverPendingCertificates,
     retryPendingCertificate,
     saveCertificate,
+    cancelCertificateDownload,
     selectCertificate: setSelectedId,
     selectedCertificate,
     selectedGrantCourse,

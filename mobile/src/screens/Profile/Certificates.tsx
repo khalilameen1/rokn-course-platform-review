@@ -62,6 +62,7 @@ export default function Certificates({
     recoverPendingCertificates,
     retryPendingCertificate,
     saveCertificate,
+    cancelCertificateDownload,
     selectCertificate,
     selectedCertificate,
     selectedGrantCourse,
@@ -420,8 +421,17 @@ export default function Certificates({
                 {(selectedCertificate?.certificatePdfUrl ||
                   selectedCertificate?.certificateUrl) && (
                   <Button
-                    onPress={saveCertificate}
-                    title="حفظ الشهادة"
+                    onPress={cancelCertificateDownload || saveCertificate}
+                    title={
+                      cancelCertificateDownload
+                        ? 'إلغاء التنزيل'
+                        : 'حفظ الشهادة'
+                    }
+                    accessibilityLabel={
+                      cancelCertificateDownload
+                        ? `إلغاء تنزيل شهادة ${activeCourseTitle}`
+                        : 'حفظ الشهادة'
+                    }
                     useGradient={false}
                   />
                 )}
