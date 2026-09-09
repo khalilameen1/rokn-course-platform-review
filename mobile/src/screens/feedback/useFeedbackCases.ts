@@ -1,9 +1,10 @@
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {Alert} from 'react-native';
 
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
+  type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {removeLearnerDraftFile} from '../../services/learnerDraftFiles';
 import {
@@ -54,6 +55,34 @@ export const useFeedbackCases = (
   const pickerFlightRef = useRef(false);
   const artifactPreviewGenerationRef = useRef(0);
   const artifactRefreshFlightRef = useRef<symbol | null>(null);
+  const discardedAttachmentsRef = useRef({
+    caseId: '',
+    files: [] as FeedbackAttachment[],
+  });
+  const persistReply = useCallback(
+    async (
+      publicId: string,
+      draft: Parameters<typeof saveProductFeedbackReplyDraft>[1],
+      boundary: AccountSessionBoundary,
+    ) => {
+      const discarded =
+        discardedAttachmentsRef.current.caseId === publicId
+          ? discardedAttachmentsRef.current.files
+          : [];
+      await saveProductFeedbackReplyDraft(
+        publicId,
+        draft,
+        boundary,
+        discarded,
+      );
+      if (discardedAttachmentsRef.current.caseId === publicId)
+        discardedAttachmentsRef.current.files =
+          discardedAttachmentsRef.current.files.filter(
+            file => !discarded.includes(file),
+          );
+    },
+    [],
+  );
 
   const selectedCase = supportCases.find(
     item => item.publicId === selectedCaseId,
@@ -67,6 +96,7 @@ export const useFeedbackCases = (
     replyGenerationRef.current += 1;
     replyDraftEpochRef.current += 1;
     replyDraftOwnerScopeRef.current = '';
+    discardedAttachmentsRef.current = {caseId: '', files: []};
     replyFlightsRef.current.clear();
     pickerFlightRef.current = false;
     artifactPreviewGenerationRef.current += 1;
@@ -158,6 +188,7 @@ export const useFeedbackCases = (
   useEffect(() => {
     let active = true;
     const generation = ++replyGenerationRef.current;
+    discardedAttachmentsRef.current = {caseId: selectedCaseId, files: []};
     replyDraftOwnerScopeRef.current = '';
     setReplyStateOwnerId('');
     setReplyError('');
@@ -296,7 +327,7 @@ export const useFeedbackCases = (
           if (boundary.scope !== ownerScope) {
             throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
           }
-          return saveProductFeedbackReplyDraft(
+          return persistReply(
             selectedCaseId,
             replyMessage.trim() || replyAttachment
               ? {
@@ -318,6 +349,7 @@ export const useFeedbackCases = (
     };
   }, [
     identityKey,
+    persistReply,
     replyAttachment,
     replyMessage,
     replyRequestId,
@@ -356,9 +388,13 @@ export const useFeedbackCases = (
         return;
       }
       const previous = replyAttachment;
+      if (previous)
+        discardedAttachmentsRef.current = {
+          caseId: selectedCaseId,
+          files: [...discardedAttachmentsRef.current.files, previous],
+        };
       setReplyAttachment(selected);
       setReplyRequestId(secureRandomUuid());
-      await removeLearnerDraftFile(previous).catch(() => undefined);
     } finally {
       pickerFlightRef.current = false;
     }
@@ -367,9 +403,13 @@ export const useFeedbackCases = (
   const removeReplyScreenshot = () => {
     if (replyBusy || replyStateOwnerId !== selectedCaseId) return;
     const previous = replyAttachment;
+    if (previous)
+      discardedAttachmentsRef.current = {
+        caseId: selectedCaseId,
+        files: [...discardedAttachmentsRef.current.files, previous],
+      };
     setReplyAttachment(undefined);
     setReplyRequestId(secureRandomUuid());
-    void removeLearnerDraftFile(previous).catch(() => undefined);
   };
 
   const setReply = (value: string) => {
@@ -407,7 +447,7 @@ export const useFeedbackCases = (
         throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
       }
       try {
-        await saveProductFeedbackReplyDraft(
+        await persistReply(
           caseId,
           {
             attachment: attachmentToSend,
@@ -440,7 +480,7 @@ export const useFeedbackCases = (
       );
       assertAccountSessionBoundary(boundary);
       await settleWithin(
-        saveProductFeedbackReplyDraft(caseId, null, boundary),
+        persistReply(caseId, null, boundary),
         undefined,
       );
       assertAccountSessionBoundary(boundary);
@@ -452,7 +492,6 @@ export const useFeedbackCases = (
             : item,
         ),
       );
-      void removeLearnerDraftFile(attachmentToSend).catch(() => undefined);
       if (generation !== replyGenerationRef.current) return;
       replyDraftEpochRef.current += 1;
       setReplyAttachment(undefined);

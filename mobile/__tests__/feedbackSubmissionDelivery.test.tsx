@@ -1,5 +1,6 @@
 import React from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RNFS from 'react-native-fs';
 import TestRenderer, {act} from 'react-test-renderer';
 
 let mockBoundary = {scope: 'user-1', epoch: 1};
@@ -37,14 +38,20 @@ jest.mock('../src/utils/secureRandom', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
+import {
+  learnerDraftFileIsReadable,
+  removeLearnerDraftFile,
+} from '../src/services/learnerDraftFiles';
 import {useFeedbackComposer} from '../src/screens/feedback/useFeedbackComposer';
 import {useFeedbackCases} from '../src/screens/feedback/useFeedbackCases';
 import {pickFeedbackScreenshot} from '../src/screens/feedback/pickFeedbackScreenshot';
 import {
   loadProductFeedbackDraft,
+  loadProductFeedbackReplyDraft,
   migrateGuestProductFeedback,
   persistProductFeedbackReceipt,
   saveProductFeedbackDraft,
+  saveProductFeedbackReplyDraft,
   submitProductFeedback,
 } from '../src/services/productFeedback';
 
@@ -104,6 +111,46 @@ const mountComposer = async (sourceScreen = 'settings') => {
     },
     renderer,
     Harness,
+  };
+};
+
+const mountAttachedDraft = async (kind: string) => {
+  const attachment = {uri: 'file:///draft/saved.png', type: 'image/png'};
+  const draft = {
+    attachment,
+    category: 'problem' as const,
+    clientRequestId: '11111111-1111-4111-8111-000000000099',
+    includeDiagnostics: false,
+    message: 'مسودة محفوظة قبل تغيير الصورة',
+    updatedAt: Date.now(),
+  };
+  if (kind === 'reply')
+    await saveProductFeedbackReplyDraft(caseId, draft, mockBoundary);
+  else await saveProductFeedbackDraft(draft, mockBoundary);
+  const view = await mountComposer();
+  if (kind === 'reply') {
+    await act(async () => {
+      await view.cases.reloadCases(caseId, {
+        ...receipt,
+        caseNumber: receipt.case_number,
+        publicId: caseId,
+        createdAt: receipt.created_at,
+        replayed: false,
+      });
+      await drain();
+    });
+  }
+  return {
+    view,
+    attachment,
+    choose: () =>
+      kind === 'reply'
+        ? view.cases.chooseReplyScreenshot()
+        : view.current.chooseScreenshot(),
+    key:
+      kind === 'reply'
+        ? `@rokn/product-feedback-reply/v1:${caseId}:${mockBoundary.scope}`
+        : `@rokn/product-feedback-draft/v1:${mockBoundary.scope}`,
   };
 };
 
@@ -624,6 +671,291 @@ describe('feedback server delivery and local receipt completion', () => {
         releaseStorage.resolve();
         await drain();
         jest.mocked(AsyncStorage.setItem).mockImplementation(originalSet);
+      }
+    },
+  );
+
+  it.each(
+    [
+      ['same-account', 'new'],
+      ['migrated-guest', 'new'],
+      ['same-account', 'reply'],
+      ['migrated-guest', 'reply'],
+    ].flatMap(([origin, kind]) =>
+      ['failure', 'successful-retry'].map(outcome => [origin, kind, outcome]),
+    ),
+  )(
+    'keeps the last saved screenshot until %s %s draft removal commits (%s)',
+    async (origin, kind, outcome) => {
+      const actualFiles = jest.requireActual<
+        typeof import('../src/services/learnerDraftFiles')
+      >('../src/services/learnerDraftFiles');
+      const previousExists = jest.mocked(RNFS.exists).getMockImplementation()!;
+      const previousStat = jest.mocked(RNFS.stat).getMockImplementation()!;
+      const previousUnlink = jest.mocked(RNFS.unlink).getMockImplementation()!;
+      const previousReadable = jest
+        .mocked(learnerDraftFileIsReadable)
+        .getMockImplementation()!;
+      const previousRemove = jest
+        .mocked(removeLearnerDraftFile)
+        .getMockImplementation()!;
+      const originalScope =
+        origin === 'migrated-guest' ? 'guest-device' : 'user-1';
+      const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${originalScope}/feedback/saved.png`;
+      const nativeFiles = new Set([path]);
+      jest
+        .mocked(RNFS.exists)
+        .mockImplementation(async candidate => nativeFiles.has(candidate));
+      jest.mocked(RNFS.stat).mockImplementation(async candidate => {
+        if (!nativeFiles.has(candidate))
+          throw Object.assign(new Error('missing'), {code: 'ENOENT'});
+        return {size: 20} as Awaited<ReturnType<typeof RNFS.stat>>;
+      });
+      jest.mocked(RNFS.unlink).mockImplementation(async candidate => {
+        nativeFiles.delete(candidate);
+      });
+      jest
+        .mocked(learnerDraftFileIsReadable)
+        .mockImplementation(actualFiles.learnerDraftFileIsReadable);
+      jest
+        .mocked(removeLearnerDraftFile)
+        .mockImplementation(actualFiles.removeLearnerDraftFile);
+      let view: Awaited<ReturnType<typeof mountComposer>> | undefined;
+      try {
+        mockBoundary = {scope: originalScope, epoch: mockBoundary.epoch + 1};
+        const draft = {
+          attachment: {
+            uri: `file://${path}`,
+            fileName: 'saved.png',
+            type: 'image/png',
+            size: 20,
+          },
+          category: 'problem' as const,
+          clientRequestId: '11111111-1111-4111-8111-000000000099',
+          includeDiagnostics: true,
+          message: 'مسودة محفوظة بالصورة قبل تعديلها',
+          sourceScreen: 'settings',
+          updatedAt: Date.now(),
+        };
+        const savedDraft =
+          kind === 'reply'
+            ? {
+                attachment: draft.attachment,
+                clientRequestId: draft.clientRequestId,
+                message: draft.message,
+              }
+            : draft;
+        if (kind === 'reply') {
+          await saveProductFeedbackReplyDraft(caseId, draft, mockBoundary);
+          await persistProductFeedbackReceipt(
+            {
+              ...receipt,
+              caseNumber: receipt.case_number,
+              publicId: caseId,
+              createdAt: receipt.created_at,
+              replayed: false,
+            },
+            mockBoundary,
+          );
+        } else await saveProductFeedbackDraft(draft, mockBoundary);
+        if (origin === 'migrated-guest') {
+          mockBoundary = {scope: 'user-1', epoch: mockBoundary.epoch + 1};
+          expect(
+            await migrateGuestProductFeedback(
+              originalScope,
+              mockBoundary.scope,
+              false,
+              mockBoundary,
+            ),
+          ).toBe(true);
+        }
+        const key =
+          kind === 'reply'
+            ? `@rokn/product-feedback-reply/v1:${caseId}:user-1`
+            : '@rokn/product-feedback-draft/v1:user-1';
+        expect(JSON.parse((await originalGet(key))!)).toEqual(savedDraft);
+        view = await mountComposer();
+        if (kind === 'reply') {
+          await act(async () => {
+            await view!.cases.reloadCases(caseId, {
+              ...receipt,
+              caseNumber: receipt.case_number,
+              publicId: caseId,
+              createdAt: receipt.created_at,
+              replayed: false,
+            });
+            await drain();
+          });
+          expect(view.cases.replyAttachment).toEqual(draft.attachment);
+        } else expect(view.current.attachment).toEqual(draft.attachment);
+        jest.mocked(AsyncStorage.setItem).mockImplementation(async (name, value) => {
+          if (name === key) throw new Error('draft storage unavailable');
+          return originalSet(name, value);
+        });
+        await act(async () => {
+          if (kind === 'reply') view!.cases.removeReplyScreenshot();
+          else view!.current.removeScreenshot();
+          await drain();
+        });
+        await act(async () => {
+          jest.advanceTimersByTime(300);
+          await drain();
+        });
+        if (kind === 'new') expect(view.current.draftSaveError).toBe(true);
+        expect(JSON.parse((await originalGet(key))!)).toEqual(savedDraft);
+        expect(nativeFiles.has(path)).toBe(true);
+        expect(publicRequest.post).not.toHaveBeenCalled();
+        if (outcome === 'successful-retry') {
+          jest.mocked(AsyncStorage.setItem).mockImplementation(originalSet);
+          await act(async () => {
+            if (kind === 'reply') view!.cases.setReply(`${draft.message} تعديل`);
+            else view!.current.setMessage(`${draft.message} تعديل`);
+            await drain();
+          });
+          await act(async () => {
+            jest.advanceTimersByTime(300);
+            await drain();
+          });
+          expect(JSON.parse((await originalGet(key))!)).toEqual(
+            expect.objectContaining({message: `${draft.message} تعديل`}),
+          );
+          expect(nativeFiles.has(path)).toBe(false);
+        }
+        act(() => view!.renderer.unmount());
+        view = undefined;
+        await drain();
+        jest.mocked(AsyncStorage.setItem).mockImplementation(originalSet);
+        const restored =
+          kind === 'reply'
+            ? await loadProductFeedbackReplyDraft(caseId, mockBoundary)
+            : await loadProductFeedbackDraft(mockBoundary);
+        if (outcome === 'failure') {
+          expect({exists: nativeFiles.has(path), restored}).toEqual({
+            exists: true,
+            restored: savedDraft,
+          });
+        } else {
+          expect(restored?.attachment).toBeUndefined();
+          expect(restored?.message).toBe(`${draft.message} تعديل`);
+        }
+      } finally {
+        if (view) act(() => view!.renderer.unmount());
+        jest.mocked(AsyncStorage.setItem).mockImplementation(originalSet);
+        jest.mocked(RNFS.exists).mockImplementation(previousExists);
+        jest.mocked(RNFS.stat).mockImplementation(previousStat);
+        jest.mocked(RNFS.unlink).mockImplementation(previousUnlink);
+        jest.mocked(learnerDraftFileIsReadable).mockImplementation(previousReadable);
+        jest.mocked(removeLearnerDraftFile).mockImplementation(previousRemove);
+      }
+    },
+  );
+
+  it.each(['new', 'reply'])(
+    'releases superseded picks after the matching %s snapshot commits without releasing a newer pick',
+    async kind => {
+      const {view, choose, key} = await mountAttachedDraft(kind);
+      const firstPick = {uri: 'file:///draft/first.png', type: 'image/png'};
+      const pendingPick = {uri: 'file:///draft/pending.png', type: 'image/png'};
+      const newestPick = {uri: 'file:///draft/newest.png', type: 'image/png'};
+      const pendingWrite = deferred<void>();
+      let writeStarted = false;
+      jest.mocked(AsyncStorage.setItem).mockImplementation(async (name, value) => {
+        if (name === key && JSON.parse(value).attachment?.uri === pendingPick.uri) {
+          writeStarted = true;
+          await pendingWrite.promise;
+        }
+        return originalSet(name, value);
+      });
+      jest
+        .mocked(pickFeedbackScreenshot)
+        .mockResolvedValueOnce(firstPick)
+        .mockResolvedValueOnce(pendingPick)
+        .mockResolvedValueOnce(newestPick);
+      try {
+        await act(async () => {
+          await choose();
+          await drain();
+        });
+        await act(async () => {
+          await choose();
+          await drain();
+        });
+        await act(async () => {
+          jest.advanceTimersByTime(300);
+          await drain();
+        });
+        expect(writeStarted).toBe(true);
+        expect(removeLearnerDraftFile).not.toHaveBeenCalledWith(pendingPick);
+        await act(async () => {
+          await choose();
+          await drain();
+          pendingWrite.resolve();
+          await drain();
+        });
+        expect(removeLearnerDraftFile).toHaveBeenCalledWith(firstPick);
+        expect(removeLearnerDraftFile).not.toHaveBeenCalledWith(pendingPick);
+        expect(removeLearnerDraftFile).not.toHaveBeenCalledWith(newestPick);
+        await act(async () => {
+          jest.advanceTimersByTime(300);
+          await drain();
+        });
+        expect(JSON.parse((await originalGet(key))!).attachment).toEqual(newestPick);
+        expect(removeLearnerDraftFile).toHaveBeenCalledWith(pendingPick);
+        expect(removeLearnerDraftFile).not.toHaveBeenCalledWith(newestPick);
+        expect(publicRequest.post).not.toHaveBeenCalled();
+      } finally {
+        pendingWrite.resolve();
+        await drain();
+        jest.mocked(AsyncStorage.setItem).mockImplementation(originalSet);
+        act(() => view.renderer.unmount());
+        await drain();
+      }
+    },
+  );
+
+  it.each(
+    ['new', 'reply'].flatMap(kind =>
+      ['cancel', 'unmount', 'account-change'].map(reason => [kind, reason]),
+    ),
+  )(
+    'keeps the saved %s screenshot and discards only an unaccepted picker result after %s',
+    async (kind, reason) => {
+      const {view, attachment, choose, key} = await mountAttachedDraft(kind);
+      const selected = {uri: 'file:///draft/unaccepted.png', type: 'image/png'};
+      const picker = deferred<typeof selected | undefined>();
+      jest.mocked(pickFeedbackScreenshot).mockImplementationOnce(() => picker.promise);
+      let choosing: Promise<void> | undefined;
+      let unmounted = false;
+      try {
+        await act(async () => {
+          choosing = choose();
+          await drain();
+        });
+        await act(async () => {
+          if (reason === 'unmount') {
+            view.renderer.unmount();
+            unmounted = true;
+          } else if (reason === 'account-change') {
+            mockBoundary = {scope: 'user-2', epoch: mockBoundary.epoch + 1};
+            view.renderer.update(<view.Harness />);
+          }
+          await drain();
+        });
+        await act(async () => {
+          picker.resolve(reason === 'cancel' ? undefined : selected);
+          await choosing;
+          await drain();
+        });
+        expect(JSON.parse((await originalGet(key))!).attachment).toEqual(attachment);
+        expect(removeLearnerDraftFile).not.toHaveBeenCalledWith(attachment);
+        if (reason === 'cancel') expect(removeLearnerDraftFile).not.toHaveBeenCalled();
+        else expect(removeLearnerDraftFile).toHaveBeenCalledWith(selected);
+        expect(publicRequest.post).not.toHaveBeenCalled();
+      } finally {
+        picker.resolve(undefined);
+        await choosing;
+        if (!unmounted) act(() => view.renderer.unmount());
+        await drain();
       }
     },
   );

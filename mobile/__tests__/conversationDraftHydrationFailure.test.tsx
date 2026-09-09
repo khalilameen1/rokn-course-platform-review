@@ -90,6 +90,7 @@ describe('local conversation hydration failure is not an empty draft', () => {
               updated_at: '2026-09-08T12:00:00.000Z',
             },
           ],
+          pagination: {current_page: 1, last_page: 1, has_more: false},
         },
       },
     } as never);

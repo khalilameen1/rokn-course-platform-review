@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Alert} from 'react-native';
 
 import {
@@ -57,6 +57,20 @@ export const useFeedbackComposer = ({
   const dataOwnerRef = useRef(identityKey);
   const draftOwnerScopeRef = useRef('');
   const draftRestoreGenerationRef = useRef(0);
+  const discardedAttachmentsRef = useRef<FeedbackAttachment[]>([]);
+  const persistDraft = useCallback(
+    async (
+      draft: Parameters<typeof saveProductFeedbackDraft>[0],
+      boundary: AccountSessionBoundary,
+    ) => {
+      const discarded = discardedAttachmentsRef.current;
+      await saveProductFeedbackDraft(draft, boundary, discarded);
+      discardedAttachmentsRef.current = discardedAttachmentsRef.current.filter(
+        file => !discarded.includes(file),
+      );
+    },
+    [],
+  );
   const draftSnapshotRef = useRef({
     attachment,
     category,
@@ -92,6 +106,7 @@ export const useFeedbackComposer = ({
     submitFlightRef.current = false;
     pickerFlightRef.current = false;
     draftOwnerScopeRef.current = '';
+    discardedAttachmentsRef.current = [];
     setCategory('problem');
     setMessage('');
     setAttachment(undefined);
@@ -240,7 +255,7 @@ export const useFeedbackComposer = ({
           if (boundary.scope !== ownerScope) {
             throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
           }
-          return saveProductFeedbackDraft(
+          return persistDraft(
             {
               attachment,
               category,
@@ -279,6 +294,7 @@ export const useFeedbackComposer = ({
     draftSourceScreen,
     includeDiagnostics,
     message,
+    persistDraft,
     sent,
     trackingRecoveryNeeded,
   ]);
@@ -295,7 +311,7 @@ export const useFeedbackComposer = ({
         if (boundary.scope !== ownerScope) {
           throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
         }
-        return saveProductFeedbackDraft(
+        return persistDraft(
           {
             ...draftSnapshotRef.current,
             updatedAt: Date.now(),
@@ -314,7 +330,7 @@ export const useFeedbackComposer = ({
           setDraftSaveError(true);
         }
       });
-  }, [appActive, busy, draftReady, sent, trackingRecoveryNeeded]);
+  }, [appActive, busy, draftReady, persistDraft, sent, trackingRecoveryNeeded]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -350,8 +366,14 @@ export const useFeedbackComposer = ({
         return;
       }
       const previous = attachment;
-      changeDraft(() => setAttachment(selected));
-      await removeLearnerDraftFile(previous).catch(() => undefined);
+      changeDraft(() => {
+        if (previous)
+          discardedAttachmentsRef.current = [
+            ...discardedAttachmentsRef.current,
+            previous,
+          ];
+        setAttachment(selected);
+      });
     } finally {
       pickerFlightRef.current = false;
     }
@@ -360,8 +382,14 @@ export const useFeedbackComposer = ({
   const removeScreenshot = () => {
     if (busy) return;
     const previous = attachment;
-    changeDraft(() => setAttachment(undefined));
-    void removeLearnerDraftFile(previous).catch(() => undefined);
+    changeDraft(() => {
+      if (previous)
+        discardedAttachmentsRef.current = [
+          ...discardedAttachmentsRef.current,
+          previous,
+        ];
+      setAttachment(undefined);
+    });
   };
 
   const submit = async () => {
@@ -388,7 +416,7 @@ export const useFeedbackComposer = ({
         updatedAt: Date.now(),
       } satisfies Parameters<typeof saveProductFeedbackDraft>[0];
       try {
-        await saveProductFeedbackDraft(pendingDraft, boundary);
+        await persistDraft(pendingDraft, boundary);
       } catch {
         if (
           mountedRef.current &&

@@ -870,6 +870,39 @@ export const replyToProductFeedback = async (
 const replyDraftKey = (publicId: string, boundary: AccountSessionBoundary) =>
   accountScopedStorageKey(`${REPLY_DRAFT_PREFIX}${publicId}`, boundary);
 
+/** The old screenshot remains recoverable until its replacement is durable. */
+const replaceFeedbackDraft = async (
+  key: string,
+  draft: ProductFeedbackDraft | ProductFeedbackReplyDraft | null,
+  boundary: AccountSessionBoundary,
+  discardedAttachments: FeedbackAttachment[] = [],
+) => {
+  const raw = await AsyncStorage.getItem(key);
+  assertAccountSessionBoundary(boundary);
+  let previous: FeedbackAttachment | undefined;
+  if (raw) {
+    try {
+      previous = JSON.parse(raw)?.attachment;
+    } catch {}
+  }
+  if (draft) await AsyncStorage.setItem(key, JSON.stringify(draft));
+  else await AsyncStorage.removeItem(key);
+  assertAccountSessionBoundary(boundary);
+  const retired = new Map(
+    [previous, ...discardedAttachments]
+      .filter(
+        (file): file is FeedbackAttachment =>
+          Boolean(file?.uri) && file?.uri !== draft?.attachment?.uri,
+      )
+      .map(file => [file.uri, file]),
+  );
+  // Only obsolete files are queued; native cleanup cannot turn a committed
+  // draft into a failed save or block sending that already-durable draft.
+  void Promise.all(
+    [...retired.values()].map(file => removeLearnerDraftFile(file)),
+  ).catch(() => undefined);
+};
+
 export const loadProductFeedbackReplyDraft = async (
   publicId: string,
   ownerBoundary?: AccountSessionBoundary,
@@ -914,6 +947,7 @@ export const saveProductFeedbackReplyDraft = async (
   publicId: string,
   draft: ProductFeedbackReplyDraft | null,
   ownerBoundary?: AccountSessionBoundary,
+  discardedAttachments: FeedbackAttachment[] = [],
 ) => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await replyDraftKey(publicId, boundary);
@@ -924,18 +958,20 @@ export const saveProductFeedbackReplyDraft = async (
       (normalized.trim() || draft?.attachment) &&
       isUuid(draft?.clientRequestId)
     ) {
-      await AsyncStorage.setItem(
+      await replaceFeedbackDraft(
         key,
-        JSON.stringify({
+        {
           attachment: draft?.attachment,
           clientRequestId: draft!.clientRequestId,
           message: normalized,
-        } satisfies ProductFeedbackReplyDraft),
+        } satisfies ProductFeedbackReplyDraft,
+        boundary,
+        discardedAttachments,
       );
       assertAccountSessionBoundary(boundary);
       return;
     }
-    await AsyncStorage.removeItem(key);
+    await replaceFeedbackDraft(key, null, boundary, discardedAttachments);
     assertAccountSessionBoundary(boundary);
   });
 };
@@ -992,6 +1028,7 @@ export const loadProductFeedbackDraft = async (
 export const saveProductFeedbackDraft = async (
   draft: ProductFeedbackDraft,
   ownerBoundary?: AccountSessionBoundary,
+  discardedAttachments: FeedbackAttachment[] = [],
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await accountScopedStorageKey(DRAFT_KEY, boundary);
@@ -1011,11 +1048,11 @@ export const saveProductFeedbackDraft = async (
       throw new Error('INVALID_FEEDBACK_DRAFT');
     }
     if (!draft.message.trim() && !draft.attachment) {
-      await AsyncStorage.removeItem(key);
+      await replaceFeedbackDraft(key, null, boundary, discardedAttachments);
       assertAccountSessionBoundary(boundary);
       return;
     }
-    await AsyncStorage.setItem(key, JSON.stringify(draft));
+    await replaceFeedbackDraft(key, draft, boundary, discardedAttachments);
     assertAccountSessionBoundary(boundary);
   });
 };
@@ -1027,16 +1064,6 @@ export const clearProductFeedbackDraft = async (
   const key = await accountScopedStorageKey(DRAFT_KEY, boundary);
   await withDraftLock(async () => {
     assertAccountSessionBoundary(boundary);
-    const raw = await AsyncStorage.getItem(key);
-    assertAccountSessionBoundary(boundary);
-    if (raw) {
-      try {
-        const draft = JSON.parse(raw) as Partial<ProductFeedbackDraft>;
-        await removeLearnerDraftFile(draft.attachment);
-        assertAccountSessionBoundary(boundary);
-      } catch {}
-    }
-    await AsyncStorage.removeItem(key);
-    assertAccountSessionBoundary(boundary);
+    await replaceFeedbackDraft(key, null, boundary);
   });
 };
