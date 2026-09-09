@@ -1703,3 +1703,57 @@ browser fixture: 12 cases passed. Independent source reviews found no introduced
 blocker in preference rollback or completed-login delivery. These are local
 contract/lifecycle checks, not a live provider login or physical-device acceptance.
 No APK was built and no source was pushed or deployed in this pass.
+
+## September 9 — retry learning, revise rejected projects and replay ended reels
+
+Four disjoint daily journeys were reviewed from clean `a341672`. Existing
+course authoring, attachment rules, project access, checkout confirmation and
+visual identity were preserved. No backend or native source changed.
+
+- MyCorner had no in-place recovery: an empty failed read offered Home, a cached
+  failed read offered no retry, and a foreground server update required leaving
+  the screen. Three rendered-screen RED cases demonstrated these gaps. The
+  existing focus/foreground loader now also owns explicit retry and pull refresh,
+  with one in-flight read per active screen. Existing courses remain visible
+  during recovery, but direct resume stays unavailable until fresh ownership
+  arrives. A session-lookup error renders recovery instead of an endless skeleton.
+  Nine screen/hook cases cover empty and cached errors, repeated taps, successful
+  emptiness, guest entry, blur/unmount and replacement-account responses. The
+  screen, CourseShelf and Content/ScrollView wiring run together; API/native seams
+  are controlled by the fixture. Independent review found no introduced blocker.
+- Project submission could acknowledge `evaluating`, later receive `needs_changes`,
+  then leave “edit submission” stuck on details/loading. Hydration intentionally
+  does not repeat merely because status changes, but acceptance marked its known
+  empty replacement draft unread. That replacement now stays ready; server
+  status and `canSubmit` still own whether editing/submission is available.
+  Four RED cases exercise text, PNG, DOCX and PDF through the actual submission
+  hook, then a later rejection and second submission. Counters keep submission
+  disabled when the contract disallows it. No new status effect, rehydration,
+  project storage or evaluation endpoint was added. Backend inspection confirms
+  that accepted queued evaluation and its later rejection are normal responses.
+- An ended reel left on screen could not restart from its play button. The
+  installed native player needs a seek, not just a paused-property change.
+  One real VideoComponent/VideoChrome-to-native-ref RED case showed no seek after
+  completion; the mid-reel pause/resume counter already passed. Completion now
+  uses the existing pause state, and explicit play rewinds only at the end.
+  Seeking backward after completion preserves the learner's chosen position.
+  Five new cases include background return and reel replacement; autoplay,
+  preview limits and project navigation remain owned by their existing flows.
+  This proves the native-ref contract, not physical decoder playback.
+- Confirmed coin top-ups still waited for raw attempt-ledger and return-receipt
+  cleanup before reaching the course's explicit confirmation step. These are
+  distinct from the previously repaired enrollment-attempt store. Four actual
+  course-checkout RED cases used accepted payment responses followed by stalled
+  native reads/removals. Terminal callers now have a bounded cleanup wait, while
+  the raw storage queues retain their order and mandatory pre-send writes remain
+  mandatory. Eleven new cases also cover cancellation, foreground settlement,
+  account replacement, late removal before a new intent/return receipt and no
+  dispatch when pre-send persistence fails. No automatic course purchase, new
+  provider request, financial amount or server entitlement behavior was added.
+
+Root verification passed 30 unique mobile suites / 280 tests across exact-path
+runs, plus full TypeScript, scoped ESLint and diff checks. The initial combined
+command used a nonexistent `.ts` spelling for `playbackRecovery.test.tsx`; the
+correct existing suite was subsequently run and passed. Checks include focused
+runtime fixtures and adjacent source-contract guards; no live payment, provider
+evaluation, physical playback, APK, push or deployment is claimed.
