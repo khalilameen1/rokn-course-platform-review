@@ -14,6 +14,7 @@ use App\Services\OrderLifecycleService;
 use App\Services\SupportCaseService;
 use App\Support\BusinessClock;
 use App\Support\CsvCell;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +27,16 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 final class FeedbackController extends Controller
 {
     public function index(Request $request): View
+    {
+        [$filters, $query] = $this->filteredReports($request);
+        $reports = $query->latest('updated_at')->latest('id')->paginate(30)->withQueryString();
+        $admins = User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name']);
+
+        return view('admin.feedback.index', compact('reports', 'filters', 'admins'));
+    }
+
+    /** @return array{array<string, mixed>, Builder<FeedbackReport>} */
+    private function filteredReports(Request $request): array
     {
         $filters = $request->validate([
             'q' => 'nullable|string|max:120',
@@ -43,7 +54,7 @@ final class FeedbackController extends Controller
         $toExclusive = isset($filters['to']) ? BusinessClock::localDayRangeUtc($filters['to'])[1] : null;
         $queryText = trim((string) ($filters['q'] ?? ''));
 
-        $reports = FeedbackReport::query()
+        $query = FeedbackReport::query()
             ->with(['user:id,name,email', 'course:id,name_ar,name_en', 'assignee:id,name'])
             ->when($queryText !== '', function ($query) use ($queryText): void {
                 $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $queryText);
@@ -66,11 +77,9 @@ final class FeedbackController extends Controller
             ->when($filters['app_version'] ?? null, fn ($q, $value) => $q->where('app_version', $value))
             ->when($filters['course_id'] ?? null, fn ($q, $value) => $q->where('course_id', $value))
             ->when($from, fn ($q, $value) => $q->where('created_at', '>=', $value))
-            ->when($toExclusive, fn ($q, $value) => $q->where('created_at', '<', $value))
-            ->latest('updated_at')->latest('id')->paginate(30)->withQueryString();
-        $admins = User::query()->where('role', 'admin')->orderBy('name')->get(['id', 'name']);
+            ->when($toExclusive, fn ($q, $value) => $q->where('created_at', '<', $value));
 
-        return view('admin.feedback.index', compact('reports', 'filters', 'admins'));
+        return [$filters, $query];
     }
 
     public function show(FeedbackReport $feedback): View
@@ -100,31 +109,8 @@ final class FeedbackController extends Controller
 
     public function export(Request $request): StreamedResponse
     {
-        $filters = $request->validate([
-            'q' => 'nullable|string|max:120',
-            'status' => ['nullable', Rule::in(SupportCaseService::CUSTOMER_STATUSES)],
-            'category' => ['nullable', Rule::in(['bug', 'suggestion', 'course_content', 'playback'])],
-            'priority' => ['nullable', Rule::in(['low', 'normal', 'high', 'urgent'])],
-            'assigned_to' => 'nullable|integer|exists:users,id',
-            'from' => 'nullable|date_format:Y-m-d',
-            'to' => 'nullable|date_format:Y-m-d|after_or_equal:from',
-        ]);
-        $from = isset($filters['from']) ? BusinessClock::localDayRangeUtc($filters['from'])[0] : null;
-        $toExclusive = isset($filters['to']) ? BusinessClock::localDayRangeUtc($filters['to'])[1] : null;
-        $text = trim((string) ($filters['q'] ?? ''));
-        $query = FeedbackReport::query()->with(['user:id,name,email', 'course:id,name_ar,name_en', 'assignee:id,name'])
-            ->when($filters['status'] ?? null, fn ($q, $value) => $q->where('status', $value))
-            ->when($filters['category'] ?? null, fn ($q, $value) => $q->where('category', $value))
-            ->when($filters['priority'] ?? null, fn ($q, $value) => $q->where('priority', $value))
-            ->when($filters['assigned_to'] ?? null, fn ($q, $value) => $q->where('assigned_to', $value))
-            ->when($from, fn ($q, $value) => $q->where('created_at', '>=', $value))
-            ->when($toExclusive, fn ($q, $value) => $q->where('created_at', '<', $value))
-            ->when($text !== '', fn ($q) => $q->where(function ($nested) use ($text): void {
-                $nested->where('public_id', 'like', '%'.$text.'%')
-                    ->orWhere('message', 'like', '%'.$text.'%')
-                    ->orWhereHas('user', fn ($user) => $user->where('name', 'like', '%'.$text.'%'));
-            }))
-            ->latest('updated_at')->latest('id')->limit(10000);
+        [, $query] = $this->filteredReports($request);
+        $query->limit(10000);
 
         return response()->streamDownload(function () use ($query): void {
             $file = fopen('php://output', 'wb');
