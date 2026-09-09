@@ -2235,3 +2235,91 @@ Primary lifecycle references: [Apple background event handling](https://develope
 [Apple event drain](https://developer.apple.com/documentation/foundation/urlsessiondelegate/urlsessiondidfinishevents(forbackgroundurlsession:)),
 and [React Native AppState](https://reactnative.dev/docs/appstate).
 No APK, push, deployment, paid operation or live content/account change was made.
+
+## September 9 — preserve the draft before releasing its file
+
+Continued from clean `436e1b0` in the production repository. This pass preserves
+existing features rather than replacing whole journeys. Certificate download
+identity was inspected: the public UUID route resolves the current file on the
+server, rather than caching a signed download URL. No new defect was established
+there and it was not rewritten or counted as a fix.
+
+`7153e24` corrects Android's file-open acknowledgement. A completed download must
+not report `opened` after its host has paused, detached, finished or been destroyed.
+The opener checks its current foreground Activity immediately before launch; an
+unavailable host leaves the completed file and receipt intact, without a new
+transfer or an automatic launch on return. Three production-Kotlin countercases
+were RED before the change. Root passed all 28 controlled lifecycle cases; the
+agent also passed seven JS contract/policy cases and offline release-Kotlin
+compilation using the real Android/React APIs. These are not phone acceptance.
+
+`a5c6b38` fixes learner-file ownership, not its picker or screen design. Eleven
+actual-service regressions exposed unavailable AsyncStorage reads becoming empty
+ownership, registry read/parse failures replacing existing owners, and old support
+files disappearing despite a live JSON draft. Support draft conflicts also contain
+restorable JSON inside `raw`, without registry entries. Cleanup now protects the
+union of durable references and recent write-ahead owners, distinguishes an
+incomplete batch from an explicitly removed key, and ignores only retired
+`:corrupt` snapshots. Account matching respects full scope boundaries. A backup
+may recover a missing registry target, but cannot replace an unreadable newer one.
+Explicit cleanup likewise respects live owners. Orphan eviction remains bounded;
+a further RED case caught failed unlink being counted as free space and now counts
+those bytes until an eviction actually succeeds. Root's final gate for this
+checkpoint passed 11 suites / 160 tests, full TypeScript and scoped ESLint.
+Controlled RNFS/AsyncStorage seams execute the production services; they are not
+OS storage fault injection. Guest-to-account support-file release ordering was
+checked separately as described below, rather than assumed covered by scope matching.
+
+`1cf984d` fixes the dashboard's uncertain attachment save. Actual Chrome against
+the production Blade form and JS reproduced an aborted, unaccepted POST causing
+an automatic reload and losing the selected File and title. The editor now retains
+one immutable request body, File, version, URL and request UUID. A narrow read-only
+PDF create-receipt route reuses `AdminAuthoringCreateIntentService`, with the same
+actor/route/original-parent identity. It neither uploads again nor allocates a
+draft. A completed receipt resolves a lost/malformed acknowledgement; processing
+or unavailable receipts remain check-only; absent/failed receipts permit the next
+explicit identical attempt. Current resource/version, dedupe without a version
+advance, canonical-to-existing-draft and superseded resources are accounted for.
+
+Replacement is deliberately not misrepresented as recovered: it has version
+locking, not a per-operation create receipt. After an uncertain PATCH, retry uses
+the original version. A 409 retains the local File/title and asks for review of
+the current studio in another tab or an explicit discard; it is never treated as
+proof the earlier update succeeded. No generic persistence layer or shared studio
+coordinator rewrite was introduced. The browser fixture distinguishes JS fetch
+attempts from Chrome's own transport retries, and checks both record count and
+request identity rather than claiming sockets are never retried.
+
+Root passed the attachment Chrome fixture and 16 PHP tests / 238 assertions across
+PDF receipts, existing section receipts and external-attachment lifecycle. The
+agent passed the adjacent authoring Chrome fixture; source syntax and diff checks
+passed. HTTP tests use isolated SQLite/fake storage with outbound requests blocked.
+Independent source review found no introduced receipt/coordinator mismatch; it
+does not establish that every possible server 5xx outcome is absent or that the
+entire dashboard has been accepted. Existing iOS native acceptance limits from
+the previous entry remain open. No APK, push, deployment or live upload was made.
+
+`6dfd864` closes that separate support ordering defect. Actual new-message and
+reply hooks, real guest-draft migration and the production learner-file service
+reproduced the loss: remove/replace a migrated screenshot, fail the autosave, and
+the original JSON survives but its bytes are already gone. The same-account
+counter passed after the shared ownership fix, but both migrated cases remained
+RED. Rather than rewriting migration or adding a cross-account file scanner, the
+existing feedback writer now commits replacement/removal first, then releases only
+obsolete screenshots. Each composer captures its discarded selections with its
+own save snapshot, so a later picker result cannot be released by an older save's
+acknowledgement. Cleanup is ancillary to the committed draft and does not delay
+an accepted submission. Canceled/stale picker results remain individually cleaned.
+
+The focused hook fixture adds 16 cases: new/reply, original/migrated file ownership,
+failed save/successful retry, picks during a pending write, cancellation, unmount
+and account change. The four original ownership counters first had two RED and two
+GREEN; the final focused file has 30 passing cases. The adjacent conversation
+hydration fixture lacked the pagination returned by the existing backend and was
+aligned with that contract; no production loader was changed to satisfy a stale
+fixture and this is not counted as another product fix. Root's final combined
+mobile gate passed 13 suites / 198 tests, full TypeScript and scoped ESLint.
+
+All four fixes are local production-repository commits with bounded evidence,
+not an application-wide completion or release claim. No existing feature was
+removed, no APK was built, and no commit was pushed or deployed in this pass.
