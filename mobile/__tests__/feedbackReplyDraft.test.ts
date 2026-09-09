@@ -144,7 +144,12 @@ describe('support case ownership and response contract', () => {
 
   it('rejects a partial account case snapshot instead of hiding a malformed case', async () => {
     jest.mocked(publicRequest.get).mockResolvedValueOnce({
-      data: {data: {items: [{public_id: 'broken'}]}},
+      data: {
+        data: {
+          items: [{public_id: 'broken'}],
+          pagination: {current_page: 1, last_page: 1, has_more: false},
+        },
+      },
     } as never);
 
     await expect(
@@ -273,6 +278,7 @@ describe('support case ownership and response contract', () => {
               updated_at: '2026-09-04T12:00:00.000Z',
             },
           ],
+          pagination: {current_page: 1, last_page: 1, has_more: false},
         },
       },
     } as never);

@@ -119,7 +119,19 @@ describe('feedback server delivery and local receipt completion', () => {
     jest.mocked(publicRequest.get).mockImplementation(
       async path =>
         ({
-          data: {data: path === 'feedback' ? {items: []} : casePayload},
+          data: {
+            data:
+              path === 'feedback'
+                ? {
+                    items: [],
+                    pagination: {
+                      current_page: 1,
+                      last_page: 1,
+                      has_more: false,
+                    },
+                  }
+                : casePayload,
+          },
         } as never),
     );
     jest

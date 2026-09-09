@@ -739,17 +739,44 @@ export const loadProductFeedbackCases = async (
   let accountIndexError: unknown;
   if (accountOwned) {
     try {
-      assertAccountSessionBoundary(boundary);
-      const response = await publicRequest.get('feedback');
-      assertAccountSessionBoundary(boundary);
-      const data = (response.data as {data?: unknown})?.data;
-      if (!isRecord(data) || !Array.isArray(data.items)) {
-        throw new Error('INVALID_SUPPORT_CASES_RESPONSE');
+      let page = 1;
+      while (true) {
+        assertAccountSessionBoundary(boundary);
+        const response =
+          page === 1
+            ? await publicRequest.get('feedback')
+            : await publicRequest.get('feedback', {params: {page}});
+        assertAccountSessionBoundary(boundary);
+        const data = (response.data as {data?: unknown})?.data;
+        if (!isRecord(data) || !Array.isArray(data.items)) {
+          throw new Error('INVALID_SUPPORT_CASES_RESPONSE');
+        }
+        const items = data.items.map(parseCase);
+        const pagination = isRecord(data.pagination) ? data.pagination : {};
+        const lastPage = Number(pagination.last_page);
+        const hasMore = firstBoolean(pagination.has_more);
+        const expectedHasMore = page < lastPage;
+        if (
+          Number(pagination.current_page) !== page ||
+          !Number.isSafeInteger(lastPage) ||
+          lastPage < 1 ||
+          lastPage > 100000 ||
+          hasMore !== expectedHasMore ||
+          (hasMore && items.length === 0) ||
+          (lastPage < page && items.length > 0)
+        ) {
+          throw new Error('INVALID_SUPPORT_CASES_PAGINATION');
+        }
+        // Read every page before replacing the visible history. Reject repeated
+        // entries instead of silently collapsing overlapping pages into one list.
+        items.forEach(item => {
+          if (cases.has(item.publicId))
+            throw new Error('SUPPORT_CASES_CHANGED_DURING_READ');
+          cases.set(item.publicId, item);
+        });
+        if (!hasMore) break;
+        page += 1;
       }
-      // A partially accepted response silently hides the malformed case from
-      // its owner. Reject the snapshot and keep the screen's last known list so
-      // the same support history can be retried intact.
-      data.items.map(parseCase).forEach(item => cases.set(item.publicId, item));
     } catch (error) {
       loadError = error;
       accountIndexError = error;
