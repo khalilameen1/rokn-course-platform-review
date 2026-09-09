@@ -67,6 +67,7 @@
         };
         const close = (force = false) => {
             if (!force && form.getAttribute('aria-busy') === 'true') return false;
+            if (!force && !coordinator.confirmDiscard('module')) return false;
             if (!force && !editing) forgetPendingCreate();
             editor.hidden = true;
             editing = null;
@@ -74,7 +75,7 @@
             coordinator.closed('module');
             return true;
         };
-        coordinator.register('module', close);
+        coordinator.register('module', close, form);
 
         const resetForCreate = order => {
             form.reset();
@@ -116,6 +117,7 @@
                 else outline.modulesList.append(outline.host);
                 resetForCreate(order);
             }
+            coordinator.markClean('module');
             core.showFeedback(feedback);
             editor.hidden = false;
             form.elements.title_ar.focus();

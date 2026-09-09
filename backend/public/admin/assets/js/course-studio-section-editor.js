@@ -53,13 +53,14 @@
         };
         const close = (force = false) => {
             if (!force && (form.getAttribute('aria-busy') === 'true' || window.RoknCourseVideoUpload?.isBusy())) return false;
+            if (!force && !coordinator.confirmDiscard('section')) return false;
             editor.hidden = true;
             editing = null;
             core.showFeedback(feedback);
             coordinator.closed('section');
             return true;
         };
-        coordinator.register('section', close);
+        coordinator.register('section', close, form);
 
         const resetForCreate = (moduleId, order, mode) => {
             form.reset();
@@ -75,6 +76,7 @@
             deleteButton.hidden = true;
             setMode(mode, false, mode === 'lesson');
             window.RoknCourseVideoUpload?.setSectionContext(null, mode === 'lesson');
+            coordinator.markClean('section');
         };
         const openNew = trigger => {
             if (window.RoknAdminRequest.mutationsAreBlocked() || window.RoknCourseVideoUpload?.isBusy()) return;
@@ -123,6 +125,7 @@
             setMode(payload.type, true, videoRequired);
             deleteButton.hidden = false;
             window.RoknCourseVideoUpload?.setSectionContext(String(payload.id), videoRequired);
+            coordinator.markClean('section');
             core.showFeedback(feedback);
             editor.hidden = false;
             titleInput.focus();

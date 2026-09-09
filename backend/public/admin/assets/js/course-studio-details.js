@@ -7,6 +7,7 @@
         if (!panel || !form) return;
 
         const feedback = panel.querySelector('[data-course-feedback]');
+        const coordinator = core.use('editor-coordinator');
 
         const applySavedCourse = course => {
             document.querySelectorAll('[data-studio-course-title]').forEach(node => {
@@ -72,6 +73,7 @@
             if (form.getAttribute('aria-busy') === 'true') return;
             const submitter = event.submitter;
             const intent = submitter?.value || 'save';
+            if (intent !== 'save' && !coordinator.confirmDiscard()) return;
 
             void core.mutate(async () => {
                 const expectedVersion = core.authoringVersion;
@@ -100,7 +102,7 @@
                 const staysInDraft = intent === 'save'
                     && currentUrl.pathname === destination.pathname
                     && currentUrl.search === destination.search;
-                if (staysInDraft) {
+                if (staysInDraft || (intent === 'save' && !coordinator.confirmDiscard())) {
                     applySavedCourse(course);
                     core.showFeedback(feedback, message, Boolean(issues.length));
                     core.notify(message, Boolean(issues.length), 5000);
