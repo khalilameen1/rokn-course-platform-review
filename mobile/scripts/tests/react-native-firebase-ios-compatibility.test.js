@@ -17,11 +17,15 @@ const {
 } = require('../apply-rnfirebase-ios-constants-fix');
 
 test('the audited React Native Firebase iOS fix is deterministic and installed', () => {
-  assert.equal(
-    manifest.scripts?.postinstall,
-    'node scripts/apply-rnfirebase-ios-constants-fix.js',
+  assert.ok(
+    manifest.scripts?.postinstall
+      .split(' && ')
+      .includes('node scripts/apply-rnfirebase-ios-constants-fix.js'),
   );
-  assert.equal(manifest.dependencies?.['@react-native-firebase/app'], SUPPORTED_VERSION);
+  assert.equal(
+    manifest.dependencies?.['@react-native-firebase/app'],
+    SUPPORTED_VERSION,
+  );
   assert.equal(
     manifest.dependencies?.['@react-native-firebase/messaging'],
     SUPPORTED_VERSION,

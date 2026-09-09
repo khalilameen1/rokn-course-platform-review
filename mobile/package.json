@@ -5,7 +5,7 @@
   "main": "index.js",
   "packageManager": "npm@10.9.3",
   "scripts": {
-    "postinstall": "node scripts/apply-rnfirebase-ios-constants-fix.js",
+    "postinstall": "node scripts/apply-rnfirebase-ios-constants-fix.js && node scripts/apply-rnfs-download-cleanup-fix.js",
     "android": "node scripts/run-android.js",
     "apk": "npm run apk:test",
     "apk:test": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-android-release.ps1 -Channel direct -Profile test -Artifact apk",
@@ -20,7 +20,7 @@
     "prebuild": "expo prebuild",
     "test": "jest",
     "test:release": "node scripts/run-release-tests.js",
-    "test:release-scripts": "node --test scripts/tests/bundled-font-notices.test.js scripts/tests/gradle-dependency-provenance.test.js scripts/tests/mobile-ci-provenance.test.js scripts/tests/native-third-party-notices.test.js scripts/tests/notification-manifest-plugin.test.js scripts/tests/production-entry-smoke.test.js scripts/tests/react-native-firebase-ios-compatibility.test.js scripts/tests/react-native-toolchain-alignment.test.js scripts/tests/repository-secret-scanner.test.js scripts/tests/staging-api-contract.test.js scripts/tests/third-party-notices.test.js",
+    "test:release-scripts": "node --test scripts/tests/bundled-font-notices.test.js scripts/tests/gradle-dependency-provenance.test.js scripts/tests/mobile-ci-provenance.test.js scripts/tests/native-third-party-notices.test.js scripts/tests/notification-manifest-plugin.test.js scripts/tests/production-entry-smoke.test.js scripts/tests/react-native-firebase-ios-compatibility.test.js scripts/tests/react-native-toolchain-alignment.test.js scripts/tests/repository-secret-scanner.test.js scripts/tests/rnfs-download-listener-lifecycle.test.js scripts/tests/staging-api-contract.test.js scripts/tests/third-party-notices.test.js",
     "notices:generate": "node scripts/generate-third-party-notices.js",
     "notices:android:generate": "node scripts/generate-native-third-party-notices.js --android-only",
     "notices:native:generate": "node scripts/generate-native-third-party-notices.js",
