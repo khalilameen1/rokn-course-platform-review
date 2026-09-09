@@ -111,8 +111,10 @@ final class AiInputAttachmentService
         }
         $disk = (string) config('projects.submission_disk', 'local');
         $directory = "ai_inputs/{$user->id}/{$course->id}";
+        // Accepted uploads replay their reservation above. A new physical
+        // attempt must not share a path with a failed attempt's cleanup.
         $operationIdentity = implode('|', [
-            'ai-input', $user->id, $course->id, $purpose, strtolower($clientUploadId), $sha,
+            'ai-input', $user->id, $course->id, $purpose, strtolower($clientUploadId), $sha, Str::uuid(),
         ]);
         $path = $this->storedFiles->trackedUploadDestination(
             $file,
