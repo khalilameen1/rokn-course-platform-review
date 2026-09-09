@@ -53,7 +53,7 @@ final class ProjectUploadStorageBudgetTest extends TestCase
         self::assertGreaterThanOrEqual(5, (int) config('projects.submission_request_budget_seconds'));
     }
 
-    public function test_fresh_deterministic_upload_skips_remote_metadata_and_retry_uses_one_probe(): void
+    public function test_explicit_same_target_write_skips_fresh_metadata_and_retry_uses_one_probe(): void
     {
         Queue::fake();
         $file = UploadedFile::fake()->createWithContent('attempt.jpg', 'learner-work');
@@ -78,20 +78,27 @@ final class ProjectUploadStorageBudgetTest extends TestCase
         $this->app->instance(FilesystemFactory::class, $factory);
 
         $files = app(StoredFileDeletionService::class);
-        $first = $files->storeTrackedUpload(
+        // Test only the explicit same-target primitive and its I/O costs.
+        // An orphan ledger is not domain admission; owning-service tests must
+        // separately prove that a real caller may safely resume that target.
+        $first = $files->trackedUploadDestination(
             $file,
             'project_submissions/5/8',
             'project-test',
-            60,
             'project-submission|5|8|request-1|0|hash'
         );
-        $replayed = $files->storeTrackedUpload(
+        $reservedBefore = $files->trackPotentialOrphan('project-test', $first);
+        self::assertFalse($reservedBefore);
+        $files->writeTrackedUpload($file, $first, 'project-test', $reservedBefore);
+        $replayed = $files->trackedUploadDestination(
             $file,
             'project_submissions/5/8',
             'project-test',
-            60,
             'project-submission|5|8|request-1|0|hash'
         );
+        $reservedBefore = $files->trackPotentialOrphan('project-test', $replayed);
+        self::assertTrue($reservedBefore);
+        $files->writeTrackedUpload($file, $replayed, 'project-test', $reservedBefore);
 
         self::assertSame($first, $replayed);
         self::assertSame($storedPath, $first);

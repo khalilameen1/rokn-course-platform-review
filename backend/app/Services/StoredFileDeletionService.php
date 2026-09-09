@@ -67,7 +67,7 @@ final class StoredFileDeletionService
     }
 
     /**
-     * Register a deterministic destination before writing uploaded bytes.
+     * Stage a fresh physical attempt before the owning domain row commits.
      * A worker death after storage succeeds but before the owning row commits
      * is then recovered by the same reference-aware deletion ledger.
      */
@@ -80,7 +80,12 @@ final class StoredFileDeletionService
     ): string {
         $this->assertRequestUploadBudget($directory);
         $path = $this->trackedUploadDestination($file, $directory, $disk, $operationIdentity);
-        $mightAlreadyBeStored = $this->trackPotentialOrphan(
+        if ($operationIdentity !== null) {
+            // Preserve the logical filename for domain replay checks, but
+            // never reuse an orphan path a prior cleanup may already own.
+            $path = dirname($path) . '/' . Str::uuid() . '/' . basename($path);
+        }
+        $this->trackPotentialOrphan(
             $disk,
             $path,
             $orphanDelayMinutes
@@ -89,7 +94,7 @@ final class StoredFileDeletionService
             $file,
             $path,
             $disk,
-            $operationIdentity !== null && $mightAlreadyBeStored
+            false
         );
         return $path;
     }

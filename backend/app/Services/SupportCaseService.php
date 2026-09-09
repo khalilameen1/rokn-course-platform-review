@@ -334,9 +334,11 @@ final class SupportCaseService
         abort_if($encoded === '', 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
         $sha = hash('sha256', $encoded);
         $directory = ($report->created_at ?: now())->format('Y/m');
+        // Message receipts handle replay. Failed admission retries need new
+        // bytes that cannot be deleted by the previous attempt's orphan job.
         $path = $directory.'/'.$report->public_id.'/'.hash(
             'sha256',
-            'support-message|'.$report->public_id.'|'.strtolower($clientRequestId).'|'.$sha
+            'support-message|'.$report->public_id.'|'.strtolower($clientRequestId).'|'.$sha.'|'.Str::uuid()
         ).'.jpg';
         app(StoredFileDeletionService::class)
             ->trackPotentialOrphan('feedback', $path, 60);

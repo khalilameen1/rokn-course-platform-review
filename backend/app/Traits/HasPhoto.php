@@ -135,6 +135,18 @@ trait HasPhoto
      */
     public function storeImage($file, $path, $type = 'featured', ?string $operationIdentity = null)
     {
+        if ($operationIdentity !== null) {
+            $logicalPath = app(StoredFileDeletionService::class)->trackedUploadDestination(
+                $file, $path, 'public', $operationIdentity
+            );
+            // A create receipt may fail after its Photo already committed.
+            // Only that domain-owned image is replayable, never orphan bytes.
+            $existing = $this->allPhotos()->where('type', $type)->get()->first(
+                fn (Photo $photo): bool => str_starts_with((string) $photo->path, trim($path, '/') . '/')
+                    && basename((string) $photo->path) === basename($logicalPath)
+            );
+            if ($existing) return $existing;
+        }
         /*$image = Image::make($file);
         $image->fit(1900, 750, function ($constraint) {
             $constraint->aspectRatio();
