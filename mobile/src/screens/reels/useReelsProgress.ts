@@ -233,6 +233,13 @@ export const useReelsProgress = ({
     (reel: CourseReel) => {
       if (!course || !ownsCourse(course.id)) return;
       const completeLocally = previewMode;
+      const nextItem = feedItems[currentIndex + 1];
+      // Moving to an already-accessible reel needs no new completion grant.
+      // Keep recording/confirming progress, but do not hold autoplay behind
+      // that acknowledgement. Projects and newly locked steps still wait.
+      const canAdvanceWithoutConfirmation =
+        completeLocally ||
+        (nextItem?.type === 'reel' && !nextItem.reel.isLocked);
       if (completeLocally) {
         updateReelCompletion(course.id, reel);
       }
@@ -292,12 +299,17 @@ export const useReelsProgress = ({
           true,
           buildPlaybackEvidence(reel, runtime, playbackSpeed),
         );
-        void confirmReelCompletion(reel, evidenceSave).then(completed => {
-          if (completed || completeLocally) void advance();
-        });
+        const confirmation = confirmReelCompletion(reel, evidenceSave);
+        if (canAdvanceWithoutConfirmation) {
+          void advance();
+        } else {
+          void confirmation.then(completed => {
+            if (completed) void advance();
+          });
+        }
         return;
       }
-      if (completeLocally || reel.isCompleted) {
+      if (canAdvanceWithoutConfirmation || reel.isCompleted) {
         void advance();
         return;
       }
@@ -313,6 +325,7 @@ export const useReelsProgress = ({
       course,
       confirmReelCompletion,
       currentIndex,
+      feedItems,
       maybeOfferReminders,
       ownsActiveReel,
       ownsCourse,
