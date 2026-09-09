@@ -70,6 +70,45 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_uploaded_create_receipt_replay_keeps_one_physical_file_and_original_identity(): void
+    {
+        Http::preventStrayRequests();
+        Queue::fake();
+        Storage::fake('course-pdfs-shared');
+        config(['course_pdfs.disk' => 'course-pdfs-shared', 'course_pdfs.shared_storage' => true]);
+        $admin = new User();
+        $admin->forceFill([
+            'name_ar' => 'مدير', 'email' => 'attachment-upload-replay@example.test',
+            'role' => 'admin', 'active' => true,
+        ])->save();
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($admin, 'web');
+        $course = $this->course(true);
+        $requestId = (string) Str::uuid();
+        $data = [
+            'title' => 'ملاحظات', 'source_type' => 'upload', 'platform' => 'mobile',
+            'authoring_version' => 4, 'authoring_request_id' => $requestId,
+        ];
+        $fixture = UploadedFile::fake()->createWithContent('notes.txt', "Exact notes\n");
+        $first = $this->post(route('admin.courses.pdfs.store', $course), [
+            ...$data, 'pdf_file' => new UploadedFile($fixture->getPathname(), 'notes.txt', 'text/plain', null, true),
+        ], ['Accept' => 'application/json'])->assertOk();
+        $pdf = CoursePdf::findOrFail($first->json('pdf.id'));
+        $firstPath = $pdf->file_path;
+        $replay = $this->post(route('admin.courses.pdfs.store', $course), [
+            ...$data, 'pdf_file' => new UploadedFile($fixture->getPathname(), 'notes.txt', 'text/plain', null, true),
+        ], ['Accept' => 'application/json'])->assertOk();
+        self::assertSame($first->json(), $replay->json());
+        self::assertSame($firstPath, $pdf->fresh()->file_path);
+        self::assertSame(1, CoursePdf::count());
+        self::assertSame(5, (int) $course->fresh()->authoring_version);
+        self::assertCount(1, Storage::disk('course-pdfs-shared')->allFiles());
+        self::assertSame("Exact notes\n", Storage::disk('course-pdfs-shared')->get($firstPath));
+        self::assertSame(1, DB::table('admin_authoring_create_intents')->where('status', 'completed')->count());
+        self::assertSame(1, DB::table('account_file_deletions')->count());
+        Http::assertNothingSent();
+    }
+
     public function test_moderator_can_complete_attachment_authoring_and_publish_through_http_routes(): void
     {
         Http::preventStrayRequests();

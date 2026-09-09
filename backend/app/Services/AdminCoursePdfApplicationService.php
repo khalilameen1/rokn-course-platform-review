@@ -11,6 +11,7 @@ use App\Support\CourseAttachmentExternalUrl;
 use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final class AdminCoursePdfApplicationService
@@ -469,7 +470,10 @@ final class AdminCoursePdfApplicationService
 
         // The extension comes from the content policy, not the browser name
         // or the generic ZIP MIME used by some valid Office documents.
-        $path = 'courses/'.$course->id.'/'.hash('sha256', $operationIdentity).'.'.$extension;
+        // Logical replay is handled by the authoring receipt/content lookup.
+        // A new byte-write attempt must not reuse an older cleanup job's path,
+        // even when a failed save is retried with the same request/version.
+        $path = 'courses/'.$course->id.'/'.hash('sha256', $operationIdentity.'|'.Str::uuid()).'.'.$extension;
         $mightAlreadyBeStored = $this->fileDeletion->trackPotentialOrphan($disk, $path, 60);
         $this->fileDeletion->writeTrackedUpload($file, $path, $disk, $mightAlreadyBeStored);
 
