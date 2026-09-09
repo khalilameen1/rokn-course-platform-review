@@ -23,6 +23,7 @@ import {
 } from '../../../services/portfolioMediaUpload';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
+import {settleWithin} from '../../../utils/settleWithin';
 import {
   isPortfolioAccountChangedError,
   toPortfolioProject,
@@ -438,8 +439,10 @@ export const usePortfolioCreateFlow = ({
               'سيظهر زر المشاركة فور اكتمال التجهيز',
             );
           }
-        } catch {
+        } catch (error) {
+          if (isPortfolioAccountChangedError(error)) throw error;
           await reconcileProject(item.id, boundary).catch(() => undefined);
+          assertAccountSessionBoundary(boundary);
           if (mountedRef.current) {
             Alert.alert(
               'اكتمل رفع المشروع',
@@ -448,7 +451,11 @@ export const usePortfolioCreateFlow = ({
           }
         }
       }
-      await clearDraft(boundary).catch(() => undefined);
+      // The server item and durable upload intents already own this work.
+      // Keep raw draft retirement ordered, but do not hold the accepted UI open
+      // for native storage/file housekeeping.
+      await settleWithin(clearDraft(boundary), undefined);
+      assertAccountSessionBoundary(boundary);
       if (mountedRef.current) setAdding(false);
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {

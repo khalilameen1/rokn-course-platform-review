@@ -1579,3 +1579,72 @@ The inspected home-row curation, coming-soon navigation and portfolio/QR share
 paths supplied no additional proven defect in this pass and were not changed.
 In particular, no coming-soon reminder subscription feature was added or
 claimed. All verification here is local; no APK, push or deployment occurred.
+
+## September 9 — daily delivery, report recovery and unsaved authoring
+
+The preceding checkpoint was `22f34e7`. This pass continued with separate
+workflow owners, preserving the features and presentation already in place.
+
+- Notification delivery waited for the local inbox before even starting its
+  HTTP read, and a successful response could wait indefinitely for cached
+  course artwork. The authoritative read now starts first; optional cache
+  waits use the existing bound. The raw cache write queue and acknowledged
+  read-state overlay are unchanged. Actual-hook/cache tests reproduce stalled
+  storage and artwork, failed cache reads, late stale results, network fallback,
+  account changes and unmount cancellation.
+- The Home campaign's course action waited for mark-read acknowledgement and
+  then local seen-state persistence. It now opens the selected course under
+  the presented account boundary immediately. The receipt still runs in its
+  original server-then-local order with rejection handling, without a new
+  queue or timer. Dismiss-only, failed receipts, late account changes, repeated
+  taps and a rejected course navigation retain their separate semantics.
+- A cached earlier certificate erased the pending state of a newly accepted
+  certificate when reconciliation failed. The cache now preserves the existing
+  accepted-course set. A later authoritative completed certificate clears the
+  pending state; recovery uses that course rather than issuing another request.
+- Rebuilding a course project summary could cancel a live report retry and
+  ignore its acknowledgement, or overwrite its completed result afterwards.
+  A full review thread becoming a summary was another instance of this fault.
+  The existing project-to-runtime normalizer now feeds one seed synchronization
+  path: report decision changes are distinguished from transcript/quota and
+  continuation-only updates. Genuine status/permission changes still supersede
+  an older retry; equivalent summaries and media unlocking do not. No polling
+  loop, provider change or parallel project-state subsystem was added.
+- When checkout rejected changed package terms, cache invalidation could hold
+  the replacement read indefinitely. A failed cache write or an older GET
+  could also restore the package already known to be obsolete. Invalidation
+  now retires older refresh/manual-refresh ownership, clears the visible
+  packages and queues its cache write without waiting for it. Cache fallback
+  cannot restore those packages until an authoritative replacement GET succeeds,
+  including a genuinely empty catalogue. The existing raw cache queue remains
+  ordered. Provider-only unavailability does not invalidate valid packages,
+  and no second checkout is started automatically.
+- Switching between inline section/module editors silently reset unsaved
+  titles, captions, project requirements and selected files. Publishing could
+  discard the same work. The existing editor coordinator now compares editable
+  form values with the opened baseline and uses a discard confirmation only
+  for actual changes. Declining keeps the form; failed saves retain dirty state;
+  unchanged/reverted/successfully saved forms require no confirmation. Ordinary
+  course-detail saves neither save nor discard another editor implicitly.
+  Hidden identity/version changes are not user edits. No draft store, autosave
+  system or backend endpoint was added.
+- The portfolio create editor could remain saving after its item, media and
+  publication were acknowledged because editor-draft cleanup was still waiting
+  for native writes or file removal. Draft retirement is now queued immediately
+  under the existing draft lock after retiring older not-yet-entered autosave
+  callbacks. The redundant second writer-flight reference was removed. Only
+  the accepted create caller bounds its wait; the cleanup promise and service
+  lock remain raw. New edits and remount reads stay behind retirement, and
+  failed durable removal retains the original UUID/file. Unacknowledged create
+  and failed pre-durable media staging still preserve the work. A changed
+  account during finalization is no longer swallowed as an ordinary publication
+  warning before clearing the editor. No API, outbox service or new queue.
+
+Root checks passed for 26 mobile suites / 193 tests across exact-path runs and
+26 backend tests / 104 assertions for notification API, admin delivery parity
+and certificate notifications. The browser checks exercise production studio
+JavaScript against a local HTTP/DOM fixture: 12 new dirty-transition cases plus
+the adjacent authoring-receipt, content-order, summary and Bunny upload recovery
+scripts. Full mobile TypeScript, scoped ESLint and diff checks passed. These do
+not represent writes through the live dashboard or physical phone acceptance.
+All changes remain local source work; no APK, push or deployment.

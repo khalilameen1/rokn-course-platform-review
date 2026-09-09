@@ -52,7 +52,6 @@ export const usePortfolioDraftEditor = ({
   const [clientRequestId, setClientRequestId] = useState(secureRandomUuid);
   const [draftSaveError, setDraftSaveError] = useState(false);
   const persistenceRevisionRef = useRef(0);
-  const persistenceFlightRef = useRef<Promise<void>>(Promise.resolve());
   const snapshotRef = useRef({
     clientRequestId,
     cover: draftCoverAsset,
@@ -128,7 +127,7 @@ export const usePortfolioDraftEditor = ({
     if (!draftReady || !draftReadyRef.current) return;
     const persistenceRevision = persistenceRevisionRef.current;
     const timer = setTimeout(() => {
-      const flight = captureBoundary()
+      void captureBoundary()
         .then(boundary =>
           draftReadyRef.current &&
           persistenceRevision === persistenceRevisionRef.current
@@ -162,7 +161,6 @@ export const usePortfolioDraftEditor = ({
             setDraftSaveError(true);
           }
         });
-      persistenceFlightRef.current = flight;
     }, 250);
     return () => clearTimeout(timer);
   }, [
@@ -180,7 +178,7 @@ export const usePortfolioDraftEditor = ({
   useEffect(() => {
     if (appActive || !draftReady || !draftReadyRef.current) return;
     const persistenceRevision = persistenceRevisionRef.current;
-    const flight = captureBoundary()
+    void captureBoundary()
       .then(boundary =>
         draftReadyRef.current &&
         persistenceRevision === persistenceRevisionRef.current
@@ -198,7 +196,6 @@ export const usePortfolioDraftEditor = ({
           setDraftSaveError(true);
         }
       });
-    persistenceFlightRef.current = flight;
   }, [appActive, captureBoundary, draftReady, mountedRef]);
 
   const changeDraft = useCallback((change: () => void) => {
@@ -209,9 +206,15 @@ export const usePortfolioDraftEditor = ({
 
   const clearDraft = useCallback(
     async (ownerBoundary?: AccountSessionBoundary) => {
+      const boundary = ownerBoundary || (await captureBoundary());
+      assertAccountSessionBoundary(boundary);
       const previous = draftCoverAsset;
       const previousMedia = draftMediaAssets;
       persistenceRevisionRef.current += 1;
+      // Retire under the existing draft lock before another edit or visit can
+      // enqueue work. Earlier entered writes stay ahead; callbacks still waiting
+      // for their boundary are invalidated by the revision above.
+      const cleanup = clearPortfolioEditorDraft(boundary);
       if (mountedRef.current) {
         setDraftTitle('');
         setDraftSummary('');
@@ -222,19 +225,14 @@ export const usePortfolioDraftEditor = ({
         setClientRequestId(secureRandomUuid());
         setDraftSaveError(false);
       }
-      try {
-        await persistenceFlightRef.current.catch(() => undefined);
-        await Promise.all([
-          clearPortfolioEditorDraft(ownerBoundary),
-          removeLearnerDraftFile(previous),
-          ...previousMedia.map(removeLearnerDraftFile),
-        ]);
-      } catch (error) {
-        if (mountedRef.current) setDraftSaveError(true);
-        throw error;
-      }
+      await cleanup;
+      assertAccountSessionBoundary(boundary);
+      await Promise.all([
+        removeLearnerDraftFile(previous),
+        ...previousMedia.map(removeLearnerDraftFile),
+      ]);
     },
-    [draftCoverAsset, draftMediaAssets, mountedRef],
+    [captureBoundary, draftCoverAsset, draftMediaAssets, mountedRef],
   );
 
   return {
