@@ -39,6 +39,7 @@ const activePrivateDownloadJobs = new Map<number, () => void>();
 const retiredPrivateDownloadTargets = new Set<string>();
 const activeAndroidDownloadIds = new Set<number>();
 let privateDownloadGeneration = 0;
+let savePresentationTail: Promise<void> = Promise.resolve();
 type AttachmentResult = {
   copied: boolean;
   downloaded: boolean;
@@ -901,13 +902,24 @@ const openCourseAttachmentInternal = async (
       try {
         assertAttachmentOwner(operation);
         if (cancelled) return emptyResult();
-        const handoff = await Share.open({
-          url: `file://${target}`,
-          saveToFiles: true,
-          failOnCancel: false,
-          title: currentAttachment.title,
+        // RNShare's Files picker has one native delegate receipt slot. Only
+        // presentation waits its turn; downloads and per-attempt cleanup do not.
+        const presentation = savePresentationTail.then(() => {
+          assertAttachmentOwner(operation);
+          if (cancelled) return null;
+          return Share.open({
+            url: `file://${target}`,
+            saveToFiles: true,
+            failOnCancel: false,
+            title: currentAttachment.title,
+          });
         });
-        if (!handoff.success || handoff.dismissedAction) {
+        savePresentationTail = presentation.then(
+          () => undefined,
+          () => undefined,
+        );
+        const handoff = await presentation;
+        if (!handoff?.success || handoff.dismissedAction) {
           return emptyResult();
         }
         assertAttachmentOwner(operation);
