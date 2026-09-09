@@ -57,17 +57,4 @@ final class BunnyAdvancedTokenTest extends TestCase
             )
         );
     }
-
-    public function test_stream_statuses_do_not_confuse_upload_events_with_encode_failures(): void
-    {
-        foreach ([3, 4, 9, 10] as $status) {
-            self::assertTrue(BunnyService::providerVideoStatusIsPlayable($status));
-        }
-        foreach ([5, 8] as $status) {
-            self::assertTrue(BunnyService::providerVideoStatusIsFailure($status));
-        }
-        self::assertFalse(BunnyService::providerVideoStatusIsFailure(6));
-        self::assertFalse(BunnyService::providerVideoStatusConfirmsUpload(6));
-        self::assertTrue(BunnyService::providerVideoStatusConfirmsUpload(7));
-    }
 }

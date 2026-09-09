@@ -58,7 +58,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             'details' => [
                 'guid' => $guid,
                 'videoLibraryId' => 123,
-                'status' => 3,
+                'status' => 4,
                 'length' => 75,
                 'availableResolutions' => '720p,480p',
                 'thumbnailFileName' => 'thumbnail.jpg',
@@ -118,7 +118,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             'details' => [
                 'guid' => $guid,
                 'videoLibraryId' => 123,
-                'status' => 3,
+                'status' => 4,
                 'length' => 30,
                 'availableResolutions' => '720p,480p',
                 'thumbnailFileName' => 'thumbnail.jpg',
@@ -154,7 +154,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             'details' => [
                 'guid' => $guid,
                 'videoLibraryId' => 123,
-                'status' => 3,
+                'status' => 4,
                 'length' => 30,
                 'availableResolutions' => '720p,480p',
                 'thumbnailFileName' => 'thumbnail.jpg',
@@ -185,7 +185,8 @@ final class MediaReadinessRecoveryTest extends TestCase
         );
     }
 
-    public function test_pending_recovery_redelivers_only_recent_transient_readiness(): void
+    #[DataProvider('coursePublicationStates')]
+    public function test_pending_recovery_redelivers_only_stale_recoverable_readiness(bool $draft): void
     {
         Bus::fake();
         $course = new Course();
@@ -193,7 +194,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             'tenant_id' => 1,
             'name_ar' => 'كورس استرداد الوسائط',
             'image' => 'legacy-cover.jpg',
-            'is_coming_soon' => true,
+            'is_coming_soon' => $draft,
             'authoring_version' => 1,
         ])->save();
 
@@ -273,27 +274,199 @@ final class MediaReadinessRecoveryTest extends TestCase
             'last_probe_at' => now()->subMinutes(4),
             'last_reconciled_at' => now()->subMinutes(4),
         ]);
+        $healthy = $makeLesson(
+            'a3cc17a0-4b61-4e59-a4dc-947eabf36781',
+            [],
+            null,
+            120
+        );
+        $healthy->mediaState()->update(['integrity_status' => 'healthy']);
+        $failed = $makeLesson(
+            'a3cc17a0-4b61-4e59-a4dc-947eabf36782',
+            [['code' => 'provider_encode_failed', 'severity' => 'quarantined']],
+            'provider_encode_failed',
+            120,
+            'failed'
+        );
 
         $this->artisan('media:recover-pending', [
             '--stale-minutes' => 2,
             '--readiness-window-minutes' => 90,
         ])->assertExitCode(0);
 
-        Bus::assertDispatchedTimes(ProbeLessonMedia::class, 1);
+        Bus::assertDispatchedTimes(ProbeLessonMedia::class, $draft ? 2 : 1);
         Bus::assertDispatched(
             ProbeLessonMedia::class,
             fn (ProbeLessonMedia $job): bool => $job->lessonId === (int) $transient->id
         );
+        if ($draft) {
+            Bus::assertDispatched(
+                ProbeLessonMedia::class,
+                fn (ProbeLessonMedia $job): bool => $job->lessonId === (int) $oldTransient->id
+            );
+        } else {
+            Bus::assertNotDispatched(
+                ProbeLessonMedia::class,
+                fn (ProbeLessonMedia $job): bool => $job->lessonId === (int) $oldTransient->id
+            );
+        }
         Bus::assertNotDispatched(
             ProbeLessonMedia::class,
             fn (ProbeLessonMedia $job): bool => in_array($job->lessonId, [
                 (int) $coverOnly->id,
-                (int) $oldTransient->id,
                 (int) $permanentProviderFailure->id,
                 (int) $liveReleasedRetry->id,
                 (int) $livePendingRetry->id,
+                (int) $healthy->id,
+                (int) $failed->id,
             ], true)
         );
+    }
+
+    /** @return array<string, array{bool}> */
+    public static function coursePublicationStates(): array
+    {
+        return ['draft' => [true], 'published' => [false]];
+    }
+
+    #[DataProvider('oldDraftReadinessProvider')]
+    public function test_old_draft_media_is_recovered_until_bunny_and_hls_become_ready(
+        string $status,
+        ?string $issueCode,
+        bool $hasReconciliation
+    ): void {
+        Bus::fake();
+        $course = new Course();
+        $course->forceFill([
+            'tenant_id' => 1,
+            'name_ar' => 'Long-running draft encoding',
+            'image' => 'legacy-cover.jpg',
+            'is_coming_soon' => true,
+            'authoring_version' => 1,
+        ])->save();
+        $guid = 'a3cc17a0-4b61-4e59-a4dc-947eabf36780';
+        $lesson = Lesson::query()->create([
+            'list_id' => $course->id,
+            'title_ar' => 'Delayed encoding',
+            'video_source_type' => 'bunny',
+            'bunny_video_id' => $guid,
+        ]);
+        LessonMediaState::query()->create([
+            'lesson_id' => $lesson->id,
+            'provider' => 'bunny',
+            'provider_media_id' => $guid,
+            'status' => $status,
+            'protocol' => 'hls',
+            'duration_seconds' => 0,
+            'available_qualities' => ['auto'],
+            'manifest' => ['status' => 2, 'encode_progress' => 0],
+            'last_probe_at' => now()->subMinutes(11),
+            'integrity_status' => $issueCode ? 'attention' : 'unknown',
+            'integrity_issues' => $issueCode
+                ? [['code' => $issueCode, 'severity' => 'attention']]
+                : null,
+            'last_reconciled_at' => $hasReconciliation ? now()->subMinutes(11) : null,
+        ]);
+        // Provider observations update the media state, not the lesson's age.
+        DB::table('lessons')->where('id', $lesson->id)->update([
+            'created_at' => now()->subDays(7),
+            'updated_at' => now()->subDays(7),
+        ]);
+
+        // Use the scheduler's defaults, including the 90-minute window.
+        $this->artisan('media:recover-pending')->assertExitCode(0);
+        Bus::assertDispatchedTimes(ProbeLessonMedia::class, 1);
+        $job = Bus::dispatched(ProbeLessonMedia::class)->sole();
+        self::assertSame((int) $lesson->id, $job->lessonId);
+        self::assertSame($guid, $job->expectedVideoGuid);
+
+        $bunny = Mockery::mock(BunnyService::class);
+        $bunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
+            'state' => 'ok',
+            'details' => [
+                'guid' => $guid,
+                'videoLibraryId' => 123,
+                'status' => 4,
+                'length' => 75,
+                'availableResolutions' => '720p,480p',
+                'thumbnailFileName' => 'thumbnail.jpg',
+            ],
+            'http_status' => 200,
+        ]);
+        $bunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+            'url' => 'https://media.example/late-playlist.m3u8',
+        ]);
+        Http::fake([
+            'https://media.example/late-playlist.m3u8' => Http::response(
+                "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=800000\n720p/playlist.m3u8\n",
+                200
+            ),
+        ]);
+        $job->withFakeQueueInteractions()->handle(new MediaReconciliationService(
+            $bunny,
+            new MediaHealthService($bunny)
+        ));
+
+        $job->assertNotReleased();
+        $state = $lesson->mediaState()->firstOrFail();
+        self::assertSame('ready', $state->status);
+        self::assertSame(75, $state->duration_seconds);
+        self::assertSame('healthy', $state->integrity_status);
+        self::assertNotNull($state->last_reconciled_at);
+        self::assertTrue((bool) $course->fresh()->is_coming_soon);
+    }
+
+    /** @return array<string, array{string, ?string, bool}> */
+    public static function oldDraftReadinessProvider(): array
+    {
+        return [
+            'unknown draft' => ['unknown', null, false],
+            'Bunny still encoding' => ['processing', 'provider_still_processing', true],
+            'ready before first reconciliation' => ['ready', null, false],
+            'ready before HLS propagated' => ['ready', 'manifest_http_error', true],
+        ];
+    }
+
+    public function test_old_draft_recovery_preserves_batch_limit_and_skips_recent_probes(): void
+    {
+        Bus::fake();
+        $course = Course::query()->forceCreate([
+            'tenant_id' => 1,
+            'name_ar' => 'Bounded draft recovery',
+            'is_coming_soon' => true,
+        ]);
+        $lessons = collect([11, 4, 11])->map(function (int $probeAge, int $index) use ($course): Lesson {
+            $guid = 'a3cc17a0-4b61-4e59-a4dc-947eabf3678'.$index;
+            $lesson = Lesson::query()->create([
+                'list_id' => $course->id,
+                'title_ar' => 'Old draft '.$index,
+                'video_source_type' => 'bunny',
+                'bunny_video_id' => $guid,
+                'created_at' => now()->subDays(7),
+                'updated_at' => now()->subDays(7),
+            ]);
+            LessonMediaState::query()->create([
+                'lesson_id' => $lesson->id,
+                'provider' => 'bunny',
+                'provider_media_id' => $guid,
+                'status' => 'processing',
+                'last_probe_at' => now()->subMinutes($probeAge),
+            ]);
+
+            return $lesson;
+        });
+
+        $this->artisan('media:recover-pending', ['--limit' => 1])->assertExitCode(0);
+        Bus::assertDispatchedTimes(ProbeLessonMedia::class, 1);
+        self::assertSame((int) $lessons[0]->id, Bus::dispatched(ProbeLessonMedia::class)->sole()->lessonId);
+
+        // Once the oldest job probes, the next batch must advance past it
+        // and the other actively retried lesson, even if it is still encoding.
+        $lessons[0]->mediaState()->update(['last_probe_at' => now()]);
+        Bus::fake();
+        $this->artisan('media:recover-pending', ['--limit' => 1])->assertExitCode(0);
+        Bus::assertDispatchedTimes(ProbeLessonMedia::class, 1);
+        self::assertSame((int) $lessons[2]->id, Bus::dispatched(ProbeLessonMedia::class)->sole()->lessonId);
     }
 
     public function test_queued_unique_lock_blocks_recovery_then_crashed_worker_release_allows_it(): void
@@ -436,7 +609,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             'details' => [
                 'guid' => $guid,
                 'videoLibraryId' => 123,
-                'status' => 3,
+                'status' => 4,
                 'length' => 75,
                 'availableResolutions' => '720p,480p',
                 'thumbnailFileName' => 'thumbnail.jpg',

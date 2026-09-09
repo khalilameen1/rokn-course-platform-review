@@ -8,6 +8,7 @@ use App\Http\Resources\PortfolioMediaResource;
 use App\Services\BunnyService;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class PortfolioMediaContractTest extends TestCase
@@ -24,7 +25,7 @@ final class PortfolioMediaContractTest extends TestCase
         $bunny->shouldReceive('inspectRemoteVideo')->once()->andReturn([
             'state' => 'ok',
             'details' => [
-                'status' => 3,
+                'status' => 4,
                 'encodeProgress' => 0,
                 'availableResolutions' => '',
             ],
@@ -48,25 +49,40 @@ final class PortfolioMediaContractTest extends TestCase
         self::assertSame('2026-09-02T12:05:00+00:00', $payload['url_expires_at']);
     }
 
-    public function test_presigned_upload_started_is_processing_not_a_false_failure(): void
+    #[DataProvider('unfinishedVideoStatuses')]
+    public function test_get_video_status_does_not_use_webhook_event_meanings(int $status, string $expected): void
     {
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->andReturn([
             'state' => 'ok',
             'details' => [
-                'status' => 6,
-                'encodeProgress' => 0,
-                'availableResolutions' => '',
+                'status' => $status,
+                'encodeProgress' => 100,
+                'availableResolutions' => '720p,480p',
             ],
             'http_status' => 200,
         ]);
         $bunny->shouldNotReceive('getSignedEmbedUrl');
+        $bunny->shouldNotReceive('getSignedPlayUrl');
         $this->app->instance(BunnyService::class, $bunny);
 
         $payload = (new PortfolioMediaResource($this->media(82, 'uploading-guid')))->resolve();
 
-        self::assertSame('processing', $payload['status']);
+        self::assertSame($expected, $payload['status']);
         self::assertNull($payload['video_url']);
+        self::assertNull($payload['playback_url']);
+    }
+
+    public static function unfinishedVideoStatuses(): array
+    {
+        return [
+            'transcoding is not webhook finished' => [3, 'processing'],
+            'upload failed is not webhook upload started' => [6, 'failed'],
+            'JIT segmentation is still processing' => [7, 'processing'],
+            'JIT playlists are not webhook upload failure' => [8, 'processing'],
+            'captions event is not a GET status' => [9, 'processing'],
+            'title event is not a GET status' => [10, 'processing'],
+        ];
     }
 
     public function test_provider_confirmed_missing_portfolio_video_is_not_left_processing_forever(): void

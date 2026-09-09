@@ -62,7 +62,7 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
         $this->bunny->shouldReceive('verifyDirectUpload')->andReturnTrue();
         $this->bunny->shouldReceive('inspectRemoteVideo')->andReturn([
             'state' => 'ok',
-            'details' => ['status' => 3, 'encodeProgress' => 100],
+            'details' => ['status' => 4, 'encodeProgress' => 100],
         ]);
         $this->bunny->shouldReceive('getSignedEmbedUrl')->andReturn(['url' => 'https://video.example.test/embed']);
         $this->bunny->shouldReceive('getSignedPlayUrl')->andReturn(['url' => 'https://video.example.test/play.m3u8']);

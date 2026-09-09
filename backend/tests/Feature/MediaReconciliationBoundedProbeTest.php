@@ -128,7 +128,7 @@ final class MediaReconciliationBoundedProbeTest extends TestCase
             'details' => [
                 'guid' => $guid,
                 'videoLibraryId' => 123,
-                'status' => 3,
+                'status' => 4,
                 'length' => 75,
                 'availableResolutions' => '720p,480p',
                 'thumbnailFileName' => 'thumbnail.jpg',

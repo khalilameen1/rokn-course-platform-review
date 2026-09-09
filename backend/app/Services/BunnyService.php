@@ -437,25 +437,30 @@ class BunnyService
         return null;
     }
 
-    /** Bunny Stream status contract shared by upload and reconciliation. */
+    /**
+     * GET /videos/{id} VideoModelStatus, not webhook notification Status.
+     * https://github.com/BunnyWay/bunny-stream-android/blob/main/bunny-stream-api/src/main/java/net/bunny/api/model/VideoModelStatus.kt
+     * Webhooks use a separate event enum (for example, event 3 is Finished,
+     * whereas video status 3 is Transcoding) and only trigger a fresh GET.
+     */
     public static function providerVideoStatusIsPlayable(int $status): bool
     {
-        // Finished, ResolutionFinished, CaptionsGenerated and
-        // TitleOrDescriptionGenerated all describe an already playable video.
-        return in_array($status, [3, 4, 9, 10], true);
+        // Finished. JitPlaylistsCreated (8) is not a failure, but does not
+        // establish playback compatibility with our custom HLS player.
+        return $status === 4;
     }
 
     public static function providerVideoStatusIsFailure(int $status): bool
     {
-        return in_array($status, [5, 8], true);
+        // Error and UploadFailed in the GET video model.
+        return in_array($status, [5, 6], true);
     }
 
     public static function providerVideoStatusConfirmsUpload(int $status): bool
     {
-        // Processing/encoding and later successful events can happen only
-        // after Bunny owns the uploaded bytes. PresignedUploadStarted (6)
-        // deliberately does not prove completion.
-        return in_array($status, [1, 2, 3, 4, 7, 9, 10], true);
+        // Uploaded, Processing, Transcoding, Finished, JitSegmenting and
+        // JitPlaylistsCreated prove receipt, not necessarily playability.
+        return in_array($status, [1, 2, 3, 4, 7, 8], true);
     }
 
     private function probeCircuitIsOpen(): bool

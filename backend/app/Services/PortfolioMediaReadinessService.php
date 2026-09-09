@@ -86,14 +86,9 @@ final class PortfolioMediaReadinessService
 
                 return $result;
             }
-            $resolutions = array_filter(array_map(
-                'trim',
-                explode(',', (string) ($details['availableResolutions'] ?? ''))
-            ));
-            $ready = BunnyService::providerVideoStatusIsPlayable($providerStatus)
-                || (float) ($details['encodeProgress'] ?? 0) >= 100
-                || $resolutions !== [];
-            if (!$ready) {
+            // Progress and resolution metadata must not promote a still
+            // processing, JIT-only or unknown GET status to custom-player ready.
+            if (!BunnyService::providerVideoStatusIsPlayable($providerStatus)) {
                 return $result;
             }
 

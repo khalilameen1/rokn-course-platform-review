@@ -51,7 +51,8 @@ final class AdminCourseSectionStateContractTest extends TestCase
         self::assertStringContainsString("whereIn('status', ['unknown', 'processing'])", $recovery);
         self::assertStringContainsString("->where('status', 'ready')", $recovery);
         self::assertStringContainsString("->whereNull('last_reconciled_at')", $recovery);
-        self::assertStringNotContainsString("is_coming_soon", $recovery);
+        self::assertStringContainsString("->orWhereHas('course'", $recovery);
+        self::assertStringContainsString("->where('is_coming_soon', true)", $recovery);
         self::assertStringContainsString('new ProbeLessonMedia(', $recovery);
     }
 

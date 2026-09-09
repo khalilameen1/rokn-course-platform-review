@@ -23,7 +23,7 @@ final class RecoverPendingLessonMedia extends Command
     protected $signature = 'media:recover-pending
         {--limit=200 : Maximum lessons to inspect}
         {--stale-minutes=2 : Minimum age before a pending state is retried}
-        {--readiness-window-minutes=90 : Maximum age of a new media generation eligible for automatic recovery}';
+        {--readiness-window-minutes=90 : Maximum media age for published-course recovery; pending drafts do not expire}';
 
     protected $description = 'Re-dispatch Bunny probes for stalled or unreconciled lesson media';
 
@@ -53,7 +53,15 @@ final class RecoverPendingLessonMedia extends Command
             ->where('video_source_type', 'bunny')
             ->whereNotNull('bunny_video_id')
             ->where('bunny_video_id', '!=', '')
-            ->where('lessons.updated_at', '>=', $newMediaCutoff)
+            ->where(function ($age) use ($newMediaCutoff): void {
+                // Published courses also have the scheduled reconciliation
+                // audit. Drafts do not: a slow encode must remain recoverable
+                // after the initial readiness window and bounded job expire.
+                $age->where('lessons.updated_at', '>=', $newMediaCutoff)
+                    ->orWhereHas('course', function ($course): void {
+                        $course->where('is_coming_soon', true);
+                    });
+            })
             ->whereHas('mediaState', function ($state) use (
                 $recoveryCutoff
             ): void {

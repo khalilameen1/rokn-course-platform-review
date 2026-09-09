@@ -38,6 +38,8 @@ final class BunnyStreamWebhookController extends Controller
         }
         $libraryId = trim((string) ($payload['VideoLibraryId'] ?? ''));
         $videoGuid = strtolower(trim((string) ($payload['VideoGuid'] ?? '')));
+        // This is a notification event (0..10), not GET VideoModelStatus
+        // (0..8). Never persist or classify it as a provider video status.
         $status = filter_var($payload['Status'] ?? null, FILTER_VALIDATE_INT);
         if (
             !hash_equals(trim((string) config('bunny.library_id')), $libraryId)
