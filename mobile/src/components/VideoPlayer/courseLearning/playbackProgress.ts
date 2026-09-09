@@ -92,6 +92,20 @@ const mergePendingWatchHistory = (
 const watchEvidenceStorageKey = (key: string) =>
   `${WATCH_EVIDENCE_PREFIX}:${key}`;
 
+const withWatchEvidence = <T>(key: string, operation: () => Promise<T>) => {
+  const previous = watchEvidenceWriteQueues.get(key) || Promise.resolve();
+  const result = previous.catch(() => undefined).then(operation);
+  const settled = result
+    .catch(() => undefined)
+    .finally(() => {
+      if (watchEvidenceWriteQueues.get(key) === settled) {
+        watchEvidenceWriteQueues.delete(key);
+      }
+    });
+  watchEvidenceWriteQueues.set(key, settled);
+  return result;
+};
+
 const assertWatchHistoryOwner = (
   generation: number,
   boundary: AccountSessionBoundary,
@@ -113,18 +127,27 @@ const hydratePendingWatchEvidence = async (
   );
   assertWatchHistoryOwner(generation, boundary);
   if (!keys.length) return;
-  const entries = await AsyncStorage.multiGet(keys);
-  assertWatchHistoryOwner(generation, boundary);
-  entries.forEach(([storageKey, raw]) => {
-    assertWatchHistoryOwner(generation, boundary);
-    if (!raw) return;
-    try {
-      const pending = JSON.parse(raw) as PendingWatchHistory;
-      if (isPendingWatchHistory(pending)) {
-        const key = storageKey.slice(`${WATCH_EVIDENCE_PREFIX}:`.length);
-        if (!pendingWatchHistory.has(key)) {
-          pendingWatchHistory.set(key, pending);
+  await Promise.all(
+    keys.map(storageKey => {
+      const key = storageKey.slice(`${WATCH_EVIDENCE_PREFIX}:`.length);
+      return withWatchEvidence(key, async () => {
+        assertWatchHistoryOwner(generation, boundary);
+        const beforeRead = pendingWatchHistory.get(key);
+        const raw = await AsyncStorage.getItem(storageKey);
+        assertWatchHistoryOwner(generation, boundary);
+        // A network ACK can retire the in-memory sample while native reading is
+        // pending. Never restore that older snapshot after its acknowledgement.
+        if (!raw || pendingWatchHistory.get(key) !== beforeRead) return;
+        let pending: PendingWatchHistory;
+        try {
+          pending = JSON.parse(raw) as PendingWatchHistory;
+        } catch {
+          await AsyncStorage.removeItem(storageKey);
+          return;
         }
+        if (!isPendingWatchHistory(pending)) return;
+        if (!pendingWatchHistory.has(key))
+          pendingWatchHistory.set(key, pending);
         if (pending.playbackSessionId && pending.sequence) {
           restorePlaybackSequence(
             pending.playbackSessionId,
@@ -132,11 +155,9 @@ const hydratePendingWatchEvidence = async (
             pending.sequence,
           );
         }
-      }
-    } catch {
-      void AsyncStorage.removeItem(storageKey);
-    }
-  });
+      });
+    }),
+  );
 };
 
 const scheduleWatchHistoryFlush = (key: string, delay: number) => {
@@ -232,9 +253,16 @@ const flushWatchHistoryEntry = async (key: string): Promise<boolean> => {
         // The sample is already committed remotely. Native storage cleanup
         // must not route this success into the network catch and repeatedly
         // POST the same completion/heartbeat.
-        void AsyncStorage.removeItem(watchEvidenceStorageKey(key)).catch(
-          () => undefined,
-        );
+        void withWatchEvidence(key, async () => {
+          const storageKey = watchEvidenceStorageKey(key);
+          const raw = await AsyncStorage.getItem(storageKey);
+          if (
+            raw &&
+            JSON.stringify(JSON.parse(raw)) === JSON.stringify(pending)
+          ) {
+            await AsyncStorage.removeItem(storageKey);
+          }
+        }).catch(() => undefined);
       }
       return true;
     })
@@ -335,67 +363,54 @@ const queueWatchHistorySync = async (
       ? {diagnostics: sanitizePlaybackDiagnostics(context?.diagnostics)}
       : {}),
   };
-  const previousWrite = watchEvidenceWriteQueues.get(key) || Promise.resolve();
-  const write = previousWrite
-    .catch(() => undefined)
-    .then(async () => {
-      assertWatchHistoryOwner(generation, owner);
-      const storageKey = watchEvidenceStorageKey(key);
-      const raw = await AsyncStorage.getItem(storageKey);
-      assertWatchHistoryOwner(generation, owner);
-      let durable: PendingWatchHistory | undefined;
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw) as unknown;
-          if (isPendingWatchHistory(parsed)) durable = parsed;
-        } catch {
-          // The next valid sample repairs this account-scoped record.
-        }
-      }
-      const previous = mergePendingWatchHistory(
-        durable,
-        pendingWatchHistory.get(key) || next,
-      );
-      const pending = mergePendingWatchHistory(previous, next);
-      await AsyncStorage.setItem(storageKey, JSON.stringify(pending));
+  const write = withWatchEvidence(key, async () => {
+    assertWatchHistoryOwner(generation, owner);
+    const storageKey = watchEvidenceStorageKey(key);
+    const raw = await AsyncStorage.getItem(storageKey);
+    assertWatchHistoryOwner(generation, owner);
+    let durable: PendingWatchHistory | undefined;
+    if (raw) {
       try {
-        assertWatchHistoryOwner(generation, owner);
-      } catch (error) {
-        // Logout/account replacement can clear this scope while a native
-        // storage write is already in flight. Remove only this exact write;
-        // a newer runtime may already have persisted a newer sample at the
-        // same key and must never be erased by the old operation's cleanup.
-        const current = await AsyncStorage.getItem(storageKey).catch(
-          () => null,
-        );
-        if (current) {
-          try {
-            const stored = JSON.parse(current) as PendingWatchHistory;
-            if (stored.writeOwner === pending.writeOwner) {
-              await AsyncStorage.removeItem(storageKey).catch(() => undefined);
-            }
-          } catch {
-            // A later valid write owns malformed-record repair.
+        const parsed = JSON.parse(raw) as unknown;
+        if (isPendingWatchHistory(parsed)) durable = parsed;
+      } catch {
+        // The next valid sample repairs this account-scoped record.
+      }
+    }
+    const previous = mergePendingWatchHistory(
+      durable,
+      pendingWatchHistory.get(key) || next,
+    );
+    const pending = mergePendingWatchHistory(previous, next);
+    await AsyncStorage.setItem(storageKey, JSON.stringify(pending));
+    try {
+      assertWatchHistoryOwner(generation, owner);
+    } catch (error) {
+      // Logout/account replacement can clear this scope while a native
+      // storage write is already in flight. Remove only this exact write;
+      // a newer runtime may already have persisted a newer sample at the
+      // same key and must never be erased by the old operation's cleanup.
+      const current = await AsyncStorage.getItem(storageKey).catch(() => null);
+      if (current) {
+        try {
+          const stored = JSON.parse(current) as PendingWatchHistory;
+          if (stored.writeOwner === pending.writeOwner) {
+            await AsyncStorage.removeItem(storageKey).catch(() => undefined);
           }
+        } catch {
+          // A later valid write owns malformed-record repair.
         }
-        throw error;
       }
-      pendingWatchHistory.set(key, pending);
-      const elapsed = Date.now() - (watchHistoryLastSyncedAt.get(key) || 0);
-      if (pending.completed || elapsed >= WATCH_HISTORY_SYNC_INTERVAL_MS) {
-        return true;
-      }
-      scheduleWatchHistoryFlush(key, WATCH_HISTORY_SYNC_INTERVAL_MS - elapsed);
-      return false;
-    });
-  const settled = write
-    .catch(() => undefined)
-    .finally(() => {
-      if (watchEvidenceWriteQueues.get(key) === settled) {
-        watchEvidenceWriteQueues.delete(key);
-      }
-    });
-  watchEvidenceWriteQueues.set(key, settled);
+      throw error;
+    }
+    pendingWatchHistory.set(key, pending);
+    const elapsed = Date.now() - (watchHistoryLastSyncedAt.get(key) || 0);
+    if (pending.completed || elapsed >= WATCH_HISTORY_SYNC_INTERVAL_MS) {
+      return true;
+    }
+    scheduleWatchHistoryFlush(key, WATCH_HISTORY_SYNC_INTERVAL_MS - elapsed);
+    return false;
+  });
   const shouldFlush = await write;
   if (!shouldFlush) return;
 
