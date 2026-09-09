@@ -4,6 +4,7 @@ const mockSave = jest.fn();
 const mockDelete = jest.fn();
 const mockReplace = jest.fn();
 const mockSaveWelcomeBonus = jest.fn();
+let mockCommittedSession: {api_token?: string} | null = null;
 const mockGetRequiredInstallationId = jest.fn(
   async () => '11111111-1111-4111-8111-111111111111',
 );
@@ -33,7 +34,12 @@ jest.mock('../src/services/secureSession', () => ({
   savePendingSocialAuthAttempt: (...args: unknown[]) => mockSave(...args),
   replacePendingSocialAuthAttempt: (...args: unknown[]) => mockReplace(...args),
   deletePendingSocialAuthAttempt: (...args: unknown[]) => mockDelete(...args),
-  saveSecureSession: jest.fn(async () => undefined),
+  extractApiToken: (value: {api_token?: string} | null) =>
+    value?.api_token || '',
+  peekSecureSession: () => ({session: mockCommittedSession}),
+  saveSecureSession: jest.fn(async (session: {api_token?: string}) => {
+    mockCommittedSession = session;
+  }),
 }));
 jest.mock('../src/services/androidAuthSession', () => ({
   openAndroidAuthSession: jest.fn(),
@@ -61,6 +67,7 @@ describe('social auth cold-start recovery', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCommittedSession = null;
     mockLoad.mockResolvedValue(pending);
     mockSave.mockResolvedValue(undefined);
     mockReplace.mockImplementation(async (_expected, replacement) => {

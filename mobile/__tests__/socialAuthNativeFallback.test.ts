@@ -4,6 +4,7 @@ const mockOpenAndroidAuthSession = jest.fn();
 const mockPost = jest.fn();
 const mockSaveSession = jest.fn();
 let mockPendingAttempt: Record<string, unknown> | null = null;
+let mockCommittedSession: Record<string, unknown> | null = null;
 
 jest.mock('react-native', () => ({
   Platform: {OS: 'android'},
@@ -58,6 +59,7 @@ jest.mock('../src/services/secureSession', () => ({
   extractApiToken: (value: {api_token?: string} | null) =>
     value?.api_token || null,
   loadSecureSession: jest.fn(async () => null),
+  peekSecureSession: () => ({session: mockCommittedSession}),
   saveSecureSession: (...args: unknown[]) => mockSaveSession(...args),
   savePendingSocialAuthAttempt: jest.fn(
     async (attempt: Record<string, unknown>) => {
@@ -100,8 +102,11 @@ describe('canonical browser social transport', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPendingAttempt = null;
+    mockCommittedSession = null;
     mockNativeCapability.mockReturnValue(true);
-    mockSaveSession.mockResolvedValue(undefined);
+    mockSaveSession.mockImplementation(async session => {
+      mockCommittedSession = session;
+    });
   });
 
   it('uses browser PKCE even when a native Google bridge is installed', async () => {
