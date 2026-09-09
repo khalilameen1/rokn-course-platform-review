@@ -76,7 +76,7 @@
     },
     {
       "path": "public/admin/assets/css/course-studio.css",
-      "sha256": "f19ce53cac64d2f5f2dc170f882dae1ac09160c583d95533df5724b86bac2e42",
+      "sha256": "12a6e0f0c16e1907ed8359c487dd02859819176ec83a5f92a3c4dd404b098e56",
       "classification": "first_party"
     },
     {
@@ -320,7 +320,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-attachments.js",
-      "sha256": "7acd4b93b959b96963ec30faa79586f15f1e25edc7ed364f4658f27b1c8fb2ce",
+      "sha256": "7b51148606fbf669f49ce31c040722411adc9a5a3c0d9600333b00f7f6aad987",
       "classification": "first_party"
     },
     {
@@ -330,17 +330,17 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-details.js",
-      "sha256": "28d453123cf1c0a5c7f63af4a000e47f5849b3126c88b4a843ef2308063a0532",
+      "sha256": "66d1dfd1509848b50afdf83f12ce1b0dd3a5a5a031af1efc8abacb2f9b325f0d",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/js/course-studio-editor-coordinator.js",
-      "sha256": "23b048fb02b51fead20d5d6f034ff9dcaec74606b3886ce86fa7e4b1b75e6400",
+      "sha256": "2da142f6363a4ff340102eff473d74c68b49807698503a858843253ee2a4461a",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/js/course-studio-module-editor.js",
-      "sha256": "ad266e9e5b414b4256af5102c6d076a25ba69f191848f685207d490db46d9250",
+      "sha256": "fc1f418c0dbc5dac8361558024aa2e3e3dee6654f583c607aad3e651153e8f27",
       "classification": "first_party"
     },
     {
@@ -350,7 +350,7 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-section-editor.js",
-      "sha256": "75ecce2339d4eb976c2c92d7a68d81f5f21708869dbcf946af58c94bbe13bd64",
+      "sha256": "60cdbd4c44472ecdd51e56f41fa850433968ea36bae7af6a5ae1ab2f9c158d08",
       "classification": "first_party"
     },
     {
