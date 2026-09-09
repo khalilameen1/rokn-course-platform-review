@@ -24,12 +24,16 @@ interface CourseCardProps {
   item: Course;
   onPress: (course: Course) => void;
   width?: number;
+  sectionTitle?: string;
 }
 
 const CourseCard = memo<CourseCardProps>(
-  ({item, onPress, width}) => {
+  ({item, onPress, width, sectionTitle}) => {
     const {largeText, railCardWidth} = useResponsiveLayout();
     const isAvailable = item.published !== false;
+    const label = formatArabicDisplayText(item.label);
+    const showLabel =
+      !!label && label !== formatArabicDisplayText(sectionTitle);
     const progress = Math.max(0, Math.min(100, Number(item.progress || 0)));
     const accessibilitySummary = [
       formatAuthoredDisplayText(item.title),
@@ -63,9 +67,9 @@ const CourseCard = memo<CourseCardProps>(
             source={item.image}
             style={styles.courseImage}
           />
-          {!!item.label && (
+          {showLabel && (
             <MetaPill
-              label={formatArabicDisplayText(item.label)}
+              label={label}
               tone={item.labelTone}
               style={styles.labelContainer}
             />
@@ -89,13 +93,9 @@ const CourseCard = memo<CourseCardProps>(
             {formatAuthoredDisplayText(item.instructor)}
           </Text>
         )}
-        {(item.published === false ||
-          item.owned ||
-          item.coinPrice !== undefined) && (
+        {isAvailable && (item.owned || item.coinPrice !== undefined) && (
           <View style={styles.metaRow}>
-            {item.published === false ? (
-              <Text style={styles.upcomingLabel}>قريبًا</Text>
-            ) : item.owned ? (
+            {item.owned ? (
               <Text style={styles.ownedLabel}>
                 {progress >= 100
                   ? 'راجع الكورس'
@@ -121,7 +121,8 @@ const CourseCard = memo<CourseCardProps>(
   (previous, next) =>
     previous.item === next.item &&
     previous.onPress === next.onPress &&
-    previous.width === next.width,
+    previous.width === next.width &&
+    previous.sectionTitle === next.sectionTitle,
 );
 
 const styles = StyleSheet.create({
@@ -178,12 +179,6 @@ const styles = StyleSheet.create({
   price: {alignSelf: 'flex-end'},
   priceText: {
     ...Type.caption,
-    color: Palette.textMuted,
-    fontFamily: Fonts.semiBold,
-  },
-  upcomingLabel: {
-    ...Type.caption,
-    ...textDirection,
     color: Palette.textMuted,
     fontFamily: Fonts.semiBold,
   },

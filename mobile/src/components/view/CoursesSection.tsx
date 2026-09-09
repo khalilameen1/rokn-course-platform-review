@@ -20,9 +20,9 @@ const CoursesSection = memo<CoursesSectionProps>(
     const {gutter} = useResponsiveLayout();
     const renderCourse = useCallback(
       ({item}: ListRenderItemInfo<Course>) => (
-        <CourseCard item={item} onPress={onCoursePress} />
+        <CourseCard item={item} onPress={onCoursePress} sectionTitle={title} />
       ),
-      [onCoursePress],
+      [onCoursePress, title],
     );
 
     if (!data.length) return null;
