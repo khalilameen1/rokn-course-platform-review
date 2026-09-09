@@ -18,6 +18,16 @@ const sharedScript = await readFile(resolve(backendRoot, 'resources/views/admin/
 let version = 7;
 let nextId = 3;
 let validationFailure = false;
+let releasePost = null;
+let deferNextPost = false;
+let nextPostFailure = null;
+let receiptState = null;
+let receiptUnavailable = false;
+let duplicateNextPostId = null;
+const receipts = new Map();
+const droppedReceiptAcks = new Set();
+const droppedPatchAcks = new Set();
+const receiptRequests = [];
 const requests = [];
 const row = (id, attributes = {}) => ({
     id, title: `مرفق ${id}`, title_en: '', description: '', description_en: '',
@@ -37,7 +47,7 @@ const fixture = () => `<!doctype html><html dir="rtl" lang="ar"><head><meta char
  <button type="button" data-studio-attachments-open>المرفقات</button>
  <section id="studioCourseAttachments" class="studio-attachments-panel" hidden>
   <button type="button" data-studio-attachments-close>إغلاق</button>
-  <script type="application/json" id="coursePdfAuthoringGraph">${JSON.stringify({store_url: '/pdfs', reorder_url: '/pdfs/reorder', pdfs: [...records.values()]})}</script>
+  <script type="application/json" id="coursePdfAuthoringGraph">${JSON.stringify({store_url: '/pdfs', create_receipt_url: '/pdfs/create-intents/__INTENT__', reorder_url: '/pdfs/reorder', pdfs: [...records.values()]})}</script>
   <div class="studio-attachments-panel__body">
    <div id="studioCoursePdfList" class="studio-attachments-list">${[...records.values()].map(pdf => `<article class="studio-attachment" data-pdf-id="${pdf.id}"><button data-studio-pdf-edit="${pdf.id}">تعديل</button><button data-studio-pdf-toggle="${pdf.id}">ظهور</button></article>`).join('')}</div>
    <div id="studioCoursePdfEmpty" hidden>لا توجد مرفقات</div><button type="button" data-studio-pdf-add>إضافة</button>
@@ -48,7 +58,8 @@ const fixture = () => `<!doctype html><html dir="rtl" lang="ar"><head><meta char
   </div>
  </section><div id="courseStudioToast"></div>
 </div>
-<script>window.Sortable=class{constructor(element,options){window.attachmentSortable={element,options};}};</script>
+<script>window.Sortable=class{constructor(element,options){window.attachmentSortable={element,options};}};
+window.attachmentFetches=[];const nativeFetch=window.fetch;window.fetch=(url,options)=>{window.attachmentFetches.push({url:String(url),method:options?.method||'GET'});return nativeFetch(url,options);};</script>
 ${scripts.map(name => `<script src="/${name}"></script>`).join('')}
 ${sharedScript}
 </body></html>`;
@@ -72,6 +83,15 @@ const server = createServer(async (request, response) => {
             response.setHeader('Content-Type', 'text/css');
             return response.end(await readFile(resolve(backendRoot, 'public/admin/assets/css/course-studio.css')));
         }
+        if (path.startsWith('/pdfs/create-intents/')) {
+            const intent = decodeURIComponent(path.split('/').at(-1));
+            receiptRequests.push(intent);
+            if (receiptUnavailable) return json(response, {message: 'غير متاح الآن'}, 503);
+            const receipt = receipts.get(intent);
+            return json(response, receiptState ? {state: receiptState, authoring_version: version}
+                : receipt ? {...receipt, state: 'completed', receipt_authoring_version: receipt.authoring_version, authoring_version: version}
+                    : {state: 'absent', authoring_version: version});
+        }
         const chunks = [];
         for await (const chunk of request) chunks.push(chunk);
         const body = Buffer.concat(chunks);
@@ -94,9 +114,34 @@ const server = createServer(async (request, response) => {
         const data = await new Request('http://localhost/fixture', {method: 'POST', headers: request.headers, body}).formData();
         const fields = Object.fromEntries([...data.entries()].map(([name, value]) => [name, typeof value === 'string' ? value : {name: value.name, size: value.size}]));
         requests.push(fields);
+        if (deferNextPost) {
+            deferNextPost = false;
+            await new Promise(resolvePost => { releasePost = resolvePost; });
+            releasePost = null;
+        }
+        const disconnectAfterCommit = nextPostFailure === 'accepted-disconnect';
+        const incompleteAfterCommit = nextPostFailure === 'accepted-invalid';
+        if (disconnectAfterCommit || incompleteAfterCommit) nextPostFailure = null;
+        else if (nextPostFailure) {
+            const failure = nextPostFailure;
+            if (failure === 'disconnect') return response.destroy();
+            nextPostFailure = null;
+            return json(response, {message: 'تعذر حفظ المرفق الآن'}, failure);
+        }
         if (validationFailure) {
             validationFailure = false;
             return json(response, {errors: {external_url: ['اختر رابط ملف متاح للتنزيل']}}, 422);
+        }
+        const intent = String(data.get('authoring_request_id') || '');
+        if (!id && receipts.has(intent)) return droppedReceiptAcks.has(intent) ? response.destroy() : json(response, receipts.get(intent));
+        if (id && droppedPatchAcks.has(`${id}:${data.get('authoring_version')}`)) return response.destroy();
+        if (Number(data.get('authoring_version')) !== version) return json(response, {message: 'تغيّرت نسخة الكورس', code: 'authoring_conflict'}, 409);
+        if (!id && duplicateNextPostId) {
+            const duplicate = {success: true, authoring_version: version, pdf: records.get(duplicateNextPostId)};
+            duplicateNextPostId = null;
+            receipts.set(intent, duplicate);
+            if (incompleteAfterCommit) return json(response, {success: true, authoring_version: version});
+            return json(response, duplicate);
         }
         const source = String(data.get('source_type'));
         const upload = data.get('pdf_file');
@@ -109,7 +154,15 @@ const server = createServer(async (request, response) => {
             is_active: data.getAll('is_active').at(-1) === '1', order: Number(data.get('order')),
         });
         records.set(recordId, updated);
-        return json(response, {success: true, authoring_version: ++version, pdf: updated});
+        const payload = {success: true, authoring_version: ++version, pdf: updated};
+        if (!id) receipts.set(intent, payload);
+        if (disconnectAfterCommit) {
+            if (!id) droppedReceiptAcks.add(intent);
+            else droppedPatchAcks.add(`${id}:${data.get('authoring_version')}`);
+            return response.destroy();
+        }
+        if (incompleteAfterCommit) return json(response, {success: true, authoring_version: version});
+        return json(response, payload);
     } catch (error) {
         json(response, {message: error.message}, 500);
     }
@@ -121,7 +174,8 @@ try {
     const page = await browser.newPage();
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(error.message));
-    page.on('dialog', dialog => dialog.accept());
+    let acceptDialog = true;
+    page.on('dialog', dialog => acceptDialog ? dialog.accept() : dialog.dismiss());
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     const source = page.locator('#attachmentSource');
     const target = page.locator('#attachmentPlatform');
@@ -262,8 +316,144 @@ try {
     await page.locator('[data-studio-pdf-add]').click();
     assert.equal(await source.inputValue(), 'upload');
     assert.equal(await url.inputValue(), '');
+
+    // A real pending browser request owns this selection. Inert blocks normal
+    // editing/removal/revisit; failed HTTP admission must keep the same file.
+    await title.fill('مسودة مرفق لم يقبلها الخادم');
+    await file.setInputFiles(pdfFile);
+    const pendingRequestId = await page.locator('[name="authoring_request_id"]').inputValue();
+    const pendingRequests = requests.length;
+    deferNextPost = true;
+    nextPostFailure = 500;
+    await submit.click();
+    await page.waitForFunction(() => document.getElementById('coursePdfForm').getAttribute('aria-busy') === 'true');
+    while (!releasePost) await new Promise(resolveWait => setTimeout(resolveWait, 10));
+    assert.equal(await page.locator('#courseStudio').evaluate(element => element.inert), true);
+    assert.equal(await page.locator('#removeFile').isDisabled(), true);
+    assert.equal(await page.locator('[data-studio-pdf-edit="1"]').isDisabled(), true);
+    assert.equal(await page.locator('[data-studio-pdf-cancel]').isDisabled(), true);
+    const removeBounds = await page.locator('#removeFile').boundingBox();
+    await page.mouse.click(removeBounds.x + removeBounds.width / 2, removeBounds.y + removeBounds.height / 2);
+    assert.equal(await file.evaluate(input => input.files[0].name), pdfFile.name);
+    assert.equal(requests.length, pendingRequests + 1);
+    releasePost();
+    await waitIdle();
+    assert.equal(await title.inputValue(), 'مسودة مرفق لم يقبلها الخادم');
+    assert.equal(await file.evaluate(input => input.files[0].name), pdfFile.name);
+    assert.equal(await page.locator('[name="authoring_request_id"]').inputValue(), pendingRequestId);
+    assert.match(await page.locator('[data-pdf-feedback]').textContent(), /تعذر حفظ/);
+    nextPostFailure = 422;
+    await save();
+    assert.equal(await file.evaluate(input => input.files[0].name), pdfFile.name);
+    assert.equal(await title.inputValue(), 'مسودة مرفق لم يقبلها الخادم');
+    assert.equal(await page.locator('[name="authoring_request_id"]').inputValue(), pendingRequestId);
+
+    // The server fixture closes the connection before storing any record. The
+    // client cannot infer admission from transport failure, but must not erase
+    // this unaccepted file/title merely to reload the authoritative graph.
+    nextPostFailure = 'disconnect';
+    const beforeDisconnectRecords = records.size;
+    await page.evaluate(() => { window.admissionDocument = true; });
+    await save();
+    nextPostFailure = null;
+    assert.equal(records.size, beforeDisconnectRecords);
+    assert.equal(await page.evaluate(() => window.admissionDocument), true, 'uncertain admission must stay in the original document');
+    assert.equal(await page.locator('html').getAttribute('data-authoring-reconciliation'), null);
+    assert.equal(await title.inputValue(), 'مسودة مرفق لم يقبلها الخادم', 'connection recovery must retain the unaccepted attachment draft');
+    assert.equal(await file.evaluate(input => input.files[0]?.name), pdfFile.name);
+    assert.equal(await title.isDisabled(), true, 'an unresolved retry keeps its captured fields immutable');
+    assert.equal(await file.isDisabled(), true);
+    assert.equal(receiptRequests.at(-1), pendingRequestId);
+    const beforeExplicitRetry = requests.length;
+    await save();
+    assert.equal(requests.length, beforeExplicitRetry + 1);
+    assert.equal(requests.at(-1).authoring_request_id, pendingRequestId);
+    assert.equal(requests.at(-1).title, 'مسودة مرفق لم يقبلها الخادم');
+    assert.equal(requests.at(-1).pdf_file.name, pdfFile.name);
+    assert.equal(records.size, beforeDisconnectRecords + 1);
+    assert.equal(await page.locator('#studioCoursePdfEditor').isHidden(), true);
+
+    await page.locator('[data-studio-pdf-add]').click();
+    await title.fill('حُفظ ولم يصل الرد');
+    await file.setInputFiles(pdfFile);
+    const beforeAcceptedRequest = await page.evaluate(() => window.attachmentFetches.filter(request => request.method === 'POST').length);
+    const beforeAcceptedLookups = receiptRequests.length;
+    const beforeAcceptedRecords = records.size;
+    nextPostFailure = 'accepted-disconnect';
+    await save();
+    assert.equal(await page.evaluate(() => window.attachmentFetches.filter(request => request.method === 'POST').length), beforeAcceptedRequest + 1, 'receipt lookup must not issue another multipart fetch for a committed file');
+    assert.equal(receiptRequests.length, beforeAcceptedLookups + 1);
+    assert.equal(records.size, beforeAcceptedRecords + 1);
+    assert.equal(await page.locator('#studioCoursePdfEditor').isHidden(), true);
+    assert.equal(await file.evaluate(input => input.files.length), 0, 'only a confirmed receipt retires this selection');
+
+    for (const duplicate of [false, true]) {
+        await page.locator('[data-studio-pdf-add]').click();
+        await title.fill('ملف تأكد حفظه بإيصال صحيح');
+        await file.setInputFiles(pdfFile);
+        const beforeIncompleteRecords = records.size;
+        const beforeIncompleteVersion = version;
+        const beforeIncompletePosts = requests.length;
+        if (duplicate) duplicateNextPostId = [...records.values()].find(pdf => pdf.source_type === 'upload' && pdf.platform === 'mobile').id;
+        nextPostFailure = 'accepted-invalid';
+        await save();
+        assert.equal(requests.length, beforeIncompletePosts + 1);
+        assert.equal(records.size, beforeIncompleteRecords + (duplicate ? 0 : 1));
+        assert.equal(version, beforeIncompleteVersion + (duplicate ? 0 : 1));
+        assert.equal(await page.locator('#studioCoursePdfEditor').isHidden(), true, 'a complete receipt recovers malformed ACKs, including unchanged-version content dedupe');
+        assert.equal(await file.evaluate(input => input.files.length), 0);
+        assert.equal(await page.locator('html').getAttribute('data-authoring-reconciliation'), null);
+    }
+
+    await page.locator('[data-studio-pdf-add]').click();
+    await title.fill('محاولة قيد التحقق');
+    await file.setInputFiles(pdfFile);
+    nextPostFailure = 'disconnect';
+    receiptState = 'processing';
+    await save();
+    nextPostFailure = null;
+    const checkingRequests = requests.length;
+    await save();
+    assert.equal(requests.length, checkingRequests, 'processing receipts permit a read, never another POST');
+    receiptUnavailable = true;
+    await save();
+    assert.equal(requests.length, checkingRequests, 'unavailable receipt reads must not blindly replay');
+    assert.equal(await file.evaluate(input => input.files[0]?.name), pdfFile.name);
+    receiptUnavailable = false;
+    receiptState = 'failed';
+    await save();
+    assert.equal(requests.length, checkingRequests, 'a failed receipt makes the next explicit retry available without posting automatically');
+    receiptState = null;
+    await save();
+    assert.equal(requests.length, checkingRequests + 1);
+
+    // PATCH has no same-operation receipt. Original-version retry is guarded
+    // by server concurrency; its 409 must retain the local draft, not claim ACK.
+    await edit(1);
+    await title.fill('استبدال لم يصل تأكيده');
+    const replacement = {name: 'admission-replacement.zip', mimeType: 'application/zip', buffer: Buffer.from('pending replacement')};
+    await file.setInputFiles(replacement);
+    nextPostFailure = 'accepted-disconnect';
+    await save();
+    const committedReplacementVersion = version;
+    droppedPatchAcks.clear();
+    assert.equal(await file.evaluate(input => input.files[0]?.name), replacement.name);
+    await save();
+    assert.equal(version, committedReplacementVersion, 'a stale PATCH retry must not apply the mutation twice');
+    assert.equal(await file.evaluate(input => input.files[0]?.name), replacement.name);
+    assert.equal(await title.inputValue(), 'استبدال لم يصل تأكيده');
+    assert.equal(await submit.isDisabled(), true);
+    assert.equal(await page.locator('[data-pdf-review-latest]').isVisible(), true);
+    assert.match(await page.locator('[data-pdf-feedback]').textContent(), /لم نتأكد/);
+    acceptDialog = false;
+    await page.locator('[data-studio-pdf-cancel]').click();
+    assert.equal(await file.evaluate(input => input.files[0]?.name), replacement.name, 'declining discard keeps the selected file');
+    acceptDialog = true;
+    await Promise.all([page.waitForEvent('load'), page.locator('[data-studio-pdf-cancel]').click()]);
+    assert.equal(records.get(1).title, 'استبدال لم يصل تأكيده');
+    assert.equal(version, committedReplacementVersion);
     assert.deepEqual(pageErrors, []);
-    console.log('PASS attachment authoring: source/target roundtrip, file replacement, validation recovery, visibility, reorder, deletion and narrow layout');
+    console.log('PASS attachment authoring: source/target and lifecycle counters plus immutable admission retry, receipt-only ACK recovery, processing/unavailable checks, duplicate-content version equality and retained replacement conflict');
 } finally {
     await browser?.close();
     await new Promise(resolveClose => server.close(resolveClose));

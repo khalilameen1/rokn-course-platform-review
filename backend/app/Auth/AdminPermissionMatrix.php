@@ -65,6 +65,7 @@ final class AdminPermissionMatrix
         'admin.courses.modules.reorder' => ['POST'],
         'admin.courses.pdfs.index' => ['GET'],
         'admin.courses.pdfs.create' => ['GET'],
+        'admin.courses.pdfs.create-intents.show' => ['GET'],
         'admin.courses.pdfs.store' => ['POST'],
         'admin.courses.pdfs.edit' => ['GET'],
         'admin.courses.pdfs.update' => ['PUT', 'PATCH'],

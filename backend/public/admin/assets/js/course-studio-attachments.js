@@ -28,7 +28,53 @@
         const activeInput = form.querySelector('input[type="checkbox"][name="is_active"]');
         const activeStatus = document.getElementById('statusBadge');
         const createUrl = String(graph.store_url || '');
+        const createReceiptUrl = String(graph.create_receipt_url || '');
         let editingId = null;
+        let pendingSave = null;
+        const reviewLink = document.createElement('a');
+        reviewLink.href = window.location.href;
+        reviewLink.target = '_blank';
+        reviewLink.rel = 'noopener';
+        reviewLink.textContent = 'مراجعة أحدث نسخة';
+        reviewLink.hidden = true;
+        reviewLink.dataset.pdfReviewLatest = '';
+        feedback?.after(reviewLink);
+
+        const retryError = message => new window.RoknAdminRequest.AdminRequestError(message, 409, 'attachment_save_retry_available');
+        const clearPendingSave = () => {
+            if (pendingSave) pendingSave.controls.forEach((disabled, control) => { control.disabled = disabled; });
+            pendingSave = null;
+            reviewLink.hidden = true;
+        };
+        const syncPendingSave = () => {
+            if (!pendingSave) return;
+            pendingSave.controls.forEach((_, control) => {
+                const canAct = control.matches('button[type="submit"], [data-studio-pdf-cancel]');
+                control.disabled = !canAct || (control.type === 'submit' && pendingSave.state === 'conflict');
+                delete control.dataset.studioBusyDisabled;
+            });
+            if (submitLabel) submitLabel.textContent = pendingSave.state === 'check' ? 'التحقق من الحفظ' : 'إعادة المحاولة';
+            reviewLink.hidden = pendingSave.state !== 'conflict';
+        };
+        const keepPendingEditor = () => {
+            if (!pendingSave) return false;
+            core.showFeedback(feedback, 'تحقق من نتيجة الحفظ قبل تغيير المرفق');
+            return true;
+        };
+        const discardPendingSave = () => {
+            if (!pendingSave) return false;
+            const outcome = pendingSave.confirmed ? 'حُفظ المرفق ثم تغيّر في نسخة أحدث' : 'لم نتأكد من حفظ المحاولة';
+            if (window.confirm(`${outcome}\nفتح أحدث نسخة سيزيل البيانات والملف المختار من هذا النموذج\nهل تريد المتابعة؟`)) {
+                clearPendingSave();
+                window.location.reload();
+            }
+            return true;
+        };
+        window.addEventListener('beforeunload', event => {
+            if (!pendingSave) return;
+            event.preventDefault();
+            event.returnValue = '';
+        });
 
         const sourceType = pdf => pdf?.source_type || 'upload';
         const platform = pdf => pdf?.platform || 'mobile';
@@ -109,6 +155,7 @@
         };
         const closePanel = () => {
             if (form.getAttribute('aria-busy') === 'true') return;
+            if (discardPendingSave()) return;
             editor.hidden = true;
             panel.hidden = true;
             core.showFeedback(feedback);
@@ -129,12 +176,14 @@
             core.showFeedback(feedback);
         };
         const openCreate = () => {
+            if (keepPendingEditor()) return;
             openPanel();
             resetCreate();
             editor.hidden = false;
             form.elements.title?.focus();
         };
         const openEdit = id => {
+            if (keepPendingEditor()) return;
             const pdf = pdfs.get(Number(id));
             if (!pdf) return;
             openPanel();
@@ -163,6 +212,7 @@
             if (event.target.closest('[data-studio-attachments-close]')) return closePanel();
             if (event.target.closest('[data-studio-pdf-add]')) return openCreate();
             if (event.target.closest('[data-studio-pdf-cancel]')) {
+                if (discardPendingSave()) return;
                 editor.hidden = true;
                 core.showFeedback(feedback);
                 return;
@@ -171,6 +221,7 @@
             if (edit) return openEdit(edit.dataset.studioPdfEdit);
             const toggle = event.target.closest('[data-studio-pdf-toggle]');
             if (toggle) {
+                if (keepPendingEditor()) return;
                 const id = Number(toggle.dataset.studioPdfToggle);
                 const current = pdfs.get(id);
                 if (!current) return;
@@ -194,39 +245,119 @@
 
         if (window.location.hash === '#studioCourseAttachments') openPanel();
 
+        const resolveCreate = async attempt => {
+            attempt.state = 'check';
+            const intentId = String(attempt.body.get('authoring_request_id') || '');
+            if (!createReceiptUrl || !intentId) throw retryError('لم يصل تأكيد الحفظ\nتحقق من الاتصال ثم حاول التحقق مرة أخرى');
+            let receipt;
+            try {
+                receipt = await core.request(createReceiptUrl.replace('__INTENT__', encodeURIComponent(intentId)), {
+                    headers: attempt.headers, timeout: 10000,
+                });
+            } catch (_) {
+                throw retryError('لم يصل تأكيد الحفظ\nتحقق من الاتصال ثم حاول التحقق مرة أخرى');
+            }
+            if (receipt?.state === 'completed') {
+                const committedVersion = Number(receipt.receipt_authoring_version);
+                const currentVersion = Number(receipt.authoring_version);
+                if (receipt.success !== true || !validPdf(receipt.pdf)
+                    || !Number.isSafeInteger(committedVersion) || committedVersion < attempt.version || committedVersion > attempt.version + 1
+                    || !Number.isSafeInteger(currentVersion) || currentVersion < committedVersion) {
+                    throw retryError('تعذر مطابقة نتيجة الحفظ\nحاول التحقق مرة أخرى');
+                }
+                return receipt;
+            }
+            if (receipt?.state === 'superseded') {
+                attempt.state = 'conflict';
+                attempt.confirmed = true;
+                throw retryError('حُفظ المرفق ثم تغيّر في نسخة أحدث\nراجع أحدث نسخة قبل المتابعة');
+            }
+            if (['absent', 'failed'].includes(receipt?.state)) {
+                attempt.state = 'retry';
+                throw retryError('لم يكتمل الحفظ\nاضغط إعادة المحاولة لإرسال نفس البيانات والملف');
+            }
+            throw retryError(receipt?.state === 'processing'
+                ? 'الحفظ ما زال قيد التنفيذ\nانتظر قليلًا ثم تحقق من الحفظ'
+                : 'لم يصل تأكيد الحفظ\nحاول التحقق مرة أخرى');
+        };
+
         form.addEventListener('submit', event => {
             event.preventDefault();
             if (form.getAttribute('aria-busy') === 'true') return;
-            if (!form.reportValidity()) return;
-            const targetId = editingId;
-            const requestedSource = form.elements.source_type.value;
-            const requestedPlatform = form.elements.platform.value;
+            if (pendingSave?.state === 'conflict') return;
+            if (!pendingSave && !form.reportValidity()) return;
+            const targetId = pendingSave ? pendingSave.targetId : editingId;
+            const requestedSource = pendingSave ? pendingSave.source : form.elements.source_type.value;
+            const requestedPlatform = pendingSave ? pendingSave.platform : form.elements.platform.value;
+            const controls = new Map(Array.from(form.elements, control => [control, control.disabled]));
             void core.mutate(async () => {
-                const expectedVersion = core.authoringVersion;
-                const body = core.authoringFormData(form, expectedVersion);
-                // Only the selected source travels with this mutation. An
-                // unselected file or URL must never replace the active source.
-                if (requestedSource === 'external') body.delete('pdf_file');
-                else body.delete('external_url');
-                const response = await core.request(form.action, {
-                    method: 'POST', headers: core.mutationHeaders(form), body, timeout: 120000,
-                });
+                if (!pendingSave) {
+                    const version = core.authoringVersion;
+                    const body = core.authoringFormData(form, version);
+                    if (requestedSource === 'external') body.delete('pdf_file');
+                    else body.delete('external_url');
+                    pendingSave = {body, version, targetId, source: requestedSource, platform: requestedPlatform,
+                        url: form.action, headers: core.mutationHeaders(form), controls, state: 'send'};
+                }
+                const attempt = pendingSave;
+                const expectedVersion = attempt.version;
+                let response;
+                try {
+                    response = attempt.state === 'check' && !targetId
+                        ? await resolveCreate(attempt)
+                        : await core.request(attempt.url, {
+                            method: 'POST', headers: attempt.headers, body: attempt.body, timeout: 120000,
+                        });
+                    if (!response.receipt_authoring_version) {
+                        if (!validPdf(response.pdf)
+                            || (targetId && Number(response.pdf.id) !== targetId)
+                            || sourceType(response.pdf) !== requestedSource
+                            || platform(response.pdf) !== requestedPlatform) throw core.invalid();
+                        core.requireMutation(response, expectedVersion, Boolean(targetId) || !pdfs.has(Number(response.pdf.id)));
+                    }
+                } catch (error) {
+                    if (error?.code === 'attachment_save_retry_available') throw error;
+                    if (['mutation_outcome_unknown', 'invalid_authoring_response', 'authoring_in_progress'].includes(error?.code)) {
+                        if (!targetId) response = await resolveCreate(attempt);
+                        else {
+                            attempt.state = 'retry';
+                            throw retryError('لم يصل تأكيد الحفظ\nاضغط إعادة المحاولة للتحقق بنفس نسخة التعديل');
+                        }
+                    } else if (error?.status === 409) {
+                        attempt.state = 'conflict';
+                        throw retryError('تغيّرت نسخة الكورس ولم نتأكد من حفظ هذا التعديل\nراجع أحدث نسخة قبل المتابعة');
+                    } else {
+                        clearPendingSave();
+                        throw error;
+                    }
+                }
+                if (response.receipt_authoring_version && Number(response.authoring_version) > Number(response.receipt_authoring_version)) {
+                    clearPendingSave();
+                    resetCreate();
+                    editor.hidden = true;
+                    return core.reconcile(core.invalid('تم حفظ المرفق\nنعرض أحدث نسخة من الكورس'));
+                }
                 if (!validPdf(response.pdf)
                     || (targetId && Number(response.pdf.id) !== targetId)
                     || sourceType(response.pdf) !== requestedSource
-                    || platform(response.pdf) !== requestedPlatform) throw core.invalid();
+                    || platform(response.pdf) !== requestedPlatform) {
+                    attempt.state = targetId ? 'conflict' : 'check';
+                    throw retryError('تعذر مطابقة نتيجة الحفظ\nراجع أحدث نسخة أو حاول التحقق مرة أخرى');
+                }
                 const duplicateCreate = !targetId && pdfs.has(Number(response.pdf.id));
                 const nextVersion = core.requireMutation(response, expectedVersion, !duplicateCreate);
                 core.syncVersion(nextVersion);
                 pdfs.set(Number(response.pdf.id), response.pdf);
                 render(Array.from(pdfs.values()));
+                clearPendingSave();
                 resetCreate();
                 editor.hidden = true;
                 core.notify(response.message || 'تم حفظ المرفق');
-            }, {feedback, form});
+            }, {feedback, form, recoverableConflictCodes: ['attachment_save_retry_available']}).finally(syncPendingSave);
         });
 
         deleteButton.addEventListener('click', () => {
+            if (keepPendingEditor()) return;
             const id = editingId;
             const pdf = pdfs.get(Number(id));
             if (!pdf || !window.confirm('حذف هذا المرفق من الكورس؟')) return;
@@ -256,6 +387,7 @@
                 ghostClass: 'is-dragging',
                 onEnd: event => {
                     if (event.oldIndex === event.newIndex) return;
+                    if (keepPendingEditor()) return render(Array.from(pdfs.values()));
                     const order = Array.from(list.querySelectorAll(':scope > .studio-attachment')).map(node => Number(node.dataset.pdfId));
                     void core.mutate(async () => {
                         const expectedVersion = core.authoringVersion;

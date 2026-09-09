@@ -2,6 +2,7 @@
 @php
     $coursePdfGraph = [
         'store_url' => $coursePdfStoreUrl,
+        'create_receipt_url' => route('admin.courses.pdfs.create-intents.show', [$course, '__INTENT__']),
         'reorder_url' => $coursePdfReorderUrl,
         'max_order' => $coursePdfMaxOrder,
         'pdfs' => $coursePdfs,

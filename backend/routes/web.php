@@ -172,6 +172,8 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::post('courses/{course}/modules/reorder', 'CourseModuleController@reorder')->middleware('course.draft')->name('courses.modules.reorder');
     Route::resource('courses.modules', 'CourseModuleController')->except(['index', 'show'])->middleware('course.draft');
     // Course PDFs routes
+    Route::get('courses/{course}/pdfs/create-intents/{intent}', 'CoursePdfController@createIntentReceipt')
+        ->whereUuid('intent')->name('courses.pdfs.create-intents.show');
     Route::post('courses/{course}/pdfs/reorder', 'CoursePdfController@reorder')->middleware('course.draft')->name('courses.pdfs.reorder');
     Route::post('courses/{course}/pdfs/{pdf}/toggle-status', 'CoursePdfController@toggleStatus')->middleware('course.draft')->name('courses.pdfs.toggle-status');
     Route::get('courses/{course}/pdfs/{pdf}/preview', 'CoursePdfController@preview')->name('courses.pdfs.preview');

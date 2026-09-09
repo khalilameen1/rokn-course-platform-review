@@ -9,10 +9,13 @@ use App\Http\Requests\Admin\CoursePdfOrderRequest;
 use App\Http\Requests\Admin\CoursePdfRequest;
 use App\Http\Requests\Admin\CoursePdfVersionRequest;
 use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
 use App\Models\CoursePdf;
 use App\Support\CourseAttachmentExternalUrl;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCoursePdfApplicationService;
+use App\Services\AdminCoursePdfPresenter;
+use App\Services\CourseStagedAuthoringService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -37,6 +40,58 @@ final class CoursePdfController extends Controller
     public function create(Course $course): Response
     {
         return redirect()->to($this->studioAttachmentsUrl($course));
+    }
+
+    /** Recover an uncertain create without uploading its multipart body again. */
+    public function createIntentReceipt(
+        Request $request,
+        Course $course,
+        string $intent,
+        CourseStagedAuthoringService $authoring,
+        AdminCoursePdfPresenter $presenter
+    ): Response {
+        $receipt = $this->createIntents->resourceReceipt(
+            $request,
+            $intent,
+            'admin.courses.pdfs.store',
+            ['course' => $course],
+            CoursePdf::class
+        );
+        // Lookup retains the exact original claim scope. Resolve only an
+        // existing working course; this read must never allocate a draft.
+        $editable = $authoring->activeDraftFor($course) ?? $course->fresh();
+        $version = (int) $editable->authoring_version;
+        if ($receipt['state'] !== 'completed') {
+            return response()->json([
+                'state' => $receipt['state'],
+                'authoring_version' => $version,
+            ])->header('Cache-Control', 'no-store');
+        }
+
+        $original = data_get($receipt, 'payload.pdf');
+        $receiptVersion = (int) data_get($receipt, 'payload.authoring_version', 0);
+        $pdf = $editable->pdfs()->find($receipt['resource_id']);
+        if (!$editable->is_coming_soon
+            || CourseAuthoringRevision::query()->where('revision_course_id', $editable->id)
+                ->where('status', CourseAuthoringRevision::ARCHIVED)->exists()
+            || !$pdf
+            || !is_array($original)
+            || (int) ($original['id'] ?? 0) !== (int) $pdf->id
+            || $receiptVersion < 1
+            || $receiptVersion > $version) {
+            return response()->json([
+                'state' => 'superseded',
+                'authoring_version' => $version,
+            ])->header('Cache-Control', 'no-store');
+        }
+
+        return response()->json([
+            'state' => 'completed',
+            'success' => true,
+            'pdf' => $presenter->one($editable, $pdf),
+            'receipt_authoring_version' => $receiptVersion,
+            'authoring_version' => $version,
+        ])->header('Cache-Control', 'no-store');
     }
 
     public function store(CoursePdfRequest $request, Course $course): Response
