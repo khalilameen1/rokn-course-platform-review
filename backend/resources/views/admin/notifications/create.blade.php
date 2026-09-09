@@ -13,6 +13,11 @@
     </div>
 @endsection
 @section('content')
+    @php
+        $notificationFormId = $targetStudent
+            ? 'notificationForm-user-' . $targetStudent->id
+            : 'notificationForm-broadcast';
+    @endphp
     <div class="admin-page notification-form-page row">
         <div class="col-md-8 offset-md-2">
             <div class="card">
@@ -30,7 +35,7 @@
                         </div>
                         <small class="form-text text-muted">تظهر أحدث ٥٠ نتيجة</small>
                     </form>
-                    {!! Form::open(['method' => 'POST', 'route' => ['admin.notifications.store'], 'files' => true, 'id' => 'notificationForm']) !!}
+                    {!! Form::open(['method' => 'POST', 'route' => ['admin.notifications.store'], 'files' => true, 'id' => $notificationFormId]) !!}
                         <input type="hidden" name="authoring_request_id" value="{{ old('authoring_request_id', (string) \Illuminate\Support\Str::uuid()) }}">
                         @if($targetStudent)
                             <input type="hidden" name="user_id" value="{{ $targetStudent->id }}">
@@ -111,7 +116,7 @@
                             </button>
                         </div>
                     {!! Form::close() !!}
-                    @include('admin.partials.course-authoring-draft', ['formId' => 'notificationForm'])
+                    @include('admin.partials.course-authoring-draft', ['formId' => $notificationFormId])
                 </div>
             </div>
         </div>
