@@ -109,6 +109,36 @@ const compactPlayerState = (
   activityDays: Array.from(new Set(state.activityDays)).slice(-60),
 });
 
+const readStoredPlayerState = async (
+  storageKey: string,
+  boundary?: AccountSessionBoundary,
+): Promise<PersistedPlayerState> => {
+  const value = await AsyncStorage.getItem(storageKey);
+  if (boundary) assertAccountSessionBoundary(boundary);
+  if (!value) {
+    return {...EMPTY_STATE};
+  }
+  const parsed = JSON.parse(value);
+  const compactResume = compactResumeState(
+    parsed?.positions,
+    parsed?.lastWatchedAt,
+  );
+  const folderMemberships = savedFolderMemberships(parsed?.savedFolderLessons);
+  const state = compactPlayerState({
+    ...compactResume,
+    completedSections: asArray(parsed?.completedSections),
+    savedLessons: Array.from(
+      new Set([
+        ...remoteIds(parsed?.savedLessons),
+        ...Object.values(folderMemberships).flat(),
+      ]),
+    ),
+    savedFolderLessons: folderMemberships,
+    activityDays: asArray(parsed?.activityDays),
+  });
+  return state;
+};
+
 export const readPlayerState = async (
   scopedStorageKey?: string,
   accountBoundary?: AccountSessionBoundary,
@@ -119,59 +149,33 @@ export const readPlayerState = async (
   const storageKey =
     scopedStorageKey ||
     (await accountScopedStorageKey(PLAYER_STATE_KEY, boundary));
-  let value: string | null;
   try {
-    value = await AsyncStorage.getItem(storageKey);
-  } catch {
-    return {...EMPTY_STATE};
-  }
-  if (boundary) assertAccountSessionBoundary(boundary);
-  try {
-    if (!value) {
-      return {...EMPTY_STATE};
-    }
-    const parsed = JSON.parse(value);
-    const compactResume = compactResumeState(
-      parsed?.positions,
-      parsed?.lastWatchedAt,
-    );
-    const folderMemberships = savedFolderMemberships(
-      parsed?.savedFolderLessons,
-    );
-    const state = compactPlayerState({
-      ...compactResume,
-      completedSections: asArray(parsed?.completedSections),
-      savedLessons: Array.from(
-        new Set([
-          ...remoteIds(parsed?.savedLessons),
-          ...Object.values(folderMemberships).flat(),
-        ]),
-      ),
-      savedFolderLessons: folderMemberships,
-      activityDays: asArray(parsed?.activityDays),
-    });
-    if (
-      Object.keys(parsed?.positions || {}).length > MAX_LOCAL_RESUME_ENTRIES ||
-      Object.keys(parsed?.lastWatchedAt || {}).length >
-        MAX_LOCAL_RESUME_ENTRIES ||
-      asArray(parsed?.activityDays).length > state.activityDays.length
-    ) {
-      if (boundary) assertAccountSessionBoundary(boundary);
-      // Compaction is maintenance, not the source of truth for this read. A
-      // transient storage write failure must not turn the valid snapshot we
-      // just parsed into an empty learning history for the current session.
-      try {
-        await AsyncStorage.setItem(storageKey, JSON.stringify(state));
-      } catch {
-        // Keep the valid in-memory state. A later write can compact it again.
-      }
-      if (boundary) assertAccountSessionBoundary(boundary);
-    }
-    return state;
+    return await readStoredPlayerState(storageKey, boundary);
   } catch (error: unknown) {
+    if (boundary) assertAccountSessionBoundary(boundary);
     if (isAccountBoundaryError(error)) throw error;
+    // Server content remains usable when its optional local overlay is missing.
+    // This display fallback is never the starting state for a durable write.
     return {...EMPTY_STATE};
   }
+};
+
+const queuePlayerState = <T>(
+  storageKey: string,
+  update: () => Promise<T>,
+): Promise<T> => {
+  // Session changes retire callers, not an in-flight native write. Keep this
+  // key's tail until it settles, including when the same account signs in again.
+  const previous = playerStateQueues.get(storageKey) ?? Promise.resolve();
+  const operation = previous.then(update);
+  const settled = operation.catch(() => undefined);
+  playerStateQueues.set(storageKey, settled);
+  void settled.finally(() => {
+    if (playerStateQueues.get(storageKey) === settled) {
+      playerStateQueues.delete(storageKey);
+    }
+  });
+  return operation;
 };
 
 const mergeStringArrays = (left: string[], right: string[]) =>
@@ -193,54 +197,59 @@ export const migrateGuestLearningState = async (
   }
   const sourceKey = `${PLAYER_STATE_KEY}:${guestScope}`;
   const targetKey = `${PLAYER_STATE_KEY}:${accountScope}`;
-  const [[, sourceValue], [, targetValue]] = await AsyncStorage.multiGet([
-    sourceKey,
-    targetKey,
-  ]);
-  if (!sourceValue) {
+  return queuePlayerState(targetKey, async () => {
+    if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+    const [[, sourceValue], [, targetValue]] = await AsyncStorage.multiGet([
+      sourceKey,
+      targetKey,
+    ]);
+    if (!sourceValue) {
+      return true;
+    }
+    let source: Partial<PersistedPlayerState>;
+    let target: Partial<PersistedPlayerState>;
+    try {
+      source = JSON.parse(sourceValue) as Partial<PersistedPlayerState>;
+      target = targetValue
+        ? (JSON.parse(targetValue) as Partial<PersistedPlayerState>)
+        : {};
+    } catch {
+      // Keep a damaged guest cache for a later app migration.
+      return false;
+    }
+    // Bookmarks are account-only server records. Public-preview state may carry
+    // playback progress into the new account, but it must never manufacture a
+    // saved membership or icon that the server did not create.
+    const savedFolderLessons = savedFolderMemberships(
+      target.savedFolderLessons,
+    );
+    const next = compactPlayerState({
+      positions: {...(source.positions || {}), ...(target.positions || {})},
+      lastWatchedAt: {
+        ...(source.lastWatchedAt || {}),
+        ...(target.lastWatchedAt || {}),
+      },
+      completedSections: mergeStringArrays(
+        asArray(source.completedSections),
+        asArray(target.completedSections),
+      ),
+      savedLessons: Array.from(
+        new Set([
+          ...remoteIds(target.savedLessons),
+          ...Object.values(savedFolderLessons).flat(),
+        ]),
+      ),
+      savedFolderLessons,
+      activityDays: mergeStringArrays(
+        asArray(source.activityDays),
+        asArray(target.activityDays),
+      ).slice(-60),
+    });
+    if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
+    await AsyncStorage.setItem(targetKey, JSON.stringify(next));
+    if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
     return true;
-  }
-  let source: Partial<PersistedPlayerState>;
-  let target: Partial<PersistedPlayerState>;
-  try {
-    source = JSON.parse(sourceValue) as Partial<PersistedPlayerState>;
-    target = targetValue
-      ? (JSON.parse(targetValue) as Partial<PersistedPlayerState>)
-      : {};
-  } catch {
-    // Keep a damaged guest cache for a later app migration.
-    return false;
-  }
-  // Bookmarks are account-only server records. Public-preview state may carry
-  // playback progress into the new account, but it must never manufacture a
-  // saved membership or icon that the server did not create.
-  const savedFolderLessons = savedFolderMemberships(target.savedFolderLessons);
-  const next = compactPlayerState({
-    positions: {...(source.positions || {}), ...(target.positions || {})},
-    lastWatchedAt: {
-      ...(source.lastWatchedAt || {}),
-      ...(target.lastWatchedAt || {}),
-    },
-    completedSections: mergeStringArrays(
-      asArray(source.completedSections),
-      asArray(target.completedSections),
-    ),
-    savedLessons: Array.from(
-      new Set([
-        ...remoteIds(target.savedLessons),
-        ...Object.values(savedFolderLessons).flat(),
-      ]),
-    ),
-    savedFolderLessons,
-    activityDays: mergeStringArrays(
-      asArray(source.activityDays),
-      asArray(target.activityDays),
-    ).slice(-60),
   });
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  await AsyncStorage.setItem(targetKey, JSON.stringify(next));
-  if (accountBoundary) assertAccountSessionBoundary(accountBoundary);
-  return true;
 };
 
 export const updatePlayerState = async (
@@ -257,24 +266,15 @@ export const updatePlayerState = async (
   const storageKey =
     scopedStorageKey ||
     (await accountScopedStorageKey(PLAYER_STATE_KEY, boundary));
-  const previous = playerStateQueues.get(storageKey) ?? Promise.resolve();
-  const operation = previous.then(async () => {
+  return queuePlayerState(storageKey, async () => {
     if (boundary) assertAccountSessionBoundary(boundary);
-    const current = await readPlayerState(storageKey, boundary);
+    const current = await readStoredPlayerState(storageKey, boundary);
     const next = compactPlayerState(update(current));
     if (boundary) assertAccountSessionBoundary(boundary);
     await AsyncStorage.setItem(storageKey, JSON.stringify(next));
     if (boundary) assertAccountSessionBoundary(boundary);
     return next;
   });
-  const settled = operation.catch(() => undefined);
-  playerStateQueues.set(storageKey, settled);
-  void settled.finally(() => {
-    if (playerStateQueues.get(storageKey) === settled) {
-      playerStateQueues.delete(storageKey);
-    }
-  });
-  return operation;
 };
 
 export const updatePlayerStateForScope = async (
@@ -356,10 +356,6 @@ export const clearLocalWatchHistory = async (
     undefined,
     accountBoundary,
   );
-
-export const resetPlayerStateRuntime = () => {
-  playerStateQueues.clear();
-};
 
 export const applyLocalLearningState = async (
   course: CourseLearningData,
