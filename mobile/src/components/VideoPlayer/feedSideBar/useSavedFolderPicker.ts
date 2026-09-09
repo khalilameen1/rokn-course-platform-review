@@ -20,14 +20,17 @@ export function useSavedFolderPicker({
   onBeforeOpen,
   onToggleSave,
   present,
+  scopeKey = '',
 }: {
   dismiss: () => void;
   onBeforeOpen: () => boolean;
   onToggleSave: (folder?: SavedFolderOption | null) => void;
   present: () => void;
+  scopeKey?: string;
 }) {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
+  const ownerKey = `${identityKey}:${scopeKey}`;
   const [folders, setFolders] = useState<SavedFolderOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState('');
@@ -37,42 +40,53 @@ export function useSavedFolderPicker({
   const loadingRef = useRef(false);
   const creatingRef = useRef(false);
   const mountedRef = useRef(true);
-  const ownerRef = useRef(identityKey);
+  const ownerRef = useRef(ownerKey);
+  ownerRef.current = ownerKey;
+  const visitOpenRef = useRef(false);
 
-  useEffect(() => {
-    ownerRef.current = identityKey;
+  const close = useCallback(() => {
+    visitOpenRef.current = false;
     generationRef.current += 1;
     loadingRef.current = false;
     creatingRef.current = false;
+    if (mountedRef.current) {
+      setLoading(false);
+      setCreating(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    close();
     setFolders([]);
     setLoading(false);
     setName('');
     setCreating(false);
     setError('');
-  }, [identityKey]);
+  }, [close, ownerKey]);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
       mountedRef.current = false;
-      generationRef.current += 1;
-      loadingRef.current = false;
-      creatingRef.current = false;
-    },
-    [],
-  );
+      close();
+    };
+  }, [close]);
 
   const stillOwned = useCallback(
     (generation: number) =>
       mountedRef.current &&
+      visitOpenRef.current &&
       generation === generationRef.current &&
-      ownerRef.current === identityKey,
-    [identityKey],
+      ownerRef.current === ownerKey,
+    [ownerKey],
   );
 
   const open = useCallback(() => {
+    if (!mountedRef.current || ownerRef.current !== ownerKey) return;
     if (!onBeforeOpen()) return;
     present();
     if (loadingRef.current) return;
+    visitOpenRef.current = true;
     loadingRef.current = true;
     const generation = ++generationRef.current;
     setLoading(true);
@@ -80,6 +94,8 @@ export function useSavedFolderPicker({
     void (async () => {
       try {
         const boundary = await captureAccountSessionBoundary();
+        if (!stillOwned(generation)) return;
+        assertAccountSessionBoundary(boundary);
         const nextFolders = await getSavedFolderOptions();
         assertAccountSessionBoundary(boundary);
         if (stillOwned(generation)) setFolders(nextFolders);
@@ -92,26 +108,37 @@ export function useSavedFolderPicker({
         if (stillOwned(generation)) setLoading(false);
       }
     })();
-  }, [onBeforeOpen, present, stillOwned]);
+  }, [onBeforeOpen, ownerKey, present, stillOwned]);
 
+  const visitGeneration = generationRef.current;
+  const onDismiss = useCallback(() => {
+    if (stillOwned(visitGeneration)) close();
+  }, [close, stillOwned, visitGeneration]);
   const saveInFolder = useCallback(
-    (folder: SavedFolderOption) => {
+    (folder?: SavedFolderOption | null) => {
+      if (!stillOwned(visitGeneration)) return;
+      close();
       onToggleSave(folder);
       dismiss();
     },
-    [dismiss, onToggleSave],
+    [close, dismiss, onToggleSave, stillOwned, visitGeneration],
   );
 
   const watchLaterFolder = folders.find(folder => watchLaterName(folder.name));
   const visibleFolders = folders.filter(folder => !watchLaterName(folder.name));
   const saveInWatchLater = useCallback(() => {
-    onToggleSave(watchLaterFolder);
-    dismiss();
-  }, [dismiss, onToggleSave, watchLaterFolder]);
+    saveInFolder(watchLaterFolder);
+  }, [saveInFolder, watchLaterFolder]);
 
   const createAndSave = useCallback(async () => {
     const normalizedName = name.trim();
-    if (!normalizedName || creating || creatingRef.current) return;
+    if (
+      !normalizedName ||
+      creating ||
+      creatingRef.current ||
+      !stillOwned(visitGeneration)
+    )
+      return;
     const existing = folders.find(
       folder =>
         folder.name.trim().toLocaleLowerCase('ar') ===
@@ -129,6 +156,8 @@ export function useSavedFolderPicker({
     setError('');
     try {
       const boundary = await captureAccountSessionBoundary();
+      if (!stillOwned(generation)) return;
+      assertAccountSessionBoundary(boundary);
       const created = await createSavedFolderOption(normalizedName);
       assertAccountSessionBoundary(boundary);
       if (!stillOwned(generation)) return;
@@ -136,7 +165,7 @@ export function useSavedFolderPicker({
         ...current.filter(folder => folder.id !== created.id),
         created,
       ]);
-      setName('');
+      setName(current => (current.trim() === normalizedName ? '' : current));
       saveInFolder(created);
     } catch {
       if (stillOwned(generation)) {
@@ -146,10 +175,11 @@ export function useSavedFolderPicker({
       if (generation === generationRef.current) creatingRef.current = false;
       if (stillOwned(generation)) setCreating(false);
     }
-  }, [creating, folders, name, saveInFolder, stillOwned]);
+  }, [creating, folders, name, saveInFolder, stillOwned, visitGeneration]);
 
   return {
     createAndSave,
+    close: onDismiss,
     creating,
     error,
     folders: visibleFolders,

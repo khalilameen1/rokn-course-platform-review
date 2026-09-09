@@ -91,6 +91,7 @@ const FeedSideBar = ({
       present: presentAttachments,
     });
   const {
+    close: closeSavedFolderPicker,
     createAndSave,
     creating: folderBusy,
     error: folderError,
@@ -102,6 +103,7 @@ const FeedSideBar = ({
     saveInWatchLater,
     setName: setNewFolderName,
   } = useSavedFolderPicker({
+    scopeKey: `${course.id}:${currentFeedKey}`,
     dismiss: dismissSaveSheet,
     onBeforeOpen: onBeforeOpenSave,
     onToggleSave,
@@ -334,7 +336,10 @@ const FeedSideBar = ({
         topInset={insets.top}
         backdropComponent={renderBackdrop}
         onChange={index => reportSheetState('save', index >= 0)}
-        onDismiss={() => reportSheetState('save', false)}
+        onDismiss={() => {
+          closeSavedFolderPicker();
+          reportSheetState('save', false);
+        }}
         backgroundStyle={styles.sheetBackground}
         handleIndicatorStyle={styles.sheetIndicator}>
         <BottomSheetScrollView
@@ -424,10 +429,7 @@ const FeedSideBar = ({
               accessibilityRole="button"
               accessibilityState={{disabled: savePending}}
               disabled={savePending}
-              onPress={() => {
-                onToggleSave(null);
-                saveSheetRef.current?.dismiss();
-              }}
+              onPress={() => saveInFolder(null)}
               style={({pressed}) => [
                 styles.removeSaveButton,
                 pressed && styles.pressed,
