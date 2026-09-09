@@ -1920,3 +1920,35 @@ No feature or design was removed. No APK, push, deployment, live provider
 download, real notification or paid request was made. Physical Android download
 completion/receiver behavior and native iOS save presentation remain acceptance
 work, not results of this local run.
+
+### Same transfer mistake in backend media readiness
+
+A bounded sibling review found two actual consumers in
+`MediaReconciliationService`: image HEAD fallback used an unstreamed Range GET,
+and the manifest GET read its entire response before taking an 8192-byte prefix.
+The range and substring were not transfer bounds. Four new loopback RED cases
+each accepted a delayed 1 MiB tail; a normal HEAD/short-manifest counter passed.
+
+Only these two probe methods changed. Image fallback now receives headers and
+closes its streamed response; ordinary HEAD keeps its original transport.
+Manifest inspection reads at most 8193 decoded bytes (one lookahead byte for the
+existing partial-line rule), accumulates short reads and closes the resource.
+The existing parser and readiness/publication decisions are unchanged. Raw
+stream ownership allows each body read to use the remaining time budget; PHP's
+standard inflate filter preserves gzip/deflate handling. There is no custom
+decoder or new HTTP dependency.
+
+The nine real-network cases preserve HEAD 405/501 fallback, valid/invalid large
+prefixes, short and fragmented files, exact 8192-byte EOF without a newline,
+gzip and a trickled incomplete prefix that must not renew its read deadline.
+Root's combined gate with existing readiness and upload-safety tests passed
+23 tests / 174 assertions, plus syntax and diff checks. Only provider metadata
+and signed-URL issuance are mocked; requests go to an isolated loopback server
+and the reconciliation entry point is real. The server's delayed-tail counter
+is zero after the fix.
+
+Limits: 8193 bounds decoded bytes collected by this probe, not OS/PHP socket
+buffering. The body deadline does not turn PHP's streamed DNS, redirects or
+header delivery into a guaranteed ten-second wall-clock transport. No learner
+access rule, queue retry policy, publication flow, vendor source, APK or live
+service was changed by this sibling repair.
