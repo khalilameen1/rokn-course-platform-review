@@ -8,6 +8,7 @@ jest.mock('react-native-fs', () => ({
   readDir: jest.fn(async () => []),
   stat: jest.fn(async () => ({size: 10})),
   stopDownload: jest.fn(),
+  cancelDownload: jest.fn(),
   unlink: jest.fn(async () => undefined),
 }));
 
@@ -462,7 +463,8 @@ describe('course attachment operation ownership', () => {
       headers: {'Content-Type': 'text/html'},
     });
     await expect(result).resolves.toEqual({copied: false, downloaded: false});
-    expect(RNFS.stopDownload).toHaveBeenCalledWith(13);
+    expect(RNFS.cancelDownload).toHaveBeenCalledWith(13);
+    expect(RNFS.stopDownload).not.toHaveBeenCalled();
     expect(Share.open).not.toHaveBeenCalled();
     expect(Alert.alert).toHaveBeenLastCalledWith(
       'تعذّر التنزيل المباشر',
@@ -512,7 +514,8 @@ describe('course attachment operation ownership', () => {
         await quiescePrivateAttachmentDownloads();
       }
       await expect(first).resolves.toEqual({copied: false, downloaded: false});
-      expect(RNFS.stopDownload).toHaveBeenCalledWith(70);
+      expect(RNFS.cancelDownload).toHaveBeenCalledWith(70);
+      expect(RNFS.stopDownload).not.toHaveBeenCalled();
       expect(Share.open).not.toHaveBeenCalled();
       expect(Linking.openURL).not.toHaveBeenCalled();
       if (reason === 'interruption') {

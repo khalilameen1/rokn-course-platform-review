@@ -311,16 +311,16 @@ const downloadPrivateFile = (fromUrl: string, toFile: string) => {
     rejectTransfer(error);
     return true;
   };
-  const stop = (id = jobId) => {
+  const abandon = (id = jobId) => {
     if (id === undefined) return;
     try {
-      RNFS.stopDownload(id);
+      RNFS.cancelDownload(id);
     } catch {
       // JS owns settlement even if the native cancellation cannot acknowledge it.
     }
   };
   const cancel = () => {
-    if (fail(new Error('ATTACHMENT_DOWNLOAD_CANCELLED'))) stop();
+    if (fail(new Error('ATTACHMENT_DOWNLOAD_CANCELLED'))) abandon();
   };
   const task = RNFS.downloadFile({
     fromUrl,
@@ -336,14 +336,14 @@ const downloadPrivateFile = (fromUrl: string, toFile: string) => {
       )?.[1];
       if (attachmentResponseIsHtml(mime)) {
         fail(new Error('ATTACHMENT_HOST_PAGE'));
-        stop(response.jobId);
+        abandon(response.jobId);
       }
     },
     resumable: () => {
       // RNFS keeps its promise pending when iOS produces resumeData, even on
       // cancellation. A later retry must recheck access/source, not resume a
       // cancelled or old-account task behind the current action.
-      if (fail(new Error('ATTACHMENT_DOWNLOAD_INTERRUPTED'))) stop();
+      if (fail(new Error('ATTACHMENT_DOWNLOAD_INTERRUPTED'))) abandon();
     },
   });
   jobId = task.jobId;
