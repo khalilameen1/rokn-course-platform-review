@@ -2323,3 +2323,68 @@ mobile gate passed 13 suites / 198 tests, full TypeScript and scoped ESLint.
 All four fixes are local production-repository commits with bounded evidence,
 not an application-wide completion or release claim. No existing feature was
 removed, no APK was built, and no commit was pushed or deployed in this pass.
+
+## September 9 — preserve acknowledged choices and player write ordering
+
+Continued from clean `fd067e2` in the production repository. Independent source
+checks found no new mismatch in attachment draft publication/lineage or in
+computer-link copying. Existing lifecycle evidence includes two actual publish
+cycles, source replacement, old IDs, visibility and entitlement changes. Those
+paths were not rewritten or counted as new fixes. Clipboard's native void return
+does not establish a real-device failure, so no readback/permission workaround was
+added. The work below addresses three demonstrated gaps in the adjacent daily
+save/resume journey; removed historical work is not treated as current completion.
+
+`388d53b` separates optional player display data from the read used to replace a
+durable record. A failed native read previously became an empty state and could
+erase existing progress/bookmarks during a bookmark update or history clear.
+Display reads also wrote compacted snapshots outside the write queue; guest
+migration did the same with its target merge. Four controlled actual-service
+cases were RED. Display reads now compact only in memory and remain usable on
+read failure. Mutations require a successful read, and guest target read/merge/
+write uses the existing per-key queue, not a snapshot computed before joining it.
+
+Two further RED cases proved that production `quiesceLearningRuntime` cleared the
+queue while native storage was still writing. A failed 401 credential cleanup can
+retain the same session; a same-account re-login has the same durable key. In both
+cases an older physical write could replace a newer acknowledged one despite the
+old caller's eventual boundary error. Removed that queue-reset operation and its
+sole caller rather than retaining a no-op API. Runtime playback/project retirement
+still runs; each player tail settles and removes itself normally. The focused file
+now passes 13 cases including absent data, unreadable/corrupt JSON, later recovery,
+compaction, migration and both session transitions. These execute production
+persistence/quiesce with controlled native-storage timing, not a phone fault test.
+
+`1382e1a` fixes old saved-state GETs overtaking save/remove acknowledgements. Four
+actual-loader/hook/service cases were RED: save and remove, each with the old read
+arriving before or after the mutation acknowledgement. Reconciliation reuses the
+existing owner folder revision rather than adding another ledger. It checks that
+revision inside the queued updater and after storage completes, permitting at most
+one fresh GET if an acknowledgement overtakes the snapshot. It never repeats a
+POST/DELETE. The reel hook reflects the confirmed intent after the mutation too,
+covering a GET that arrived during the pending command. The 15-case new fixture
+also checks failed reads/writes, genuine unsaved state and owner changes. HTTP,
+player persistence and course data are controlled seams; this is not live traffic.
+
+`95b6c47` fixes a late folder-create acknowledgement saving into a destination the
+learner already left. The actual picker hook reproduced two save callbacks after
+the user chose Watch Later before creation finished. Its existing generation now
+retires immediately on every terminal selection (including remove), dismissal,
+owner/course/reel replacement and unmount. A late-created server folder remains
+available; it is not deleted or used to overwrite the newer selection/name.
+FeedSideBar is the sole production consumer and passes its scope and onDismiss
+without a layout change or another navigation service. The existing default-pick
+fixture was aligned to open the picker before choosing, matching the real UI.
+The agent passed 14 picker cases plus four existing sidebar rendering cases.
+
+Root's combined final gate passed 12 suites / 147 tests across these changes,
+saved-cache mutations, reel lifecycle, session boundaries, history confirmation,
+completion ownership and the facade. Full TypeScript, scoped ESLint and diff
+checks passed. Independent consumer review confirmed that a local repair failure
+does not undo an accepted server save/removal or completion. Playback samples
+still wait for their local persistence as before; this pass does not claim that
+progress delivery works independently of device storage.
+
+All three changes are local commits, with no APK, push, deployment, live upload or
+account operation. No user-facing feature was removed. Existing iOS native/device
+acceptance limits remain open; these bounded checks do not finish the full-app goal.
