@@ -39,39 +39,42 @@
                     </select>
                 </div>
                 <div class="form-group col-md-3">
-                    <label for="analyticsDays">الفترة</label>
-                    <select id="analyticsDays" name="days" class="form-control">
-                        @foreach([7, 14, 30, 60, 90, 180, 365] as $days)
-                            <option value="{{ $days }}" @selected($filters['days'] === $days)>آخر {{ $days }} يومًا</option>
-                        @endforeach
-                    </select>
+                    @include('admin.reports.period-fields', ['period' => $period])
                 </div>
                 <div class="form-group col-md-4">
                     <button class="btn btn-primary">تطبيق</button>
-                    <a href="{{ route('admin.product-analytics.index') }}" class="btn btn-light">مسح</a>
+                    <a href="{{ route('admin.product-analytics.index', ['period' => $period->key]) }}" class="btn btn-light">كل الكورسات</a>
                 </div>
             </form>
+            <p class="text-muted mb-0">{{ $period->description() }}</p>
         </div>
     </div>
 
     <div class="row mb-4">
-        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">مستخدمون أو زوار مميزون</small><h3 class="mb-0">{{ number_format($quality['actors']) }}</h3></div></div></div>
-        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">جلسات</small><h3 class="mb-0">{{ number_format($quality['sessions']) }}</h3></div></div></div>
-        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">تحصيل مؤكد لباقات العملات</small><h3 class="mb-0">{{ number_format($paymentChannelReport['egp']['confirmed_gross_amount'], 2) }}</h3><small class="text-muted">لا يشمل الاختبار أو المرتجع</small>@if($paymentChannelReport['egp']['catalog_estimated_gross_amount'] > 0)<br><small class="text-warning">{{ number_format($paymentChannelReport['egp']['catalog_estimated_gross_amount'], 2) }} تقديري خارج الإجمالي</small>@endif</div></div></div>
-        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">صافي مؤكد</small><h3 class="mb-0">{{ number_format($paymentChannelReport['egp']['confirmed_net_amount'], 2) }}</h3>@if($paymentChannelReport['egp']['pending_settlement_count'] > 0)<small class="text-warning">جزئي · {{ $paymentChannelReport['egp']['pending_settlement_count'] }} بانتظار التسوية</small>@else<small class="text-success">مكتمل للفترة</small>@endif</div></div></div>
+        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">مستخدمون أو زوار مميزون</small><h3 class="mb-0">{{ number_format($quality['actors']) }}</h3>@include('admin.reports.growth', ['change' => $analytics['changes']['actors']])</div></div></div>
+        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">جلسات</small><h3 class="mb-0">{{ number_format($quality['sessions']) }}</h3>@include('admin.reports.growth', ['change' => $analytics['changes']['sessions']])</div></div></div>
+        @if($paymentChannelReport !== null)
+        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">تحصيل مؤكد لباقات العملات (جنيه)</small><h3 class="mb-0">{{ $paymentChannelReport['egp']['catalog_estimated_gross_count'] > 0 && $paymentChannelReport['egp']['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($paymentChannelReport['egp']['confirmed_gross_amount'], 2) }}</h3><small class="text-muted">لا يشمل الاختبار أو المرتجع</small>@if($paymentChannelReport['egp']['catalog_estimated_gross_amount'] > 0)<br><small class="text-warning">{{ number_format($paymentChannelReport['egp']['catalog_estimated_gross_amount'], 2) }} تقديري خارج الإجمالي</small>@endif @include('admin.reports.growth', ['change' => $paymentChanges['gross']])</div></div></div>
+        <div class="col-lg-3 col-sm-6 mb-3"><div class="card modern-card h-100"><div class="card-body"><small class="text-muted">صافي مؤكد (جنيه)</small><h3 class="mb-0">{{ $paymentChannelReport['egp']['pending_settlement_count'] > 0 && $paymentChannelReport['rows']->where('currency', 'EGP')->sum('confirmed_net_count') === 0 ? 'بانتظار التسوية' : number_format($paymentChannelReport['egp']['confirmed_net_amount'], 2) }}</h3>@if($paymentChannelReport['egp']['pending_settlement_count'] > 0)<small class="text-warning">جزئي · {{ $paymentChannelReport['egp']['pending_settlement_count'] }} بانتظار التسوية</small>@else<small class="text-muted">مكتمل للفترة</small>@endif @include('admin.reports.growth', ['change' => $paymentChanges['net']])</div></div></div>
+        @endif
     </div>
 
-    @include('admin.orders.partials.index.payment-channel-report')
+    @if($paymentChannelReport !== null)
+        @include('admin.orders.partials.index.payment-channel-report')
+        @include('admin.reports.provider-invoices', ['invoiceReport' => $invoiceReport])
+    @else
+        <p class="text-muted">تحصيل باقات العملات على مستوى المنصة لا يُنسب إلى كورس بعينه</p>
+    @endif
 
     <div class="row">
         <div class="col-xl-7 mb-4">
             <div class="card modern-card h-100">
                 <div class="card-header-modern"><h4 class="mb-0">مسار الاستخدام</h4></div>
                 <div class="table-responsive"><table class="table table-modern mb-0">
-                    <thead><tr><th>الخطوة</th><th>أحداث</th><th>أشخاص</th></tr></thead>
+                    <thead><tr><th>الخطوة</th><th>أحداث</th><th>أشخاص</th><th>تغير الأحداث</th></tr></thead>
                     <tbody>
                     @foreach($analytics['funnel'] as $step)
-                        <tr><td>{{ $eventLabels[$step['event']] ?? $step['event'] }}</td><td>{{ number_format($step['total']) }}</td><td>{{ number_format($step['unique_actors']) }}</td></tr>
+                        <tr><td>{{ $eventLabels[$step['event']] ?? $step['event'] }}</td><td>{{ number_format($step['total']) }}</td><td>{{ number_format($step['unique_actors']) }}</td><td>@include('admin.reports.growth', ['change' => $step['change']])</td></tr>
                     @endforeach
                     </tbody>
                 </table></div>
@@ -86,14 +89,16 @@
                     @else
                         <dl class="row mb-0">
                             <dt class="col-7">ردود مكتملة</dt><dd class="col-5 text-left">{{ number_format($ai['completed_requests']) }}</dd>
+                            <dt class="col-7">محاولات بلا إجابة مسلّمة</dt><dd class="col-5 text-left">{{ number_format($ai['unanswered_requests']) }}</dd>
                             <dt class="col-7">محاولات فاشلة أو ملغاة</dt><dd class="col-5 text-left">{{ number_format($ai['failed_requests']) }}</dd>
                             <dt class="col-7">التوكنز</dt><dd class="col-5 text-left">{{ number_format($ai['tokens']) }}</dd>
-                            <dt class="col-7">التكلفة بالدولار</dt><dd class="col-5 text-left">{{ number_format($ai['cost_usd'], 6) }}</dd>
+                            <dt class="col-7">الاستهلاك المؤكد بالدولار</dt><dd class="col-5 text-left">{{ $ai['cost_usd'] === null || (!$ai['cost_complete'] && $ai['provider_cost_requests'] === 0 && $ai['cost_usd'] == 0) ? 'غير متاح' : number_format($ai['cost_usd'], 6) }}</dd>
                         </dl>
+                        @include('admin.reports.growth', ['change' => $analytics['changes']['cost_usd'], 'neutral' => true])
                         @if(!$ai['cost_complete'])
-                            <div class="alert alert-warning mt-3 mb-0">التكلفة جزئية التقدير · {{ number_format($ai['estimated_cost_requests']) }} رد بلا تكلفة مزود نهائية</div>
+                            <div class="alert alert-warning mt-3 mb-0">قياس جزئي · {{ number_format($ai['estimated_cost_requests']) }} طلبًا بلا تكلفة مؤكدة ولا يدخل تقديره في المبلغ</div>
                         @else
-                            <div class="text-success mt-3">كل تكاليف الردود المكتملة مؤكدة من المزود</div>
+                            <div class="text-muted mt-3">القياس المتاح مؤكد من المزود أو من إعادة استخدام إجابة محفوظة بلا تكلفة</div>
                         @endif
                     @endif
                 </div>

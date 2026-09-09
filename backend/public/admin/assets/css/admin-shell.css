@@ -105,6 +105,9 @@ body.dark-mode .dark-mode-toggle .fa-sun-o { display: inline-block; }
 .modern-notification,
 .modern-user-menu { position: relative; }
 .user-profile-btn { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 10px; color: inherit; background: transparent; cursor: pointer; }
+.header-logout-form { margin: 0; flex-shrink: 0; }
+.header-logout-btn { min-height: 44px; padding: 6px 8px; border: 1px solid var(--rokn-admin-border); border-radius: 10px; color: var(--rokn-admin-danger); background: var(--rokn-admin-surface); font: inherit; font-size: .78rem; white-space: nowrap; cursor: pointer; }
+.header-logout-btn:hover { background: var(--rokn-admin-surface-soft); }
 .user-avatar-wrapper { width: 38px; height: 38px; flex: 0 0 38px; overflow: hidden; border: 1px solid var(--rokn-admin-border); border-radius: 50%; }
 .user-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
 header#header .user-info { display: flex; flex-direction: column; align-items: flex-start; text-align: start; }
@@ -421,6 +424,7 @@ body.admin-shell.open .modern-nav .menu-text {
         min-width: 0;
         padding: 10px 12px;
         gap: 8px;
+        flex-wrap: wrap;
     }
 
     .header-right,

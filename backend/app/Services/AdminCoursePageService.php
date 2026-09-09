@@ -13,6 +13,7 @@ use App\Models\Level;
 use App\Models\Path;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\ReportPeriod;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -115,7 +116,8 @@ final readonly class AdminCoursePageService
         bool $administrator,
         bool $canManageHero,
         int $commercialPage = 1,
-        bool $loadCommercialReport = true
+        bool $loadCommercialReport = true,
+        ?ReportPeriod $period = null
     ): array {
         // A canonical URL remains a stable bookmark, but once a moderator has
         // saved a working revision the studio must resume it rather than show
@@ -152,8 +154,9 @@ final readonly class AdminCoursePageService
         $editorPlans = $this->accessPlans->plansForEditor($course);
         $course->setRelation('accessPlans', $editorPlans);
 
+        $period ??= ReportPeriod::fromKey();
         $commercialReport = $administrator && $loadCommercialReport
-            ? $this->paginatedCommercialReport($reportCourse, $commercialPage)
+            ? $this->paginatedCommercialReport($reportCourse, $commercialPage, $period)
             : null;
 
         return [
@@ -162,6 +165,8 @@ final readonly class AdminCoursePageService
             'sections' => $sections,
             'publishingAudit' => $this->publishing->audit($course),
             'commercialReport' => $commercialReport,
+            'reportPeriod' => $period,
+            'reportCourse' => $reportCourse,
             'canViewCommercialReport' => $administrator,
             'accessPlans' => $editorPlans,
             'planStats' => $administrator ? $this->reports->accessPlanStats($course) : collect(),
@@ -204,9 +209,9 @@ final readonly class AdminCoursePageService
     }
 
     /** @return array<string, mixed> */
-    private function paginatedCommercialReport(Course $course, int $page): array
+    private function paginatedCommercialReport(Course $course, int $page, ReportPeriod $period): array
     {
-        $report = $this->commercialReports->forCourse($course);
+        $report = $this->commercialReports->forCourse($course, $period);
         $rows = collect($report['rows']);
         $perPage = 25;
         $lastPage = max(1, (int) ceil($rows->count() / $perPage));
@@ -220,7 +225,7 @@ final readonly class AdminCoursePageService
                 'path' => route('admin.courses.show', $course),
                 'pageName' => 'commercial_page',
             ]
-        ))->appends('tab', 'commercial-report')->fragment('commercial-report');
+        ))->appends(['tab' => 'commercial-report', 'period' => $period->key])->fragment('commercial-report');
         unset($report['rows']);
 
         return $report;

@@ -8,6 +8,7 @@ use App\Models\Course;
 use App\Models\AiUsageEvent;
 use App\Models\Order;
 use App\Support\CsvCell;
+use App\Support\ReportPeriod;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -21,10 +22,10 @@ final readonly class AdminCourseReportService
     }
 
     /** @return array{course:Course, headings:list<string>, rows:list<list<mixed>>} */
-    public function csv(Course $course): array
+    public function csv(Course $course, ?ReportPeriod $period = null): array
     {
         $course = $this->stagedAuthoring->canonicalFor($course);
-        $report = $this->commercialReports->forCourse($course);
+        $report = $this->commercialReports->forCourse($course, $period);
         $services = CourseCostReportService::serviceLabels();
 
         $headings = [
@@ -33,10 +34,10 @@ final readonly class AdminCourseReportService
             'عملات مشتراة', 'عملات مكافآت', 'إجمالي نقدي مؤكد منسوب',
             'حالة ربط دفتر العملات', 'إجمالي تقديري بسعر الكتالوج', 'حالة الإجمالي',
             'قنوات الشحن', 'صافي بوابات الدفع', 'حالة التسوية', 'طلبات AI',
-            'طلبات AI فاشلة', 'طلبات AI بتكلفة تقديرية', 'حالة تكلفة AI',
+            'طلبات AI فاشلة', 'طلبات AI بانتظار تكلفة المزود', 'حالة تكلفة AI',
             'توكنات AI', 'تكلفة AI بالدولار', 'دقائق المشاهدة', 'GB مشاهدة مقدرة',
-            'تكلفة الخدمات الفعلية بالجنيه', 'التكلفة شاملة التقديرات',
-            'هامش المساهمة الفعلي', 'هامش المساهمة التقديري', 'نسبة التكلفة من الصافي',
+            'تكلفة الخدمات الفعلية بالجنيه',
+            'هامش المساهمة الفعلي', 'نسبة التكلفة من الصافي',
             'نسبة هامش المساهمة',
             ...array_map(fn (string $label): string => "تكلفة {$label}", $services),
         ];
@@ -67,15 +68,13 @@ final readonly class AdminCourseReportService
                 $row['ai_requests'],
                 $row['ai_failed_requests'],
                 $row['ai_estimated_requests'],
-                $row['ai_cost_complete'] ? 'مؤكدة من المزود' : 'تتضمن تقديرات',
+                $row['ai_cost_complete'] ? 'مؤكدة من المزود' : 'بانتظار تكلفة المزود',
                 $row['ai_tokens'],
                 $row['ai_cost_usd'],
                 $row['playback_minutes'],
                 $row['playback_gb_estimated'],
                 $row['service_cost_actual_egp'],
-                $row['service_cost_with_estimates_egp'],
                 $row['contribution_margin_egp'],
-                $row['estimated_contribution_margin_egp'],
                 $row['cost_to_net_revenue_percentage'],
                 $row['contribution_margin_percentage'],
                 ...array_map(
@@ -88,9 +87,10 @@ final readonly class AdminCourseReportService
         return compact('course', 'headings', 'rows');
     }
 
-    public function accessPlanStats(Course $course): Collection
+    public function accessPlanStats(Course $course, ?ReportPeriod $period = null): Collection
     {
         $course = $this->stagedAuthoring->canonicalFor($course);
+        $period ??= ReportPeriod::fromKey('all');
         $salesOrders = Order::query()
             ->where('course_id', $course->id)
             ->whereNotNull('access_plan_id')
@@ -99,8 +99,8 @@ final readonly class AdminCourseReportService
                 Order::PAYMENT_METHOD_WALLET_COINS,
             ])
             ->financiallyEffective()
-            ->with('accessPlan')
-            ->get();
+            ->with('accessPlan');
+        $salesOrders = $period->apply($salesOrders, 'approved_at')->get();
         $allocations = $this->financialLedger->allocationsForOrders($salesOrders);
         $sales = $salesOrders->groupBy(function (Order $order): string {
             $snapshot = is_array($order->access_plan_snapshot) ? $order->access_plan_snapshot : [];
@@ -126,7 +126,7 @@ final readonly class AdminCourseReportService
             ];
         });
 
-        $usage = $this->usageByPlan($course);
+        $usage = $this->usageByPlan($course, $period);
         $features = array_keys(CourseCostReportService::aiFeatureLabels());
 
         return $course->accessPlans->mapWithKeys(fn ($plan) => [
@@ -162,7 +162,7 @@ final readonly class AdminCourseReportService
         ]);
     }
 
-    private function usageByPlan(Course $course): Collection
+    private function usageByPlan(Course $course, ReportPeriod $period): Collection
     {
         $driver = DB::connection()->getDriverName();
         $costSource = match ($driver) {
@@ -171,28 +171,30 @@ final readonly class AdminCourseReportService
             'sqlite' => "json_extract(metadata, '$.cost_usage_source')",
             default => "''",
         };
-        $usageSource = match ($driver) {
-            'mysql', 'mariadb' => "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.usage_source'))",
-            'pgsql' => "metadata->>'usage_source'",
-            'sqlite' => "json_extract(metadata, '$.usage_source')",
-            default => "''",
-        };
         $deliverySource = match ($driver) {
             'mysql', 'mariadb' => "JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.entitlement_delivered'))",
             'pgsql' => "metadata->>'entitlement_delivered'",
             'sqlite' => "CAST(json_extract(metadata, '$.entitlement_delivered') AS TEXT)",
             default => "'true'",
         };
-        $estimatedCost = "COALESCE({$costSource}, '') NOT IN ('provider', 'cache_zero_cost')"
-            ." AND COALESCE({$usageSource}, '') NOT IN ('cached_answer', 'cache_zero_cost')";
+        $completed = "ai_usage_events.status = 'completed'";
+        $provider = "COALESCE({$costSource}, '') = 'provider' AND cost_usd IS NOT NULL AND cost_usd >= 0";
+        $cached = "COALESCE({$costSource}, '') = 'cache_zero_cost' AND cost_usd IS NOT NULL AND cost_usd = 0";
+        $estimatedCost = "{$completed} AND NOT (({$provider}) OR ({$cached}))";
 
-        return DB::table('ai_usage_events')
+        $query = DB::table('ai_usage_events')
             ->leftJoin('course_access_plans as usage_plan', 'usage_plan.id', '=', 'ai_usage_events.access_plan_id')
             ->where('ai_usage_events.course_id', $course->id)
-            ->where('ai_usage_events.status', 'completed')
             ->whereNotNull('ai_usage_events.access_plan_id')
-            ->selectRaw("usage_plan.code as plan_code, ai_usage_events.feature, SUM(CASE WHEN COALESCE({$deliverySource}, 'true') NOT IN ('false', '0') THEN 1 ELSE 0 END) as ai_requests, SUM(CASE WHEN COALESCE({$deliverySource}, 'true') IN ('false', '0') THEN 1 ELSE 0 END) as unanswered_requests, SUM(CASE WHEN {$estimatedCost} THEN 1 ELSE 0 END) as estimated_requests, COALESCE(SUM(ai_usage_events.total_tokens),0) as total_tokens, COALESCE(SUM(ai_usage_events.cost_usd),0) as cost_usd")
-            ->groupBy('usage_plan.code', 'ai_usage_events.feature')
+            ->selectRaw('usage_plan.code as plan_code, ai_usage_events.feature')
+            ->selectRaw("SUM(CASE WHEN {$completed} AND COALESCE({$deliverySource}, 'true') NOT IN ('false', '0') THEN 1 ELSE 0 END) as ai_requests")
+            ->selectRaw("SUM(CASE WHEN {$completed} AND COALESCE({$deliverySource}, 'true') IN ('false', '0') THEN 1 ELSE 0 END) as unanswered_requests")
+            ->selectRaw("SUM(CASE WHEN {$estimatedCost} THEN 1 ELSE 0 END) as estimated_requests")
+            ->selectRaw("COALESCE(SUM(CASE WHEN {$completed} THEN ai_usage_events.total_tokens ELSE 0 END), 0) as total_tokens")
+            ->selectRaw("COALESCE(SUM(CASE WHEN {$provider} THEN ai_usage_events.cost_usd ELSE 0 END), 0) as cost_usd")
+            ->groupBy('usage_plan.code', 'ai_usage_events.feature');
+
+        return $period->apply($query, 'ai_usage_events.created_at')
             ->get()
             ->keyBy(fn ($row) => $row->plan_code.':'.$row->feature);
     }

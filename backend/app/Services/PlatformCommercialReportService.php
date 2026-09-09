@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
+use App\Support\ReportPeriod;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -12,27 +14,80 @@ use Illuminate\Support\Facades\DB;
 /** Platform-wide unit economics assembled from the same auditable course ledger. */
 final readonly class PlatformCommercialReportService
 {
-    public function __construct(private CourseCommercialReportService $courses)
+    public function __construct(
+        private CourseCommercialReportService $courses,
+        private AiUsageReportService $ai,
+        private ProviderInvoiceReportService $invoices,
+    )
     {
     }
 
     /** @param array<string, mixed> $filters @return array<string, mixed> */
     public function report(array $filters = []): array
     {
+        $period = ReportPeriod::fromKey((string) ($filters['period'] ?? 'all'));
+        $current = $this->build($filters, $period);
+        $previous = $period->previous();
+        $prior = $previous ? $this->build($filters, $previous) : null;
+        $current['comparisons'] = collect(['gross_egp', 'net_egp', 'ai_cost_usd', 'service_cost_egp', 'margin_egp'])
+            ->mapWithKeys(function (string $key) use ($current, $prior): array {
+                $value = $current[$key];
+                $previousValue = $prior[$key] ?? null;
+                if ($key === 'ai_cost_usd') {
+                    if (!$current['ai_cost_complete']) $value = null;
+                    if (!($prior['ai_cost_complete'] ?? false)) $previousValue = null;
+                }
+                if (in_array($key, ['gross_egp', 'net_egp', 'margin_egp'], true)) {
+                    if (!$current['coin_allocation_complete']) $value = null;
+                    if (!($prior['coin_allocation_complete'] ?? false)) $previousValue = null;
+                }
+                return [$key => ReportPeriod::compare($value, $previousValue)];
+            })->all();
+        $current['plan_breakdown'] = $current['plan_breakdown']->map(function (array $plan, string $code) use ($prior): array {
+            $previous = $prior === null ? [] : ($prior['plan_breakdown']->get($code)['period_metrics'] ?? []);
+            $plan['comparisons'] = collect($plan['period_metrics'])->mapWithKeys(fn ($value, string $key): array => [
+                $key => ReportPeriod::compare($value, $previous[$key] ?? null),
+            ])->all();
+            return $plan;
+        });
+        $priorCourses = $prior === null ? collect() : $prior['course_breakdown']->keyBy('course_id');
+        $current['course_breakdown'] = $current['course_breakdown']->map(function (array $course) use ($priorCourses): array {
+            $previous = $priorCourses->get($course['course_id']);
+            $course['comparisons'] = ['cash_net_egp' => ReportPeriod::compare(
+                $course['coin_allocation_complete'] ? $course['net_egp'] : null,
+                ($previous['coin_allocation_complete'] ?? false) ? $previous['net_egp'] : null,
+            )];
+            return $course;
+        });
+
+        return $current;
+    }
+
+    private function build(array $filters, ReportPeriod $period): array
+    {
         // Retiring a course removes it from the catalogue, not from lifetime
         // revenue and cost history.
-        $courseQuery = Course::query()->withoutGlobalScope(SoftDeletingScope::class);
-        $courseModels = $courseQuery->whereHas('enrollments')
+        $courseQuery = Course::query()->withoutGlobalScope(SoftDeletingScope::class)
+            ->whereNotIn('courses.id', CourseAuthoringRevision::query()->select('revision_course_id'))
+            ->where(function ($query): void {
+                $query->whereHas('enrollments')->orWhereHas('orders')
+                    ->orWhereExists(fn ($events) => $events->selectRaw('1')->from('ai_usage_events')->whereColumn('course_id', 'courses.id'))
+                    ->orWhereExists(fn ($invoices) => $invoices->selectRaw('1')->from('operating_cost_pools')
+                        ->whereColumn('course_id', 'courses.id')->whereNull('deleted_at')->where('is_final', true));
+            });
+        $courseModels = $courseQuery
             ->when($filters['course_id'] ?? null, fn ($query, $courseId) =>
                 $query->whereKey((int) $courseId)
             )
             ->orderBy('name_ar')
-            ->get(['id', 'name_ar', 'name_en']);
+            ->get(['id', 'name_ar', 'name_en', 'deleted_at']);
 
         $rawRows = collect();
         $warnings = collect();
+        $courseReports = collect();
         foreach ($courseModels as $course) {
-            $courseReport = $this->courses->forCourse($course);
+            $courseReport = $this->courses->forCourse($course, $period, false);
+            $courseReports->put((int) $course->id, $courseReport);
             $warnings = $warnings->concat($courseReport['cost_warnings']);
             $rawRows = $rawRows->concat(
                 $courseReport['rows']->map(function (array $row) use ($course): array {
@@ -58,9 +113,37 @@ final readonly class PlatformCommercialReportService
 
         $rows = $this->filterRows($rawRows, $filters);
         $notificationUsage = $this->notificationUsage(
-            $rows->pluck('enrollment.user_id')->map(fn ($id): int => (int) $id)
+            $rows->pluck('enrollment.user_id')->map(fn ($id): int => (int) $id), $period
         );
         $summary = $this->courses->groupSummary($rows);
+        $cohort = collect(['plan', 'source', 'q'])->contains(fn (string $key): bool => trim((string) ($filters[$key] ?? '')) !== '');
+        $courseId = !empty($filters['course_id']) ? (int) $filters['course_id'] : null;
+        $invoiceReport = $cohort ? null : $this->invoices->summary($period, $courseId);
+        $ai = $cohort ? null : $this->ai->summary($period, $courseId);
+        if ($ai !== null) {
+            $summary = array_replace($summary, [
+                'ai_requests' => $ai['completed_requests'], 'ai_failed_requests' => $ai['failed_requests'],
+                'ai_unanswered_requests' => $ai['unanswered_requests'], 'ai_tokens' => $ai['tokens'],
+                'ai_cost_usd' => $ai['cost_usd'], 'ai_cost_complete' => $ai['cost_complete'],
+                'ai_estimated_requests' => $ai['estimated_cost_requests'],
+            ]);
+            $complete = !$invoiceReport['shared_costs'] && $invoiceReport['missing_fx'] === 0
+                && $ai['cost_egp'] !== null && collect(['bunny_delivery', 'bunny_storage', 'infrastructure'])
+                    ->every(fn (string $key): bool => $invoiceReport['services']->firstWhere('key', $key)['actual_egp'] !== null);
+            $summary['service_cost_complete'] = $complete;
+            $summary['service_cost_egp'] = $complete ? round($ai['cost_egp'] + $invoiceReport['known_total_egp'], 4) : null;
+        } else {
+            $summary['service_cost_complete'] = false;
+            $summary['service_cost_egp'] = null;
+        }
+        $summary['margin_egp'] = $summary['net_egp'] !== null && $summary['service_cost_egp'] !== null
+            ? round($summary['net_egp'] - $summary['service_cost_egp'], 4) : null;
+        $summary['cost_to_net_revenue_percentage'] = $summary['net_egp'] > 0 && $summary['service_cost_egp'] !== null
+            ? round($summary['service_cost_egp'] / $summary['net_egp'] * 100, 2) : null;
+        $summary['contribution_margin_percentage'] = $summary['net_egp'] > 0 && $summary['margin_egp'] !== null
+            ? round($summary['margin_egp'] / $summary['net_egp'] * 100, 2) : null;
+        $summary['ai_failure_rate_percentage'] = $summary['ai_requests'] + $summary['ai_failed_requests'] > 0
+            ? round($summary['ai_failed_requests'] / ($summary['ai_requests'] + $summary['ai_failed_requests']) * 100, 2) : null;
         $studentRows = $rows
             ->groupBy(fn (array $row): int => (int) $row['enrollment']->user_id)
             ->map(function (Collection $userRows, int $userId) use ($notificationUsage): array {
@@ -104,10 +187,8 @@ final readonly class PlatformCommercialReportService
             && $summary['net_egp'] !== null
                 ? round((float) $summary['net_egp'] / $uniqueStudents, 2)
                 : null;
-        $summary['average_cost_per_student_egp'] = $uniqueStudents > 0
-            && $summary['service_cost_egp'] !== null
-                ? round((float) $summary['service_cost_egp'] / $uniqueStudents, 2)
-                : null;
+        // Recorded platform invoices are not evidence of individual learner costs.
+        $summary['average_cost_per_student_egp'] = null;
         $summary['ai_cost_per_1000_tokens_usd'] = (int) $summary['ai_tokens'] > 0
             ? round(((float) $summary['ai_cost_usd'] / (int) $summary['ai_tokens']) * 1000, 6)
             : null;
@@ -123,7 +204,19 @@ final readonly class PlatformCommercialReportService
             : null;
         $notificationTotals['push_provider_acceptance_rate_percentage']
             = $summary['push_provider_acceptance_rate_percentage'];
-        $serviceBreakdown = $this->serviceBreakdown($rows, $notificationTotals)->map(function (array $service) use (
+        $services = $this->serviceBreakdown($rows, $notificationTotals);
+        if ($invoiceReport !== null) {
+            $services = $services->map(function (array $service) use ($invoiceReport, $ai): array {
+                $service['actual_egp'] = $service['key'] === 'openrouter' ? $ai['cost_egp']
+                    : ($invoiceReport['services']->firstWhere('key', $service['key'])['actual_egp'] ?? null);
+                if ($service['key'] === 'openrouter') {
+                    $service = array_replace($service, ['requests' => $ai['completed_requests'],
+                        'failed_requests' => $ai['failed_requests'], 'units' => $ai['tokens'], 'cost_usd' => $ai['cost_usd']]);
+                }
+                return $service;
+            });
+        }
+        $serviceBreakdown = $services->map(function (array $service) use (
             $summary
         ): array {
             $service['share_of_actual_cost_percentage'] = $summary['service_cost_egp'] !== null
@@ -134,28 +227,48 @@ final readonly class PlatformCommercialReportService
 
             return $service;
         });
+        // Historical tier metrics already use accepted order contracts in the
+        // course report. Never redistribute them using today's enrollment tier.
+        $planBreakdown = $courseReports->flatMap(fn (array $report) => $report['plan_breakdown']->values())
+            ->groupBy('plan_code')->map(function (Collection $plans, string $code) use ($cohort, $rows): array {
+                $metrics = collect(['cash_gross_egp', 'cash_net_egp', 'ai_requests', 'ai_tokens', 'ai_cost_usd'])
+                    ->mapWithKeys(fn (string $key): array => [$key => $cohort || $plans->contains(
+                        fn (array $plan): bool => ($plan['period_metrics'][$key] ?? null) === null
+                    ) ? null : $plans->sum(fn (array $plan) => $plan['period_metrics'][$key])])->all();
+                return array_replace($this->courses->groupSummary($rows->where('plan_code', $code)), [
+                    'plan_code' => $code, 'plan_name' => $plans->first()['plan_name'], 'period_metrics' => $metrics,
+                    'service_cost_egp' => null, 'service_cost_complete' => false,
+                    'average_cost_per_student_egp' => null, 'margin_egp' => null,
+                ]);
+            });
 
         return $summary + [
+            'period' => $period,
+            'provider_invoice_report' => $invoiceReport,
+            'cohort_filter' => $cohort,
             'rows' => $rows,
             'student_rows' => $studentRows,
             'unique_students' => $uniqueStudents,
             'enrollments' => $rows->count(),
             'active_enrollments' => $rows->where('is_active', true)->count(),
-            'course_breakdown' => $rows->groupBy('course_id')->map(function (
-                Collection $courseRows
-            ): array {
-                return $this->courses->groupSummary($courseRows) + [
-                    'course_id' => (int) $courseRows->first()['course_id'],
-                    'course_name' => (string) $courseRows->first()['course_name'],
-                    'course_archived' => (bool) ($courseRows->first()['course_archived'] ?? false),
+            'course_breakdown' => $courseModels->filter(fn (Course $course): bool => !$cohort || $rows->contains('course_id', (int) $course->id))->map(function (
+                Course $course
+            ) use ($courseReports, $cohort, $rows): array {
+                $courseRows = $rows->where('course_id', (int) $course->id);
+                $result = $this->courses->groupSummary($courseRows);
+                $courseReport = $courseReports->get((int) $course->id);
+                if (!$cohort) {
+                    $result['service_cost_egp'] = $courseReport['service_cost_actual_egp'];
+                    $result['cost_to_net_revenue_percentage'] = $result['net_egp'] > 0 && $result['service_cost_egp'] !== null
+                        ? round($result['service_cost_egp'] / $result['net_egp'] * 100, 2) : null;
+                }
+                return $result + [
+                    'course_id' => (int) $course->id,
+                    'course_name' => (string) $course->title,
+                    'course_archived' => $course->trashed(),
                 ];
             })->values(),
-            'plan_breakdown' => $rows->groupBy('plan_code')->map(
-                fn (Collection $planRows, string $planCode): array => $this->courses->groupSummary($planRows) + [
-                    'plan_code' => $planCode,
-                    'plan_name' => (string) ($planRows->first()['plan_name'] ?? 'إتاحة قديمة'),
-                ]
-            ),
+            'plan_breakdown' => $planBreakdown,
             'source_breakdown' => $rows->groupBy('source_label')->map(
                 fn (Collection $sourceRows): array => $this->courses->groupSummary($sourceRows)
             ),
@@ -199,7 +312,7 @@ final readonly class PlatformCommercialReportService
             string $_label,
             string $serviceKey
         ) use ($rows, $field): ?float {
-            if ($rows->contains(fn (array $row): bool =>
+            if ($rows->isEmpty() || $rows->contains(fn (array $row): bool =>
                 ($row[$field][$serviceKey] ?? null) === null
             )) {
                 return null;
@@ -250,24 +363,28 @@ final readonly class PlatformCommercialReportService
     }
 
     /** @param Collection<int,int> $userIds @return Collection<int,array<string,int>> */
-    private function notificationUsage(Collection $userIds): Collection
+    private function notificationUsage(Collection $userIds, ReportPeriod $period): Collection
     {
         $userIds = $userIds->filter()->unique()->values();
         if ($userIds->isEmpty()) {
             return collect();
         }
 
-        return DB::table('student_notifications')
+        $base = DB::table('student_notifications')
             ->whereIn('user_id', $userIds)
-            ->selectRaw('user_id, COUNT(*) as in_app_notifications, SUM(CASE WHEN is_read = 1 THEN 1 ELSE 0 END) as read_notifications, SUM(CASE WHEN push_attempted_at IS NOT NULL THEN 1 ELSE 0 END) as push_attempts, SUM(CASE WHEN push_sent_at IS NOT NULL THEN 1 ELSE 0 END) as push_provider_accepted')
-            ->groupBy('user_id')
-            ->get()
-            ->mapWithKeys(fn ($row): array => [(int) $row->user_id => [
-                'in_app_notifications' => (int) $row->in_app_notifications,
-                'read_notifications' => (int) $row->read_notifications,
-                'push_attempts' => (int) $row->push_attempts,
-                'push_provider_accepted' => (int) $row->push_provider_accepted,
-            ]]);
+            ->selectRaw('user_id, COUNT(*) as total')->groupBy('user_id');
+        $result = $userIds->mapWithKeys(fn (int $id): array => [$id => $this->emptyNotificationUsage()]);
+        foreach (['in_app_notifications' => 'created_at', 'read_notifications' => 'created_at',
+            'push_attempts' => 'push_attempted_at', 'push_provider_accepted' => 'push_sent_at'] as $metric => $column) {
+            $query = (clone $base)->whereNotNull($column);
+            if ($metric === 'read_notifications') {
+                $query->where('is_read', true);
+            }
+            foreach ($period->apply($query, $column)->get() as $row) {
+                $result->put((int) $row->user_id, array_replace($result->get((int) $row->user_id), [$metric => (int) $row->total]));
+            }
+        }
+        return $result;
     }
 
     /** @return array<string,int> */

@@ -34,7 +34,7 @@
         @if($commercialReport)
             <button type="button" class="course-studio__tab" data-studio-tab="commercial-report" role="tab" aria-controls="commercial-report" aria-selected="false" tabindex="-1"><i class="fa fa-line-chart" aria-hidden="true"></i> الطلاب والدخل</button>
         @else
-            <a class="course-studio__tab" href="{{ route('admin.courses.show', [$course, 'tab' => 'commercial-report']) }}#commercial-report"><i class="fa fa-line-chart" aria-hidden="true"></i> الطلاب والدخل</a>
+            <a class="course-studio__tab" href="{{ route('admin.courses.show', [$course, 'tab' => 'commercial-report', 'period' => $reportPeriod->key]) }}#commercial-report"><i class="fa fa-line-chart" aria-hidden="true"></i> الطلاب والدخل</a>
         @endif
     </nav>
     @endif

@@ -66,6 +66,10 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping(10)
             ->onOneServer();
+        $schedule->command('ai:reconcile-provider-costs --limit=10')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping(10)
+            ->onOneServer();
         $schedule->command('outbox:maintain --dispatch=500 --prune=0')
             ->everyMinute()
             ->withoutOverlapping(5)

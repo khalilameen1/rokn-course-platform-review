@@ -8,6 +8,11 @@ import {fileURLToPath} from 'node:url';
 // module can be supplied without changing the application's runtime dependencies.
 const {chromium} = await import(process.env.ROKN_PLAYWRIGHT_MODULE || 'playwright');
 const publicRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../public');
+const headerSource = await readFile(resolve(publicRoot, '../resources/views/admin/includes/header.blade.php'), 'utf8');
+const logoutForm = headerSource.match(/<form\b[^>]*id="logoutForm"[\s\S]*?<\/form>/)?.[0]
+    .replace("{{ route('logout') }}", '/logout')
+    .replace('@csrf', '<input type="hidden" name="_token" value="fixture-csrf">');
+assert.ok(logoutForm, 'Use the actual header logout form, not a parallel fixture control');
 const fixture = `<!doctype html><html dir="rtl" lang="ar" class="admin-shell-root">
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="stylesheet" href="/admin/assets/css/bootstrap.min.css">
@@ -32,7 +37,7 @@ const fixture = `<!doctype html><html dir="rtl" lang="ar" class="admin-shell-roo
   </div><div class="header-left"><div class="modern-user-menu">
    <button id="userMenuToggle" class="user-profile-btn">الحساب</button>
    <div id="userMenu" class="user-dropdown" aria-hidden="true"><a href="#main-content">بيانات الحساب</a></div>
-  </div></div>
+  </div>${logoutForm}</div>
  </div></header>
  <main id="main-content" class="content"><h1 class="admin-page__title">أساسيات الرسم والتحريك</h1>
   <form id="ajaxForm" method="post"><button type="submit">حفظ الكورس</button><output id="saved">0</output></form>
@@ -49,6 +54,7 @@ document.getElementById('ajaxForm').addEventListener('submit', event => {
 </script><script src="/js/app.js"></script><script src="/admin/assets/js/main.js"></script>
 </body></html>`;
 let submissions = 0;
+let logouts = 0;
 const server = createServer(async (request, response) => {
     if (request.url === '/') {
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -58,6 +64,15 @@ const server = createServer(async (request, response) => {
         submissions += 1;
         response.setHeader('Content-Type', 'text/html; charset=utf-8');
         return response.end('<p>saved</p>');
+    }
+    if (request.url === '/logout') {
+        let body = '';
+        for await (const chunk of request) body += chunk;
+        assert.equal(request.method, 'POST');
+        assert.equal(new URLSearchParams(body).get('_token'), 'fixture-csrf');
+        logouts += 1;
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        return response.end('<p>logged out</p>');
     }
     const path = resolve(publicRoot, '.' + request.url.split('?')[0]);
     if (!path.startsWith(publicRoot + sep)) { response.writeHead(403); return response.end(); }
@@ -103,6 +118,9 @@ try {
             await page.setViewportSize({width, height: 900});
             await page.waitForTimeout(350);
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Overflow at ${width}px`);
+            assert.equal(await page.locator('#logoutForm button').isVisible(), true, `Logout visible without opening account menu at ${width}px`);
+            const logoutBounds = await page.locator('#logoutForm button').boundingBox();
+            assert.ok(logoutBounds.height >= 44 && logoutBounds.x >= 0 && logoutBounds.x + logoutBounds.width <= width, `Logout touch target within ${width}px viewport`);
             if (width <= 768) {
                 await page.locator('#menuToggle').click();
                 assert.equal(await page.locator('#left-panel').getAttribute('aria-modal'), 'true');
@@ -117,11 +135,14 @@ try {
         await page.goBack();
         await page.waitForFunction(() => !document.getElementById('nativeForm').hasAttribute('aria-busy'));
         assert.equal(await page.locator('#nativeForm button').getAttribute('aria-disabled'), null);
+        await page.locator('#logoutForm button').click();
+        await page.waitForURL('**/logout');
         assert.deepEqual(errors, []);
         await context.close();
         console.log(`PASS shell navigation, storage=${storageDenied ? 'denied' : 'available'}, AJAX submit, native submit/back, four viewport widths`);
     }
     assert.equal(submissions, 2);
+    assert.equal(logouts, 2);
 } finally {
     await browser?.close();
     await new Promise(done => server.close(done));

@@ -139,8 +139,13 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
         self::assertStringContainsString('ما دفعه الطالب', $student);
         self::assertStringContainsString('$order->ledger_paid_coins', $student);
         self::assertStringContainsString('$order->ledger_reward_coins', $student);
-        self::assertStringContainsString('صافي/طالب', $course);
-        self::assertStringContainsString('تكلفة/طالب', $course);
+        // Per-learner ledger evidence remains visible; averaging shared
+        // invoices is no longer presented as the learner's actual cost.
+        self::assertStringContainsString('كشف الطلاب', $course);
+        self::assertStringContainsString("\$row['cash_net_known_egp']", $course);
+        self::assertStringContainsString("\$row['ai_cost_usd']", $course);
+        self::assertStringContainsString("\$plan['period_metrics']", $course);
+        self::assertStringNotContainsString('شاملة التقديرات', $course);
         self::assertStringNotContainsString('<th>OpenRouter</th>', $course);
     }
 

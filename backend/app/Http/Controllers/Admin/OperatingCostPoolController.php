@@ -173,7 +173,6 @@ final class OperatingCostPoolController extends Controller
             ['path' => $request->url(), 'query' => $request->query()]
         );
         $courses = Course::withTrashed()
-            ->whereHas('enrollments')
             ->orderBy('name_ar')
             ->get(['id', 'name_ar']);
 
@@ -192,12 +191,12 @@ final class OperatingCostPoolController extends Controller
             $output = fopen('php://output', 'wb');
             fwrite($output, "\xEF\xBB\xBF");
             fputcsv($output, array_merge([
-                'الطالب', 'البريد', 'الكورسات', 'الباقات', 'مصادر الإتاحة', 'قنوات الشحن',
+                'الفترة', 'الطالب', 'البريد', 'الكورسات', 'الباقات الحالية', 'مصادر الإتاحة الحالية', 'قنوات الشحن',
                 'صافي الدخل', 'تكلفة الخدمات', 'هامش المساهمة', 'نسبة التكلفة للصافي',
                 'حالة ربط دفتر العملات',
                 'طلبات AI ناجحة', 'طلبات AI فاشلة', 'نسبة فشل AI',
-                'طلبات AI بتكلفة تقديرية', 'حالة تكلفة AI',
-                'توكنات AI', 'دقائق الفيديو', 'GB مشاهدة مقدرة',
+                'طلبات AI بانتظار تكلفة المزود', 'حالة تكلفة AI', 'تكلفة OpenRouter المؤكدة USD',
+                'توكنات AI', 'دقائق الفيديو',
                 'إشعارات داخل التطبيق', 'إشعارات مقروءة', 'محاولات Push', 'قبله مزود Push',
                 'نسبة قبول مزود Push',
             ], array_map(fn (string $label): string => "تكلفة {$label}", $labels)), ',', '"', '');
@@ -206,6 +205,7 @@ final class OperatingCostPoolController extends Controller
                     fn (string $key) => $row['actual_cost_by_service_egp']->get($key)
                 )->all();
                 fputcsv($output, CsvCell::row(array_merge([
+                    $report['period']->label(),
                     $row['user']?->name ?? 'مستخدم محذوف',
                     $row['user']?->email,
                     $row['courses']->implode(' | '),
@@ -221,10 +221,10 @@ final class OperatingCostPoolController extends Controller
                     $row['ai_failed_requests'],
                     $row['ai_failure_rate_percentage'],
                     $row['ai_estimated_requests'],
-                    $row['ai_cost_complete'] ? 'مؤكدة من المزود' : 'تتضمن تقديرات',
+                    $row['ai_cost_complete'] ? 'مؤكدة من المزود' : 'تأكيد المزود غير مكتمل',
+                    $row['ai_cost_usd'],
                     $row['ai_tokens'],
                     $row['playback_minutes'],
-                    $row['playback_gb_estimated'],
                     $row['in_app_notifications'],
                     $row['read_notifications'],
                     $row['push_attempts'],
@@ -265,6 +265,7 @@ final class OperatingCostPoolController extends Controller
     private function reportFilters(Request $request): array
     {
         return $request->validate([
+            'period' => ['nullable', Rule::in(array_keys(\App\Support\ReportPeriod::labels()))],
             'course_id' => ['nullable', 'integer', 'exists:courses,id'],
             'plan' => ['nullable', 'string', 'max:100'],
             'source' => ['nullable', Rule::in([

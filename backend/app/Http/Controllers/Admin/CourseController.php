@@ -16,7 +16,9 @@ use App\Services\AdminCoursePageService;
 use App\Services\AdminCoursePreviewService;
 use App\Services\AdminCourseReportService;
 use App\Services\CourseStagedAuthoringService;
+use App\Support\ReportPeriod;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\Response;
 
 final class CourseController extends Controller
@@ -65,13 +67,16 @@ final class CourseController extends Controller
         AdminCoursePageService $pages
     ) {
         $summaryOnly = $request->boolean('summary') && $request->expectsJson();
+        $filters = $request->validate(['period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))]]);
+        $period = ReportPeriod::fromKey($filters['period'] ?? 'all');
         $data = $pages->show(
             $course,
             $this->isAdministrator(),
             $this->canCurateHome(),
             max(1, $request->integer('commercial_page', 1)),
             !$summaryOnly && ($request->query('tab') === 'commercial-report'
-                || $request->has('commercial_page'))
+                || $request->has('commercial_page')),
+            $period
         );
 
         if ($summaryOnly) {
@@ -127,11 +132,13 @@ final class CourseController extends Controller
     }
 
     public function exportCommercialReport(
+        Request $request,
         Course $course,
         AdminCourseReportService $reports
     ) {
         abort_unless($this->isAdministrator(), 403);
-        $export = $reports->csv($course);
+        $filters = $request->validate(['period' => ['nullable', Rule::in(array_keys(ReportPeriod::labels()))]]);
+        $export = $reports->csv($course, ReportPeriod::fromKey($filters['period'] ?? 'all'));
 
         return response()->streamDownload(function () use ($export): void {
             $output = fopen('php://output', 'wb');

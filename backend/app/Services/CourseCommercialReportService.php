@@ -8,6 +8,8 @@ use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\WalletDebitAllocation;
+use App\Models\AiUsageEvent;
+use App\Support\ReportPeriod;
 use Illuminate\Support\Collection;
 
 /** Builds the administrator's auditable learner and cash-attribution report. */
@@ -20,8 +22,9 @@ final class CourseCommercialReportService
     }
 
     /** @return array<string, mixed> */
-    public function forCourse(Course $course): array
+    public function forCourse(Course $course, ?ReportPeriod $period = null, bool $withComparisons = true): array
     {
+        $period ??= ReportPeriod::fromKey('all');
         $enrollments = CourseEnrollment::query()
             ->where('course_id', $course->id)
             ->with(['user', 'order.courseCode', 'accessPlanOrder.courseCode', 'accessPlan'])
@@ -29,20 +32,68 @@ final class CourseCommercialReportService
             ->orderByDesc('access_granted_at')
             ->get();
 
+        // Load learner identities once. A learner who joined before the window
+        // can still incur a purchase or provider cost inside it.
+        $report = $this->periodReport($course, $enrollments, $period);
+        $previousPeriod = $withComparisons ? $period->previous() : null;
+        $previous = $previousPeriod === null
+            ? null
+            : $this->periodReport($course, $enrollments, $previousPeriod);
+        $report['comparisons'] = $this->comparisons($report, $previous);
+        $previousPlans = $previous['plan_breakdown'] ?? collect();
+        foreach ($previousPlans as $code => $priorPlan) {
+            if (!$report['plan_breakdown']->has($code)) {
+                $emptyMetrics = $this->emptyPlanMetrics();
+                foreach ($emptyMetrics as $metric => $_value) {
+                    if ($report['plan_breakdown']->contains(fn (array $plan): bool =>
+                        array_key_exists($metric, $plan['period_metrics']) && $plan['period_metrics'][$metric] === null
+                    )) $emptyMetrics[$metric] = null;
+                }
+                $report['plan_breakdown']->put($code, $this->groupSummary(collect()) + [
+                    'plan_code' => $code, 'plan_name' => $priorPlan['plan_name'],
+                    'period_metrics' => $emptyMetrics,
+                    'historical_attribution_complete' => !in_array(null, $emptyMetrics, true),
+                ]);
+            }
+        }
+        $report['plan_breakdown'] = $report['plan_breakdown']->map(function (array $plan, string $code) use ($previousPlans, $previousPeriod): array {
+            $prior = $previousPlans->get($code);
+            if ($prior === null && $previousPeriod !== null) {
+                $metrics = $this->emptyPlanMetrics();
+                foreach ($metrics as $metric => $_value) {
+                    if ($previousPlans->contains(fn (array $previousPlan): bool =>
+                        array_key_exists($metric, $previousPlan['period_metrics']) && $previousPlan['period_metrics'][$metric] === null
+                    )) $metrics[$metric] = null;
+                }
+                $prior = ['period_metrics' => $metrics];
+            }
+            $plan['comparisons'] = $this->planComparisons($plan, $prior, $previousPeriod !== null);
+
+            return $plan;
+        });
+
+        return $report;
+    }
+
+    /** @param Collection<int, CourseEnrollment> $enrollments */
+    private function periodReport(Course $course, Collection $enrollments, ReportPeriod $period): array
+    {
+
         $orders = Order::query()
             ->where('course_id', $course->id)
             ->financiallyEffective()
             ->with(['user', 'courseCode', 'accessPlan'])
             ->orderBy('approved_at')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+        $orders = $period->apply($orders, 'approved_at')->get();
 
         $allocationsByOrder = $this->allocationsFor($orders);
         $coinAllocationsByOrder = $this->ledger->allocationsForOrders($orders);
         $ordersByUser = $orders->groupBy(fn (Order $order): int => (int) $order->user_id);
         $costReport = $this->costs->forCourse(
             $course,
-            $enrollments->pluck('user_id')->map(fn ($id): int => (int) $id)
+            $enrollments->pluck('user_id')->map(fn ($id): int => (int) $id),
+            $period
         );
         $rows = $enrollments->map(function (CourseEnrollment $enrollment) use (
             $ordersByUser,
@@ -206,12 +257,10 @@ final class CourseCommercialReportService
             ->groupBy('currency')
             ->map(fn (Collection $items): float => round((float) $items->sum('amount'), 2))
             ->all();
-        $serviceCostComplete = $rows->every(
-            fn (array $row): bool => (bool) $row['service_cost_complete']
-        );
-        $serviceCost = $serviceCostComplete
-            ? round((float) $rows->sum('service_cost_actual_egp'), 2)
-            : null;
+        // A directly invoiced course cost is not an invented allocation to its
+        // individual students, so the course collector owns this total.
+        $serviceCostComplete = (bool) ($costReport['service_cost_complete'] ?? $costReport['complete']);
+        $serviceCost = $serviceCostComplete ? $costReport['service_cost_actual_egp'] : null;
         $unitEconomics = $this->unitEconomics(
             $cashNetComplete ? $knownNet : null,
             $serviceCost,
@@ -251,6 +300,9 @@ final class CourseCommercialReportService
             'rows' => $rows,
             'active_students' => $rows->where('is_active', true)->count(),
             'historical_students' => $rows->count(),
+            'new_students' => $enrollments->filter(fn (CourseEnrollment $enrollment): bool =>
+                $period->contains($enrollment->enrolled_at ?: $enrollment->created_at)
+            )->count(),
             'grant_students' => $rows->filter(fn (array $row): bool => str_starts_with($row['source'], 'grant'))->count(),
             'code_students' => $rows->filter(fn (array $row): bool => str_contains($row['source'], 'code'))->count(),
             'paid_students' => $rows->where('paid_coins', '>', 0)->count(),
@@ -271,8 +323,13 @@ final class CourseCommercialReportService
             'cash_channel_breakdown' => $cashChannels,
             'cash_net_egp' => $cashNetComplete ? $knownNet : null,
             'ai_cost_usd' => $costReport['ai_cost_usd'],
-            'ai_estimated_requests' => (int) $rows->sum('ai_estimated_requests'),
-            'ai_cost_complete' => $rows->every(fn (array $row): bool => (bool) $row['ai_cost_complete']),
+            'ai_requests' => (int) ($costReport['ai_requests'] ?? $rows->sum('ai_requests')),
+            'ai_failed_requests' => (int) ($costReport['ai_failed_requests'] ?? $rows->sum('ai_failed_requests')),
+            'ai_unanswered_requests' => (int) ($costReport['ai_unanswered_requests'] ?? $rows->sum('ai_unanswered_requests')),
+            'ai_tokens' => (int) ($costReport['ai_tokens'] ?? $rows->sum('ai_tokens')),
+            'ai_pending_cost_requests' => (int) ($costReport['ai_pending_cost_requests'] ?? $rows->sum('ai_estimated_requests')),
+            'ai_estimated_requests' => (int) ($costReport['ai_pending_cost_requests'] ?? $rows->sum('ai_estimated_requests')),
+            'ai_cost_complete' => (bool) ($costReport['ai_cost_complete'] ?? $rows->every(fn (array $row): bool => (bool) $row['ai_cost_complete'])),
             'playback_minutes' => $costReport['playback_minutes'],
             'playback_gb_estimated' => $costReport['playback_gb_estimated'],
             'service_cost_complete' => $serviceCostComplete,
@@ -287,13 +344,172 @@ final class CourseCommercialReportService
                 : null,
             'cost_warnings' => $costReport['unallocated_pools'],
             'service_breakdown' => $costReport['service_breakdown'],
-            'plan_breakdown' => $rows->groupBy('plan_code')->map(
+            'plan_breakdown' => $this->historicalPlanMetrics($course, $period, $orders, $allocationsByOrder, $coinAllocationsByOrder, $rows->groupBy('plan_code')->map(
                 fn (Collection $planRows, string $planCode): array => $this->groupSummary($planRows) + [
                     'plan_code' => $planCode,
                     'plan_name' => (string) ($planRows->first()['plan_name'] ?? 'إتاحة قديمة'),
                 ]
-            ),
+            )),
         ] + $unitEconomics;
+    }
+
+    private function comparisons(array $current, ?array $previous): array
+    {
+        $metrics = ['new_students', 'paid_coins', 'reward_coins', 'cash_gross_egp',
+            'cash_net_egp', 'ai_requests', 'ai_tokens', 'ai_cost_usd',
+            'service_cost_actual_egp', 'playback_minutes'];
+        $result = [];
+        foreach ($metrics as $metric) {
+            $value = $current[$metric] ?? null;
+            $prior = $previous[$metric] ?? null;
+            if ($metric === 'ai_cost_usd') {
+                if (!($current['ai_cost_complete'] ?? false)) $value = null;
+                if (!($previous['ai_cost_complete'] ?? false)) $prior = null;
+            }
+            if ($metric === 'cash_gross_egp') {
+                if (!$current['cash_gross_complete'] || !$current['coin_allocation_complete']) $value = null;
+                if (!($previous['cash_gross_complete'] ?? false) || !($previous['coin_allocation_complete'] ?? false)) $prior = null;
+            }
+            if (in_array($metric, ['paid_coins', 'reward_coins', 'cash_net_egp'], true)) {
+                if (!$current['coin_allocation_complete']) $value = null;
+                if (!($previous['coin_allocation_complete'] ?? false)) $prior = null;
+            }
+            $result[$metric] = ReportPeriod::compare($value, $prior);
+        }
+
+        return $result;
+    }
+
+    private function emptyPlanMetrics(): array
+    {
+        return ['students' => 0, 'paid_coins' => 0, 'reward_coins' => 0,
+            'cash_gross_egp' => 0.0, 'cash_net_egp' => 0.0,
+            'ai_requests' => 0, 'ai_tokens' => 0, 'ai_cost_usd' => 0.0];
+    }
+
+    private function planComparisons(array $current, ?array $previous, bool $hasPrevious): array
+    {
+        $prior = $previous['period_metrics'] ?? $this->emptyPlanMetrics();
+        $comparisons = [];
+        foreach ($current['period_metrics'] as $metric => $value) {
+            $comparisons[$metric] = ReportPeriod::compare($value, $hasPrevious ? ($prior[$metric] ?? null) : null);
+        }
+
+        return $comparisons;
+    }
+
+    /** Purchase attribution uses the immutable contract, never a learner's current tier. */
+    private function historicalPlanMetrics(Course $course, ReportPeriod $period, Collection $orders, Collection $allocations, Collection $coinAllocations, Collection $plans): Collection
+    {
+        $groups = $orders->groupBy(fn (Order $order): string =>
+            trim((string) data_get($order->access_plan_snapshot, 'code')) ?: 'unattributed'
+        );
+        foreach ($groups as $code => $planOrders) {
+            if (!$plans->has($code)) {
+                $plans->put($code, $this->groupSummary(collect()) + [
+                    'plan_code' => $code,
+                    'plan_name' => $code === 'unattributed' ? 'فئة تاريخية غير موثقة'
+                        : (string) data_get($planOrders->last()->access_plan_snapshot, 'name_ar', $code),
+                ]);
+            }
+        }
+        $ai = $this->historicalAiByPlan($course, $period);
+        if (!$ai['complete'] && !$plans->has('unattributed')) {
+            $plans->put('unattributed', $this->groupSummary(collect()) + [
+                'plan_code' => 'unattributed', 'plan_name' => 'فئة تاريخية غير موثقة',
+            ]);
+        }
+        foreach (array_keys($ai['plans']) as $code) {
+            if (!$plans->has($code)) {
+                $plans->put($code, $this->groupSummary(collect()) + [
+                    'plan_code' => $code, 'plan_name' => $code,
+                ]);
+            }
+        }
+        $unattributedPurchases = $groups->has('unattributed');
+
+        return $plans->map(function (array $plan, string $code) use ($groups, $allocations, $coinAllocations, $ai, $unattributedPurchases): array {
+            $planOrders = $groups->get($code, collect());
+            $cash = $this->cashForOrders($planOrders, $allocations, $coinAllocations);
+            $metrics = $this->emptyPlanMetrics();
+            $metrics['students'] = $planOrders->pluck('user_id')->unique()->count();
+            foreach (['paid_coins', 'reward_coins'] as $metric) {
+                $metrics[$metric] = (int) $planOrders->sum(fn (Order $order): int =>
+                    (int) data_get($coinAllocations->get((int) $order->id), $metric, 0)
+                );
+            }
+            $metrics['cash_gross_egp'] = $cash['cash_gross_complete'] ? $cash['cash_gross_egp'] : null;
+            $metrics['cash_net_egp'] = $cash['cash_net_complete'] ? $cash['cash_net_known_egp'] : null;
+            if (!$planOrders->every(fn (Order $order): bool => (bool) data_get($coinAllocations->get((int) $order->id), 'complete', false))) {
+                foreach (['paid_coins', 'reward_coins', 'cash_gross_egp', 'cash_net_egp'] as $metric) $metrics[$metric] = null;
+            }
+            foreach (['ai_requests', 'ai_tokens', 'ai_cost_usd'] as $metric) {
+                $metrics[$metric] = $ai['complete']
+                    ? (isset($ai['plans'][$code]) ? $ai['plans'][$code][$metric] : 0)
+                    : null;
+            }
+            if ($unattributedPurchases) {
+                // Missing legacy contracts could belong to any tier: expose the
+                // known rows, but do not turn absence of evidence into growth.
+                foreach (['students', 'paid_coins', 'reward_coins', 'cash_gross_egp', 'cash_net_egp'] as $metric) {
+                    $metrics[$metric] = null;
+                }
+            }
+            $plan['period_metrics'] = $metrics;
+            $plan['historical_attribution_complete'] = !$unattributedPurchases && $ai['complete'];
+
+            return $plan;
+        });
+    }
+
+    /** Resolve usage against an already accepted contract at the event time. */
+    private function historicalAiByPlan(Course $course, ReportPeriod $period): array
+    {
+        $contracts = Order::withTrashed()->where('course_id', $course->id)
+            ->whereNotNull('approved_at')->whereNotNull('access_plan_snapshot')
+            ->orderByDesc('approved_at')->orderByDesc('id')
+            ->get(['user_id', 'access_plan_id', 'access_plan_snapshot', 'approved_at'])
+            ->groupBy('user_id');
+        $query = AiUsageEvent::query()->where('course_id', $course->id);
+        $period->apply($query, 'created_at');
+        $plans = [];
+        $complete = true;
+        foreach ($query->cursor() as $event) {
+            $source = data_get($event->metadata, 'cost_usage_source');
+            $providerCost = $source === 'provider' && $event->cost_usd !== null
+                && (float) $event->cost_usd >= 0;
+            $cached = $source === 'cache_zero_cost' && $event->cost_usd !== null
+                && (float) $event->cost_usd === 0.0;
+            if ($event->status !== 'completed' && !$providerCost) {
+                continue;
+            }
+            $contract = $contracts->get($event->user_id, collect())->first(fn (Order $order): bool =>
+                $event->access_plan_id !== null
+                && (int) $order->access_plan_id === (int) $event->access_plan_id
+                && $order->approved_at <= $event->created_at
+            );
+            $code = trim((string) data_get($contract?->access_plan_snapshot, 'code'));
+            if ($code === '') {
+                $complete = false;
+                continue;
+            }
+            $plans[$code] ??= ['ai_requests' => 0, 'ai_tokens' => 0, 'ai_cost_usd' => 0.0];
+            if ($event->status === 'completed') {
+                if (!in_array(data_get($event->metadata, 'entitlement_delivered', true), [false, 0, 'false', '0'], true)) {
+                    $plans[$code]['ai_requests']++;
+                }
+                $plans[$code]['ai_tokens'] += (int) $event->total_tokens;
+            }
+            if ($providerCost) {
+                if ($plans[$code]['ai_cost_usd'] !== null) {
+                    $plans[$code]['ai_cost_usd'] = round($plans[$code]['ai_cost_usd'] + (float) $event->cost_usd, 6);
+                }
+            } elseif (!$cached) {
+                $plans[$code]['ai_cost_usd'] = null;
+            }
+        }
+
+        return compact('plans', 'complete');
     }
 
     /** @param Collection<int, array<string, mixed>> $rows @return array<string, mixed> */

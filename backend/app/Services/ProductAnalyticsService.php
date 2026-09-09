@@ -7,28 +7,32 @@ namespace App\Services;
 use App\Models\ProductEvent;
 use Illuminate\Support\Collection;
 use App\Support\BusinessClock;
+use App\Support\ReportPeriod;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 final class ProductAnalyticsService
 {
     /** @return array<string, mixed> */
-    public function overview(?int $courseId = null, int $days = 30): array
+    public function overview(?int $courseId = null, ?ReportPeriod $period = null): array
     {
-        $days = max(1, min($days, 365));
-        $fromBusiness = BusinessClock::now()->subDays($days)->startOfDay();
-        $from = $fromBusiness->utc();
-        $scope = ProductEvent::query()
-            ->where('occurred_at', '>=', $from)
-            ->when($courseId, fn ($query) => $query->where('course_id', $courseId));
-
-        $totals = (clone $scope)->selectRaw(
-            'COUNT(*) as events, COUNT(DISTINCT actor_key) as actors, '
-            .'COUNT(DISTINCT session_key) as sessions, '
-            .'SUM(CASE WHEN user_id IS NULL THEN 1 ELSE 0 END) as anonymous_events, '
-            .'SUM(CASE WHEN campaign_key IS NOT NULL THEN 1 ELSE 0 END) as campaign_events, '
-            .'MAX(received_at) as last_received_at'
-        )->first();
+        $period ??= ReportPeriod::fromKey('30d');
+        $scope = $this->eventScope($courseId, $period);
+        $quality = $this->quality($courseId, $period);
+        $previousPeriod = $period->previous();
+        $previousQuality = $previousPeriod ? $this->quality($courseId, $previousPeriod) : null;
+        $ai = app(AiUsageReportService::class)->summary($period, $courseId);
+        $previousAi = $previousPeriod
+            ? app(AiUsageReportService::class)->summary($previousPeriod, $courseId)
+            : null;
+        $previousFunnel = $previousPeriod
+            ? collect($this->funnel($courseId, $previousPeriod)['steps'])->keyBy('event')
+            : collect();
+        $funnel = collect($this->funnel($courseId, $period)['steps'])->map(
+            fn (array $step): array => $step + [
+                'change' => ReportPeriod::compare($step['total'], $previousFunnel->get($step['event'])['total'] ?? null),
+            ]
+        )->all();
 
         $attribution = (clone $scope)
             ->whereIn('event_name', ['course_opened', 'purchase_started', 'purchase_completed'])
@@ -46,59 +50,50 @@ final class ProductAnalyticsService
             ]);
 
         return [
-            'from' => $fromBusiness->toDateString(),
-            'days' => $days,
+            'period' => $period,
             'course_id' => $courseId,
-            'funnel' => $this->funnel($courseId, $days)['steps'],
-            'lesson_drop_off' => $this->lessonDropOff($courseId, $days),
-            'cohorts' => $this->acquisitionCohorts($from, $courseId),
+            'funnel' => $funnel,
+            'lesson_drop_off' => $this->lessonDropOff($courseId, $period),
+            'cohorts' => $this->acquisitionCohorts($period, $courseId),
             'attribution' => $attribution,
-            'quality' => [
-                'events' => (int) ($totals?->events ?? 0),
-                'actors' => (int) ($totals?->actors ?? 0),
-                'sessions' => (int) ($totals?->sessions ?? 0),
-                'anonymous_events' => (int) ($totals?->anonymous_events ?? 0),
-                'campaign_events' => (int) ($totals?->campaign_events ?? 0),
-                'last_received_at' => $totals?->last_received_at,
+            'quality' => $quality,
+            'ai' => $ai,
+            'changes' => [
+                'actors' => ReportPeriod::compare($quality['actors'], $previousQuality['actors'] ?? null),
+                'sessions' => ReportPeriod::compare($quality['sessions'], $previousQuality['sessions'] ?? null),
+                'events' => ReportPeriod::compare($quality['events'], $previousQuality['events'] ?? null),
+                'cost_usd' => ReportPeriod::compare(
+                    $ai['cost_complete'] ? $ai['cost_usd'] : null,
+                    ($previousAi['cost_complete'] ?? false) ? $previousAi['cost_usd'] : null
+                ),
             ],
-            'ai' => $this->aiUsage($from, $courseId),
         ];
     }
 
-    public function funnel(?int $courseId = null, int $days = 30): array
+    public function funnel(?int $courseId = null, ?ReportPeriod $period = null): array
     {
-        $fromBusiness = BusinessClock::now()
-            ->subDays(max(1, min($days, 365)))
-            ->startOfDay();
-        $from = $fromBusiness->utc();
+        $period ??= ReportPeriod::fromKey('30d');
         $events = [
             'course_opened', 'sample_started', 'sample_completed',
             'paywall_viewed', 'earn_tasks_opened', 'purchase_started', 'purchase_completed',
             'project_submitted', 'project_passed', 'certificate_issued',
         ];
 
-        $query = ProductEvent::query()
-            ->where('occurred_at', '>=', $from)
+        $query = $this->eventScope($courseId, $period)
             ->whereIn('event_name', $events);
-        if ($courseId) {
-            $query->where('course_id', $courseId);
-        }
 
         $counts = $query->selectRaw('event_name, COUNT(*) as total')
             ->groupBy('event_name')
             ->pluck('total', 'event_name');
 
-        $uniqueActors = ProductEvent::query()
-            ->where('occurred_at', '>=', $from)
-            ->when($courseId, fn ($query) => $query->where('course_id', $courseId))
+        $uniqueActors = $this->eventScope($courseId, $period)
             ->whereNotNull('actor_key')
             ->selectRaw('event_name, COUNT(DISTINCT actor_key) as total')
             ->groupBy('event_name')
             ->pluck('total', 'event_name');
 
         return [
-            'from' => $fromBusiness->toDateString(),
-            'days' => $days,
+            'period' => $period,
             'course_id' => $courseId,
             'steps' => collect($events)->map(function (string $event) use ($counts, $uniqueActors) {
                 return [
@@ -110,12 +105,10 @@ final class ProductAnalyticsService
         ];
     }
 
-    public function lessonDropOff(?int $courseId = null, int $days = 30): Collection
+    public function lessonDropOff(?int $courseId = null, ?ReportPeriod $period = null): Collection
     {
-        return ProductEvent::query()
-            ->where('occurred_at', '>=', BusinessClock::now()->subDays(max(1, min($days, 365)))->startOfDay()->utc())
+        return $this->eventScope($courseId, $period ?? ReportPeriod::fromKey('30d'))
             ->whereIn('event_name', ['lesson_started', 'lesson_completed'])
-            ->when($courseId, fn ($query) => $query->where('course_id', $courseId))
             ->whereNotNull('lesson_id')
             ->selectRaw("lesson_id, SUM(CASE WHEN event_name = 'lesson_started' THEN 1 ELSE 0 END) starts, SUM(CASE WHEN event_name = 'lesson_completed' THEN 1 ELSE 0 END) completions")
             ->groupBy('lesson_id')
@@ -135,7 +128,7 @@ final class ProductAnalyticsService
     }
 
     /** @return Collection<int, array{date:string,actors:int}> */
-    private function acquisitionCohorts($from, ?int $courseId): Collection
+    private function acquisitionCohorts(ReportPeriod $period, ?int $courseId): Collection
     {
         $firstSeen = ProductEvent::query()
             ->whereNotNull('actor_key')
@@ -143,9 +136,7 @@ final class ProductAnalyticsService
             ->selectRaw('actor_key, MIN(occurred_at) as first_seen')
             ->groupBy('actor_key');
 
-        return DB::query()
-            ->fromSub($firstSeen, 'actor_first_seen')
-            ->where('first_seen', '>=', $from)
+        return $period->apply(DB::query()->fromSub($firstSeen, 'actor_first_seen'), 'first_seen')
             ->orderBy('first_seen')
             ->get()
             ->groupBy(fn ($row): string => BusinessClock::format($row->first_seen, 'Y-m-d'))
@@ -156,49 +147,28 @@ final class ProductAnalyticsService
             ->values();
     }
 
-    /** @return array<string, int|float|bool|null> */
-    private function aiUsage($from, ?int $courseId): array
+    private function eventScope(?int $courseId, ReportPeriod $period): Builder
     {
-        if (!Schema::hasTable('ai_usage_events')) {
-            return [
-                'available' => false,
-                'completed_requests' => 0,
-                'failed_requests' => 0,
-                'tokens' => 0,
-                'cost_usd' => null,
-                'provider_cost_requests' => 0,
-                'estimated_cost_requests' => 0,
-                'cost_complete' => false,
-            ];
-        }
+        return $period->apply(ProductEvent::query(), 'occurred_at')
+            ->when($courseId, fn ($query) => $query->where('course_id', $courseId));
+    }
 
-        $query = DB::table('ai_usage_events')
-            ->where('created_at', '>=', $from)
-            ->when($courseId, fn ($builder) => $builder->where('course_id', $courseId));
-        $failed = (clone $query)->whereIn('status', ['failed', 'cancelled', 'expired'])->count();
-        $completed = (clone $query)->where('status', 'completed')
-            ->get(['total_tokens', 'cost_usd', 'metadata']);
-        $provider = 0;
-        $estimated = 0;
-        foreach ($completed as $event) {
-            $metadata = json_decode((string) ($event->metadata ?? '{}'), true);
-            $costSource = $metadata['cost_usage_source'] ?? null;
-            if ($costSource === 'provider') {
-                $provider++;
-            } else {
-                $estimated++;
-            }
-        }
-
+    private function quality(?int $courseId, ReportPeriod $period): array
+    {
+        $totals = $this->eventScope($courseId, $period)->selectRaw(
+            'COUNT(*) as events, COUNT(DISTINCT actor_key) as actors, '
+            .'COUNT(DISTINCT session_key) as sessions, '
+            .'SUM(CASE WHEN user_id IS NULL THEN 1 ELSE 0 END) as anonymous_events, '
+            .'SUM(CASE WHEN campaign_key IS NOT NULL THEN 1 ELSE 0 END) as campaign_events, '
+            .'MAX(received_at) as last_received_at'
+        )->first();
         return [
-            'available' => true,
-            'completed_requests' => $completed->count(),
-            'failed_requests' => (int) $failed,
-            'tokens' => (int) $completed->sum('total_tokens'),
-            'cost_usd' => round((float) $completed->sum('cost_usd'), 6),
-            'provider_cost_requests' => $provider,
-            'estimated_cost_requests' => $estimated,
-            'cost_complete' => $estimated === 0,
+            'events' => (int) ($totals?->events ?? 0),
+            'actors' => (int) ($totals?->actors ?? 0),
+            'sessions' => (int) ($totals?->sessions ?? 0),
+            'anonymous_events' => (int) ($totals?->anonymous_events ?? 0),
+            'campaign_events' => (int) ($totals?->campaign_events ?? 0),
+            'last_received_at' => $totals?->last_received_at,
         ];
     }
 }

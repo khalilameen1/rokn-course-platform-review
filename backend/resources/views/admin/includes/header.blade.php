@@ -104,15 +104,12 @@
                         <span>تعديل بيانات الدخول</span>
                         <i class="fa fa-user"></i>
                     </a>
-                    <a class="user-dropdown-item logout" href="#" onclick="event.preventDefault(); document.getElementById('logoutForm').submit();">
-                        <span>تسجيل خروج</span>
-                        <i class="fa fa-sign-out"></i>
-                    </a>
-                    <form class="d-none" id="logoutForm" action="{{ route('logout') }}" method="post">
-                        @csrf
-                    </form>
                 </div>
             </div>
+            <form class="header-logout-form" id="logoutForm" action="{{ route('logout') }}" method="post">
+                @csrf
+                <button type="submit" class="header-logout-btn">تسجيل الخروج</button>
+            </form>
         </div>
     </div>
 </header>

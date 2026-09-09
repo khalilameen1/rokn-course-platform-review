@@ -1,6 +1,13 @@
 <div class="course-report-content">
+    <form method="GET" action="{{ route('admin.courses.show', $reportCourse) }}#commercial-report" class="form-row align-items-end mb-3">
+        <input type="hidden" name="tab" value="commercial-report">
+        <div class="form-group col-md-4">@include('admin.reports.period-fields', ['period' => $reportPeriod])</div>
+        <div class="form-group col-md-2"><button class="btn btn-primary" type="submit">تطبيق</button></div>
+    </form>
+    <p class="text-muted">{{ $reportPeriod->description() }}</p>
+    @if($reportPeriod->previous())<p class="text-muted">مقارنة بـ {{ $reportPeriod->previous()->description() }}</p>@endif
     <div class="text-left mb-3">
-        <a class="btn btn-outline-primary" href="{{ route('admin.courses.commercial-report.export', $course) }}">
+        <a class="btn btn-outline-primary" href="{{ route('admin.courses.commercial-report.export', [$reportCourse, 'period' => $reportPeriod->key]) }}">
             <i class="fa fa-download ml-1"></i> تصدير كشف الطلاب والتكلفة CSV
         </a>
     </div>
@@ -18,11 +25,16 @@
     <div class="statistics-grid">
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['active_students']) }}</span>
-            <span class="stat-label">طلاب نشطون</span>
+            <span class="stat-label">طلاب نشطون حاليًا</span>
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['historical_students']) }}</span>
-            <span class="stat-label">إجمالي من التحقوا</span>
+            <span class="stat-label">إجمالي من التحقوا بكل الأوقات</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-counter">{{ number_format($commercialReport['new_students']) }}</span>
+            <span class="stat-label">طلاب جدد في الفترة</span>
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['new_students']])
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['grant_students']) }}</span>
@@ -39,14 +51,17 @@
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['paid_coins']) }}</span>
             <span class="stat-label">عملات مشتراة صُرفت</span>
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['paid_coins']])
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['reward_coins']) }}</span>
             <span class="stat-label">عملات مكافآت صُرفت</span>
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['reward_coins'], 'neutral' => true])
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['cash_gross_egp'], 2) }} ج.م</span>
             <span class="stat-label">إجمالي نقدي مؤكد منسوب للكورس</span>
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['cash_gross_egp']])
             @if($commercialReport['cash_estimated_gross_egp'] > 0)<small class="text-warning">+ {{ number_format($commercialReport['cash_estimated_gross_egp'], 2) }} ج.م بسعر الكتالوج بانتظار كشف المزود</small>@endif
         </div>
         <div class="stat-card">
@@ -60,11 +75,13 @@
                 @endif
             </span>
             <span class="stat-label">صافي بوابة الدفع الفعلي</span>
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['cash_net_egp']])
         </div>
         <div class="stat-card">
-            <span class="stat-counter">{{ $commercialReport['ai_cost_usd'] === null ? 'غير متاح' : '$'.number_format($commercialReport['ai_cost_usd'], 6) }}</span>
-            <span class="stat-label">OpenRouter {{ ($commercialReport['ai_estimated_requests'] ?? 0) > 0 ? 'مؤكد + تقديري' : 'مؤكد' }}</span>
-            @if(($commercialReport['ai_estimated_requests'] ?? 0) > 0)<small class="text-warning">{{ number_format($commercialReport['ai_estimated_requests']) }} رد بلا تكلفة مزود نهائية</small>@endif
+            <span class="stat-counter">{{ $commercialReport['ai_cost_usd'] == 0 && !$commercialReport['ai_cost_complete'] ? 'بانتظار التأكيد' : '$'.number_format($commercialReport['ai_cost_usd'], 6) }}</span>
+            <span class="stat-label">OpenRouter مؤكد من المزود</span>
+            @if(($commercialReport['ai_estimated_requests'] ?? 0) > 0)<small class="text-warning">{{ number_format($commercialReport['ai_estimated_requests']) }} طلب ينتظر تكلفة المزود وغير محسوب في الإجمالي</small>@endif
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['ai_cost_usd'], 'lowerIsBetter' => true])
         </div>
         <div class="stat-card">
             <span class="stat-counter">
@@ -79,20 +96,9 @@
             <span class="stat-label">هامش المساهمة</span>
         </div>
         <div class="stat-card">
-            <span class="stat-counter">
-                {{ $commercialReport['service_cost_with_estimates_egp'] === null ? 'بيانات ناقصة' : number_format($commercialReport['service_cost_with_estimates_egp'], 2).' ج.م' }}
-            </span>
-            <span class="stat-label">التكلفة شاملة التقديرات</span>
-        </div>
-        <div class="stat-card">
-            <span class="stat-counter">
-                {{ $commercialReport['estimated_contribution_margin_egp'] === null ? 'بيانات ناقصة' : number_format($commercialReport['estimated_contribution_margin_egp'], 2).' ج.م' }}
-            </span>
-            <span class="stat-label">الهامش بعد التقديرات</span>
-        </div>
-        <div class="stat-card">
             <span class="stat-counter">{{ number_format($commercialReport['playback_minutes'], 0) }} دقيقة</span>
-            <span class="stat-label">مشاهدة · {{ number_format($commercialReport['playback_gb_estimated'], 3) }} GB مقدرة</span>
+            <span class="stat-label">دقائق مشاهدة مسجلة</span>
+            @include('admin.reports.growth', ['change' => $commercialReport['comparisons']['playback_minutes']])
         </div>
         <div class="stat-card">
             <span class="stat-counter">{{ $commercialReport['cost_to_net_revenue_percentage'] === null ? '—' : number_format($commercialReport['cost_to_net_revenue_percentage'], 2).'%' }}</span>
@@ -137,54 +143,55 @@
 
     <div class="info-section mt-4">
         <h3 class="section-title"><i class="fa fa-server ml-2"></i> تكلفة كل خدمة</h3>
-        <div class="table-responsive"><table class="table table-striped"><thead><tr><th>الخدمة</th><th>الفعلية</th><th>شاملة التقديرات</th></tr></thead><tbody>
-        @foreach($commercialReport['service_breakdown'] as $service)<tr><td>{{ $service['label'] }}</td><td>{{ $service['actual_egp'] === null ? 'غير مكتملة' : number_format($service['actual_egp'], 2).' ج.م' }}</td><td>{{ $service['with_estimates_egp'] === null ? 'غير مكتملة' : number_format($service['with_estimates_egp'], 2).' ج.م' }}</td></tr>@endforeach
+        <div class="table-responsive"><table class="table table-striped"><thead><tr><th>الخدمة</th><th>القيمة المؤكدة بالجنيه</th></tr></thead><tbody>
+        @foreach($commercialReport['service_breakdown'] as $service)<tr><td>{{ $service['label'] }}</td><td>{{ $service['actual_egp'] === null ? 'غير مكتملة' : number_format($service['actual_egp'], 2).' ج.م' }}</td></tr>@endforeach
         </tbody></table></div>
     </div>
 
     @if(!$commercialReport['service_cost_complete'])
         <div class="alert alert-warning mt-3">
-            تكلفة الخدمات غير مكتملة، لذلك تم حجب هامش الربح بدل عرض رقم مضلل.
-            <a href="{{ route('admin.operating-costs.index') }}">أكمل سعر تحويل OpenRouter وفواتير التشغيل</a>.
+            تكلفة الخدمات غير مكتملة لذلك لا يمكن عرض هامش نهائي
+            <a href="{{ route('admin.operating-costs.index') }}">فواتير التشغيل</a>
             @foreach($commercialReport['cost_warnings'] as $warning)<div>• {{ $warning }}</div>@endforeach
         </div>
     @endif
 
     <div class="info-section mt-4">
-        <h3 class="section-title"><i class="fa fa-tags ml-2"></i> توزيع الباقات</h3>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead><tr><th>الفئة</th><th>النشطون / الإجمالي</th><th>صافي/طالب</th><th>تكلفة/طالب</th><th>استهلاك AI</th><th>المشاهدة</th><th>التكلفة من الصافي</th><th>هامش الفئة</th></tr></thead>
-                <tbody>
-                @forelse($commercialReport['plan_breakdown'] as $planCode => $plan)
-                    <tr>
-                        <td>{{ $plan['plan_name'] }}</td>
-                        <td>{{ number_format($plan['active_students']) }} / {{ number_format($plan['students']) }}</td>
-                        <td>{{ $plan['average_net_per_student_egp'] === null ? '—' : number_format($plan['average_net_per_student_egp'], 2).' ج.م' }}</td>
-                        <td>
-                            {{ $plan['average_cost_per_student_egp'] === null ? '—' : number_format($plan['average_cost_per_student_egp'], 2).' ج.م' }}
-                            <details><summary><small>تفصيل الخدمات</small></summary>@foreach(\App\Services\CourseCostReportService::serviceLabels() as $key => $label)<div><small>{{ $label }}: {{ ($plan['service_breakdown_actual_egp'][$key] ?? null) === null ? 'ناقص' : number_format($plan['service_breakdown_actual_egp'][$key], 2).' ج.م' }}</small></div>@endforeach</details>
-                        </td>
-                        <td>
-                            {{ number_format($plan['ai_requests']) }} رد · {{ number_format($plan['ai_tokens']) }} توكن
-                            @if($plan['ai_failed_requests'] || $plan['ai_unanswered_requests'])
-                                <br><small class="text-warning">{{ number_format($plan['ai_failed_requests'] + $plan['ai_unanswered_requests']) }} لم تكتمل</small>
-                            @endif
-                            <br><small>{{ $plan['ai_cost_usd'] === null ? 'تكلفة غير مكتملة' : '$'.number_format($plan['ai_cost_usd'], 6) }}</small>
-                        </td>
-                        <td>{{ number_format($plan['playback_minutes'], 0) }} دقيقة<br><small>{{ number_format($plan['playback_gb_estimated'], 3) }} GB مقدرة</small></td>
-                        <td>{{ $plan['cost_to_net_revenue_percentage'] === null ? '—' : number_format($plan['cost_to_net_revenue_percentage'], 2).'%' }}</td>
-                        <td>
-                            {{ $plan['margin_egp'] === null ? 'غير مكتمل' : number_format($plan['margin_egp'], 2).' ج.م' }}
-                            @if($plan['estimated_margin_egp'] !== null && $plan['margin_egp'] === null)<br><small>تقديري {{ number_format($plan['estimated_margin_egp'], 2) }} ج.م</small>@endif
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="8" class="text-center text-muted">لا توجد عمليات شراء بعد.</td></tr>
-                @endforelse
-                </tbody>
-            </table>
-        </div>
+        <h3 class="section-title"><i class="fa fa-tags ml-2"></i> الفئات خلال الفترة</h3>
+        <p class="text-muted">المبيعات واستهلاك الاستفسارات حسب الفئة وقت العملية وليس الفئة التي انتقل إليها الطالب لاحقًا</p>
+        <div class="table-responsive"><table class="table table-striped">
+            <thead><tr><th>الفئة</th><th>نشطون حاليًا</th><th>اشتروا في الفترة</th><th>نقد منسوب</th><th>صافي مؤكد</th><th>ردود مكتملة</th><th>تكلفة OpenRouter</th></tr></thead>
+            <tbody>
+            @forelse($commercialReport['plan_breakdown'] as $plan)
+                @php($metrics = $plan['period_metrics'])
+                <tr>
+                    <td>{{ $plan['plan_name'] }}
+                        @if(!$plan['historical_attribution_complete'])<small class="d-block text-muted">بعض البيانات التاريخية غير مكتملة</small>@endif
+                    </td>
+                    <td>{{ number_format($plan['active_students']) }}</td>
+                    <td>{{ $metrics['students'] === null ? 'غير متاح' : number_format($metrics['students']) }}
+                        @include('admin.reports.growth', ['change' => $plan['comparisons']['students']])
+                    </td>
+                    <td>{{ $metrics['cash_gross_egp'] === null ? 'غير متاح' : number_format($metrics['cash_gross_egp'], 2).' ج.م' }}
+                        @include('admin.reports.growth', ['change' => $plan['comparisons']['cash_gross_egp']])
+                        <small class="d-block text-muted">{{ $metrics['paid_coins'] === null ? '—' : number_format($metrics['paid_coins']) }} عملة مشتراة</small>
+                        <small class="d-block text-muted">{{ $metrics['reward_coins'] === null ? '—' : number_format($metrics['reward_coins']) }} عملة مكافآت</small>
+                    </td>
+                    <td>{{ $metrics['cash_net_egp'] === null ? 'بانتظار الاكتمال' : number_format($metrics['cash_net_egp'], 2).' ج.م' }}
+                        @include('admin.reports.growth', ['change' => $plan['comparisons']['cash_net_egp']])
+                    </td>
+                    <td>{{ $metrics['ai_requests'] === null ? 'غير متاح' : number_format($metrics['ai_requests']) }}
+                        @include('admin.reports.growth', ['change' => $plan['comparisons']['ai_requests']])
+                    </td>
+                    <td>{{ $metrics['ai_cost_usd'] === null ? 'بانتظار الاكتمال' : '$'.number_format($metrics['ai_cost_usd'], 6) }}
+                        @include('admin.reports.growth', ['change' => $plan['comparisons']['ai_cost_usd'], 'lowerIsBetter' => true])
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="7" class="text-center text-muted">لا توجد عمليات في هذه الفترة</td></tr>
+            @endforelse
+            </tbody>
+        </table></div>
     </div>
 
     <div class="info-section mt-4">
@@ -194,7 +201,7 @@
                 <thead>
                 <tr>
                     <th>الطالب</th><th>الحالة</th><th>المصدر</th><th>الفئة الحالية</th>
-                    <th>سعر العقد</th><th>المدفوع فعليًا</th><th>التوزيع</th><th>قناة الشحن والإجمالي</th><th>الصافي</th><th>الاستهلاك</th><th>تكلفة الخدمات</th><th>نسبة التكلفة</th><th>الهامش</th><th>شامل التقديرات</th>
+                    <th>سعر العقد</th><th>المدفوع فعليًا</th><th>التوزيع</th><th>قناة الشحن والإجمالي</th><th>الصافي</th><th>الاستهلاك</th><th>تكلفة الخدمات</th><th>نسبة التكلفة</th><th>الهامش</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -257,13 +264,9 @@
                         </td>
                         <td>{{ $row['cost_to_net_revenue_percentage'] === null ? '—' : number_format($row['cost_to_net_revenue_percentage'], 2).'%' }}</td>
                         <td>{{ $row['contribution_margin_egp'] === null ? '—' : number_format($row['contribution_margin_egp'], 2).' ج.م' }}</td>
-                        <td>
-                            {{ $row['service_cost_with_estimates_egp'] === null ? '—' : number_format($row['service_cost_with_estimates_egp'], 2).' ج.م تكلفة' }}
-                            @if($row['estimated_contribution_margin_egp'] !== null)<br><small>{{ number_format($row['estimated_contribution_margin_egp'], 2) }} ج.م هامش</small>@endif
-                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="14" class="text-center text-muted">لا يوجد طلاب في الكورس بعد.</td></tr>
+                    <tr><td colspan="13" class="text-center text-muted">لا يوجد طلاب في الكورس بعد</td></tr>
                 @endforelse
                 </tbody>
             </table>

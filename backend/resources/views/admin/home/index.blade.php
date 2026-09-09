@@ -14,6 +14,15 @@
         <p>حالة ركن الآن</p>
     </div>
 
+    <form method="GET" action="{{ route('admin.dashboard') }}" class="card modern-card mb-4">
+        <div class="card-body d-flex flex-wrap align-items-end">
+            @include('admin.reports.period-fields', ['period' => $period])
+            <button type="submit" class="btn btn-primary mr-3 mb-3">تطبيق</button>
+            <a class="btn btn-light mr-3 mb-3" href="{{ route('admin.product-analytics.index', ['period' => $period->key]) }}">تحليلات المنتج</a>
+        </div>
+        <div class="card-footer text-muted">{{ $period->description() }}</div>
+    </form>
+
     <nav class="dashboard-priority-nav" aria-label="ما يحتاج متابعة">
         <a href="{{ route('admin.product-operations.index') }}"><strong>حالة النشر</strong><span>فحوص المنتج والكورسات</span></a>
         <a href="{{ route('admin.playback-operations.index') }}"><strong>الوسائط</strong><span>مشكلات تشغيل الفيديو</span></a>
@@ -31,7 +40,7 @@
                     </div>
                     <div class="stats-info">
                         <h3 class="count">{{ $platformStats['courses'] }}</h3>
-                        <p>الكورسات</p>
+                        <p>إجمالي الكورسات الآن</p>
                     </div>
                 </div>
             </div>
@@ -44,7 +53,7 @@
                     </div>
                     <div class="stats-info">
                         <h3 class="count">{{ $platformStats['lessons'] }}</h3>
-                        <p>الدروس</p>
+                        <p>إجمالي الدروس الآن</p>
                     </div>
                 </div>
             </div>
@@ -60,7 +69,7 @@
                         <h3 class="count">
                             {{ $platformStats['students'] }}
                         </h3>
-                        <p>الطلاب</p>
+                        <p>إجمالي الطلاب الآن</p>
                     </div>
                 </div>
             </div>
@@ -86,24 +95,12 @@
                         <i class="fa fa-dollar"></i>
                     </div>
                     <div class="stats-info">
-                        <h3 class="revenue-count">{{ number_format($revenueStats['total_revenue'], 0) }}</h3>
-                        <p>إجمالي التحصيل المؤكد بكل القنوات (جنيه)</p>
+                        <h3>{{ !$revenueStats['gross_complete'] && $revenueStats['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['total_revenue'], 0) }}</h3>
+                        <p>تحصيل الفترة المؤكد بكل القنوات (جنيه)</p>
                         @if($revenueStats['catalog_estimated_revenue'] > 0)
                             <small class="text-warning">{{ number_format($revenueStats['catalog_estimated_revenue'], 0) }} تقدير كتالوج خارج الإجمالي</small><br>
                         @endif
-                        @if($revenueStats['revenue_growth'] > 0)
-                            <small class="text-success">
-                                <i class="fa fa-arrow-up"></i> {{ number_format($revenueStats['revenue_growth'], 1) }}%
-                            </small>
-                        @elseif($revenueStats['revenue_growth'] < 0)
-                            <small class="text-danger">
-                                <i class="fa fa-arrow-down"></i> {{ number_format(abs($revenueStats['revenue_growth']), 1) }}%
-                            </small>
-                        @else
-                            <small class="text-muted">
-                                <i class="fa fa-minus"></i> 0%
-                            </small>
-                        @endif
+                        @include('admin.reports.growth', ['change' => $revenueStats['revenue_change']])
                     </div>
                 </div>
             </div>
@@ -114,13 +111,14 @@
                 <div class="stats-card-body">
                     <div class="stats-icon success"><i class="fa fa-check"></i></div>
                     <div class="stats-info">
-                        <h3 class="revenue-count">{{ number_format($revenueStats['confirmed_net_revenue'], 0) }}</h3>
+                        <h3>{{ $revenueStats['provider_settlement_pending_count'] > 0 && $revenueStats['confirmed_net_count'] === 0 ? 'بانتظار التسوية' : number_format($revenueStats['confirmed_net_revenue'], 0) }}</h3>
                         <p>الصافي المؤكد من كشوف المزودين</p>
                         @if($revenueStats['provider_settlement_pending_count'] > 0)
                             <small class="text-warning">جزئي · {{ number_format($revenueStats['provider_settlement_pending_count']) }} عملية بانتظار كشف التسوية</small>
                         @else
                             <small class="text-muted">بعد الرسوم والاستقطاعات</small>
                         @endif
+                        <br>@include('admin.reports.growth', ['change' => $revenueStats['net_change']])
                     </div>
                 </div>
             </div>
@@ -134,15 +132,24 @@
                     </div>
                     <div class="stats-info">
                         <h3 class="revenue-count">{{ number_format($revenueStats['pending_payments'], 0) }}</h3>
-                        <p>قيمة EGP معلقة</p>
+                        <p>قيمة EGP معلقة الآن</p>
                         <small class="text-muted">{{ $revenueStats['pending_bills_count'] }} عملية بكل القنوات</small>
                     </div>
                 </div>
             </div>
         </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
+            <div class="stats-card info h-100"><div class="stats-card-body"><div class="stats-info">
+                <h3>{{ $ai['cost_usd'] === null || (!$ai['cost_complete'] && $ai['provider_cost_requests'] === 0 && $ai['cost_usd'] == 0) ? 'غير متاح' : number_format($ai['cost_usd'], 6) }}</h3>
+                <p>استهلاك الذكاء الاصطناعي المؤكد (USD)</p>
+                @if(!$ai['cost_complete'])<small class="text-warning">قياس جزئي · {{ number_format($ai['estimated_cost_requests']) }} طلبًا بلا تكلفة مؤكدة</small><br>@endif
+                @include('admin.reports.growth', ['change' => $aiChange, 'neutral' => true])
+            </div></div></div>
+        </div>
     </div>
 
     @include('admin.orders.partials.index.payment-channel-report')
+    @include('admin.reports.provider-invoices', ['invoiceReport' => $invoiceReport])
 
     <!-- Revenue Charts Section -->
     <div class="row mb-4">
@@ -152,7 +159,7 @@
                 <div class="chart-card-header">
                     <h4 class="chart-card-title">
                         <i class="fa fa-line-chart"></i>
-                        شحن الرصيد النقدي شهريًا
+                        تحصيل الفترة حسب الشهر
                     </h4>
                     <p class="chart-card-subtitle">Kashier وGoogle Play وApp Store؛ التحصيل المؤكد فقط</p>
                 </div>
@@ -176,9 +183,9 @@
                     <div class="summary-card primary fade-in-right dashboard-delay-1">
                         <div class="summary-card-content">
                             <div class="summary-card-info">
-                                <h3>{{ number_format($revenueStats['current_month_revenue'], 0) }}</h3>
-                                <p>المحصل عبر كل قنوات الدفع هذا الشهر</p>
-                                <small class="text-muted">{{ \App\Support\BusinessClock::now()->locale('ar')->format('F Y') }}</small>
+                                <h3>{{ !$revenueStats['gross_complete'] && $revenueStats['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['total_revenue'], 0) }}</h3>
+                                <p>المحصل المؤكد عبر قنوات الدفع خلال الفترة</p>
+                                <small class="text-muted">{{ $period->label() }}</small>
                             </div>
                             <div class="summary-card-icon">
                                 <i class="fa fa-calendar"></i>
@@ -193,9 +200,9 @@
                     <div class="summary-card primary fade-in-right dashboard-delay-3">
                         <div class="summary-card-content">
                             <div class="summary-card-info">
-                                <h3>{{ number_format($revenueStats['previous_month_revenue'], 0) }}</h3>
-                                <p>المحصل عبر كل قنوات الدفع الشهر السابق</p>
-                                <small class="text-muted">{{ \App\Support\BusinessClock::now()->subMonth()->locale('ar')->format('F Y') }}</small>
+                                <h3>{{ $revenueStats['previous_period_revenue'] === null ? 'لا توجد فترة مقارنة' : ($revenueStats['previous_gross_unknown'] ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['previous_period_revenue'], 0)) }}</h3>
+                                <p>المحصل المؤكد في الفترة السابقة المماثلة</p>
+                                <small class="text-muted">{{ $period->previous()?->description() }}</small>
                             </div>
                             <div class="summary-card-icon">
                                 <i class="fa fa-history"></i>
@@ -230,7 +237,7 @@
                         <i class="fa fa-bar-chart"></i>
                         مصدر العملات المصروفة على الكورسات
                     </h4>
-                    <p class="chart-card-subtitle">عملات مشتراة بمال مقابل عملات مكافآت — دون تسميتها إيرادًا نقديًا</p>
+                    <p class="chart-card-subtitle">العملات منذ البداية · مشتراة بمال مقابل مكافآت وليست إيرادًا نقديًا</p>
                 </div>
                 <div class="chart-card-body">
                     <div class="chart-container dashboard-chart--large">
@@ -248,7 +255,7 @@
                         <i class="fa fa-list"></i>
                         ملخص فتح الكورسات
                     </h5>
-                    <p class="chart-card-subtitle">عدد مرات الفتح وتوزيع العملات</p>
+                    <p class="chart-card-subtitle">إجمالي الفتح والعملات منذ البداية مع عدد الفتح خلال الفترة</p>
                 </div>
                 <div class="chart-card-body dashboard-table-scroll">
                     <table class="table table-sm course-stats-table dashboard-course-table">
@@ -267,7 +274,7 @@
                                         {{ $course['name'] }}
                                     </div>
                                     <small class="dashboard-secondary-text">
-                                        الشهر الحالي: {{ $course['current_month_buy_count'] }}
+                                        خلال الفترة: {{ $course['current_period_buy_count'] }}
                                     </small>
                                     @if($course['incomplete_orders'])
                                         <br><small class="text-warning">{{ number_format($course['incomplete_orders']) }} عملية تحتاج ربط الدفتر</small>

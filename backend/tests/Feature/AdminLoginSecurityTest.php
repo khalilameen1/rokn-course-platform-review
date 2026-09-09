@@ -268,6 +268,77 @@ final class AdminLoginSecurityTest extends TestCase
         $this->assertGuest('web');
     }
 
+    public function test_both_dashboard_roles_have_one_visible_native_logout_form_outside_account_menu(): void
+    {
+        $this->app->instance(\App\Services\AdminHeaderNotificationService::class, new class {
+            public function for($user): array
+            {
+                return ['items' => collect(), 'unread_count' => 0];
+            }
+        });
+        foreach (['admin', 'moderator'] as $role) {
+            $this->actingAs($this->createUser($role.'-header@rokn.test', 'password', $role));
+            $this->withSession(['_token' => 'logout-csrf-fixture']);
+            $html = view('admin.includes.header')->render();
+            $document = new \DOMDocument();
+            @$document->loadHTML('<?xml encoding="UTF-8">'.$html);
+            $xpath = new \DOMXPath($document);
+            self::assertSame(1, $xpath->query('//form[@id="logoutForm"]')->length);
+            $form = $xpath->query('//form[@id="logoutForm" and not(ancestor::*[@id="userMenu"])]')->item(0);
+            self::assertNotNull($form, 'Logout must be visible without opening the account dropdown.');
+            self::assertSame('post', $form->getAttribute('method'));
+            self::assertSame(route('logout'), $form->getAttribute('action'));
+            self::assertStringNotContainsString('d-none', $form->getAttribute('class'));
+            self::assertSame(1, $xpath->query('.//button[@type="submit"]', $form)->length);
+            self::assertSame('تسجيل الخروج', trim($form->textContent));
+            self::assertSame('logout-csrf-fixture', $xpath->query('.//input[@name="_token"]', $form)->item(0)->getAttribute('value'));
+            self::assertFalse($xpath->query('.//button', $form)->item(0)->hasAttribute('onclick'));
+        }
+    }
+
+    public function test_logout_invalidates_old_identity_and_allows_switching_dashboard_roles_without_deleting_users(): void
+    {
+        $admin = $this->createAdmin('switch-admin@rokn.test', 'correct-password');
+        $moderator = $this->createUser('switch-moderator@rokn.test', 'correct-password', 'moderator');
+        foreach ([$admin, $moderator] as $user) {
+            $this->post('/login', ['email' => $user->email, 'password' => 'correct-password'])
+                ->assertRedirect(route('admin.dashboard'));
+            $this->assertAuthenticatedAs($user, 'web');
+            $this->withSession(['admin_mfa_verified_user_id' => $user->id, 'private-marker' => 'old-owner']);
+            $oldId = $this->app['session.store']->getId();
+            $oldToken = $this->app['session.store']->token();
+            $this->post(route('logout'))->assertRedirect(route('login'));
+            $this->assertGuest('web');
+            self::assertNotSame($oldId, $this->app['session.store']->getId());
+            self::assertNotSame($oldToken, $this->app['session.store']->token());
+            self::assertFalse($this->app['session.store']->has('private-marker'));
+            self::assertFalse($this->app['session.store']->has('admin_mfa_verified_user_id'));
+            $this->get(route('admin.dashboard'))->assertRedirect(route('login'));
+        }
+        self::assertSame(2, User::query()->count());
+        $this->get(route('logout'))->assertStatus(405);
+    }
+
+    public function test_dashboard_logout_requires_the_current_csrf_token(): void
+    {
+        // Laravel normally bypasses CSRF in tests; exercise the real middleware
+        // check for this account-changing form instead of relying on that bypass.
+        $this->app->instance(\App\Http\Middleware\VerifyCsrfToken::class,
+            new class($this->app, $this->app['encrypter']) extends \App\Http\Middleware\VerifyCsrfToken {
+                protected function runningUnitTests()
+                {
+                    return false;
+                }
+            });
+        $admin = $this->createAdmin('csrf-admin@rokn.test', 'correct-password');
+        $this->actingAs($admin)->withSession(['_token' => 'current-csrf-token']);
+        $this->postJson(route('logout'))->assertStatus(419);
+        $this->assertAuthenticatedAs($admin, 'web');
+        $this->postJson(route('logout'), ['_token' => 'current-csrf-token'])
+            ->assertRedirect(route('login'));
+        $this->assertGuest('web');
+    }
+
     private function createAdmin(string $email, string $password): User
     {
         return $this->createUser($email, $password, 'admin');

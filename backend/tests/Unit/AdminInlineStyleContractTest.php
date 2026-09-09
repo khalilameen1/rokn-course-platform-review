@@ -90,7 +90,8 @@ final class AdminInlineStyleContractTest extends TestCase
         $aside = $this->viewSource('includes/aside.blade.php');
         $alert = $this->viewSource('includes/alert.blade.php');
         self::assertStringContainsString('id="logoutForm"', $header);
-        self::assertStringContainsString('class="d-none" id="logoutForm"', $header);
+        self::assertStringContainsString('class="header-logout-form" id="logoutForm"', $header);
+        self::assertStringNotContainsString('class="d-none" id="logoutForm"', $header);
         self::assertStringContainsString('modern-sidebar', $aside);
         self::assertStringContainsString('data-close-alert', $alert);
         self::assertStringNotContainsString('<script', $header);
