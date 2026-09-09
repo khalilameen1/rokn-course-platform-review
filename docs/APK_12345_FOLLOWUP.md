@@ -2388,3 +2388,73 @@ progress delivery works independently of device storage.
 All three changes are local commits, with no APK, push, deployment, live upload or
 account operation. No user-facing feature was removed. Existing iOS native/device
 acceptance limits remain open; these bounded checks do not finish the full-app goal.
+
+## September 9 — daily playback recovery and hidden attachment transfers
+
+Continued from clean `f3949c1`. The independent project-review lane found no new
+contract defect in submission resolution, map refresh, separate report polling,
+report retry or retained full transcripts. Its actual consumers and existing
+targeted fixtures already cover the suspected cases, so they were not rewritten,
+rerun or counted as additional fixes.
+
+`f36ffd4` fixes the separate watch-evidence record, not the player-state record
+changed in the previous pass. Two RED cases reproduced delayed acknowledgement
+cleanup removing a newer durable sample, with the current session and a same-user
+re-login. A third reproduced a hydration read taken before the acknowledgement
+returning afterward and re-posting the accepted sample. Reads, updates and exact
+acknowledged-snapshot deletion now join the existing per-key evidence queue.
+Hydration also checks whether the in-memory sample changed while reading; it does
+not resurrect an accepted snapshot. No second ledger or runtime-wide write lock
+was added. Cleanup remains ancillary to the server acknowledgement and does not
+turn a local cleanup failure into another network submission. The new nine-case
+fixture executes the production playback service with controlled storage and
+transport; it also covers a newer write during ACK, failed cleanup, malformed
+cache recovery and independent account keys.
+
+`b9930de` fixes the guest's source-retry callback. Two RED cases showed the actual
+feed renderer calling the loader without a target after the visitor moved to a
+later preview. The loader consequently reapplied the original route reel/seek.
+The callback now passes the visible lesson identity through the existing reload
+contract; the signed-in path still requests its playback manifest. A further RED
+counter rejected retaining the old numeric index when that last preview has since
+been removed. Using only the lesson identity lets the existing loader select a
+valid remaining preview instead of waiting forever for an out-of-range index.
+Reordering still resolves by ID. Public/paid feeds remain permission-filtered;
+no project/payment gate or global pending-position resolver was changed.
+
+Root passed ten combined suites / 64 tests for these two commits, full TypeScript
+and scoped ESLint. The four new retry cases exercise the real renderer and loader
+with controlled course/storage data; they are not video decoder/device acceptance.
+
+The hidden-transfer cancellation fix covers both attachment rows and certificate
+details. Three original RED cases exercised actual UI/controllers, the attachment
+action, notice host and save coordinator: hide a still-running iOS transfer, then
+reopen the attachment sheet, remount another reel or reopen certificate details.
+The download remained pending, but no cancellation control was reachable. The
+existing notice snapshot now exposes the original attachment identity, its owner
+predicate and whether its transfer is still pending. Both consumers derive their
+inline cancellation action from that snapshot. There is no second active-download
+ledger, floating tray or reopened progress modal.
+
+Actual RNFS terminal acknowledgement disables the transfer cancellation affordance
+before awaiting the modal-dismissal receipt. Account/root-host retirement still
+invokes the retained cancellation callback to abort a queued/background save;
+an already presented native save keeps its existing receipt and serialized tail.
+This distinction is intentional: finishing network transfer is not permission to
+present a late save for an obsolete owner. Multiple transfers retain the shared
+hidden cycle through their save handoffs.
+
+The new eight-case integration file also covers repeated cancel/explicit retry,
+terminal completion, simultaneous saves, network failure, account replacement and
+host removal after transfer completion while waiting for the foreground. Three
+older test files received only the extended notice mock contract; the new fixture
+does not replace the notice/actions/save coordinator. Root's nine-suite gate
+passed 110 tests including existing certificate read/issue and saved-picker cases;
+the agent additionally included certificate QR coverage in its 98-test gate.
+Full TypeScript, scoped ESLint and diff checks passed. Native RNFS/RNShare and
+Modal/AppState events are controlled seams, not actual UIKit acceptance.
+
+All three fixes are saved locally in the production repository. No APK, push,
+deployment, live file transfer or account change was performed. Existing features
+were preserved. Project-review inspection is evidence against reopening those
+specific fixes, not proof that the full application or the full goal is complete.
