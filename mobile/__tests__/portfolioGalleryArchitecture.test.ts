@@ -66,7 +66,7 @@ describe('portfolio gallery architecture', () => {
     expect(draft).toContain('readPortfolioEditorDraft');
     expect(draft).toContain('writePortfolioEditorDraft');
     expect(draft).toContain('persistenceRevisionRef.current += 1');
-    expect(draft).toContain('await persistenceFlightRef.current');
+    expect(draft).toContain('clearPortfolioEditorDraft(boundary)');
     expect(replay).toContain('replayPendingPortfolioMediaUploads');
     expect(controller).not.toContain('replayPendingPortfolioMediaUploads');
     expect(controller).not.toContain('navigation.navigate');

@@ -80,6 +80,7 @@ export const PortfolioGalleryView = ({
     openProject,
     onSharePortfolio,
     pickCover,
+    pickingMedia,
     previewMedia,
     projects,
     removeSelectedMedia,
@@ -451,7 +452,7 @@ export const PortfolioGalleryView = ({
                           return (
                             <Pressable
                               accessibilityRole="button"
-                              disabled={saving || !draftReady}
+                              disabled={saving || pickingMedia || !draftReady}
                               key={project.projectId}
                               onPress={() => chooseSourceProject(project)}
                               style={({pressed}) => [
@@ -491,7 +492,7 @@ export const PortfolioGalleryView = ({
                     {selectedSourceProject && (
                       <Pressable
                         accessibilityRole="button"
-                        disabled={saving || !draftReady}
+                        disabled={saving || pickingMedia || !draftReady}
                         onPress={clearSelectedSourceProject}
                         style={styles.manualEntryButton}>
                         <Text style={styles.manualEntryLabel}>
@@ -525,10 +526,18 @@ export const PortfolioGalleryView = ({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="اختيار صور وفيديوهات المشروع"
-                  disabled={saving || !draftReady}
+                  disabled={saving || pickingMedia || !draftReady}
+                  accessibilityState={{busy: pickingMedia}}
                   onPress={pickCover}
                   style={styles.coverPicker}>
-                  {draftMediaAssets.length ? (
+                  {pickingMedia ? (
+                    <View style={styles.pickedMediaPreview}>
+                      <ActivityIndicator color={Palette.primary} />
+                      <Text style={styles.coverPickerLabel}>
+                        جارٍ تجهيز الملفات
+                      </Text>
+                    </View>
+                  ) : draftMediaAssets.length ? (
                     <View style={styles.pickedMediaPreview}>
                       {draftCover ? (
                         <Image
@@ -557,6 +566,7 @@ export const PortfolioGalleryView = ({
                     !draftReady ||
                     !draftTitle.trim() ||
                     !draftMediaAssets.length ||
+                    pickingMedia ||
                     saving
                   }
                   loader={saving}

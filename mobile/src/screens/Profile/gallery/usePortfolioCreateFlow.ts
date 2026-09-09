@@ -29,7 +29,10 @@ import {
   toPortfolioProject,
   type Project,
 } from './portfolioModel';
-import {usePortfolioDraftEditor} from './usePortfolioDraftEditor';
+import {
+  usePortfolioDraftEditor,
+  type PortfolioDraftAsset,
+} from './usePortfolioDraftEditor';
 import type {PortfolioPublicationResult} from './usePortfolioPublication';
 
 type Options = {
@@ -69,6 +72,12 @@ const portfolioMediaRequestId = (projectRequestId: string, index: number) => {
   )}-${derived.slice(16, 20)}-${derived.slice(20)}`;
 };
 
+const discardPickerFiles = (files: PortfolioDraftAsset[]) => {
+  // Selection is already accepted or retired. Keep native cleanup ordered,
+  // without letting obsolete files hold the picker or submission locked.
+  void Promise.all(files.map(removeLearnerDraftFile)).catch(() => undefined);
+};
+
 /** Owns eligible source selection, the durable draft and create/upload. */
 export const usePortfolioCreateFlow = ({
   appActive,
@@ -85,6 +94,7 @@ export const usePortfolioCreateFlow = ({
 }: Options) => {
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pickingMedia, setPickingMedia] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{
     completed: number;
     total: number;
@@ -179,9 +189,13 @@ export const usePortfolioCreateFlow = ({
       return;
     }
     pickerFlightRef.current = true;
+    setPickingMedia(true);
     const generation = ++pickerGenerationRef.current;
     try {
       const boundary = await captureBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!mountedRef.current || pickerGenerationRef.current !== generation)
+        return;
       const result = await launchImageLibrary({
         mediaType: 'mixed' as MediaType,
         selectionLimit: 12,
@@ -222,16 +236,16 @@ export const usePortfolioCreateFlow = ({
             !mountedRef.current ||
             pickerGenerationRef.current !== generation
           ) {
-            await Promise.all(cached.map(removeLearnerDraftFile));
+            discardPickerFiles(cached);
             return;
           }
         }
       } catch (error) {
-        await Promise.all(cached.map(removeLearnerDraftFile));
+        discardPickerFiles(cached);
         throw error;
       }
       if (!mountedRef.current || pickerGenerationRef.current !== generation) {
-        await Promise.all(cached.map(removeLearnerDraftFile));
+        discardPickerFiles(cached);
         return;
       }
       const previous = draftMediaAssets;
@@ -246,7 +260,7 @@ export const usePortfolioCreateFlow = ({
         setDraftCover(cover ? {uri: cover.uri} : null);
         setDraftCoverAsset(cover);
       });
-      await Promise.all(previous.map(removeLearnerDraftFile));
+      discardPickerFiles(previous);
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
         showMediaPickerFailure(
@@ -257,6 +271,7 @@ export const usePortfolioCreateFlow = ({
       }
     } finally {
       pickerFlightRef.current = false;
+      if (mountedRef.current) setPickingMedia(false);
     }
   }, [
     busyRef,
@@ -274,7 +289,14 @@ export const usePortfolioCreateFlow = ({
 
   const chooseSourceProject = useCallback(
     (project: EligibleProject) => {
-      if (!draftReady || saving || busyRef.current || isDetailBusy()) return;
+      if (
+        !draftReady ||
+        pickerFlightRef.current ||
+        saving ||
+        busyRef.current ||
+        isDetailBusy()
+      )
+        return;
       const previous = draftCoverAsset;
       const previousMedia = draftMediaAssets;
       changeDraft(() => {
@@ -308,7 +330,14 @@ export const usePortfolioCreateFlow = ({
   );
 
   const clearSelectedSourceProject = useCallback(() => {
-    if (!draftReady || saving || busyRef.current || isDetailBusy()) return;
+    if (
+      !draftReady ||
+      pickerFlightRef.current ||
+      saving ||
+      busyRef.current ||
+      isDetailBusy()
+    )
+      return;
     const previous = draftMediaAssets;
     changeDraft(() => {
       setSelectedSourceProject(null);
@@ -354,6 +383,7 @@ export const usePortfolioCreateFlow = ({
       !draftReady ||
       !draftTitle.trim() ||
       !draftMediaAssets.length ||
+      pickerFlightRef.current ||
       saving ||
       busyRef.current ||
       isDetailBusy()
@@ -511,6 +541,7 @@ export const usePortfolioCreateFlow = ({
     eligibleProjects,
     openAddProject,
     pickCover: pickDraftMedia,
+    pickingMedia,
     retryDraftLoad,
     saving,
     selectedSourceProject,
