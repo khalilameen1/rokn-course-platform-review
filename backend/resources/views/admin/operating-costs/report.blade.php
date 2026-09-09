@@ -1,19 +1,23 @@
 @extends('admin.layouts.app')
 @section('page.title', 'اقتصاديات التشغيل')
+@section('styles')
+<link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/admin-reports.css') }}">
+@endsection
 @section('content')
-<div class="admin-page animated fadeIn">
+<div class="admin-page admin-report">
     @include('admin.partials.page-header', [
         'pageTitle' => 'اقتصاديات التشغيل والتسعير',
         'pageDescription' => 'من دفع ماذا، واستهلك ماذا، وما تكلفته الفعلية حتى الآن — على مستوى المنصة والكورس والباقة والطالب.',
         'pageIcon' => 'fa-line-chart',
     ])
 
-    <div class="d-flex flex-wrap justify-content-between mb-3">
-        <div class="alert alert-info mb-2 py-2">
-            {{ $report['period']->label() }} · {{ $report['period']->description() }}
-            <br>مبالغ OpenRouter مؤكدة من المزود بالدولار؛ الفواتير المسجلة تُحتسب مرة واحدة دون توزيع على الطلاب.
+    <div class="admin-report__toolbar">
+        <div class="admin-report__context">
+            <span class="admin-report__period">{{ $report['period']->label() }}</span>
+            <span>{{ $report['period']->description() }}</span>
+            <p>مبالغ OpenRouter مؤكدة من المزود بالدولار؛ الفواتير المسجلة تُحتسب مرة واحدة دون توزيع على الطلاب.</p>
         </div>
-        <div>
+        <div class="admin-report__actions">
             <a class="btn btn-light" href="{{ route('admin.operating-costs.index') }}">إدارة فواتير الخدمات</a>
             <a class="btn btn-outline-primary" href="{{ route('admin.operating-costs.report.export', request()->except(['page', 'per_page'])) }}">
                 <i class="fa fa-download ml-1"></i> تصدير كل الطلاب CSV
@@ -21,42 +25,62 @@
         </div>
     </div>
 
-    <div class="card admin-card mb-4"><div class="card-body">
-        <form method="GET" action="{{ route('admin.operating-costs.report') }}" class="form-row">
-            @include('admin.reports.period-fields', ['period' => $report['period']])
-            <div class="form-group col-lg-3 col-md-6"><label>بحث عن طالب أو كورس</label><input name="q" maxlength="160" class="form-control" value="{{ $filters['q'] ?? '' }}" placeholder="الاسم أو البريد أو الكورس"></div>
-            <div class="form-group col-lg-2 col-md-6"><label>الكورس</label><select name="course_id" class="form-control"><option value="">كل الكورسات</option>@foreach($courses as $course)<option value="{{ $course->id }}" @selected((string) ($filters['course_id'] ?? '') === (string) $course->id)>{{ $course->name_ar }}</option>@endforeach</select></div>
-            <div class="form-group col-lg-2 col-md-6"><label>الفئة السعرية</label><select name="plan" class="form-control"><option value="">كل الفئات</option>@foreach($report['filter_options']['plans'] as $plan)@php($planValue = $plan['code'] !== '' ? $plan['code'] : $plan['name'])<option value="{{ $planValue }}" @selected(($filters['plan'] ?? '') === $planValue)>{{ $plan['name'] }}</option>@endforeach</select></div>
-            <div class="form-group col-lg-2 col-md-6"><label>مصدر الإتاحة</label><select name="source" class="form-control"><option value="">كل المصادر</option>@foreach($report['filter_options']['sources'] as $source)<option value="{{ $source['code'] }}" @selected(($filters['source'] ?? '') === $source['code'])>{{ $source['name'] }}</option>@endforeach</select></div>
-            <div class="form-group col-lg-1 col-md-3"><label>صفوف</label><select name="per_page" class="form-control">@foreach([20,30,50,100] as $size)<option value="{{ $size }}" @selected((int) ($filters['per_page'] ?? 30) === $size)>{{ $size }}</option>@endforeach</select></div>
-            <div class="form-group col-lg-2 col-md-9 d-flex align-items-end"><button class="btn btn-primary ml-2">تطبيق</button><a class="btn btn-light" href="{{ route('admin.operating-costs.report') }}">مسح</a></div>
+    <div class="card admin-card admin-report__filter-card mb-4"><div class="card-body">
+        <form method="GET" action="{{ route('admin.operating-costs.report') }}" class="admin-report__filters" aria-label="تصفية التقرير المالي">
+            <div class="form-group">@include('admin.reports.period-fields', ['period' => $report['period']])</div>
+            <div class="form-group admin-report__search"><label for="report-search">بحث عن طالب أو كورس</label><input id="report-search" name="q" maxlength="160" class="form-control" value="{{ $filters['q'] ?? '' }}" placeholder="الاسم أو البريد أو الكورس"></div>
+            <div class="form-group"><label for="report-course">الكورس</label><select id="report-course" name="course_id" class="form-control"><option value="">كل الكورسات</option>@foreach($courses as $course)<option value="{{ $course->id }}" @selected((string) ($filters['course_id'] ?? '') === (string) $course->id)>{{ $course->name_ar }}</option>@endforeach</select></div>
+            <div class="form-group"><label for="report-plan">الفئة السعرية</label><select id="report-plan" name="plan" class="form-control"><option value="">كل الفئات</option>@foreach($report['filter_options']['plans'] as $plan)@php($planValue = $plan['code'] !== '' ? $plan['code'] : $plan['name'])<option value="{{ $planValue }}" @selected(($filters['plan'] ?? '') === $planValue)>{{ $plan['name'] }}</option>@endforeach</select></div>
+            <div class="form-group"><label for="report-source">مصدر الإتاحة</label><select id="report-source" name="source" class="form-control"><option value="">كل المصادر</option>@foreach($report['filter_options']['sources'] as $source)<option value="{{ $source['code'] }}" @selected(($filters['source'] ?? '') === $source['code'])>{{ $source['name'] }}</option>@endforeach</select></div>
+            <div class="form-group"><label for="report-page-size">صفوف</label><select id="report-page-size" name="per_page" class="form-control">@foreach([20,30,50,100] as $size)<option value="{{ $size }}" @selected((int) ($filters['per_page'] ?? 30) === $size)>{{ $size }}</option>@endforeach</select></div>
+            <div class="admin-report__filter-actions"><button type="submit" class="btn btn-primary">تطبيق</button><a class="btn btn-light" href="{{ route('admin.operating-costs.report') }}">مسح</a></div>
         </form>
     </div></div>
 
-    <div class="statistics-grid">
-        <div class="stat-card"><span class="stat-counter">{{ number_format($report['unique_students']) }}</span><span class="stat-label">طلاب مختلفون</span></div>
-        <div class="stat-card"><span class="stat-counter">{{ number_format($report['active_enrollments']) }}</span><span class="stat-label">تسجيلات نشطة</span></div>
-        <div class="stat-card"><span class="stat-counter">{{ number_format($report['gross_egp'], 2) }} ج.م</span><span class="stat-label">نقد منسوب للكورسات</span>@include('admin.reports.growth', ['change' => $report['comparisons']['gross_egp'], 'neutral' => true])</div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['net_egp'] === null ? 'بانتظار التسوية' : number_format($report['net_egp'], 2).' ج.م' }}</span><span class="stat-label">صافي بوابة الدفع</span>@include('admin.reports.growth', ['change' => $report['comparisons']['net_egp'], 'neutral' => true])</div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['service_cost_egp'] === null ? 'بيانات ناقصة' : number_format($report['service_cost_egp'], 2).' ج.م' }}</span><span class="stat-label">تكلفة تشغيل فعلية</span>@include('admin.reports.growth', ['change' => $report['comparisons']['service_cost_egp'], 'neutral' => true])</div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['margin_egp'] === null ? 'غير مكتمل' : number_format($report['margin_egp'], 2).' ج.م' }}</span><span class="stat-label">هامش المساهمة</span>@include('admin.reports.growth', ['change' => $report['comparisons']['margin_egp'], 'neutral' => true])</div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['cost_to_net_revenue_percentage'] === null ? '—' : number_format($report['cost_to_net_revenue_percentage'], 2).'%' }}</span><span class="stat-label">التكلفة من صافي السعر</span></div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['contribution_margin_percentage'] === null ? '—' : number_format($report['contribution_margin_percentage'], 2).'%' }}</span><span class="stat-label">نسبة هامش المساهمة</span></div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['average_net_per_student_egp'] === null ? '—' : number_format($report['average_net_per_student_egp'], 2).' ج.م' }}</span><span class="stat-label">متوسط الصافي لكل طالب</span></div>
-        <div class="stat-card"><span class="stat-counter">{{ $report['average_cost_per_student_egp'] === null ? '—' : number_format($report['average_cost_per_student_egp'], 2).' ج.م' }}</span><span class="stat-label">متوسط التكلفة لكل طالب</span></div>
+    <h2 class="admin-report__section-title">ملخص الفترة</h2>
+    <div class="statistics-grid admin-report__kpis">
         <div class="stat-card">
-            <span class="stat-counter">
+            <span class="stat-label">نقد منسوب للكورسات</span>
+            <strong class="stat-counter">{{ number_format($report['gross_egp'], 2) }} <small>ج.م</small></strong>
+            @include('admin.reports.growth', ['change' => $report['comparisons']['gross_egp'], 'neutral' => true])
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">صافي بوابة الدفع</span>
+            <strong @class(['stat-counter', 'stat-counter--status' => $report['net_egp'] === null])>{{ $report['net_egp'] === null ? 'بانتظار التسوية' : number_format($report['net_egp'], 2).' ج.م' }}</strong>
+            @include('admin.reports.growth', ['change' => $report['comparisons']['net_egp'], 'neutral' => true])
+            <dl class="admin-report__details"><div><dt>متوسط الصافي لكل طالب</dt><dd>{{ $report['average_net_per_student_egp'] === null ? '—' : number_format($report['average_net_per_student_egp'], 2).' ج.م' }}</dd></div></dl>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">تكلفة تشغيل فعلية</span>
+            <strong @class(['stat-counter', 'stat-counter--status' => $report['service_cost_egp'] === null])>{{ $report['service_cost_egp'] === null ? 'بيانات ناقصة' : number_format($report['service_cost_egp'], 2).' ج.م' }}</strong>
+            @include('admin.reports.growth', ['change' => $report['comparisons']['service_cost_egp'], 'neutral' => true])
+            <dl class="admin-report__details">
+                <div><dt>التكلفة من صافي السعر</dt><dd>{{ $report['cost_to_net_revenue_percentage'] === null ? '—' : number_format($report['cost_to_net_revenue_percentage'], 2).'%' }}</dd></div>
+                <div><dt>متوسط التكلفة لكل طالب</dt><dd>{{ $report['average_cost_per_student_egp'] === null ? '—' : number_format($report['average_cost_per_student_egp'], 2).' ج.م' }}</dd></div>
+            </dl>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">هامش المساهمة</span>
+            <strong @class(['stat-counter', 'stat-counter--status' => $report['margin_egp'] === null])>{{ $report['margin_egp'] === null ? 'غير مكتمل' : number_format($report['margin_egp'], 2).' ج.م' }}</strong>
+            @include('admin.reports.growth', ['change' => $report['comparisons']['margin_egp'], 'neutral' => true])
+            <dl class="admin-report__details"><div><dt>نسبة هامش المساهمة</dt><dd>{{ $report['contribution_margin_percentage'] === null ? '—' : number_format($report['contribution_margin_percentage'], 2).'%' }}</dd></div></dl>
+        </div>
+        <div class="stat-card"><span class="stat-label">طلاب مختلفون</span><strong class="stat-counter">{{ number_format($report['unique_students']) }}</strong></div>
+        <div class="stat-card"><span class="stat-label">تسجيلات نشطة</span><strong class="stat-counter">{{ number_format($report['active_enrollments']) }}</strong></div>
+        <div class="stat-card">
+            <span class="stat-label">OpenRouter مؤكد</span>
+            <strong @class(['stat-counter', 'stat-counter--status' => !($report['ai_measurement_available'] ?? true) || !$report['ai_cost_complete']])>
                 @if($report['ai_measurement_available'] ?? true)
                     @include('admin.reports.confirmed-usd', ['amount' => $report['ai_cost_usd'], 'complete' => $report['ai_cost_complete']])
                 @else
                     غير متاح
                 @endif
-            </span>
-            <span class="stat-label">OpenRouter مؤكد · {{ number_format($report['ai_requests']) }} ناجح · {{ number_format($report['ai_failed_requests']) }} فاشل · {{ number_format($report['ai_unanswered_requests']) }} بلا نتيجة</span>
+            </strong>
+            <span class="admin-report__caption">{{ number_format($report['ai_requests']) }} ناجح · {{ number_format($report['ai_failed_requests']) }} فاشل · {{ number_format($report['ai_unanswered_requests']) }} بلا نتيجة</span>
             @include('admin.reports.growth', ['change' => $report['comparisons']['ai_cost_usd'], 'neutral' => true])
             @if(($report['ai_estimated_requests'] ?? 0) > 0)<small class="text-warning">{{ number_format($report['ai_estimated_requests']) }} طلبًا بانتظار تكلفة المزود</small>@endif
         </div>
-        <div class="stat-card"><span class="stat-counter">{{ number_format($report['playback_minutes'], 0) }}</span><span class="stat-label">دقيقة فيديو مقاسة</span></div>
+        <div class="stat-card"><span class="stat-label">دقيقة فيديو مقاسة</span><strong class="stat-counter">{{ number_format($report['playback_minutes'], 0) }}</strong></div>
     </div>
     @if($report['provider_invoice_report'] !== null)
         @include('admin.reports.provider-invoices', ['invoiceReport' => $report['provider_invoice_report']])

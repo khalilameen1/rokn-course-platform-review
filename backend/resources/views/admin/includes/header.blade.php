@@ -108,7 +108,10 @@
             </div>
             <form class="header-logout-form" id="logoutForm" action="{{ route('logout') }}" method="post">
                 @csrf
-                <button type="submit" class="header-logout-btn">تسجيل الخروج</button>
+                <button type="submit" class="header-logout-btn">
+                    <i class="fa fa-sign-out" aria-hidden="true"></i>
+                    <span>تسجيل الخروج</span>
+                </button>
             </form>
         </div>
     </div>

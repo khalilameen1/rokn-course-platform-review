@@ -16,7 +16,6 @@ final class AdminInlineStyleContractTest extends TestCase
         'course-codes/pdf.blade.php',
         'course-codes/partials/_dynamic_styles.blade.php',
         'courses/partials/_dynamic_styles.blade.php',
-        'home/partials/_dynamic_styles.blade.php',
         'orders/partials/_dynamic_styles.blade.php',
         'urgent-tasks/partials/_dynamic_styles.blade.php',
     ];

@@ -46,6 +46,7 @@ final class PlatformReportPeriodTest extends TestCase
         $this->actingAs($this->user('admin'), 'web');
         $home = $this->get(route('admin.dashboard', ['period' => $key]))
             ->assertOk()->assertViewIs('admin.home.index')
+            ->assertSee(versioned_asset('admin/assets/css/home-dashboard.css'), false)
             ->assertViewHas('period', fn (ReportPeriod $period): bool => $period->key === $key)
             ->assertSee('value="'.$key.'" selected', false)
             ->assertSee(route('admin.product-analytics.index', ['period' => $key]), false)
@@ -272,6 +273,7 @@ final class PlatformReportPeriodTest extends TestCase
         $usage = $this->usage($enrollment, now()->toImmutable()->subMinute(), .025, 'reservation_fallback');
         $this->actingAs($admin, 'web');
         $pending = $this->get('/dashboard/operating-costs-report?period=7d')->assertOk()
+            ->assertSee(versioned_asset('admin/assets/css/admin-reports.css'), false)
             ->assertSee('بانتظار التأكيد')
             ->assertDontSee('$0.025000');
         self::assertNull($pending->viewData('report')['ai_cost_per_1000_tokens_usd']);

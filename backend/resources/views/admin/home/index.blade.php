@@ -1,27 +1,77 @@
 @extends('admin.layouts.app')
 
 @section('styles')
-{{-- Include Dynamic Theme Styles --}}
-@include('admin.home.partials._dynamic_styles')
 <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/home-dashboard.css') }}">
 @endsection
 @section('page.title', 'لوحة التحكم')
 @section('content')
-
+@php
+    $grossPending = !$revenueStats['gross_complete'] && $revenueStats['confirmed_gross_count'] === 0;
+    $netPending = $revenueStats['provider_settlement_pending_count'] > 0 && $revenueStats['confirmed_net_count'] === 0;
+    $aiUnknown = $ai['cost_usd'] === null || (!$ai['cost_complete'] && $ai['provider_cost_requests'] === 0 && $ai['cost_usd'] == 0);
+@endphp
 <div class="admin-page dashboard-container">
-    <div class="welcome-header">
+    <header class="dashboard-heading">
         <h2>التشغيل اليومي</h2>
-        <p>حالة ركن الآن</p>
-    </div>
+        <p>الأداء المالي وحالة المنصة في مكان واحد</p>
+    </header>
 
-    <form method="GET" action="{{ route('admin.dashboard') }}" class="card modern-card mb-4">
-        <div class="card-body d-flex flex-wrap align-items-end">
+    <form method="GET" action="{{ route('admin.dashboard') }}" class="dashboard-toolbar" aria-label="فترة التقرير">
+        <div class="dashboard-period-field">
             @include('admin.reports.period-fields', ['period' => $period])
-            <button type="submit" class="btn btn-primary mr-3 mb-3">تطبيق</button>
-            <a class="btn btn-light mr-3 mb-3" href="{{ route('admin.product-analytics.index', ['period' => $period->key]) }}">تحليلات المنتج</a>
         </div>
-        <div class="card-footer text-muted">{{ $period->description() }}</div>
+        <button type="submit" class="dashboard-button">تطبيق</button>
+        <p class="dashboard-period-description">{{ $period->description() }}</p>
+        <a class="dashboard-text-link" href="{{ route('admin.product-analytics.index', ['period' => $period->key]) }}">تحليلات المنتج</a>
     </form>
+
+    <section class="dashboard-financials" aria-labelledby="dashboardFinancialTitle">
+        <div class="dashboard-section-heading">
+            <h3 id="dashboardFinancialTitle">الأداء المالي</h3>
+            <span>{{ $period->label() }}</span>
+        </div>
+        <div class="dashboard-metrics">
+            <article class="dashboard-metric dashboard-metric--primary">
+                <h4>تحصيل الفترة المؤكد بكل القنوات (جنيه)</h4>
+                <strong class="dashboard-metric-value {{ $grossPending ? 'is-pending' : '' }}">{{ $grossPending ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['total_revenue'], 2) }}</strong>
+                <div class="dashboard-metric-detail">
+                    @include('admin.reports.growth', ['change' => $revenueStats['revenue_change']])
+                    @if($revenueStats['catalog_estimated_revenue'] > 0)
+                        <small class="text-warning">{{ number_format($revenueStats['catalog_estimated_revenue'], 2) }} تقدير كتالوج خارج الإجمالي</small>
+                    @endif
+                </div>
+            </article>
+            <article class="dashboard-metric">
+                <h4>الصافي المؤكد من كشوف المزودين</h4>
+                <strong class="dashboard-metric-value {{ $netPending ? 'is-pending' : '' }}">{{ $netPending ? 'بانتظار التسوية' : number_format($revenueStats['confirmed_net_revenue'], 2) }}</strong>
+                <div class="dashboard-metric-detail">
+                    @include('admin.reports.growth', ['change' => $revenueStats['net_change']])
+                    @if($revenueStats['provider_settlement_pending_count'] > 0)
+                        <small class="text-warning">جزئي · {{ number_format($revenueStats['provider_settlement_pending_count']) }} عملية بانتظار كشف التسوية</small>
+                    @else
+                        <small>جنيه بعد الرسوم والاستقطاعات</small>
+                    @endif
+                </div>
+            </article>
+            <article class="dashboard-metric">
+                <h4>استهلاك الذكاء الاصطناعي المؤكد (USD)</h4>
+                <strong class="dashboard-metric-value {{ $aiUnknown ? 'is-pending' : '' }}">{{ $aiUnknown ? 'غير متاح' : number_format($ai['cost_usd'], 6) }}</strong>
+                <div class="dashboard-metric-detail">
+                    @include('admin.reports.growth', ['change' => $aiChange, 'neutral' => true])
+                    @if(!$ai['cost_complete'])
+                        <small class="text-warning">قياس جزئي · {{ number_format($ai['estimated_cost_requests']) }} طلبًا بلا تكلفة مؤكدة</small>
+                    @endif
+                </div>
+            </article>
+        </div>
+    </section>
+
+    <section class="dashboard-platform-summary" aria-label="حالة المنصة الآن">
+        <div><strong>{{ number_format($platformStats['courses']) }}</strong><span>إجمالي الكورسات الآن</span></div>
+        <div><strong>{{ number_format($platformStats['lessons']) }}</strong><span>إجمالي الدروس الآن</span></div>
+        <div><strong>{{ number_format($platformStats['students']) }}</strong><span>إجمالي الطلاب الآن</span></div>
+        <div><strong>{{ number_format($revenueStats['pending_payments'], 2) }} <small>EGP</small></strong><span>قيمة معلقة الآن · {{ $revenueStats['pending_bills_count'] }} عملية بكل القنوات</span></div>
+    </section>
 
     <nav class="dashboard-priority-nav" aria-label="ما يحتاج متابعة">
         <a href="{{ route('admin.product-operations.index') }}"><strong>حالة النشر</strong><span>فحوص المنتج والكورسات</span></a>
@@ -30,325 +80,90 @@
         <a href="{{ route('admin.orders.index') }}"><strong>{{ number_format($revenueStats['pending_bills_count']) }} مدفوعات معلقة</strong><span>راجع مسار عمليات الدفع</span></a>
     </nav>
 
-    <!-- Statistics Cards Row -->
-    <div class="row mb-4">
-        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-6 mb-4">
-            <div class="stats-card primary fade-in-up dashboard-delay-1">
-                <div class="stats-card-body">
-                    <div class="stats-icon primary">
-                        <i class="fa fa-graduation-cap"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="count">{{ $platformStats['courses'] }}</h3>
-                        <p>إجمالي الكورسات الآن</p>
-                    </div>
-                </div>
+    <div class="dashboard-analysis-grid">
+        <section class="dashboard-panel" aria-labelledby="dashboardRevenueTitle">
+            <div class="dashboard-panel-heading">
+                <h3 id="dashboardRevenueTitle">تحصيل الفترة حسب الشهر</h3>
+                <p>Kashier وGoogle Play وApp Store · التحصيل المؤكد فقط</p>
             </div>
-        </div>
-        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-6 mb-4">
-            <div class="stats-card warning fade-in-up dashboard-delay-3">
-                <div class="stats-card-body">
-                    <div class="stats-icon warning">
-                        <i class="fa fa-book"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="count">{{ $platformStats['lessons'] }}</h3>
-                        <p>إجمالي الدروس الآن</p>
-                    </div>
+            <div class="dashboard-chart"><canvas id="monthlyRevenueChart" role="img" aria-label="تحصيل الفترة المؤكد حسب الشهر"></canvas></div>
+        </section>
+        <section class="dashboard-panel dashboard-comparison" aria-labelledby="dashboardComparisonTitle">
+            <div class="dashboard-panel-heading"><h3 id="dashboardComparisonTitle">مقارنة التحصيل</h3></div>
+            <dl>
+                <div>
+                    <dt>المحصل المؤكد عبر قنوات الدفع خلال الفترة</dt>
+                    <dd>{{ $grossPending ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['total_revenue'], 2) }}</dd>
+                    <small>{{ $period->label() }}</small>
                 </div>
-            </div>
-        </div>
-
-        <div class="col-xl-4 col-lg-4 col-md-4 col-sm-6 mb-4">
-            <div class="stats-card info fade-in-up dashboard-delay-4">
-                <div class="stats-card-body">
-                    <div class="stats-icon info">
-                        <i class="fa fa-users"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="count">
-                            {{ $platformStats['students'] }}
-                        </h3>
-                        <p>إجمالي الطلاب الآن</p>
-                    </div>
+                <div>
+                    <dt>المحصل المؤكد في الفترة السابقة المماثلة</dt>
+                    <dd>{{ $revenueStats['previous_period_revenue'] === null ? 'لا توجد فترة مقارنة' : ($revenueStats['previous_gross_unknown'] ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['previous_period_revenue'], 2)) }}</dd>
+                    <small>{{ $period->previous()?->description() }}</small>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Revenue Statistics Section -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <h3 class="mb-4 dashboard-section-title">
-                <i class="fa fa-money dashboard-section-title__icon"></i>
-                الأموال الفعلية واستهلاك العملات
-            </h3>
-        </div>
-    </div>
-
-    <!-- Revenue Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="stats-card primary fade-in-up dashboard-delay-1">
-                <div class="stats-card-body">
-                    <div class="stats-icon primary">
-                        <i class="fa fa-dollar"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3>{{ !$revenueStats['gross_complete'] && $revenueStats['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['total_revenue'], 0) }}</h3>
-                        <p>تحصيل الفترة المؤكد بكل القنوات (جنيه)</p>
-                        @if($revenueStats['catalog_estimated_revenue'] > 0)
-                            <small class="text-warning">{{ number_format($revenueStats['catalog_estimated_revenue'], 0) }} تقدير كتالوج خارج الإجمالي</small><br>
-                        @endif
-                        @include('admin.reports.growth', ['change' => $revenueStats['revenue_change']])
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="stats-card success fade-in-up dashboard-delay-2">
-                <div class="stats-card-body">
-                    <div class="stats-icon success"><i class="fa fa-check"></i></div>
-                    <div class="stats-info">
-                        <h3>{{ $revenueStats['provider_settlement_pending_count'] > 0 && $revenueStats['confirmed_net_count'] === 0 ? 'بانتظار التسوية' : number_format($revenueStats['confirmed_net_revenue'], 0) }}</h3>
-                        <p>الصافي المؤكد من كشوف المزودين</p>
-                        @if($revenueStats['provider_settlement_pending_count'] > 0)
-                            <small class="text-warning">جزئي · {{ number_format($revenueStats['provider_settlement_pending_count']) }} عملية بانتظار كشف التسوية</small>
-                        @else
-                            <small class="text-muted">بعد الرسوم والاستقطاعات</small>
-                        @endif
-                        <br>@include('admin.reports.growth', ['change' => $revenueStats['net_change']])
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="stats-card warning fade-in-up dashboard-delay-4">
-                <div class="stats-card-body">
-                    <div class="stats-icon warning">
-                        <i class="fa fa-clock-o"></i>
-                    </div>
-                    <div class="stats-info">
-                        <h3 class="revenue-count">{{ number_format($revenueStats['pending_payments'], 0) }}</h3>
-                        <p>قيمة EGP معلقة الآن</p>
-                        <small class="text-muted">{{ $revenueStats['pending_bills_count'] }} عملية بكل القنوات</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-lg-6 col-md-6 mb-4">
-            <div class="stats-card info h-100"><div class="stats-card-body"><div class="stats-info">
-                <h3>{{ $ai['cost_usd'] === null || (!$ai['cost_complete'] && $ai['provider_cost_requests'] === 0 && $ai['cost_usd'] == 0) ? 'غير متاح' : number_format($ai['cost_usd'], 6) }}</h3>
-                <p>استهلاك الذكاء الاصطناعي المؤكد (USD)</p>
-                @if(!$ai['cost_complete'])<small class="text-warning">قياس جزئي · {{ number_format($ai['estimated_cost_requests']) }} طلبًا بلا تكلفة مؤكدة</small><br>@endif
-                @include('admin.reports.growth', ['change' => $aiChange, 'neutral' => true])
-            </div></div></div>
-        </div>
+            </dl>
+        </section>
     </div>
 
     @include('admin.orders.partials.index.payment-channel-report')
     @include('admin.reports.provider-invoices', ['invoiceReport' => $invoiceReport])
 
-    <!-- Revenue Charts Section -->
-    <div class="row mb-4">
-        <!-- Monthly Revenue Trend Chart -->
-        <div class="col-lg-8 mb-4">
-            <div class="chart-card fade-in-left">
-                <div class="chart-card-header">
-                    <h4 class="chart-card-title">
-                        <i class="fa fa-line-chart"></i>
-                        تحصيل الفترة حسب الشهر
-                    </h4>
-                    <p class="chart-card-subtitle">Kashier وGoogle Play وApp Store؛ التحصيل المؤكد فقط</p>
-                </div>
-                <div class="chart-card-body">
-                    <div class="chart-container dashboard-chart--large">
-                        <canvas id="monthlyRevenueChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- Additional Stats -->
-    <div class="row mb-4">
-        <!-- Revenue Summary Cards -->
-        <div class="col-lg-6">
-            <div class="row">
-                <!-- Current Month Total Revenue -->
-                <div class="col-12 mb-3">
-                    <div class="summary-card primary fade-in-right dashboard-delay-1">
-                        <div class="summary-card-content">
-                            <div class="summary-card-info">
-                                <h3>{{ !$revenueStats['gross_complete'] && $revenueStats['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['total_revenue'], 0) }}</h3>
-                                <p>المحصل المؤكد عبر قنوات الدفع خلال الفترة</p>
-                                <small class="text-muted">{{ $period->label() }}</small>
-                            </div>
-                            <div class="summary-card-icon">
-                                <i class="fa fa-calendar"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- Previous Month Total Revenue -->
-                <div class="col-12 mb-3">
-                    <div class="summary-card primary fade-in-right dashboard-delay-3">
-                        <div class="summary-card-content">
-                            <div class="summary-card-info">
-                                <h3>{{ $revenueStats['previous_period_revenue'] === null ? 'لا توجد فترة مقارنة' : ($revenueStats['previous_gross_unknown'] ? 'بانتظار تأكيد التحصيل' : number_format($revenueStats['previous_period_revenue'], 0)) }}</h3>
-                                <p>المحصل المؤكد في الفترة السابقة المماثلة</p>
-                                <small class="text-muted">{{ $period->previous()?->description() }}</small>
-                            </div>
-                            <div class="summary-card-icon">
-                                <i class="fa fa-history"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Course Statistics Section -->
     @if($courseStats->count() > 0)
-    <div class="row mb-4">
-        <div class="col-12">
-            <h3 class="mb-4 dashboard-section-title">
-                <i class="fa fa-graduation-cap dashboard-section-title__icon"></i>
-                إحصائيات الكورسات
-            </h3>
-        </div>
-    </div>
-
-    <div class="row mb-4">
-        <!-- Course Revenue Chart -->
-        <div class="col-lg-8 mb-4">
-            <div class="chart-card fade-in-left">
-                <div class="chart-card-header">
-                    <h4 class="chart-card-title">
-                        <i class="fa fa-bar-chart"></i>
-                        مصدر العملات المصروفة على الكورسات
-                    </h4>
-                    <p class="chart-card-subtitle">العملات منذ البداية · مشتراة بمال مقابل مكافآت وليست إيرادًا نقديًا</p>
+    <section aria-labelledby="dashboardCoursesTitle">
+        <div class="dashboard-section-heading"><h3 id="dashboardCoursesTitle">إحصائيات الكورسات</h3><span>العملات منذ البداية</span></div>
+        <div class="dashboard-analysis-grid dashboard-analysis-grid--courses">
+            <div class="dashboard-panel">
+                <div class="dashboard-panel-heading">
+                    <h4>مصدر العملات المصروفة على الكورسات</h4>
+                    <p>مشتراة بمال مقابل مكافآت وليست إيرادًا نقديًا</p>
                 </div>
-                <div class="chart-card-body">
-                    <div class="chart-container dashboard-chart--large">
-                        <canvas id="courseRevenueChart"></canvas>
-                    </div>
-                </div>
+                <div class="dashboard-chart"><canvas id="courseRevenueChart" role="img" aria-label="العملات المشتراة والمكافآت المصروفة على الكورسات"></canvas></div>
             </div>
-        </div>
-
-        <!-- Course Statistics Table -->
-        <div class="col-lg-4 mb-4">
-            <div class="chart-card fade-in-right dashboard-delay-1">
-                <div class="chart-card-header">
-                    <h5 class="chart-card-title">
-                        <i class="fa fa-list"></i>
-                        ملخص فتح الكورسات
-                    </h5>
-                    <p class="chart-card-subtitle">إجمالي الفتح والعملات منذ البداية مع عدد الفتح خلال الفترة</p>
-                </div>
-                <div class="chart-card-body dashboard-table-scroll">
-                    <table class="table table-sm course-stats-table dashboard-course-table">
-                        <thead class="dashboard-course-table__head">
-                            <tr>
-                                <th class="dashboard-course-table__heading">الكورس</th>
-                                <th class="text-center dashboard-course-table__heading">الفتح</th>
-                                <th class="text-end dashboard-course-table__heading">مشتراة / مكافآت</th>
-                            </tr>
-                        </thead>
+            <div class="dashboard-panel">
+                <div class="dashboard-panel-heading"><h4>ملخص فتح الكورسات</h4><p>إجمالي الفتح والعملات منذ البداية مع عدد الفتح خلال الفترة</p></div>
+                <div class="dashboard-table-scroll">
+                    <table class="table table-sm dashboard-course-table">
+                        <thead><tr><th>الكورس</th><th>الفتح</th><th>مشتراة / مكافآت</th></tr></thead>
                         <tbody>
-                            @foreach($courseStats as $course)
-                            <tr class="dashboard-course-table__row">
-                                <td class="dashboard-course-table__cell">
-                                    <div class="dashboard-course-name" title="{{ $course['name'] }}">
-                                        {{ $course['name'] }}
-                                    </div>
-                                    <small class="dashboard-secondary-text">
-                                        خلال الفترة: {{ $course['current_period_buy_count'] }}
-                                    </small>
-                                    @if($course['incomplete_orders'])
-                                        <br><small class="text-warning">{{ number_format($course['incomplete_orders']) }} عملية تحتاج ربط الدفتر</small>
-                                    @endif
+                        @foreach($courseStats as $course)
+                            <tr>
+                                <td>
+                                    <strong class="dashboard-course-name" title="{{ $course['name'] }}">{{ $course['name'] }}</strong>
+                                    <small class="dashboard-secondary-text">خلال الفترة: {{ $course['current_period_buy_count'] }}</small>
+                                    @if($course['incomplete_orders'])<small class="text-warning">{{ number_format($course['incomplete_orders']) }} عملية تحتاج ربط الدفتر</small>@endif
                                 </td>
-                                <td class="text-center dashboard-course-table__cell">
-                                    <strong>{{ $course['total_buy_count'] }}</strong>
-                                </td>
-                                <td class="text-end dashboard-course-table__cell">
-                                    <strong>{{ number_format($course['paid_coins'], 0) }}</strong>
-                                    <br>
-                                    <small class="dashboard-secondary-text">
-                                        {{ number_format($course['reward_coins'], 0) }}
-                                    </small>
-                                </td>
+                                <td>{{ $course['total_buy_count'] }}</td>
+                                <td><strong>{{ number_format($course['paid_coins'], 0) }}</strong><small class="dashboard-secondary-text">{{ number_format($course['reward_coins'], 0) }}</small></td>
                             </tr>
-                            @endforeach
+                        @endforeach
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
-    </div>
+    </section>
     @endif
-
-
-
 </div>
-
-    {{-- Legacy e-commerce widgets removed --}}
-
 @endsection
+
 @section('scripts')
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
 
     <script type="text/javascript">
         document.addEventListener('DOMContentLoaded', function() {
-            // Counter Animation
-            function animateCounters() {
-                const counters = document.querySelectorAll('.count, .revenue-count');
-                counters.forEach(counter => {
-                    const isRevenue = counter.classList.contains('revenue-count');
-                    const target = parseFloat(counter.textContent.replace(/,/g, ''));
-                    const increment = target / 50;
-                    let current = 0;
-
-                    const updateCounter = () => {
-                        if (current < target) {
-                            current += increment;
-                            const value = isRevenue ? Math.round(current) : Math.ceil(current);
-                            counter.textContent = isRevenue
-                                ? value.toLocaleString('en-US')
-                                : value;
-                            setTimeout(updateCounter, 20);
-                        } else {
-                            counter.textContent = isRevenue
-                                ? Math.round(target).toLocaleString('en-US')
-                                : target;
-                        }
-                    };
-
-                    setTimeout(updateCounter, 500);
-                });
-            }
-
-            // Start counter animation
-            setTimeout(animateCounters, 600);
-
             // The dashboard remains usable if the optional chart CDN is unavailable.
             if (typeof window.Chart !== 'function') {
                 return;
             }
 
+
+            const theme = getComputedStyle(document.body);
+            const primary = theme.getPropertyValue('--rokn-admin-primary').trim() || '#2c69db';
+            const muted = theme.getPropertyValue('--rokn-admin-muted').trim() || '#64748b';
+            const ink = theme.getPropertyValue('--rokn-admin-text').trim() || '#18233b';
+            const surface = theme.getPropertyValue('--rokn-admin-surface').trim() || '#fff';
+            const border = theme.getPropertyValue('--rokn-admin-border').trim() || '#e2e8f0';
 
             // ============================================
             // REVENUE CHARTS
@@ -365,13 +180,13 @@
                             {
                                 label: 'شحن رصيد عبر قنوات الدفع (جنيه)',
                                 data: {!! json_encode(array_column($monthlyRevenue, 'course_revenue')) !!},
-                                borderColor: '#2563eb',
-                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                borderColor: primary,
+                                backgroundColor: border,
                                 borderWidth: 3,
-                                fill: true,
+                                fill: false,
                                 tension: 0.4,
-                                pointBackgroundColor: '#2563eb',
-                                pointBorderColor: '#fff',
+                                pointBackgroundColor: primary,
+                                pointBorderColor: surface,
                                 pointBorderWidth: 2,
                                 pointRadius: 5,
                                 pointHoverRadius: 8
@@ -380,28 +195,29 @@
                     },
                     options: {
                         responsive: true,
+                        animation: false,
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
                                 display: true,
                                 position: 'top',
                                 labels: {
-                                    color: '#6c757d',
+                                    color: muted,
                                     padding: 15,
                                     usePointStyle: true,
                                     font: {
                                         size: 12,
-                                        family: 'Arial'
+                                        family: theme.fontFamily
                                     }
                                 }
                             },
                             tooltip: {
                                 mode: 'index',
                                 intersect: false,
-                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                titleColor: '#2c3e50',
-                                bodyColor: '#2c3e50',
-                                borderColor: '#e9ecef',
+                                backgroundColor: surface,
+                                titleColor: ink,
+                                bodyColor: ink,
+                                borderColor: border,
                                 borderWidth: 1,
                                 cornerRadius: 8,
                                 padding: 12,
@@ -416,10 +232,10 @@
                             y: {
                                 beginAtZero: true,
                                 grid: {
-                                    color: 'rgba(102, 126, 234, 0.1)'
+                                    color: border
                                 },
                                 ticks: {
-                                    color: '#8e9bae',
+                                    color: muted,
                                     callback: function(value) {
                                         return value.toFixed(0);
                                     }
@@ -430,7 +246,7 @@
                                     display: false
                                 },
                                 ticks: {
-                                    color: '#8e9bae'
+                                    color: muted
                                 }
                             }
                         }
@@ -454,8 +270,8 @@
                             {
                                 label: 'عملات مشتراة بمال',
                                 data: {!! json_encode($courseStats->pluck('paid_coins')) !!},
-                                backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                                borderColor: '#2563eb',
+                                backgroundColor: primary,
+                                borderColor: primary,
                                 borderWidth: 2,
                                 borderRadius: 6,
                                 barThickness: 'flex',
@@ -464,8 +280,8 @@
                             {
                                 label: 'عملات مكافآت',
                                 data: {!! json_encode($courseStats->pluck('reward_coins')) !!},
-                                backgroundColor: 'rgba(72, 187, 120, 0.8)',
-                                borderColor: '#48bb78',
+                                backgroundColor: muted,
+                                borderColor: muted,
                                 borderWidth: 2,
                                 borderRadius: 6,
                                 barThickness: 'flex',
@@ -475,28 +291,29 @@
                     },
                     options: {
                         responsive: true,
+                        animation: false,
                         maintainAspectRatio: false,
                         plugins: {
                             legend: {
                                 display: true,
                                 position: 'top',
                                 labels: {
-                                    color: '#6c757d',
+                                    color: muted,
                                     padding: 15,
                                     usePointStyle: true,
                                     font: {
                                         size: 12,
-                                        family: 'Arial'
+                                        family: theme.fontFamily
                                     }
                                 }
                             },
                             tooltip: {
                                 mode: 'index',
                                 intersect: false,
-                                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                                titleColor: '#2c3e50',
-                                bodyColor: '#2c3e50',
-                                borderColor: '#e9ecef',
+                                backgroundColor: surface,
+                                titleColor: ink,
+                                bodyColor: ink,
+                                borderColor: border,
                                 borderWidth: 1,
                                 cornerRadius: 8,
                                 padding: 12,
@@ -511,10 +328,10 @@
                             y: {
                                 beginAtZero: true,
                                 grid: {
-                                    color: 'rgba(102, 126, 234, 0.1)'
+                                    color: border
                                 },
                                 ticks: {
-                                    color: '#8e9bae',
+                                    color: muted,
                                     callback: function(value) {
                                         return Math.round(value).toLocaleString('en-US');
                                     }
@@ -525,7 +342,7 @@
                                     display: false
                                 },
                                 ticks: {
-                                    color: '#8e9bae',
+                                    color: muted,
                                     maxRotation: 45,
                                     minRotation: 45,
                                     font: {
@@ -538,17 +355,6 @@
                 });
             }
 
-            // Add hover effects to cards
-            const cards = document.querySelectorAll('.stats-card, .summary-card, .chart-card');
-            cards.forEach(card => {
-                card.addEventListener('mouseenter', function() {
-                    this.style.transform = 'translateY(-5px) scale(1.02)';
-                });
-
-                card.addEventListener('mouseleave', function() {
-                    this.style.transform = 'translateY(0) scale(1)';
-                });
-            });
         });
     </script>
 @endsection

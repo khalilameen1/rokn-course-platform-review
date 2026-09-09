@@ -39,8 +39,9 @@ aside.left-panel.modern-sidebar {
     background: var(--rokn-admin-primary);
 }
 .modern-nav .menu-icon { flex: 0 0 22px; width: 22px; font-size: 17px; text-align: center; }
-.modern-nav .menu-text { min-width: 0; font-size: .88rem; line-height: 1.6; }
-.menu-divider { margin-top: 18px; padding: 8px 12px; color: var(--rokn-admin-nav-muted); font-size: .72rem; }
+.modern-nav .menu-text { min-width: 0; font-size: .94rem; line-height: 1.6; }
+.modern-nav .nav-item.active > .nav-link .menu-text { font-weight: 700; }
+.menu-divider { margin-top: 18px; padding: 8px 12px; color: var(--rokn-admin-nav-muted); font-size: .78rem; }
 .menu-divider:first-of-type { margin-top: 8px; }
 .main-menu { scrollbar-width: thin; scrollbar-color: var(--rokn-admin-nav-border) transparent; }
 .notification-badge {
@@ -76,6 +77,8 @@ header#header.modern-header {
 .header-right,
 .header-left { display: flex; align-items: center; min-width: 0; gap: 12px; }
 .modern-header-content { min-height: 76px; justify-content: space-between; padding: 12px 24px; }
+.header-left { gap: 18px; }
+.header-right { gap: 4px; }
 .modern-menu-toggle,
 .notification-btn,
 .dark-mode-toggle {
@@ -86,7 +89,7 @@ header#header.modern-header {
     width: 44px;
     height: 44px;
     padding: 0;
-    border: 1px solid var(--rokn-admin-border);
+    border: 1px solid transparent;
     border-radius: 10px;
     color: var(--rokn-admin-text);
     background: var(--rokn-admin-surface);
@@ -104,15 +107,16 @@ body.dark-mode .dark-mode-toggle .fa-moon-o { display: none; }
 body.dark-mode .dark-mode-toggle .fa-sun-o { display: inline-block; }
 .modern-notification,
 .modern-user-menu { position: relative; }
-.user-profile-btn { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 8px; border: 0; border-radius: 10px; color: inherit; background: transparent; cursor: pointer; }
-.header-logout-form { margin: 0; flex-shrink: 0; }
-.header-logout-btn { min-height: 44px; padding: 6px 8px; border: 1px solid var(--rokn-admin-border); border-radius: 10px; color: var(--rokn-admin-danger); background: var(--rokn-admin-surface); font: inherit; font-size: .78rem; white-space: nowrap; cursor: pointer; }
-.header-logout-btn:hover { background: var(--rokn-admin-surface-soft); }
+.user-profile-btn { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 8px; border: 0; border-radius: 10px; color: inherit; background: transparent; cursor: pointer; }
+.header-logout-form { margin: 0; flex-shrink: 0; padding-inline-start: 18px; border-inline-start: 1px solid var(--rokn-admin-border); }
+.header-logout-btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px; padding: 9px 14px; border: 1px solid var(--rokn-admin-border); border-radius: 10px; color: var(--rokn-admin-text); background: var(--rokn-admin-surface-soft); font: inherit; font-size: .9rem; font-weight: 600; line-height: 1.5; white-space: nowrap; cursor: pointer; transition: color .15s, border-color .15s; }
+.header-logout-btn .fa { font-size: 17px; }
+.header-logout-btn:hover { color: var(--rokn-admin-danger); border-color: var(--rokn-admin-danger); }
 .user-avatar-wrapper { width: 38px; height: 38px; flex: 0 0 38px; overflow: hidden; border: 1px solid var(--rokn-admin-border); border-radius: 50%; }
 .user-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
-header#header .user-info { display: flex; flex-direction: column; align-items: flex-start; text-align: start; }
-header#header .user-name { color: var(--rokn-admin-text); font-size: .87rem; font-weight: 700; line-height: 1.5; }
-header#header .user-role { color: var(--rokn-admin-muted); font-size: .72rem; }
+header#header .user-info { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; max-width: 220px; text-align: start; }
+header#header .user-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--rokn-admin-text); font-size: .96rem; font-weight: 700; line-height: 1.5; }
+header#header .user-role { color: var(--rokn-admin-muted); font-size: .8rem; line-height: 1.5; }
 header#header .notification-dropdown,
 header#header .user-dropdown {
     position: absolute;
@@ -304,7 +308,8 @@ body.admin-shell.open .modern-nav .menu-text {
 .admin-sidebar-close:focus-visible,
 .notification-btn:focus-visible,
 .dark-mode-toggle:focus-visible,
-.user-profile-btn:focus-visible {
+.user-profile-btn:focus-visible,
+.header-logout-btn:focus-visible {
     outline: 3px solid var(--rokn-admin-primary) !important;
     outline-offset: 2px;
 }
@@ -441,6 +446,8 @@ body.admin-shell.open .modern-nav .menu-text {
 
     header#header .user-info { display: none; }
     .user-profile-btn { padding: 0; }
+    .header-logout-form { padding-inline-start: 0; border-inline-start: 0; }
+    .header-logout-btn { padding-inline: 10px; font-size: .875rem; }
     .enhanced-alert { inset-inline-end: 12px; }
 
     header#header .notification-dropdown,
@@ -470,8 +477,11 @@ body.admin-shell.open .modern-nav .menu-text {
 
     .header-right,
     .header-left {
-        gap: 5px;
+        gap: 4px;
     }
+
+    .header-right { gap: 0; }
+    .header-logout-btn .fa { display: none; }
 
     .notification-btn,
     .dark-mode-toggle,

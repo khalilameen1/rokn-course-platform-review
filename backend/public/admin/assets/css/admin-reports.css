@@ -1,0 +1,71 @@
+/* Report-only layout. Uses the shared ROKN palette in both colour modes. */
+.admin-report {
+    color: var(--rokn-admin-text);
+    min-width: 0;
+}
+
+.admin-report .admin-page__description { max-width: 76ch; font-size: .9rem; line-height: 1.8; }
+.admin-report__toolbar { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.admin-report__context { flex: 1 1 400px; color: var(--rokn-admin-muted); font-size: .8rem; line-height: 1.9; }
+.admin-report__context p { margin: 6px 0 0; }
+.admin-report__period { display: inline-block; margin-inline-end: 8px; padding: 2px 10px; border-radius: 6px; color: var(--rokn-admin-primary); background: var(--rokn-admin-primary-soft); font-weight: 700; }
+.admin-report__actions, .admin-report__filter-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.admin-report .btn { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; font-size: .8rem; padding: 8px 14px; }
+.admin-report .card, .admin-report .stat-card { color: var(--rokn-admin-text); background: var(--rokn-admin-surface); border: 1px solid var(--rokn-admin-border); border-radius: var(--rokn-admin-radius); box-shadow: none; }
+.admin-report .card-body { padding: 20px; }
+.admin-report__filters { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(180px, 1.6fr) repeat(3, minmax(110px, 1fr)) 70px; gap: 14px; align-items: end; }
+.admin-report__filters .form-group { min-width: 0; margin: 0; }
+.admin-report__filters label { display: block; margin-bottom: 7px; color: var(--rokn-admin-muted); font-size: .78rem; font-weight: 600; }
+.admin-report__filters .form-control { width: 100%; min-width: 0; height: 42px; padding: 7px 10px; border: 1px solid var(--rokn-admin-border); border-radius: 8px; background-color: var(--rokn-admin-surface); color: var(--rokn-admin-text); font-size: .82rem; }
+.admin-report__filters .form-control:focus { border-color: var(--rokn-admin-primary); box-shadow: 0 0 0 2px var(--rokn-admin-primary-soft); }
+.admin-report__filter-actions { grid-column: 1 / -1; padding-top: 2px; }
+.admin-report__section-title { margin: 24px 0 14px; font-size: 1.03rem; font-weight: 700; color: var(--rokn-admin-text); }
+.admin-report__kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px; }
+.admin-report .stat-card { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; padding: 20px; }
+.admin-report .stat-label { display: block; color: var(--rokn-admin-muted); font-size: .83rem; font-weight: 600; line-height: 1.6; }
+.admin-report .stat-counter { display: block; min-height: 38px; font-size: clamp(1.4rem, 2vw, 1.85rem); font-weight: 700; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.admin-report .stat-counter small { font-size: .75rem; font-weight: 400; color: var(--rokn-admin-muted); }
+.admin-report .stat-counter--status { display: flex; align-items: center; font-size: 1rem; line-height: 1.8; color: var(--rokn-admin-muted); }
+.admin-report .stat-card > small, .admin-report__caption { font-size: .73rem; line-height: 1.8; color: var(--rokn-admin-muted); }
+.admin-report__details { width: 100%; margin: auto 0 0; padding-top: 12px; border-top: 1px solid var(--rokn-admin-border); font-size: .72rem; line-height: 1.8; }
+.admin-report__details > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.admin-report__details dt { color: var(--rokn-admin-muted); font-weight: 400; }
+.admin-report__details dd { flex-shrink: 0; margin: 0; color: var(--rokn-admin-text); font-variant-numeric: tabular-nums; }
+.admin-report .card-header, .admin-report .card-header-modern { padding: 17px 20px; background: var(--rokn-admin-surface); border-bottom: 1px solid var(--rokn-admin-border); }
+.admin-report .card-header strong, .admin-report .card-header-modern h4 { font-size: 1rem; font-weight: 700; line-height: 1.7; color: var(--rokn-admin-text); }
+.admin-report .card-header small { margin-top: 4px; font-size: .76rem; line-height: 1.8; }
+.admin-report .table { color: var(--rokn-admin-text); font-size: .83rem; font-variant-numeric: tabular-nums; line-height: 1.8; }
+.admin-report .table thead th { padding: 12px 16px; border-top: 0; border-bottom: 1px solid var(--rokn-admin-border); background: var(--rokn-admin-surface-soft); color: var(--rokn-admin-muted); font-size: .74rem; font-weight: 600; white-space: nowrap; }
+.admin-report .table td { padding: 14px 16px; vertical-align: top; border-color: var(--rokn-admin-border); min-width: 95px; }
+.admin-report .table td:first-child { min-width: 150px; font-weight: 600; }
+.admin-report .table td small { font-weight: 400; font-size: .73rem; line-height: 1.8; }
+.admin-report .table td a { font-weight: 600; }
+.admin-report .table details { min-width: 140px; }
+.admin-report .table summary { color: var(--rokn-admin-primary); cursor: pointer; }
+.admin-report .table details[open] summary { margin-bottom: 8px; }
+.admin-report .card-footer { padding: 14px 20px; border-top: 1px solid var(--rokn-admin-border); background: var(--rokn-admin-surface); }
+.admin-report .alert { padding: 14px 18px; border: 1px solid var(--rokn-admin-border); border-inline-start: 3px solid var(--rokn-admin-border); border-radius: 8px; background: var(--rokn-admin-surface); color: var(--rokn-admin-muted); font-size: .8rem; line-height: 1.9; }
+.admin-report .alert-warning { border-inline-start-color: var(--rokn-admin-warning); }
+.admin-report .alert-info { border-inline-start-color: var(--rokn-admin-primary); }
+
+@media (max-width: 1199px) {
+    .admin-report__filters { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .admin-report__search { grid-column: span 2; }
+    .admin-report__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 639px) {
+    .admin-report__filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .admin-report__toolbar { gap: 12px; }
+    .admin-report__actions { width: 100%; }
+    .admin-report .stat-card { padding: 16px; }
+    .admin-report .card-body { padding: 16px; }
+    .admin-report__kpis { gap: 10px; }
+    .admin-report__details > div { display: block; }
+}
+
+@media (max-width: 399px) {
+    .admin-report__filters, .admin-report__kpis { grid-template-columns: minmax(0, 1fr); }
+    .admin-report__search { grid-column: auto; }
+    .admin-report__actions .btn { width: 100%; }
+}

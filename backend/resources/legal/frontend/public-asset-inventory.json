@@ -13,8 +13,13 @@
       "classification": "first_party"
     },
     {
+      "path": "public/admin/assets/css/admin-reports.css",
+      "sha256": "a841d8c378f1f3fd3bd5e305a535fe153bab7db2298746b2922ec2f6440ce951",
+      "classification": "first_party"
+    },
+    {
       "path": "public/admin/assets/css/admin-shell.css",
-      "sha256": "49ae5a3183f3bb6996dcdf7cedfa7e54285314bdc9d179e3a9fa2e0dad4a6625",
+      "sha256": "eb46162b4555025b163d39eb612c61aaf7f6ea3db25ff0acafa62107f5d5dee8",
       "classification": "first_party"
     },
     {
@@ -137,7 +142,7 @@
     },
     {
       "path": "public/admin/assets/css/home-dashboard.css",
-      "sha256": "2029975148f3fb965ac017e6a1257347139e8b075c0f001a64fed0f4960c446d",
+      "sha256": "8f804a3fdacbfcd4dfc5e9db3656be84bb0f527ed9efbfb97d732898726a7a0a",
       "classification": "first_party"
     },
     {
