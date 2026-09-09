@@ -931,4 +931,57 @@ describe('course attachment operation ownership', () => {
     await settleMicrotasks();
     expect(cancelIfActive).toHaveBeenCalledWith(92);
   });
+
+  it('contains a native cancellation rejection after account retirement and permits a fresh action', async () => {
+    const nativeRequest = deferred<{id: number; status: string}>();
+    enqueue.mockReturnValueOnce(nativeRequest.promise);
+    const result = openCourseAttachment(attachment());
+    await settleMicrotasks();
+
+    mockBoundary = {epoch: 2, scope: 'user-b'};
+    cancelIfActive.mockRejectedValueOnce(
+      Object.assign(new Error('The download could not be cancelled'), {
+        code: 'DOWNLOAD_CANCEL_FAILED',
+      }),
+    );
+    nativeRequest.resolve({id: 93, status: 'started'});
+    await expect(result).resolves.toEqual({copied: false, downloaded: false});
+    // Let the native rejection reach the event loop: successful cancellation
+    // alone does not prove that the retired operation handles this failure.
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(cancelIfActive).toHaveBeenCalledWith(93);
+    expect(Alert.alert).not.toHaveBeenCalled();
+
+    enqueue.mockResolvedValueOnce({id: 94, status: 'started'});
+    await expect(openCourseAttachment(attachment())).resolves.toMatchObject({
+      downloaded: true,
+      downloadId: 94,
+    });
+    expect(enqueue).toHaveBeenCalledTimes(2);
+  });
+
+  it('contains rejected cancellation of a late timed-out bridge receipt', async () => {
+    jest.useFakeTimers();
+    const nativeRequest = deferred<{id: number; status: string}>();
+    enqueue.mockReturnValueOnce(nativeRequest.promise);
+    const result = openCourseAttachment(
+      attachment({temporary: true, expiresAt: '2099-01-01T00:00:00Z'}),
+    );
+    await settleMicrotasks();
+    await jest.advanceTimersByTimeAsync(12_000);
+    await expect(result).resolves.toEqual({copied: false, downloaded: false});
+    const alertsBeforeLateReceipt = jest.mocked(Alert.alert).mock.calls.length;
+
+    cancelIfActive.mockRejectedValueOnce(
+      Object.assign(new Error('The download could not be cancelled'), {
+        code: 'DOWNLOAD_CANCEL_FAILED',
+      }),
+    );
+    nativeRequest.resolve({id: 95, status: 'started'});
+    await settleMicrotasks();
+    jest.useRealTimers();
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(cancelIfActive).toHaveBeenCalledWith(95);
+    expect(Alert.alert).toHaveBeenCalledTimes(alertsBeforeLateReceipt);
+  });
 });

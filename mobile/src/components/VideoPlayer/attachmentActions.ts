@@ -411,6 +411,14 @@ const nativeDownloadId = (value: unknown) => {
   return Number.isFinite(downloadId) ? downloadId : undefined;
 };
 
+const cancelNativeDownloadIfActive = async (downloadId: number) => {
+  try {
+    await NativeModules.RoknDownloads.cancelIfActive?.(downloadId);
+  } catch {
+    // A retired JS action stays settled even if DownloadManager cannot cancel.
+  }
+};
+
 const enqueueNativeDownload = (
   args: [string, string, string, string, string, number],
   operation: AttachmentOperation,
@@ -445,7 +453,7 @@ const enqueueNativeDownload = (
         if (settled) {
           const downloadId = nativeDownloadId(value);
           if (downloadId !== undefined) {
-            void NativeModules.RoknDownloads.cancelIfActive?.(downloadId);
+            void cancelNativeDownloadIfActive(downloadId);
           }
           return;
         }
@@ -454,7 +462,7 @@ const enqueueNativeDownload = (
         if (!attachmentOwnerIsActive(operation)) {
           const downloadId = nativeDownloadId(value);
           if (downloadId !== undefined) {
-            void NativeModules.RoknDownloads.cancelIfActive?.(downloadId);
+            void cancelNativeDownloadIfActive(downloadId);
           }
           resolve(null);
           return;
@@ -690,7 +698,7 @@ const openCourseAttachmentInternal = async (
       }
       if (!attachmentOwnerIsActive(operation)) {
         if (downloadId !== undefined) {
-          void NativeModules.RoknDownloads.cancelIfActive?.(downloadId);
+          void cancelNativeDownloadIfActive(downloadId);
         }
         return emptyResult();
       }
