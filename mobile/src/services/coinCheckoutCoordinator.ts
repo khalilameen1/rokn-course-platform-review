@@ -37,7 +37,13 @@ export const runCoinCheckoutSingleFlight = (
   let flight: Promise<CoinCheckoutResult>;
   flight = (
     reconciliation
-      ? reconciliation.catch(() => null).then(operation)
+      ? reconciliation
+          .catch(() => null)
+          .then(recovered =>
+            // This tap was made against the balance before recovery settled.
+            // Deliver that credit before offering another explicit payment.
+            recovered?.success ? recovered : operation(),
+          )
       : operation()
   ).finally(() => {
     if (checkoutFlights.get(ownerKey)?.promise === flight) {

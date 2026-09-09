@@ -516,7 +516,7 @@ export const openCoinCheckout = async (
   const boundary = await captureAccountSessionBoundary();
   const ownerKey = `${await coinCheckoutOwnerKey(boundary)}:${boundary.epoch}`;
   const intentKey = coinCheckoutIntentKey(coinPackage, options.returnTo);
-  return runCoinCheckoutSingleFlight(ownerKey, intentKey, async () => {
+  const flight = runCoinCheckoutSingleFlight(ownerKey, intentKey, async () => {
     const returnClaim = options.returnTo
       ? await savePendingCheckoutReturn(options.returnTo, boundary).catch(
           () => undefined,
@@ -549,4 +549,9 @@ export const openCoinCheckout = async (
       }
     }
   });
+  const result = await flight;
+  // Joining recovered credit can bypass the operation callback above, but it
+  // must never bypass the account which owned this explicit tap.
+  assertAccountSessionBoundary(boundary);
+  return result;
 };
