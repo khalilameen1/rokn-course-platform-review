@@ -1648,3 +1648,58 @@ the adjacent authoring-receipt, content-order, summary and Bunny upload recovery
 scripts. Full mobile TypeScript, scoped ESLint and diff checks passed. These do
 not represent writes through the live dashboard or physical phone acceptance.
 All changes remain local source work; no APK, push or deployment.
+
+## September 9 — completed login, saved-library actions and editor recovery
+
+This pass preserves existing features and presentation. It fixes demonstrated
+daily-flow failures rather than replacing the implementation for style.
+
+- Social login could durably commit the credential while the actual login shell
+  remained loading: it still awaited the welcome-popup receipt and completed
+  journal retirement. Only that post-commit wait is now bounded. Credential and
+  pre-commit recovery-journal persistence are still mandatory. Retrying a retained
+  completed journal neither commits the same bearer again nor recreates an
+  already-consumed welcome popup. Receipt writing owns an explicit account
+  boundary, and completion rechecks the committed bearer before UI adoption.
+  Seven new cases exercise the real shell, completion and secure-session code
+  with native-storage/HTTP seams. They include blocked receipt/journal cleanup,
+  mandatory-write failures and replacement accounts during receipt work.
+- Accepted saved-lesson/folder deletion still awaited lesson/player cache repair
+  despite earlier folder-index wait limits. A shared existing repair boundary
+  now bounds only the caller's wait; independent repairs enter their own raw
+  queues together. The first two regressions reproduced stuck real-library busy
+  state after a successful DELETE. Root review then exposed a second race:
+  delayed deletion of the old watch-later hint could erase its replacement.
+  Two additional RED cases reproduced delayed native reads/removals clearing the
+  newly created folder ID. Reads, conditional deletion and writes to this one
+  optional hint now share a scope-owned raw queue. Network requests never enter
+  that queue, and the caller may use the server while a stale hint is blocked.
+  Twelve new cases cover both families, late writes, old GETs, offline fallback,
+  account replacement and rejection before server acknowledgement.
+- Rapid setting changes rolled back to the previous optimistic tap instead of
+  the last saved value. Four RED cases demonstrated two rejected changes leaving
+  an unsaved quality, reminder time, watch-history or marketing preference visible.
+  One last-saved reference is updated at hydration and accepted writes while the
+  existing scope-write queue and revision checks remain in place. Error paths
+  now check the account boundary before any rollback, dirty-key deletion or
+  alert. The 21 new cases also cover either successful write, hydrated baselines,
+  replacement accounts, and authenticated notification enable rejection after
+  a failed disable. No settings rows, permissions or remote preference contracts
+  were added or removed.
+- Editing and publishing an existing course draft could save its new fields and
+  version, then return a plain readiness 422. The editor retained its old version
+  and the next correction hit a false 409. The authoring service now returns its
+  existing saved/not-ready contract for this post-save readiness rejection.
+  Actual version conflicts and pre-save validation errors remain unchanged.
+  Two real HTTP RED cases preceded the fix. Five focused cases verify the saved
+  draft/version, unchanged public course, successful correction/publication,
+  genuine conflicts, invalid input and HTML recovery. No studio JavaScript or
+  publication-engine rewrite was needed.
+
+Root verification passed 29 mobile suites / 227 tests and 21 backend tests /
+236 assertions. Full mobile TypeScript, scoped ESLint and diff checks passed.
+The authoring agent also ran the existing production-JavaScript draft-transition
+browser fixture: 12 cases passed. Independent source reviews found no introduced
+blocker in preference rollback or completed-login delivery. These are local
+contract/lifecycle checks, not a live provider login or physical-device acceptance.
+No APK was built and no source was pushed or deployed in this pass.
