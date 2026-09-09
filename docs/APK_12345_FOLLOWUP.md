@@ -1757,3 +1757,56 @@ command used a nonexistent `.ts` spelling for `playbackRecovery.test.tsx`; the
 correct existing suite was subsequently run and passed. Checks include focused
 runtime fixtures and adjacent source-contract guards; no live payment, provider
 evaluation, physical playback, APK, push or deployment is claimed.
+
+## September 9 — attachment sends, portfolio selection and dashboard recipients
+
+Four disjoint daily journeys were repaired from clean `48b4b2f`. No feature,
+screen, course rule, payment path or visual identity was removed or rebuilt.
+
+- Course chat could finish uploading an image and durably save its server ID,
+  yet never submit the question while obsolete local-file cleanup was stalled.
+  Three actual hook/persistence/file-registry RED cases preceded the fix.
+  Only post-durability reference release and obsolete-file removal stop owning
+  the caller's wait. Required history/reference writes, account checks and the
+  raw file-operation queue remain mandatory and ordered. Ten new cases include
+  failed initial/uploaded-ID persistence, account replacement, later file
+  retention, account cleanup and lost-answer recovery. The latter reads the
+  durable transcript and recovers the same completed request without a second
+  question POST or image upload. No model, prompt or provider contract changed.
+- Portfolio creation could submit its previous photos while replacements were
+  still copying, or adopt those replacements after switching source projects.
+  The existing picker flight now also owns submission/source-change admission;
+  the view shows file preparation until selection is settled. Terminal cleanup
+  cannot hold that admission lock. Independent review found a related gap before
+  the native picker itself: a delayed account capture could open it after the
+  editor was closed. A boundary/mount/generation check now precedes native launch.
+  Seven RED cases across these boundaries became green. Fourteen new cases
+  preserve cancellation, old selection on failure, close/reopen, ownership and
+  unmount behavior. The raw file service and publication/outbox contracts are
+  unchanged. One obsolete source-shape assertion now checks the draft-clear
+  delegation already introduced by the earlier completion repair.
+- Notification authoring used one draft identity for every student and broadcast.
+  The real rendered form restored student A's hidden recipient inside student B's
+  visibly labelled form. Four browser RED cases exposed cross-student and
+  individual/broadcast contamination. The form and existing draft include now
+  share one destination-specific ID. Five production-Blade/JavaScript cases
+  preserve per-recipient content, schedule, request UUID and course-search reload.
+  Old ambiguous drafts are neither deleted nor guessed into a new recipient.
+  The shared draft engine and notification delivery policy are unchanged.
+  A bounded source review of all 18 draft-include sites found no other form
+  whose creation destination changes through query parameters under one key;
+  other destination-specific forms carry their resource ID in the route path.
+- Support CSV export ignored inbox filters for app version, overdue replies and
+  course, and did not search learner/guest email as the inbox did. Five real
+  route-to-CSV RED cases preceded extraction of the existing inbox filter query
+  into one private controller method used by both endpoints. Ten new cases also
+  cover combined filters, Cairo day boundaries, invalid input, moderator denial
+  and 501 matching rows across export chunks while viewing inbox page two.
+  Existing pagination, CSV fields/sanitation, chunk ordering and limit remain.
+
+Root verification passed 15 mobile suites / 110 tests, 34 backend tests /
+164 assertions and five local browser cases. Full mobile TypeScript, scoped
+ESLint, PHP controller syntax and diff checks passed. Cross-agent source review
+covered each repair; these are local contract/lifecycle checks with native and
+provider seams controlled, not physical-device or live-provider acceptance.
+No APK, push, deployment, real notification or paid provider request was made.
