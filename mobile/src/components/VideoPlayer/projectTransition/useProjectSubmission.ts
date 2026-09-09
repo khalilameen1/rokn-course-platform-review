@@ -458,16 +458,14 @@ export const useProjectSubmission = ({
         if (!ownsProject(id, generation)) return;
         onOutcome(outcome);
         if (outcome.accepted && !outcome.preserveDraft) {
-          // Another rejected attempt can keep the same server status, so no
-          // hydration effect will run. Its empty replacement draft is ready
-          // here; a saved submission closes the editor until a change is requested.
-          const canEditNextAttempt =
-            outcome.submissionStatus === 'needs_changes';
+          // The consumed editor has a known empty replacement, not an unread
+          // draft. Keep it ready for a later asynchronous rejection too;
+          // server status and canSubmit still own presentation and submission.
           setEditingRetry(false);
-          draftLifecycle.ready = canEditNextAttempt;
+          draftLifecycle.ready = true;
           draftLifecycle.status = outcome.submissionStatus;
           draftLifecycle.snapshot = {files: [], note: ''};
-          setDraftReady(canEditNextAttempt);
+          setDraftReady(true);
           setSelectedFiles([]);
           setNote('');
           void clearProjectSubmissionDraft(id, files, boundary).catch(

@@ -247,6 +247,58 @@ describe('project submission draft hydration', () => {
     },
   );
 
+  it('keeps the next known draft non-submittable while the accepted result or access disallows another attempt', async () => {
+    const onSubmit = jest.fn(async () => ({
+      accepted: true,
+      submissionStatus: 'evaluating' as const,
+      canContinue: false,
+    }));
+    let current!: ReturnType<typeof useProjectSubmission>;
+    const Harness = ({value}: {value: CourseProject}) => {
+      current = useProjectSubmission({
+        appIsActive: true,
+        project: value,
+        status: value.status,
+        submissionAllowed: value.canSubmit === true,
+        onSubmit,
+        onOutcome: jest.fn(),
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness value={project()} />);
+      });
+      act(() => current.changeNote('محاولتي الأولى لهذا المشروع'));
+      await act(async () => {
+        await current.submit();
+      });
+      for (const status of [
+        'evaluating',
+        'review_unavailable',
+        'passed',
+        'needs_changes',
+      ] as const) {
+        await act(async () => {
+          renderer.update(
+            <Harness value={{...project(), status, canSubmit: false}} />,
+          );
+        });
+        act(() => current.changeNote('هذا النص لا يسمح بتجاوز إذن الخادم'));
+        expect(current.submitDisabled).toBe(true);
+        expect(current.filePickerDisabled).toBe(true);
+        await act(async () => {
+          await current.submit();
+        });
+        expect(onSubmit).toHaveBeenCalledTimes(1);
+      }
+      expect(mockLoadDraft).toHaveBeenCalledTimes(1);
+    } finally {
+      act(() => renderer.unmount());
+    }
+  });
+
   it('does not erase unsaved typing when the same API contract is remapped', async () => {
     let current!: ReturnType<typeof useProjectSubmission>;
     const Harness = ({value}: {value: CourseProject}) => {
@@ -332,4 +384,105 @@ describe('project submission draft hydration', () => {
 
     act(() => renderer.unmount());
   });
+
+  it.each([
+    ['text', undefined, undefined],
+    ['image', 'image/png', 'png'],
+    ['document', DOCX, 'docx'],
+    ['pdf', 'application/pdf', 'pdf'],
+  ])(
+    'opens the next %s attempt when an accepted pending submission is later rejected',
+    async (_kind, mimeType, extension) => {
+      const value = {
+        ...project(),
+        submissionAllowedMimeTypes: mimeType ? [mimeType] : [],
+      };
+      const onSubmit = jest.fn(async () => ({
+        accepted: true,
+        submissionStatus: 'evaluating' as const,
+        canContinue: false,
+      }));
+      if (mimeType) {
+        jest.mocked(pickProjectFilesOwned).mockResolvedValueOnce({
+          files: [
+            {
+              uri: `file:///work.${extension}`,
+              name: `work.${extension}`,
+              type: mimeType,
+              size: 100,
+            },
+          ],
+          ownerBoundary: {scope: 'user-a', epoch: 1},
+        });
+      }
+      let current!: ReturnType<typeof useProjectSubmission>;
+      const Harness = ({input}: {input: CourseProject}) => {
+        current = useProjectSubmission({
+          appIsActive: true,
+          project: input,
+          status: input.status,
+          submissionAllowed: input.canSubmit === true,
+          onSubmit,
+          onOutcome: jest.fn(),
+        });
+        return null;
+      };
+      let renderer!: TestRenderer.ReactTestRenderer;
+      try {
+        await act(async () => {
+          renderer = TestRenderer.create(<Harness input={value} />);
+        });
+        if (mimeType) {
+          await act(async () => {
+            await current.chooseProjectFile();
+          });
+          expect(current.selectedFiles).toEqual([
+            expect.objectContaining({
+              name: `work.${extension}`,
+              type: mimeType,
+            }),
+          ]);
+        }
+        act(() => current.changeNote('هذه محاولة المشروع الأولى'));
+        await act(async () => {
+          await current.submit();
+          renderer.update(
+            <Harness
+              input={{...value, status: 'evaluating', canSubmit: false}}
+            />,
+          );
+        });
+        expect(current.journeyState).toBe('reviewing');
+        expect(current.note).toBe('');
+        expect(current.selectedFiles).toEqual([]);
+        await act(async () => {
+          await current.submit();
+        });
+        expect(onSubmit).toHaveBeenCalledTimes(1);
+        await act(async () => {
+          renderer.update(
+            <Harness
+              input={{...value, status: 'needs_changes', canSubmit: true}}
+            />,
+          );
+        });
+        expect(current.journeyState).toBe('needs_changes');
+        act(() => current.editRetry());
+        expect(current.journeyState).toBe('draft');
+        act(() => current.changeNote('أضفت التعديلات المطلوبة في المراجعة'));
+        expect(current.submitDisabled).toBe(false);
+        await act(async () => {
+          await current.submit();
+        });
+        expect(onSubmit).toHaveBeenCalledTimes(2);
+        expect(onSubmit).toHaveBeenLastCalledWith(
+          [],
+          'أضفت التعديلات المطلوبة في المراجعة',
+        );
+        expect(mockLoadDraft).toHaveBeenCalledTimes(1);
+      } finally {
+        act(() => renderer.unmount());
+      }
+    },
+  );
 });
