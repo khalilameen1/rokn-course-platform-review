@@ -20,6 +20,7 @@ import type {
 import {manifestRefreshDelayMs} from '../../components/VideoPlayer/playbackTelemetry';
 import type {RootNavigation} from '../../navigation/types';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import type {CourseReloadTarget} from './useReelsCourseLoader';
 
 export type ReelsNavigation = RootNavigation;
 
@@ -74,7 +75,7 @@ export const useReelsFeedRenderer = ({
     metrics: PlaybackRuntimeMetrics,
   ) => void;
   layout: {width: number; height: number};
-  load: () => Promise<void>;
+  load: (target?: CourseReloadTarget) => Promise<void>;
   navigation: ReelsNavigation;
   persistProgress: (
     reel: CourseReel,
@@ -186,7 +187,7 @@ export const useReelsFeedRenderer = ({
             if (reel && serverSession) {
               return requestPlaybackManifest(reel, reel.playbackSessionId);
             }
-            return load();
+            return load({lessonId: reel?.lessonId});
           }}
           onSubmitProject={(file, note) =>
             item.type === 'project'
