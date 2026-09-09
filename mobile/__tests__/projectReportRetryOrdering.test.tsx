@@ -30,7 +30,11 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () =>
 );
 
 import {useProjectResolution} from '../src/components/VideoPlayer/projectTransition/useProjectResolution';
-import {retryProjectReport} from '../src/components/VideoPlayer/courseLearning/projectRemote';
+import {
+  loadProjectResolution,
+  retryProjectReport,
+} from '../src/components/VideoPlayer/courseLearning/projectRemote';
+import {mapCourseProject} from '../src/components/VideoPlayer/courseLearning/projectMapping';
 import type {
   CourseProject,
   ProjectReportStatus,
@@ -71,6 +75,32 @@ const project: CourseProject = {
   canRetryReport: true,
   reportRetryEndpoint: endpoint,
 };
+const courseProjectFromSummary = (
+  status: ProjectReportStatus = 'failed',
+  retry = true,
+) =>
+  mapCourseProject(
+    {
+      id: 9,
+      content_id: 7,
+      title: 'مشروع',
+      content: {
+        requirements_text: 'صمم',
+        latest_submission: {
+          ...submission(status, retry),
+          feedback_thread: {
+            id: '33333333-3333-4333-8333-333333333333',
+            feedback_level: 'report',
+            can_reply: false,
+            status,
+            remaining_messages: 0,
+            messages: [],
+          },
+        },
+      },
+    },
+    '3',
+  )!;
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
   let reject!: (error: Error) => void;
@@ -166,6 +196,160 @@ describe('report retry acknowledgement ordering', () => {
       screen.close();
     }
   });
+
+  it.each(['before', 'after'])(
+    'keeps the retry result when an equivalent course summary arrives %s its ACK',
+    async timing => {
+      const post = deferred<ReturnType<typeof response>>();
+      mockPost.mockReturnValue(post.promise);
+      const screen = mount(courseProjectFromSummary());
+      let retry!: Promise<void>;
+      try {
+        await act(async () => {
+          retry = screen.current.retryReport();
+        });
+        // Resolving another accepted project refreshes the whole course map;
+        // mapping the same failed summary creates a fresh thread object too.
+        if (timing === 'before') screen.update(courseProjectFromSummary());
+        const waitingAfterCourseRefresh = screen.current.reportRetrying;
+        await act(async () => {
+          post.resolve(response(submission('ready')));
+          await retry;
+        });
+        if (timing === 'after') screen.update(courseProjectFromSummary());
+        expect({
+          waitingAfterCourseRefresh,
+          reportStatus: screen.current.reportStatus,
+        }).toEqual({waitingAfterCourseRefresh: true, reportStatus: 'ready'});
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        expect(mockGet).not.toHaveBeenCalled();
+      } finally {
+        post.resolve(response(submission('ready')));
+        await act(async () => retry);
+        screen.close();
+      }
+    },
+  );
+
+  it.each(['ready', 'revoked'])(
+    'lets a genuinely changed %s course summary supersede the pending retry',
+    async change => {
+      const post = deferred<ReturnType<typeof response>>();
+      mockPost.mockReturnValue(post.promise);
+      const screen = mount(courseProjectFromSummary());
+      let retry!: Promise<void>;
+      try {
+        await act(async () => {
+          retry = screen.current.retryReport();
+        });
+        const freshStatus = change === 'ready' ? 'ready' : 'failed';
+        mockGet.mockResolvedValue(
+          response({latest_submission: submission(freshStatus, false)}),
+        );
+        screen.update(courseProjectFromSummary(freshStatus, false));
+        await act(async () => {
+          post.resolve(response(submission('queued')));
+          await retry;
+        });
+        expect(screen.current.reportStatus).toBe(freshStatus);
+        expect(screen.current.reportRetryAvailable).toBe(false);
+        expect(screen.current.reportRetrying).toBe(false);
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        expect(mockGet).toHaveBeenCalledTimes(change === 'revoked' ? 1 : 0);
+      } finally {
+        post.resolve(response(submission('queued')));
+        await act(async () => retry);
+        screen.close();
+      }
+    },
+  );
+
+  it.each(['before', 'after'])(
+    'keeps the retry when the accepted review full thread becomes a course summary %s its ACK',
+    async timing => {
+      const thread = {
+        id: '33333333-3333-4333-8333-333333333333',
+        feedback_level: 'report',
+        can_reply: false,
+        status: 'failed',
+        remaining_messages: 8,
+        messages: [
+          {
+            id: '44444444-4444-4444-8444-444444444444',
+            role: 'assistant',
+            status: 'failed',
+            text: 'الجزء المحفوظ من التقرير',
+          },
+        ],
+      };
+      mockGet.mockResolvedValueOnce(
+        response({
+          latest_submission: {
+            ...submission(),
+            can_continue: false,
+            feedback_thread: thread,
+          },
+        }),
+      );
+      const full = await loadProjectResolution('7');
+      const screen = mount({
+        ...courseProjectFromSummary(),
+        ...full,
+        feedbackThread: full.feedbackThread ?? undefined,
+      });
+      const post = deferred<ReturnType<typeof response>>();
+      mockPost.mockReturnValue(post.promise);
+      const ready = response({
+        ...submission('ready'),
+        feedback_thread: {
+          ...thread,
+          status: 'ready',
+          messages: [
+            {
+              ...thread.messages[0],
+              status: 'completed',
+              text: 'التقرير الكامل',
+            },
+          ],
+        },
+      });
+      let retry!: Promise<void>;
+      try {
+        await act(async () => {
+          retry = screen.current.retryReport();
+        });
+        // The parent review owner refreshes media entitlements after publishing
+        // the small review result. That map omits transcript/quota by design.
+        if (timing === 'before') screen.update(courseProjectFromSummary());
+        const waitingAfterCourseRefresh = screen.current.reportRetrying;
+        await act(async () => {
+          post.resolve(ready);
+          await retry;
+        });
+        if (timing === 'after') screen.update(courseProjectFromSummary());
+        expect({
+          waitingAfterCourseRefresh,
+          reportStatus: screen.current.reportStatus,
+          canContinue: screen.current.contract.canContinue,
+        }).toEqual({
+          waitingAfterCourseRefresh: true,
+          reportStatus: 'ready',
+          canContinue: true,
+        });
+        expect(screen.current.feedbackThread).toMatchObject({
+          status: 'ready',
+          transcriptIncluded: true,
+          messages: [{status: 'completed', text: 'التقرير الكامل'}],
+        });
+        expect(mockPost).toHaveBeenCalledTimes(1);
+        expect(mockGet).toHaveBeenCalledTimes(1);
+      } finally {
+        post.resolve(ready);
+        await act(async () => retry);
+        screen.close();
+      }
+    },
+  );
 
   it('keeps a genuine failed retry actionable and leaves passed continuation intact', async () => {
     mockPost.mockRejectedValue(new Error('server unavailable'));

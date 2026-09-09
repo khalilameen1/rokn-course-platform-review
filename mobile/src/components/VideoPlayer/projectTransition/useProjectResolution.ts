@@ -116,6 +116,10 @@ export const useProjectResolution = ({
   const [resolution, setResolution] = useState<ProjectResolutionState>(() =>
     stateFromProject(project),
   );
+  const seedSnapshotRef = useRef<{
+    decision: string;
+    state: ProjectResolutionState;
+  } | null>(null);
   const [reportRetrying, setReportRetrying] = useState(false);
   const retryFlightRef = useRef<symbol | null>(null);
   const reviewFlightRef = useRef<symbol | null>(null);
@@ -135,49 +139,53 @@ export const useProjectResolution = ({
   }, []);
 
   useEffect(() => {
-    const contract = runtimeContract({
-      canSubmit: project.canSubmit,
-      canContinue: project.canContinue,
-      feedbackLevel: project.feedbackLevel,
-      reportEnabled: project.reportEnabled,
-      replyEnabled: project.replyEnabled,
-      canRetryReport: project.canRetryReport,
-      reportRetryEndpoint: project.reportRetryEndpoint,
-      canRetryReview: project.canRetryReview,
-      reviewRetryEndpoint: project.reviewRetryEndpoint,
-      reviewFailureCategory: project.reviewFailureCategory,
+    const next = stateFromProject(project);
+    const {canContinue, ...decisionContract} = next.contract;
+    const thread = next.feedbackThread;
+    const decision = JSON.stringify([
+      project.id,
+      next.status,
+      next.reportStatus,
+      next.reviewFeedback,
+      decisionContract,
+      thread && [
+        thread.id,
+        thread.status,
+        thread.feedbackLevel,
+        thread.canReply,
+      ],
+    ]);
+    const previous = seedSnapshotRef.current;
+    seedSnapshotRef.current = {decision, state: next};
+    // A remapped course summary can replace a full thread and unlock media
+    // without changing the report decision. Neither retires its pending retry
+    // nor overwrites a result already acknowledged by that retry.
+    if (previous?.decision !== decision) {
+      setResolution(next);
+      retryFlightRef.current = null;
+      setReportRetrying(false);
+      return;
+    }
+    const continuationChanged =
+      previous.state.contract.canContinue !== canContinue;
+    const threadChanged =
+      JSON.stringify(previous.state.feedbackThread) !== JSON.stringify(thread);
+    if (!continuationChanged && !threadChanged) return;
+    setResolution(current => {
+      const useSeedThread =
+        threadChanged &&
+        current.status === next.status &&
+        current.reportStatus === next.reportStatus;
+      if (!continuationChanged && !useSeedThread) return current;
+      return {
+        ...current,
+        feedbackThread: useSeedThread ? thread : current.feedbackThread,
+        contract: continuationChanged
+          ? {...current.contract, canContinue}
+          : current.contract,
+      };
     });
-    setResolution({
-      status: project.status,
-      reportStatus:
-        project.reportStatus ??
-        (contract.reportEnabled ? 'not_requested' : 'not_included'),
-      reviewFeedback: reviewFeedbackForStatus(
-        project.status,
-        project.reviewFeedback,
-      ),
-      feedbackThread: project.feedbackThread,
-      contract,
-    });
-    retryFlightRef.current = null;
-    setReportRetrying(false);
-  }, [
-    project.canContinue,
-    project.canRetryReport,
-    project.canRetryReview,
-    project.reviewRetryEndpoint,
-    project.reviewFailureCategory,
-    project.canSubmit,
-    project.feedbackLevel,
-    project.feedbackThread,
-    project.id,
-    project.replyEnabled,
-    project.reportEnabled,
-    project.reportRetryEndpoint,
-    project.reportStatus,
-    project.reviewFeedback,
-    project.status,
-  ]);
+  }, [project]);
 
   useEffect(() => {
     reviewReadOnlyRef.current = false;

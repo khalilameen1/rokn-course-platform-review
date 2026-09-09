@@ -2,6 +2,7 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockGetCertificates = jest.fn();
+const mockGetCachedCertificates = jest.fn();
 const mockGetLearningCourses = jest.fn();
 const mockIssueCertificate = jest.fn();
 const mockRecoverCertificate = jest.fn();
@@ -20,7 +21,7 @@ jest.mock('react-redux', () => ({
 
 jest.mock('../src/services/roknApi', () => ({
   getCertificates: (...args: unknown[]) => mockGetCertificates(...args),
-  getCachedCertificates: jest.fn(async () => []),
+  getCachedCertificates: (...args: unknown[]) => mockGetCachedCertificates(...args),
   getLearningCourses: (...args: unknown[]) => mockGetLearningCourses(...args),
   hasSession: jest.fn(async () => true),
   issueCertificate: (...args: unknown[]) => mockIssueCertificate(...args),
@@ -70,6 +71,7 @@ const readyCourse = {
 describe('accepted certificate issue recovery', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetCachedCertificates.mockReset().mockResolvedValue([]);
     mockGetCertificates
       .mockResolvedValueOnce([])
       .mockRejectedValueOnce(new Error('offline'));
@@ -147,5 +149,67 @@ describe('accepted certificate issue recovery', () => {
     expect(mockIssueCertificate).toHaveBeenCalledTimes(1);
 
     await act(async () => renderer.unmount());
+  });
+
+  it('keeps a newly accepted issue pending when cached earlier certificates render before a failed reconciliation', async () => {
+    let controller!: ReturnType<typeof useCertificatesController>;
+    const Harness = () => {
+      controller = useCertificatesController('طالب ركن');
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    const previousCertificate = {
+      publicId: 'previous-certificate',
+      courseId: '51',
+      status: 'active',
+      holderName: 'طالب ركن',
+      courseName: 'كورس سابق',
+    };
+    mockGetCachedCertificates.mockResolvedValue([previousCertificate]);
+    try {
+      await act(async () => {
+        controller.openIssueCertificate(readyCourse as never);
+      });
+      await act(async () => controller.confirmIssueCertificate());
+
+      expect(controller.certificates).toEqual([previousCertificate]);
+      expect(controller.certificatePending).toBe(true);
+      expect(controller.readyCourses).toEqual([]);
+      expect(mockIssueCertificate).toHaveBeenCalledTimes(1);
+      mockGetCertificates.mockResolvedValue([]);
+      await act(async () => controller.recoverPendingCertificates());
+      expect(mockRecoverCertificate).toHaveBeenCalledWith(
+        '52',
+        expect.objectContaining({scope: 'account-a'}),
+      );
+      expect(mockIssueCertificate).toHaveBeenCalledTimes(1);
+
+      const completedCertificate = {
+        ...previousCertificate,
+        publicId: 'newly-completed-certificate',
+        courseId: '52',
+      };
+      mockGetCachedCertificates.mockResolvedValue([
+        previousCertificate,
+        {...completedCertificate, status: 'pending'},
+      ]);
+      mockGetCertificates.mockResolvedValue([
+        previousCertificate,
+        completedCertificate,
+      ]);
+      await act(async () => controller.loadCertificates());
+      expect(controller.certificatePending).toBe(false);
+      expect(controller.certificates).toEqual([
+        previousCertificate,
+        completedCertificate,
+      ]);
+      expect(controller.readyCourses).toEqual([]);
+      expect(mockIssueCertificate).toHaveBeenCalledTimes(1);
+    } finally {
+      await act(async () => renderer.unmount());
+    }
   });
 });

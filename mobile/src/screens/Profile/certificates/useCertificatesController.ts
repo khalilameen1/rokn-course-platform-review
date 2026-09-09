@@ -100,7 +100,8 @@ export function useCertificatesController(resolvedDisplayName?: string) {
             cachedCertificates.filter(item => item.status !== 'revoked'),
           );
           setCertificatePending(
-            cachedCertificates.some(item => item.status === 'pending'),
+            acceptedIssueCourseIds.current.size > 0 ||
+              cachedCertificates.some(item => item.status === 'pending'),
           );
         }
         const [certificatesResult, learningResult] = await remoteReads;
