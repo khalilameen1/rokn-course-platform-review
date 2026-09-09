@@ -272,6 +272,7 @@
                         window.RoknCourseVideoUpload.resetAfterCommit();
                     }
                     pendingCreateVersion = null;
+                    coordinator.markClean('section');
                     try {
                         window.sessionStorage.setItem('rokn-course-studio-save-message', 'تم حفظ العنصر');
                     } catch (_) {}

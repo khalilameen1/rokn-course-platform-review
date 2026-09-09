@@ -19,6 +19,7 @@ let modules;
 let version;
 let requests;
 let rejectNextEdit;
+let courseTitle;
 const reset = () => {
     modules = [7, 8].map((id, index) => ({id, order: index + 1,
         title: `الوحدة ${id}`, title_ar: `الوحدة ${id}`,
@@ -28,9 +29,11 @@ const reset = () => {
     version = 1;
     requests = [];
     rejectNextEdit = false;
+    courseTitle = 'الكورس';
 };
 const fixture = () => `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
 <meta name="csrf-token" content="local-test"></head><body>
+<a id="otherCourse" href="/other-course">فتح كورس آخر</a>
 <div id="courseStudio" data-course-id="3" data-actor-id="42" data-can-author="1" data-authoring-version="${version}">
 <script type="application/json" id="courseAuthoringGraph">${JSON.stringify({modules, authoring_version: version,
     section_reorder_url: '/sections/reorder', module_reorder_url: '/modules/reorder'})}</script>
@@ -65,7 +68,7 @@ ${module.sections.map(item => `<div class="outline-item" data-section-id="${item
 <button id="studioInlineDeleteModule" type="button" hidden>حذف</button><button data-inline-module-close type="button">إلغاء</button>
 <button type="submit">حفظ الوحدة</button></form></section></div>
 <button data-studio-course-open="publish">إعدادات النشر</button><section id="studioCoursePanel" hidden>
-<form id="studioCourseForm" action="/course"><input type="hidden" name="authoring_version"><input name="title_ar" value="الكورس">
+<form id="studioCourseForm" action="/course"><input type="hidden" name="authoring_version"><input name="title_ar" value="${courseTitle}">
 <button type="submit" name="publishing_intent" value="save">حفظ المسودة</button>
 <button type="submit" name="publishing_intent" value="publish">نشر التعديلات</button></form><div data-course-feedback hidden></div></section>
 <div id="courseStudioToast"></div></div>
@@ -78,6 +81,10 @@ const json = (response, body, status = 200) => {
 };
 const server = createServer(async (request, response) => {
     const path = request.url.split('?')[0];
+    if (path === '/other-course') {
+        response.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
+        return response.end('<!doctype html><h1>الكورس الآخر</h1>');
+    }
     if (path === '/' || path === '/published') {
         response.writeHead(200, {'Content-Type': 'text/html; charset=utf-8'});
         return response.end(fixture());
@@ -99,6 +106,7 @@ const server = createServer(async (request, response) => {
     }
     assert.equal(Number(body.authoring_version), version);
     if (path === '/course') {
+        courseTitle = body.title_ar;
         return json(response, {success: true, saved: true, authoring_version: ++version, course: {
             authoring_version: version, publishing_status: body.publishing_intent === 'publish' ? 'published' : 'draft',
             title: body.title_ar, studio_url: body.publishing_intent === 'publish' ? '/published' : '/',
@@ -125,8 +133,9 @@ try {
         await (acceptDiscard ? dialog.accept() : dialog.dismiss());
     });
     const visit = async () => {
-        reset(); dialogs = []; acceptDiscard = false;
+        reset(); acceptDiscard = true;
         await page.goto(`http://127.0.0.1:${server.address().port}`);
+        dialogs = []; acceptDiscard = false;
     };
     const settled = () => page.waitForFunction(() => !document.getElementById('courseStudio').inert);
     const check = async (name, test) => {
@@ -281,6 +290,90 @@ try {
         await page.waitForURL('**/published');
         assert.equal(dialogs.length, 0);
         assert.equal(requests.length, 3);
+    });
+    const leaveCourse = async () => {
+        const prompt = page.waitForEvent('dialog', {timeout: 1500}).catch(() => null);
+        await page.locator('#otherCourse').click({noWaitAfter: true});
+        const dialog = await prompt;
+        assert.equal(dialog?.type(), 'beforeunload', 'leaving unsaved authoring must require explicit discard');
+        assert.equal(new URL(page.url()).pathname, '/', 'declining must keep the current course editor');
+    };
+    await check('leaving the course preserves a declined unsaved section and caption', async () => {
+        await sectionEdit(101);
+        await title.fill('عنوان قبل فتح كورس آخر');
+        await page.locator('[name="lesson_description_ar"]').fill('كابشن قبل المغادرة');
+        await leaveCourse();
+        assert.equal(await title.inputValue(), 'عنوان قبل فتح كورس آخر');
+        assert.equal(await page.locator('[name="lesson_description_ar"]').inputValue(), 'كابشن قبل المغادرة');
+        assert.equal(requests.length, 0);
+    });
+    await check('leaving the course preserves a declined unsaved module name', async () => {
+        await moduleEdit(7);
+        await page.locator('#studioModuleForm [name="title_ar"]').fill('وحدة قبل المغادرة');
+        await leaveCourse();
+        assert.equal(await page.locator('#studioModuleForm [name="title_ar"]').inputValue(), 'وحدة قبل المغادرة');
+        assert.equal(requests.length, 0);
+    });
+    await check('a rejected course detail save still protects the title when leaving', async () => {
+        await page.locator('[data-studio-course-open]').click();
+        await page.locator('#studioCourseForm [name="title_ar"]').fill('اسم الكورس غير المحفوظ');
+        rejectNextEdit = true;
+        await page.locator('[name="publishing_intent"][value="save"]').click();
+        await settled();
+        await leaveCourse();
+        assert.equal(await page.locator('#studioCourseForm [name="title_ar"]').inputValue(), 'اسم الكورس غير المحفوظ');
+        assert.equal(requests.length, 1);
+        await page.locator('[name="publishing_intent"][value="save"]').click();
+        await settled();
+        const beforeLeaving = dialogs.length;
+        await page.locator('#otherCourse').click();
+        await page.waitForURL('**/other-course');
+        assert.equal(dialogs.length, beforeLeaving, 'successful retry must retire the saved baseline');
+        assert.equal(requests.length, 2);
+    });
+    await check('unchanged and reverted course fields may leave without a warning', async () => {
+        await page.locator('[data-studio-course-open]').click();
+        await page.locator('#studioCourseForm [name="title_ar"]').fill('تعديل مؤقت');
+        await page.locator('#studioCourseForm [name="title_ar"]').fill('الكورس');
+        await page.locator('#otherCourse').click();
+        await page.waitForURL('**/other-course');
+        assert.equal(dialogs.length, 0);
+        assert.equal(requests.length, 0);
+    });
+    await check('a saved course survives leaving and returning while its next edit is protected', async () => {
+        await page.locator('[data-studio-course-open]').click();
+        await page.locator('#studioCourseForm [name="title_ar"]').fill('العنوان المحفوظ');
+        await page.locator('[name="publishing_intent"][value="save"]').click();
+        await settled();
+        await page.locator('#otherCourse').click();
+        await page.waitForURL('**/other-course');
+        assert.equal(dialogs.length, 0);
+        await page.goto(`http://127.0.0.1:${server.address().port}`);
+        await page.locator('[data-studio-course-open]').click();
+        assert.equal(await page.locator('#studioCourseForm [name="title_ar"]').inputValue(), 'العنوان المحفوظ');
+        await page.locator('#studioCourseForm [name="title_ar"]').fill('تعديل تالٍ غير محفوظ');
+        await leaveCourse();
+        assert.equal(requests.length, 1);
+    });
+    await check('explicitly discarding a module clears its navigation warning without saving it', async () => {
+        await moduleEdit(7);
+        await page.locator('#studioModuleForm [name="title_ar"]').fill('اسم سيُتجاهل');
+        acceptDiscard = true;
+        await page.locator('[data-inline-module-close]').click();
+        await page.locator('#otherCourse').click();
+        await page.waitForURL('**/other-course');
+        assert.equal(dialogs.length, 1, 'only the explicit close confirmation is needed');
+        assert.equal(requests.length, 0);
+    });
+    await check('explicitly accepting document navigation never submits unsaved content', async () => {
+        await sectionEdit(101);
+        await title.fill('عنوان لم يُرسل');
+        acceptDiscard = true;
+        await page.locator('#otherCourse').click();
+        await page.waitForURL('**/other-course');
+        assert.equal(dialogs.length, 1);
+        assert.equal(requests.length, 0);
+        assert.equal(modules[0].sections[0].title, 'محتوى 101');
     });
     assert.deepEqual(failures, [], failures.join('\n'));
 } finally {

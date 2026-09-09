@@ -54,6 +54,7 @@
             panel.hidden = true;
             core.showFeedback(feedback);
         };
+        coordinator.register('course', close, form, {persistent: true});
 
         document.addEventListener('click', event => {
             const trigger = event.target.closest('[data-studio-course-open]');
@@ -102,8 +103,9 @@
                 const staysInDraft = intent === 'save'
                     && currentUrl.pathname === destination.pathname
                     && currentUrl.search === destination.search;
+                applySavedCourse(course);
+                coordinator.markClean('course');
                 if (staysInDraft || (intent === 'save' && !coordinator.confirmDiscard())) {
-                    applySavedCourse(course);
                     core.showFeedback(feedback, message, Boolean(issues.length));
                     core.notify(message, Boolean(issues.length), 5000);
                     return;
@@ -111,6 +113,7 @@
                 try {
                     window.sessionStorage.setItem('rokn-course-studio-save-message', message);
                 } catch (_) {}
+                coordinator.closeForNavigation();
                 window.location.assign(destination.toString());
             }, {feedback, form});
         });

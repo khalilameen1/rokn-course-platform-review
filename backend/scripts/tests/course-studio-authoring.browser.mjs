@@ -214,6 +214,11 @@ let browser;
 try {
     browser = await chromium.launch({channel: 'chrome', headless: true});
     const page = await browser.newPage();
+    const navigationDialogs = [];
+    page.on('dialog', async dialog => {
+        navigationDialogs.push(dialog.type());
+        await dialog.accept();
+    });
     await page.goto(`http://127.0.0.1:${server.address().port}`);
     await page.evaluate(() => sessionStorage.setItem('rokn-course-studio-pending-module:41:3', JSON.stringify({
         expectedVersion: 14,
@@ -270,6 +275,7 @@ try {
     const sectionCanonicalReload = page.waitForNavigation({waitUntil: 'load'});
     await page.locator('#studioInlineSaveSection').click();
     await sectionCanonicalReload;
+    assert.deepEqual(navigationDialogs, [], 'confirmed receipt recovery must not ask to discard its already-saved form');
     await page.locator('.outline-item[data-section-id="34"]').waitFor();
     assert.equal(
         await page.locator('.outline-item[data-section-id="34"] .outline-item__copy small').textContent(),
