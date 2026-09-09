@@ -251,6 +251,77 @@ fun main() {
         check(file.exists() && f.manager.removed == listOf(active))
       }
     },
+    "an unavailable status query cannot forget a running download and start another" to {
+      Fixture().use { f ->
+        val id = (f.tap().map()["id"] as Double).toLong()
+        f.manager.unavailableQuery = true
+        val result = f.tap()
+        check(f.tracked(id)) { "A null status cursor forgot a durable running job" }
+        result.rejected("DOWNLOAD_FAILED")
+        check(f.manager.enqueueCount == 1 && f.manager.removed.isEmpty())
+        f.manager.unavailableQuery = false
+        val resumed = f.tap().map()
+        check(resumed["id"] == id.toDouble() && resumed["status"] == "running" && f.manager.enqueueCount == 1)
+      }
+    },
+    "account retirement retains unreadable job identities for a later cancellation attempt" to {
+      Fixture().use { f ->
+        val id = (f.tap().map()["id"] as Double).toLong()
+        f.manager.unavailableQuery = true
+        val result = Result()
+        f.module.cancelAllActive(result)
+        check(f.tracked(id)) { "Retirement acknowledged success and erased a still-running job it could not inspect" }
+        result.rejected("DOWNLOAD_CANCEL_FAILED")
+        check(f.manager.entries[id]?.status == DownloadManager.STATUS_RUNNING && f.manager.removed.isEmpty())
+        f.manager.unavailableQuery = false
+        val retried = Result()
+        f.module.cancelAllActive(retried)
+        check(retried.terminals == 1 && retried.value == true && f.manager.removed == listOf(id))
+        check(f.preferences.all.isEmpty())
+      }
+    },
+    "individual cancellation reports unavailable status rather than a completed no-op" to {
+      Fixture().use { f ->
+        val id = (f.tap().map()["id"] as Double).toLong()
+        f.manager.unavailableQuery = true
+        val result = Result()
+        f.module.cancelIfActive(id.toDouble(), result)
+        result.rejected("DOWNLOAD_CANCEL_FAILED")
+        check(f.tracked(id) && f.manager.removed.isEmpty())
+        f.manager.unavailableQuery = false
+        val retried = Result()
+        f.module.cancelIfActive(id.toDouble(), retried)
+        check(retried.terminals == 1 && retried.value == true && f.manager.removed == listOf(id))
+      }
+    },
+    "partial account retirement can finish later without losing the unreadable job" to {
+      Fixture().use { f ->
+        val first = (f.tap().map()["id"] as Double).toLong()
+        val second = (f.tap(key = "account-1:attachment-8:v1").map()["id"] as Double).toLong()
+        f.manager.unavailableQueryIds.add(second)
+        val result = Result()
+        f.module.cancelAllActive(result)
+        result.rejected("DOWNLOAD_CANCEL_FAILED")
+        check(f.manager.removed == listOf(first) && f.tracked(second))
+        f.manager.unavailableQueryIds.clear()
+        val retried = Result()
+        f.module.cancelAllActive(retried)
+        check(retried.terminals == 1 && retried.value == true)
+        check(f.manager.removed == listOf(first, second) && f.preferences.all.isEmpty())
+      }
+    },
+    "a real empty status cursor or known failed job still requires fresh metadata" to {
+      listOf("removed", "failed").forEach { kind ->
+        Fixture().use { f ->
+          val id = (f.tap().map()["id"] as Double).toLong()
+          if (kind == "removed") f.manager.remove(id)
+          else checkNotNull(f.manager.entries[id]).status = DownloadManager.STATUS_FAILED
+          f.tap().rejected("DOWNLOAD_RETRY_REQUIRES_REFRESH")
+          check(!f.tracked(id) && f.manager.enqueueCount == 1)
+          check(f.tap().map()["status"] == "started" && f.manager.enqueueCount == 2)
+        }
+      }
+    },
     "late user cancellation leaves completed public file available" to {
       Fixture().use { f ->
         val id = f.complete()

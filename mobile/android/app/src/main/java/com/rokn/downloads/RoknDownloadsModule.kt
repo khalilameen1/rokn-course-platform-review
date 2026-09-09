@@ -201,10 +201,15 @@ class RoknDownloadsModule(
   }
 
   private fun queryStatus(manager: DownloadManager, downloadId: Long): Int? {
-    return manager.query(DownloadManager.Query().setFilterById(downloadId))?.use { cursor ->
+    // A null provider result is unavailable, not proof that its job is gone.
+    // Preserve the ledger so retry/cancellation can resume when it recovers.
+    val cursor = manager.query(DownloadManager.Query().setFilterById(downloadId))
+      ?: throw IOException("The download status provider is unavailable")
+    return cursor.use {
       if (!cursor.moveToFirst()) return@use null
       val column = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-      if (column < 0) null else cursor.getInt(column)
+      if (column < 0) throw IOException("The download status is unavailable")
+      cursor.getInt(column)
     }
   }
 

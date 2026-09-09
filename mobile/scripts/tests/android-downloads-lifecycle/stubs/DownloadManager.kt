@@ -13,6 +13,8 @@ class DownloadManager(private val directory: File) {
   val removed = mutableListOf<Long>()
   var enqueueCount = 0
   var unavailableUri = false
+  var unavailableQuery = false
+  val unavailableQueryIds = mutableSetOf<Long>()
   private var nextId = 1L
 
   class Request(val uri: Uri) {
@@ -44,7 +46,7 @@ class DownloadManager(private val directory: File) {
     entries[id] = Entry(STATUS_RUNNING, request.mime, File(directory, request.filename))
     return id
   }
-  fun query(query: Query): Cursor? = Cursor(entries[query.id])
+  fun query(query: Query): Cursor? = if (unavailableQuery || query.id in unavailableQueryIds) null else Cursor(entries[query.id])
   fun getUriForDownloadedFile(id: Long): Uri? = if (unavailableUri) null else entries[id]
     ?.takeIf { it.status == STATUS_SUCCESSFUL }
     ?.let { Uri.parse("content://downloads/$id") }
