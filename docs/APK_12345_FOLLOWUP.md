@@ -2022,3 +2022,130 @@ and native iOS handoff acceptance remain unproved too.
 
 No APK, push, deployment, live upload, real payment or account/provider mutation
 was performed. No product feature or design was removed.
+
+## September 9 — physical upload attempts and native download retirement
+
+Continued from clean `fa19d55`; the preceding goal turn produced verified source
+changes, not only a status report. This pass followed the open native download
+work and then traced a demonstrated storage race across the owning journeys.
+
+### Native download ownership
+
+- `b73d271` adds explicit iOS RNFS `cancelDownload`, separate from resumable
+  `stopDownload`. The application uses it only for permanent cancellation,
+  interruption, HTML rejection or account retirement. The native downloader
+  serializes destination moves and terminal cleanup under the same lock, settles
+  once, releases its heavy references and cannot be revived by a late stop
+  callback. Normal stop/resume remains pending until real completion. The
+  manager registers before start, so synchronous rejection is not reinserted,
+  and retires only the downloader belonging to the completed job. Failed file
+  moves now reject rather than returning the old false native success.
+- The existing postinstall mechanism validates the installed RNFS version and
+  all five JS/type/native sources before writing. Native files have audited
+  original/result hashes, reapplication is idempotent, and unknown source/version
+  refuses the change. This does not claim atomic rollback of a filesystem write
+  failure. No dependency version changed.
+- Actual installed Flow-stripped JS with controlled native/emitter seams proves
+  job-specific listener cleanup and preservation of stop/resume. Root passed
+  13 Node checks, of which five are native source-transform checks, not native
+  execution. Root passed 86 attachment UI/service tests plus four native bridge
+  contract tests, TypeScript and scoped ESLint.
+- `db73015` repairs Android's distinction between an invalid completed file and
+  a temporarily unreadable provider. Null URI/stream/descriptor, failed reads,
+  unknown length, permission errors and I/O errors no longer delete the user's
+  completed file or discard pending validation. A missing file is confirmed from
+  that job's local file URI and `Os.stat` ENOENT, not guessed from
+  FileNotFoundException (Android also uses it for provider failures). Confirmed
+  HTML, empty files and known size mismatches still require fresh metadata before
+  another explicit transfer.
+- The Android fixture initially made the wrong platform assumption that a
+  successful row lost its URI when its file was deleted. Reading the installed
+  SDK corrected that seam and exposed the missing-file retry regression before
+  the fix was frozen. Root passed 18 cases executing the production Kotlin module,
+  validation and receiver with Android provider/manager seams, then all seven
+  real loopback metadata cases (65,536 server-accepted body bytes on ignored
+  Range). The agent additionally compiled Android Kotlin offline successfully
+  using the existing direct/test profile. This is not an APK or device test.
+
+Remaining iOS boundary: UUID routing intentionally remains until its registered
+background completion handler is consumed. The app currently has no RNFS
+background-session AppDelegate hook. Cold background wake/handler delivery and
+NSURLSession/UIKit runtime/compilation are not established on this Windows host.
+The source fix releases heavy terminal jobs; it does not claim to close that
+separate background delivery integration or physical-device acceptance.
+
+### Old cleanup deleting a newly accepted upload
+
+The real deletion worker checks references before remote deletion. Reusing a
+physical destination after a failed admission allowed a retry to commit between
+that check and deletion, losing the new accepted file. Adding only a version to
+the path was insufficient: rollback and retry of the same version also failed.
+Logical request identity and physical write-attempt identity must stay separate.
+
+- `58d3fd4`: course attachments use a fresh physical attempt while accepted
+  authoring receipts and content deduplication remain unchanged. RED cases lost
+  the current file after A→B→A replacement and same-version rollback/retry.
+  Root passed 35 tests / 542 assertions including HTTP authoring, publication,
+  roles and learner access; DB retries do not repeat storage writes and failed
+  writes/stale versions retain the accepted attachment.
+- `9a8d997`: AI input staging uses a fresh physical attempt only after checking
+  its accepted/in-flight reservation. RED cases covered course questions and
+  project follow-up files. Root passed seven tests / 65 assertions, including
+  accepted replay, changed-content/course/purpose rejection and account isolation.
+  Root also enabled the actual ZIP extension and passed the two Office attachment
+  policy tests / 15 assertions that had previously been skipped in the agent's
+  environment.
+- `12e452c`: notification campaign images retain a stable content hash for old/new
+  image replay checks but add an attempt UUID in the same directory. The existing
+  non-recursive notification pruning contract is preserved. A real campaign/receipt
+  rollback plus deletion-worker interleaving previously deleted the accepted image.
+  Root passed 19 tests / 153 assertions, including individual/broadcast, legacy
+  names, exact replay, changed image rejection and pruning/reference behavior.
+
+The source inventory then found the same writer behavior in project submission,
+support screenshots and the shared high-level admin image upload API. Those
+remaining fixes were integrated in `0d67895`; this inventory is not a claim that
+the entire application or all storage concurrency has been proven. The portfolio
+writer uses a distinct cleanup reservation/consumption guard and was not rewritten.
+All database/storage race fixtures use real domain services and DeleteAccountFile
+with SQLite/local storage and controlled interleavings at the storage boundary;
+they are not a live provider or parallel-MySQL acceptance test.
+
+`storeTrackedUpload` now stages each new physical write in a fresh attempt
+directory, preserving its logical basename when supplied. Its lower-level
+explicit-destination/reservation methods are unchanged. This covers existing
+category, teacher, user, coupon, level, template-image and project writers through
+one storage entry point. ProjectSubmissionService and LevelController retain
+their original source: their initial leaf fixes were removed after the shared
+implementation passed the same actual regression cases. No feature was removed.
+
+Fresh paths alone exposed another real regression in the verification: user/
+coupon creation can commit its Photo before the final authoring receipt fails.
+Blindly writing another attempt duplicated that accepted image. HasPhoto now
+reuses only an already attached Photo with the same owner, type, directory and
+logical content basename before staging. It does not scan the filesystem or
+adopt orphan bytes. Legacy flat-path photos still replay. Notification template
+basename matching remains valid, and the affected upload directories have no
+non-recursive pruning contract. No schema, new registry, shared worker locking
+or cleanup framework was introduced.
+
+Support screenshots use their own direct sanitized-image writer, so that writer
+adds its physical-attempt UUID separately while retaining message request IDs.
+The two daily admission RED cases previously acknowledged a two-file project or
+a support message, then lost accepted bytes to the older orphan's deletion.
+Accepted project/message replay still skips all byte writes, changed payloads
+remain rejected, project accounting/registration is unchanged and no AI request
+was sent by the fixtures.
+
+Final root gates after the shared change: 25 tests / 259 assertions across daily
+project/support admission, lookup/failure/lifecycle, upload budgets and the original
+Level controller; eight tests / 118 assertions across shared admin authoring and
+upload I/O contracts. The agent additionally passed 35 tests / 393 assertions in
+adjacent teacher portrait, notification image, mutable-configuration and project
+routes. The old high-level orphan-only same-path test was moved to the explicit
+same-target primitive: one write/one metadata probe/one ledger row and the timeout
+assertions are retained. Its name and comment explicitly do not pretend the
+orphan ledger alone constitutes an owning domain reservation. New HTTP/worker
+interleavings prove the high-level fresh-attempt behavior instead.
+
+No APK, push, deployment, paid operation or live content/account change was made.
