@@ -90,6 +90,16 @@ export const useSettingsPreferences = ({
   const {dirtyKeys: privacyDirtyKeys, queue: queuePrivacyPreferenceSync} =
     usePrivacyPreferenceSync();
   const preferenceRevisionRef = useRef<Record<string, number>>({});
+  // Rollback returns to a saved value, never an earlier optimistic tap.
+  const savedPreferencesRef = useRef({
+    quality: 'auto',
+    reminderHour: 20,
+    toggles: {
+      [REMINDER_ENABLED_KEY]: false,
+      [WATCH_HISTORY_ENABLED_KEY]: true,
+      [MARKETING_NOTIFICATIONS_KEY]: false,
+    } as Record<string, boolean>,
+  });
   const accountIdentity = sessionIdentityKey(userData);
   const confirmationOwnerRef = useRef<object | null>(null);
   useFocusEffect(
@@ -120,15 +130,26 @@ export const useSettingsPreferences = ({
     return boundaryFlight.then(boundary =>
       withSettingsScopeWrite(boundary, async () => {
         assertAccountSessionBoundary(boundary);
-        const value = await write(boundary);
-        assertAccountSessionBoundary(boundary);
-        return value;
+        try {
+          return await write(boundary);
+        } finally {
+          assertAccountSessionBoundary(boundary);
+        }
       }),
     );
   };
 
   useEffect(() => {
     preferenceRevisionRef.current = {};
+    savedPreferencesRef.current = {
+      quality: 'auto',
+      reminderHour: 20,
+      toggles: {
+        [REMINDER_ENABLED_KEY]: false,
+        [WATCH_HISTORY_ENABLED_KEY]: true,
+        [MARKETING_NOTIFICATIONS_KEY]: false,
+      },
+    };
     privacyDirtyKeys.clear();
     setChoiceModal(null);
     setNotificationPrimer(false);
@@ -176,27 +197,36 @@ export const useSettingsPreferences = ({
         isUnchanged(REMINDER_ENABLED_KEY)
       ) {
         setNotifications(savedNotifications);
+        savedPreferencesRef.current.toggles[REMINDER_ENABLED_KEY] =
+          savedNotifications;
       }
       if (isUnchanged('VIDEO_QUALITY')) {
         setQuality(normalizeStoredQuality(savedQuality));
+        savedPreferencesRef.current.quality =
+          normalizeStoredQuality(savedQuality);
       }
       if (
         typeof savedWatchHistory === 'boolean' &&
         isUnchanged(WATCH_HISTORY_ENABLED_KEY)
       ) {
         setWatchHistory(savedWatchHistory);
+        savedPreferencesRef.current.toggles[WATCH_HISTORY_ENABLED_KEY] =
+          savedWatchHistory;
       }
       if (
         typeof savedMarketingNotifications === 'boolean' &&
         isUnchanged(MARKETING_NOTIFICATIONS_KEY)
       ) {
         setMarketingNotifications(savedMarketingNotifications);
+        savedPreferencesRef.current.toggles[MARKETING_NOTIFICATIONS_KEY] =
+          savedMarketingNotifications;
       }
       if (
         [10, 15, 20].includes(Number(savedReminderHour)) &&
         isUnchanged('REMINDER_HOUR')
       ) {
         setReminderHour(Number(savedReminderHour));
+        savedPreferencesRef.current.reminderHour = Number(savedReminderHour);
       }
       if (hasAuthenticatedAccount) {
         const pending = await readPendingPrivacyPreferences(
@@ -213,6 +243,8 @@ export const useSettingsPreferences = ({
           ) {
             privacyDirtyKeys.add(WATCH_HISTORY_ENABLED_KEY);
             setWatchHistory(pending.watchHistoryEnabled);
+            savedPreferencesRef.current.toggles[WATCH_HISTORY_ENABLED_KEY] =
+              pending.watchHistoryEnabled;
             await saveItem(
               await scopedKey(WATCH_HISTORY_ENABLED_KEY),
               pending.watchHistoryEnabled,
@@ -225,6 +257,8 @@ export const useSettingsPreferences = ({
           ) {
             privacyDirtyKeys.add(MARKETING_NOTIFICATIONS_KEY);
             setMarketingNotifications(pending.marketingNotificationsEnabled);
+            savedPreferencesRef.current.toggles[MARKETING_NOTIFICATIONS_KEY] =
+              pending.marketingNotificationsEnabled;
             await saveItem(
               await scopedKey(MARKETING_NOTIFICATIONS_KEY),
               pending.marketingNotificationsEnabled,
@@ -253,6 +287,8 @@ export const useSettingsPreferences = ({
               isUnchanged(WATCH_HISTORY_ENABLED_KEY)
             ) {
               setWatchHistory(remoteProfile.watchHistoryEnabled);
+              savedPreferencesRef.current.toggles[WATCH_HISTORY_ENABLED_KEY] =
+                remoteProfile.watchHistoryEnabled;
               await saveItem(
                 await scopedKey(WATCH_HISTORY_ENABLED_KEY),
                 remoteProfile.watchHistoryEnabled,
@@ -266,6 +302,8 @@ export const useSettingsPreferences = ({
               setMarketingNotifications(
                 remoteProfile.marketingNotificationsEnabled,
               );
+              savedPreferencesRef.current.toggles[MARKETING_NOTIFICATIONS_KEY] =
+                remoteProfile.marketingNotificationsEnabled;
               await saveItem(
                 await scopedKey(MARKETING_NOTIFICATIONS_KEY),
                 remoteProfile.marketingNotificationsEnabled,
@@ -274,6 +312,7 @@ export const useSettingsPreferences = ({
             }
             if (isUnchanged('VIDEO_QUALITY')) {
               setQuality(profileQuality);
+              savedPreferencesRef.current.quality = profileQuality;
               await scopedKey('VIDEO_QUALITY').then(key =>
                 saveItem(key, profileQuality),
               );
@@ -318,12 +357,6 @@ export const useSettingsPreferences = ({
 
   const updatePreference = (key: string, value: boolean) => {
     const revision = markPreferenceMutation(key);
-    const previousValue =
-      key === REMINDER_ENABLED_KEY
-        ? notifications
-        : key === WATCH_HISTORY_ENABLED_KEY
-        ? watchHistory
-        : marketingNotifications;
     if (
       key === WATCH_HISTORY_ENABLED_KEY ||
       key === MARKETING_NOTIFICATIONS_KEY
@@ -337,6 +370,7 @@ export const useSettingsPreferences = ({
     }
 
     return enqueuePreferenceWrite(async boundary => {
+      const previousValue = savedPreferencesRef.current.toggles[key];
       if (key === REMINDER_ENABLED_KEY) {
         const stored = await setSmartRemindersEnabled(value, boundary);
         if (!stored) throw new Error('SETTINGS_STORAGE_WRITE_FAILED');
@@ -393,10 +427,18 @@ export const useSettingsPreferences = ({
         );
         assertAccountSessionBoundary(boundary);
       }
+      savedPreferencesRef.current.toggles[key] = value;
     })
       .then(() => true)
       .catch(error => {
+        if (
+          error instanceof Error &&
+          error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
+        ) {
+          return false;
+        }
         if (preferenceRevisionRef.current[key] === revision) {
+          const previousValue = savedPreferencesRef.current.toggles[key];
           if (key === REMINDER_ENABLED_KEY) setNotifications(previousValue);
           if (key === WATCH_HISTORY_ENABLED_KEY) {
             setWatchHistory(previousValue);
@@ -410,12 +452,6 @@ export const useSettingsPreferences = ({
           ) {
             privacyDirtyKeys.delete(key);
           }
-        }
-        if (
-          error instanceof Error &&
-          error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
-        ) {
-          return false;
         }
         Alert.alert(
           'لم يُحفظ التغيير',
@@ -465,24 +501,23 @@ export const useSettingsPreferences = ({
 
   const updateReminderHour = (hour: number) => {
     const revision = markPreferenceMutation('REMINDER_HOUR');
-    const previousHour = reminderHour;
     setReminderHour(hour);
     setChoiceModal(null);
     return enqueuePreferenceWrite(async boundary => {
       const stored = await setSmartReminderHour(hour, boundary);
       if (!stored) throw new Error('SETTINGS_STORAGE_WRITE_FAILED');
+      assertAccountSessionBoundary(boundary);
+      savedPreferencesRef.current.reminderHour = hour;
     }).catch(error => {
-      if (preferenceRevisionRef.current.REMINDER_HOUR === revision) {
-        setReminderHour(previousHour);
-      }
       if (
-        !(
-          error instanceof Error &&
-          error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
-        )
-      ) {
-        Alert.alert('لم يُحفظ التغيير', 'تعذّر حفظ وقت التذكير\nحاول مرة أخرى');
+        error instanceof Error &&
+        error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
+      )
+        return;
+      if (preferenceRevisionRef.current.REMINDER_HOUR === revision) {
+        setReminderHour(savedPreferencesRef.current.reminderHour);
       }
+      Alert.alert('لم يُحفظ التغيير', 'تعذّر حفظ وقت التذكير\nحاول مرة أخرى');
     });
   };
 
@@ -493,7 +528,6 @@ export const useSettingsPreferences = ({
     }
     const normalizedQuality = normalizeStoredQuality(key);
     const revision = markPreferenceMutation('VIDEO_QUALITY');
-    const previousQuality = quality;
     setQuality(normalizedQuality);
     void enqueuePreferenceWrite(async boundary => {
       const stored = await saveItem(
@@ -502,6 +536,7 @@ export const useSettingsPreferences = ({
       );
       if (!stored) throw new Error('SETTINGS_STORAGE_WRITE_FAILED');
       assertAccountSessionBoundary(boundary);
+      savedPreferencesRef.current.quality = normalizedQuality;
       if (hasAuthenticatedAccount) {
         await updatePlaybackPreferences(
           {videoQualityPreference: normalizedQuality},
@@ -517,7 +552,7 @@ export const useSettingsPreferences = ({
         storageFailure &&
         preferenceRevisionRef.current.VIDEO_QUALITY === revision
       ) {
-        setQuality(previousQuality);
+        setQuality(savedPreferencesRef.current.quality);
       }
       if (storageFailure) {
         Alert.alert(
