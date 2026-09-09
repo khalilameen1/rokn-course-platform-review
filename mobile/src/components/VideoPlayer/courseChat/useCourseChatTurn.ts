@@ -257,10 +257,10 @@ export const useCourseChatTurn = ({
         if (!ownsTurn()) return;
         const retrySendAllowed = Boolean(
           retryClientRequestId &&
-          retryIntent === 'retry' &&
-          !recoveryOnly &&
-          response?.turnStatus === 'failed' &&
-          courseChatFailureCanStartFreshTurn(response.canRetry),
+            retryIntent === 'retry' &&
+            !recoveryOnly &&
+            response?.turnStatus === 'failed' &&
+            courseChatFailureCanStartFreshTurn(response.canRetry),
         );
         // A missing status is not a terminal receipt: the original POST may
         // still be admitted after its acknowledgement timed out. Re-send only
@@ -294,11 +294,13 @@ export const useCourseChatTurn = ({
             turnBoundary,
           );
           assertAccountSessionBoundary(turnBoundary);
-          await Promise.all(
+          // The server ids are durable now. Removing obsolete local copies
+          // cannot own submission of the question that already references them.
+          void Promise.all(
             selectedAttachments
               .filter(file => file.uri && !file.serverId)
               .map(removeLearnerDraftFile),
-          );
+          ).catch(() => undefined);
           if (!ownsTurn()) return;
           commitMessages(queuedMessages);
         }

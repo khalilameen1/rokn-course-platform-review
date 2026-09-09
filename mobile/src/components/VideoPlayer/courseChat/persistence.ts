@@ -268,9 +268,10 @@ export const saveCourseChatHistory = async (
         );
       } else {
         // Once the durable transcript contains server ids only, releasing an
-        // obsolete cache reference is cleanup. A registry failure must not
-        // turn an already-uploaded question into a fake failed send.
-        await retainLearnerDraftFiles(
+        // obsolete cache reference is cleanup. A stalled registry must not
+        // hold an already-uploaded question. The file service still owns and
+        // orders this raw operation with later retention/removal requests.
+        void retainLearnerDraftFiles(
           referenceOwner(courseId, lessonId),
           [],
           boundary.scope,
