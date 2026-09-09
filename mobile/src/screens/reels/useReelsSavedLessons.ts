@@ -67,6 +67,13 @@ export const useReelsSavedLessons = ({
       // remove command. A reel saved in another list must still be addable to
       // "المشاهدة لاحقًا" without deleting its existing memberships.
       const shouldSave = folder !== null;
+      const reflectSaved = (isSaved: boolean) =>
+        setSavedLessons(current => {
+          const next = new Set(current);
+          if (isSaved) next.add(reel.lessonId);
+          else next.delete(reel.lessonId);
+          return next;
+        });
       let optimisticApplied = false;
       let boundary: Awaited<
         ReturnType<typeof captureAccountSessionBoundary>
@@ -87,12 +94,7 @@ export const useReelsSavedLessons = ({
       try {
         boundary = await captureAccountSessionBoundary();
         if (loadedCourse.current?.id !== ownerCourseId) return;
-        setSavedLessons(current => {
-          const next = new Set(current);
-          if (shouldSave) next.add(reel.lessonId);
-          else next.delete(reel.lessonId);
-          return next;
-        });
+        reflectSaved(shouldSave);
         optimisticApplied = true;
         if (folder) {
           await saveLessonToFolder(reel.lessonId, folder);
@@ -101,15 +103,13 @@ export const useReelsSavedLessons = ({
         }
         assertAccountSessionBoundary(boundary);
         if (!stillOwned()) return;
+        // A background saved-state read may have landed while the write was
+        // pending. The confirmed command owns this reel's final bookmark state.
+        reflectSaved(shouldSave);
       } catch (error) {
         if (stillOwned()) {
           if (optimisticApplied) {
-            setSavedLessons(current => {
-              const next = new Set(current);
-              if (currentlySaved) next.add(reel.lessonId);
-              else next.delete(reel.lessonId);
-              return next;
-            });
+            reflectSaved(currentlySaved);
           }
           setConnectionNote(
             'تعذّر تحديث المحفوظات\nتحقق من الاتصال ثم حاول مرة أخرى',

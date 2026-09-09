@@ -697,55 +697,78 @@ export const reconcileServerSavedLessons = async (
   );
   if (!lessonIds.length) return [];
 
-  const saved = new Set<string>();
-  for (let offset = 0; offset < lessonIds.length; offset += 200) {
-    const chunk = lessonIds.slice(offset, offset + 200);
-    const response = await publicRequest.get('saved-lessons/state', {
-      params: {lesson_ids: chunk},
-    });
-    assertAccountSessionBoundary(accountBoundary);
-    const ids = response?.data?.data?.saved_lesson_ids;
-    if (!Array.isArray(ids)) {
-      throw new Error('SAVED_LESSON_STATE_CONTRACT_INVALID');
-    }
-    const requested = new Set(chunk);
-    ids.forEach(id => {
-      const value = valueAsString(id);
-      if (!/^\d{1,18}$/.test(value) || !requested.has(value)) {
-        throw new Error('SAVED_LESSON_STATE_CONTRACT_INVALID');
+  const revisionKey = ownerKey(accountBoundary);
+  const overtaken = new Error('SAVED_LESSON_STATE_CHANGED_DURING_READ');
+  const reconcileSnapshot = async (mayRetry: boolean): Promise<string[]> => {
+    // Membership and folder ACKs already invalidate this owner's folder index.
+    // The same boundary owns its saved-state snapshot; no second ledger is needed.
+    const revision = folderListRevisions.get(revisionKey) ?? 0;
+    const assertCurrent = () => {
+      assertAccountSessionBoundary(accountBoundary);
+      if ((folderListRevisions.get(revisionKey) ?? 0) !== revision)
+        throw overtaken;
+    };
+    try {
+      const saved = new Set<string>();
+      for (let offset = 0; offset < lessonIds.length; offset += 200) {
+        const chunk = lessonIds.slice(offset, offset + 200);
+        const response = await publicRequest.get('saved-lessons/state', {
+          params: {lesson_ids: chunk},
+        });
+        assertCurrent();
+        const ids = response?.data?.data?.saved_lesson_ids;
+        if (!Array.isArray(ids)) {
+          throw new Error('SAVED_LESSON_STATE_CONTRACT_INVALID');
+        }
+        const requested = new Set(chunk);
+        ids.forEach(id => {
+          const value = valueAsString(id);
+          if (!/^\d{1,18}$/.test(value) || !requested.has(value)) {
+            throw new Error('SAVED_LESSON_STATE_CONTRACT_INVALID');
+          }
+          saved.add(value);
+        });
       }
-      saved.add(value);
-    });
-  }
 
-  assertAccountSessionBoundary(accountBoundary);
-  const queried = new Set(lessonIds);
-  await updatePlayerStateForScope(
-    accountScope,
-    state => ({
-      ...state,
-      savedLessons: Array.from(
-        new Set([
-          ...state.savedLessons.filter(id => !queried.has(id)),
-          ...saved,
-        ]),
-      ),
-      savedFolderLessons: Object.fromEntries(
-        Object.entries(state.savedFolderLessons)
-          .map(
-            ([folderId, ids]) =>
-              [
-                folderId,
-                ids.filter(id => !queried.has(id) || saved.has(id)),
-              ] as [string, string[]],
-          )
-          .filter(([, ids]) => ids.length > 0),
-      ),
-    }),
-    accountBoundary,
-  );
-
-  return Array.from(saved);
+      assertCurrent();
+      const queried = new Set(lessonIds);
+      await updatePlayerStateForScope(
+        accountScope,
+        state => {
+          // A native player write may have queued behind the mutation's repair.
+          assertCurrent();
+          return {
+            ...state,
+            savedLessons: Array.from(
+              new Set([
+                ...state.savedLessons.filter(id => !queried.has(id)),
+                ...saved,
+              ]),
+            ),
+            savedFolderLessons: Object.fromEntries(
+              Object.entries(state.savedFolderLessons)
+                .map(
+                  ([folderId, ids]) =>
+                    [
+                      folderId,
+                      ids.filter(id => !queried.has(id) || saved.has(id)),
+                    ] as [string, string[]],
+                )
+                .filter(([, ids]) => ids.length > 0),
+            ),
+          };
+        },
+        accountBoundary,
+      );
+      assertCurrent();
+      return Array.from(saved);
+    } catch (error) {
+      assertAccountSessionBoundary(accountBoundary);
+      if (error === overtaken && mayRetry) return reconcileSnapshot(false);
+      throw error;
+    }
+  };
+  return reconcileSnapshot(true);
 };
 
 export const removeLessonFromSavedFolder = async (
