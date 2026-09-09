@@ -2149,3 +2149,89 @@ orphan ledger alone constitutes an owning domain reservation. New HTTP/worker
 interleavings prove the high-level fresh-attempt behavior instead.
 
 No APK, push, deployment, paid operation or live content/account change was made.
+
+## September 9 — download status and foreground save handoff
+
+Continued from clean `be8d0e7` in the production repository. Existing learner
+attachment access/publication and dashboard source/target switching were inspected
+against their existing coverage; no new contradiction was found in those bounded
+paths, so they were not rewritten or counted as new fixes. Their tests were read,
+not rerun. No existing product feature was removed in this work.
+
+`1982b85` fixes a separate Android status-provider failure: a null status query
+was interpreted like an empty result, forgetting a still-running DownloadManager
+job or acknowledging cancellation that had not happened. `queryStatus` now throws
+for unavailable query/status data while a genuinely empty cursor retains its
+existing missing-job recovery. Four controlled production-Kotlin cases were RED
+before the change. Root passed all 23 lifecycle cases, including partial account
+retirement and later retry using the same job. The agent also passed the offline
+`:app:compileReleaseKotlin` test/direct configuration. This is Kotlin compilation
+and real production logic against controlled Android seams, not device acceptance.
+
+`de27b59` separates the iOS save presentation from parallel file transfers. Five
+actual-action regressions were RED because Save to Files was invoked while the
+app was background/inactive or when a queued presentation gained its slot after
+the app had left the foreground. The completed file now waits for foreground;
+user cancellation/account retirement releases an unpresented foreground wait,
+and listener cleanup does not release an already displayed native picker early.
+Per-account ownership, parallel transfers, duplicate-tap coalescing, binary checks,
+and each file's own save receipt remain intact.
+
+Source review also showed why foreground alone was insufficient: React Native's
+iOS Alert creates a separate key window, and RNShare selects the current presented
+controller. The original progress Alert could still own that presenter and has no
+selective programmatic dismissal API. Only this progress notice was replaced with
+a dedicated controlled Modal, retaining Cancel, Hide, file labels and existing
+design tokens. Concurrent downloads share one progress cycle; it stays hidden
+while its transfer/save handles remain owned. Save or error presentation awaits
+the actual Modal onDismiss, not a delay or a dismiss-all operation. App mounts the
+host beneath the existing root providers, for both course files and certificates.
+
+Two further counters caught mistakes in the new implementation before commit:
+a React commit is not proof that native Modal presentation occurred, so a close
+requested before onShow now keeps the native show request until onShow then closes;
+and each cycle keys its Modal instance so batched cycle replacement cannot route
+an old native callback through a new instance's props. Both were RED then GREEN.
+The host tests explicitly deliver platform events; they do not claim UIKit ran.
+
+Final root mobile gate: eight suites / 95 tests passed, with full TypeScript and
+scoped ESLint. The App smoke fixture now supplies the SafeAreaProvider that the
+real index.js already provides. Action/native-presentation seam tests also verify
+that neither Save nor the failure alert opens before the progress dismissal
+receipt, and the progress cycle is retained through the save outcome.
+
+`a786055` connects live RNFS background sessions to AppDelegate without intercepting
+unowned Expo sessions. Native event drain/invalidation owns UIKit completion;
+the legacy JS completeHandlerIOS API remains resolved but cannot acknowledge early
+or wait on foreground UI. Downloader holds pending distinct completion blocks and
+a consumable event-ready latch, with weak block identities for duplicate detection.
+Resume does not erase an undelivered earlier batch. A review of the initial local
+draft rejected a task-lifetime delivered flag: an authentication wake and a later
+completion wake may belong to the same session without explicit resume. The final
+code supports those separate batches and removes live routing on invalidation.
+The old parallel RNFSManager completion/UUID registries were removed.
+
+Root passed 18 Node checks: seven executing the installed RNFS JavaScript through
+controlled native/event seams, eight native source-transform/contract checks and
+three explicitly labeled JavaScript handoff-state simulations. These are not
+Objective-C execution. An independent offline check used the actual cached RNFS
+2.20.0 archive, verified its SHA512 against package-lock.json, and proved both
+pristine and committed prior-patch inputs produce all six installed final files;
+check/reapplication writes nothing. No dependency version or lockfile changed.
+The applier validates every expected source before any write. The verifier's owned
+temporary fixture remains outside the repo because its cleanup call was denied;
+no alternate deletion route was attempted.
+
+Remaining iOS acceptance is explicit: Windows has no Xcode/UIKit run here, so
+Swift/CocoaPods import compilation and actual suspended-app/native modal delivery
+need a native acceptance run before release. The explicit Swift name and RNFS
+pod/header wiring were inspected, not compiled. Cold OS process relaunch cannot
+reconstruct RNFS session destination/account ownership from the existing in-memory
+data; this change deliberately does not claim that capability. These limits do
+not invalidate the local regressions but do prevent calling the whole iOS journey
+or the full application finished.
+
+Primary lifecycle references: [Apple background event handling](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/application(_:handleeventsforbackgroundurlsession:completionhandler:)),
+[Apple event drain](https://developer.apple.com/documentation/foundation/urlsessiondelegate/urlsessiondidfinishevents(forbackgroundurlsession:)),
+and [React Native AppState](https://reactnative.dev/docs/appstate).
+No APK, push, deployment, paid operation or live content/account change was made.
