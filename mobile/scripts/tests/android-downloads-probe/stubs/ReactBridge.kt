@@ -7,6 +7,7 @@ class WritableMap {
   fun putString(key: String, value: String?) { values[key] = value }
   fun putInt(key: String, value: Int) { values[key] = value }
   fun putDouble(key: String, value: Double) { values[key] = value }
+  fun putBoolean(key: String, value: Boolean) { values[key] = value }
   fun hasKey(key: String): Boolean = values.containsKey(key)
   fun isNull(key: String): Boolean = values[key] == null
   fun getString(key: String): String? = values[key] as String?

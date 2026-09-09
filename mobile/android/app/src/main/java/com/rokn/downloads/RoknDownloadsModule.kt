@@ -6,6 +6,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Environment
 import android.os.StatFs
+import android.system.ErrnoException
+import android.system.Os
+import android.system.OsConstants
 import android.webkit.MimeTypeMap
 import androidx.core.net.toUri
 import com.facebook.react.bridge.Arguments
@@ -14,6 +17,8 @@ import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.rokn.BuildConfig
+import java.io.FileNotFoundException
+import java.io.IOException
 import java.security.MessageDigest
 
 class RoknDownloadsModule(
@@ -231,12 +236,41 @@ class RoknDownloadsModule(
     downloadId: Long,
     expectedBytes: Long,
   ): Boolean {
-    val uri = manager.getUriForDownloadedFile(downloadId) ?: return false
-    return try {
+    val uri = manager.getUriForDownloadedFile(downloadId)
+      ?: throw IOException("The downloaded file URI is unavailable")
+    try {
       if (AttachmentFileValidation.isHtml(reactContext, manager, downloadId)) return false
-      reactContext.contentResolver.openAssetFileDescriptor(uri, "r")?.use {
-        it.length > 0L && (expectedBytes <= 0L || it.length == expectedBytes)
-      } ?: false
+      // Do not delete a user-owned completed file merely because its provider
+      // cannot be read right now. Only a successful inspection can invalidate it.
+      val descriptor = reactContext.contentResolver.openAssetFileDescriptor(uri, "r")
+        ?: throw IOException("The downloaded file provider is unavailable")
+      return descriptor.use {
+        val actualBytes = it.length
+        if (actualBytes < 0L) throw IOException("The downloaded file length is unavailable")
+        actualBytes > 0L && (expectedBytes <= 0L || actualBytes == expectedBytes)
+      }
+    } catch (error: FileNotFoundException) {
+      // ContentResolver also uses this exception for provider failures. Confirm
+      // actual absence before retiring the completed job and allowing a retry.
+      if (downloadedFileIsMissing(manager, downloadId)) return false
+      throw error
+    }
+  }
+
+  private fun downloadedFileIsMissing(manager: DownloadManager, downloadId: Long): Boolean {
+    return try {
+      val localUri = manager.query(DownloadManager.Query().setFilterById(downloadId))?.use { cursor ->
+        if (!cursor.moveToFirst()) return@use null
+        val column = cursor.getColumnIndex(DownloadManager.COLUMN_LOCAL_URI)
+        if (column >= 0) cursor.getString(column)?.toUri() else null
+      }
+      val path = localUri?.takeIf { it.scheme == "file" }?.path ?: return false
+      try {
+        Os.stat(path)
+        false
+      } catch (error: ErrnoException) {
+        error.errno == OsConstants.ENOENT
+      }
     } catch (_: Exception) {
       false
     }

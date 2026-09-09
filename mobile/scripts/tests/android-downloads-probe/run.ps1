@@ -6,6 +6,8 @@ param(
         Join-Path $env:USERPROFILE '.gradle'
     }),
     [string]$Java = 'java',
+    [ValidateSet('metadata', 'lifecycle')]
+    [string]$Suite = 'metadata',
     [switch]$KeepBuild,
     [string[]]$TestArguments = @()
 )
@@ -13,13 +15,23 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-# Offline JVM coverage of the real probe, not an Android build or native-device test.
+# Offline JVM coverage of real Kotlin, not an Android build or native-device test.
 $mobileRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..\..')).Path
 $probeSource = Join-Path $mobileRoot 'android\app\src\main\java\com\rokn\downloads\AttachmentMetadataProbe.kt'
 $testSource = Join-Path $PSScriptRoot 'ProbeNetworkTest.kt'
+$productionSources = @($probeSource)
+$mainClass = 'com.rokn.downloads.ProbeNetworkTestKt'
+if ($Suite -eq 'lifecycle') {
+    $lifecycleRoot = Join-Path $PSScriptRoot '..\android-downloads-lifecycle'
+    $testSource = Join-Path $lifecycleRoot 'DownloadLifecycleTest.kt'
+    $mainClass = 'com.rokn.downloads.DownloadLifecycleTestKt'
+    $productionSources += @('RoknDownloadsModule.kt', 'AttachmentFileValidation.kt', 'AttachmentDownloadReceiver.kt') | ForEach-Object {
+        Join-Path (Split-Path -Parent $probeSource) $_
+    }
+}
 $cacheRoot = Join-Path $GradleUserHome 'caches\modules-2\files-2.1'
 $javaCommand = (Get-Command $Java -CommandType Application -ErrorAction Stop).Source
-foreach ($source in @($probeSource, $testSource)) {
+foreach ($source in ($productionSources + @($testSource))) {
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
         throw "Required Kotlin source is missing: $source"
     }
@@ -62,6 +74,9 @@ $stubSources = @(Get-ChildItem -LiteralPath (Join-Path $PSScriptRoot 'stubs') -F
 if ($stubSources.Count -ne 3) {
     throw 'Expected exactly the three Android/React Native platform stubs.'
 }
+if ($Suite -eq 'lifecycle') {
+    $stubSources += Get-ChildItem -LiteralPath (Join-Path $lifecycleRoot 'stubs') -File -Filter '*.kt' | Sort-Object Name | ForEach-Object FullName
+}
 
 $temporaryRoot = (Resolve-Path -LiteralPath ([IO.Path]::GetTempPath())).Path.TrimEnd('\', '/')
 $temporaryName = 'rokn-downloads-probe-' + [Guid]::NewGuid().ToString('D')
@@ -75,17 +90,16 @@ try {
         'org.jetbrains.kotlin.cli.jvm.K2JVMCompiler',
         '-no-stdlib', '-no-reflect', '-jvm-target', '17',
         '-classpath', $runtimeClasspath,
-        '-d', $classesPath,
-        $probeSource, $testSource
-    ) + $stubSources
+        '-d', $classesPath
+    ) + $productionSources + @($testSource) + $stubSources
     & $javaCommand @compilerArguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Kotlin probe test compilation failed (exit $LASTEXITCODE)."
+        throw "Kotlin $Suite test compilation failed (exit $LASTEXITCODE)."
     }
 
-    & $javaCommand '-cp' ($classesPath + $separator + $runtimeClasspath) 'com.rokn.downloads.ProbeNetworkTestKt' @TestArguments
+    & $javaCommand '-cp' ($classesPath + $separator + $runtimeClasspath) $mainClass @TestArguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Probe network tests failed (exit $LASTEXITCODE)."
+        throw "Download $Suite tests failed (exit $LASTEXITCODE)."
     }
 } finally {
     if ($KeepBuild) {
