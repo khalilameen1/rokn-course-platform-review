@@ -391,9 +391,13 @@ final class MediaReconciliationService
     /** @return array{ready:bool,code:string} */
     private function manifestIsReadable(string $signedUrl): array
     {
+        $response = null;
+        $stream = null;
+        $deadline = microtime(true) + 10;
         try {
             $response = Http::connectTimeout(5)
                 ->timeout(10)
+                ->withOptions(['stream' => true, 'decode_content' => false, 'read_timeout' => 10])
                 ->withHeaders(['Accept' => 'application/vnd.apple.mpegurl'])
                 ->get($signedUrl);
 
@@ -401,7 +405,31 @@ final class MediaReconciliationService
                 return ['ready' => false, 'code' => 'manifest_http_error'];
             }
 
-            $body = (string) $response->body();
+            // Own the raw stream so each read uses the remaining deadline,
+            // including compressed responses. Never buffer the full document.
+            $stream = $response->toPsrResponse()->getBody()->detach();
+            if (!is_resource($stream)) {
+                throw new \RuntimeException('Manifest stream unavailable');
+            }
+            if (in_array(strtolower($response->header('Content-Encoding')), ['gzip', 'deflate'], true)) {
+                if (stream_filter_append($stream, 'zlib.inflate', STREAM_FILTER_READ, ['window' => 15 + 32]) === false) {
+                    throw new \RuntimeException('Manifest decoding unavailable');
+                }
+            }
+            $body = '';
+            // One lookahead byte preserves the existing truncated-line rule.
+            while (strlen($body) < 8193 && !feof($stream)) {
+                $remaining = $deadline - microtime(true);
+                if ($remaining <= 0) {
+                    throw new \RuntimeException('Manifest read timed out');
+                }
+                stream_set_timeout($stream, (int) $remaining, (int) (($remaining - (int) $remaining) * 1_000_000));
+                $chunk = fread($stream, 8193 - strlen($body));
+                if ($chunk === false || ($chunk === '' && !feof($stream))) {
+                    throw new \RuntimeException('Manifest read incomplete');
+                }
+                $body .= $chunk;
+            }
             $prefix = substr($body, 0, 8192);
             if (strlen($body) > strlen($prefix) && !str_ends_with($prefix, "\n")) {
                 $lastCompleteLine = strrpos($prefix, "\n");
@@ -416,6 +444,11 @@ final class MediaReconciliationService
         } catch (Throwable $exception) {
             // Never log the signed URL or its token.
             return ['ready' => false, 'code' => 'manifest_unreachable'];
+        } finally {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+            $response?->close();
         }
     }
 
@@ -470,11 +503,14 @@ final class MediaReconciliationService
 
     private function imageIsReadable(string $signedUrl): bool
     {
+        $response = null;
         try {
             $response = Http::connectTimeout(5)->timeout(10)->head($signedUrl);
             if (in_array($response->status(), [405, 501], true)) {
+                $response->close();
                 $response = Http::connectTimeout(5)
                     ->timeout(10)
+                    ->withOptions(['stream' => true])
                     ->withHeaders(['Range' => 'bytes=0-0'])
                     ->get($signedUrl);
             }
@@ -484,6 +520,8 @@ final class MediaReconciliationService
         } catch (Throwable) {
             // Signed URLs are deliberately omitted from operational logs.
             return false;
+        } finally {
+            $response?->close();
         }
     }
 
