@@ -5,12 +5,126 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const vm = require('node:vm');
+const YAML = require('yaml');
 
 const root = path.resolve(__dirname, '..', '..');
 const provenance = require('../verify-artifact-provenance');
 const smoke = require('../run-android-staging-smoke');
 const fixtureUrlName = ['ROKN_SMOKE_FORCED_UPDATE', 'FIXTURE_URL'].join('_');
 const fixtureTokenName = ['ROKN_SMOKE', 'FIXTURE_TOKEN'].join('_');
+
+const mobileWorkflow = () => YAML.parse(fs.readFileSync(
+  path.join(root, '..', '.github', 'workflows', 'mobile-ci.yml'),
+  'utf8',
+));
+
+// These job conditions use only booleans/comparisons shared by Actions and JS.
+// Evaluate the parsed source, not a duplicate of its intended selection rule.
+const selectedWorkflowJobs = (workflow, eventName, inputs = {}) =>
+  Object.entries(workflow.jobs).filter(([, job]) => {
+    if (job.if === undefined) return true;
+    if (typeof job.if === 'boolean') return job.if;
+    const expression = job.if.replace(/^\s*\$\{\{([\s\S]*)\}\}\s*$/, '$1');
+    assert.match(expression, /^[\w\s.'"!=&|()]+$/);
+    return Boolean(vm.runInNewContext(expression, {
+      github: {event_name: eventName},
+      inputs,
+    }, {timeout: 1000}));
+  }).map(([name]) => name);
+
+test('manual iOS-only input is an explicit optional boolean defaulting to false', () => {
+  const input = mobileWorkflow().on.workflow_dispatch.inputs.ios_only;
+  assert.ok(input, 'workflow_dispatch must expose ios_only');
+  assert.equal(input.type, 'boolean');
+  assert.equal(input.default, false);
+  assert.equal(input.required, false);
+});
+
+test('actual job conditions isolate iOS only on explicit manual selection', () => {
+  const workflow = mobileWorkflow();
+  const baseline = ['javascript', 'android-native', 'ios-native'];
+  for (const [eventName, inputs, expected] of [
+    ['push', {}, baseline],
+    ['pull_request', {}, baseline],
+    ['push', {ios_only: true, run_staging_smoke: true}, baseline],
+    ['workflow_dispatch', {}, baseline],
+    ['workflow_dispatch', {ios_only: false, run_staging_smoke: false}, baseline],
+    ['workflow_dispatch', {run_staging_smoke: true}, [...baseline, 'android-staging-smoke']],
+    ['workflow_dispatch', {ios_only: true}, ['ios-native']],
+    ['workflow_dispatch', {ios_only: true, run_staging_smoke: true}, ['ios-native']],
+  ]) {
+    assert.deepEqual(selectedWorkflowJobs(workflow, eventName, inputs), expected,
+      `${eventName} ${JSON.stringify(inputs)}`);
+  }
+  assert.equal(workflow.jobs['ios-native'].needs, undefined,
+    'isolated iOS must not depend on skipped JavaScript or Android jobs');
+});
+
+test('isolated iOS gate remains unsigned CI compilation without app distribution', () => {
+  const ios = mobileWorkflow().jobs['ios-native'];
+  assert.equal(ios.env.EXPO_PUBLIC_API_URL, 'https://ci.invalid/api/v1/');
+  assert.equal(ios.env.EXPO_PUBLIC_BUILD_PROFILE, 'production');
+  const commands = ios.steps.map(step => step.run || '').join('\n');
+  assert.match(commands, /xcodebuild[\s\S]*-sdk iphoneos[\s\S]*CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build/);
+  assert.doesNotMatch(commands, /-exportArchive|\barchive\b|\baltool\b|\bfastlane\b|\bdeploy\b|\beas\s+(?:build|submit)\b/i);
+  assert.doesNotMatch(JSON.stringify(ios), /secrets\./);
+  for (const step of ios.steps.filter(candidate => candidate.uses)) {
+    assert.match(step.uses, /^(?:actions\/(?:checkout|setup-node|upload-artifact)|ruby\/setup-ruby)@/,
+      'the compile gate must not introduce an app-distribution action');
+  }
+  const uploads = ios.steps.filter(step => /upload/i.test(step.uses || ''));
+  assert.equal(uploads.length, 1, 'only the existing dependency-lock diagnostic upload is permitted');
+  assert.match(uploads[0].uses, /^actions\/upload-artifact@/);
+  assert.equal(uploads[0].with.path, 'mobile/ios/Podfile.lock');
+  assert.match(uploads[0].if, /failure\(\).*ios_lock\.outcome == 'failure'/);
+});
+
+test('selected manual modes isolate concurrency and preserve active staging leases', () => {
+  const workflow = mobileWorkflow();
+  const groupFor = (eventName, inputs, ref = 'refs/heads/main') =>
+    workflow.concurrency.group.replace(/\$\{\{([\s\S]*?)\}\}/g, (_, expression) => {
+      assert.match(expression, /^[\w\s.'"!=&|()\-]+$/);
+      return String(vm.runInNewContext(expression, {
+        github: {event_name: eventName, ref},
+        inputs,
+      }, {timeout: 1000}));
+    });
+  for (const [eventName, inputs] of [
+    ['push', {}],
+    ['pull_request', {}],
+    ['push', {ios_only: true}],
+    ['workflow_dispatch', {}],
+    ['workflow_dispatch', {ios_only: false}],
+  ]) {
+    assert.equal(groupFor(eventName, inputs), 'mobile-refs/heads/main');
+  }
+  const iosGroup = groupFor('workflow_dispatch', {ios_only: true});
+  assert.equal(iosGroup, 'mobile-refs/heads/main-ios-only');
+  assert.notEqual(iosGroup, groupFor('push', {}));
+  assert.equal(groupFor('workflow_dispatch', {ios_only: true, run_staging_smoke: true}), iosGroup);
+  assert.notEqual(groupFor('workflow_dispatch', {ios_only: true}, 'refs/heads/other'), iosGroup);
+  const stagingGroup = groupFor('workflow_dispatch', {run_staging_smoke: true});
+  assert.equal(stagingGroup, 'mobile-refs/heads/main-staging-smoke');
+  assert.notEqual(stagingGroup, iosGroup);
+  assert.notEqual(stagingGroup, groupFor('push', {}));
+  const cancellation = workflow.concurrency['cancel-in-progress']
+    .replace(/^\s*\$\{\{([\s\S]*)\}\}\s*$/, '$1');
+  assert.match(cancellation, /^[\w\s.'"!=&|()]+$/);
+  for (const [eventName, inputs, expected] of [
+    ['push', {}, true],
+    ['pull_request', {}, true],
+    ['workflow_dispatch', {}, true],
+    ['workflow_dispatch', {ios_only: false, run_staging_smoke: false}, true],
+    ['workflow_dispatch', {run_staging_smoke: true}, false],
+    ['workflow_dispatch', {ios_only: true}, true],
+    ['workflow_dispatch', {ios_only: true, run_staging_smoke: true}, true],
+  ]) {
+    assert.equal(vm.runInNewContext(cancellation, {
+      github: {event_name: eventName}, inputs,
+    }, {timeout: 1000}), expected, `${eventName} ${JSON.stringify(inputs)}`);
+  }
+});
 
 test('normalizes release signer fingerprints and parses Android tools', () => {
   const digest = 'ab'.repeat(32);

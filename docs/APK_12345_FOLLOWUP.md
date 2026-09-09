@@ -2502,3 +2502,27 @@ performed or live content/account modified. The next native verification needs
 the current revision on a Mac/Xcode runner, separately from production publishing.
 This audit is not an application-wide completion claim and does not add another
 implementation merely to produce a new diff.
+
+## September 9 — isolated native verification prepared locally
+
+The existing `mobile-ci.yml` now exposes an optional, default-false `ios_only`
+dispatch input. Explicit selection runs the unchanged unsigned iOS job and skips
+JavaScript, Android bundle and staging smoke jobs. Push, PR and default manual job
+selection remain intact; choosing both manual flags selects iOS only. The iOS
+legal-provenance step still resolves Android dependency metadata, not an APK/AAB.
+
+Manual iOS and protected staging smoke use separate concurrency groups. This
+also corrects the old shared-group case where an incoming ordinary push could
+cancel a running smoke workflow despite that smoke's own cancellation flag.
+Smoke's cross-branch job lock remains intact. GitHub's contract is documented at
+https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#concurrency
+
+The focused provenance script suite passed all 15 cases after two initial failures
+for the missing input and job isolation. Four added tests parse actual workflow
+YAML and evaluate its simple conditions/group expressions locally. This is not
+execution by the GitHub scheduler or native compilation. The installed RNFS patch
+also passed its existing read-only `--check` without installing or rewriting it.
+
+All changes are local. No push, workflow dispatch, native build, APK or production
+deployment was performed. Current Mac compilation and actual phone acceptance
+remain outstanding; this preparation does not close those requirements.

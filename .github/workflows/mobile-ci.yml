@@ -15,6 +15,11 @@ on:
       - ".github/workflows/mobile-ci.yml"
   workflow_dispatch:
     inputs:
+      ios_only:
+        description: "Run only unsigned iOS validation (skips Android build and staging smoke)"
+        required: false
+        default: false
+        type: boolean
       run_staging_smoke:
         description: "Run the protected Android staging smoke gate"
         required: false
@@ -30,13 +35,14 @@ on:
         type: string
 
 concurrency:
-  group: mobile-${{ github.ref }}
-  # A protected smoke run may hold a short forced-update lease. Let its finally
-  # teardown execute; a second smoke dispatch also serializes at the job level.
-  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.run_staging_smoke) }}
+  # Keep manual iOS checks and protected smoke leases out of normal CI cancellation.
+  group: mobile-${{ github.ref }}${{ github.event_name == 'workflow_dispatch' && (inputs.ios_only && '-ios-only' || inputs.run_staging_smoke && '-staging-smoke') || '' }}
+  # Smoke teardown must finish; smoke jobs also serialize across branches below.
+  cancel-in-progress: ${{ !(github.event_name == 'workflow_dispatch' && inputs.run_staging_smoke && !inputs.ios_only) }}
 
 jobs:
   javascript:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.ios_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     defaults:
@@ -70,6 +76,7 @@ jobs:
       - run: npm run verify:release
 
   android-native:
+    if: ${{ github.event_name != 'workflow_dispatch' || !inputs.ios_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     defaults:
@@ -181,7 +188,7 @@ jobs:
     # This is intentionally a dispatched, protected-environment gate. It must
     # fail closed when its staging secrets/fixtures are unavailable rather than
     # reporting a green mocked smoke test on ordinary pull requests.
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_staging_smoke }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_staging_smoke && !inputs.ios_only }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     defaults:
