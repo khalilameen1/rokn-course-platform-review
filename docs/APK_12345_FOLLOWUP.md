@@ -2458,3 +2458,47 @@ All three fixes are saved locally in the production repository. No APK, push,
 deployment, live file transfer or account change was performed. Existing features
 were preserved. Project-review inspection is evidence against reopening those
 specific fixes, not proof that the full application or the full goal is complete.
+
+## September 9 — attachment completion audit and actual CI provenance
+
+Read-only requirement matching at clean `6a35147` found no further demonstrated
+gap in the specified dashboard operations or the backend/mobile attachment
+contract. Source/device selection and light-file policy are covered by
+`CourseAttachmentFilePolicyTest`, `OoxmlAttachmentPolicyTest` and the shared PDF
+form. The actual Chrome editor fixture exercises create, edit, replace, source
+switch, ordering, visibility, deletion and uncertain-save recovery. HTTP
+authorization/lifecycle fixtures exercise moderator/admin routes, reject learners
+and guests, stage edits, publish twice, resolve old IDs and deny later access when
+hidden/deleted/unpublished/revoked. These fixtures were inspected, not rerun or
+counted as new fixes. Existing accepted-file copies and public external URLs are
+not retrospectively erased when an entitlement changes; new app/server actions
+are revalidated.
+
+Native evidence remains narrower. Android's production Kotlin lifecycle runner
+and real loopback/OkHttp probes cover the implemented branches with controlled
+DownloadManager/Activity seams; they do not exercise an OEM device's actual system
+download notifications, permissions or viewer. RNFS JavaScript tests execute its
+installed listener code, while the Objective-C background-event checks use source
+assertions and a JS model. UIKit modal/save/background callbacks have not been
+accepted on a physical iPhone in this pass. Cold-process RNFS session restoration
+is not implemented: unknown prior-process identifiers remain with Expo and only
+completed, expected-size staged files can be reused. This is an explicit capability
+limit, not something the existing tests prove away.
+
+The repository already has a real `ios-native` job in `mobile-ci.yml`, using
+macOS, the locked install/postinstall patches, CocoaPods and unsigned device Release
+`xcodebuild`. No Xcode/Swift toolchain was found on this Windows host. Read-only
+GitHub inspection found the latest existing run to be
+`34221259173` at `dea466c89e28eaf41345e2e8df1b64e25c026c88`, not this checkpoint:
+https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/34221259173
+Both native jobs succeeded there; JavaScript failed because the then-current
+`projectPartialReport.test.tsx` lacked its native Clipboard test substitute.
+That substitute already exists locally. Root ran the current focused suite and
+all 13 cases passed without changing source or weakening the test. The older
+native success does not validate later AppDelegate/RNFS edits or this revision.
+
+No workflow was dispatched, commit pushed, binary built, production deployment
+performed or live content/account modified. The next native verification needs
+the current revision on a Mac/Xcode runner, separately from production publishing.
+This audit is not an application-wide completion claim and does not add another
+implementation merely to produce a new diff.
