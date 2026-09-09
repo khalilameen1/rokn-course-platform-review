@@ -170,6 +170,7 @@ export const useHomeEngagement = ({
       });
     return () => {
       current = false;
+      presentedBoundaryRef.current = null;
     };
   }, [identityKey]);
 
@@ -376,27 +377,29 @@ export const useHomeEngagement = ({
 
   const dismissCampaign = useCallback(
     async (open = false) => {
-      const boundary =
-        presentedBoundaryRef.current || (await captureAccountSessionBoundary());
       const current = campaign;
+      const boundary = presentedBoundaryRef.current;
+      if (
+        !current ||
+        !boundary ||
+        presentedIdentityRef.current !== identityKey
+      ) return;
+      assertAccountSessionBoundary(boundary);
       setCampaign(null);
       setCampaignImageFailed(false);
       presentedBoundaryRef.current = null;
-      if (!current) return;
-      const seen = await receiptKey(`campaign/${current.id}`, boundary);
-      if (serverSession === true) {
-        try {
+      // Opening the selected course does not depend on a read receipt. Keep
+      // its server/local sequence intact, but never let it own navigation.
+      void (async () => {
+        const seen = await receiptKey(`campaign/${current.id}`, boundary);
+        assertAccountSessionBoundary(boundary);
+        if (serverSession === true) {
           await markNotificationRead(current.id, boundary);
           assertAccountSessionBoundary(boundary);
-          await saveItem(seen, true);
-          assertAccountSessionBoundary(boundary);
-        } catch {
-          assertAccountSessionBoundary(boundary);
         }
-      } else {
         await saveItem(seen, true);
         assertAccountSessionBoundary(boundary);
-      }
+      })().catch(() => undefined);
       if (!open || !current.courseId || !openCourse({id: current.courseId})) {
         return;
       }
@@ -415,7 +418,7 @@ export const useHomeEngagement = ({
         course_id: current.courseId,
       });
     },
-    [campaign, openCourse, serverSession],
+    [campaign, identityKey, openCourse, serverSession],
   );
 
   return {

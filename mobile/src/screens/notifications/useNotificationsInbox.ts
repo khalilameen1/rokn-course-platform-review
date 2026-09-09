@@ -26,6 +26,7 @@ import {
 } from '../../constants/helpers';
 import {networkFailureKind} from '../../services/networkExperience';
 import {formatRoknRelativeDate} from '../../utils/dateTime';
+import {settleWithin} from '../../utils/settleWithin';
 import {
   notificationCacheKey,
   readCachedNotifications,
@@ -136,10 +137,23 @@ export function useNotificationsInbox() {
         setNotificationError('');
         return;
       }
-      const cachedNotifications = await readCachedNotifications(
-        scopedCacheKey,
-        boundary,
+      // Start the authoritative read before optional device storage. Neither
+      // an old inbox nor cached course artwork owns delivery of new messages.
+      const freshNotificationsRequest = Promise.all([
+        getNotificationsPage({
+          signal: controller.signal,
+          ownerBoundary: boundary,
+        }),
+        settleWithin(getCachedPublishedCourses(), []),
+      ]).then(
+        value => ({ok: true as const, value}),
+        error => ({ok: false as const, error}),
       );
+      const cachedNotifications = await settleWithin(
+        readCachedNotifications(scopedCacheKey, boundary),
+        [],
+      );
+      assertAccountSessionBoundary(boundary);
       if (
         requestGeneration === notificationGenerationRef.current &&
         cachedNotifications.length
@@ -160,13 +174,9 @@ export function useNotificationsInbox() {
         setLoading(false);
       }
       assertAccountSessionBoundary(boundary);
-      const [page, cachedCourses] = await Promise.all([
-        getNotificationsPage({
-          signal: controller.signal,
-          ownerBoundary: boundary,
-        }),
-        getCachedPublishedCourses().catch(() => []),
-      ]);
+      const result = await freshNotificationsRequest;
+      if (!result.ok) throw result.error;
+      const [page, cachedCourses] = result.value;
       assertAccountSessionBoundary(boundary);
       if (requestGeneration !== notificationGenerationRef.current) return;
       setServerNotifications(current => {
