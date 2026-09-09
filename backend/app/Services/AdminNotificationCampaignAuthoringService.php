@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 final readonly class AdminNotificationCampaignAuthoringService
@@ -93,16 +94,18 @@ final readonly class AdminNotificationCampaignAuthoringService
         $imageUrl = null;
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $imagePath = $this->files->storeTrackedUpload(
+            $logicalPath = $this->files->trackedUploadDestination(
                 $image,
                 'student-notifications',
                 'public',
-                60,
                 $imageIdentity . '|' . hash_file('sha256', $image->getRealPath())
             );
-            if (!is_string($imagePath) || trim($imagePath) === '') {
-                throw ValidationException::withMessages(['image' => ['تعذّر حفظ الصورة']]);
-            }
+            // Keep the content identity in the filename for replay checks,
+            // but never reuse bytes an earlier failed attempt may be deleting.
+            $imagePath = dirname($logicalPath) . '/' . pathinfo($logicalPath, PATHINFO_FILENAME)
+                . '-' . Str::uuid() . '.' . pathinfo($logicalPath, PATHINFO_EXTENSION);
+            $this->files->trackPotentialOrphan('public', $imagePath);
+            $this->files->writeTrackedUpload($image, $imagePath, 'public', false);
             $imageUrl = PublicDiskUrl::from($imagePath);
         }
 
@@ -250,6 +253,10 @@ final readonly class AdminNotificationCampaignAuthoringService
     private function notificationImageMatches(string $url, UploadedFile $image, string $identityPrefix): bool
     {
         $storedIdentity = pathinfo((string) (parse_url($url, PHP_URL_PATH) ?: ''), PATHINFO_FILENAME);
+        $parts = explode('-', $storedIdentity, 2);
+        if (count($parts) === 2 && Str::isUuid($parts[1])) {
+            $storedIdentity = $parts[0];
+        }
 
         return $storedIdentity !== '' && hash_equals(
             $storedIdentity,
