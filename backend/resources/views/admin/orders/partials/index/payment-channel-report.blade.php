@@ -15,7 +15,6 @@
                             <th>الإجمالي المؤكد</th>
                             <th>رسوم مؤكدة</th>
                             <th>صافي مؤكد</th>
-                            <th>الصافي الحالي</th>
                             <th>اختبار</th>
                         </tr>
                     </thead>
@@ -31,24 +30,25 @@
                                 <td>{{ number_format($channel['live_count']) }}</td>
                                 <td>{{ number_format($channel['live_coins']) }}</td>
                                 <td>
-                                    {{ number_format($channel['confirmed_gross_amount'], 2) }}
+                                    {{ $channel['live_count'] > 0 && $channel['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($channel['confirmed_gross_amount'], 2) }}
+                                    @if($channel['confirmed_gross_count'] > 0 && $channel['confirmed_gross_count'] < $channel['live_count'])
+                                        <br><small class="text-warning">جزئي · {{ $channel['confirmed_gross_count'] }} من {{ $channel['live_count'] }} عملية</small>
+                                    @endif
                                     @if($channel['catalog_estimated_gross_count'] > 0)
                                         <br><small class="text-warning">+ {{ number_format($channel['catalog_estimated_gross_amount'], 2) }} تقدير كتالوج خارج الإجمالي · {{ $channel['catalog_estimated_gross_count'] }} عملية</small>
                                     @endif
                                 </td>
                                 <td>
-                                    {{ number_format($channel['confirmed_fee_amount'], 2) }}
-                                    @if($channel['pending_settlement_count'] > 0)
-                                        <br><small class="text-warning">{{ $channel['pending_settlement_count'] }} بلا كشف تسوية</small>
+                                    {{ $channel['live_count'] > 0 && $channel['confirmed_fee_count'] === 0 ? 'بانتظار التسوية' : number_format($channel['confirmed_fee_amount'], 2) }}
+                                    @if($channel['confirmed_fee_count'] > 0 && $channel['confirmed_fee_count'] < $channel['live_count'])
+                                        <br><small class="text-warning">جزئي · {{ $channel['confirmed_fee_count'] }} من {{ $channel['live_count'] }} عملية</small>
                                     @endif
                                 </td>
                                 <td>
-                                    {{ number_format($channel['confirmed_net_amount'], 2) }}
-                                    <br><small class="text-muted">{{ $channel['confirmed_net_count'] }} عملية مؤكدة</small>
-                                </td>
-                                <td>
-                                    {{ number_format($channel['estimated_net_amount'], 2) }}
-                                    <br><small class="text-muted">مؤكد، أو تقديري لحين التسوية</small>
+                                    {{ $channel['live_count'] > 0 && $channel['confirmed_net_count'] === 0 ? 'بانتظار التسوية' : number_format($channel['confirmed_net_amount'], 2) }}
+                                    @if($channel['confirmed_net_count'] > 0 && $channel['confirmed_net_count'] < $channel['live_count'])
+                                        <br><small class="text-warning">جزئي · {{ $channel['confirmed_net_count'] }} من {{ $channel['live_count'] }} عملية</small>
+                                    @endif
                                 </td>
                                 <td>
                                     {{ number_format($channel['test_count']) }}
@@ -60,17 +60,33 @@
                         @endforeach
                     </tbody>
                     <tfoot>
+                        @php
+                            $egp = $paymentChannelReport['egp'];
+                            $egpNetCount = (int) $paymentChannelReport['rows']->where('currency', 'EGP')->sum('confirmed_net_count');
+                        @endphp
                         <tr>
                             <th>الإجمالي بالجنيه</th>
                             <th>{{ number_format($paymentChannelReport['egp']['live_count']) }}</th>
                             <th>{{ number_format($paymentChannelReport['egp']['live_coins']) }}</th>
                             <th>
-                                {{ number_format($paymentChannelReport['egp']['confirmed_gross_amount'], 2) }}
+                                {{ $egp['live_count'] > 0 && $egp['confirmed_gross_count'] === 0 ? 'بانتظار تأكيد التحصيل' : number_format($egp['confirmed_gross_amount'], 2) }}
+                                @if($egp['confirmed_gross_count'] > 0 && $egp['confirmed_gross_count'] < $egp['live_count'])
+                                    <br><small class="text-warning">جزئي · {{ $egp['confirmed_gross_count'] }} من {{ $egp['live_count'] }} عملية</small>
+                                @endif
                                 @if($paymentChannelReport['egp']['catalog_estimated_gross_count'] > 0)<br><small>+ {{ number_format($paymentChannelReport['egp']['catalog_estimated_gross_amount'], 2) }} تقديري خارج الإجمالي</small>@endif
                             </th>
-                            <th>{{ number_format($paymentChannelReport['egp']['confirmed_fee_amount'], 2) }}</th>
-                            <th>{{ number_format($paymentChannelReport['egp']['confirmed_net_amount'], 2) }}</th>
-                            <th>{{ number_format($paymentChannelReport['egp']['estimated_net_amount'], 2) }}</th>
+                            <th>
+                                {{ $egp['live_count'] > 0 && $egp['confirmed_fee_count'] === 0 ? 'بانتظار التسوية' : number_format($egp['confirmed_fee_amount'], 2) }}
+                                @if($egp['confirmed_fee_count'] > 0 && $egp['confirmed_fee_count'] < $egp['live_count'])
+                                    <br><small class="text-warning">جزئي · {{ $egp['confirmed_fee_count'] }} من {{ $egp['live_count'] }} عملية</small>
+                                @endif
+                            </th>
+                            <th>
+                                {{ $egp['live_count'] > 0 && $egpNetCount === 0 ? 'بانتظار التسوية' : number_format($egp['confirmed_net_amount'], 2) }}
+                                @if($egpNetCount > 0 && $egpNetCount < $egp['live_count'])
+                                    <br><small class="text-warning">جزئي · {{ $egpNetCount }} من {{ $egp['live_count'] }} عملية</small>
+                                @endif
+                            </th>
                             <th>{{ number_format($paymentChannelReport['egp']['test_count']) }}</th>
                         </tr>
                     </tfoot>

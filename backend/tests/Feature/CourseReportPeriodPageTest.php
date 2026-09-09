@@ -171,6 +171,93 @@ final class CourseReportPeriodPageTest extends TestCase
         $this->get(route('admin.courses.commercial-report.export', [$course, 'period' => '7d']))->assertForbidden();
     }
 
+    public static function costEvidence(): array
+    {
+        return [
+            'pending only' => [true, null, 'بانتظار التأكيد'],
+            'known partial subtotal' => [true, .025, '$0.025000 مؤكد جزئيًا'],
+            'confirmed zero' => [false, 0.0, '$0.000000'],
+        ];
+    }
+
+    #[DataProvider('costEvidence')]
+    public function test_student_feature_and_total_preserve_cost_evidence(bool $pending, ?float $known, string $expected): void
+    {
+        $course = $this->course();
+        $plan = $this->plan($course, 'guided');
+        $enrollment = $this->enroll($course);
+        // A confirmed zero in another feature must not inherit this feature's uncertainty.
+        $this->usage($enrollment, $plan, CarbonImmutable::now('UTC')->subHour(), 0);
+        foreach (array_filter([
+            $pending ? ['source' => 'reservation_fallback', 'cost' => .5] : null,
+            $known !== null ? ['source' => 'provider', 'cost' => $known] : null,
+        ]) as $receipt) {
+            AiUsageEvent::create([
+                'request_id' => Str::uuid(), 'enrollment_id' => $enrollment->id,
+                'access_plan_id' => $plan->id, 'user_id' => $enrollment->user_id,
+                'course_id' => $course->id, 'feature' => 'project_feedback',
+                'status' => 'completed', 'total_tokens' => 100, 'cost_usd' => $receipt['cost'],
+                'cost_egp' => $receipt['cost'] * 50,
+                'metadata' => ['cost_usage_source' => $receipt['source']],
+                'created_at' => now()->subHour(), 'completed_at' => now()->subHour(),
+            ]);
+        }
+        $response = $this->actingAs($this->user('admin'), 'web')->get(route('admin.courses.show', [
+            $course, 'tab' => 'commercial-report', 'period' => '7d',
+        ]))->assertOk();
+        $feature = $response->viewData('commercialReport')['student_rows']->first()['ai_by_feature']['project_feedback'];
+        self::assertSame(!$pending, $feature['cost_complete']);
+        self::assertSame($pending ? 1 : 0, $feature['estimated_cost_requests']);
+        $cells = $this->tableRowCells($response->getContent(), $enrollment->user->email);
+        $consumption = $cells[9];
+        $completed = ($pending ? 1 : 0) + ($known !== null ? 1 : 0);
+        self::assertStringContainsString('تقرير المشروع · '.$completed.' مكتمل · 0 بلا نتيجة · '.$expected, $consumption);
+        self::assertStringContainsString($expected.' · 0 دقيقة', $consumption);
+        self::assertStringContainsString('شات الكورس · 1 مكتمل · 0 بلا نتيجة · $0.000000', $consumption);
+        self::assertStringNotContainsString('$0.500000', $consumption);
+        if (!$pending) self::assertStringNotContainsString('بانتظار', $consumption);
+    }
+
+    public static function netEvidence(): array
+    {
+        return [
+            'pending without confirmed amount' => [false, 0.0, 'بانتظار التسوية'],
+            'positive partial settlement' => [false, 2.5, '2.50 ج.م مؤكد جزئيًا'],
+            'confirmed zero settlement' => [true, 0.0, '0.00 ج.م'],
+        ];
+    }
+
+    #[DataProvider('netEvidence')]
+    public function test_channel_net_does_not_label_unconfirmed_zero_as_a_receipt(bool $complete, float $known, string $expected): void
+    {
+        $course = $this->course();
+        $period = ReportPeriod::fromKey('all');
+        $report = app(\App\Services\CourseCommercialReportService::class)->forCourse($course, $period);
+        $report['student_rows'] = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 25);
+        $report['cash_channel_breakdown'] = collect([[
+            'label' => 'Test settlement channel', 'paid_coins' => 100, 'gross_egp' => 10,
+            'estimated_gross_egp' => 0, 'net_complete' => $complete, 'net_known_egp' => $known,
+            'pending_settlement_egp' => $complete ? 0 : 10, 'foreign_currency_amounts' => [],
+        ]]);
+        $html = view('admin.courses.partials.show.commercial-report', [
+            'reportCourse' => $course, 'reportPeriod' => $period, 'commercialReport' => $report,
+        ])->render();
+        self::assertSame($expected, $this->tableRowCells($html, 'Test settlement channel')[4]);
+    }
+
+    private function tableRowCells(string $html, string $needle): array
+    {
+        preg_match_all('/<tr\b[^>]*>(.*?)<\/tr>/su', $html, $rows);
+        foreach ($rows[1] as $row) {
+            if (!str_contains($row, $needle)) continue;
+            preg_match_all('/<td\b[^>]*>(.*?)<\/td>/su', $row, $cells);
+
+            return array_map(fn (string $cell): string => trim(preg_replace('/\s+/u', ' ',
+                html_entity_decode(strip_tags($cell), ENT_QUOTES | ENT_HTML5, 'UTF-8'))), $cells[1]);
+        }
+        self::fail('Expected report row was not rendered.');
+    }
+
     private function user(string $role): User
     {
         return User::forceCreate(['name_ar' => 'طالب التقرير', 'email' => Str::uuid().'@example.test', 'role' => $role, 'active' => true]);

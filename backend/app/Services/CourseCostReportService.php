@@ -61,7 +61,9 @@ final class CourseCostReportService
                 'ai_cost_egp' => $aiCostEgp,
                 'ai_by_feature' => $features->get($id, collect())->mapWithKeys(fn (array $feature): array => [
                     $feature['feature'] => ['delivered_requests' => $feature['completed_requests'],
-                        'unanswered_requests' => $feature['unanswered_requests'], 'cost_usd' => $feature['cost_usd']],
+                        'unanswered_requests' => $feature['unanswered_requests'], 'cost_usd' => $feature['cost_usd'],
+                        'cost_complete' => $feature['cost_complete'],
+                        'estimated_cost_requests' => $feature['estimated_cost_requests']],
                 ])->all(),
                 'playback_minutes' => round((float) $playback->get($id, 0), 2),
                 'playback_gb_estimated' => 0.0,
@@ -138,4 +140,3 @@ final class CourseCostReportService
         return $minutes;
     }
 }
-

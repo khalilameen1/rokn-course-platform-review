@@ -44,7 +44,12 @@
         <div class="stat-card"><span class="stat-counter">{{ $report['contribution_margin_percentage'] === null ? '—' : number_format($report['contribution_margin_percentage'], 2).'%' }}</span><span class="stat-label">نسبة هامش المساهمة</span></div>
         <div class="stat-card"><span class="stat-counter">{{ $report['average_net_per_student_egp'] === null ? '—' : number_format($report['average_net_per_student_egp'], 2).' ج.م' }}</span><span class="stat-label">متوسط الصافي لكل طالب</span></div>
         <div class="stat-card"><span class="stat-counter">{{ $report['average_cost_per_student_egp'] === null ? '—' : number_format($report['average_cost_per_student_egp'], 2).' ج.م' }}</span><span class="stat-label">متوسط التكلفة لكل طالب</span></div>
-        <div class="stat-card"><span class="stat-counter">{{ ($report['ai_measurement_available'] ?? true) ? '$'.number_format($report['ai_cost_usd'], 6) : 'غير متاح' }}</span><span class="stat-label">OpenRouter مؤكد · {{ number_format($report['ai_requests']) }} ناجح · {{ number_format($report['ai_failed_requests']) }} فاشل</span>@include('admin.reports.growth', ['change' => $report['comparisons']['ai_cost_usd'], 'neutral' => true])@if(($report['ai_estimated_requests'] ?? 0) > 0)<small class="text-warning">{{ number_format($report['ai_estimated_requests']) }} طلبًا بانتظار تكلفة المزود</small>@endif</div>
+        <div class="stat-card">
+            <span class="stat-counter">{{ !($report['ai_measurement_available'] ?? true) ? 'غير متاح' : (!$report['ai_cost_complete'] && $report['ai_cost_usd'] == 0 ? 'بانتظار التأكيد' : '$'.number_format($report['ai_cost_usd'], 6)) }}</span>
+            <span class="stat-label">OpenRouter مؤكد · {{ number_format($report['ai_requests']) }} ناجح · {{ number_format($report['ai_failed_requests']) }} فاشل · {{ number_format($report['ai_unanswered_requests']) }} بلا نتيجة</span>
+            @include('admin.reports.growth', ['change' => $report['comparisons']['ai_cost_usd'], 'neutral' => true])
+            @if(($report['ai_estimated_requests'] ?? 0) > 0)<small class="text-warning">{{ number_format($report['ai_estimated_requests']) }} طلبًا بانتظار تكلفة المزود</small>@endif
+        </div>
         <div class="stat-card"><span class="stat-counter">{{ number_format($report['playback_minutes'], 0) }}</span><span class="stat-label">دقيقة فيديو مقاسة</span></div>
     </div>
     @if($report['provider_invoice_report'] !== null)
@@ -70,7 +75,24 @@
         <thead><tr><th>الخدمة</th><th>الاستهلاك المقاس</th><th>تكلفة مؤكدة بالجنيه</th><th>من إجمالي التكلفة</th><th>ملاحظة القرار</th></tr></thead>
         <tbody>@foreach($report['service_breakdown'] as $service)<tr>
             <td>{{ $service['label'] }}</td>
-            <td>@if($service['key'] === 'openrouter'){{ number_format($service['requests']) }} ناجح · {{ number_format($service['failed_requests']) }} فاشل · {{ number_format($service['units']) }} توكن<br><small>${{ number_format($service['cost_usd'], 6) }}@if($report['ai_cost_per_1000_tokens_usd'] !== null) · ${{ number_format($report['ai_cost_per_1000_tokens_usd'], 6) }}/1000 توكن@endif @if($report['ai_failure_rate_percentage'] !== null)· فشل {{ number_format($report['ai_failure_rate_percentage'], 2) }}%@endif</small>@elseif($service['key'] === 'bunny_delivery'){{ number_format($service['minutes'], 0) }} دقيقة@elseif($service['key'] === 'notifications'){{ number_format($service['in_app_notifications']) }} داخل التطبيق · {{ number_format($service['push_attempts']) }} محاولة Push · {{ number_format($service['push_provider_accepted']) }} قبله المزود@if($service['push_provider_acceptance_rate_percentage'] !== null) · {{ number_format($service['push_provider_acceptance_rate_percentage'], 2) }}%@endif @else<span class="text-muted">فاتورة مزود مسجلة؛ لا توزيع على الطلاب</span>@endif</td>
+            <td>
+                @if($service['key'] === 'openrouter')
+                    {{ number_format($service['requests']) }} ناجح · {{ number_format($service['failed_requests']) }} فاشل · {{ number_format($report['ai_unanswered_requests']) }} بلا نتيجة · {{ number_format($service['units']) }} توكن<br>
+                    <small>
+                        {{ !$report['ai_cost_complete'] && $service['cost_usd'] == 0 ? 'بانتظار التأكيد' : '$'.number_format($service['cost_usd'], 6) }}
+                        @if(!$report['ai_cost_complete'] && $service['cost_usd'] > 0) · مؤكد جزئيًا@endif
+                        @if($report['ai_cost_per_1000_tokens_usd'] !== null) · ${{ number_format($report['ai_cost_per_1000_tokens_usd'], 6) }}/1000 توكن@endif
+                        @if($report['ai_failure_rate_percentage'] !== null) · لم تكتمل {{ number_format($report['ai_failure_rate_percentage'], 2) }}٪ من الطلبات@endif
+                    </small>
+                @elseif($service['key'] === 'bunny_delivery')
+                    {{ number_format($service['minutes'], 0) }} دقيقة
+                @elseif($service['key'] === 'notifications')
+                    {{ number_format($service['in_app_notifications']) }} داخل التطبيق · {{ number_format($service['push_attempts']) }} محاولة Push · {{ number_format($service['push_provider_accepted']) }} قبله المزود
+                    @if($service['push_provider_acceptance_rate_percentage'] !== null) · {{ number_format($service['push_provider_acceptance_rate_percentage'], 2) }}٪@endif
+                @else
+                    <span class="text-muted">بحسب الفواتير النهائية المسجلة دون توزيع على الطلاب</span>
+                @endif
+            </td>
             <td>{{ $service['actual_egp'] === null ? 'غير مكتملة' : number_format($service['actual_egp'], 2).' ج.م' }}</td>
             <td>{{ $service['share_of_actual_cost_percentage'] === null ? '—' : number_format($service['share_of_actual_cost_percentage'], 2).'%' }}</td>
             <td>@if($service['actual_egp'] === null)<span class="text-warning">أكمل فاتورتها/سعر تحويلها</span>@elseif((float) $service['actual_egp'] === 0.0)<span class="text-muted">مبلغ صفري مؤكد</span>@else<span class="text-success">مبلغ مسجل مؤكد</span>@endif</td>
@@ -97,7 +119,7 @@
                 @if($row['payment_channels']->isNotEmpty())<br><small>{{ $row['payment_channels']->implode('، ') }}</small>@endif
                 @if(!$row['coin_allocation_complete'])<br><small class="text-warning">ربط الدفتر غير مكتمل</small>@endif
             </td>
-            <td>{{ number_format($row['ai_requests']) }} AI ناجح · {{ number_format($row['ai_failed_requests']) }} فاشل@if($row['ai_failure_rate_percentage'] !== null) ({{ number_format($row['ai_failure_rate_percentage'], 2) }}%)@endif · {{ number_format($row['ai_tokens']) }} توكن<br>{{ number_format($row['playback_minutes'], 0) }} دقيقة<br>{{ number_format($row['in_app_notifications']) }} إشعار · {{ number_format($row['push_attempts']) }} Push / {{ number_format($row['push_provider_accepted']) }} قبله المزود@if($row['push_provider_acceptance_rate_percentage'] !== null) ({{ number_format($row['push_provider_acceptance_rate_percentage'], 2) }}%)@endif</td>
+            <td>{{ number_format($row['ai_requests']) }} AI ناجح · {{ number_format($row['ai_failed_requests']) }} فاشل · {{ number_format($row['ai_unanswered_requests']) }} بلا نتيجة@if($row['ai_failure_rate_percentage'] !== null) (لم تكتمل {{ number_format($row['ai_failure_rate_percentage'], 2) }}٪)@endif · {{ number_format($row['ai_tokens']) }} توكن<br>{{ number_format($row['playback_minutes'], 0) }} دقيقة<br>{{ number_format($row['in_app_notifications']) }} إشعار · {{ number_format($row['push_attempts']) }} Push / {{ number_format($row['push_provider_accepted']) }} قبله المزود@if($row['push_provider_acceptance_rate_percentage'] !== null) ({{ number_format($row['push_provider_acceptance_rate_percentage'], 2) }}%)@endif</td>
             <td>{{ $row['net_egp'] === null ? 'غير مكتمل' : number_format($row['net_egp'], 2).' ج.م' }}</td>
             <td>{{ $row['service_cost_egp'] === null ? 'غير مكتملة' : number_format($row['service_cost_egp'], 2).' ج.م' }}</td>
             <td>{{ $row['cost_to_net_revenue_percentage'] === null ? '—' : number_format($row['cost_to_net_revenue_percentage'], 2).'%' }}</td>

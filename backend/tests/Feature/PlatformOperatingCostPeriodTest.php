@@ -47,7 +47,30 @@ final class PlatformOperatingCostPeriodTest extends TestCase
         self::assertNull($report['average_cost_per_student_egp']);
         self::assertSame('7d', $report['period']->key);
         self::assertSame('unavailable', $report['comparisons']['ai_cost_usd']['status']);
+        self::assertNull($report['ai_cost_per_1000_tokens_usd']);
         self::assertSame(10, $report['course_breakdown']->first()['course_id']);
+    }
+
+    public function test_unsuccessful_request_rate_is_the_same_for_platform_and_student(): void
+    {
+        DB::table('users')->insert(['id' => 1, 'name_ar' => 'Student', 'email' => 'student@example.test', 'password' => 'x', 'role' => 'client']);
+        DB::table('course_enrollments')->insert(['id' => 1, 'user_id' => 1, 'course_id' => 10,
+            'is_active' => true, 'enrolled_at' => '2026-01-01', 'created_at' => '2026-01-01', 'updated_at' => '2026-01-01']);
+        $this->usage(1, 1, 'provider');
+        $this->usage(2, 2, 'provider');
+        $this->usage(3, 3, 'provider');
+        DB::table('ai_usage_events')->where('id', 2)->update([
+            'metadata' => json_encode(['cost_usage_source' => 'provider', 'entitlement_delivered' => false]),
+        ]);
+        DB::table('ai_usage_events')->where('id', 3)->update(['status' => 'failed']);
+
+        $report = app(PlatformCommercialReportService::class)->report(['period' => '7d']);
+        self::assertSame(1, $report['ai_requests']);
+        self::assertSame(1, $report['ai_failed_requests']);
+        self::assertSame(1, $report['ai_unanswered_requests']);
+        self::assertSame(66.67, $report['ai_failure_rate_percentage']);
+        self::assertNull($report['ai_cost_per_1000_tokens_usd']);
+        self::assertSame($report['ai_failure_rate_percentage'], $report['student_rows']->first()['ai_failure_rate_percentage']);
     }
 
     public function test_course_scope_does_not_adopt_shared_invoice_and_cohort_never_allocates_it(): void

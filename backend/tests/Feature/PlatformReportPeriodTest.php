@@ -265,6 +265,24 @@ final class PlatformReportPeriodTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('course_id');
     }
 
+    public function test_operating_report_distinguishes_pending_cost_from_confirmed_zero(): void
+    {
+        $admin = $this->user('admin');
+        $enrollment = $this->enrollment($admin, $this->course());
+        $usage = $this->usage($enrollment, now()->toImmutable()->subMinute(), .025, 'reservation_fallback');
+        $this->actingAs($admin, 'web');
+        $pending = $this->get('/dashboard/operating-costs-report?period=7d')->assertOk()
+            ->assertSee('بانتظار التأكيد')
+            ->assertDontSee('$0.025000');
+        self::assertNull($pending->viewData('report')['ai_cost_per_1000_tokens_usd']);
+        self::assertStringNotContainsString('فاتورة مزود مسجلة؛', $pending->getContent());
+
+        $usage->update(['cost_usd' => 0, 'metadata' => ['cost_usage_source' => 'provider']]);
+        $confirmed = $this->get('/dashboard/operating-costs-report?period=7d')->assertOk()
+            ->assertSee('$0.000000')->assertDontSee('بانتظار التأكيد');
+        self::assertTrue($confirmed->viewData('report')['ai_cost_complete']);
+    }
+
     public function test_moderators_do_not_resolve_new_financial_services(): void
     {
         $resolved = [];

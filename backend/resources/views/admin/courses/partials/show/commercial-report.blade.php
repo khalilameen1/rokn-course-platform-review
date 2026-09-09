@@ -129,7 +129,15 @@
                 <td>{{ number_format($channel['paid_coins']) }}</td>
                 <td>{{ number_format($channel['gross_egp'], 2) }} ج.م</td>
                 <td>{{ number_format($channel['estimated_gross_egp'], 2) }} ج.م</td>
-                <td>{{ $channel['net_complete'] ? number_format($channel['net_known_egp'], 2).' ج.م' : number_format($channel['net_known_egp'], 2).' ج.م مؤكد جزئيًا' }}</td>
+                <td>
+                    @if($channel['net_complete'])
+                        {{ number_format($channel['net_known_egp'], 2) }} ج.م
+                    @elseif($channel['net_known_egp'] > 0)
+                        {{ number_format($channel['net_known_egp'], 2) }} ج.م مؤكد جزئيًا
+                    @else
+                        <span class="text-warning">بانتظار التسوية</span>
+                    @endif
+                </td>
                 <td>
                     {{ number_format($channel['pending_settlement_egp'], 2) }} ج.م
                     @foreach($channel['foreign_currency_amounts'] as $currency => $amount)<br><small>{{ $currency }} {{ number_format($amount, 2) }}</small>@endforeach
@@ -253,9 +261,24 @@
                         <td>
                             {{ number_format($row['ai_requests']) }} طلب AI · {{ number_format($row['ai_tokens']) }} توكن<br>
                             @foreach(($row['ai_by_feature'] ?? []) as $feature => $featureUsage)
-                                <small>{{ \App\Services\CourseCostReportService::aiFeatureLabels()[$feature] ?? $feature }} · {{ number_format($featureUsage['delivered_requests']) }} مكتمل · {{ number_format($featureUsage['unanswered_requests']) }} بلا نتيجة · ${{ number_format($featureUsage['cost_usd'], 6) }}</small><br>
+                                <small>{{ \App\Services\CourseCostReportService::aiFeatureLabels()[$feature] ?? $feature }} · {{ number_format($featureUsage['delivered_requests']) }} مكتمل · {{ number_format($featureUsage['unanswered_requests']) }} بلا نتيجة ·
+                                    @if($featureUsage['cost_complete'])
+                                        ${{ number_format($featureUsage['cost_usd'], 6) }}
+                                    @elseif($featureUsage['cost_usd'] > 0)
+                                        ${{ number_format($featureUsage['cost_usd'], 6) }} مؤكد جزئيًا
+                                    @else
+                                        <span class="text-warning">بانتظار التأكيد</span>
+                                    @endif
+                                </small><br>
                             @endforeach
-                            ${{ number_format($row['ai_cost_usd'], 6) }} · {{ number_format($row['playback_minutes'], 0) }} دقيقة
+                            @if($row['ai_cost_complete'])
+                                ${{ number_format($row['ai_cost_usd'], 6) }}
+                            @elseif($row['ai_cost_usd'] > 0)
+                                ${{ number_format($row['ai_cost_usd'], 6) }} مؤكد جزئيًا
+                            @else
+                                <span class="text-warning">بانتظار التأكيد</span>
+                            @endif
+                            · {{ number_format($row['playback_minutes'], 0) }} دقيقة
                         </td>
                         <td>
                             {{ $row['service_cost_actual_egp'] === null ? 'غير مكتملة' : number_format($row['service_cost_actual_egp'], 2).' ج.م' }}

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Course;
+use App\Models\CourseAuthoringRevision;
 use App\Models\OperatingCostPool;
 use App\Models\Setting;
 use App\Services\CourseCostReportService;
@@ -44,18 +45,18 @@ final class OperatingCostPoolController extends Controller
             ->groupBy('service_key', 'is_final')
             ->get();
         $pools = (clone $poolQuery)
-            ->with('course')
+            ->with(['course' => fn ($query) => $query->withTrashed()])
             ->latest('period_end')
             ->latest('id')
             ->paginate(30)
             ->withQueryString();
-        $courses = Course::query()
+        $courses = $this->invoiceCourses()
             ->withCount('activeEnrollments')
             ->orderBy('name_ar')
-            ->get(['id', 'name_ar']);
+            ->get(['id', 'name_ar', 'deleted_at']);
         $settings = Setting::query()->first() ?? new Setting();
         $editPool = $request->filled('edit_cost')
-            ? OperatingCostPool::query()->findOrFail((int) $request->input('edit_cost'))
+            ? OperatingCostPool::query()->with(['course' => fn ($query) => $query->withTrashed()])->findOrFail((int) $request->input('edit_cost'))
             : null;
         $poolEditorVersions = $pools->getCollection()->mapWithKeys(
             fn (OperatingCostPool $pool): array => [$pool->id => $this->editorVersion($pool)]
@@ -87,18 +88,22 @@ final class OperatingCostPoolController extends Controller
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
     {
         $data = $this->validated($request);
+        $this->assertInvoiceCourse($data);
         DB::transaction(function () use ($request, $data, $createIntents): void {
             $pool = OperatingCostPool::query()->create($data + ['created_by' => $request->user()->id]);
             $createIntents->completeRedirect($request, url()->previous(), 302, OperatingCostPool::class, $pool->id);
         }, 3);
 
-        return back()->with('success', 'تمت إضافة فاتورة التكلفة وستدخل في تقارير الربحية.');
+        return back()->with('success', $data['is_final']
+            ? 'تم حفظ الفاتورة النهائية لتقارير التشغيل.'
+            : 'تم حفظ الفاتورة غير النهائية؛ لا تدخل في التكاليف المؤكدة.');
     }
 
     public function update(Request $request, OperatingCostPool $operatingCost): RedirectResponse
     {
         $request->validate(['editor_version' => 'required|string|size:64']);
         $data = $this->validated($request);
+        $this->assertInvoiceCourse($data, $operatingCost);
         DB::transaction(function () use ($request, $operatingCost, $data): void {
             $locked = OperatingCostPool::query()->whereKey($operatingCost->id)
                 ->lockForUpdate()->firstOrFail();
@@ -172,7 +177,7 @@ final class OperatingCostPoolController extends Controller
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
-        $courses = Course::withTrashed()
+        $courses = $this->invoiceCourses()
             ->orderBy('name_ar')
             ->get(['id', 'name_ar']);
 
@@ -283,6 +288,25 @@ final class OperatingCostPoolController extends Controller
             'amount', 'currency', 'fx_rate_to_egp', 'allocation_driver',
             'is_final', 'notes',
         ]);
+    }
+
+    private function invoiceCourses(): \Illuminate\Database\Eloquent\Builder
+    {
+        return Course::withTrashed()->whereNotIn('courses.id',
+            CourseAuthoringRevision::query()->select('revision_course_id'));
+    }
+
+    private function assertInvoiceCourse(array $data, ?OperatingCostPool $existing = null): void
+    {
+        $courseId = $data['course_id'] ?? null;
+        // Keep historical attribution when editing an existing invoice; never
+        // silently move an old invoice onto today's canonical course.
+        if ($courseId === null || ($existing !== null && (int) $existing->course_id === (int) $courseId)) {
+            return;
+        }
+        if (CourseAuthoringRevision::query()->where('revision_course_id', $courseId)->exists()) {
+            throw ValidationException::withMessages(['course_id' => 'اختر الكورس الأصلي، وليس نسخة التأليف.']);
+        }
     }
 
 }

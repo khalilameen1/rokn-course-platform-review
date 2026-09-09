@@ -142,8 +142,10 @@ final readonly class PlatformCommercialReportService
             ? round($summary['service_cost_egp'] / $summary['net_egp'] * 100, 2) : null;
         $summary['contribution_margin_percentage'] = $summary['net_egp'] > 0 && $summary['margin_egp'] !== null
             ? round($summary['margin_egp'] / $summary['net_egp'] * 100, 2) : null;
-        $summary['ai_failure_rate_percentage'] = $summary['ai_requests'] + $summary['ai_failed_requests'] > 0
-            ? round($summary['ai_failed_requests'] / ($summary['ai_requests'] + $summary['ai_failed_requests']) * 100, 2) : null;
+        $unsuccessfulRequests = $summary['ai_failed_requests'] + $summary['ai_unanswered_requests'];
+        $aiAttempts = $summary['ai_requests'] + $unsuccessfulRequests;
+        $summary['ai_failure_rate_percentage'] = $aiAttempts > 0
+            ? round($unsuccessfulRequests / $aiAttempts * 100, 2) : null;
         $studentRows = $rows
             ->groupBy(fn (array $row): int => (int) $row['enrollment']->user_id)
             ->map(function (Collection $userRows, int $userId) use ($notificationUsage): array {
@@ -189,7 +191,9 @@ final readonly class PlatformCommercialReportService
                 : null;
         // Recorded platform invoices are not evidence of individual learner costs.
         $summary['average_cost_per_student_egp'] = null;
-        $summary['ai_cost_per_1000_tokens_usd'] = (int) $summary['ai_tokens'] > 0
+        // Failed requests can carry provider charges without completed token totals.
+        $summary['ai_cost_per_1000_tokens_usd'] = $summary['ai_cost_complete']
+            && $summary['ai_failed_requests'] === 0 && (int) $summary['ai_tokens'] > 0
             ? round(((float) $summary['ai_cost_usd'] / (int) $summary['ai_tokens']) * 1000, 6)
             : null;
         $notificationTotals = [

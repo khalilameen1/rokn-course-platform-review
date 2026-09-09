@@ -88,6 +88,7 @@ final class PaymentChannelReportService
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') AND gateway_gross_amount IS NOT NULL THEN 1 ELSE 0 END) as confirmed_gross_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' AND (gateway_gross_amount IS NULL OR gateway_settlement_status = 'catalog_estimate') THEN 1 ELSE 0 END) as catalog_estimated_gross_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') THEN COALESCE(gateway_fee_amount, 0) ELSE 0 END) as confirmed_fee_amount")
+            ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') AND gateway_fee_amount IS NOT NULL THEN 1 ELSE 0 END) as confirmed_fee_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') THEN COALESCE(gateway_net_amount, 0) ELSE 0 END) as confirmed_net_amount")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') NOT IN ('test_purchase', 'catalog_estimate') AND gateway_net_amount IS NOT NULL THEN 1 ELSE 0 END) as confirmed_net_count")
             ->selectRaw("SUM(CASE WHEN COALESCE(gateway_settlement_status, '') <> 'test_purchase' AND gateway_net_amount IS NULL THEN 1 ELSE 0 END) as pending_settlement_count")
@@ -130,6 +131,7 @@ final class PaymentChannelReportService
                 'confirmed_gross_count' => (int) $egpRows->sum('confirmed_gross_count'),
                 'catalog_estimated_gross_count' => (int) $egpRows->sum('catalog_estimated_gross_count'),
                 'confirmed_fee_amount' => (float) $egpRows->sum('confirmed_fee_amount'),
+                'confirmed_fee_count' => (int) $egpRows->sum('confirmed_fee_count'),
                 'confirmed_net_amount' => (float) $egpRows->sum('confirmed_net_amount'),
                 'estimated_net_amount' => (float) $egpRows->sum('estimated_net_amount'),
                 'pending_settlement_count' => (int) $egpRows->sum('pending_settlement_count'),
@@ -202,6 +204,7 @@ final class PaymentChannelReportService
             'confirmed_gross_count' => (int) ($aggregate?->confirmed_gross_count ?? 0),
             'catalog_estimated_gross_count' => (int) ($aggregate?->catalog_estimated_gross_count ?? 0),
             'confirmed_fee_amount' => (float) ($aggregate?->confirmed_fee_amount ?? 0),
+            'confirmed_fee_count' => (int) ($aggregate?->confirmed_fee_count ?? 0),
             'confirmed_net_amount' => (float) ($aggregate?->confirmed_net_amount ?? 0),
             'confirmed_net_count' => (int) ($aggregate?->confirmed_net_count ?? 0),
             'pending_settlement_count' => (int) ($aggregate?->pending_settlement_count ?? 0),
