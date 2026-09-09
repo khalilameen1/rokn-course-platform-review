@@ -1952,3 +1952,73 @@ buffering. The body deadline does not turn PHP's streamed DNS, redirects or
 header delivery into a guaranteed ten-second wall-clock transport. No learner
 access rule, queue retry policy, publication flow, vendor source, APK or live
 service was changed by this sibling repair.
+
+## September 9 — recovered credit, project selection and leaving the studio
+
+Continued from clean `301c5ce`. The previous turn was concrete progress. This
+pass followed separate daily journeys and retained their existing server rules.
+
+- A top-up tap waiting for foreground payment recovery ignored the successful
+  recovered credit and started another provider checkout. The RED case used
+  the actual course checkout hook, coordinator, recovery and attempt store:
+  approving the old order caused `payment/initiate` and a second browser opening.
+  A waiting tap now consumes successful recovery and requotes the course instead;
+  it still requires an explicit course-purchase confirmation. The joining path
+  rechecks its account boundary. Six new cases preserve pending-order reuse and
+  idempotency, cancelled-order retry, different requested packages, and account/
+  epoch replacement. No backend settlement policy changed. Saved in `29ba4f0`.
+- Project file selection could open the native picker after leaving its page
+  while account capture was delayed. Four actual hook/picker RED cases covered
+  unmount, another project, an inactive page and leaving then returning; a fifth
+  exposed a late selected file being cached after that visit ended. Selection
+  now uses the existing visit object and project identity before native launch,
+  after the response and around cache admission. Ten new cases preserve normal
+  selection, cancellation/retry, duplicate taps, account ownership and cleanup
+  of a file copied after its visit retired. Project-review decisions and the
+  previously repaired portfolio picker are unchanged. Saved in `ea3b6fe`.
+- Studio's existing dirty-editor coordinator protected internal transitions but
+  not leaving the document. Three real-browser RED cases lost a section title/
+  caption, a module title or course details after a failed save. The same
+  snapshots now guard `beforeunload`; the course form is tracked even when its
+  panel is closed. Only acknowledged saves clear their baseline. A strengthened
+  accepted-receipt counter also exposed a spurious warning before the existing
+  canonical reload; marking that acknowledged section clean fixes it without
+  changing replay/UUID/version logic. There is no new draft store, API, parser,
+  publication policy or UI redesign. Forced process termination is not covered
+  by a browser navigation warning.
+- The installed RNFS JavaScript wrapper removed job-owned event subscriptions
+  on success but left them after a rejected native download. Two RED cases
+  executed the real installed library with only Flow stripped and native bridge/
+  emitter seams substituted: two listeners remained, and an old job's callback
+  still fired alongside a different active file. One missing cleanup statement
+  now handles rejection too, preserving the original error and other jobs.
+  A version/source-checked postinstall fix makes this reproducible on a clean
+  install and refuses unknown source rather than guessing. The existing Firebase
+  fix remains registered; its gate now accepts multiple postinstall commands.
+  Reapplication is idempotent. No package version changed. Saved in `faeb244`.
+
+Root verification passed 14 mobile suites / 159 tests, five Node checks of the
+installed-library fix and existing Firebase compatibility, full TypeScript and
+scoped ESLint. Root reran 19 real-browser studio navigation cases plus accepted
+receipt recovery. The authoring agent separately passed content ordering and
+Bunny upload allocation/transport/claim/cancel browser gates. Syntax and diff
+checks passed. Mobile native/provider seams and browser API fixtures are controlled
+local evidence, not physical-device or real-payment acceptance.
+
+The native RNFS review also prevented a false repair: application code supplies
+`discretionary: true`, but this installed JS bridge does not forward the option,
+so iOS receives the native default false. No scheduling defect was established
+and no application scheduling option changed.
+
+Known remaining attachment evidence: on iOS, resumable interruption or cancellation
+can leave RNFS's original native promise unsettled as part of its stop/resume
+contract. The existing app wrapper releases the learner's action and protects
+retry files, but that does not release all native/job listeners after permanent
+abandonment. The rejection cleanup above does not claim to fix an un-rejected
+promise. Next work must distinguish terminal abandonment from pause/resume and
+preserve a legitimate stop-to-resume-to-completion path, not remove all listeners
+or turn every resumable event into failure. Physical Android completion/receiver
+and native iOS handoff acceptance remain unproved too.
+
+No APK, push, deployment, live upload, real payment or account/provider mutation
+was performed. No product feature or design was removed.
