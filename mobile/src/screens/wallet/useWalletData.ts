@@ -47,6 +47,7 @@ export const useWalletData = (identityKey: string) => {
   const packagesRef = useRef<CoinPackage[]>([]);
   const tasksRef = useRef<CoinTask[]>([]);
   const packagesKnownRef = useRef(false);
+  const packagesCacheInvalidatedRef = useRef(false);
   const tasksKnownRef = useRef(false);
 
   walletRef.current = wallet;
@@ -143,6 +144,7 @@ export const useWalletData = (identityKey: string) => {
     const packagesRequest = getCoinPackages().then(
       value => {
         if (requestOwnsData()) {
+          packagesCacheInvalidatedRef.current = false;
           packagesKnownRef.current = true;
           packagesRef.current = value;
           setPackages(value);
@@ -185,7 +187,11 @@ export const useWalletData = (identityKey: string) => {
       setWallet(cached.wallet);
       setWalletStatus(walletReadFailed ? 'error' : 'ready');
     }
-    if (cached?.packages && !packagesKnownRef.current) {
+    if (
+      cached?.packages &&
+      !packagesKnownRef.current &&
+      !packagesCacheInvalidatedRef.current
+    ) {
       packagesKnownRef.current = true;
       packagesRef.current = cached.packages;
       setPackages(cached.packages);
@@ -259,11 +265,19 @@ export const useWalletData = (identityKey: string) => {
   const invalidatePackages = useCallback(
     async (boundary: AccountSessionBoundary) => {
       if (!ownsBoundary(boundary)) return;
+      // Rejected package terms retire older reads as well as their cache.
+      // The replacement read must not wait for either obsolete operation.
+      requestGenerationRef.current += 1;
+      refreshFlightRef.current = null;
+      queuedRefreshRef.current = null;
+      manualRefreshRef.current = null;
+      setManualRefreshing(false);
+      packagesCacheInvalidatedRef.current = true;
       packagesKnownRef.current = false;
       packagesRef.current = [];
       setPackages([]);
       setPackagesStatus('loading');
-      await saveWalletCache(boundary, {
+      void saveWalletCache(boundary, {
         version: 2,
         ...(walletRef.current ? {wallet: walletRef.current} : {}),
         ...(tasksKnownRef.current ? {tasks: tasksRef.current} : {}),
@@ -283,6 +297,7 @@ export const useWalletData = (identityKey: string) => {
     packagesRef.current = [];
     tasksRef.current = [];
     packagesKnownRef.current = false;
+    packagesCacheInvalidatedRef.current = false;
     tasksKnownRef.current = false;
     setServerSession(null);
     setWallet(null);
