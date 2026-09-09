@@ -94,7 +94,7 @@ final class CourseMediaFilePolicy
     private function isOfficePackage(UploadedFile $file, string $extension): bool
     {
         if (!class_exists(\ZipArchive::class)) {
-            throw ValidationException::withMessages(['pdf_file' => 'تعذر قراءة ملف Office الآن\nيمكنك إضافته برابط خارجي']);
+            throw ValidationException::withMessages(['pdf_file' => "تعذر قراءة ملف Office الآن\nيمكنك إضافته برابط خارجي"]);
         }
         $mainPart = ['docx' => 'word/document.xml', 'xlsx' => 'xl/workbook.xml', 'pptx' => 'ppt/presentation.xml'][$extension];
         $zip = new \ZipArchive();
