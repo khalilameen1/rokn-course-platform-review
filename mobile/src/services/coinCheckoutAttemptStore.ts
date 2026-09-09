@@ -8,6 +8,7 @@ import {
 } from '../constants/helpers';
 import type {AccountSessionBoundary} from '../constants/helpers';
 import type {CoinCheckoutAttempt} from './coinCheckoutTypes';
+import {settleWithin} from '../utils/settleWithin';
 
 type CoinCheckoutLedger = {
   attempts: CoinCheckoutAttempt[];
@@ -209,8 +210,11 @@ export const reassociateCoinCheckoutAttempt = async (
 export const clearCoinCheckoutAttempt = async (
   expectedIdempotencyKey: string,
   boundary: AccountSessionBoundary,
-) =>
-  withStorageLock(async () => {
+) => {
+  // Terminal server truth can be delivered while this optional cleanup waits
+  // for native storage. Keep the raw operation in the existing queue so a
+  // later required intent write cannot overtake its removal.
+  const cleanup = withStorageLock(async () => {
     assertAccountSessionBoundary(boundary);
     const storageKey = await coinCheckoutOwnerKey(boundary);
     const attempts = normalizeLedger(await getItem(storageKey));
@@ -222,3 +226,6 @@ export const clearCoinCheckoutAttempt = async (
       ),
     );
   });
+  await settleWithin(cleanup, undefined);
+  assertAccountSessionBoundary(boundary);
+};

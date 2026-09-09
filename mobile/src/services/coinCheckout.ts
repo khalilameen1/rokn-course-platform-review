@@ -12,6 +12,7 @@ import {
 import {reportClientError} from './operationalTelemetry';
 import {requireProductFeature} from './productFeatures';
 import {errorCode} from '../utils/errorPayload';
+import {settleWithin} from '../utils/settleWithin';
 import {
   acknowledgePendingCheckoutReturn,
   savePendingCheckoutReturn,
@@ -539,8 +540,12 @@ export const openCoinCheckout = async (
       if (returnClaim && result && !result.pending) {
         try {
           assertAccountSessionBoundary(boundary);
-          await acknowledgePendingCheckoutReturn(returnClaim);
+          await settleWithin(
+            acknowledgePendingCheckoutReturn(returnClaim),
+            false,
+          );
         } catch {}
+        assertAccountSessionBoundary(boundary);
       }
     }
   });
