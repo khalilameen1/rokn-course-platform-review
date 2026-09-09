@@ -1810,3 +1810,55 @@ ESLint, PHP controller syntax and diff checks passed. Cross-agent source review
 covered each repair; these are local contract/lifecycle checks with native and
 provider seams controlled, not physical-device or live-provider acceptance.
 No APK, push, deployment, real notification or paid provider request was made.
+
+## September 9 — complete support history and readable owned-course details
+
+Continued from clean `4145357`. The preceding goal turn made concrete progress;
+this pass retained its source and reviewed different daily journeys. Two further
+defects were proved and repaired without changing product features or design.
+
+- The support API already paginated account history by 20, but mobile consumed
+  only page one. A newly installed device could neither list nor select an older
+  requested case. Two RED cases using the real feedback hook/service showed
+  the missing twenty-first case and an incorrectly accepted partial history.
+  The existing service now follows validated `current_page`, `last_page` and
+  `has_more` metadata before replacing the visible list. A failed/malformed or
+  overlapping page rejects the refresh, preserving the hook's preceding list
+  and explicit retry. Guest receipts and direct delivery receipts are unchanged.
+  Eleven new mobile cases cover requested selection, later-page failure and
+  recovery, repeated/invalid pages, replacement accounts, terminal empty pages
+  and a remembered receipt already loaded on page two. Two older fixtures now
+  include the pagination metadata actually sent by the server. Three new real
+  API tests independently verify 21 owned cases across two pages, ordering,
+  direct retrieval, other-account/guest isolation and Laravel's valid empty page
+  after the list shrinks. No backend production source changed. This is complete
+  page consumption, not a claim of an atomic database snapshot across requests.
+- Owned CourseDetails waited indefinitely for the optional local completion
+  overlay even after receiving the authoritative course/learning graph. Two
+  actual hook/mapper/persistence RED cases demonstrated an endless initial
+  skeleton and the same failure after guest-to-account transition on that course.
+  Only the local overlay wait is bounded; its fallback is the already-mapped
+  server graph. Nine new cases preserve project gates, empty locked media,
+  ordinary local completion hints, revoked access and invalid-graph rejection.
+  They also cover late completion, course/account changes and retired epochs.
+  The overlay builds new objects, so a late read cannot mutate the fallback or
+  publish new state after it. Shared persistence and server access rules remain
+  unchanged. Independent source review found no introduced blocker in either fix.
+
+Root verification passed 12 mobile suites / 141 tests and seven backend tests /
+38 assertions, plus full mobile TypeScript, scoped ESLint and diff checks.
+Disjoint counter-checks found no new defect in the reviewed rewards or reel
+continuation journeys: 49 reward mobile cases, 28 backend reward tests /
+192 assertions, and 16 continuation mobile cases passed. Sharing/QR review found
+the current works-only portfolio and practical/theoretical certificate routing
+consistent; no sharing source changed and those inspected tests were not rerun.
+
+A separate source-to-test audit revisited the original attachment requirements:
+internal/external source, mobile/computer destination, authoring/replacement/
+ordering/visibility/deletion/publication, access, on-demand download and link
+copy. Existing HTTP, production-JavaScript and native-seam fixtures cover those
+contracts; no missing feature or new production defect was established. Remaining
+acceptance evidence is explicitly limited: Windows does not prove an iOS build,
+the Android download/probe receiver has not been exercised end-to-end on a device
+in this pass, and live Drive/Bunny/redirect/save UI behavior has not been tested.
+No APK, push, deployment, external task claim or paid provider call was made.
