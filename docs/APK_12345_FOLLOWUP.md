@@ -1862,3 +1862,61 @@ acceptance evidence is explicitly limited: Windows does not prove an iOS build,
 the Android download/probe receiver has not been exercised end-to-end on a device
 in this pass, and live Drive/Bunny/redirect/save UI behavior has not been tested.
 No APK, push, deployment, external task claim or paid provider call was made.
+
+## September 9 — attachment handoff and real response cleanup
+
+Continued from `53fcab1`, preserving authoring, publication, destination choices,
+on-demand downloads and existing UI. This pass changed only proved failures;
+the reviewed dashboard authorization and playback diagnostic source stayed intact.
+
+- A late Android enqueue receipt could trigger a rejected, unobserved
+  `cancelIfActive` promise after its original action had already settled.
+  Account-change and enqueue-timeout RED cases preceded one local cancellation
+  helper used by all three retirement paths. Synchronous bridge errors and
+  rejected cancellation no longer escape; this does not claim cancellation
+  succeeded or make logout wait for the native receipt. Saved in `3b15eb5`.
+- iOS downloads can complete together, but the installed RNShare Files picker
+  stores only one module-wide resolve/reject pair. The actual attachment action
+  called the second picker before the first returned; a source-contract fake
+  exposed that collision. Only Save to Files presentations now wait their turn.
+  Downloads remain parallel and computer copying remains independent. Seven new
+  cases cover both receipts, cancellation/rejection/synchronous failure, retry,
+  queued cancellation, account replacement and duplicate taps. The presentation
+  queue is deliberately not reset on logout or a timer while the native picker
+  still owns the receipt. UIKit presentation on a physical iPhone remains
+  unverified. Saved in `383131c`.
+- Android's real metadata probe used response closing as if it meant immediate
+  transfer cancellation. OkHttp 4.12's HTTP/1 response cleanup may instead drain
+  a body before retiring the connection. A new offline Kotlin/JVM runner compiles
+  the production probe unchanged against the cached app HTTP libraries, using
+  real loopback sockets and substituting only Android's monotonic clock,
+  BuildConfig and the React Native result map. A host ignoring the fallback Range
+  accepted 22,036,480 response bytes before close in the RED run. Cancelling the
+  call immediately after headers and before response close reduced that counter
+  to 65,536 in each of two GREEN runs. This measures server-side accepted writes,
+  including socket buffering, not an exact device network-byte guarantee.
+  All seven cases passed twice, including 3 GiB size metadata, HEAD fallback,
+  partial-response total size, redirects, cookie isolation, URL guards, hop limit
+  and the real eight-second timeout. No dependency was downloaded or upgraded.
+  Saved with its standalone runner in `23869bb`.
+  Reference: [installed OkHttp version's response cleanup](https://raw.githubusercontent.com/square/okhttp/parent-4.12.0/okhttp/src/main/kotlin/okhttp3/internal/http1/Http1ExchangeCodec.kt).
+- Four real dashboard route tests / 109 assertions preserve admin/moderator
+  create, edit, file replacement, reorder, visibility, deletion and publication,
+  and client/guest refusal without file, database or draft side effects.
+  GrantAdminAccess and RequireAdminMfa run; the fixture supplies a verified MFA
+  session. Only unrelated course-content readiness is mocked. Storage and SQLite
+  are isolated test resources. No backend production change was needed.
+  Saved in `ba2bb7b`.
+
+Root verification passed nine mobile suites / 93 tests, full TypeScript,
+scoped ESLint and diff checks. The PHP route gate and two JVM runs were executed
+by separate agents and reviewed by root. Source inspection found iOS metadata
+already cancels before accepting the body. The separate video recovery diagnostic
+uses HEAD with no GET fallback and was not changed. Existing source-shape checks
+alone had not exposed the Android body-drain defect; the new real HTTP regression
+is the additional evidence, not a claim that all native behavior is covered.
+
+No feature or design was removed. No APK, push, deployment, live provider
+download, real notification or paid request was made. Physical Android download
+completion/receiver behavior and native iOS save presentation remain acceptance
+work, not results of this local run.
