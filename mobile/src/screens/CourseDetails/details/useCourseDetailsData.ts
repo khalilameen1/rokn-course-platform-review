@@ -25,6 +25,7 @@ import {
   mapCoursePayload,
 } from '../../../components/VideoPlayer/courseLearningApi';
 import type {CourseLearningData} from '../../../components/VideoPlayer/types';
+import {settleWithin} from '../../../utils/settleWithin';
 import {courseRequiresWallet} from './purchaseTerms';
 
 type UseCourseDetailsDataParams = {
@@ -165,8 +166,13 @@ export const useCourseDetailsData = ({
         if (details.owned && !mappedLearningCourse) {
           throw new Error('API_CONTRACT_INVALID_COURSE_LEARNING_SNAPSHOT');
         }
+        // Local completion hints are optional; a stalled native cache must not
+        // hide the fresh server course or replace its access/project gates.
         const learningCourse = mappedLearningCourse
-          ? await applyLocalLearningState(mappedLearningCourse)
+          ? await settleWithin(
+              applyLocalLearningState(mappedLearningCourse),
+              mappedLearningCourse,
+            )
           : null;
         assertAccountSessionBoundary(boundary);
         detailsLoaded = true;
