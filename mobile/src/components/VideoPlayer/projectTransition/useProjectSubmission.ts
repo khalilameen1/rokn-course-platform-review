@@ -623,12 +623,17 @@ export const useProjectSubmission = ({
     ) {
       return;
     }
+    const visit = revisionVisitRef.current;
+    if (!visit.active) return;
     const {id, generation} = identityRef.current;
+    const ownsPicker = () =>
+      revisionVisitRef.current === visit && ownsProject(id, generation);
     const cached: SelectedProjectFile[] = [];
     pickerFlightRef.current = true;
     try {
       const {files, ownerBoundary} = await pickProjectFilesOwned(
         allowedMimeTypes,
+        ownsPicker,
       );
       assertAccountSessionBoundary(ownerBoundary);
       if (
@@ -637,23 +642,25 @@ export const useProjectSubmission = ({
       ) {
         return;
       }
-      if (!files.length || !ownsProject(id, generation)) return;
+      if (!files.length || !ownsPicker()) return;
       const available = files.slice(
         0,
         Math.max(0, maximumFiles - selectedFiles.length),
       );
       for (const file of available) {
+        if (!ownsPicker()) break;
         if (!projectFileMatchesAllowedTypes(file, allowedMimeTypes)) {
           throw new Error('PROJECT_FILE_TYPE_UNSUPPORTED');
         }
         const size = await validateProjectFile(file, maximumFileBytes);
         assertAccountSessionBoundary(ownerBoundary);
+        if (!ownsPicker()) break;
         cached.push(
           await cacheProjectDraftFile({...file, size}, ownerBoundary),
         );
         assertAccountSessionBoundary(ownerBoundary);
       }
-      if (!ownsProject(id, generation)) {
+      if (!ownsPicker()) {
         await Promise.all(cached.map(removeLearnerDraftFile));
         return;
       }
@@ -662,7 +669,7 @@ export const useProjectSubmission = ({
       );
     } catch (error: unknown) {
       await Promise.all(cached.map(removeLearnerDraftFile));
-      if (!ownsProject(id, generation)) return;
+      if (!ownsPicker()) return;
       const code = error instanceof Error ? error.message : '';
       if (code === 'ACCOUNT_CHANGED_DURING_REQUEST') return;
       Alert.alert(

@@ -9,12 +9,14 @@ import type {SelectedProjectFile} from '../types';
 
 export const pickProjectFilesOwned = async (
   mimeTypes: string[],
+  isActive: () => boolean = () => true,
 ): Promise<{
   files: SelectedProjectFile[];
   ownerBoundary: AccountSessionBoundary;
 }> => {
   const ownerBoundary = await captureAccountSessionBoundary();
   assertAccountSessionBoundary(ownerBoundary);
+  if (!isActive()) return {files: [], ownerBoundary};
   try {
     const response = await DocumentPicker.getDocumentAsync({
       type: mimeTypes.length
@@ -32,6 +34,7 @@ export const pickProjectFilesOwned = async (
       copyToCacheDirectory: true,
     });
     assertAccountSessionBoundary(ownerBoundary);
+    if (!isActive()) return {files: [], ownerBoundary};
     return {
       files: response.canceled
         ? []
@@ -52,6 +55,7 @@ export const pickProjectFilesOwned = async (
     ) {
       throw error;
     }
+    if (!isActive()) return {files: [], ownerBoundary};
     showMediaPickerFailure('document_picker_failed');
     return {files: [], ownerBoundary};
   }
