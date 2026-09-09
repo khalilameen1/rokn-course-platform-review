@@ -107,37 +107,34 @@ const readReferenceRegistry = async (
 ): Promise<DraftReferenceRegistry> => {
   const target = registryPath(accountScope);
   for (const candidate of [target, `${target}.backup`]) {
-    try {
-      const raw = await RNFS.readFile(candidate, 'utf8');
-      const parsed = JSON.parse(raw) as DraftReferenceRegistry;
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-        continue;
-      return Object.fromEntries(
-        Object.entries(parsed).flatMap(([owner, value]) => {
-          if (
-            !value ||
-            !Array.isArray(value.paths) ||
-            !Number.isFinite(value.updatedAt)
-          )
-            return [];
-          const paths = value.paths
-            .map(filePath)
-            .filter(
-              path =>
-                isManagedPath(path) &&
-                accountScopeFromPath(path) === accountScope,
-            );
-          return paths.length
-            ? [
-                [
-                  owner.slice(0, 180),
-                  {paths, updatedAt: Number(value.updatedAt)},
-                ],
-              ]
-            : [];
-        }),
-      );
-    } catch {}
+    // Only absence permits trying the rename backup. A stale backup cannot
+    // replace an unreadable current registry and erase its newer owners.
+    if (!(await RNFS.exists(candidate))) continue;
+    const raw = await RNFS.readFile(candidate, 'utf8');
+    const parsed = JSON.parse(raw) as DraftReferenceRegistry;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+      throw new Error('LEARNER_FILE_REFERENCES_UNAVAILABLE');
+    return Object.fromEntries(
+      Object.entries(parsed).flatMap(([owner, value]) => {
+        if (
+          !value ||
+          !Array.isArray(value.paths) ||
+          value.paths.some(path => typeof path !== 'string') ||
+          !Number.isFinite(value.updatedAt)
+        )
+          throw new Error('LEARNER_FILE_REFERENCES_UNAVAILABLE');
+        const paths = value.paths
+          .map(filePath)
+          .filter(
+            path =>
+              isManagedPath(path) &&
+              accountScopeFromPath(path) === accountScope,
+          );
+        return paths.length
+          ? [[owner.slice(0, 180), {paths, updatedAt: Number(value.updatedAt)}]]
+          : [];
+      }),
+    );
   }
   return {};
 };
@@ -152,7 +149,7 @@ const writeReferenceRegistry = async (
   const temporary = `${target}.tmp`;
   const backup = `${target}.backup`;
   await RNFS.writeFile(temporary, JSON.stringify(registry), 'utf8');
-  if (await RNFS.exists(target).catch(() => false)) {
+  if (await RNFS.exists(target)) {
     await RNFS.unlink(backup).catch(() => undefined);
     await RNFS.moveFile(target, backup);
   }
@@ -160,10 +157,7 @@ const writeReferenceRegistry = async (
     await RNFS.moveFile(temporary, target);
     await RNFS.unlink(backup).catch(() => undefined);
   } catch (error) {
-    if (
-      !(await RNFS.exists(target).catch(() => false)) &&
-      (await RNFS.exists(backup).catch(() => false))
-    ) {
+    if (!(await RNFS.exists(target)) && (await RNFS.exists(backup))) {
       await RNFS.moveFile(backup, target).catch(() => undefined);
     }
     throw error;
@@ -208,32 +202,48 @@ const managedPathsInValue = (value: unknown, found: Set<string>): void => {
   }
 };
 
-/**
- * Registry entries are write-ahead guards, while account-scoped AsyncStorage
- * is the durable outbox source of truth. Recent entries get a short commit
- * grace; older entries survive only while a real draft/outbox still names the
- * file. This prevents both silent active-file eviction and immortal orphan
- * references after a project or chat is abandoned.
- */
-const reconcileReferenceRegistry = async (
+const durableDraftPaths = async (
   accountScope: string,
-  registry: DraftReferenceRegistry,
-): Promise<DraftReferenceRegistry> => {
-  const now = Date.now();
-  const keys = (await AsyncStorage.getAllKeys().catch(() => [])).filter(key =>
-    key.includes(`:${accountScope}`),
+): Promise<Set<string>> => {
+  const keys = (await AsyncStorage.getAllKeys()).filter(
+    key =>
+      (key.endsWith(`:${accountScope}`) || key.includes(`:${accountScope}:`)) &&
+      !key.endsWith(':corrupt'),
   );
-  const referencedByDurableState = new Set<string>();
-  const values = keys.length
-    ? await AsyncStorage.multiGet(keys).catch(() => [])
-    : [];
-  values.forEach(([, raw]) => {
-    if (!raw) return;
-    try {
-      managedPathsInValue(JSON.parse(raw), referencedByDurableState);
-    } catch {}
-  });
+  const values = new Map(keys.length ? await AsyncStorage.multiGet(keys) : []);
+  const paths = new Set<string>();
+  for (const key of keys) {
+    // A removed key is returned as null. A missing row is an incomplete read,
+    // not evidence that every file belonging to that outbox was abandoned.
+    if (!values.has(key))
+      throw new Error('LEARNER_FILE_REFERENCES_UNAVAILABLE');
+    const raw = values.get(key);
+    if (raw === null) continue;
+    const parsed: unknown = JSON.parse(raw!);
+    managedPathsInValue(parsed, paths);
+    if (
+      key.startsWith('@rokn/product-feedback-draft-conflicts/v1:') &&
+      Array.isArray(parsed)
+    ) {
+      // These are selectable drafts, unlike the retired :corrupt snapshots.
+      for (const entry of parsed) {
+        if (typeof entry?.raw === 'string')
+          managedPathsInValue(JSON.parse(entry.raw), paths);
+      }
+    }
+  }
+  return new Set(
+    [...paths].filter(path => accountScopeFromPath(path) === accountScope),
+  );
+};
 
+/** Recent registry entries guard commits; durable drafts keep their own files
+ * even if they never used the registry. Only confirmed orphans lose ownership. */
+const reconcileReferenceRegistry = (
+  registry: DraftReferenceRegistry,
+  referencedByDurableState: Set<string>,
+): DraftReferenceRegistry => {
+  const now = Date.now();
   const reconciled: DraftReferenceRegistry = {};
   Object.entries(registry).forEach(([owner, value]) => {
     const withinCommitGrace = now - value.updatedAt <= REFERENCE_WRITE_GRACE_MS;
@@ -250,14 +260,14 @@ const trimAccountDraftFiles = async (
   protectedPath?: string,
 ): Promise<void> => {
   const accountDirectory = `${CACHE_ROOT}/${accountScope}`;
-  if (!(await RNFS.exists(accountDirectory).catch(() => false))) return;
+  if (!(await RNFS.exists(accountDirectory))) return;
 
-  const kindDirectories = await RNFS.readDir(accountDirectory).catch(() => []);
+  const kindDirectories = await RNFS.readDir(accountDirectory);
   const files = (
     await Promise.all(
       kindDirectories
         .filter(item => item.isDirectory())
-        .map(item => RNFS.readDir(item.path).catch(() => [])),
+        .map(item => RNFS.readDir(item.path)),
     )
   )
     .flat()
@@ -276,15 +286,13 @@ const trimAccountDraftFiles = async (
 
   const now = Date.now();
   const registry = await readReferenceRegistry(accountScope);
-  const activeRegistry = await reconcileReferenceRegistry(
-    accountScope,
-    registry,
-  );
+  const referencedPaths = await durableDraftPaths(accountScope);
+  const activeRegistry = reconcileReferenceRegistry(registry, referencedPaths);
   if (JSON.stringify(activeRegistry) !== JSON.stringify(registry)) {
     await writeReferenceRegistry(accountScope, activeRegistry);
   }
-  const referencedPaths = new Set(
-    Object.values(activeRegistry).flatMap(value => value.paths),
+  Object.values(activeRegistry).forEach(value =>
+    value.paths.forEach(path => referencedPaths.add(path)),
   );
   provisionalPathsFor(accountScope).forEach(path => referencedPaths.add(path));
   let retainedBytes = 0;
@@ -297,15 +305,18 @@ const trimAccountDraftFiles = async (
     const exceedsBudget =
       !isProtected && retainedBytes + file.size > MAX_ACCOUNT_CACHE_BYTES;
     if (expired || exceedsBudget) {
-      await RNFS.unlink(file.path).catch(() => undefined);
-      continue;
+      try {
+        await RNFS.unlink(file.path);
+        continue;
+      } catch {
+        // Failed eviction still occupies the account's storage budget.
+      }
     }
     retainedBytes += file.size;
   }
   if (retainedBytes > MAX_ACCOUNT_CACHE_BYTES) {
-    // Every remaining byte belongs to a durable active owner or the file
-    // currently being copied. Refuse the new pick; never corrupt an outbox to
-    // make room invisibly.
+    // Refuse the new pick when protected or unevictable bytes fill the budget;
+    // never corrupt an outbox to make room invisibly.
     throw new Error('LEARNER_DRAFT_STORAGE_FULL');
   }
 };
@@ -322,6 +333,7 @@ export const removeLearnerDraftFile = async (
     const registry = await readReferenceRegistry(scope);
     if (Object.values(registry).some(value => value.paths.includes(path)))
       return;
+    if ((await durableDraftPaths(scope)).has(path)) return;
     await RNFS.unlink(path).catch(() => undefined);
   });
 };
