@@ -519,6 +519,11 @@
       "classification": "first_party"
     },
     {
+      "path": "public/images/landing/rokn-icon.webp",
+      "sha256": "e138f73454021a6edd8c27f8701c45908909d1f22fe685f2ba2d57e59bf25e7f",
+      "classification": "first_party"
+    },
+    {
       "path": "public/images/landing/rokn-lesson.webp",
       "sha256": "a900b7d96a1f34c958812d8e4e4c7f3aea381573ef63bc348da93dc6ac42e79b",
       "classification": "first_party"

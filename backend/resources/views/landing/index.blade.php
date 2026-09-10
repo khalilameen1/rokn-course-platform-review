@@ -89,7 +89,7 @@
 
     <section class="download-section" aria-labelledby="download-title">
         <div class="landing-container download-finish">
-            <img src="{{ asset('images/rokn-app-icon.png') }}" alt="" width="64" height="64" loading="lazy">
+            <img src="{{ asset('images/landing/rokn-icon.webp') }}" alt="" width="64" height="64" loading="lazy">
             <h2 id="download-title">{{ __('landing.download_title') }}</h2>
             <p>{{ $designSetting->exists && filled($designSetting->{'slogan_3_'.$locale}) ? $designSetting->{'slogan_3_'.$locale} : __('landing.download_description') }}</p>
             @include('landing.partials.download-buttons')
@@ -98,7 +98,7 @@
 
     @if($hasDownloads)
         <aside class="download-dock" data-download-dock hidden aria-label="{{ __('landing.download_app') }}">
-            <img src="{{ asset('images/rokn-app-icon.png') }}" alt="" width="40" height="40">
+            <img src="{{ asset('images/landing/rokn-icon.webp') }}" alt="" width="40" height="40">
             <div>
                 <strong>Rokn</strong>
                 <span>{{ __('landing.hero_eyebrow') }}</span>

@@ -25,8 +25,9 @@ The two product images are real Rokn app captures, not simulated interfaces:
 - `rokn-lesson.webp`: mobile artifact `rokn-preview-current.png` from 5 September 2026
 
 They were resized to 540 pixels wide and encoded as WebP without changing their
-contents. Together they are approximately 73 KB. Brand wordmark and app icon are
-the existing assets. Store badge provenance is in
+contents. Together they are approximately 73 KB. The wordmark is the existing
+asset. The app icon is a 128-pixel WebP copy of the existing brand image rather
+than the 743 KB full-resolution original. Store badge provenance is in
 `resources/legal/frontend/STORE-BADGES.md`.
 
 No domain or production deployment is changed by this implementation. The planned
