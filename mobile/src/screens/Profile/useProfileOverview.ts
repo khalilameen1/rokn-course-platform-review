@@ -20,7 +20,7 @@ import {
   portfolioUrlFor,
   trustedPortfolioShareUrl,
 } from '../../services/publicLinks';
-import {openExternalUrlOnce, shareOnce} from '../../services/systemActions';
+import {shareOnce} from '../../services/systemActions';
 import type {RootState} from '../../store/store';
 
 export function useProfileOverview() {
@@ -90,11 +90,6 @@ export function useProfileOverview() {
       hasShareablePortfolio &&
       publicPortfolioUrl,
   );
-  const portfolioLinkLabel = publicPortfolioUrl
-    ? publicPortfolioUrl
-        .replace(/^https:\/\/(?:www\.)?/i, '')
-        .replace(/\/$/, '')
-    : '';
   const avatarUri = useMemo(
     () =>
       (sessionIdentityIsNewer
@@ -201,15 +196,6 @@ export function useProfileOverview() {
     }
   }, [canSharePortfolio, displayName, publicPortfolioUrl]);
 
-  const openPortfolio = useCallback(async () => {
-    if (!canSharePortfolio) return;
-    try {
-      await openExternalUrlOnce(publicPortfolioUrl);
-    } catch {
-      Alert.alert('تعذّر فتح الرابط', 'حاول مرة أخرى');
-    }
-  }, [canSharePortfolio, publicPortfolioUrl]);
-
   return {
     authenticatedIdentity,
     avatarUri,
@@ -217,8 +203,6 @@ export function useProfileOverview() {
     certificateHolderName,
     displayName,
     identityKey,
-    openPortfolio,
-    portfolioLinkLabel,
     profileError,
     publicPortfolioUrl,
     retry,

@@ -1,6 +1,5 @@
 import React from 'react';
-import {Pressable, Text, View} from 'react-native';
-import {SectionHeading} from '../../components/ui/PremiumUI';
+import {Pressable, ScrollView, Text, View} from 'react-native';
 import {CourseArtwork} from '../../components/ui/CourseArtwork';
 import {
   formatArabicDisplayText,
@@ -9,172 +8,164 @@ import {
 import type {LearningCourse} from '../../services/roknApi';
 import {learningResumeTarget, type LearningResumeTarget} from './model';
 import {styles} from './styles';
+import {Spacing, useResponsiveLayout} from '../../constants/designSystem';
 
 type Props = {
   error: string;
-  hasActiveCourses: boolean;
   largeText: boolean;
   learningOwnershipFresh: boolean;
   onOpenCourse: (courseId: string) => void;
   onResume: (target: LearningResumeTarget) => void;
   onRetry: () => void;
   orderedCourses: LearningCourse[];
-  primaryResumeId?: string;
 };
 
 export const CourseShelf = ({
   error,
-  hasActiveCourses,
   largeText,
   learningOwnershipFresh,
   onOpenCourse,
   onResume,
   onRetry,
   orderedCourses,
-  primaryResumeId,
-}: Props) => (
-  <View style={styles.courseGrid}>
-    {!!error && (
-      <View accessibilityRole="alert" style={styles.offlineNote}>
-        <Text style={styles.offlineNoteText}>{error}</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="إعادة المحاولة"
-          onPress={onRetry}
-          style={styles.offlineRetry}>
-          <Text style={styles.offlineRetryText}>إعادة المحاولة</Text>
-        </Pressable>
-      </View>
-    )}
-    {orderedCourses.map((course, index) => {
-      const resumeTarget = learningResumeTarget(course, learningOwnershipFresh);
-      const isPrimaryResume =
-        course.id === primaryResumeId && Boolean(resumeTarget);
-      const progress = Math.max(0, Math.min(100, course.progress));
-      const completed = progress >= 100;
-      const startsCompletedShelf =
-        hasActiveCourses &&
-        completed &&
-        (index === 0 || orderedCourses[index - 1].progress < 100);
-      const progressLabel = completed
-        ? 'مكتمل'
-        : course.started
-        ? progress > 0
-          ? `اكتمل ${Math.round(progress)}٪`
-          : 'بدأت التعلّم'
-        : 'جاهز للبدء';
+}: Props) => {
+  const {contentWidth, fontScale, gutter, isTablet} = useResponsiveLayout();
+  const cardWidth = Math.floor(
+    Math.min(
+      280,
+      Math.max(1, (contentWidth - gutter * 2) * 0.8),
+      Math.max(
+        176 * Math.max(1, fontScale / 1.3),
+        contentWidth * (isTablet ? 0.3 : 0.56),
+      ),
+    ),
+  );
 
-      return (
-        <React.Fragment key={course.id}>
-          {startsCompletedShelf && (
-            <SectionHeading style={styles.completedHeading} title="أنهيتها" />
-          )}
-          <View
-            style={[
-              styles.courseCard,
-              isPrimaryResume && styles.primaryResumeCard,
-            ]}>
-            <Pressable
-              accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(
-                course.title,
-              )}، ${formatArabicDisplayText(progressLabel)}`}
-              accessibilityRole="button"
-              onPress={() => onOpenCourse(course.id)}
-              style={({pressed}) => [
-                styles.courseDetails,
-                (isPrimaryResume || largeText) && styles.courseDetailsStacked,
-                pressed && styles.pressed,
-              ]}>
-              <CourseArtwork
-                fallback={require('../../assets/images/courseSliderBackground.jpg')}
-                source={course.imageUrl ? {uri: course.imageUrl} : undefined}
-                style={
-                  isPrimaryResume
-                    ? styles.primaryCourseCover
-                    : largeText
-                    ? styles.largeTextCourseCover
-                    : styles.courseCover
-                }
-              />
-              <View
-                style={[
-                  styles.courseCopy,
-                  isPrimaryResume && styles.primaryCourseCopy,
+  return (
+    <View style={styles.courseShelf}>
+      {!!error && (
+        <View accessibilityRole="alert" style={styles.offlineNote}>
+          <Text style={styles.offlineNoteText}>{error}</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إعادة المحاولة"
+            onPress={onRetry}
+            style={styles.offlineRetry}>
+            <Text style={styles.offlineRetryText}>إعادة المحاولة</Text>
+          </Pressable>
+        </View>
+      )}
+      <ScrollView
+        accessibilityLabel="كورساتك، الأحدث نشاطًا أولًا"
+        contentContainerStyle={styles.courseRail}
+        decelerationRate="fast"
+        horizontal
+        nestedScrollEnabled
+        snapToInterval={cardWidth + Spacing.sm}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        showsHorizontalScrollIndicator={false}>
+        {orderedCourses.map(course => {
+          const resumeTarget = learningResumeTarget(
+            course,
+            learningOwnershipFresh,
+          );
+          const progress = Math.max(0, Math.min(100, course.progress));
+          const completed = progress >= 100;
+          const progressLabel = completed
+            ? 'مكتمل'
+            : course.started
+            ? progress > 0
+              ? `اكتمل ${Math.round(progress)}٪`
+              : 'بدأت التعلّم'
+            : 'جاهز للبدء';
+
+          return (
+            <View
+              key={course.id}
+              style={[styles.courseCard, {width: cardWidth}]}>
+              <Pressable
+                accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(
+                  course.title,
+                )}، ${formatArabicDisplayText(progressLabel)}`}
+                accessibilityRole="button"
+                onPress={() => onOpenCourse(course.id)}
+                style={({pressed}) => [
+                  styles.courseDetails,
+                  pressed && styles.pressed,
                 ]}>
-                <Text
-                  numberOfLines={largeText ? 4 : 2}
-                  style={[
-                    styles.courseTitle,
-                    isPrimaryResume && styles.primaryCourseTitle,
-                  ]}>
-                  {formatAuthoredDisplayText(course.title)}
-                </Text>
-                {(course.started || completed) && (
-                  <Text style={styles.nextLesson}>
-                    {completed
-                      ? 'راجع أي مقطع وقتما تريد'
-                      : course.nextSectionTitle
-                      ? formatAuthoredDisplayText(course.nextSectionTitle)
-                      : course.lastLessonTitle
-                      ? `أكمل بعد ${formatAuthoredDisplayText(
-                          course.lastLessonTitle,
-                        )}`
-                      : 'أكمل من مكانك'}
+                <CourseArtwork
+                  fallback={require('../../assets/images/courseSliderBackground.jpg')}
+                  source={course.imageUrl ? {uri: course.imageUrl} : undefined}
+                  style={styles.courseCover}
+                />
+                <View style={styles.courseCopy}>
+                  <Text
+                    numberOfLines={largeText ? 4 : 2}
+                    style={styles.courseTitle}>
+                    {formatAuthoredDisplayText(course.title)}
                   </Text>
-                )}
-                <Text style={styles.progressLabel}>
-                  {formatArabicDisplayText(progressLabel)}
-                </Text>
-                {course.started && (
-                  <View
-                    accessibilityRole="progressbar"
-                    accessibilityValue={{
-                      min: 0,
-                      max: 100,
-                      now: Math.round(progress),
-                    }}
-                    style={styles.progressTrack}>
+                  {(course.started || completed) && (
+                    <Text
+                      numberOfLines={largeText ? 3 : 2}
+                      style={styles.nextLesson}>
+                      {completed
+                        ? 'راجع أي مقطع وقتما تريد'
+                        : course.nextSectionTitle
+                        ? formatAuthoredDisplayText(course.nextSectionTitle)
+                        : course.lastLessonTitle
+                        ? `أكمل بعد ${formatAuthoredDisplayText(
+                            course.lastLessonTitle,
+                          )}`
+                        : 'أكمل من مكانك'}
+                    </Text>
+                  )}
+                  <Text style={styles.progressLabel}>
+                    {formatArabicDisplayText(progressLabel)}
+                  </Text>
+                  {course.started && (
                     <View
-                      style={[styles.progressFill, {width: `${progress}%`}]}
-                    />
-                  </View>
-                )}
-              </View>
-            </Pressable>
-            {resumeTarget && (
-              <View
-                style={
-                  isPrimaryResume
-                    ? styles.primaryResumeAction
-                    : [
-                        styles.resumeAction,
-                        !largeText && styles.compactResumeAction,
-                      ]
-                }>
+                      accessibilityRole="progressbar"
+                      accessibilityValue={{
+                        min: 0,
+                        max: 100,
+                        now: Math.round(progress),
+                      }}
+                      style={styles.progressTrack}>
+                      <View
+                        style={[styles.progressFill, {width: `${progress}%`}]}
+                      />
+                    </View>
+                  )}
+                </View>
+              </Pressable>
+              <View style={styles.resumeAction}>
                 <Pressable
-                  accessibilityLabel={`استكمال ${formatAuthoredDisplayText(
-                    course.title,
-                  )}`}
+                  accessibilityLabel={`${
+                    resumeTarget ? 'استكمال' : 'عرض تفاصيل'
+                  } ${formatAuthoredDisplayText(course.title)}`}
                   accessibilityRole="button"
-                  onPress={() => onResume(resumeTarget)}
+                  onPress={() => {
+                    if (resumeTarget) onResume(resumeTarget);
+                    else onOpenCourse(course.id);
+                  }}
                   style={({pressed}) => [
                     styles.resumeButton,
-                    !isPrimaryResume && styles.secondaryResumeButton,
                     pressed && styles.resumeButtonPressed,
                   ]}>
-                  <Text
-                    style={[
-                      styles.resumeButtonText,
-                      !isPrimaryResume && styles.secondaryResumeText,
-                    ]}>
-                    استكمل
+                  <Text style={styles.resumeButtonText}>
+                    {resumeTarget
+                      ? 'استكمل'
+                      : completed
+                      ? 'راجع الكورس'
+                      : 'عرض الكورس'}
                   </Text>
                 </Pressable>
               </View>
-            )}
-          </View>
-        </React.Fragment>
-      );
-    })}
-  </View>
-);
+            </View>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+};

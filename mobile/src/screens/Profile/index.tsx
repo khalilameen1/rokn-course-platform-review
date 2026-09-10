@@ -1,7 +1,7 @@
 import {useNavigation, useRoute} from '@react-navigation/native';
 import type {RootNavigation, RootRoute} from '../../navigation/types';
 import React, {useEffect, useState} from 'react';
-import {Image, Modal, Pressable, Text, View} from 'react-native';
+import {Image, Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {SettingsIcon, ShareProfileIcon} from '../../assets/SVG';
 import TabBar from '../../components/TabBar';
 import {Container, Content} from '../../components/containers/Containers';
@@ -14,14 +14,12 @@ import HeaderWithBack from '../../components/view/HeaderWithBack';
 import Certificates from './Certificates';
 import Gallery from './Gallery';
 import SavedVideos from './SavedVideos';
-import {isolateBidirectionalText} from '../../constants/arabicFormatting';
 import QRCode from '../../components/ui/QRCode';
 import {QRIcon} from '../../components/ui/QRIcon';
 import {DefaultAvatar} from '../../components/ui/DefaultAvatar';
 import {profileStyles as styles} from './styles';
 import {useProfileOverview} from './useProfileOverview';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
-import {useResponsiveLayout} from '../../constants/designSystem';
 
 type ProfileTab = 'portfolio' | 'certificates' | 'saved';
 
@@ -34,7 +32,6 @@ const tabs: {key: ProfileTab; label: string}[] = [
 export default function Profile() {
   const navigation = useNavigation<RootNavigation>();
   const route = useRoute<RootRoute<'Profile'>>();
-  const {largeText} = useResponsiveLayout();
   const [activeTab, setActiveTab] = useState<ProfileTab>('portfolio');
   const [failedAvatarUri, setFailedAvatarUri] = useState<string>();
   const [showPortfolioQr, setShowPortfolioQr] = useState(false);
@@ -45,8 +42,6 @@ export default function Profile() {
     certificateHolderName,
     displayName,
     identityKey,
-    openPortfolio,
-    portfolioLinkLabel,
     profileError,
     publicPortfolioUrl,
     retry,
@@ -144,11 +139,7 @@ export default function Profile() {
               </View>
             </View>
             {showPortfolioActions && (
-              <View
-                style={[
-                  styles.publicActions,
-                  largeText && styles.publicActionsLargeText,
-                ]}>
+              <View style={styles.publicActions}>
                 <View style={styles.publicActionButtons}>
                   <Pressable
                     accessibilityLabel="مشاركة البورتفوليو"
@@ -172,21 +163,6 @@ export default function Profile() {
                     <QRIcon />
                   </Pressable>
                 </View>
-                <Pressable
-                  accessibilityLabel="فتح رابط مشاركة البورتفوليو"
-                  accessibilityRole="link"
-                  onPress={() => void openPortfolio()}
-                  style={({pressed}) => [
-                    styles.publicLink,
-                    largeText && styles.publicLinkLargeText,
-                    pressed && styles.pressed,
-                  ]}>
-                  <Text
-                    numberOfLines={largeText ? undefined : 1}
-                    style={styles.publicLinkText}>
-                    {isolateBidirectionalText(portfolioLinkLabel)}
-                  </Text>
-                </Pressable>
               </View>
             )}
           </View>
@@ -223,11 +199,17 @@ export default function Profile() {
             </View>
           </Modal>
 
-          <View accessibilityRole="tablist" style={styles.tabs}>
+          <ScrollView
+            accessibilityRole="tablist"
+            contentContainerStyle={styles.tabs}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.tabBar}>
             {tabs.map(tab => {
               const selected = activeTab === tab.key;
               return (
                 <Pressable
+                  accessibilityLabel={tab.label}
                   accessibilityRole="tab"
                   accessibilityState={{selected}}
                   key={tab.key}
@@ -238,6 +220,7 @@ export default function Profile() {
                     pressed && styles.pressed,
                   ]}>
                   <Text
+                    numberOfLines={1}
                     style={[
                       styles.tabLabel,
                       selected && styles.activeTabLabel,
@@ -247,7 +230,7 @@ export default function Profile() {
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
 
           {activeTab === 'portfolio' && (
             <Gallery

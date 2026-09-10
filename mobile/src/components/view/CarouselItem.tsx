@@ -14,6 +14,7 @@ import {
 } from '../../constants/designSystem';
 import {ArrowRight} from '../../assets/SVG';
 import {CourseArtwork} from '../ui/CourseArtwork';
+import {courseCatalogueLabel} from './courseCatalogueLabel';
 
 const CarouselItem = ({
   course,
@@ -24,16 +25,7 @@ const CarouselItem = ({
 }) => {
   const {gutter, featuredHorizontal, featuredImageWidth, featuredImageHeight} =
     useResponsiveLayout();
-  const label = course.published === false ? 'قريبًا' : course.label;
-  const courseState = course.owned
-    ? 'ضمن كورساتك'
-    : course.coinPrice === 0
-    ? 'مجاني'
-    : '';
-  const accessDescription = course.published === false ? 'قريبًا' : courseState;
-  const metadata = Array.from(
-    new Set([label, accessDescription].filter(Boolean)),
-  ).join(' · ');
+  const label = courseCatalogueLabel(course);
 
   return (
     <Pressable
@@ -41,7 +33,7 @@ const CarouselItem = ({
       accessibilityLabel={[
         formatAuthoredDisplayText(course.title),
         course.instructor,
-        accessDescription,
+        label,
       ]
         .filter(Boolean)
         .join(' — ')}
@@ -66,9 +58,9 @@ const CarouselItem = ({
         />
       </View>
       <View style={[styles.copy, featuredHorizontal && styles.copyWide]}>
-        {!!metadata && (
+        {!!label && (
           <Text numberOfLines={1} style={styles.eyebrow}>
-            {formatAuthoredDisplayText(metadata)}
+            {label}
           </Text>
         )}
         <Text
@@ -80,7 +72,10 @@ const CarouselItem = ({
           {formatAuthoredDisplayText(course.title)}
         </Text>
         {!!course.instructor && (
-          <Text numberOfLines={1} ellipsizeMode="tail" style={styles.instructor}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={styles.instructor}>
             {formatAuthoredDisplayText(course.instructor)}
           </Text>
         )}
@@ -114,7 +109,12 @@ const styles = StyleSheet.create({
     color: Palette.textMuted,
     marginBottom: Spacing.xxs,
   },
-  title: {...Type.section, ...textDirection, color: Palette.text, maxWidth: 660},
+  title: {
+    ...Type.section,
+    ...textDirection,
+    color: Palette.text,
+    maxWidth: 660,
+  },
   titleWide: {...Type.title},
   instructor: {
     ...Type.caption,

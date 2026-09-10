@@ -22,14 +22,14 @@ describe('portfolio grid allocated width', () => {
   it.each([
     {name: 'portfolio detail', style: galleryStyles.detailCover, ratio: 1.5},
     {
-      name: 'primary course',
-      style: myCornerStyles.primaryCourseCover,
-      ratio: 2.5,
+      name: 'compact course',
+      style: myCornerStyles.courseCover,
+      ratio: 1.6,
     },
     {
       name: 'large-text course',
-      style: myCornerStyles.largeTextCourseCover,
-      ratio: 2.6,
+      style: myCornerStyles.courseCover,
+      ratio: 1.6,
     },
   ])('clears bundled fallback height for $name', ({style, ratio}) => {
     const effectiveStyle = StyleSheet.flatten<ImageStyle>([

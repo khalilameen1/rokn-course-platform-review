@@ -139,7 +139,7 @@ describe('course card labels', () => {
           typeof node.props.onPress === 'function',
       );
       expect(cleanUnicodeText(button.props.accessibilityLabel)).toBe(
-        paidCourse.title,
+        `${paidCourse.title}، جديد`,
       );
       await act(async () => button.props.onPress());
       expect(onCoursePress).toHaveBeenCalledTimes(1);
@@ -149,29 +149,30 @@ describe('course card labels', () => {
 
   it.each([
     {owned: false, coinPrice: 0, started: false, progress: 0, state: 'مجاني'},
+    {owned: true, coinPrice: 0, started: true, progress: 20, state: 'مجاني'},
     {
       owned: true,
       coinPrice: 400,
       started: false,
       progress: 0,
-      state: 'ضمن كورساتك',
+      state: 'جديد',
     },
     {
       owned: true,
       coinPrice: 400,
       started: true,
       progress: 20,
-      state: 'قيد التعلّم',
+      state: 'جديد',
     },
     {
       owned: true,
       coinPrice: 400,
       started: true,
       progress: 100,
-      state: 'راجع الكورس',
+      state: 'جديد',
     },
   ])(
-    'preserves $state without rendering a coin amount',
+    'shows only public $state for owned=$owned progress=$progress',
     async ({state, ...status}) => {
       await render(
         <CourseCard
@@ -180,15 +181,24 @@ describe('course card labels', () => {
         />,
       );
       expect(visibleCount(state)).toBe(1);
+      const labels = renderer.root
+        .findAllByType(Text)
+        .map(node => node.props.children);
+      expect(
+        labels.filter(value => value === 'مجاني' || value === 'جديد'),
+      ).toHaveLength(1);
+      expect(labels.join(' ')).not.toMatch(
+        /ضمن كورساتك|قيد التعلّم|راجع الكورس|اكتمل/,
+      );
       expect(visibleCount(400)).toBe(0);
       expect(renderer.root.findAllByType(CoinAmount)).toHaveLength(0);
     },
   );
 
   it.each([
-    {published: true, owned: false, coinPrice: 400, state: ''},
+    {published: true, owned: false, coinPrice: 400, state: 'مختار لك'},
     {published: true, owned: false, coinPrice: 0, state: 'مجاني'},
-    {published: true, owned: true, coinPrice: 400, state: 'ضمن كورساتك'},
+    {published: true, owned: true, coinPrice: 400, state: 'مختار لك'},
     {published: false, owned: false, coinPrice: 400, state: 'قريبًا'},
   ])(
     'announces the featured course title instructor and $state as one details action',
@@ -199,6 +209,7 @@ describe('course card labels', () => {
           course={{
             ...upcoming,
             ...availability,
+            label: 'مختار لك',
             instructor: 'مدرب ركن',
           }}
           onButtonPress={onButtonPress}
@@ -218,9 +229,32 @@ describe('course card labels', () => {
       expect(renderer.root.findAllByType(CoinAmount)).toHaveLength(0);
       expect(button.props.accessibilityLabel).not.toContain('400');
       expect(button.props.accessibilityLabel).not.toContain('عملة');
+      expect(button.props.accessibilityLabel).not.toContain('ضمن كورساتك');
 
       await act(async () => button.props.onPress());
       expect(onButtonPress).toHaveBeenCalledTimes(1);
     },
   );
+
+  it('does not repeat the selected public badge underneath or inside its named row', async () => {
+    await render(
+      <CoursesSection
+        data={[
+          {
+            ...upcoming,
+            published: true,
+            coinPrice: 0,
+            label: 'جديد',
+            owned: true,
+            progress: 40,
+          },
+        ]}
+        title="مجاني"
+        onCoursePress={onPress}
+      />,
+    );
+    expect(visibleCount('مجاني')).toBe(1);
+    expect(visibleCount('جديد')).toBe(0);
+    expect(visibleCount('ضمن كورساتك')).toBe(0);
+  });
 });

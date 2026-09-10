@@ -139,14 +139,12 @@ export default function MyCorner() {
           ) : (
             <CourseShelf
               error={data.dashboardError}
-              hasActiveCourses={model.hasActiveCourses}
               largeText={largeText}
               learningOwnershipFresh={data.learningOwnershipFresh}
               onOpenCourse={openCourse}
               onResume={resumeCourse}
               onRetry={data.reload}
               orderedCourses={model.orderedCourses}
-              primaryResumeId={model.primaryResumeId}
             />
           )}
 

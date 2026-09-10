@@ -1,10 +1,6 @@
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {Fonts} from '../../constants/styleConstants';
-import {
-  formatArabicDisplayText,
-  formatAuthoredDisplayText,
-} from '../../constants/arabicFormatting';
+import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {
   Palette,
   Radius,
@@ -16,6 +12,7 @@ import {
 import {MetaPill} from '../ui/PremiumUI';
 import {CourseArtwork} from '../ui/CourseArtwork';
 import type {Course} from '../../types/Course';
+import {courseCatalogueLabel} from './courseCatalogueLabel';
 
 export type {Course};
 
@@ -30,16 +27,8 @@ const CourseCard = memo<CourseCardProps>(
   ({item, onPress, width, sectionTitle}) => {
     const {largeText, railCardWidth} = useResponsiveLayout();
     const isAvailable = item.published !== false;
-    const label = formatArabicDisplayText(item.label);
-    const showLabel =
-      !!label && label !== formatArabicDisplayText(sectionTitle);
-    const progress = Math.max(0, Math.min(100, Number(item.progress || 0)));
-    const accessibilitySummary = [
-      formatAuthoredDisplayText(item.title),
-      item.owned && item.started === true
-        ? formatArabicDisplayText(`اكتمل ${Math.round(progress)}٪`)
-        : undefined,
-    ]
+    const label = courseCatalogueLabel(item, sectionTitle);
+    const accessibilitySummary = [formatAuthoredDisplayText(item.title), label]
       .filter(Boolean)
       .join('، ');
 
@@ -66,23 +55,13 @@ const CourseCard = memo<CourseCardProps>(
             source={item.image}
             style={styles.courseImage}
           />
-          {showLabel && (
+          {!!label && (
             <MetaPill
               label={label}
               onArtwork
               tone={item.labelTone}
               style={styles.labelContainer}
             />
-          )}
-          {typeof item.progress === 'number' && item.progress > 0 && (
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {width: `${Math.min(100, item.progress)}%`},
-                ]}
-              />
-            </View>
           )}
         </View>
         <Text numberOfLines={largeText ? 4 : 2} style={styles.courseTitle}>
@@ -92,21 +71,6 @@ const CourseCard = memo<CourseCardProps>(
           <Text numberOfLines={largeText ? 2 : 1} style={styles.instructor}>
             {formatAuthoredDisplayText(item.instructor)}
           </Text>
-        )}
-        {isAvailable && (item.owned || item.coinPrice === 0) && (
-          <View style={styles.metaRow}>
-            {item.owned ? (
-              <Text style={styles.ownedLabel}>
-                {progress >= 100
-                  ? 'راجع الكورس'
-                  : item.started === true
-                  ? 'قيد التعلّم'
-                  : 'ضمن كورساتك'}
-              </Text>
-            ) : (
-              <Text style={styles.ownedLabel}>مجاني</Text>
-            )}
-          </View>
         )}
       </Pressable>
     );
@@ -153,28 +117,6 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
   },
-  metaRow: {
-    width: '100%',
-    minHeight: 22,
-    alignItems: 'stretch',
-    justifyContent: 'center',
-    marginTop: Spacing.xxs,
-  },
-  ownedLabel: {
-    ...Type.caption,
-    ...textDirection,
-    color: '#8BB5FF',
-    fontFamily: Fonts.semiBold,
-  },
-  progressTrack: {
-    position: 'absolute',
-    start: 0,
-    end: 0,
-    bottom: 0,
-    height: 3,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-  },
-  progressFill: {height: '100%', backgroundColor: Palette.primary},
   pressed: {opacity: 0.84},
 });
 

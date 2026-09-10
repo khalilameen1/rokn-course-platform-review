@@ -74,7 +74,9 @@ describe('compact home featured course', () => {
     expect(StyleSheet.flatten(title.props.style)).toMatchObject(Type.section);
     expect(title.props.numberOfLines).toBe(2);
     expect(title.props.ellipsizeMode).toBe('tail');
-    expect(cleanUnicodeText(title.props.accessibilityLabel)).toBe(featured.title);
+    expect(cleanUnicodeText(title.props.accessibilityLabel)).toBe(
+      featured.title,
+    );
     expect(instructor.props.numberOfLines).toBe(1);
     expect(instructor.props.ellipsizeMode).toBe('tail');
     expect(renderer.root.findByType(CourseArtwork).props.source).toBe(
@@ -96,9 +98,9 @@ describe('compact home featured course', () => {
     })!;
 
     expect(buttons).toHaveLength(1);
-    expect(StyleSheet.flatten(cta.props.style).minHeight).toBeGreaterThanOrEqual(
-      Math.max(48, Accessibility.minTouchTarget),
-    );
+    expect(
+      StyleSheet.flatten(cta.props.style).minHeight,
+    ).toBeGreaterThanOrEqual(Math.max(48, Accessibility.minTouchTarget));
     expect(visibleText()).toContain('عرض الكورس');
     expect(buttons[0].props.accessibilityHint).toBe('يفتح تفاصيل الكورس');
     expect(cleanUnicodeText(buttons[0].props.accessibilityLabel)).toContain(
@@ -106,6 +108,11 @@ describe('compact home featured course', () => {
     );
     expect(buttons[0].props.accessibilityLabel).not.toContain('400');
     expect(visibleText().join(' ')).not.toMatch(/400|عملة|استكمل/);
+    expect(visibleText()).toContain(featured.label);
+    expect(visibleText().join(' ')).not.toMatch(
+      /ضمن كورساتك|قيد التعلّم|راجع الكورس/,
+    );
+    expect(buttons[0].props.accessibilityLabel).not.toContain('ضمن كورساتك');
     await act(async () => buttons[0].props.onPress());
     expect(onButtonPress).toHaveBeenCalledTimes(1);
   });
@@ -125,7 +132,7 @@ describe('compact home featured course', () => {
 
   it.each([
     {label: 'مجاني', expected: 'مجاني'},
-    {label: 'كورس الأسبوع', expected: 'كورس الأسبوع · مجاني'},
+    {label: 'كورس الأسبوع', expected: 'مجاني'},
   ])(
     'keeps $expected in a single compact metadata line',
     async ({label, expected}) => {
@@ -135,6 +142,8 @@ describe('compact home featured course', () => {
       )!;
       expect(metadata).toBeDefined();
       expect(metadata.props.numberOfLines).toBe(1);
+      expect(visibleText()).not.toContain('كورس الأسبوع · مجاني');
+      expect(visibleText().filter(value => value === 'مجاني')).toHaveLength(1);
     },
   );
 

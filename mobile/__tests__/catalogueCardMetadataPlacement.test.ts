@@ -17,7 +17,7 @@ describe('public course metadata placement', () => {
     );
   });
 
-  it('keeps catalogue access states without displaying coin prices', () => {
+  it('keeps one public catalogue label while learner ownership and progress stay out of discovery', () => {
     const courseCard = source('src/components/view/CourseCard.tsx');
     const carouselCard = source('src/components/view/CarouselItem.tsx');
 
@@ -26,8 +26,11 @@ describe('public course metadata placement', () => {
       expect(card).not.toContain("from '../ui/RoknCoin'");
       expect(card).not.toMatch(/value=\{(?:item|course)\.coinPrice/);
       expect(card).not.toMatch(/\$\{(?:item|course)\.coinPrice\}/);
-      expect(card).toContain('مجاني');
-      expect(card).toContain('ضمن كورساتك');
+      expect(card).toContain('courseCatalogueLabel');
+      expect(card).not.toMatch(/(?:item|course)\.(owned|started|progress)/);
+      expect(card).not.toMatch(
+        /ضمن كورساتك|قيد التعلّم|راجع الكورس|progressTrack/,
+      );
     }
   });
 

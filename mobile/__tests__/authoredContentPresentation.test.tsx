@@ -63,14 +63,12 @@ describe('authored text is not localized as interface copy', () => {
     renderText(
       <CourseShelf
         error=""
-        hasActiveCourses
         largeText={false}
         learningOwnershipFresh
         onOpenCourse={onOpenCourse}
         onResume={onResume}
         onRetry={jest.fn()}
         orderedCourses={[course]}
-        primaryResumeId={course.id}
       />,
       (renderer, texts) => {
         expect(texts).toContain(authoredTitle);

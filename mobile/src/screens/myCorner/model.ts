@@ -77,15 +77,13 @@ const currentStreakFromDays = (activeDays: string[]) => {
   return count;
 };
 
-const orderedByResume = (courses: LearningCourse[]) =>
+const orderedByRecentActivity = (courses: LearningCourse[]) =>
   [...courses].sort((first, second) => {
-    const completionOrder =
-      Number(first.progress >= 100) - Number(second.progress >= 100);
-    if (completionOrder !== 0) return completionOrder;
     const firstSeen = Date.parse(first.lastWatchedAt || '') || 0;
     const secondSeen = Date.parse(second.lastWatchedAt || '') || 0;
-    if (firstSeen !== secondSeen) return secondSeen - firstSeen;
-    return second.progress - first.progress;
+    // No enrollment timestamp is supplied. Keep server order for equal or
+    // missing activity dates rather than treating progress as recency.
+    return secondSeen - firstSeen;
   });
 
 export const buildMyCornerModel = ({
@@ -98,16 +96,13 @@ export const buildMyCornerModel = ({
   signedIn: boolean;
 }) => {
   const courses = signedIn ? dashboard?.courses || [] : [];
-  const orderedCourses = orderedByResume(courses);
+  const orderedCourses = orderedByRecentActivity(courses);
   const hasActiveCourses = orderedCourses.some(
     course => course.started && course.progress < 100,
   );
   const allCoursesCompleted =
     orderedCourses.length > 0 &&
     orderedCourses.every(course => course.progress >= 100);
-  const primaryResumeId = orderedCourses.find(
-    course => course.started && course.progress < 100,
-  )?.id;
   const professionalCourses = courses.filter(
     course => course.category === 'freelance',
   );
@@ -159,7 +154,6 @@ export const buildMyCornerModel = ({
     nextPathLevel,
     orderedCourses,
     pathProgress,
-    primaryResumeId,
     professionalCourses,
     selectedPath,
     week: lastSevenDays(activityDays),
