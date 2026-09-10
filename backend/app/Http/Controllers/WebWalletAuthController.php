@@ -50,9 +50,17 @@ final class WebWalletAuthController extends Controller
             return $this->failed('لم يكتمل تسجيل الدخول حاول مرة أخرى');
         }
         if ($attempt->completion_consumed_at) {
-            return $request->user('student')
-                ? redirect()->route('web-wallet.index')
-                : $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
+            // A lost session write or repeated provider redirect can replay
+            // only this browser's PKCE-bound identity, never issue app tokens.
+            try {
+                $receipt = json_decode(Crypt::decryptString((string) $attempt->encrypted_session_response), true, 8, JSON_THROW_ON_ERROR);
+                $user = User::query()->whereKey($receipt['web_wallet_user_id'] ?? 0)
+                    ->where('active', true)->students()->first();
+                return $user ? $this->login($request, $user) : $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
+            } catch (\Throwable $exception) {
+                report($exception);
+                return $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
+            }
         }
 
         $claimed = $this->attempts->claimCompletion($input['code']);
@@ -81,7 +89,10 @@ final class WebWalletAuthController extends Controller
                         ->first();
                     $user = $account ? User::query()->whereKey($account->user_id)
                         ->where('active', true)->students()->lockForUpdate()->first() : null;
-                    if (!$this->attempts->finalizeCompletion($claimed)) {
+                    $receipt = $user ? Crypt::encryptString(json_encode([
+                        'web_wallet_user_id' => (int) $user->id,
+                    ], JSON_THROW_ON_ERROR)) : null;
+                    if (!$this->attempts->finalizeCompletion($claimed, $receipt)) {
                         return null;
                     }
                     return $user;
@@ -91,11 +102,7 @@ final class WebWalletAuthController extends Controller
                 return $this->failed('استخدم نفس حساب الدخول المرتبط بتطبيق ركن');
             }
 
-            Auth::guard('student')->login($user);
-            $request->session()->forget('wallet');
-            $request->session()->regenerateToken();
-
-            return redirect()->route('web-wallet.index');
+            return $this->login($request, $user);
         } catch (\DomainException $exception) {
             $this->attempts->finalizeCompletion($claimed);
             return $this->failed('انتهت محاولة الدخول حاول مرة أخرى');
@@ -111,6 +118,14 @@ final class WebWalletAuthController extends Controller
         Auth::guard('student')->logout();
         $request->session()->forget('wallet');
         $request->session()->regenerate(true);
+        return redirect()->route('web-wallet.index');
+    }
+
+    private function login(Request $request, User $user): RedirectResponse
+    {
+        Auth::guard('student')->login($user);
+        $request->session()->forget('wallet.intent');
+        $request->session()->regenerateToken();
         return redirect()->route('web-wallet.index');
     }
 

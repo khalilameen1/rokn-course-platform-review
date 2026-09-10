@@ -156,6 +156,7 @@ final class WebWalletTest extends TestCase
     {
         $order = $this->pendingOrder();
         $this->actingAs($this->student, 'student');
+        Auth::shouldUse('web');
         for ($i = 0; $i < 12; $i++) {
             $this->getJson('/recharge/orders/'.$order->order_ref.'/status')->assertOk();
         }
@@ -206,6 +207,8 @@ final class WebWalletTest extends TestCase
 
     public function test_web_signin_and_logout_preserve_native_token_device_and_dashboard_identity(): void
     {
+        $admin = User::forceCreate(['email' => 'admin@example.test', 'role' => 'admin', 'active' => true]);
+        $this->actingAs($admin, 'web');
         $this->student->forceFill(['locked_device_id' => (string) Str::uuid()])->save();
         $this->student->generateApiToken('google', 'google-wallet-student');
         $before = DB::table('api_tokens')->where('user_id', $this->student->id)->get()->toJson();
@@ -217,12 +220,13 @@ final class WebWalletTest extends TestCase
         $this->withSession(['wallet.oauth_verifier' => $verifier])->get('/recharge/auth/complete?code='.$code)
             ->assertRedirect('/recharge')->assertSessionMissing('error');
         $this->assertAuthenticatedAs($this->student, 'student');
-        $this->assertGuest('web');
+        $this->assertAuthenticatedAs($admin, 'web');
         self::assertSame($before, DB::table('api_tokens')->where('user_id', $this->student->id)->get()->toJson());
         self::assertSame($device, $this->student->fresh()->locked_device_id);
-        $this->get('/dashboard')->assertRedirect('/login');
+        $this->get('/recharge/auth/complete?code='.$code)->assertRedirect('/recharge')->assertSessionMissing('error');
         $this->post('/recharge/logout')->assertRedirect('/recharge');
         $this->assertGuest('student');
+        $this->assertAuthenticatedAs($admin, 'web');
         self::assertSame($before, DB::table('api_tokens')->where('user_id', $this->student->id)->get()->toJson());
     }
 
@@ -242,7 +246,7 @@ final class WebWalletTest extends TestCase
         $this->assertGuest('student');
     }
 
-    public function test_login_started_before_account_deletion_cannot_open_recreated_wallet(): void
+    public function test_login_started_before_account_deletion_is_rejected(): void
     {
         [$code, $verifier] = $this->oauthCompletion();
         app(SocialIdentityGuardService::class)->markDeletionStarted($this->student->id);
