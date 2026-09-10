@@ -135,6 +135,18 @@ jobs:
       - name: Audit all locked dependencies
         run: composer audit --locked --no-interaction
 
+      - name: Verify landing views and render review preview
+        run: |
+          vendor/bin/phpunit tests/Unit/LandingViewTest.php
+          php scripts/render-landing-preview.php
+
+      - name: Keep rendered landing preview
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: landing-preview
+          path: backend/storage/app/landing-preview
+          retention-days: 7
+
       - name: Verify website wallet and shared payment contracts
         env:
           CACHE_DRIVER: array

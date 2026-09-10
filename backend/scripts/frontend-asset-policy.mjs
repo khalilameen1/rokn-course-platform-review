@@ -1,5 +1,14 @@
 export const thirdPartyFamilies = [
     {
+        id: 'store-marketing-badges', name: 'Apple App Store and Google Play badges',
+        version: 'Official English downloads retrieved 2026-09-10',
+        license: 'Brand-owned marketing assets; respective store marketing terms apply',
+        source: 'Apple Marketing Tools and Google Partner Marketing Hub; URLs in the provenance notice',
+        artifacts: ['public/images/landing/app-store.svg', 'public/images/landing/google-play.svg'],
+        legal: [['Official store badge provenance and usage notice', 'resources/legal/frontend/STORE-BADGES.md']],
+        modifications: 'None. Original SVG artwork, colors and proportions retained.',
+    },
+    {
         id: 'cairo', name: 'Cairo', version: 'Rokn mobile bundled regular and bold', license: 'OFL-1.1',
         source: 'https://github.com/Gue3bara/Cairo',
         artifacts: [

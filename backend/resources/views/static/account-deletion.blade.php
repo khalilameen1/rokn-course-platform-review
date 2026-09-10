@@ -32,7 +32,7 @@
         @media(max-width:680px){.deletion-page{padding:38px 14px 72px}.deletion-shell{border-radius:22px}.deletion-grid{grid-template-columns:1fr}}
     </style>
 
-    <main class="deletion-page">
+    <div class="deletion-page">
         <section class="deletion-shell">
             <span class="deletion-kicker">خصوصيتك تحت سيطرتك</span>
             <h1>طلب حذف حسابك</h1>
@@ -97,5 +97,5 @@
                 </form>
             @endif
         </section>
-    </main>
+    </div>
 @endsection

@@ -442,7 +442,7 @@
     },
     {
       "path": "public/css/landing.css",
-      "sha256": "d515333af143de3b5b2e7ad1ca5cb98b9ab7f8e64af5493312ee62efc7ca4fb8",
+      "sha256": "4fa5013757a77d197de91d5668f1d54afb6277d9f71386d3f3a574d0a3344f33",
       "classification": "first_party"
     },
     {
@@ -502,6 +502,28 @@
       "classification": "first_party"
     },
     {
+      "path": "public/images/landing/app-store.svg",
+      "sha256": "a26fc5b38380272c92e9019a2eb8b45542a66814b3e2b203772db8904b9fb99f",
+      "classification": "third_party",
+      "family": "store-marketing-badges"
+    },
+    {
+      "path": "public/images/landing/google-play.svg",
+      "sha256": "4ffa4c7edd2f10b297ca4de2131eddaa00d03b2278d1e178fe512920d824ca34",
+      "classification": "third_party",
+      "family": "store-marketing-badges"
+    },
+    {
+      "path": "public/images/landing/rokn-home.webp",
+      "sha256": "c7fac6109a05ab8821590534f269b508a0925ac54c52cd9443162f36dfaffedd",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/images/landing/rokn-lesson.webp",
+      "sha256": "a900b7d96a1f34c958812d8e4e4c7f3aea381573ef63bc348da93dc6ac42e79b",
+      "classification": "first_party"
+    },
+    {
       "path": "public/images/logo.png",
       "sha256": "b525683c32779c5f7cad733c5ca0865314a52f0e7d9087d74eedbce0583bf312",
       "classification": "first_party"
@@ -547,6 +569,11 @@
       "sha256": "80d0b480d1956f162c06cef0b79a260b587192bd1b2d4de2c77cfe59261bbed3",
       "classification": "third_party",
       "family": "frontend-bundle"
+    },
+    {
+      "path": "public/js/landing.js",
+      "sha256": "a4f907bc2724f70cfcef99c08d5d614ffd45b595d0889800e4a524343f943a6f",
+      "classification": "first_party"
     },
     {
       "path": "public/js/web-wallet.js",
@@ -624,7 +651,7 @@
     },
     {
       "path": "public/THIRD_PARTY_NOTICES.frontend.md",
-      "sha256": "2e57b7381c7a59a9e352918436d49bca971c1443dcdb2bf7abec462be9d7892d",
+      "sha256": "2d872072439a758d6d0ecaa8e01d51542496569fb1278357f2b84d99fc74222a",
       "classification": "generated"
     },
     {

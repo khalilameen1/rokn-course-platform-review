@@ -28,7 +28,7 @@ function classification(path) {
     if (thirdParty.has(path)) return { classification: 'third_party', family: thirdParty.get(path) };
     if (generated.has(path)) return { classification: 'generated' };
     if (deployment.has(path)) return { classification: 'deployment' };
-    if (['public/css/web-wallet.css', 'public/js/web-wallet.js'].includes(path)) {
+    if (['public/css/web-wallet.css', 'public/js/web-wallet.js', 'public/js/landing.js'].includes(path)) {
         return { classification: 'first_party' };
     }
     if (/^public\/(?:admin\/assets\/css\/|admin\/assets\/js\/(?:main|admin-identity-theme|request|reward-rule-form|users-index|course-studio(?:-[a-z-]+)?)\.js$|assets\/img\/badges\/|css\/landing\.css$|favicon\.ico$|images\/)/.test(path)) {

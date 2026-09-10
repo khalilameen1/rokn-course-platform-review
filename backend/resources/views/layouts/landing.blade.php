@@ -2,7 +2,8 @@
 <html lang="{{ $locale }}" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#080c12">
 
     @php
         $siteName = $setting ? $setting->{'site_name_' . $locale} : ($designSetting->{'name_' . $locale} ?? 'Rokn');
@@ -16,15 +17,15 @@
     <link rel="icon" href="{{ asset('images/logo.png') }}" type="image/png">
     <link href="{{ asset('css/landing.css') }}?v={{ filemtime(public_path('css/landing.css')) }}" rel="stylesheet">
 </head>
-<body class="landing-page">
+<body class="landing-page @yield('page_class')">
+<a class="skip-link" href="#main-content">{{ $locale === 'ar' ? 'انتقل إلى المحتوى' : 'Skip to content' }}</a>
 
     {{-- NAVBAR --}}
     <nav class="landing-navbar">
         <div class="landing-container">
             <div class="navbar-left">
                 <a href="{{ route('landing') }}" class="navbar-brand">
-                    <img src="{{ asset('images/logo.png') }}" alt="{{ $siteName }}">
-                    <span>{{ $siteName }}</span>
+                    <img src="{{ asset('images/rokn-wordmark.png') }}" alt="{{ $siteName ?: 'Rokn' }}" width="112" height="37">
                 </a>
                 <div class="nav-links">
                     <a href="{{ route('landing') }}" class="nav-link">{{ __('landing.nav_home') }}</a>
@@ -33,13 +34,13 @@
                 </div>
             </div>
             <a href="{{ url()->current() }}?lang={{ $locale === 'ar' ? 'en' : 'ar' }}" class="lang-toggle">
-                &#127760; {{ __('landing.switch_lang') }}
+                {{ __('landing.switch_lang') }}
             </a>
         </div>
     </nav>
 
     {{-- PAGE CONTENT --}}
-    @yield('content')
+    <main id="main-content">@yield('content')</main>
 
     {{-- FOOTER --}}
     @php
@@ -55,13 +56,13 @@
 
     <footer class="landing-footer">
         <div class="landing-container">
-            <p class="footer-cta">{{ $designSetting->{'slogan_3_' . $locale} ?? __('landing.footer_cta') }}</p>
-
-            @if(collect($downloadChannels ?? [])->filter()->isNotEmpty())
-                <div style="margin-bottom: 2rem;">
-                    @include('landing.partials.download-buttons')
-                </div>
-            @endif
+            <div class="footer-brand">
+                <a href="{{ route('landing') }}"><img src="{{ asset('images/rokn-wordmark.png') }}" alt="{{ $siteName ?: 'Rokn' }}" width="100" height="33" loading="lazy"></a>
+                <nav class="footer-nav" aria-label="{{ __('landing.nav_about') }}">
+                    <a href="{{ route('about') }}">{{ __('landing.nav_about') }}</a>
+                    <a href="{{ route('contact') }}">{{ __('landing.nav_contact') }}</a>
+                </nav>
+            </div>
 
             <div class="footer-columns">
                 @if($socialLinks->isNotEmpty())
