@@ -23,6 +23,9 @@ return [
     // Set this to the externally reachable API prefix when APP_URL or reverse
     // proxy detection cannot generate the exact provider callback URL.
     'public_api_url' => env('SOCIAL_AUTH_PUBLIC_API_URL'),
+    // Canonical browser origin; leave unset to serve on APP_URL until the
+    // branded domain points to this deployment.
+    'web_wallet_url' => env('WEB_WALLET_URL'),
     'return_urls' => array_values(array_filter(array_map(
         'trim',
         explode(',', (string) env('SOCIAL_AUTH_RETURN_URLS', 'rokn://auth'))

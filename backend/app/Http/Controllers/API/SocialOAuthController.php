@@ -216,6 +216,12 @@ final class SocialOAuthController extends Controller
             ], 410);
         }
 
+        // Browser checkout issues a restricted cookie session, not an app
+        // device token. Its completion must stay on the browser endpoint.
+        if ($attempt->return_to === $this->socialProviders->webWalletReturnUrl()) {
+            abort(422, 'أكمل تسجيل الدخول من صفحة الشحن');
+        }
+
         if (!$this->browserProviders()->contains((string) $attempt->provider)) {
             // Corrupted or injected attempt records are unusable and should not
             // remain replayable. Verifier mismatches on a valid provider stay
@@ -533,7 +539,7 @@ final class SocialOAuthController extends Controller
             $urls
         ), static fn (string $value): bool => $value === 'rokn://auth')));
 
-        return $safe;
+        return [...$safe, $this->socialProviders->webWalletReturnUrl()];
     }
 
     private function facebookGraphVersion(): string

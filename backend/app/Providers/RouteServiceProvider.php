@@ -170,6 +170,18 @@ class RouteServiceProvider extends ServiceProvider
             ];
         });
 
+        foreach (['auth-start' => 10, 'auth-complete' => 20, 'read' => 60, 'write' => 6, 'reconcile' => 10] as $action => $limit) {
+            RateLimiter::for('web-wallet-'.$action, function (Request $request) use ($action, $limit) {
+                $studentId = $request->user('student')?->id;
+                $identity = $studentId ? 'user:'.$studentId : 'session:'.$request->session()->getId();
+                $limits = [Limit::perMinute($limit)->by('web-wallet:'.$action.':'.$identity)];
+                if (str_starts_with($action, 'auth-')) {
+                    $limits[] = Limit::perMinute(120)->by('web-wallet:'.$action.':ip:'.$request->ip());
+                }
+                return $limits;
+            });
+        }
+
         RateLimiter::for('payment-write', function (Request $request) {
             $identity = $this->rateLimitIdentity($request);
 

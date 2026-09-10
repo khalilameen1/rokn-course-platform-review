@@ -186,6 +186,13 @@ final class SocialAuthProviderRegistry
         return $this->publicApiUrl().'/social-auth/'.rawurlencode($provider).'/start';
     }
 
+    public function webWalletReturnUrl(): string
+    {
+        // Deployment configuration, never a supplied return URL or Host.
+        return rtrim((string) (config('social_auth.web_wallet_url') ?: config('app.url')), '/')
+            .'/recharge/auth/complete';
+    }
+
     public function browserCallbackUrl(string $provider): string
     {
         if (!$this->browserDeclared()->contains($provider)) {

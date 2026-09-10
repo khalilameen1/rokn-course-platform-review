@@ -36,6 +36,12 @@ return [
     */
 
     'guards' => [
+        // A learner can fund the same wallet in a browser without replacing
+        // the mobile device session or acquiring dashboard permissions.
+        'student' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
         'web' => [
             'driver' => 'session',
             'provider' => 'users',

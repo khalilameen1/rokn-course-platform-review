@@ -366,9 +366,9 @@
 
                     <div class="form-row">
                         <div class="form-group-modern settings-grid-full">
-                            <label for="direct_checkout_discount_percent">خصم نسخة Android المباشرة</label>
+                            <label for="direct_checkout_discount_percent">خصم الشحن عبر كاشير</label>
                             {!! Form::number('direct_checkout_discount_percent', $settings->direct_checkout_discount_percent ?? 10, ['class' => 'form-control-modern', 'id' => 'direct_checkout_discount_percent', 'min' => 0, 'max' => 50, 'step' => '0.01', 'required']) !!}
-                            <small class="text-muted">يُطبّق على كاشير فقط وتظل أسعار Google Play وApp Store من المتجرين</small>
+                            <small class="text-muted">للموقع ونسخة Android المباشرة وتظل أسعار Google Play وApp Store من المتجرين</small>
                             @error('direct_checkout_discount_percent')<small class="text-danger">{{ $message }}</small>@enderror
                         </div>
                     </div>

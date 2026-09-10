@@ -22,7 +22,12 @@ final readonly class KashierCheckoutFlowService
     ) {
     }
 
-    public function initiate(Request $request, bool $allowPendingRecovery = true): JsonResponse
+    public function initiate(
+        Request $request,
+        bool $allowPendingRecovery = true,
+        ?User $user = null,
+        ?string $callbackUrl = null
+    ): JsonResponse
     {
         $bodyHasKey = array_key_exists('idempotency_key', $request->all());
         $headerHasKey = $request->hasHeader('Idempotency-Key');
@@ -81,7 +86,8 @@ final readonly class KashierCheckoutFlowService
         }
 
         /** @var User $user */
-        $user = auth('api')->user();
+        $user ??= auth('api')->user();
+        $callbackUrl ??= route('payment.callback');
         $package = Package::findOrFail($request->package_id);
 
         try {
@@ -125,7 +131,7 @@ final readonly class KashierCheckoutFlowService
                 if ($checkout['closed'] === 'expired' && $order->status === Order::STATUS_PENDING) {
                     $order = $this->reconcileProviderOrder($order);
                     if ($order->status === Order::STATUS_PENDING) {
-                        return $this->pendingCheckoutResponse($order);
+                        return $this->pendingCheckoutResponse($order, $callbackUrl);
                     }
                 }
                 if ($order->isFinanciallyEffective()) {
@@ -202,10 +208,10 @@ final readonly class KashierCheckoutFlowService
                     );
                 }
                 if ($pendingOrder->status !== Order::STATUS_PENDING && $allowPendingRecovery) {
-                    return $this->initiate($request, false);
+                    return $this->initiate($request, false, $user, $callbackUrl);
                 }
                 if ($pendingOrder->status === Order::STATUS_PENDING) {
-                    return $this->pendingCheckoutResponse($pendingOrder);
+                    return $this->pendingCheckoutResponse($pendingOrder, $callbackUrl);
                 }
             }
             return $this->responses->make(
@@ -244,7 +250,7 @@ final readonly class KashierCheckoutFlowService
                 $orderRef,
                 number_format((float) $order->final_amount, 2, '.', ''),
                 'EGP',
-                route('payment.callback')
+                $callbackUrl
             );
         } catch (\Throwable $exception) {
             report($exception);
@@ -294,11 +300,12 @@ final readonly class KashierCheckoutFlowService
 
     public function status(
         string $orderRef,
-        bool $reconcile = false
+        bool $reconcile = false,
+        ?User $user = null
     ): JsonResponse
     {
         /** @var User $user */
-        $user = auth('api')->user();
+        $user ??= auth('api')->user();
         $order = Order::byOrderRef($orderRef)
             ->where('user_id', $user->id)
             ->with('package')
@@ -350,10 +357,10 @@ final readonly class KashierCheckoutFlowService
         ]);
     }
 
-    public function abandon(string $orderRef): JsonResponse
+    public function abandon(string $orderRef, ?User $user = null): JsonResponse
     {
         /** @var User $user */
-        $user = auth('api')->user();
+        $user ??= auth('api')->user();
         $order = Order::byOrderRef($orderRef)
             ->where('user_id', $user->id)
             ->with('package')
@@ -528,7 +535,7 @@ final readonly class KashierCheckoutFlowService
         );
     }
 
-    private function pendingCheckoutResponse(Order $order): JsonResponse
+    private function pendingCheckoutResponse(Order $order, string $callbackUrl): JsonResponse
     {
         $paymentUrl = null;
         if ($order->financial_status !== Order::FINANCIAL_REVIEW_REQUIRED) {
@@ -537,7 +544,7 @@ final readonly class KashierCheckoutFlowService
                     (string) $order->order_ref,
                     number_format((float) $order->final_amount, 2, '.', ''),
                     'EGP',
-                    route('payment.callback')
+                    $callbackUrl
                 );
             } catch (\Throwable $exception) {
                 report($exception);

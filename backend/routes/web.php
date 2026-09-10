@@ -21,6 +21,32 @@ Route::get('/apple-app-site-association', [\App\Http\Controllers\AppAssociationC
     ->name('app-association.apple.root');
 
 Route::get('/', [\App\Http\Controllers\LandingPageController::class, 'index'])->name('landing');
+// Separate from /wallet, which is an installed-app link. The website uses
+// the same learner and ledger without changing app checkout or staff login.
+Route::prefix('recharge')->name('web-wallet.')
+    ->middleware(\App\Http\Middleware\StudentWalletSession::class)->group(function () {
+        Route::get('/', [\App\Http\Controllers\WebWalletController::class, 'index'])->name('index');
+        Route::get('auth/complete', [\App\Http\Controllers\WebWalletAuthController::class, 'complete'])
+            ->middleware('throttle:web-wallet-auth-complete')->name('auth.complete');
+        Route::get('auth/{provider}', [\App\Http\Controllers\WebWalletAuthController::class, 'start'])
+            ->whereIn('provider', ['google', 'facebook', 'tiktok'])->middleware('throttle:web-wallet-auth-start')->name('auth.start');
+        Route::post('logout', [\App\Http\Controllers\WebWalletAuthController::class, 'logout'])->name('logout');
+        Route::get('callback', [\App\Http\Controllers\WebWalletController::class, 'callback'])
+            ->middleware(['recovery.write', 'throttle:kashier-callback'])->name('callback');
+        Route::middleware(\App\Http\Middleware\StudentWalletSession::class.':required')->group(function () {
+            Route::post('checkout', [\App\Http\Controllers\WebWalletController::class, 'pay'])
+                ->middleware('throttle:web-wallet-write')->name('pay');
+            Route::get('orders/{orderRef}', [\App\Http\Controllers\WebWalletController::class, 'receipt'])->name('receipt');
+            Route::get('orders/{orderRef}/status', [\App\Http\Controllers\WebWalletController::class, 'status'])
+                ->middleware('throttle:web-wallet-read')->name('status');
+            Route::post('orders/{orderRef}/reconcile', [\App\Http\Controllers\WebWalletController::class, 'reconcile'])
+                ->middleware(['recovery.write', 'throttle:web-wallet-reconcile'])->name('reconcile');
+            Route::post('orders/{orderRef}/resume', [\App\Http\Controllers\WebWalletController::class, 'resume'])
+                ->middleware('throttle:web-wallet-write')->name('resume');
+            Route::post('orders/{orderRef}/abandon', [\App\Http\Controllers\WebWalletController::class, 'abandon'])
+                ->middleware(['recovery.write', 'throttle:web-wallet-reconcile'])->name('abandon');
+        });
+    });
 Route::get('/profile', \App\Http\Controllers\AppLinkFallbackController::class)
     ->name('app-link.profile-fallback');
 Route::get('/wallet', \App\Http\Controllers\AppLinkFallbackController::class)

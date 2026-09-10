@@ -126,6 +126,8 @@ final class ResilientThrottleRequests extends ThrottleRequests
                 'api/*/social-auth/*',
                 'api/social-auth/*',
                 'payment/*',
+                'recharge/auth/*',
+                'recharge/callback',
                 'api/*/store-notifications/*',
                 'api/store-notifications/*',
                 'api/*/whatsapp/webhook',
