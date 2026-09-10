@@ -17,9 +17,10 @@
                          alt="{{ __('landing.download_on').' '.$store['name'] }}">
                 </a>
             @else
-                <span class="store-btn" aria-disabled="true" aria-label="{{ __('landing.store_pending', ['store' => $store['name']]) }}">
+                <span class="store-btn" aria-disabled="true">
                     <img src="{{ asset('images/landing/'.$store['image']) }}"
-                         width="{{ $store['width'] }}" height="{{ $store['height'] }}" alt="">
+                         width="{{ $store['width'] }}" height="{{ $store['height'] }}"
+                         alt="{{ __('landing.store_pending', ['store' => $store['name']]) }}">
                 </span>
             @endif
         @endforeach

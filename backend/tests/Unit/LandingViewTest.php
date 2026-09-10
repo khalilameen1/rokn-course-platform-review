@@ -21,7 +21,11 @@ final class LandingViewTest extends TestCase
             self::assertSame(4, substr_count($html, 'class="store-btn" aria-disabled="true"'));
             self::assertStringContainsString('images/landing/app-store.svg', $html);
             self::assertStringContainsString('images/landing/google-play.svg', $html);
-            self::assertStringContainsString('images/landing/rokn-home.webp', $html);
+            foreach (['photography', 'design', 'drawing'] as $subject) {
+                self::assertStringContainsString('images/landing/'.$subject.'.webp', $html);
+            }
+            self::assertStringNotContainsString('rokn-home.webp', $html);
+            self::assertStringNotContainsString('rokn-lesson.webp', $html);
             self::assertStringNotContainsString('href="#"', $html);
             self::assertStringNotContainsString('data-download-dock', $html);
             self::assertStringNotContainsString('<iframe', $html);
@@ -79,7 +83,7 @@ final class LandingViewTest extends TestCase
         $html = view('landing.index', $data)->render();
 
         self::assertStringContainsString('<title>عنوان البحث</title>', $html);
-        self::assertStringContainsString('<span>محفوظ</span>', $html);
+        self::assertStringContainsString('<span>عنوان</span>', $html);
         self::assertStringContainsString('وصف محفوظ', $html);
         self::assertStringContainsString('نص تحميل محفوظ', $html);
         self::assertStringContainsString('src="'.$data['howPlatformWorksVideoUrl'].'"', $html);

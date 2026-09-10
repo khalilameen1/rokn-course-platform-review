@@ -138,80 +138,102 @@ summary {
 .app-landing .landing-navbar {
     border: 0;
 }
-.eyebrow {
-    font-size: 0.875rem;
-    color: var(--rokn-text-muted);
-    margin-block-end: 0.7rem;
-}
-.hero-grid,
-.learning-grid,
-.outcome-grid {
+.hero-grid {
     display: grid;
-    gap: 2.75rem;
+    gap: 1.75rem;
 }
 .landing-hero {
-    padding-block: 1.2rem 0;
+    padding-block: 0.25rem 3.5rem;
     overflow: clip;
 }
 .hero-copy {
-    position: relative;
-    z-index: 1;
+    grid-row: 2;
+    text-align: center;
 }
 .landing-hero h1 {
-    font-size: clamp(3.5rem, 15vw, 6.75rem);
-    line-height: 1.25;
-    max-inline-size: 9ch;
+    margin-inline: auto;
+    max-inline-size: 14ch;
+    font-size: clamp(2.6rem, 11vw, 4.8rem);
+    line-height: 1.35;
+    text-wrap: balance;
 }
 .landing-hero h1 span {
     display: block;
     color: var(--rokn-primary);
 }
 .hero-description {
-    margin-block-start: 1rem;
-    font-size: 1.0625rem;
-    max-inline-size: 30rem;
+    margin: 0.85rem auto 0;
+    font-size: 1rem;
+    max-inline-size: 26rem;
     color: #c2cbd8;
     white-space: pre-line;
+    text-wrap: balance;
 }
 .hero-download {
-    margin-block-start: 1.6rem;
+    margin-block-start: 1.4rem;
 }
-.download-note {
-    margin-block-start: 0.8rem;
-    color: var(--rokn-text-muted);
-    font-size: 0.875rem;
-}
-.app-preview {
-    position: relative;
+.hero-copy .download-options {
     margin-inline: auto;
-    inline-size: min(100%, 340px);
 }
-.app-preview img {
-    inline-size: 100%;
-    block-size: auto;
-    border: 1px solid #303845;
-    border-radius: 1.6rem;
+.hero-copy .store-buttons {
+    justify-content: center;
 }
-.home-preview {
-    block-size: 450px;
+.hero-copy summary {
+    margin-inline: auto;
+}
+.hero-visual {
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 0;
+    block-size: clamp(280px, 84vw, 370px);
+    margin-inline: -1.25rem;
+    overflow: clip;
+}
+.portrait-strip {
+    display: flex;
+    flex: none;
+    direction: ltr;
+    gap: 0.75rem;
+    align-items: center;
+}
+.subject-portrait {
+    position: relative;
+    flex: none;
+    inline-size: clamp(134px, 37vw, 178px);
+    aspect-ratio: 9 / 16;
+    border-radius: 1.15rem;
     overflow: hidden;
-    border-radius: 1.6rem 1.6rem 0 0;
+    background: #162027;
 }
-.home-preview::after {
-    content: '';
+.subject-portrait--photography {
+    inline-size: clamp(160px, 44vw, 208px);
+}
+.subject-portrait--design {
+    transform: translateY(-1rem);
+}
+.subject-portrait--drawing {
+    transform: translateY(1rem);
+}
+.subject-portrait img {
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+}
+.subject-portrait figcaption {
     position: absolute;
     inset: auto 0 0;
-    block-size: 5rem;
-    background: linear-gradient(transparent, var(--page));
-    pointer-events: none;
+    padding: 3rem 0.9rem 0.85rem;
+    background: linear-gradient(transparent, rgb(0 0 0 / 0.8));
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: start;
+    direction: rtl;
 }
-.home-preview figcaption {
-    position: absolute;
-    inset: auto 0 0.75rem;
-    text-align: center;
-    color: var(--rokn-text-muted);
-    font-size: 0.875rem;
-    z-index: 1;
+html[dir='ltr'] .subject-portrait figcaption {
+    direction: ltr;
 }
 
 /* Download artwork remains unmodified */
@@ -303,70 +325,47 @@ summary {
     border-radius: 0.6rem;
     flex: 0 0 40px;
 }
-.download-dock > div {
+.download-dock > strong {
     flex: 1;
     min-inline-size: 0;
-}
-.download-dock strong,
-.download-dock span {
-    display: block;
-    line-height: 1.6;
-}
-.download-dock span {
-    font-size: 0.875rem;
-    color: var(--rokn-text-muted);
 }
 .download-dock a {
     font-size: 0.9375rem;
     flex-shrink: 0;
 }
 
-/* Product, then the reason to keep learning */
+/* Three reasons to continue beyond the first clip */
 .learning-section {
-    padding-block: 4.5rem;
-}
-.learning-section h2,
-.outcome-section h2,
-.download-section h2 {
-    font-size: clamp(2rem, 8vw, 3.5rem);
-    line-height: 1.45;
-    white-space: pre-line;
-}
-.section-lead {
-    font-size: 1.0625rem;
-    color: #c2cbd8;
-    margin-block-start: 1rem;
-    white-space: pre-line;
+    padding-block: 1rem;
+    background: #f1f2f4;
+    color: #111723;
 }
 .learning-points {
-    margin-block-start: 2rem;
-}
-.learning-points > div {
     display: grid;
-    grid-template-columns: 4.5rem 1fr;
-    gap: 1rem;
-    padding-block: 1rem;
-    border-block-start: 1px solid var(--line);
 }
-.learning-points dt {
-    font-weight: 700;
+.learning-points article {
+    padding-block: 2rem;
 }
-.learning-points dd {
-    color: var(--rokn-text-muted);
+.learning-points article + article {
+    border-block-start: 1px solid #cdd1d8;
 }
-.lesson-preview {
-    inline-size: min(100%, 300px);
+.learning-points h2 {
+    font-size: clamp(1.5rem, 6vw, 1.8rem);
+    line-height: 1.5;
+    margin-block-end: 0.6rem;
 }
-.outcome-section {
-    background: #121d30;
-    padding-block: 3rem;
-}
-.outcome-section .muted {
-    margin-block-start: 1rem;
+.learning-points p {
+    font-size: 1rem;
+    color: #515967;
+    max-inline-size: 28rem;
 }
 .download-section {
     padding-block: 4rem;
     text-align: center;
+}
+.download-section h2 {
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    line-height: 1.5;
 }
 .download-finish > img {
     margin: 0 auto 1.2rem;
@@ -395,7 +394,7 @@ summary {
 }
 .video-wrapper {
     inline-size: min(100%, 800px);
-    aspect-ratio: 16/9;
+    aspect-ratio: 16 / 9;
     margin-inline: auto;
     border: 1px solid var(--line);
     border-radius: 1rem;
@@ -567,9 +566,9 @@ summary {
     padding-block: 2rem;
 }
 
-@media (min-width: 700px) {
+@media (min-width: 760px) {
     .landing-container {
-        inline-size: min(100% - 4rem, 1120px);
+        inline-size: min(100% - 4rem, 1180px);
     }
     .nav-links {
         display: flex;
@@ -577,45 +576,68 @@ summary {
     .app-landing .nav-links {
         display: none;
     }
-    .hero-grid,
-    .learning-grid {
-        grid-template-columns: 1.12fr 1fr;
+    .landing-hero {
+        padding-block: 2rem 5rem;
+    }
+    .hero-grid {
+        grid-template-columns: 1fr 1.2fr;
         align-items: center;
         gap: 3rem;
     }
-    .landing-hero {
-        padding-block-start: 3rem;
-    }
-    .home-preview {
-        inline-size: min(100%, 360px);
-        block-size: 650px;
-    }
     .hero-copy {
-        padding-block-end: 3rem;
+        grid-row: 1;
+        grid-column: 1;
+        text-align: start;
+    }
+    .hero-copy h1,
+    .hero-description,
+    .hero-copy .download-options {
+        margin-inline: 0;
+    }
+    .hero-copy .store-buttons {
+        justify-content: flex-start;
+    }
+    .hero-copy summary {
+        margin-inline: 0;
+    }
+    .hero-visual {
+        grid-row: 1;
+        grid-column: 2;
+        block-size: 470px;
+        margin-inline: -1rem;
+    }
+    .subject-portrait {
+        inline-size: 190px;
+    }
+    .subject-portrait--photography {
+        inline-size: 224px;
+    }
+    .portrait-strip {
+        gap: 1rem;
+    }
+    .subject-portrait--design {
+        transform: translateY(-1.5rem);
+    }
+    .subject-portrait--drawing {
+        transform: translateY(1.5rem);
     }
     .learning-section {
-        padding-block: 6rem;
+        padding-block: 2.5rem;
     }
-    .learning-copy {
-        grid-column: 2;
-        grid-row: 1;
+    .learning-points {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 2rem;
     }
-    .lesson-preview {
-        grid-column: 1;
-        grid-row: 1;
-    }
-    .outcome-grid {
-        grid-template-columns: 1fr 1fr;
-        align-items: center;
-    }
-    .outcome-section,
-    .download-section {
-        padding-block: 5rem;
+    .learning-points article + article {
+        border: 0;
     }
     .footer-columns,
     .contact-grid,
     .offers-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .download-section {
+        padding-block: 5rem;
     }
     .download-dock {
         display: none;
@@ -627,6 +649,9 @@ summary {
 @media (max-width: 360px) {
     .landing-container {
         inline-size: calc(100% - 2rem);
+    }
+    .hero-visual {
+        margin-inline: -1rem;
     }
     .store-buttons {
         gap: 0.6rem;

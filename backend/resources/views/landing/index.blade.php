@@ -3,7 +3,10 @@
 @php
     $pageTitle = $setting?->{'seo_meta_title_'.$locale} ?: ($setting?->{'site_name_'.$locale} ?: 'Rokn');
     $hasDownloads = collect($downloadChannels ?? [])->filter()->isNotEmpty();
-    $headline = preg_split('/\s+/', trim($designSetting->{'slogan_1_'.$locale} ?: __('landing.hero_title')), 2);
+    $headline = $designSetting->exists && filled($designSetting->{'slogan_1_'.$locale})
+        ? $designSetting->{'slogan_1_'.$locale}
+        : __('landing.hero_title');
+    $headline = preg_split('/\s+/', trim($headline), 2);
 @endphp
 
 @section('title', $pageTitle)
@@ -14,63 +17,41 @@
     <section class="landing-hero" aria-labelledby="hero-title">
         <div class="landing-container hero-grid">
             <div class="hero-copy">
-                <p class="eyebrow">{{ __('landing.hero_eyebrow') }}</p>
                 <h1 id="hero-title">
-                    {{ $headline[0] }}
+                    <span>{{ $headline[0] }}</span>
                     @if(isset($headline[1]))
-                        <span>{{ $headline[1] }}</span>
+                        {{ $headline[1] }}
                     @endif
                 </h1>
                 <p class="hero-description">{{ $designSetting->exists && filled($designSetting->{'slogan_2_'.$locale}) ? $designSetting->{'slogan_2_'.$locale} : __('landing.hero_description') }}</p>
                 <div id="download" class="hero-download">
                     @include('landing.partials.download-buttons')
                 </div>
-                <p class="download-note">{{ __('landing.preview_note') }}</p>
             </div>
-            <figure class="app-preview home-preview">
-                <img src="{{ asset('images/landing/rokn-home.webp') }}"
-                     width="540" height="1212" fetchpriority="high"
-                     alt="{{ __('landing.home_screenshot_alt') }}">
-                <figcaption>{{ __('landing.inside_app') }}</figcaption>
-            </figure>
+
+            <div class="hero-visual" aria-label="{{ __('landing.subjects_label') }}">
+                <div class="portrait-strip">
+                    @foreach(['design', 'photography', 'drawing'] as $subject)
+                        <figure class="subject-portrait subject-portrait--{{ $subject }}">
+                            <img src="{{ asset('images/landing/'.$subject.'.webp') }}"
+                                 width="432" height="768" fetchpriority="{{ $subject === 'photography' ? 'high' : 'auto' }}"
+                                 alt="{{ __('landing.subject_'.$subject.'_alt') }}">
+                            <figcaption>{{ __('landing.subject_'.$subject) }}</figcaption>
+                        </figure>
+                    @endforeach
+                </div>
+            </div>
         </div>
     </section>
 
-    <section class="learning-section" aria-labelledby="learning-title">
-        <div class="landing-container learning-grid">
-            <div class="learning-copy">
-                <h2 id="learning-title">{{ __('landing.learning_title') }}</h2>
-                <p class="section-lead">{{ __('landing.learning_description') }}</p>
-                <dl class="learning-points">
-                    <div>
-                        <dt>{{ __('landing.watch_title') }}</dt>
-                        <dd>{{ __('landing.watch_description') }}</dd>
-                    </div>
-                    <div>
-                        <dt>{{ __('landing.ask_title') }}</dt>
-                        <dd>{{ __('landing.ask_description') }}</dd>
-                    </div>
-                    <div>
-                        <dt>{{ __('landing.keep_title') }}</dt>
-                        <dd>{{ __('landing.keep_description') }}</dd>
-                    </div>
-                </dl>
-            </div>
-            <figure class="app-preview lesson-preview">
-                <img src="{{ asset('images/landing/rokn-lesson.webp') }}"
-                     width="540" height="1212" loading="lazy" decoding="async"
-                     alt="{{ __('landing.lesson_screenshot_alt') }}">
-            </figure>
-        </div>
-    </section>
-
-    <section class="outcome-section" aria-labelledby="outcome-title">
-        <div class="landing-container outcome-grid">
-            <h2 id="outcome-title">{{ __('landing.outcome_title') }}</h2>
-            <div>
-                <p class="section-lead">{{ __('landing.outcome_description') }}</p>
-                <p class="muted">{{ __('landing.outcome_detail') }}</p>
-            </div>
+    <section class="learning-section" aria-label="{{ __('landing.learning_label') }}">
+        <div class="landing-container learning-points">
+            @foreach(['ask', 'practice', 'portfolio'] as $feature)
+                <article>
+                    <h2>{{ __('landing.'.$feature.'_title') }}</h2>
+                    <p>{{ __('landing.'.$feature.'_description') }}</p>
+                </article>
+            @endforeach
         </div>
     </section>
 
@@ -99,10 +80,7 @@
     @if($hasDownloads)
         <aside class="download-dock" data-download-dock hidden aria-label="{{ __('landing.download_app') }}">
             <img src="{{ asset('images/landing/rokn-icon.webp') }}" alt="" width="40" height="40">
-            <div>
-                <strong>Rokn</strong>
-                <span>{{ __('landing.hero_eyebrow') }}</span>
-            </div>
+            <strong>Rokn</strong>
             <a href="#download" class="download-button" data-dock-link>{{ __('landing.download_rokn') }}</a>
         </aside>
     @endif

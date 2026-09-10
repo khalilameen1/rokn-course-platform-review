@@ -442,7 +442,7 @@
     },
     {
       "path": "public/css/landing.css",
-      "sha256": "4fa5013757a77d197de91d5668f1d54afb6277d9f71386d3f3a574d0a3344f33",
+      "sha256": "6a5fe8a234330c839f46f6b9fe146a9b33894ea5546f870013e188ca8409aac2",
       "classification": "first_party"
     },
     {
@@ -508,24 +508,29 @@
       "family": "store-marketing-badges"
     },
     {
+      "path": "public/images/landing/design.webp",
+      "sha256": "1191f08dc320044165a5366551d3348ff7a983ebe6151fcb89452e2f1e0c6fe4",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/images/landing/drawing.webp",
+      "sha256": "7622d477b09711dd98884cdccf2e7b0ad2c18d8ac8c76033d97902abac3780df",
+      "classification": "first_party"
+    },
+    {
       "path": "public/images/landing/google-play.svg",
       "sha256": "4ffa4c7edd2f10b297ca4de2131eddaa00d03b2278d1e178fe512920d824ca34",
       "classification": "third_party",
       "family": "store-marketing-badges"
     },
     {
-      "path": "public/images/landing/rokn-home.webp",
-      "sha256": "c7fac6109a05ab8821590534f269b508a0925ac54c52cd9443162f36dfaffedd",
+      "path": "public/images/landing/photography.webp",
+      "sha256": "ed9a7b7ad6f5addff7d1e310d9ca72bc4df3c08d57a5dd94c7622e2ebb86fedf",
       "classification": "first_party"
     },
     {
       "path": "public/images/landing/rokn-icon.webp",
       "sha256": "e138f73454021a6edd8c27f8701c45908909d1f22fe685f2ba2d57e59bf25e7f",
-      "classification": "first_party"
-    },
-    {
-      "path": "public/images/landing/rokn-lesson.webp",
-      "sha256": "a900b7d96a1f34c958812d8e4e4c7f3aea381573ef63bc348da93dc6ac42e79b",
       "classification": "first_party"
     },
     {
