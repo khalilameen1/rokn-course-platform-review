@@ -50,8 +50,8 @@ final class WebWalletAuthController extends Controller
             return $this->failed('لم يكتمل تسجيل الدخول حاول مرة أخرى');
         }
         if ($attempt->completion_consumed_at) {
-            // A lost session write or repeated provider redirect can replay
-            // only this browser's PKCE-bound identity, never issue app tokens.
+            // A repeated redirect can replay only this browser's PKCE-bound
+            // identity. A lost session cookie requires a fresh sign-in.
             try {
                 $receipt = json_decode(Crypt::decryptString((string) $attempt->encrypted_session_response), true, 8, JSON_THROW_ON_ERROR);
                 $user = User::query()->whereKey($receipt['web_wallet_user_id'] ?? 0)

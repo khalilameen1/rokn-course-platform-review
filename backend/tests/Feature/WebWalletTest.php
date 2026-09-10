@@ -68,9 +68,9 @@ final class WebWalletTest extends TestCase
 
     public function test_catalogue_reuses_direct_discount_and_excludes_unavailable_channels(): void
     {
-        Package::create(['name_ar' => 'متجر فقط', 'price' => 50, 'coins' => 200,
+        Package::create(['name_ar' => 'متجر فقط', 'name_en' => 'Store only', 'price' => 50, 'coins' => 200,
             'is_active' => true, 'direct_enabled' => false]);
-        Package::create(['name_ar' => 'باقة مخفية', 'price' => 50, 'coins' => 200,
+        Package::create(['name_ar' => 'باقة مخفية', 'name_en' => 'Hidden package', 'price' => 50, 'coins' => 200,
             'is_active' => false, 'direct_enabled' => true]);
         $response = $this->actingAs($this->student, 'student')->get('/recharge');
         $response->assertOk()->assertSee('90.00')->assertSee('500')
