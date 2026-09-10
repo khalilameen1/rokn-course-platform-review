@@ -632,10 +632,9 @@ final readonly class CourseAccessPlanService
                     $snapshot = is_array($enrollment->access_plan_snapshot)
                         ? $enrollment->access_plan_snapshot
                         : null;
-                    // Published revisions replace the editable plan rows while
-                    // old enrollments deliberately retain their purchased plan
-                    // id and immutable receipt. Match the new opt-in capability
-                    // policy by its stable plan code without rewriting either.
+                    // Purchased plan IDs and receipts remain immutable across
+                    // publication. Match older legacy references by stable code
+                    // when necessary, without rewriting either identity or receipt.
                     $plan = $plans->get($enrollment->access_plan_id)
                         ?: $plansByCode->get((string) ($snapshot['code'] ?? ''));
                     if (!$snapshot || (int) ($snapshot['version'] ?? 0) < 3 || !$plan) {

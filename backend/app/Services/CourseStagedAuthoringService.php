@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\CourseAccessPlan;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CoursePdf;
 use App\Models\CourseSection;
@@ -554,8 +555,12 @@ final class CourseStagedAuthoringService
         $this->moveOwnedContent($liveSections, (int) $archive->id);
         $this->moveOwnedContent($draftSections, (int) $canonical->id);
 
+        // Plans are commercial identities referenced by immutable receipts and
+        // AI ledgers. Publish their editable terms without moving either ID.
+        $this->publishAccessPlanOffers($canonical, $archive);
+
         // A real FK-backed buffer avoids sentinel IDs that unsigned columns
-        // reject and releases course+code uniqueness before the draft moves.
+        // reject while exchanging the owned content graphs.
         $buffer = $canonical->replicate(['authoring_request_id', 'published_at']);
         $buffer->forceFill([
             'is_coming_soon' => true,
@@ -563,7 +568,7 @@ final class CourseStagedAuthoringService
             'is_main_course' => false,
             'authoring_request_id' => null,
         ])->saveQuietly();
-        foreach (['course_modules', 'course_sections', 'course_pdfs', 'course_access_plans'] as $table) {
+        foreach (['course_modules', 'course_sections', 'course_pdfs'] as $table) {
             DB::table($table)->where('course_id', $canonical->id)->update(['course_id' => $buffer->id]);
             DB::table($table)->where('course_id', $archive->id)->update(['course_id' => $canonical->id]);
             DB::table($table)->where('course_id', $buffer->id)->update(['course_id' => $archive->id]);
@@ -578,6 +583,82 @@ final class CourseStagedAuthoringService
         DB::table('photos')->where('photoable_type', Course::class)
             ->where('photoable_id', $buffer->id)->update(['photoable_id' => $archive->id]);
         $buffer->forceDeleteQuietly();
+    }
+
+    private function publishAccessPlanOffers(Course $canonical, Course $archive): void
+    {
+        $rows = CourseAccessPlan::query()
+            ->whereIn('course_id', [$canonical->id, $archive->id])
+            ->orderBy('course_id')->orderBy('id')->lockForUpdate()->get();
+        $live = $rows->where('course_id', $canonical->id)->keyBy('code');
+        $draft = $rows->where('course_id', $archive->id)->keyBy('code');
+        foreach ([$live, $draft] as $plans) {
+            if ($plans->count() > count(CourseAccessPlan::CODES)
+                || array_diff($plans->keys()->all(), CourseAccessPlan::CODES) !== []) {
+                throw new \LogicException('Unsupported course access-plan identities.');
+            }
+        }
+        if ($live->keys()->diff($draft->keys())->isNotEmpty()) {
+            // Readiness normally rejects an incomplete draft before this point.
+            // Never remove a previously sold identity to publish a missing tier.
+            throw ValidationException::withMessages(['course' => ['أكمل فئات الكورس الثلاث قبل النشر.']]);
+        }
+
+        $offerAttributes = static fn (CourseAccessPlan $plan): array => collect($plan->getAttributes())
+            ->except(['id', 'course_id', 'code', 'created_at', 'updated_at'])->all();
+        $liveOffers = $live->map($offerAttributes);
+        $draftOffers = $draft->map($offerAttributes);
+        $archiveOffers = $liveOffers->all();
+        $archiveSorts = array_fill_keys($live->pluck('sort_order')->all(), true);
+        foreach ($draftOffers as $code => $offer) {
+            if (isset($archiveOffers[$code])) continue;
+            // A legacy course may acquire its first plans in this revision.
+            // Keep the isolated draft identity, but not an active offer that
+            // would falsely describe a tier available before this publication.
+            $offer['is_active'] = false;
+            if (isset($archiveSorts[$offer['sort_order']])) {
+                $offer['sort_order'] = $this->reserveAccessPlanSort($archiveSorts);
+            } else {
+                $archiveSorts[$offer['sort_order']] = true;
+            }
+            $archiveOffers[$code] = $offer;
+        }
+
+        // UNIQUE(course_id, sort_order) also applies to inactive rows. Reserve
+        // temporary unused SMALLINT UNSIGNED slots before applying a permutation
+        // of tier positions; neither foreign-key identity ever changes.
+        $occupied = array_fill_keys($rows->pluck('sort_order')->all(), true);
+        foreach ([...$draftOffers->values()->all(), ...array_values($archiveOffers)] as $offer) {
+            $sort = (int) $offer['sort_order'];
+            if ($sort < 0 || $sort > 65535) {
+                throw new \LogicException('Course access-plan sort order is out of range.');
+            }
+            $occupied[$sort] = true;
+        }
+        foreach ($rows as $plan) {
+            $plan->forceFill(['sort_order' => $this->reserveAccessPlanSort($occupied)])->save();
+        }
+
+        foreach ($draft as $code => $draftPlan) {
+            $livePlan = $live->get($code) ?: new CourseAccessPlan([
+                'course_id' => $canonical->id,
+                'code' => $code,
+            ]);
+            $livePlan->forceFill($draftOffers->get($code))->save();
+            $draftPlan->forceFill($archiveOffers[$code])->save();
+        }
+    }
+
+    /** @param array<int,bool> $occupied */
+    private function reserveAccessPlanSort(array &$occupied): int
+    {
+        for ($sort = 65535; $sort >= 0; $sort--) {
+            if (!isset($occupied[$sort])) {
+                $occupied[$sort] = true;
+                return $sort;
+            }
+        }
+        throw new \LogicException('No course access-plan sort slot is available.');
     }
 
     private function moveOwnedContent($sections, int $courseId): void
