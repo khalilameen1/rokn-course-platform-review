@@ -30,7 +30,7 @@ Until the branded domain is connected, leave `WEB_WALLET_URL` blank: the page
 uses the deployment's `APP_URL` as its canonical origin. Once `rokn.app`
 serves this same Laravel deployment with HTTPS, set `WEB_WALLET_URL` to
 `https://rokn.app` and refresh the configuration cache. Also retain the host
-in `TRUSTED_HOSTS` if using a domain other than the existing Rokn domains.
+in `APP_TRUSTED_HOSTS` if using a domain other than the existing Rokn domains.
 Do not change `SOCIAL_AUTH_PUBLIC_API_URL` or the already registered provider
 callback URLs just to enable the wallet page. OAuth still returns through
 those API callbacks, then reaches the fixed website completion endpoint.

@@ -69,7 +69,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
         $guided = $canonical->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         [$order, $enrollment, $event] = $this->purchasedPlan($canonical, $guided);
         $ledgerBefore = $this->ledgerRows();
-        $receipt = $plans->termsForEnrollment($enrollment);
+        $receipt = $plans->termsForEnrollment($enrollment->fresh());
 
         $service = $this->serviceWithPassingAudit();
         foreach ([1, 2] as $publication) {

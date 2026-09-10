@@ -446,6 +446,11 @@
       "classification": "first_party"
     },
     {
+      "path": "public/css/web-wallet.css",
+      "sha256": "0c2901ceb02c4fa2827fcd9bc79efab275e8a1f44732edd8177eb53ef4b7492c",
+      "classification": "first_party"
+    },
+    {
       "path": "public/favicon.ico",
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "classification": "first_party"
@@ -512,6 +517,11 @@
       "classification": "first_party"
     },
     {
+      "path": "public/images/rokn-coin-minted.png",
+      "sha256": "943312eecd4b02a9ae57b20be19e2a4f7eaf1a7a62e2811da02bfc93fcf57eb5",
+      "classification": "first_party"
+    },
+    {
       "path": "public/images/rokn-wordmark.png",
       "sha256": "a257b8279434edef0813f5d6ed92f20698a5cc81bc03ba14855ea0603494ea8c",
       "classification": "first_party"
@@ -537,6 +547,11 @@
       "sha256": "80d0b480d1956f162c06cef0b79a260b587192bd1b2d4de2c77cfe59261bbed3",
       "classification": "third_party",
       "family": "frontend-bundle"
+    },
+    {
+      "path": "public/js/web-wallet.js",
+      "sha256": "2ad142ce68b9089a7cc900bf109ba579bd836a822b2263c1e7ed10cc52f14b19",
+      "classification": "first_party"
     },
     {
       "path": "public/legal/source/sufee-1.0.0-rokn/_gauge.scss",
