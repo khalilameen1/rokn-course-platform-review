@@ -36,7 +36,6 @@
                             <img src="{{ asset('images/landing/'.$subject.'.webp') }}"
                                  width="432" height="768" fetchpriority="{{ $subject === 'photography' ? 'high' : 'auto' }}"
                                  alt="{{ __('landing.subject_'.$subject.'_alt') }}">
-                            <figcaption>{{ __('landing.subject_'.$subject) }}</figcaption>
                         </figure>
                     @endforeach
                 </div>
