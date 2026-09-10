@@ -10,6 +10,7 @@ import {
 import Svg, {Path} from 'react-native-svg';
 import {
   Palette,
+  Type,
   rtlRowStyle,
   textDirection,
 } from '../../../constants/designSystem';
@@ -17,6 +18,7 @@ import {Fonts} from '../../../constants/styleConstants';
 import type {SelectedProjectFile} from '../types';
 
 type Props = {
+  showSubmitAction?: boolean;
   draftSaveError: boolean;
   revisionMessage?: string;
   revisionUpdating?: boolean;
@@ -54,6 +56,7 @@ const AttachmentIcon = () => (
 );
 
 const ProjectSubmissionEditor = ({
+  showSubmitAction = true,
   draftSaveError,
   revisionMessage,
   revisionUpdating,
@@ -180,7 +183,9 @@ const ProjectSubmissionEditor = ({
               disabled={sending || revisionUpdating}
               style={styles.removeButton}
               onPress={() => onRemoveFile(file)}>
-              <Text style={styles.attachmentRemove}>×</Text>
+              <Text allowFontScaling={false} style={styles.attachmentRemove}>
+                ×
+              </Text>
             </Pressable>
           </View>
         ))}
@@ -197,7 +202,7 @@ const ProjectSubmissionEditor = ({
         {'\n'}اترك الصفحة مفتوحة حتى تسلّم المشروع
       </Text>
     )}
-    {!revisionMessage && (
+    {showSubmitAction && !revisionMessage && (
       <Pressable
         accessibilityRole="button"
         accessibilityState={{busy: sending, disabled: submitDisabled}}
@@ -213,13 +218,17 @@ const ProjectSubmissionEditor = ({
 );
 
 const styles = StyleSheet.create({
-  uploadBlock: {marginTop: 24, gap: 14},
+  uploadBlock: {
+    marginTop: 28,
+    gap: 20,
+    paddingTop: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
+  },
   sectionTitle: {
+    ...Type.section,
     ...textDirection,
     color: Palette.text,
-    fontFamily: Fonts.semiBold,
-    fontSize: 16,
-    lineHeight: 24,
   },
   noteField: {gap: 8},
   fieldLabel: {
@@ -231,7 +240,7 @@ const styles = StyleSheet.create({
   },
   uploadTarget: {
     minHeight: 48,
-    paddingVertical: 4,
+    paddingVertical: 12,
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 10,
@@ -240,7 +249,7 @@ const styles = StyleSheet.create({
     ...textDirection,
     minHeight: 104,
     maxHeight: 176,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     color: Palette.text,
@@ -248,15 +257,15 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
     backgroundColor: Palette.surface,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
   },
   attachmentIcon: {
-    width: 28,
-    height: 32,
+    width: 48,
+    height: 48,
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 14,
+    backgroundColor: Palette.surface,
   },
   uploadCopy: {flex: 1, minWidth: 0},
   uploadTitle: {
@@ -276,8 +285,8 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    minHeight: 52,
-    borderRadius: 12,
+    minHeight: 56,
+    borderRadius: 16,
     paddingHorizontal: 18,
     paddingVertical: 13,
     alignItems: 'center',
@@ -286,6 +295,7 @@ const styles = StyleSheet.create({
   },
   disabledButton: {opacity: 0.38},
   primaryButtonText: {
+    ...textDirection,
     color: Palette.text,
     fontFamily: Fonts.bold,
     fontSize: 15,
@@ -304,10 +314,11 @@ const styles = StyleSheet.create({
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 8,
-    borderRadius: 11,
+    borderRadius: 0,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    backgroundColor: Palette.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
   },
   attachmentName: {
     ...textDirection,

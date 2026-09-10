@@ -1,5 +1,3 @@
-// import {faArrowLeft, faArrowRight} from '@fortawesome/free-solid-svg-icons';
-// import {FontAwesomeIcon} from '@fortawesome/react-native-fontawesome';
 import {useNavigation} from '@react-navigation/native';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
 import type {RootNavigation} from '../../navigation/types';
@@ -159,10 +157,7 @@ const styles = StyleSheet.create({
   },
   backButton: {
     ...fixedIconSlot,
-    backgroundColor: Palette.surface,
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
   },
   title: {
     ...Type.section,
@@ -181,7 +176,7 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.xs,
   },
   inputCont: {
-    backgroundColor: Colors.white,
+    backgroundColor: Palette.surface,
     flex: 1,
     borderWidth: 1,
     borderColor: Colors.border,

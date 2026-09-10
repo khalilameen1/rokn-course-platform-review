@@ -288,8 +288,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.xl,
     borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(216,166,60,0.28)',
     backgroundColor: Palette.surfaceRaised,
   },
   welcomeTitle: {
@@ -312,10 +310,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     backgroundColor: Palette.primary,
   },
-  actionButtonText: {...Type.bodyStrong, color: '#FFFFFF'},
+  actionButtonText: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    textAlign: 'center',
+    color: '#FFFFFF',
+  },
   secondaryButton: {
     minHeight: Accessibility.minTouchTarget,
     alignItems: 'center',
@@ -337,8 +342,6 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
     paddingTop: Spacing.xxl,
     borderRadius: Radius.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(216,166,60,0.22)',
     backgroundColor: Palette.surfaceRaised,
   },
   campaignClose: {
@@ -362,8 +365,6 @@ const styles = StyleSheet.create({
     width: 108,
     height: 88,
     borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
     resizeMode: 'cover',
   },
   campaignTitle: {

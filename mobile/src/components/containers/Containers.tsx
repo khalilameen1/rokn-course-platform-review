@@ -6,13 +6,14 @@ import {
   StyleProp,
   ViewStyle,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {
   PixelPerfect,
   sharedHorizontalVal,
 } from '../../constants/styleConstants';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import {Palette, useResponsiveLayout} from '../../constants/designSystem';
 
 interface containerProps {
@@ -37,11 +38,7 @@ interface contentProps {
 }
 export const Container: FC<containerProps> = ({children, style, noPadding}) => {
   return (
-    <LinearGradient
-      colors={[Palette.canvas, Palette.canvasSoft]}
-      locations={[0, 1]}
-      start={{x: 0.5, y: 0}}
-      end={{x: 0.5, y: 1}}
+    <View
       style={[
         styles.container,
         {paddingHorizontal: noPadding ? undefined : sharedHorizontalVal},
@@ -52,7 +49,7 @@ export const Container: FC<containerProps> = ({children, style, noPadding}) => {
         style={styles.safeArea}>
         {children}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 };
 export const Content: FC<contentProps> = ({
@@ -74,36 +71,41 @@ export const Content: FC<contentProps> = ({
     controls?.(contentRef.current);
   }, [controls]);
   return (
-    <ScrollView
-      automaticallyAdjustKeyboardInsets
-      contentInsetAdjustmentBehavior="automatic"
-      refreshControl={refreshControl}
-      ref={contentRef}
-      style={[styles.scroll, style]}
-      scrollEnabled={true}
-      nestedScrollEnabled={true}
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
-      onScroll={onScroll}
-      onScrollBeginDrag={onScrollBeginDrag}
-      scrollEventThrottle={scrollEventThrottle}
-      contentContainerStyle={[
-        styles.scrollContent,
-        paddingVertical && {paddingVertical: PixelPerfect(30)},
-        contentContainerStyle,
-      ]}>
-      <View
-        style={[
-          styles.contentFrame,
-          {
-            maxWidth: contentWidth,
-            paddingHorizontal: noPadding ? undefined : gutter,
-            paddingBottom: paddingBottom ?? PixelPerfect(100),
-          },
+    <KeyboardAvoidingView
+      enabled={Platform.OS === 'android'}
+      behavior="padding"
+      style={styles.scroll}>
+      <ScrollView
+        automaticallyAdjustKeyboardInsets
+        contentInsetAdjustmentBehavior="automatic"
+        refreshControl={refreshControl}
+        ref={contentRef}
+        style={[styles.scroll, style]}
+        scrollEnabled={true}
+        nestedScrollEnabled={true}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        onScroll={onScroll}
+        onScrollBeginDrag={onScrollBeginDrag}
+        scrollEventThrottle={scrollEventThrottle}
+        contentContainerStyle={[
+          styles.scrollContent,
+          paddingVertical && {paddingVertical: PixelPerfect(30)},
+          contentContainerStyle,
         ]}>
-        {children}
-      </View>
-    </ScrollView>
+        <View
+          style={[
+            styles.contentFrame,
+            {
+              maxWidth: contentWidth,
+              paddingHorizontal: noPadding ? undefined : gutter,
+              paddingBottom: paddingBottom ?? PixelPerfect(100),
+            },
+          ]}>
+          {children}
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 const styles = StyleSheet.create({

@@ -48,13 +48,12 @@ describe('production daily surfaces', () => {
     expect(entitlements).toContain('chatAvailable === true');
   });
 
-  it('wires foreground catalogue reads separately from interactive carousel playback', () => {
+  it('keeps foreground catalogue reads separate from interactive feed actions', () => {
     const home = source('src/screens/Home.tsx');
     const feed = source('src/screens/home/HomeCatalogueFeed.tsx');
-    const carousel = source('src/components/view/CourseCarousel.tsx');
 
     // This is a wiring contract, not native acceptance: a modal blur must
-    // pause the carousel without making catalogue reads leave foreground.
+    // pause interactive pagination without making catalogue reads leave foreground.
     expect(home).toContain('const appIsActive = useAppForegroundState()');
     expect(home).toContain('const appIsInteractive = useAppActiveState()');
     expect(home).toMatch(
@@ -63,8 +62,25 @@ describe('production daily surfaces', () => {
     expect(home).toMatch(
       /<HomeCatalogueFeed\s+active=\{screenFocused && appIsInteractive\}/,
     );
-    expect(feed).toMatch(/<CourseCarousel\s+active=\{active\}/);
-    expect(carousel).toContain('autoPlay={active && data.length > 1}');
+    expect(feed).toMatch(
+      /active && hasMore && !loadingMore && !loadMoreError\s*\? onLoadMore/,
+    );
+  });
+
+  it('renders one editorial feature without carousel autoplay', () => {
+    const feed = source('src/screens/home/HomeCatalogueFeed.tsx');
+    const carousel = source('src/components/view/CourseCarousel.tsx');
+
+    expect(feed).toMatch(
+      /<CourseCarousel\s+active=\{active\}\s+data=\{heroCourses\}\s+onButtonPress=\{onOpenCourse\}/,
+    );
+    expect(carousel).toContain('const course = data[0]');
+    expect(carousel).toContain('if (!course) return null');
+    expect(carousel.match(/<CarouselItem\b/g)).toHaveLength(1);
+    expect(carousel).toMatch(
+      /<CarouselItem\s+course=\{course\}\s+onButtonPress=\{\(\) => onButtonPress\(course\)\}/,
+    );
+    expect(carousel).not.toMatch(/autoPlay|react-native-reanimated-carousel/);
   });
 
   it('bounds daily list image cost and coalesces wallet refreshes', () => {

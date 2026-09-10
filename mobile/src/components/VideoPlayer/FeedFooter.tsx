@@ -85,6 +85,10 @@ const styles = StyleSheet.create({
     right: 82,
     zIndex: 20,
     alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(7,11,18,.78)',
   },
   containerCompact: {
     left: 12,
@@ -92,14 +96,9 @@ const styles = StyleSheet.create({
   },
   numberPill: {
     minHeight: 25,
-    paddingHorizontal: 10,
-    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(5,10,18,.55)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.15)',
-    marginBottom: 8,
+    marginBottom: 5,
   },
   numberText: {
     color: 'rgba(255,255,255,.82)',
@@ -133,5 +132,6 @@ const styles = StyleSheet.create({
   },
   captionBlock: {
     alignSelf: 'stretch',
+    minHeight: 48,
   },
 });

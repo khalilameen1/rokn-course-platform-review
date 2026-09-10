@@ -164,10 +164,12 @@ export const StatusView = ({
 export const MetaPill = ({
   label,
   tone = 'neutral',
+  onArtwork = false,
   style,
 }: {
   label: string;
   tone?: 'neutral' | 'primary' | 'coin' | 'success';
+  onArtwork?: boolean;
   style?: StyleProp<ViewStyle>;
 }) => (
   <View
@@ -176,6 +178,7 @@ export const MetaPill = ({
       tone === 'primary' && styles.primaryPill,
       tone === 'coin' && styles.coinPill,
       tone === 'success' && styles.successPill,
+      onArtwork && styles.artworkPill,
       style,
     ]}>
     <Text
@@ -184,6 +187,7 @@ export const MetaPill = ({
         tone === 'primary' && styles.primaryPillLabel,
         tone === 'coin' && styles.coinPillLabel,
         tone === 'success' && styles.successPillLabel,
+        onArtwork && styles.artworkPillLabel,
       ]}>
       {formatArabicDisplayText(label)}
     </Text>
@@ -196,8 +200,6 @@ const styles = StyleSheet.create({
   frame: {width: '100%', alignSelf: 'center'},
   card: {
     backgroundColor: Palette.surface,
-    borderColor: Palette.lineSoft,
-    borderWidth: 1,
     borderRadius: Radius.lg,
     overflow: 'hidden',
   },
@@ -299,6 +301,8 @@ const styles = StyleSheet.create({
   coinPill: {backgroundColor: Palette.coinSoft},
   successPill: {backgroundColor: 'rgba(72,185,138,0.12)'},
   pillLabel: {...Type.caption, ...textDirection, color: Palette.textMuted},
+  artworkPill: {backgroundColor: 'rgba(7,10,16,0.88)'},
+  artworkPillLabel: {color: Palette.text},
   primaryPillLabel: {color: '#8BB5FF'},
   coinPillLabel: {color: '#F1CB76'},
   successPillLabel: {color: '#79D6AE'},

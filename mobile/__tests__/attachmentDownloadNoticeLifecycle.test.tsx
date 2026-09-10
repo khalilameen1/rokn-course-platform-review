@@ -2,6 +2,7 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import {Modal, Platform, StyleSheet, Text} from 'react-native';
 import {AttachmentDownloadNoticeHost} from '../src/components/VideoPlayer/AttachmentDownloadNoticeHost';
+import {Palette} from '../src/constants/designSystem';
 import {
   AttachmentDownloadNotice,
   beginAttachmentDownloadNotice,
@@ -88,6 +89,18 @@ describe('attachment download notice handoff', () => {
     expect(texts).toEqual(
       expect.arrayContaining(['أول ملف', 'ثاني ملف', '12 MB', 'إخفاء']),
     );
+    const actionLabels = renderer!.root
+      .findAllByType(Text)
+      .filter(node => ['إخفاء', 'إلغاء'].includes(node.props.children));
+    for (const label of actionLabels) {
+      expect(StyleSheet.flatten(label.props.style).writingDirection).toBe(
+        'rtl',
+      );
+    }
+    const hideLabel = actionLabels.find(
+      node => node.props.children === 'إخفاء',
+    )!;
+    expect(StyleSheet.flatten(hideLabel.props.style).color).toBe(Palette.text);
     expect(buttons().length).toBeGreaterThanOrEqual(3);
     buttons().forEach(button => {
       expect(StyleSheet.flatten(button.props.style)).toMatchObject({

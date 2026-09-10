@@ -25,8 +25,8 @@ export const SettingsAccountIdentity = ({id, name}: Props) => {
 };
 
 const styles = StyleSheet.create({
-  container: {paddingHorizontal: Spacing.md, paddingBottom: Spacing.xl},
-  name: {...Type.section, ...textDirection, color: Palette.text},
+  container: {paddingTop: Spacing.sm, paddingBottom: Spacing.sm},
+  name: {...Type.title, ...textDirection, color: Palette.text},
   identityRow: {
     ...rtlRowStyle,
     flexWrap: 'wrap',
@@ -35,7 +35,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xxs,
   },
   identity: {
-    ...Type.body,
+    ...Type.caption,
     direction: 'ltr',
     writingDirection: 'ltr',
     textAlign: 'left',

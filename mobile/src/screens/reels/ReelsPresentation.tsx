@@ -11,7 +11,12 @@ import {
   formatArabicDisplayText,
   formatArabicNumber,
 } from '../../constants/arabicFormatting';
-import {Palette, rtlRowStyle} from '../../constants/designSystem';
+import {
+  Palette,
+  Type,
+  rtlRowStyle,
+  textDirection,
+} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
 
 export const ReelsLoadingState = () => (
@@ -81,7 +86,6 @@ export const ReelsPreviewGate = ({
     accessibilityViewIsModal
     accessibilityLabel="انتهت المعاينة المجانية"
     style={styles.previewGate}>
-    <View style={styles.previewGateGlow} />
     <ScrollView
       bounces={false}
       contentInsetAdjustmentBehavior="automatic"
@@ -96,7 +100,7 @@ export const ReelsPreviewGate = ({
       style={styles.previewGateScroll}>
       <View style={styles.previewGateContent}>
         <View style={styles.previewBadge}>
-          <Text style={styles.previewBadgeText}>معاينة مجانية مكتملة</Text>
+          <Text style={styles.previewBadgeText}>معاينة الكورس</Text>
         </View>
         <Text accessibilityRole="header" style={styles.previewGateTitle}>
           انتهت المعاينة المجانية
@@ -159,7 +163,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#070B11',
+    backgroundColor: Palette.canvas,
   },
   loadingMark: {
     width: 72,
@@ -167,34 +171,33 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#111923',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.08)',
+    backgroundColor: Palette.surface,
   },
   loadingTitle: {
+    ...Type.section,
+    ...textDirection,
+    textAlign: 'center',
     color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 18,
     marginTop: 20,
   },
   loadingText: {
-    color: 'rgba(255,255,255,.5)',
-    fontFamily: Fonts.regular,
-    fontSize: 12,
+    ...Type.body,
+    ...textDirection,
+    textAlign: 'center',
+    color: Palette.textMuted,
     marginTop: 5,
   },
   loadErrorTitle: {
+    ...Type.title,
+    ...textDirection,
     color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 20,
     textAlign: 'center',
   },
   loadErrorText: {
+    ...Type.body,
+    ...textDirection,
     maxWidth: 420,
-    color: 'rgba(255,255,255,.58)',
-    fontFamily: Fonts.regular,
-    fontSize: 13,
-    lineHeight: 22,
+    color: Palette.textMuted,
     marginTop: 8,
     textAlign: 'center',
   },
@@ -203,33 +206,36 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 16,
     paddingHorizontal: 20,
+    paddingVertical: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.primary,
     marginTop: 22,
   },
   loadRetryText: {
+    ...Type.button,
+    ...textDirection,
+    textAlign: 'center',
     color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 14,
   },
   loadBackButton: {
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 6,
   },
   loadBackText: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    textAlign: 'center',
     color: 'rgba(255,255,255,.66)',
-    fontFamily: Fonts.medium,
-    fontSize: 12,
   },
   previewGate: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 150,
     overflow: 'hidden',
-    backgroundColor: 'rgba(5,8,13,.97)',
+    backgroundColor: Palette.canvas,
   },
   previewGateScroll: {flex: 1, width: '100%'},
   previewGateScrollContent: {
@@ -237,14 +243,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 20,
-  },
-  previewGateGlow: {
-    position: 'absolute',
-    top: '14%',
-    width: 330,
-    height: 330,
-    borderRadius: 165,
-    backgroundColor: 'rgba(44,105,219,.12)',
   },
   previewGateContent: {
     width: '100%',
@@ -254,31 +252,24 @@ const styles = StyleSheet.create({
   },
   previewBadge: {
     minHeight: 32,
-    borderRadius: 16,
     justifyContent: 'center',
-    paddingHorizontal: 13,
-    backgroundColor: 'rgba(44,105,219,.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(119,164,244,.24)',
   },
   previewBadgeText: {
-    color: '#9BBEFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 11,
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
   },
   previewGateTitle: {
+    ...Type.title,
+    ...textDirection,
     color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 24,
-    lineHeight: 34,
     textAlign: 'center',
     marginTop: 20,
   },
   previewGateText: {
-    color: 'rgba(255,255,255,.64)',
-    fontFamily: Fonts.regular,
-    fontSize: 14,
-    lineHeight: 24,
+    ...Type.body,
+    ...textDirection,
+    color: Palette.textMuted,
     textAlign: 'center',
     marginTop: 10,
   },
@@ -289,6 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+    paddingHorizontal: 18,
     backgroundColor: Palette.primary,
     marginTop: 22,
   },
@@ -297,9 +289,10 @@ const styles = StyleSheet.create({
     transform: [{scale: 0.985}],
   },
   previewGatePrimaryText: {
+    ...Type.button,
+    ...textDirection,
+    textAlign: 'center',
     color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 15,
   },
   previewGateSecondary: {
     minHeight: 48,
@@ -309,24 +302,24 @@ const styles = StyleSheet.create({
     marginTop: 7,
   },
   previewGateSecondaryText: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    textAlign: 'center',
     color: 'rgba(255,255,255,.72)',
-    fontFamily: Fonts.medium,
-    fontSize: 13,
   },
   pressed: {opacity: 0.72},
   connectionNote: {
     position: 'absolute',
     alignSelf: 'center',
     maxWidth: '86%',
-    minHeight: 38,
-    borderRadius: 19,
+    minHeight: 48,
+    borderRadius: 14,
     paddingHorizontal: 13,
+    paddingVertical: 10,
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 7,
-    backgroundColor: 'rgba(12,17,25,.92)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.1)',
+    backgroundColor: 'rgba(7,11,18,.96)',
     zIndex: 100,
   },
   connectionDot: {
@@ -336,6 +329,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#76A9FF',
   },
   connectionText: {
+    ...textDirection,
+    flexShrink: 1,
     color: 'rgba(255,255,255,.86)',
     fontFamily: Fonts.medium,
     fontSize: 11,

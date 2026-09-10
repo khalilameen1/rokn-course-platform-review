@@ -6,10 +6,12 @@ import {certificateStyles as styles} from './styles';
 export const CertificateArtifactPreview = ({
   certificateUrl,
   courseTitle,
+  compact = false,
   pending = false,
 }: {
   certificateUrl?: string;
   courseTitle: string;
+  compact?: boolean;
   pending?: boolean;
 }) => {
   const [artifactFailed, setArtifactFailed] = useState(false);
@@ -23,8 +25,17 @@ export const CertificateArtifactPreview = ({
   return (
     <View style={styles.artifactPreview}>
       {!artifactLoaded && (
-        <View style={styles.artifactState}>
-          <Text accessibilityRole="text" style={styles.artifactStateText}>
+        <View
+          style={[
+            styles.artifactState,
+            compact && styles.artifactStateCompact,
+          ]}>
+          <Text
+            accessibilityRole="text"
+            style={[
+              styles.artifactStateText,
+              compact && styles.artifactStateTextCompact,
+            ]}>
             {artifactFailed
               ? pending
                 ? 'نجهّز الشهادة'

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {
   Palette,
+  Type,
   rtlRowStyle,
   textDirection,
 } from '../../../constants/designSystem';
@@ -109,6 +110,9 @@ const FeedbackMessage = ({
         styles.messageBlock,
         !report && message.role === 'user' && styles.bubbleUser,
       ]}>
+      {!report && message.role === 'assistant' && (
+        <Text style={styles.senderLabel}>ركن</Text>
+      )}
       {!!message.text && (
         <Text selectable={false} style={styles.message}>
           {formatAuthoredDisplayText(message.text)}
@@ -261,7 +265,9 @@ const ProjectFeedbackPanel = ({
                 disabled={sending}
                 style={styles.removeAction}
                 onPress={() => onRemoveAttachment(file)}>
-                <Text style={styles.attachmentRemove}>×</Text>
+                <Text allowFontScaling={false} style={styles.attachmentRemove}>
+                  ×
+                </Text>
               </Pressable>
             </View>
           ))}
@@ -271,6 +277,7 @@ const ProjectFeedbackPanel = ({
       {canReply && thread.remainingMessages > 0 && !pending && (
         <View style={styles.composer}>
           <TextInput
+            accessibilityLabel="استفسارك عن تقرير المشروع"
             multiline
             editable={!sending}
             value={draft}
@@ -290,7 +297,9 @@ const ProjectFeedbackPanel = ({
                 }
                 style={styles.attach}
                 onPress={onPickAttachments}>
-                <Text style={styles.attachText}>＋</Text>
+                <Text allowFontScaling={false} style={styles.attachText}>
+                  ＋
+                </Text>
               </Pressable>
             )}
             <Pressable
@@ -363,11 +372,16 @@ const styles = StyleSheet.create({
   thread: {
     direction: 'rtl',
     width: '100%',
-    marginTop: 24,
+    marginTop: 0,
     gap: 24,
   },
-  report: {gap: 12},
-  conversation: {gap: 16},
+  report: {gap: 16},
+  conversation: {
+    gap: 24,
+    paddingTop: 24,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
+  },
   title: {
     ...textDirection,
     color: Palette.text,
@@ -382,20 +396,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
   },
-  messageBlock: {alignSelf: 'stretch', gap: 8},
+  messageBlock: {alignSelf: 'stretch', gap: 10},
+  senderLabel: {...Type.caption, ...textDirection, color: Palette.textMuted},
   bubbleUser: {
     alignSelf: 'flex-start',
-    maxWidth: '100%',
+    maxWidth: '90%',
     backgroundColor: Palette.surfaceRaised,
-    borderRadius: 14,
-    padding: 12,
+    borderRadius: 16,
+    borderBottomStartRadius: 5,
+    padding: 16,
   },
   message: {
     ...textDirection,
     color: Palette.text,
     fontFamily: Fonts.regular,
     fontSize: 15,
-    lineHeight: 24,
+    lineHeight: 27,
   },
   state: {
     ...textDirection,
@@ -424,7 +440,7 @@ const styles = StyleSheet.create({
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 8,
-    borderRadius: 11,
+    borderRadius: 12,
     paddingHorizontal: 10,
     paddingVertical: 7,
     backgroundColor: Palette.surfaceRaised,
@@ -472,7 +488,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 20,
   },
-  composer: {gap: 12},
+  composer: {
+    gap: 12,
+    paddingTop: 20,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
+  },
   composerActions: {
     ...rtlRowStyle,
     gap: 12,
@@ -503,9 +524,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Palette.action,
+    backgroundColor: Palette.surfaceRaised,
   },
   sendText: {
+    ...textDirection,
+    textAlign: 'center',
     color: Palette.text,
     fontFamily: Fonts.semiBold,
     fontSize: 14,

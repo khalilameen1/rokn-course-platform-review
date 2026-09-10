@@ -1,7 +1,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {Container, Content} from '../../components/containers/Containers';
-import {PremiumCard, ResponsiveFrame} from '../../components/ui/PremiumUI';
+import {ResponsiveFrame} from '../../components/ui/PremiumUI';
 import HeaderWithBack from '../../components/view/HeaderWithBack';
 import {
   Palette,
@@ -84,7 +84,7 @@ export default function TermsOfUse() {
   return (
     <Container noPadding>
       <Content noPadding>
-        <ResponsiveFrame>
+        <ResponsiveFrame style={styles.frame}>
           <HeaderWithBack title="شروط الاستخدام" />
           <Text style={styles.intro}>
             باستخدام ركن أو إنشاء حساب أو إتمام معاملة، فأنت توافق على هذه
@@ -93,10 +93,14 @@ export default function TermsOfUse() {
           <Text style={styles.updated}>آخر تحديث: ٣١ أغسطس ٢٠٢٦</Text>
           <View style={styles.list}>
             {visibleSections.map(([title, body]) => (
-              <PremiumCard key={title} style={styles.card}>
-                <Text style={styles.title}>{title}</Text>
-                <Text style={styles.body}>{body}</Text>
-              </PremiumCard>
+              <View key={title}>
+                <Text accessibilityRole="header" style={styles.title}>
+                  {title}
+                </Text>
+                <Text selectable style={styles.body}>
+                  {body}
+                </Text>
+              </View>
             ))}
           </View>
         </ResponsiveFrame>
@@ -106,6 +110,7 @@ export default function TermsOfUse() {
 }
 
 const styles = StyleSheet.create({
+  frame: {maxWidth: 720},
   intro: {
     ...Type.body,
     ...textDirection,
@@ -117,10 +122,20 @@ const styles = StyleSheet.create({
     ...textDirection,
     color: Palette.textFaint,
     marginTop: Spacing.sm,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
-  list: {gap: Spacing.sm, paddingBottom: Spacing.xl},
-  card: {padding: Spacing.lg},
+  list: {
+    gap: Spacing.xxl,
+    paddingTop: Spacing.xl,
+    paddingBottom: Spacing.xl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.line,
+  },
   title: {...Type.section, ...textDirection, color: Palette.text},
-  body: {...Type.body, ...textDirection, color: Palette.textMuted, marginTop: Spacing.xs},
+  body: {
+    ...Type.body,
+    ...textDirection,
+    color: Palette.textMuted,
+    marginTop: Spacing.sm,
+  },
 });

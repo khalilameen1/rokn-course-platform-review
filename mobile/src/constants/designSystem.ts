@@ -28,13 +28,41 @@ export const Radius = {
 } as const;
 
 export const Type = {
-  display: {fontFamily: Fonts.bold, fontSize: PixelPerfect(30), lineHeight: PixelPerfect(42)},
-  title: {fontFamily: Fonts.bold, fontSize: PixelPerfect(22), lineHeight: PixelPerfect(32)},
-  section: {fontFamily: Fonts.bold, fontSize: PixelPerfect(18), lineHeight: PixelPerfect(28)},
-  body: {fontFamily: Fonts.regular, fontSize: PixelPerfect(15), lineHeight: PixelPerfect(25)},
-  bodyStrong: {fontFamily: Fonts.semiBold, fontSize: PixelPerfect(15), lineHeight: PixelPerfect(25)},
-  caption: {fontFamily: Fonts.regular, fontSize: PixelPerfect(12), lineHeight: PixelPerfect(20)},
-  button: {fontFamily: Fonts.bold, fontSize: PixelPerfect(16), lineHeight: PixelPerfect(24)},
+  display: {
+    fontFamily: Fonts.bold,
+    fontSize: PixelPerfect(30),
+    lineHeight: PixelPerfect(42),
+  },
+  title: {
+    fontFamily: Fonts.bold,
+    fontSize: PixelPerfect(22),
+    lineHeight: PixelPerfect(32),
+  },
+  section: {
+    fontFamily: Fonts.bold,
+    fontSize: PixelPerfect(18),
+    lineHeight: PixelPerfect(28),
+  },
+  body: {
+    fontFamily: Fonts.regular,
+    fontSize: PixelPerfect(15),
+    lineHeight: PixelPerfect(25),
+  },
+  bodyStrong: {
+    fontFamily: Fonts.semiBold,
+    fontSize: PixelPerfect(15),
+    lineHeight: PixelPerfect(25),
+  },
+  caption: {
+    fontFamily: Fonts.regular,
+    fontSize: PixelPerfect(12),
+    lineHeight: PixelPerfect(20),
+  },
+  button: {
+    fontFamily: Fonts.bold,
+    fontSize: PixelPerfect(16),
+    lineHeight: PixelPerfect(24),
+  },
 } as const;
 
 export const Accessibility = {
@@ -86,7 +114,10 @@ export const rtlStartAlignment = 'flex-start' as const;
 
 /** Responsive values for rails, grids and readable tablet layouts. */
 export const useResponsiveLayout = () => {
-  const {width, height, fontScale} = useWindowDimensions();
+  const {width, height, fontScale: reportedFontScale} = useWindowDimensions();
+  // Android can report its 1.3 setting as 1.29999995. Normalize layout
+  // breakpoints only; native text keeps the user's actual font scale.
+  const fontScale = Math.round(reportedFontScale * 100) / 100;
   const shortestSide = Math.min(width, height);
   const isTablet = shortestSide >= 600;
   const isLargeTablet = shortestSide >= 820;
@@ -103,8 +134,7 @@ export const useResponsiveLayout = () => {
     Math.min(
       preferredGridColumns,
       Math.floor(
-        (availableGridWidth + gridGap) /
-          (minimumReadableCardWidth + gridGap),
+        (availableGridWidth + gridGap) / (minimumReadableCardWidth + gridGap),
       ),
     ),
   );
@@ -114,10 +144,16 @@ export const useResponsiveLayout = () => {
   const railCardWidth = Math.min(
     isTablet ? 290 : 220,
     Math.max(1, availableGridWidth),
-    Math.max(
-      minimumRailCardWidth,
-      contentWidth * (isTablet ? 0.3 : 0.52),
-    ),
+    Math.max(minimumRailCardWidth, contentWidth * (isTablet ? 0.3 : 0.52)),
+  );
+
+  const featuredHorizontal = contentWidth >= 720 && fontScale < 1.5;
+  const featuredImageWidth = featuredHorizontal
+    ? (availableGridWidth - Spacing.xl) * 0.58
+    : availableGridWidth;
+  const featuredImageHeight = Math.min(
+    isTablet ? 340 : 196,
+    featuredImageWidth * (9 / 16),
   );
 
   return {
@@ -134,6 +170,9 @@ export const useResponsiveLayout = () => {
     gridGap,
     gridCardWidth,
     railCardWidth,
+    featuredHorizontal,
+    featuredImageWidth,
+    featuredImageHeight,
   };
 };
 

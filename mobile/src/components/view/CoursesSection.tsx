@@ -30,7 +30,7 @@ const CoursesSection = memo<CoursesSectionProps>(
     return (
       <View style={styles.sectionContainer}>
         <View style={[styles.headingWrap, {paddingHorizontal: gutter}]}>
-          <SectionHeading title={title} />
+          <SectionHeading title={title} style={styles.heading} />
         </View>
         <FlatList
           accessibilityRole="list"
@@ -39,7 +39,7 @@ const CoursesSection = memo<CoursesSectionProps>(
             ...rtlRowStyle,
             gap: Spacing.sm,
             paddingHorizontal: gutter,
-            paddingTop: Spacing.sm,
+            paddingTop: Spacing.xs,
           }}
           horizontal
           initialNumToRender={5}
@@ -66,6 +66,7 @@ const CoursesSection = memo<CoursesSectionProps>(
 const styles = StyleSheet.create({
   sectionContainer: {marginBottom: Spacing.xl},
   headingWrap: {width: '100%', direction: 'rtl', alignItems: 'stretch'},
+  heading: {minHeight: 0},
 });
 
 CoursesSection.displayName = 'CoursesSection';

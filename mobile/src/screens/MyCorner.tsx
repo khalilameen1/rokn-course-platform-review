@@ -94,15 +94,6 @@ export default function MyCorner() {
         <ResponsiveFrame>
           <HeaderWithBack hasArrow={false} title="ركني" />
           <SectionHeading
-            eyebrow={
-              !model.orderedCourses.length
-                ? 'تعلمك في مكان واحد'
-                : model.hasActiveCourses
-                ? 'آخر ما كنت تتعلمه'
-                : model.allCoursesCompleted
-                ? 'الكورسات المكتملة'
-                : 'جاهزة للبدء'
-            }
             title={
               !model.orderedCourses.length
                 ? 'تعلم على طريقتك'
@@ -174,11 +165,13 @@ export default function MyCorner() {
             }
           />
 
-          <WeeklyRhythm
-            activityDays={model.activityDays}
-            currentStreak={model.currentStreak}
-            week={model.week}
-          />
+          {data.serverSession === true && data.dashboard && (
+            <WeeklyRhythm
+              activityDays={model.activityDays}
+              currentStreak={model.currentStreak}
+              week={model.week}
+            />
+          )}
         </ResponsiveFrame>
       </Content>
       <TabBar />

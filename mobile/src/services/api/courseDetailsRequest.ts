@@ -4,6 +4,16 @@ import {
   type RoknRequestConfig,
 } from '../../constants/api';
 
+/** Return the alias-resolution response untouched to the attachment owner. */
+export const requestCourseAttachmentRenewal = (
+  courseId: string,
+  attachmentId: string,
+) =>
+  publicRequest.get(`courses/${courseId}/pdfs/${attachmentId}`, {
+    timeout: 10_000,
+    roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
+  } as RoknRequestConfig);
+
 export const courseReadFailureStatus = (error: unknown): number => {
   const failure = error as {
     status?: unknown;

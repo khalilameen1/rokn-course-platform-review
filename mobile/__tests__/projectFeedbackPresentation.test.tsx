@@ -104,7 +104,7 @@ describe('project feedback report and conversation presentation', () => {
       .find(node => cleanUnicodeText(node.props.children) === reportText)!;
     expect(StyleSheet.flatten(body.props.style)).toMatchObject({
       fontSize: 15,
-      lineHeight: 24,
+      lineHeight: 27,
       writingDirection: 'rtl',
     });
     expect(body.props.numberOfLines).toBeUndefined();

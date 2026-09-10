@@ -29,9 +29,14 @@ jest.mock('react-redux', () => ({
 jest.mock('../src/components/containers/Containers', () => {
   const ReactModule = require('react');
   const {View} = require('react-native');
+  const {Content} = jest.requireActual(
+    '../src/components/containers/Containers',
+  );
   const Wrapper = ({children}: {children?: React.ReactNode}) =>
     ReactModule.createElement(View, null, children);
-  return {Container: Wrapper, Content: Wrapper};
+  // Content owns the production ScrollView and forwards its RefreshControl.
+  // Replacing it with a View silently discards the pull-to-refresh boundary.
+  return {Container: Wrapper, Content};
 });
 
 jest.mock('../src/components/ui/PremiumUI', () => {
@@ -140,6 +145,34 @@ describe('device sessions account ownership', () => {
       .mocked(getDeviceSessions)
       .mockResolvedValueOnce([session('11111111-1111-4111-8111-111111111111')])
       .mockResolvedValueOnce([session('22222222-2222-4222-8222-222222222222')]);
+  });
+
+  it('refreshes through the single production Content scroller and settles its spinner', async () => {
+    const current = session('11111111-1111-4111-8111-111111111111');
+    const refreshRead = deferred<ReturnType<typeof session>[]>();
+    jest
+      .mocked(getDeviceSessions)
+      .mockReset()
+      .mockResolvedValueOnce([current])
+      .mockReturnValueOnce(refreshRead.promise);
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<DeviceSessions />);
+    });
+    try {
+      expect(renderer.root.findAllByType(ScrollView)).toHaveLength(1);
+      const refreshControl = () =>
+        renderer.root.findByType(ScrollView).props.refreshControl;
+      expect(refreshControl().props.refreshing).toBe(false);
+      await act(async () => refreshControl().props.onRefresh());
+      expect(getDeviceSessions).toHaveBeenCalledTimes(2);
+      expect(refreshControl().props.refreshing).toBe(true);
+      await act(async () => refreshRead.resolve([current]));
+      expect(refreshControl().props.refreshing).toBe(false);
+      expect(renderedText(renderer)).toContain('هذا الجهاز');
+    } finally {
+      await act(async () => renderer.unmount());
+    }
   });
 
   it.each(

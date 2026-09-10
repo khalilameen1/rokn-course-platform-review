@@ -1,4 +1,5 @@
 import React from 'react';
+import {StyleSheet} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Container, Content} from '../components/containers/Containers';
 import {SettingsChoiceModal} from '../components/settings/SettingsChoiceModal';
@@ -19,7 +20,7 @@ export default function Settings() {
       <Content
         noPadding
         paddingBottom={Math.max(Spacing.section, insets.bottom + Spacing.xl)}>
-        <ResponsiveFrame>
+        <ResponsiveFrame style={styles.frame}>
           <HeaderWithBack title="الإعدادات" />
           {controller.accountIdentity && (
             <SettingsAccountIdentity
@@ -47,3 +48,7 @@ export default function Settings() {
     </Container>
   );
 }
+
+const styles = StyleSheet.create({
+  frame: {maxWidth: 760},
+});

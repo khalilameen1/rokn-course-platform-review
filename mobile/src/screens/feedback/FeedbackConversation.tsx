@@ -1,7 +1,7 @@
 import React from 'react';
 import {Image, Modal, Pressable, Text, TextInput, View} from 'react-native';
 
-import {PremiumCard, StatusView} from '../../components/ui/PremiumUI';
+import {StatusView} from '../../components/ui/PremiumUI';
 import {Palette} from '../../constants/designSystem';
 import type {
   FeedbackAttachment,
@@ -73,53 +73,75 @@ export const FeedbackConversation = ({
   selectedCaseId,
 }: Props) => (
   <>
-    <PremiumCard style={styles.casesCard}>
+    <View style={styles.casesCard}>
       <View style={styles.casesHeader}>
-        <Text style={styles.label}>حالاتك</Text>
+        <View style={styles.casesHeadingCopy}>
+          <Text accessibilityRole="header" style={styles.caseHeading}>
+            {selectedCase ? `الحالة ${selectedCase.caseNumber}` : 'طلباتك'}
+          </Text>
+          {!!selectedCase && (
+            <Text style={styles.caseStatus}>
+              {CASE_STATUS[selectedCase.status] || 'قيد المتابعة'}
+            </Text>
+          )}
+        </View>
+        {!!selectedCase && (
+          <Pressable
+            accessibilityRole="button"
+            disabled={casesBusy || replyBusy}
+            onPress={() => onSelectCase('')}
+            style={styles.caseHeaderAction}>
+            <Text style={styles.refreshCases}>كل الطلبات</Text>
+          </Pressable>
+        )}
         <Pressable
           accessibilityLabel="تحديث الحالات"
           accessibilityRole="button"
           disabled={casesBusy || replyBusy}
-          onPress={onRefresh}>
+          onPress={onRefresh}
+          style={styles.caseHeaderAction}>
           <Text style={styles.refreshCases}>
             {casesBusy ? 'جارٍ التحديث' : 'تحديث'}
           </Text>
         </Pressable>
       </View>
-      {casesBusy && cases.length === 0 ? (
-        <Text style={styles.caseMuted}>جارٍ تحميل الحالات</Text>
-      ) : !cases.length && !casesError ? (
-        <Text style={styles.caseMuted}>لا توجد متابعات سابقة</Text>
-      ) : (
-        cases.map(item => {
-          const selected = item.publicId === selectedCaseId;
-          return (
-            <Pressable
-              accessibilityLabel={`الحالة ${item.caseNumber} ${
-                CASE_STATUS[item.status] || 'قيد المتابعة'
-              }`}
-              accessibilityRole="button"
-              disabled={casesBusy || replyBusy}
-              key={item.publicId}
-              onPress={() => onSelectCase(selected ? '' : item.publicId)}
-              style={({pressed}) => [
-                styles.caseRow,
-                selected && styles.caseRowSelected,
-                pressed && styles.pressed,
-              ]}>
-              <View style={styles.caseCopy}>
-                <Text style={styles.caseNumber}>الحالة {item.caseNumber}</Text>
-                <Text numberOfLines={1} style={styles.caseMessage}>
-                  {item.message}
+      {!selectedCase &&
+        (casesBusy && cases.length === 0 ? (
+          <Text style={styles.caseMuted}>جارٍ تحميل الحالات</Text>
+        ) : !cases.length && !casesError ? (
+          <Text style={styles.caseMuted}>لا توجد متابعات سابقة</Text>
+        ) : (
+          cases.map(item => {
+            const selected = item.publicId === selectedCaseId;
+            return (
+              <Pressable
+                accessibilityLabel={`الحالة ${item.caseNumber} ${
+                  CASE_STATUS[item.status] || 'قيد المتابعة'
+                }`}
+                accessibilityRole="button"
+                disabled={casesBusy || replyBusy}
+                key={item.publicId}
+                onPress={() => onSelectCase(selected ? '' : item.publicId)}
+                style={({pressed}) => [
+                  styles.caseRow,
+                  selected && styles.caseRowSelected,
+                  pressed && styles.pressed,
+                ]}>
+                <View style={styles.caseCopy}>
+                  <Text numberOfLines={2} style={styles.caseSubject}>
+                    {item.message}
+                  </Text>
+                  <Text style={styles.caseNumber}>
+                    الحالة {item.caseNumber}
+                  </Text>
+                </View>
+                <Text style={styles.caseStatus}>
+                  {CASE_STATUS[item.status] || 'قيد المتابعة'}
                 </Text>
-              </View>
-              <Text style={styles.caseStatus}>
-                {CASE_STATUS[item.status] || 'قيد المتابعة'}
-              </Text>
-            </Pressable>
-          );
-        })
-      )}
+              </Pressable>
+            );
+          })
+        ))}
       {!!casesError && (
         <Text accessibilityRole="alert" style={styles.error}>
           {casesError}
@@ -172,6 +194,7 @@ export const FeedbackConversation = ({
             />
           ) : (
             <>
+              <Text style={styles.replyLabel}>ردك على الطلب</Text>
               <TextInput
                 accessibilityLabel="ردك على الحالة"
                 maxLength={2000}
@@ -195,7 +218,8 @@ export const FeedbackConversation = ({
                     accessibilityLabel="حذف صورة الرد"
                     accessibilityRole="button"
                     disabled={casesBusy || replyBusy}
-                    onPress={onRemoveReplyAttachment}>
+                    onPress={onRemoveReplyAttachment}
+                    style={styles.removeAttachmentButton}>
                     <Text style={styles.removeAttachment}>حذف الصورة</Text>
                   </Pressable>
                 </View>
@@ -242,7 +266,7 @@ export const FeedbackConversation = ({
           )}
         </View>
       )}
-    </PremiumCard>
+    </View>
 
     <Modal
       animationType="fade"

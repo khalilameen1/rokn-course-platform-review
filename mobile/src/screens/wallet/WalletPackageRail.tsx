@@ -1,9 +1,19 @@
 import React from 'react';
-import {Pressable, ScrollView, Text} from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 
 import {PremiumCard, ResponsiveFrame} from '../../components/ui/PremiumUI';
-import Package from '../../components/view/Package';
-import {Spacing} from '../../constants/designSystem';
+import {CoinAmount} from '../../components/ui/RoknCoin';
+import {
+  formatArabicDisplayText,
+  formatArabicNumber,
+} from '../../constants/arabicFormatting';
+import {Palette, Spacing} from '../../constants/designSystem';
 import type {CoinPackage} from '../../services/api/coinPackageMapper';
 import type {WalletAreaStatus} from './useWalletData';
 import {walletStyles as styles} from './walletStyles';
@@ -43,28 +53,60 @@ export const WalletPackageRail = ({
         nestedScrollEnabled
         snapToInterval={cardWidth + Spacing.sm}
         snapToAlignment="start"
+        disableIntervalMomentum
         showsHorizontalScrollIndicator={false}>
-        {packages.map(item => (
-          <Package
-            buttonTitle={
-              checkoutLoading === item.id
-                ? 'جارٍ فتح الدفع'
-                : checkoutLoading
-                ? 'جارٍ فتح باقة أخرى'
-                : !catalogueReady
-                ? 'حدّث الباقات أولًا'
-                : 'اختيار الباقة'
-            }
-            disabled={Boolean(checkoutLoading) || !catalogueReady}
-            key={item.id}
-            onPress={() => onCheckout(item)}
-            price={String(item.price)}
-            displayPrice={item.displayPrice}
-            rPrice={String(item.coins)}
-            title={item.label}
-            width={cardWidth}
-          />
-        ))}
+        {packages.map(item => {
+          const busy = checkoutLoading === item.id;
+          const disabled = Boolean(checkoutLoading) || !catalogueReady;
+          const price =
+            item.displayPrice ||
+            `${formatArabicNumber(item.price, {
+              maximumFractionDigits: 2,
+            })} جنيه`;
+          const actionLabel = busy
+            ? 'جارٍ فتح الدفع'
+            : checkoutLoading
+            ? 'جارٍ فتح باقة أخرى'
+            : !catalogueReady
+            ? 'حدّث الباقات أولًا'
+            : 'اختيار الباقة';
+          return (
+            <Pressable
+              accessibilityLabel={`${
+                item.label ? `${formatArabicDisplayText(item.label)}، ` : ''
+              }${formatArabicNumber(item.coins)} من رصيد ركن مقابل ${price}`}
+              accessibilityRole="button"
+              accessibilityState={{busy, disabled}}
+              disabled={disabled}
+              key={item.id}
+              onPress={() => onCheckout(item)}
+              style={({pressed}) => [
+                styles.packageCard,
+                {width: cardWidth},
+                disabled && styles.packageDisabled,
+                pressed && styles.pressed,
+              ]}>
+              {!!item.label && (
+                <Text style={styles.packageLabel}>
+                  {formatArabicDisplayText(item.label)}
+                </Text>
+              )}
+              <CoinAmount
+                size={20}
+                style={styles.packageAmount}
+                textStyle={styles.packageCoins}
+                value={item.coins}
+              />
+              <Text style={styles.packagePrice}>{price}</Text>
+              <View style={styles.packageAction}>
+                {busy && (
+                  <ActivityIndicator color={Palette.text} size="small" />
+                )}
+                <Text style={styles.packageActionLabel}>{actionLabel}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
       </ScrollView>
     );
   }

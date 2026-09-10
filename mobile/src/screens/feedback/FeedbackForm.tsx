@@ -1,11 +1,8 @@
 import React from 'react';
 import {Image, Pressable, Text, TextInput, View} from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 
-import {
-  PremiumCard,
-  SectionHeading,
-  StatusView,
-} from '../../components/ui/PremiumUI';
+import {SectionHeading, StatusView} from '../../components/ui/PremiumUI';
 import {toArabicDigits} from '../../constants/arabicFormatting';
 import {Palette} from '../../constants/designSystem';
 import type {
@@ -71,9 +68,9 @@ export const FeedbackForm = ({
     />
   ) : (
     <>
-      <SectionHeading style={styles.heading} title="ماذا حدث" />
+      <SectionHeading style={styles.heading} title="كيف نساعدك؟" />
       <Text style={styles.intro}>اكتب المشكلة أو الاقتراح بوضوح</Text>
-
+      <Text style={styles.categoryLabel}>نوع الرسالة</Text>
       <View accessibilityRole="radiogroup" style={styles.categories}>
         {CATEGORIES.map(item => {
           const selected = item.key === category;
@@ -105,7 +102,7 @@ export const FeedbackForm = ({
         })}
       </View>
 
-      <PremiumCard style={styles.form}>
+      <View style={styles.form}>
         <Text style={styles.label}>اكتب التفاصيل</Text>
         <TextInput
           accessibilityHint="اكتب عشرة أحرف على الأقل"
@@ -139,7 +136,8 @@ export const FeedbackForm = ({
                 accessibilityRole="button"
                 disabled={busy || !ready}
                 hitSlop={8}
-                onPress={onRemoveAttachment}>
+                onPress={onRemoveAttachment}
+                style={styles.removeAttachmentButton}>
                 <Text style={styles.removeAttachment}>حذف الصورة</Text>
               </Pressable>
             </View>
@@ -179,7 +177,16 @@ export const FeedbackForm = ({
               includeDiagnostics && styles.diagnosticsCheckSelected,
             ]}>
             {includeDiagnostics && (
-              <Text style={styles.diagnosticsCheckMark}>✓</Text>
+              <Svg width={14} height={14} viewBox="0 0 16 16">
+                <Path
+                  d="M3 8l3 3 7-7"
+                  fill="none"
+                  stroke={Palette.text}
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </Svg>
             )}
           </View>
           <View style={styles.diagnosticsCopy}>
@@ -189,7 +196,7 @@ export const FeedbackForm = ({
             </Text>
           </View>
         </Pressable>
-      </PremiumCard>
+      </View>
 
       {!!error && (
         <Text accessibilityRole="alert" style={styles.error}>

@@ -9,6 +9,7 @@ import {
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import LinearGradient from 'react-native-linear-gradient';
 import {Fonts} from '../../../constants/styleConstants';
+import {Palette, textDirection} from '../../../constants/designSystem';
 import {SkeletonBlock} from '../../ui/Skeleton';
 import {
   formatVideoDuration,
@@ -92,7 +93,7 @@ export const VideoChrome = ({
 
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(0,0,0,.62)', 'rgba(0,0,0,0)', 'rgba(0,0,0,.82)']}
+        colors={['rgba(0,0,0,.70)', 'rgba(0,0,0,0)', 'rgba(0,0,0,.88)']}
         locations={[0, 0.36, 1]}
         style={StyleSheet.absoluteFill}
       />
@@ -226,9 +227,7 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(8,12,18,.62)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.22)',
+    backgroundColor: 'rgba(7,11,18,.86)',
   },
   playSymbol: {
     color: '#FFFFFF',
@@ -242,11 +241,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     zIndex: 4,
+    maxWidth: '86%',
   },
   stateText: {
+    ...textDirection,
     color: 'rgba(255,255,255,.82)',
     fontFamily: Fonts.medium,
     fontSize: 13,
+    textAlign: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(7,11,18,.86)',
   },
   errorCard: {
     position: 'absolute',
@@ -255,19 +261,19 @@ const styles = StyleSheet.create({
     top: '36%',
     borderRadius: 20,
     padding: 20,
-    backgroundColor: 'rgba(12,17,25,.94)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.12)',
+    backgroundColor: Palette.surface,
     alignItems: 'center',
     zIndex: 6,
   },
   errorTitle: {
+    ...textDirection,
     color: '#FFFFFF',
     fontFamily: Fonts.bold,
     fontSize: 17,
     textAlign: 'center',
   },
   errorText: {
+    ...textDirection,
     color: 'rgba(255,255,255,.68)',
     fontFamily: Fonts.regular,
     fontSize: 13,
@@ -278,13 +284,16 @@ const styles = StyleSheet.create({
   retryButton: {
     minHeight: 48,
     paddingHorizontal: 22,
-    borderRadius: 21,
-    backgroundColor: '#236FE8',
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: Palette.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 16,
   },
   retryText: {
+    ...textDirection,
+    textAlign: 'center',
     color: '#FFFFFF',
     fontFamily: Fonts.semiBold,
     fontSize: 13,

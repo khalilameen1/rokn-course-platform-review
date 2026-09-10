@@ -5,7 +5,6 @@ import {
   Alert,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -14,11 +13,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useSelector} from 'react-redux';
 import Svg, {Circle, Rect} from 'react-native-svg';
 import {Container, Content} from '../components/containers/Containers';
-import {
-  PremiumCard,
-  ResponsiveFrame,
-  StatusView,
-} from '../components/ui/PremiumUI';
+import {ResponsiveFrame, StatusView} from '../components/ui/PremiumUI';
 import HeaderWithBack from '../components/view/HeaderWithBack';
 import {formatRoknDate} from '../utils/dateTime';
 import {
@@ -371,11 +366,19 @@ export default function DeviceSessions() {
 
   return (
     <Container noPadding>
-      <Content noPadding>
+      <Content
+        noPadding
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={Palette.primary}
+            onRefresh={() => void load(true)}
+          />
+        }>
         <ResponsiveFrame>
           <HeaderWithBack title="الأجهزة المسجّل عليها" />
-          <ScrollView
-            contentContainerStyle={[
+          <View
+            style={[
               styles.content,
               {
                 paddingBottom: Math.max(
@@ -383,38 +386,13 @@ export default function DeviceSessions() {
                   insets.bottom + Spacing.xl,
                 ),
               },
-            ]}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                tintColor={Palette.primary}
-                onRefresh={() => void load(true)}
-              />
-            }>
+            ]}>
             <Text style={styles.intro}>أنهِ أي جلسة على جهاز لا تستخدمه</Text>
-
-            {sessions.some(session => !session.current) &&
-              !loading &&
-              !error && (
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={Boolean(removing)}
-                  onPress={revokeOthers}
-                  style={styles.logoutOthersButton}>
-                  {removing === 'all' ? (
-                    <ActivityIndicator color={Palette.danger} />
-                  ) : (
-                    <Text style={styles.logoutText}>
-                      تسجيل الخروج من الأجهزة الأخرى
-                    </Text>
-                  )}
-                </Pressable>
-              )}
 
             {loading ? (
               <ActivityIndicator color={Palette.primary} size="large" />
             ) : error ? (
-              <PremiumCard style={styles.stateCard}>
+              <View style={styles.stateCard}>
                 <Text style={styles.stateText}>{error}</Text>
                 <Pressable
                   accessibilityLabel="إعادة تحميل الأجهزة المسجّل عليها"
@@ -423,16 +401,16 @@ export default function DeviceSessions() {
                   onPress={() => void load()}>
                   <Text style={styles.retryText}>حاول مرة أخرى</Text>
                 </Pressable>
-              </PremiumCard>
+              </View>
             ) : sessions.length === 0 ? (
-              <PremiumCard style={styles.stateCard}>
+              <View style={styles.stateCard}>
                 <Text style={styles.stateText}>
                   ستظهر أجهزتك هنا بعد تسجيل الدخول عليها
                 </Text>
-              </PremiumCard>
+              </View>
             ) : (
               sessions.map(session => (
-                <PremiumCard key={session.id} style={styles.sessionCard}>
+                <View key={session.id} style={styles.sessionCard}>
                   <View style={styles.sessionHeader}>
                     <View
                       accessibilityElementsHidden
@@ -443,19 +421,21 @@ export default function DeviceSessions() {
                       />
                     </View>
                     <View style={styles.sessionCopy}>
-                      <Text style={styles.sessionTitle}>
-                        {sessionLabel(session)}
-                      </Text>
+                      <View style={styles.sessionTitleRow}>
+                        <Text style={styles.sessionTitle}>
+                          {sessionLabel(session)}
+                        </Text>
+                        {session.current && (
+                          <View style={styles.currentPill}>
+                            <Text style={styles.currentText}>هذا الجهاز</Text>
+                          </View>
+                        )}
+                      </View>
                       <Text style={styles.sessionMeta}>
                         آخر استخدام{' '}
                         {dateLabel(session.last_used_at || session.issued_at)}
                       </Text>
                     </View>
-                    {session.current && (
-                      <View style={styles.currentPill}>
-                        <Text style={styles.currentText}>هذا الجهاز</Text>
-                      </View>
-                    )}
                   </View>
                   {!session.current && (
                     <Pressable
@@ -475,10 +455,27 @@ export default function DeviceSessions() {
                       )}
                     </Pressable>
                   )}
-                </PremiumCard>
+                </View>
               ))
             )}
-          </ScrollView>
+            {sessions.some(session => !session.current) &&
+              !loading &&
+              !error && (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={Boolean(removing)}
+                  onPress={revokeOthers}
+                  style={styles.logoutOthersButton}>
+                  {removing === 'all' ? (
+                    <ActivityIndicator color={Palette.danger} />
+                  ) : (
+                    <Text style={styles.logoutText}>
+                      تسجيل الخروج من الأجهزة الأخرى
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+          </View>
         </ResponsiveFrame>
       </Content>
     </Container>
@@ -486,14 +483,18 @@ export default function DeviceSessions() {
 }
 
 const styles = StyleSheet.create({
-  content: {paddingHorizontal: Spacing.lg, gap: Spacing.md},
+  content: {gap: Spacing.md},
   intro: {
     ...Type.body,
     ...textDirection,
     color: Palette.textMuted,
     marginBottom: Spacing.sm,
   },
-  sessionCard: {padding: Spacing.lg, borderRadius: Radius.lg},
+  sessionCard: {
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
+  },
   sessionHeader: {...rtlRowStyle, alignItems: 'flex-start', gap: Spacing.md},
   deviceIcon: {
     width: 44,
@@ -501,11 +502,15 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: Radius.md,
-    backgroundColor: Palette.primarySoft,
   },
   sessionCopy: {flex: 1, minWidth: 0},
-  sessionTitle: {...Type.section, ...textDirection, color: Palette.text},
+  sessionTitleRow: {
+    ...rtlRowStyle,
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  sessionTitle: {...Type.bodyStrong, ...textDirection, color: Palette.text},
   sessionMeta: {
     ...Type.caption,
     ...textDirection,
@@ -520,28 +525,28 @@ const styles = StyleSheet.create({
   },
   currentText: {...Type.caption, color: Palette.primary},
   logoutButton: {
-    alignItems: 'center',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Palette.line,
-    marginTop: Spacing.md,
-    paddingTop: Spacing.md,
-    minHeight: 44,
+    alignItems: 'flex-start',
+    marginStart: 44 + Spacing.md,
+    marginTop: Spacing.xs,
+    minHeight: 48,
     justifyContent: 'center',
   },
   logoutOthersButton: {
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+    marginTop: Spacing.lg,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Palette.danger,
     paddingHorizontal: Spacing.md,
   },
-  logoutText: {...Type.body, color: Palette.danger},
+  logoutText: {...Type.body, ...textDirection, color: Palette.danger},
   stateCard: {padding: Spacing.xl, alignItems: 'center', gap: Spacing.md},
   stateText: {...Type.body, ...textDirection, color: Palette.textMuted},
   retryButton: {
-    minHeight: 44,
+    minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,
     borderRadius: Radius.md,

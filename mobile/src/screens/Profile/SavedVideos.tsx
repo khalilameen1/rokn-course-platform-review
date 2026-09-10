@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import {Swipeable} from 'react-native-gesture-handler';
+import {CloseChat, PlayInSavedVideosIcon} from '../../assets/SVG';
 import {StatusView, SectionHeading} from '../../components/ui/PremiumUI';
 import {SavedLibrarySkeleton} from '../../components/ui/Skeleton';
 import {
@@ -316,11 +317,11 @@ export default function SavedVideos() {
                           style={styles.thumb}
                         />
                         <View style={styles.playMark}>
-                          <Text style={styles.playText}>▶</Text>
+                          <PlayInSavedVideosIcon width={28} height={28} />
                         </View>
                       </View>
                       <View style={styles.copy}>
-                        <Text numberOfLines={2} style={styles.title}>
+                        <Text style={styles.title}>
                           {formatAuthoredDisplayText(item.title)}
                         </Text>
                         <Text numberOfLines={1} style={styles.course}>
@@ -348,9 +349,11 @@ export default function SavedVideos() {
                           void removeSaved(item);
                         }}
                         style={styles.removeButton}>
-                        <Text style={styles.removeText}>
-                          {removalPending ? '…' : '×'}
-                        </Text>
+                        {removalPending ? (
+                          <Text style={styles.removeText}>…</Text>
+                        ) : (
+                          <CloseChat width={14} height={14} />
+                        )}
                       </Pressable>
                     </Pressable>
                   </Swipeable>

@@ -1,13 +1,10 @@
 import React, {useMemo, useState} from 'react';
+import {ActivityIndicator, Image, Pressable, Text, View} from 'react-native';
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+  AccordionArrowDown,
+  AccordionArrowUp,
+  ArrowRight,
+} from '../../../assets/SVG';
 import {CourseDetailsSkeleton} from '../../../components/ui/Skeleton';
 import {StatusView} from '../../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../../components/ui/CourseArtwork';
@@ -25,21 +22,19 @@ import Lessons from '../Lessons';
 import styles from './styles';
 
 export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
-  const {isTablet} = useResponsiveLayout();
-  const title = details?.title || '';
+  const {isTablet, largeText} = useResponsiveLayout();
   const description = details?.description || '';
   const instructorName = details?.instructor || '';
   const instructorBio = details?.instructorBio || '';
   return (
     <View style={styles.aboutWrap}>
-      <View style={[styles.aboutGrid, isTablet && styles.aboutGridTablet]}>
+      <View
+        style={[
+          styles.aboutGrid,
+          isTablet && !largeText && styles.aboutGridTablet,
+        ]}>
         <View style={styles.aboutMain}>
-          <Text style={styles.sectionEyebrow}>عن الكورس</Text>
-          {!!title && (
-            <Text style={styles.sectionTitle}>
-              {formatAuthoredDisplayText(title)}
-            </Text>
-          )}
+          <Text style={styles.sectionTitle}>عن هذا الكورس</Text>
           {!!description && (
             <Text style={styles.bodyCopy}>
               {formatAuthoredDisplayText(description)}
@@ -48,7 +43,11 @@ export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
         </View>
 
         {!!instructorName && (
-          <View style={styles.instructorCard}>
+          <View
+            style={[
+              styles.instructorCard,
+              isTablet && !largeText && styles.instructorCardTablet,
+            ]}>
             <Image
               source={
                 details?.instructorImage
@@ -58,7 +57,7 @@ export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
               style={styles.instructorImage}
             />
             <View style={styles.instructorCopy}>
-              <Text style={styles.instructorLabel}>مدرب الكورس</Text>
+              <Text style={styles.instructorLabel}>تعرّف على المدرب</Text>
               <Text style={styles.instructorName}>
                 {formatAuthoredDisplayText(instructorName)}
               </Text>
@@ -86,8 +85,7 @@ export const LockedOutline = ({
   const modules = useMemo(() => details?.modules || [], [details]);
   return (
     <View style={styles.lockedOutline}>
-      <Text style={styles.sectionEyebrow}>خريطة الكورس</Text>
-      <Text style={styles.sectionTitle}>الوحدات والمقاطع</Text>
+      <Text style={styles.sectionTitle}>محتوى الكورس</Text>
       {details && !modules.length && (
         <Text style={styles.lockedNote}>لم تُنشر خريطة هذا الكورس بعد</Text>
       )}
@@ -115,16 +113,16 @@ export const LockedOutline = ({
                 </Text>
                 <Text style={styles.moduleMeta}>
                   {formatArabicNumber(module.reelCount)} مقطع
-                  {module.projectCount ? ' · مشروع عبور' : ''}
+                  {module.projectCount
+                    ? ` · ${formatArabicNumber(module.projectCount)} مشروع`
+                    : ''}
                 </Text>
               </View>
-              <Text
-                style={[
-                  styles.expandSymbol,
-                  expanded && styles.expandSymbolOpen,
-                ]}>
-                ⌄
-              </Text>
+              {expanded ? (
+                <AccordionArrowUp accessible={false} />
+              ) : (
+                <AccordionArrowDown accessible={false} />
+              )}
             </Pressable>
             {expanded && (
               <View style={styles.outlineItems}>
@@ -211,78 +209,76 @@ export const CourseHero = ({
   remoteCourse,
   topInset,
 }: CourseHeroProps) => (
-  <View style={[styles.hero, {height: heroHeight}]}>
-    <CourseArtwork
-      fallback={require('../../../assets/images/courseSliderBackground.jpg')}
-      source={remoteCourse?.imageUrl ? {uri: remoteCourse.imageUrl} : undefined}
-      style={styles.heroImage}
-    />
-    <LinearGradient
-      colors={['rgba(7,10,16,0.1)', 'rgba(7,10,16,0.54)', Palette.canvas]}
-      locations={[0, 0.5, 1]}
-      style={StyleSheet.absoluteFill}
-    />
-    <Pressable
-      accessibilityLabel="العودة"
-      accessibilityRole="button"
-      hitSlop={8}
-      onPress={onBack}
-      style={({pressed}) => [
-        styles.backButton,
-        {top: topInset + 10},
-        pressed && styles.pressed,
-      ]}>
-      <Text style={styles.backIcon}>›</Text>
-    </Pressable>
-
+  <View style={[styles.hero, {paddingTop: topInset}]}>
     <View
       style={[
-        styles.heroContent,
+        styles.heroFrame,
         {
           paddingHorizontal: gutter,
           maxWidth: maxContentWidth,
         },
       ]}>
-      <Text style={styles.heroTitle}>
-        {formatAuthoredDisplayText(courseTitle)}
-      </Text>
+      <View style={styles.heroNavigation}>
+        <Pressable
+          accessibilityLabel="العودة"
+          accessibilityRole="button"
+          onPress={onBack}
+          style={({pressed}) => [styles.backButton, pressed && styles.pressed]}>
+          <ArrowRight accessible={false} />
+        </Pressable>
+        <Text style={styles.heroNavigationTitle}>تفاصيل الكورس</Text>
+      </View>
+      <View
+        accessible
+        accessibilityLabel={`غلاف ${formatAuthoredDisplayText(courseTitle)}`}
+        accessibilityRole="image"
+        style={[styles.heroArtwork, {height: heroHeight}]}>
+        <CourseArtwork
+          fallback={require('../../../assets/images/courseSliderBackground.jpg')}
+          source={
+            remoteCourse?.imageUrl ? {uri: remoteCourse.imageUrl} : undefined
+          }
+          style={styles.heroImage}
+        />
+      </View>
     </View>
   </View>
 );
 
 type CourseIntroProps = {
-  courseDescription: string;
+  courseTitle: string;
   durationMinutes: number | null;
-  onPrimaryAction: () => void;
   onPreview: () => void;
   pageReady: boolean;
-  primaryActionLabel: string;
-  primaryActionDisabled: boolean;
   ratingAverage: number | null;
   ratingsCount: number;
+  remoteCourse: CourseDetailsDto | null;
   remoteError: string;
   showSecondaryPreview: boolean;
   studentsCount: number;
 };
 
 export const CourseIntro = ({
-  courseDescription,
+  courseTitle,
   durationMinutes,
-  onPrimaryAction: handlePrimaryAction,
   onPreview,
   pageReady,
-  primaryActionLabel,
-  primaryActionDisabled,
   ratingAverage,
   ratingsCount,
+  remoteCourse,
   remoteError,
   showSecondaryPreview,
   studentsCount,
 }: CourseIntroProps) => (
   <View style={styles.courseIntro}>
-    <Text style={styles.heroSubtitle}>
-      {formatAuthoredDisplayText(courseDescription)}
+    <Text accessibilityRole="header" style={styles.heroTitle}>
+      {formatAuthoredDisplayText(courseTitle)}
     </Text>
+    {!!remoteCourse?.instructor && (
+      <Text style={styles.instructorByline}>
+        مع {formatAuthoredDisplayText(remoteCourse.instructor)}
+      </Text>
+    )}
     {pageReady && (
       <View style={styles.socialProofRow}>
         {durationMinutes !== null && (
@@ -290,22 +286,29 @@ export const CourseIntro = ({
             {formatArabicMinutes(durationMinutes)}
           </Text>
         )}
-        {durationMinutes !== null && <View style={styles.socialProofDot} />}
         {ratingsCount > 0 && ratingAverage !== null ? (
-          <Text style={styles.socialProofText}>
+          <View
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={`التقييم ${formatArabicNumber(ratingAverage, {
+              minimumFractionDigits: 1,
+              maximumFractionDigits: 1,
+            })} من ٥، ${formatArabicRatings(ratingsCount)}`}
+            style={styles.ratingGroup}>
             <Text style={styles.ratingText}>
               ★{' '}
               {formatArabicNumber(ratingAverage, {
                 minimumFractionDigits: 1,
                 maximumFractionDigits: 1,
               })}
-            </Text>{' '}
-            {formatArabicRatings(ratingsCount)}
-          </Text>
+            </Text>
+            <Text style={styles.socialProofText}>
+              {formatArabicRatings(ratingsCount)}
+            </Text>
+          </View>
         ) : (
           <Text style={styles.socialProofText}>لا توجد تقييمات</Text>
         )}
-        {studentsCount > 0 && <View style={styles.socialProofDot} />}
         {studentsCount > 0 && (
           <Text style={styles.socialProofText}>
             {formatArabicStudents(studentsCount)}
@@ -313,41 +316,70 @@ export const CourseIntro = ({
         )}
       </View>
     )}
-    {!remoteError && (
-      <View style={styles.priceAndAction}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{
-            busy: !pageReady || primaryActionDisabled,
-            disabled: !pageReady || primaryActionDisabled,
-          }}
-          disabled={!pageReady || primaryActionDisabled}
-          onPress={handlePrimaryAction}
-          style={({pressed}) => [
-            styles.primaryButton,
-            pressed && styles.primaryButtonPressed,
-            (!pageReady || primaryActionDisabled) && styles.disabled,
-          ]}>
-          {!pageReady || primaryActionDisabled ? (
-            <ActivityIndicator color={Palette.text} />
-          ) : (
-            <Text style={styles.primaryButtonText}>{primaryActionLabel}</Text>
-          )}
-        </Pressable>
-        {showSecondaryPreview && (
-          <Pressable
-            accessibilityLabel="شاهد مجانًا"
-            accessibilityRole="button"
-            onPress={onPreview}
-            style={({pressed}) => [
-              styles.previewButton,
-              pressed && styles.pressed,
-            ]}>
-            <Text style={styles.previewButtonText}>شاهد مجانًا</Text>
-          </Pressable>
-        )}
-      </View>
+    {!remoteError && showSecondaryPreview && (
+      <Pressable
+        accessibilityLabel="شاهد مجانًا"
+        accessibilityRole="button"
+        onPress={onPreview}
+        style={({pressed}) => [
+          styles.previewButton,
+          pressed && styles.pressed,
+        ]}>
+        <Text style={styles.previewButtonText}>شاهد مجانًا</Text>
+        <Text
+          allowFontScaling={false}
+          accessibilityElementsHidden
+          style={styles.previewIcon}>
+          ▶
+        </Text>
+      </Pressable>
     )}
+  </View>
+);
+
+export const CourseActionBar = ({
+  bottomInset,
+  gutter,
+  maxContentWidth,
+  onPrimaryAction,
+  pageReady,
+  primaryActionDisabled,
+  primaryActionLabel,
+}: {
+  bottomInset: number;
+  gutter: number;
+  maxContentWidth: number;
+  onPrimaryAction: () => void;
+  pageReady: boolean;
+  primaryActionDisabled: boolean;
+  primaryActionLabel: string;
+}) => (
+  <View style={[styles.actionBar, {paddingBottom: Math.max(bottomInset, 12)}]}>
+    <View
+      style={[
+        styles.actionBarContent,
+        {paddingHorizontal: gutter, maxWidth: maxContentWidth},
+      ]}>
+      <Pressable
+        accessibilityLabel={primaryActionLabel}
+        accessibilityRole="button"
+        accessibilityState={{
+          busy: !pageReady || primaryActionDisabled,
+          disabled: !pageReady || primaryActionDisabled,
+        }}
+        disabled={!pageReady || primaryActionDisabled}
+        onPress={onPrimaryAction}
+        style={({pressed}) => [
+          styles.primaryButton,
+          pressed && styles.primaryButtonPressed,
+          (!pageReady || primaryActionDisabled) && styles.disabled,
+        ]}>
+        {(!pageReady || primaryActionDisabled) && (
+          <ActivityIndicator color={Palette.text} />
+        )}
+        <Text style={styles.primaryButtonText}>{primaryActionLabel}</Text>
+      </Pressable>
+    </View>
   </View>
 );
 
@@ -393,6 +425,7 @@ export const CourseRatingAction = ({
               pressed && styles.pressed,
             ]}>
             <Text
+              allowFontScaling={false}
               style={[
                 styles.ratingStar,
                 value <= (rating ?? 0) && styles.ratingStarSelected,

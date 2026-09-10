@@ -1,7 +1,6 @@
 import React from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import {MetaPill, SectionHeading} from '../../components/ui/PremiumUI';
+import {Pressable, Text, View} from 'react-native';
+import {SectionHeading} from '../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../components/ui/CourseArtwork';
 import {
   formatArabicDisplayText,
@@ -21,16 +20,6 @@ type Props = {
   onRetry: () => void;
   orderedCourses: LearningCourse[];
   primaryResumeId?: string;
-};
-
-const courseStatus = (
-  course: LearningCourse,
-  isPrimaryResume: boolean,
-): string => {
-  if (course.progress >= 100) return 'مكتمل';
-  if (isPrimaryResume) return 'أكمل الآن';
-  if (course.started) return 'قيد التعلّم';
-  return 'جاهز للبدء';
 };
 
 export const CourseShelf = ({
@@ -58,112 +47,132 @@ export const CourseShelf = ({
       </View>
     )}
     {orderedCourses.map((course, index) => {
-      const hasProgress = course.started;
       const resumeTarget = learningResumeTarget(course, learningOwnershipFresh);
       const isPrimaryResume =
         course.id === primaryResumeId && Boolean(resumeTarget);
+      const progress = Math.max(0, Math.min(100, course.progress));
+      const completed = progress >= 100;
       const startsCompletedShelf =
         hasActiveCourses &&
-        course.progress >= 100 &&
+        completed &&
         (index === 0 || orderedCourses[index - 1].progress < 100);
+      const progressLabel = completed
+        ? 'مكتمل'
+        : course.started
+        ? progress > 0
+          ? `اكتمل ${Math.round(progress)}٪`
+          : 'بدأت التعلّم'
+        : 'جاهز للبدء';
 
       return (
         <React.Fragment key={course.id}>
           {startsCompletedShelf && (
-            <SectionHeading
-              eyebrow="للرجوع والمراجعة"
-              style={styles.completedHeading}
-              title="أنهيتها"
-            />
+            <SectionHeading style={styles.completedHeading} title="أنهيتها" />
           )}
-          <Pressable
-            accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(
-              course.title,
-            )}${
-              course.progress > 0
-                ? formatArabicDisplayText(
-                    `، اكتمل ${Math.round(course.progress)}٪`,
-                  )
-                : ''
-            }`}
-            accessibilityRole="button"
-            onPress={() => onOpenCourse(course.id)}
-            style={({pressed}) => [
+          <View
+            style={[
               styles.courseCard,
               isPrimaryResume && styles.primaryResumeCard,
-              pressed && styles.pressed,
             ]}>
-            <CourseArtwork
-              fallback={require('../../assets/images/courseSliderBackground.jpg')}
-              source={course.imageUrl ? {uri: course.imageUrl} : undefined}
-              style={styles.courseCover}
-            />
-            <LinearGradient
-              colors={[
-                'rgba(5,8,13,.08)',
-                'rgba(5,8,13,.45)',
-                'rgba(5,8,13,.96)',
-              ]}
-              locations={[0, 0.52, 1]}
-              pointerEvents="none"
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.courseCopy}>
-              <MetaPill
-                label={courseStatus(course, isPrimaryResume)}
-                tone="primary"
+            <Pressable
+              accessibilityLabel={`عرض تفاصيل ${formatAuthoredDisplayText(
+                course.title,
+              )}، ${formatArabicDisplayText(progressLabel)}`}
+              accessibilityRole="button"
+              onPress={() => onOpenCourse(course.id)}
+              style={({pressed}) => [
+                styles.courseDetails,
+                (isPrimaryResume || largeText) && styles.courseDetailsStacked,
+                pressed && styles.pressed,
+              ]}>
+              <CourseArtwork
+                fallback={require('../../assets/images/courseSliderBackground.jpg')}
+                source={course.imageUrl ? {uri: course.imageUrl} : undefined}
+                style={
+                  isPrimaryResume
+                    ? styles.primaryCourseCover
+                    : largeText
+                    ? styles.largeTextCourseCover
+                    : styles.courseCover
+                }
               />
-              <Text
-                numberOfLines={largeText ? 4 : 2}
-                style={styles.courseTitle}>
-                {formatAuthoredDisplayText(course.title)}
-              </Text>
-              <Text style={styles.nextLesson}>
-                {course.progress >= 100
-                  ? 'راجع أي مقطع وقتما تريد'
-                  : hasProgress
-                  ? course.nextSectionTitle
-                    ? `التالي\n${course.nextSectionTitle}`
-                    : course.lastLessonTitle
-                    ? `أكمل بعد ${course.lastLessonTitle}`
-                    : 'أكمل من مكانك'
-                  : 'ابدأ بالمقطع الأول'}
-              </Text>
-              <View style={styles.progressTrack}>
-                <View
-                  style={[styles.progressFill, {width: `${course.progress}%`}]}
-                />
+              <View
+                style={[
+                  styles.courseCopy,
+                  isPrimaryResume && styles.primaryCourseCopy,
+                ]}>
+                <Text
+                  numberOfLines={largeText ? 4 : 2}
+                  style={[
+                    styles.courseTitle,
+                    isPrimaryResume && styles.primaryCourseTitle,
+                  ]}>
+                  {formatAuthoredDisplayText(course.title)}
+                </Text>
+                {(course.started || completed) && (
+                  <Text style={styles.nextLesson}>
+                    {completed
+                      ? 'راجع أي مقطع وقتما تريد'
+                      : course.nextSectionTitle
+                      ? formatAuthoredDisplayText(course.nextSectionTitle)
+                      : course.lastLessonTitle
+                      ? `أكمل بعد ${formatAuthoredDisplayText(
+                          course.lastLessonTitle,
+                        )}`
+                      : 'أكمل من مكانك'}
+                  </Text>
+                )}
+                <Text style={styles.progressLabel}>
+                  {formatArabicDisplayText(progressLabel)}
+                </Text>
+                {course.started && (
+                  <View
+                    accessibilityRole="progressbar"
+                    accessibilityValue={{
+                      min: 0,
+                      max: 100,
+                      now: Math.round(progress),
+                    }}
+                    style={styles.progressTrack}>
+                    <View
+                      style={[styles.progressFill, {width: `${progress}%`}]}
+                    />
+                  </View>
+                )}
               </View>
-              <Text style={styles.progressLabel}>
-                {course.started
-                  ? formatArabicDisplayText(
-                      course.progress > 0
-                        ? `اكتمل ${Math.round(course.progress)}٪`
-                        : 'بدأت التعلّم',
-                    )
-                  : 'جاهز للبدء'}
-              </Text>
-              {resumeTarget && (
+            </Pressable>
+            {resumeTarget && (
+              <View
+                style={
+                  isPrimaryResume
+                    ? styles.primaryResumeAction
+                    : [
+                        styles.resumeAction,
+                        !largeText && styles.compactResumeAction,
+                      ]
+                }>
                 <Pressable
-                  accessibilityLabel={`${
-                    hasProgress ? 'استكمال' : 'بدء'
-                  } ${formatAuthoredDisplayText(course.title)}`}
+                  accessibilityLabel={`استكمال ${formatAuthoredDisplayText(
+                    course.title,
+                  )}`}
                   accessibilityRole="button"
-                  onPress={event => {
-                    event.stopPropagation();
-                    onResume(resumeTarget);
-                  }}
+                  onPress={() => onResume(resumeTarget)}
                   style={({pressed}) => [
                     styles.resumeButton,
+                    !isPrimaryResume && styles.secondaryResumeButton,
                     pressed && styles.resumeButtonPressed,
                   ]}>
-                  <Text style={styles.resumeButtonText}>
-                    {hasProgress ? 'استكمل' : 'ابدأ'}
+                  <Text
+                    style={[
+                      styles.resumeButtonText,
+                      !isPrimaryResume && styles.secondaryResumeText,
+                    ]}>
+                    استكمل
                   </Text>
                 </Pressable>
-              )}
-            </View>
-          </Pressable>
+              </View>
+            )}
+          </View>
         </React.Fragment>
       );
     })}

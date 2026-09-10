@@ -12,8 +12,10 @@ import {
   View,
 } from 'react-native';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
+import {ArrowRight} from '../../assets/SVG';
 import {
   Accessibility,
+  fixedIconSlot,
   Palette,
   Radius,
   Spacing,
@@ -78,7 +80,7 @@ const StatusHeading = ({
         {busy ? (
           <ActivityIndicator color={color} size="small" />
         ) : (
-          <Text style={[styles.statusSymbol, {color}]}>
+          <Text allowFontScaling={false} style={[styles.statusSymbol, {color}]}>
             {tone === 'success' ? '✓' : '!'}
           </Text>
         )}
@@ -112,7 +114,10 @@ const ProjectBrief = ({
       onPress={onToggle}
       style={styles.briefToggle}>
       <Text style={styles.briefToggleText}>تفاصيل المشروع</Text>
-      <Text accessibilityElementsHidden style={styles.briefToggleSymbol}>
+      <Text
+        allowFontScaling={false}
+        accessibilityElementsHidden
+        style={styles.briefToggleSymbol}>
         {expanded ? '−' : '+'}
       </Text>
     </Pressable>
@@ -186,29 +191,43 @@ const ProjectTransition = ({
     ) : null;
   const canContinue = controller.canContinue && Boolean(onContinue);
   const showProjectBrief = controller.journeyState !== 'draft';
+  const showSubmitAction =
+    controller.journeyState === 'draft' &&
+    !controller.submissionRevisionMessage;
+  const showContinueAction =
+    controller.journeyState === 'passed' && canContinue;
+  const showEditAction = controller.journeyState === 'needs_changes';
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={topInset}
+      // Padding preserves the measured page height instead of KAV's initial frame.
+      // Android starts edge-to-edge at y=0; safe-area spacing is inside this page.
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? topInset : 0}
       style={[styles.page, {width, height}]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="العودة"
-        hitSlop={8}
-        style={[styles.backButton, {top: topInset + Spacing.xs}]}
-        onPress={() => goBackOrHome(navigation)}>
-        <Text style={styles.backSymbol}>›</Text>
-      </Pressable>
+      <View style={[styles.navigation, {paddingTop: topInset + 6}]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="العودة"
+          style={styles.backButton}
+          onPress={() => goBackOrHome(navigation)}>
+          <ArrowRight accessible={false} />
+        </Pressable>
+        <Text style={styles.navigationTitle}>المشروع</Text>
+      </View>
       <ScrollView
+        style={styles.scroll}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: topInset + 72,
-            paddingBottom: bottomInset + Spacing.section,
+            paddingTop: Spacing.md,
+            paddingBottom:
+              showSubmitAction || showContinueAction || showEditAction
+                ? Spacing.section
+                : bottomInset + Spacing.section,
           },
         ]}>
         <View style={styles.context}>
@@ -253,30 +272,19 @@ const ProjectTransition = ({
                 <Text style={styles.syncNote}>{controller.syncNote}</Text>
               )}
 
-              {(canContinue || project.outputEnabled) && (
+              {project.outputEnabled && (
                 <View style={styles.actionGroup}>
-                  {canContinue && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="أكمل الكورس"
-                      style={styles.primaryButton}
-                      onPress={onContinue!}>
-                      <Text style={styles.primaryButtonText}>أكمل الكورس</Text>
-                    </Pressable>
-                  )}
-                  {project.outputEnabled && (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="أضف مشروعك إلى البورتفوليو"
-                      style={styles.secondaryButton}
-                      onPress={() =>
-                        navigation.navigate('Profile', {tab: 'portfolio'})
-                      }>
-                      <Text style={styles.secondaryButtonText}>
-                        أضف مشروعك إلى البورتفوليو
-                      </Text>
-                    </Pressable>
-                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="أضف مشروعك إلى البورتفوليو"
+                    style={styles.secondaryButton}
+                    onPress={() =>
+                      navigation.navigate('Profile', {tab: 'portfolio'})
+                    }>
+                    <Text style={styles.secondaryButtonText}>
+                      أضف مشروعك إلى البورتفوليو
+                    </Text>
+                  </Pressable>
                 </View>
               )}
 
@@ -381,20 +389,6 @@ const ProjectTransition = ({
               {feedbackPanel && (
                 <View style={styles.reportSection}>{feedbackPanel}</View>
               )}
-              <View style={styles.actionGroup}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="عدّل التسليم"
-                  accessibilityState={{disabled: !controller.submissionAllowed}}
-                  disabled={!controller.submissionAllowed}
-                  onPress={controller.editRetry}
-                  style={[
-                    styles.primaryButton,
-                    !controller.submissionAllowed && styles.disabledButton,
-                  ]}>
-                  <Text style={styles.primaryButtonText}>عدّل التسليم</Text>
-                </Pressable>
-              </View>
             </>
           ) : controller.journeyState === 'details' ? (
             <>
@@ -424,6 +418,7 @@ const ProjectTransition = ({
             </>
           ) : (
             <ProjectSubmissionEditor
+              showSubmitAction={false}
               draftSaveError={controller.submissionDraftSaveError}
               revisionMessage={controller.submissionRevisionMessage}
               revisionUpdating={controller.submissionRevisionUpdating}
@@ -459,6 +454,56 @@ const ProjectTransition = ({
           />
         )}
       </ScrollView>
+      {(showSubmitAction || showContinueAction || showEditAction) && (
+        <View
+          style={[styles.footer, {paddingBottom: Math.max(bottomInset, 12)}]}>
+          <View style={styles.footerContent}>
+            {showSubmitAction && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{
+                  busy: controller.submissionSending,
+                  disabled: controller.submitDisabled,
+                }}
+                disabled={controller.submitDisabled}
+                onPress={() => void controller.submit()}
+                style={[
+                  styles.primaryButton,
+                  controller.submitDisabled && styles.disabledButton,
+                ]}>
+                <Text style={styles.primaryButtonText}>
+                  {controller.submissionSending
+                    ? 'جارٍ التسليم'
+                    : 'سلّم المشروع'}
+                </Text>
+              </Pressable>
+            )}
+            {showContinueAction && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="أكمل الكورس"
+                style={styles.primaryButton}
+                onPress={onContinue!}>
+                <Text style={styles.primaryButtonText}>أكمل الكورس</Text>
+              </Pressable>
+            )}
+            {showEditAction && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="عدّل التسليم"
+                accessibilityState={{disabled: !controller.submissionAllowed}}
+                disabled={!controller.submissionAllowed}
+                onPress={controller.editRetry}
+                style={[
+                  styles.primaryButton,
+                  !controller.submissionAllowed && styles.disabledButton,
+                ]}>
+                <Text style={styles.primaryButtonText}>عدّل التسليم</Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -475,25 +520,36 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Palette.canvas,
   },
-  backButton: {
-    position: 'absolute',
-    start: Spacing.md,
-    width: Accessibility.minTouchTarget,
-    height: Accessibility.minTouchTarget,
-    borderRadius: Radius.md,
+  navigation: {
+    ...rtlRowStyle,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.canvasSoft,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    zIndex: 20,
+    gap: 12,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: 8,
+    backgroundColor: Palette.canvas,
   },
-  backSymbol: {
-    color: Palette.text,
-    fontFamily: Fonts.regular,
-    fontSize: 35,
-    lineHeight: 38,
-    marginBottom: 3,
+  navigationTitle: {
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
+    flex: 1,
+  },
+  scroll: {flex: 1},
+  footer: {
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
+    backgroundColor: Palette.canvas,
+  },
+  footerContent: {
+    width: '100%',
+    maxWidth: 700,
+    alignSelf: 'center',
+    paddingHorizontal: Spacing.xl,
+  },
+  backButton: {
+    ...fixedIconSlot,
+    borderRadius: Radius.md,
   },
   content: {
     direction: 'rtl',
@@ -509,7 +565,7 @@ const styles = StyleSheet.create({
   projectKind: {
     ...textDirection,
     ...Type.bodyStrong,
-    color: Palette.primary,
+    color: Palette.textMuted,
   },
   moduleTitle: {
     ...textDirection,
@@ -518,7 +574,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   instructions: {
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   projectTitle: {
     ...textDirection,
@@ -545,24 +601,20 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   statusMark: {
-    width: 38,
-    height: 38,
+    width: 48,
+    height: 48,
     borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
   },
   successMark: {
     backgroundColor: 'rgba(72,185,138,.10)',
-    borderColor: 'rgba(72,185,138,.28)',
   },
   dangerMark: {
     backgroundColor: 'rgba(240,100,105,.10)',
-    borderColor: 'rgba(240,100,105,.28)',
   },
   progressMark: {
-    backgroundColor: Palette.primarySoft,
-    borderColor: 'rgba(52,120,246,.28)',
+    backgroundColor: Palette.surface,
   },
   statusSymbol: {
     fontFamily: Fonts.bold,
@@ -575,7 +627,7 @@ const styles = StyleSheet.create({
   },
   statusTitle: {
     ...textDirection,
-    ...Type.section,
+    ...Type.title,
     color: Palette.text,
   },
   statusDescription: {
@@ -587,13 +639,16 @@ const styles = StyleSheet.create({
   syncNote: {
     ...textDirection,
     ...Type.caption,
-    color: Palette.primary,
+    color: Palette.textMuted,
     marginTop: Spacing.sm,
   },
   reportSection: {
     width: '100%',
     alignSelf: 'stretch',
-    marginTop: Spacing.lg,
+    marginTop: Spacing.xl,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
+    paddingTop: Spacing.lg,
   },
   reportLoading: {
     ...rtlRowStyle,
@@ -623,15 +678,13 @@ const styles = StyleSheet.create({
   reportRetryText: {
     ...textDirection,
     ...Type.bodyStrong,
-    color: Palette.primary,
+    color: Palette.text,
   },
   reviewFeedback: {
     width: '100%',
-    padding: Spacing.md,
-    borderRadius: Radius.md,
-    backgroundColor: Palette.surface,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
+    paddingVertical: Spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
     marginTop: Spacing.lg,
   },
   reviewFeedbackText: {
@@ -646,7 +699,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    minHeight: 52,
+    minHeight: 56,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.sm,
@@ -659,6 +712,7 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     ...Type.button,
+    ...textDirection,
     color: Palette.text,
     textAlign: 'center',
   },
@@ -670,11 +724,11 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Palette.line,
+    backgroundColor: Palette.surface,
   },
   secondaryButtonText: {
     ...Type.bodyStrong,
+    ...textDirection,
     color: Palette.text,
     textAlign: 'center',
   },
@@ -694,6 +748,7 @@ const styles = StyleSheet.create({
     ...textDirection,
     ...Type.bodyStrong,
     color: Palette.textMuted,
+    flexShrink: 1,
   },
   briefToggleSymbol: {
     color: Palette.textMuted,

@@ -296,7 +296,7 @@ describe('project editor draft across published requirements', () => {
       await act(async () => {
         await journey.current().reviewUpdatedProject();
       });
-      expect(mockGet).toHaveBeenCalledWith('projects/41', expect.anything());
+      expect(mockGet).toHaveBeenCalledWith('projects/41', {timeout: 12000});
       expect(await loadProjectSubmissionDraft('42', mockBoundary)).toBeNull();
       expect(
         await loadProjectSubmissionDraft('43', mockBoundary),

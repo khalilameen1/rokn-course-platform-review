@@ -91,15 +91,16 @@ describe('authored text is not localized as interface copy', () => {
         );
         expect(details).toBeDefined();
         expect(resume).toBeDefined();
+        expect(details!.findAll(node => node === resume)).toHaveLength(0);
 
         act(() => details!.props.onPress());
+        expect(onOpenCourse).toHaveBeenCalledTimes(1);
         expect(onOpenCourse).toHaveBeenCalledWith('52');
         expect(onResume).not.toHaveBeenCalled();
 
         onOpenCourse.mockClear();
-        const stopPropagation = jest.fn();
-        act(() => resume!.props.onPress({stopPropagation}));
-        expect(stopPropagation).toHaveBeenCalledTimes(1);
+        act(() => resume!.props.onPress());
+        expect(onResume).toHaveBeenCalledTimes(1);
         expect(onResume).toHaveBeenCalledWith({
           courseId: '52',
           projectId: '71',
@@ -149,7 +150,7 @@ describe('authored text is not localized as interface copy', () => {
     renderText(
       <PortfolioProjectGrid
         projects={[project]}
-        cardWidth={180}
+        fontScale={1}
         gap={8}
         onCoverError={jest.fn()}
         onCoverLoad={jest.fn()}

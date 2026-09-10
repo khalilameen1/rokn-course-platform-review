@@ -7,6 +7,7 @@ jest.mock('../src/components/VideoPlayer/courseLearning/playback', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
+import {requestCourseAttachmentRenewal} from '../src/services/api/courseDetailsRequest';
 import {loadCourseLearningData} from '../src/components/VideoPlayer/courseLearning/mapping';
 
 const get = jest.mocked(publicRequest.get);
@@ -44,6 +45,28 @@ const response = {
 
 describe('fresh course learning reads', () => {
   beforeEach(() => get.mockReset());
+
+  it('preserves the raw attachment renewal read and its original transport options', async () => {
+    const rawResponse = {data: {data: {id: 22}}};
+    const transport = Promise.resolve(rawResponse);
+    get.mockReturnValue(transport);
+    const renewal = requestCourseAttachmentRenewal('31', '11');
+    expect(renewal).toBe(transport);
+    await expect(renewal).resolves.toBe(rawResponse);
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(get).toHaveBeenCalledWith('courses/31/pdfs/11', {
+      timeout: 10_000,
+      roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
+    });
+  });
+
+  it('leaves attachment revision failures to the download owner without a retry or mapping', async () => {
+    get.mockRejectedValue(changed);
+    await expect(requestCourseAttachmentRenewal('31', '11')).rejects.toBe(
+      changed,
+    );
+    expect(get).toHaveBeenCalledTimes(1);
+  });
 
   it('retries a publication race once and maps the fresh response', async () => {
     get.mockRejectedValueOnce(changed).mockResolvedValueOnce(response);

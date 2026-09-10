@@ -15,7 +15,11 @@ import {
   formatArabicNumber,
   toArabicDigits,
 } from '../../constants/arabicFormatting';
-import {rtlRowStyle, textDirection} from '../../constants/designSystem';
+import {
+  Palette,
+  rtlRowStyle,
+  textDirection,
+} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
 import {VideoQuality} from './types';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
@@ -58,7 +62,7 @@ const CheckIcon = () => (
     <Path
       d="m4 10.4 3.7 3.5L16 5.8"
       fill="none"
-      stroke="#76A9FF"
+      stroke={Palette.text}
       strokeWidth={2.2}
       strokeLinecap="round"
       strokeLinejoin="round"
@@ -228,12 +232,10 @@ const styles = StyleSheet.create({
   iconButton: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(5,9,14,.5)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.13)',
+    backgroundColor: 'rgba(7,11,18,.86)',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -248,10 +250,8 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     maxWidth: 430,
     padding: 18,
-    borderRadius: 22,
-    backgroundColor: 'rgba(12,17,25,.97)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.13)',
+    borderRadius: 20,
+    backgroundColor: Palette.surface,
     shadowColor: '#000',
     shadowOpacity: 0.35,
     shadowRadius: 22,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     ...textDirection,
-    color: 'rgba(255,255,255,.58)',
+    color: Palette.textMuted,
     fontFamily: Fonts.medium,
     fontSize: 12,
     marginBottom: 10,
@@ -282,17 +282,19 @@ const styles = StyleSheet.create({
   },
   speedChip: {
     minWidth: 52,
-    minHeight: 44,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.065)',
+    backgroundColor: Palette.surfaceRaised,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.09)',
+    borderColor: 'transparent',
   },
   selectedChip: {
-    backgroundColor: 'rgba(35,111,232,.2)',
-    borderColor: 'rgba(81,142,241,.55)',
+    backgroundColor: Palette.surfacePressed,
+    borderColor: Palette.textMuted,
   },
   speedText: {
     color: 'rgba(255,255,255,.74)',
@@ -315,19 +317,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   qualityChip: {
-    minHeight: 44,
+    minHeight: 48,
     minWidth: 86,
     paddingHorizontal: 11,
+    paddingVertical: 10,
+    maxWidth: '100%',
     borderRadius: 12,
     ...rtlRowStyle,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(255,255,255,.055)',
+    backgroundColor: Palette.surfaceRaised,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.08)',
+    borderColor: 'transparent',
   },
   qualityText: {
+    flexShrink: 1,
     ...textDirection,
     color: 'rgba(255,255,255,.75)',
     fontFamily: Fonts.regular,

@@ -9,9 +9,11 @@ import {
 } from 'react-native';
 
 import {
+  Accessibility,
   Palette,
   Radius,
   Spacing,
+  rtlRowStyle,
   useResponsiveLayout,
 } from '../../constants/designSystem';
 
@@ -79,7 +81,13 @@ export const SkeletonBlock = ({
 };
 
 export const CatalogueSkeleton = () => {
-  const {gutter, railCardWidth} = useResponsiveLayout();
+  const {
+    gutter,
+    railCardWidth,
+    featuredHorizontal,
+    featuredImageWidth,
+    featuredImageHeight,
+  } = useResponsiveLayout();
   return (
     <View
       accessible
@@ -87,8 +95,24 @@ export const CatalogueSkeleton = () => {
       accessibilityLiveRegion="polite"
       accessibilityRole="progressbar"
       style={{paddingTop: Spacing.md}}>
-      <View style={{paddingHorizontal: gutter}}>
-        <SkeletonBlock height={260} radius={Radius.xl} />
+      <View
+        style={[
+          {paddingHorizontal: gutter},
+          featuredHorizontal && styles.featureWide,
+        ]}>
+        <SkeletonBlock
+          height={featuredImageHeight}
+          width={featuredImageWidth}
+          radius={Radius.lg}
+        />
+        <View style={featuredHorizontal && styles.featureCopyWide}>
+          <SkeletonBlock height={16} width="28%" style={styles.cardTitle} />
+          <SkeletonBlock height={28} width="88%" style={styles.cardMeta} />
+          <SkeletonBlock height={20} width="44%" style={styles.cardMeta} />
+          <View style={styles.featureActions}>
+            <SkeletonBlock height={Accessibility.minTouchTarget} width={152} />
+          </View>
+        </View>
       </View>
       {[0, 1].map(section => (
         <View key={section} style={styles.section}>
@@ -98,9 +122,20 @@ export const CatalogueSkeleton = () => {
           <View style={[styles.rail, {paddingHorizontal: gutter}]}>
             {[0, 1, 2].map(card => (
               <View key={card} style={{width: railCardWidth}}>
-                <SkeletonBlock height={132} radius={Radius.lg} />
-                <SkeletonBlock height={22} style={styles.cardTitle} width="88%" />
-                <SkeletonBlock height={16} style={styles.cardMeta} width="55%" />
+                <SkeletonBlock
+                  height={railCardWidth / 1.42}
+                  radius={Radius.lg}
+                />
+                <SkeletonBlock
+                  height={22}
+                  style={styles.cardTitle}
+                  width="88%"
+                />
+                <SkeletonBlock
+                  height={16}
+                  style={styles.cardMeta}
+                  width="55%"
+                />
               </View>
             ))}
           </View>
@@ -120,7 +155,6 @@ export const CourseDetailsSkeleton = () => (
     <SkeletonBlock height={28} width="92%" />
     <SkeletonBlock height={20} style={styles.detailLine} width="76%" />
     <SkeletonBlock height={20} style={styles.detailLine} width="58%" />
-    <SkeletonBlock height={56} radius={Radius.md} style={styles.detailAction} />
     <View style={styles.detailTabs}>
       <SkeletonBlock height={48} width="48%" />
       <SkeletonBlock height={48} width="48%" />
@@ -143,13 +177,21 @@ export const LearningDashboardSkeleton = () => (
     accessibilityLiveRegion="polite"
     accessibilityRole="progressbar"
     style={styles.dashboard}>
+    <SkeletonBlock height={148} radius={Radius.lg} />
+    <SkeletonBlock height={28} width="84%" style={styles.cardTitle} />
+    <SkeletonBlock height={20} width="56%" style={styles.cardMeta} />
+    <SkeletonBlock height={48} style={styles.detailAction} />
     {[0, 1, 2].map(row => (
       <View key={row} style={styles.learningRow}>
-        <SkeletonBlock height={154} radius={Radius.lg} width={116} />
+        <SkeletonBlock height={88} radius={Radius.sm} width={104} />
         <View style={styles.learningCopy}>
           <SkeletonBlock height={24} width="88%" />
           <SkeletonBlock height={17} style={styles.detailLine} width="62%" />
-          <SkeletonBlock height={7} radius={Radius.pill} style={styles.learningProgress} />
+          <SkeletonBlock
+            height={7}
+            radius={Radius.pill}
+            style={styles.learningProgress}
+          />
         </View>
       </View>
     ))}
@@ -182,11 +224,18 @@ export const SavedLibrarySkeleton = () => (
 
 const styles = StyleSheet.create({
   block: {backgroundColor: Palette.surfaceRaised},
-  section: {marginTop: Spacing.section},
+  section: {marginTop: Spacing.xl},
+  featureWide: {...rtlRowStyle, alignItems: 'center', gap: Spacing.xl},
+  featureCopyWide: {flex: 1, minWidth: 0},
+  featureActions: {
+    ...rtlRowStyle,
+    justifyContent: 'flex-start',
+    marginTop: Spacing.sm,
+  },
   rail: {
     flexDirection: 'row',
     gap: Spacing.sm,
-    marginTop: Spacing.md,
+    marginTop: Spacing.xs,
     overflow: 'hidden',
   },
   cardTitle: {marginTop: Spacing.sm},
@@ -202,27 +251,26 @@ const styles = StyleSheet.create({
   detailRow: {marginTop: Spacing.sm},
   dashboard: {paddingVertical: Spacing.md},
   learningRow: {
-    flexDirection: 'row',
+    ...rtlRowStyle,
     gap: Spacing.md,
-    padding: Spacing.sm,
-    marginBottom: Spacing.sm,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    backgroundColor: Palette.surface,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
   },
   learningCopy: {flex: 1, minWidth: 0, justifyContent: 'center'},
   learningProgress: {marginTop: Spacing.md},
-  savedFilters: {flexDirection: 'row', gap: Spacing.xs, marginBottom: Spacing.lg},
-  savedRow: {
+  savedFilters: {
     flexDirection: 'row',
+    gap: Spacing.xs,
+    marginBottom: Spacing.lg,
+  },
+  savedRow: {
+    ...rtlRowStyle,
     gap: Spacing.md,
     alignItems: 'center',
-    padding: Spacing.sm,
+    paddingVertical: Spacing.sm,
     marginBottom: Spacing.sm,
-    borderRadius: Radius.md,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
-    backgroundColor: Palette.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
   },
 });

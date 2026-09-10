@@ -1,6 +1,6 @@
 import React from 'react';
 import {Pressable, ScrollView, Text, View} from 'react-native';
-import {PremiumCard, SectionHeading} from '../../components/ui/PremiumUI';
+import {SectionHeading} from '../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../components/ui/CourseArtwork';
 import {
   formatArabicDisplayText,
@@ -46,11 +46,14 @@ export const ProfessionalProgress = ({
   selectedPath,
   visible,
 }: Props) => {
-  if (!visible) return null;
+  if (!visible || (!selectedPath && !earnedBadge)) return null;
 
   return (
     <>
-      <SectionHeading style={styles.section} title="شاراتك المهنية" />
+      <SectionHeading
+        style={styles.section}
+        title={selectedPath ? 'تقدمك المهني' : 'شاراتك المهنية'}
+      />
       {learningPaths.length > 1 && (
         <ScrollView
           horizontal
@@ -66,7 +69,7 @@ export const ProfessionalProgress = ({
                 onPress={() => onSelectPath(path.id)}
                 style={[styles.pathChoice, active && styles.pathChoiceActive]}>
                 <Text
-                  numberOfLines={1}
+                  numberOfLines={largeText ? 3 : 2}
                   style={[
                     styles.pathChoiceText,
                     active && styles.pathChoiceTextActive,
@@ -78,36 +81,8 @@ export const ProfessionalProgress = ({
           })}
         </ScrollView>
       )}
-      <View style={styles.badgeGrid}>
-        {badges.map(badge => (
-          <PremiumCard
-            key={badge.id}
-            style={[
-              styles.badgeCard,
-              largeText && styles.badgeCardLargeText,
-              !earnedBadge && styles.badgeCardLocked,
-            ]}>
-            <CourseArtwork
-              fallback={localBadgeImage(badge.title)}
-              source={badge.imageUrl ? {uri: badge.imageUrl} : undefined}
-              style={styles.badgeArtwork}
-            />
-            <Text style={styles.badgeTitle}>
-              {formatArabicDisplayText(badge.title)}
-            </Text>
-            {!!badge.courseTitle && (
-              <Text numberOfLines={2} style={styles.badgeCourse}>
-                {formatAuthoredDisplayText(badge.courseTitle)}
-              </Text>
-            )}
-            {!earnedBadge && (
-              <Text style={styles.badgeLockedText}>اقتربت من الوصول</Text>
-            )}
-          </PremiumCard>
-        ))}
-      </View>
       {selectedPath && (
-        <PremiumCard style={styles.pathCard}>
+        <View style={styles.pathCard}>
           <View style={styles.pathProgressRow}>
             <Text style={styles.pathTitle}>
               {formatArabicDisplayText(
@@ -134,8 +109,9 @@ export const ProfessionalProgress = ({
               )}
             </Text>
           )}
-          {(selectedPath.currentLevel ||
-            selectedPath.upcomingLevels.length) && (
+          {Boolean(
+            selectedPath.currentLevel || selectedPath.upcomingLevels.length,
+          ) && (
             <View style={styles.levelList}>
               {selectedPath.currentLevel && (
                 <PathLevelRow
@@ -153,7 +129,37 @@ export const ProfessionalProgress = ({
               ))}
             </View>
           )}
-        </PremiumCard>
+        </View>
+      )}
+      {earnedBadge && (
+        <View style={styles.badgeGrid}>
+          {badges.map(badge => (
+            <View
+              key={badge.id}
+              style={[
+                styles.badgeCard,
+                largeText && styles.badgeCardLargeText,
+              ]}>
+              <CourseArtwork
+                fallback={localBadgeImage(badge.title)}
+                source={badge.imageUrl ? {uri: badge.imageUrl} : undefined}
+                style={styles.badgeArtwork}
+              />
+              <View style={styles.badgeCopy}>
+                <Text style={styles.badgeTitle}>
+                  {formatArabicDisplayText(badge.title)}
+                </Text>
+                {!!badge.courseTitle && (
+                  <Text
+                    numberOfLines={largeText ? 4 : 2}
+                    style={styles.badgeCourse}>
+                    {formatAuthoredDisplayText(badge.courseTitle)}
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
       )}
     </>
   );

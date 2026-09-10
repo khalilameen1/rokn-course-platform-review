@@ -89,8 +89,21 @@ describe('wallet architecture', () => {
 
     expect(rail).toContain('horizontal');
     expect(rail).toContain('snapToInterval={cardWidth + Spacing.sm}');
-    expect(rail).toContain('width={cardWidth}');
-    expect(rail).toContain('title={item.label}');
+    expect(rail).toContain('packages.map(item =>');
+    expect(rail).toContain('{width: cardWidth}');
+    expect(rail).toContain('formatArabicDisplayText(item.label)');
+    expect(rail.match(/<CoinAmount/g)).toHaveLength(1);
+    expect(rail).toContain('value={item.coins}');
+    expect(rail).not.toContain('<RoknCoin ');
+    expect(rail).toContain('item.displayPrice ||');
+    expect(rail).toContain('formatArabicNumber(item.price,');
+    expect(rail).toContain('<Text style={styles.packagePrice}>{price}</Text>');
+    expect(rail).toContain('onPress={() => onCheckout(item)}');
+    expect(rail).toContain(
+      'const disabled = Boolean(checkoutLoading) || !catalogueReady;',
+    );
+    expect(rail).toContain('disabled={disabled}');
+    expect(rail).toContain('accessibilityState={{busy, disabled}}');
     expect(packageCard.match(/<CoinAmount/g)).toHaveLength(1);
     expect(packageCard).not.toContain('<RoknCoin ');
   });

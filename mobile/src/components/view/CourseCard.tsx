@@ -1,6 +1,6 @@
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
-import {Fonts, PixelPerfect} from '../../constants/styleConstants';
+import {Fonts} from '../../constants/styleConstants';
 import {
   formatArabicDisplayText,
   formatAuthoredDisplayText,
@@ -15,7 +15,6 @@ import {
 } from '../../constants/designSystem';
 import {MetaPill} from '../ui/PremiumUI';
 import {CourseArtwork} from '../ui/CourseArtwork';
-import {CoinAmount} from '../ui/RoknCoin';
 import type {Course} from '../../types/Course';
 
 export type {Course};
@@ -70,6 +69,7 @@ const CourseCard = memo<CourseCardProps>(
           {showLabel && (
             <MetaPill
               label={label}
+              onArtwork
               tone={item.labelTone}
               style={styles.labelContainer}
             />
@@ -93,25 +93,18 @@ const CourseCard = memo<CourseCardProps>(
             {formatAuthoredDisplayText(item.instructor)}
           </Text>
         )}
-        {isAvailable && (item.owned || item.coinPrice !== undefined) && (
+        {isAvailable && (item.owned || item.coinPrice === 0) && (
           <View style={styles.metaRow}>
             {item.owned ? (
               <Text style={styles.ownedLabel}>
                 {progress >= 100
                   ? 'راجع الكورس'
                   : item.started === true
-                  ? 'استكمل من مكانك'
-                  : 'ابدأ التعلّم الآن'}
+                  ? 'قيد التعلّم'
+                  : 'ضمن كورساتك'}
               </Text>
-            ) : item.coinPrice === 0 ? (
-              <Text style={styles.ownedLabel}>مجاني</Text>
             ) : (
-              <CoinAmount
-                size={15}
-                value={item.coinPrice!}
-                style={styles.price}
-                textStyle={styles.priceText}
-              />
+              <Text style={styles.ownedLabel}>مجاني</Text>
             )}
           </View>
         )}
@@ -138,8 +131,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.lg,
     overflow: 'hidden',
     backgroundColor: Palette.surfaceRaised,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
   },
   courseImage: {width: '100%', height: '100%', resizeMode: 'cover'},
   courseTitle: {
@@ -148,8 +139,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     width: '100%',
     alignSelf: 'stretch',
-    marginTop: Spacing.sm,
-    minHeight: PixelPerfect(48),
+    marginTop: Spacing.xs,
   },
   labelContainer: {
     position: 'absolute',
@@ -176,12 +166,6 @@ const styles = StyleSheet.create({
     color: '#8BB5FF',
     fontFamily: Fonts.semiBold,
   },
-  price: {alignSelf: 'flex-end'},
-  priceText: {
-    ...Type.caption,
-    color: Palette.textMuted,
-    fontFamily: Fonts.semiBold,
-  },
   progressTrack: {
     position: 'absolute',
     start: 0,
@@ -191,7 +175,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.16)',
   },
   progressFill: {height: '100%', backgroundColor: Palette.primary},
-  pressed: {opacity: 0.8, transform: [{scale: 0.985}]},
+  pressed: {opacity: 0.84},
 });
 
 CourseCard.displayName = 'CourseCard';

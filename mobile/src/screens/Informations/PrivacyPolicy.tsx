@@ -2,11 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {Container, Content} from '../../components/containers/Containers';
-import {
-  PremiumCard,
-  ResponsiveFrame,
-  SectionHeading,
-} from '../../components/ui/PremiumUI';
+import {ResponsiveFrame} from '../../components/ui/PremiumUI';
 import HeaderWithBack from '../../components/view/HeaderWithBack';
 import {
   Accessibility,
@@ -86,7 +82,7 @@ const SECTIONS = [
 
 export default function PrivacyPolicy() {
   const navigation = useNavigation<RootNavigation>();
-  const {fontScale, isTablet, width} = useResponsiveLayout();
+  const {fontScale, width} = useResponsiveLayout();
   const stackContact = width < 430 || fontScale > 1.2;
   const [managedBody, setManagedBody] = useState('');
   useEffect(() => {
@@ -112,47 +108,39 @@ export default function PrivacyPolicy() {
   return (
     <Container noPadding>
       <Content noPadding>
-        <ResponsiveFrame>
+        <ResponsiveFrame style={styles.frame}>
           <HeaderWithBack title="سياسة الخصوصية" />
 
-          <PremiumCard style={styles.summary}>
-            <View style={styles.shield}>
-              <View style={styles.shieldCore} />
-            </View>
-            <View style={styles.summaryCopy}>
-              <Text style={styles.summaryTitle}>
-                بياناتك تخصك
-              </Text>
+          <View style={styles.summary}>
+            <View>
+              <Text style={styles.summaryTitle}>بياناتك تخصك</Text>
               <Text style={styles.summaryBody}>
                 هنا نوضح ما الذي تحتاجه ركن لتشغيل تجربتك، ولماذا نستخدمه، ومن
                 يستطيع الوصول إليه، وما الذي يمكنك التحكم فيه.
               </Text>
               <Text style={styles.updated}>آخر تحديث: ٣١ أغسطس ٢٠٢٦</Text>
             </View>
-          </PremiumCard>
+          </View>
 
-          <SectionHeading
-            eyebrow="من أول زيارة إلى حذف الحساب"
-            style={styles.heading}
-            title="كيف نتعامل مع بياناتك"
-          />
-
-          <View style={[styles.grid, isTablet && styles.gridTablet]}>
+          <View style={styles.grid}>
             {visibleSections.map(section => (
-              <PremiumCard
+              <View
                 accessibilityLabel={`${section.title}. ${section.body}`}
-                key={section.number}
-                style={[styles.sectionCard, isTablet && styles.sectionCardTablet]}>
+                key={section.number}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionNumber}>{section.number}</Text>
-                  <Text style={styles.sectionTitle}>{section.title}</Text>
+                  <Text accessibilityRole="header" style={styles.sectionTitle}>
+                    {section.title}
+                  </Text>
                 </View>
-                <Text style={styles.sectionBody}>{section.body}</Text>
-              </PremiumCard>
+                <Text selectable style={styles.sectionBody}>
+                  {section.body}
+                </Text>
+              </View>
             ))}
           </View>
 
-          <PremiumCard
+          <View
             style={[
               styles.contactCard,
               stackContact && styles.contactCardStacked,
@@ -173,7 +161,7 @@ export default function PrivacyPolicy() {
               ]}>
               <Text style={styles.contactButtonText}>تواصل مع ركن</Text>
             </Pressable>
-          </PremiumCard>
+          </View>
         </ResponsiveFrame>
       </Content>
     </Container>
@@ -181,34 +169,12 @@ export default function PrivacyPolicy() {
 }
 
 const styles = StyleSheet.create({
+  frame: {maxWidth: 720},
   summary: {
-    ...rtlRowStyle,
-    alignItems: 'center',
-    padding: Spacing.lg,
-    marginTop: Spacing.sm,
-    backgroundColor: Palette.surfaceRaised,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.line,
   },
-  shield: {
-    width: 54,
-    height: 58,
-    borderTopLeftRadius: Radius.lg,
-    borderTopRightRadius: Radius.lg,
-    borderBottomLeftRadius: Radius.xl,
-    borderBottomRightRadius: Radius.xl,
-    backgroundColor: Palette.primarySoft,
-    borderWidth: 1,
-    borderColor: 'rgba(89,148,255,0.30)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginEnd: Spacing.md,
-  },
-  shieldCore: {
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    backgroundColor: Palette.primary,
-  },
-  summaryCopy: {flex: 1},
   summaryTitle: {
     ...Type.section,
     ...textDirection,
@@ -227,16 +193,13 @@ const styles = StyleSheet.create({
     color: Palette.textFaint,
     marginTop: Spacing.sm,
   },
-  heading: {marginTop: Spacing.xl, marginBottom: Spacing.sm},
-  grid: {gap: Spacing.sm},
-  gridTablet: {...rtlRowStyle, flexWrap: 'wrap'},
-  sectionCard: {padding: Spacing.lg},
-  sectionCardTablet: {width: '48.9%', minHeight: 200},
-  sectionHeader: {...rtlRowStyle, alignItems: 'center'},
+  grid: {gap: Spacing.xxl, paddingTop: Spacing.xl},
+  sectionHeader: {...rtlRowStyle, alignItems: 'baseline'},
   sectionNumber: {
     ...Type.caption,
     color: Palette.primary,
     marginEnd: Spacing.sm,
+    flexShrink: 0,
   },
   sectionTitle: {
     ...Type.section,
@@ -254,10 +217,11 @@ const styles = StyleSheet.create({
     ...rtlRowStyle,
     alignItems: 'center',
     gap: Spacing.md,
-    padding: Spacing.lg,
-    marginTop: Spacing.lg,
+    paddingVertical: Spacing.xl,
+    marginTop: Spacing.xl,
     marginBottom: Spacing.xl,
-    backgroundColor: 'rgba(52,120,246,0.075)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.line,
   },
   contactCopy: {flex: 1, minWidth: 0},
   contactCardStacked: {alignItems: 'stretch', flexDirection: 'column'},
@@ -276,6 +240,7 @@ const styles = StyleSheet.create({
     minHeight: Accessibility.minTouchTarget,
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
     borderRadius: Radius.md,
     backgroundColor: Palette.primary,
   },

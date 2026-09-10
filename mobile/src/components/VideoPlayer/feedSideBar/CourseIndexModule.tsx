@@ -5,7 +5,13 @@ import {
   formatArabicNumber,
   formatAuthoredDisplayText,
 } from '../../../constants/arabicFormatting';
-import {rtlRowStyle, textDirection} from '../../../constants/designSystem';
+import {
+  Palette,
+  Radius,
+  Type,
+  rtlRowStyle,
+  textDirection,
+} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 import {
   courseLearningGateState,
@@ -73,6 +79,9 @@ const CourseIndexModule = ({
           </Text>
           <Text style={styles.moduleMeta}>
             {formatArabicNumber(module.reels.length)} مقطع
+            {module.projects?.length
+              ? ` · ${formatArabicNumber(module.projects.length)} مشروع`
+              : ''}
           </Text>
         </View>
         <View style={styles.moduleHeaderActions}>
@@ -89,8 +98,7 @@ const CourseIndexModule = ({
               stepIndex,
             );
             const unavailable =
-              gateState === 'locked_purchase' ||
-              gateState === 'locked_project';
+              gateState === 'locked_purchase' || gateState === 'locked_project';
             if (step.type === 'reel') {
               const reel = step.reel;
               const key = `reel-${reel.id}`;
@@ -117,11 +125,11 @@ const CourseIndexModule = ({
                     </Text>
                   </View>
                   <View style={styles.reelCopy}>
-                    <Text style={styles.reelTitle} numberOfLines={1}>
+                    <Text style={styles.reelTitle}>
                       {formatAuthoredDisplayText(reel.title)}
                     </Text>
                     {unavailable && (
-                      <Text style={styles.projectStatus} numberOfLines={1}>
+                      <Text style={styles.projectStatus}>
                         {learningGateTextForStep(
                           module,
                           orderedSteps,
@@ -131,7 +139,9 @@ const CourseIndexModule = ({
                     )}
                   </View>
                   {reel.isCompleted && (
-                    <Text style={styles.completedMark}>✓</Text>
+                    <Text allowFontScaling={false} style={styles.completedMark}>
+                      ✓
+                    </Text>
                   )}
                   {unavailable && <LockIcon />}
                 </Pressable>
@@ -152,19 +162,19 @@ const CourseIndexModule = ({
                 ]}
                 onPress={() => onSelect(`project-${project.id}`)}>
                 <View style={styles.projectGlyph}>
-                  <Text style={styles.projectGlyphText}>◆</Text>
+                  <Text
+                    allowFontScaling={false}
+                    style={styles.projectGlyphText}>
+                    ◆
+                  </Text>
                 </View>
                 <View style={styles.projectCopy}>
-                  <Text style={styles.projectTitle} numberOfLines={1}>
+                  <Text style={styles.projectTitle}>
                     {formatAuthoredDisplayText(project.title)}
                   </Text>
                   <Text style={styles.projectStatus}>
                     {unavailable
-                      ? learningGateTextForStep(
-                          module,
-                          orderedSteps,
-                          stepIndex,
-                        )
+                      ? learningGateTextForStep(module, orderedSteps, stepIndex)
                       : project.status === 'passed'
                       ? 'تم العبور'
                       : project.status === 'evaluating'
@@ -188,21 +198,20 @@ export default CourseIndexModule;
 
 const styles = StyleSheet.create({
   moduleCard: {
-    borderRadius: 19,
-    padding: 14,
-    marginBottom: 12,
-    backgroundColor: '#121923',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.07)',
+    paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
   },
-  lockedModule: {opacity: 0.78},
+  lockedModule: {opacity: 1},
   moduleHeader: {
-    minHeight: 44,
+    minHeight: 76,
+    paddingVertical: 18,
     ...rtlRowStyle,
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: 12,
   },
-  moduleHeading: {flex: 1},
+  moduleHeading: {flex: 1, minWidth: 0},
   moduleHeaderActions: {
     ...rtlRowStyle,
     alignItems: 'center',
@@ -210,86 +219,83 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   moduleTitle: {
+    ...Type.bodyStrong,
     ...textDirection,
-    color: '#FFFFFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 15,
-    lineHeight: 23,
+    color: Palette.text,
   },
   moduleMeta: {
+    ...Type.caption,
     ...textDirection,
-    color: 'rgba(255,255,255,.46)',
-    fontFamily: Fonts.regular,
-    fontSize: 11,
-    marginTop: 1,
+    color: Palette.textMuted,
+    marginTop: 3,
   },
-  reelsList: {marginTop: 8, gap: 5},
+  reelsList: {gap: 4},
   reelRow: {
-    minHeight: 48,
-    borderRadius: 13,
-    paddingHorizontal: 8,
+    minHeight: 72,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 14,
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 10,
   },
-  lockedReelRow: {opacity: 0.7},
-  activeReelRow: {backgroundColor: 'rgba(35,111,232,.15)'},
+  lockedReelRow: {opacity: 1},
+  activeReelRow: {backgroundColor: Palette.surfacePressed},
   reelNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    minWidth: 36,
+    minHeight: 36,
+    borderRadius: Radius.sm,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.06)',
+    backgroundColor: Palette.surface,
   },
-  activeReelNumber: {backgroundColor: '#236FE8'},
+  activeReelNumber: {backgroundColor: Palette.primary},
   reelNumberText: {
-    color: '#FFFFFF',
+    ...Type.caption,
     fontFamily: Fonts.semiBold,
-    fontSize: 11,
+    color: Palette.text,
     fontVariant: ['tabular-nums'],
   },
   reelTitle: {
+    ...Type.body,
     ...textDirection,
-    color: 'rgba(255,255,255,.86)',
-    fontFamily: Fonts.regular,
-    fontSize: 13,
+    color: Palette.text,
   },
   reelCopy: {flex: 1, minWidth: 0},
   completedMark: {color: '#67D39B', fontFamily: Fonts.bold, fontSize: 15},
   projectRow: {
-    minHeight: 58,
-    borderRadius: 14,
-    paddingHorizontal: 8,
+    minHeight: 76,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 14,
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 10,
-    marginTop: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.08)',
+    marginTop: 8,
+    backgroundColor: Palette.surface,
   },
-  projectRowDisabled: {opacity: 0.5},
+  projectRowDisabled: {opacity: 1},
   projectGlyph: {
     width: 34,
     height: 34,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(75,142,247,.14)',
+    backgroundColor: Palette.surfacePressed,
   },
-  projectGlyphText: {color: '#76A9FF', fontSize: 13},
-  projectCopy: {flex: 1},
+  projectGlyphText: {color: Palette.textMuted, fontSize: 13},
+  projectCopy: {flex: 1, minWidth: 0},
   projectTitle: {
+    ...Type.bodyStrong,
     ...textDirection,
-    color: '#FFFFFF',
-    fontFamily: Fonts.medium,
-    fontSize: 13,
+    color: Palette.text,
   },
   projectStatus: {
+    ...Type.caption,
     ...textDirection,
-    color: 'rgba(255,255,255,.45)',
-    fontFamily: Fonts.regular,
-    fontSize: 10,
-    marginTop: 1,
+    color: Palette.textMuted,
+    marginTop: 4,
   },
 });

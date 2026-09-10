@@ -13,7 +13,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {CourseAttachment} from './types';
-import {publicRequest, type RoknRequestConfig} from '../../constants/api';
+import {requestCourseAttachmentRenewal} from '../../services/api/courseDetailsRequest';
 import {loadCourseLearningData} from './courseLearning/mapping';
 import {mapCourseAttachments} from './courseLearning/coursePayload';
 import {asRecord} from './courseLearning/shared';
@@ -225,12 +225,9 @@ const refreshAttachment = async (
   ) {
     // The endpoint resolves published-revision aliases even when the original
     // card's attachment ID no longer appears in a full course response.
-    const response = await publicRequest.get(
-      `courses/${endpoint[1]}/pdfs/${endpoint[2]}`,
-      {
-        timeout: 10_000,
-        roknNetworkRetryCount: Number.MAX_SAFE_INTEGER,
-      } as RoknRequestConfig,
+    const response = await requestCourseAttachmentRenewal(
+      endpoint[1],
+      endpoint[2],
     );
     assertAttachmentOwner(operation);
     return (

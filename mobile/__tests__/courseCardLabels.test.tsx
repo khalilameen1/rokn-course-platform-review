@@ -3,19 +3,27 @@ import {Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import CourseCard, {Course} from '../src/components/view/CourseCard';
 import CoursesSection from '../src/components/view/CoursesSection';
+import CarouselItem from '../src/components/view/CarouselItem';
+import {CoinAmount} from '../src/components/ui/RoknCoin';
+import {cleanUnicodeText} from '../src/utils/unicodeText';
 
 jest.mock('../src/constants/designSystem', () => ({
+  Accessibility: {minTouchTarget: 48},
   Palette: {},
   Radius: {},
   Spacing: {},
   Type: {},
+  rtlRowStyle: {},
   textDirection: {},
   useResponsiveLayout: () => ({
     largeText: false,
     railCardWidth: 180,
     gutter: 16,
+    contentWidth: 390,
+    isTablet: false,
   }),
 }));
+jest.mock('../src/assets/SVG', () => ({ArrowRight: () => null}));
 jest.mock('../src/components/ui/PremiumUI', () => {
   const {Text: MockText} = require('react-native');
   return {
@@ -28,7 +36,9 @@ jest.mock('../src/components/ui/CourseArtwork', () => ({
 }));
 jest.mock('../src/components/ui/RoknCoin', () => {
   const {Text: MockText} = require('react-native');
-  return {CoinAmount: ({value}: {value: number}) => <MockText>{value}</MockText>};
+  return {
+    CoinAmount: ({value}: {value: number}) => <MockText>{value}</MockText>,
+  };
 });
 
 const upcoming: Course = {
@@ -96,7 +106,7 @@ describe('course card labels', () => {
     expect(visibleCount('قريبًا')).toBe(1);
   });
 
-  it('preserves distinct badges and the published course price', async () => {
+  it('preserves distinct badges without the published course price', async () => {
     await render(
       <CourseCard
         item={{...upcoming, published: true, label: 'جديد'}}
@@ -105,6 +115,112 @@ describe('course card labels', () => {
       />,
     );
     expect(visibleCount('جديد')).toBe(1);
-    expect(visibleCount(400)).toBe(1);
+    expect(visibleCount(400)).toBe(0);
+    expect(renderer.root.findAllByType(CoinAmount)).toHaveLength(0);
   });
+
+  it.each(['مختارات', 'نتائج البحث'])(
+    'hides coin amounts from paid cards in %s while keeping the details action',
+    async sectionTitle => {
+      const paidCourse = {...upcoming, published: true, label: 'جديد'};
+      const onCoursePress = jest.fn();
+      await render(
+        <CoursesSection
+          data={[paidCourse]}
+          title={sectionTitle}
+          onCoursePress={onCoursePress}
+        />,
+      );
+      expect(visibleCount(400)).toBe(0);
+      expect(renderer.root.findAllByType(CoinAmount)).toHaveLength(0);
+      const button = renderer.root.find(
+        node =>
+          node.props.accessibilityRole === 'button' &&
+          typeof node.props.onPress === 'function',
+      );
+      expect(cleanUnicodeText(button.props.accessibilityLabel)).toBe(
+        paidCourse.title,
+      );
+      await act(async () => button.props.onPress());
+      expect(onCoursePress).toHaveBeenCalledTimes(1);
+      expect(onCoursePress).toHaveBeenCalledWith(paidCourse);
+    },
+  );
+
+  it.each([
+    {owned: false, coinPrice: 0, started: false, progress: 0, state: 'مجاني'},
+    {
+      owned: true,
+      coinPrice: 400,
+      started: false,
+      progress: 0,
+      state: 'ضمن كورساتك',
+    },
+    {
+      owned: true,
+      coinPrice: 400,
+      started: true,
+      progress: 20,
+      state: 'قيد التعلّم',
+    },
+    {
+      owned: true,
+      coinPrice: 400,
+      started: true,
+      progress: 100,
+      state: 'راجع الكورس',
+    },
+  ])(
+    'preserves $state without rendering a coin amount',
+    async ({state, ...status}) => {
+      await render(
+        <CourseCard
+          item={{...upcoming, ...status, published: true, label: 'جديد'}}
+          onPress={onPress}
+        />,
+      );
+      expect(visibleCount(state)).toBe(1);
+      expect(visibleCount(400)).toBe(0);
+      expect(renderer.root.findAllByType(CoinAmount)).toHaveLength(0);
+    },
+  );
+
+  it.each([
+    {published: true, owned: false, coinPrice: 400, state: ''},
+    {published: true, owned: false, coinPrice: 0, state: 'مجاني'},
+    {published: true, owned: true, coinPrice: 400, state: 'ضمن كورساتك'},
+    {published: false, owned: false, coinPrice: 400, state: 'قريبًا'},
+  ])(
+    'announces the featured course title instructor and $state as one details action',
+    async ({state, ...availability}) => {
+      const onButtonPress = jest.fn();
+      await render(
+        <CarouselItem
+          course={{
+            ...upcoming,
+            ...availability,
+            instructor: 'مدرب ركن',
+          }}
+          onButtonPress={onButtonPress}
+        />,
+      );
+      const button = renderer.root.find(
+        node =>
+          node.props.accessibilityRole === 'button' &&
+          typeof node.props.onPress === 'function',
+      );
+      expect(button.props.accessibilityRole).toBe('button');
+      expect(cleanUnicodeText(button.props.accessibilityLabel)).toBe(
+        ['تصوير بالموبايل', 'مدرب ركن', state].filter(Boolean).join(' — '),
+      );
+      expect(button.props.accessibilityHint).toBe('يفتح تفاصيل الكورس');
+      expect(visibleCount(400)).toBe(0);
+      expect(renderer.root.findAllByType(CoinAmount)).toHaveLength(0);
+      expect(button.props.accessibilityLabel).not.toContain('400');
+      expect(button.props.accessibilityLabel).not.toContain('عملة');
+
+      await act(async () => button.props.onPress());
+      expect(onButtonPress).toHaveBeenCalledTimes(1);
+    },
+  );
 });

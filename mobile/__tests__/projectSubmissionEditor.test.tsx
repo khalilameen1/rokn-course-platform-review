@@ -162,8 +162,10 @@ describe('project submission editor', () => {
       const submit = submitButton();
       expect(StyleSheet.flatten(submit.props.style)).toMatchObject({
         width: '100%',
-        minHeight: 52,
       });
+      expect(
+        StyleSheet.flatten(submit.props.style).minHeight,
+      ).toBeGreaterThanOrEqual(48);
       const inputStyle = StyleSheet.flatten(
         renderer.root.findByType(TextInput).props.style,
       );

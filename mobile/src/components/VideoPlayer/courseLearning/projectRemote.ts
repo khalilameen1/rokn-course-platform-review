@@ -27,6 +27,10 @@ const PUBLIC_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const attachmentFlights = new Map<string, Promise<void>>();
 
+/** The editor owns revision parsing and navigation after its draft is safe. */
+export const requestProjectRevisionConfirmation = (projectId: string) =>
+  publicRequest.get(`projects/${projectId}`, {timeout: 12000});
+
 const numericProjectId = (value: string) => {
   const id = String(value).trim();
   if (!/^\d+$/.test(id) || Number(id) <= 0)

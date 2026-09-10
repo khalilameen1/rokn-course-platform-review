@@ -16,10 +16,12 @@ import Gallery from './Gallery';
 import SavedVideos from './SavedVideos';
 import {isolateBidirectionalText} from '../../constants/arabicFormatting';
 import QRCode from '../../components/ui/QRCode';
+import {QRIcon} from '../../components/ui/QRIcon';
 import {DefaultAvatar} from '../../components/ui/DefaultAvatar';
 import {profileStyles as styles} from './styles';
 import {useProfileOverview} from './useProfileOverview';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import {useResponsiveLayout} from '../../constants/designSystem';
 
 type ProfileTab = 'portfolio' | 'certificates' | 'saved';
 
@@ -32,6 +34,7 @@ const tabs: {key: ProfileTab; label: string}[] = [
 export default function Profile() {
   const navigation = useNavigation<RootNavigation>();
   const route = useRoute<RootRoute<'Profile'>>();
+  const {largeText} = useResponsiveLayout();
   const [activeTab, setActiveTab] = useState<ProfileTab>('portfolio');
   const [failedAvatarUri, setFailedAvatarUri] = useState<string>();
   const [showPortfolioQr, setShowPortfolioQr] = useState(false);
@@ -51,8 +54,7 @@ export default function Profile() {
     setHasShareablePortfolio,
     sharePortfolio,
   } = useProfileOverview();
-  const showPortfolioActions =
-    activeTab === 'portfolio' && canSharePortfolio;
+  const showPortfolioActions = activeTab === 'portfolio' && canSharePortfolio;
 
   useEffect(() => {
     if (!showPortfolioActions) setShowPortfolioQr(false);
@@ -91,7 +93,7 @@ export default function Profile() {
             </Pressable>
           )}
 
-          <PremiumCard style={styles.profileCard}>
+          <View style={styles.profileCard}>
             <View style={styles.profileTop}>
               <Pressable
                 accessibilityHint="يفتح بيانات الحساب"
@@ -140,46 +142,54 @@ export default function Profile() {
                   />
                 )}
               </View>
-              {showPortfolioActions && (
-                <Pressable
-                  accessibilityLabel="مشاركة البورتفوليو"
-                  accessibilityRole="button"
-                  onPress={() => void sharePortfolio()}
-                  style={({pressed}) => [
-                    styles.shareButton,
-                    pressed && styles.pressed,
-                  ]}>
-                  <ShareProfileIcon />
-                </Pressable>
-              )}
             </View>
             {showPortfolioActions && (
-              <View style={styles.publicActions}>
+              <View
+                style={[
+                  styles.publicActions,
+                  largeText && styles.publicActionsLargeText,
+                ]}>
+                <View style={styles.publicActionButtons}>
+                  <Pressable
+                    accessibilityLabel="مشاركة البورتفوليو"
+                    accessibilityRole="button"
+                    onPress={() => void sharePortfolio()}
+                    style={({pressed}) => [
+                      styles.shareButton,
+                      pressed && styles.pressed,
+                    ]}>
+                    <ShareProfileIcon />
+                    <Text style={styles.shareLabel}>مشاركة</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="عرض رمز QR للبورتفوليو"
+                    accessibilityRole="button"
+                    onPress={() => setShowPortfolioQr(true)}
+                    style={({pressed}) => [
+                      styles.qrButton,
+                      pressed && styles.pressed,
+                    ]}>
+                    <QRIcon />
+                  </Pressable>
+                </View>
                 <Pressable
                   accessibilityLabel="فتح رابط مشاركة البورتفوليو"
                   accessibilityRole="link"
                   onPress={() => void openPortfolio()}
                   style={({pressed}) => [
                     styles.publicLink,
+                    largeText && styles.publicLinkLargeText,
                     pressed && styles.pressed,
                   ]}>
-                  <Text numberOfLines={1} style={styles.publicLinkText}>
+                  <Text
+                    numberOfLines={largeText ? undefined : 1}
+                    style={styles.publicLinkText}>
                     {isolateBidirectionalText(portfolioLinkLabel)}
                   </Text>
                 </Pressable>
-                <Pressable
-                  accessibilityLabel="عرض رمز QR للبورتفوليو"
-                  accessibilityRole="button"
-                  onPress={() => setShowPortfolioQr(true)}
-                  style={({pressed}) => [
-                    styles.qrButton,
-                    pressed && styles.pressed,
-                  ]}>
-                  <Text style={styles.qrButtonText}>QR</Text>
-                </Pressable>
               </View>
             )}
-          </PremiumCard>
+          </View>
 
           <Modal
             animationType="fade"

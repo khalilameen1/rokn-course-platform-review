@@ -28,7 +28,7 @@ import {pickProjectFilesOwned} from './pickers';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
 import {asRecord} from '../courseLearning/shared';
 import {publishCourseRevisionChange} from '../courseLearning/playbackRevision';
-import {publicRequest} from '../../../constants/api';
+import {requestProjectRevisionConfirmation} from '../courseLearning/projectRemote';
 
 const EMPTY_MIME_TYPES: string[] = [];
 
@@ -758,9 +758,7 @@ export const useProjectSubmission = ({
         // broadcasting a navigation event before its draft is prepared.
         let response: unknown;
         try {
-          response = await publicRequest.get(`projects/${id}`, {
-            timeout: 12000,
-          });
+          response = await requestProjectRevisionConfirmation(id);
         } catch (error) {
           response = error;
         }

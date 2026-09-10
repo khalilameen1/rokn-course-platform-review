@@ -1,8 +1,12 @@
 import React, {useMemo} from 'react';
-import {StyleSheet} from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 import {SettingRow} from '../../components/settings/SettingRow';
-import {PremiumCard, SectionHeading} from '../../components/ui/PremiumUI';
-import {Spacing} from '../../constants/designSystem';
+import {
+  Palette,
+  Spacing,
+  Type,
+  textDirection,
+} from '../../constants/designSystem';
 import {
   buildSettingsSections,
   type SettingsSectionsProps,
@@ -14,12 +18,14 @@ export const SettingsSections = (props: SettingsSectionsProps) => {
     <>
       {sections.map(section => (
         <React.Fragment key={section.id}>
-          <SectionHeading style={styles.heading} title={section.title} />
-          <PremiumCard style={styles.group}>
+          <Text accessibilityRole="header" style={styles.heading}>
+            {section.title}
+          </Text>
+          <View style={styles.group}>
             {section.rows.map(({id, ...row}) => (
               <SettingRow key={id} {...row} />
             ))}
-          </PremiumCard>
+          </View>
         </React.Fragment>
       ))}
     </>
@@ -27,6 +33,16 @@ export const SettingsSections = (props: SettingsSectionsProps) => {
 };
 
 const styles = StyleSheet.create({
-  heading: {marginTop: Spacing.md, marginBottom: Spacing.xs},
-  group: {padding: 0, marginBottom: Spacing.md},
+  heading: {
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.xs,
+  },
+  group: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.line,
+    marginBottom: Spacing.sm,
+  },
 });

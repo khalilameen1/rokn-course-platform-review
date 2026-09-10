@@ -1,6 +1,12 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {ActivityIndicator, StyleSheet, Text} from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import type {CourseProject} from '../src/components/VideoPlayer/types';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 
@@ -200,6 +206,49 @@ const renderTransition = (
 };
 
 describe('project lifecycle presentation', () => {
+  // Structural guard only: the renderer does not measure native IME geometry.
+  // Field/CTA visibility must also be verified on the native keyboard surface.
+  it.each(['android', 'ios'] as const)(
+    'uses padding and the platform coordinate offset on %s without changing project actions',
+    platform => {
+      const originalPlatform = Platform.OS;
+      let renderer: TestRenderer.ReactTestRenderer | undefined;
+      const submit = jest.fn();
+      try {
+        Platform.OS = platform;
+        renderer = renderTransition(controllerFor({submit}));
+        const avoidance = () => renderer!.root.findByType(KeyboardAvoidingView);
+        expect(avoidance().props.enabled ?? true).toBe(true);
+        expect(avoidance().props.behavior).toBe('padding');
+        expect(avoidance().props.keyboardVerticalOffset).toBe(0);
+        expect(StyleSheet.flatten(avoidance().props.style)).toEqual(
+          expect.objectContaining({width: 390, height: 844}),
+        );
+
+        const props = renderer.root.findByType(ProjectTransition)
+          .props as React.ComponentProps<typeof ProjectTransition>;
+        act(() => {
+          renderer!.update(
+            <ProjectTransition {...props} height={320} topInset={24} />,
+          );
+        });
+        expect(StyleSheet.flatten(avoidance().props.style).height).toBe(320);
+        expect(avoidance().props.keyboardVerticalOffset).toBe(
+          platform === 'ios' ? 24 : 0,
+        );
+        expect(avoidance().props.enabled ?? true).toBe(true);
+        expect(avoidance().props.behavior).toBe('padding');
+        act(() => {
+          renderer!.root.findByType(ProjectSubmissionEditor).props.onSubmit();
+        });
+        expect(submit).toHaveBeenCalledTimes(1);
+      } finally {
+        if (renderer) act(() => renderer!.unmount());
+        Platform.OS = originalPlatform;
+      }
+    },
+  );
+
   it('offers local draft recovery without exposing submission or an endless spinner', () => {
     const retrySubmissionDraftRestore = jest.fn();
     const submit = jest.fn();

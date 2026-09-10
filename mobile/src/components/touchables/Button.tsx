@@ -109,7 +109,7 @@ const Button: FC<Props> = ({
       disabled={disable || loader}
       onPress={onPress}
       style={({pressed}) => pressed && styles.pressed}>
-      {useGradient && !disable ? (
+      {useGradient && gradientConfig && !disable ? (
         <LinearGradient
           colors={gradient.colors}
           locations={gradient.locations}
@@ -140,13 +140,9 @@ const styles = StyleSheet.create({
   },
   secondary: {
     backgroundColor: Palette.surfaceRaised,
-    borderWidth: 1,
-    borderColor: Palette.line,
   },
   disabled: {
     backgroundColor: Palette.surfacePressed,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
     opacity: 0.72,
   },
   title: {

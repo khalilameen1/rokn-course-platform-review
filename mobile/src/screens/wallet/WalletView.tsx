@@ -27,12 +27,9 @@ import {
   Spacing,
   useResponsiveLayout,
 } from '../../constants/designSystem';
-import RoknCoin, {
-  CoinAmount,
-  RoknCoinStack,
-} from '../../components/ui/RoknCoin';
-import {CAN_START_COIN_CHECKOUT} from '../../constants/distribution';
+import RoknCoin, {CoinAmount} from '../../components/ui/RoknCoin';
 import TaskBrandIcon from '../../components/ui/TaskBrandIcon';
+import {CAN_START_COIN_CHECKOUT} from '../../constants/distribution';
 import {
   formatArabicDisplayText,
   formatArabicNumber,
@@ -47,11 +44,19 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
-  const {fontScale, gutter, railCardWidth, width} = useResponsiveLayout();
-  const packageCardWidth = Math.floor(railCardWidth);
-  const stackTaskActions = width < 420 || fontScale > 1.18;
-  const balanceArtworkSize =
-    fontScale > 1.18 ? 82 : Math.min(104, Math.max(84, width * 0.26));
+  const {contentWidth, fontScale, gutter, isTablet, width} =
+    useResponsiveLayout();
+  const packageCardWidth = Math.floor(
+    Math.min(
+      280,
+      contentWidth - gutter * 2,
+      Math.max(
+        176 * Math.max(1, fontScale / 1.3),
+        contentWidth * (isTablet ? 0.3 : 0.56),
+      ),
+    ),
+  );
+  const stackTaskActions = width < 360 || fontScale >= 1.3;
   const {
     checkoutLoading,
     displayedBalance,
@@ -130,23 +135,18 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
         paddingBottom={Math.max(Spacing.xl, insets.bottom + Spacing.md)}>
         <ResponsiveFrame>
           <HeaderWithBack hasArrow={false} title="المحفظة" />
-          <PremiumCard style={styles.balanceCard}>
-            <View style={styles.balanceHeroTop}>
-              <View style={styles.balanceHeroCopy}>
-                <Text style={styles.balanceCaption}>إجمالي رصيدك</Text>
-                <Text style={styles.balanceHeroHint}>
-                  استخدمه لفتح الكورسات
-                </Text>
-              </View>
-              <RoknCoinStack
-                size={balanceArtworkSize}
-                style={styles.coinStack}
-              />
-            </View>
+          <View style={styles.balanceCard}>
+            <Text style={styles.balanceCaption}>إجمالي رصيدك</Text>
             <Pressable
               accessibilityHint="يعرض العملات المدفوعة وعملات المكافآت"
               accessibilityLabel="تفاصيل رصيد العملات"
               accessibilityRole="button"
+              accessibilityValue={{
+                text:
+                  displayedBalance === null
+                    ? 'الرصيد غير متاح'
+                    : `${formatArabicNumber(displayedBalance)} من عملات ركن`,
+              }}
               disabled={displayedBalance === null}
               onPress={() => setWalletModal('breakdown')}
               style={({pressed}) => [
@@ -154,17 +154,18 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                 pressed && styles.pressed,
               ]}>
               <View style={styles.balanceRow}>
-                <RoknCoin size={34} style={styles.coinSpacing} />
                 <Text
                   maxFontSizeMultiplier={2}
                   numberOfLines={1}
+                  adjustsFontSizeToFit
                   style={styles.balance}>
                   {displayedBalance === null
                     ? '—'
                     : formatArabicNumber(displayedBalance)}
                 </Text>
+                <RoknCoin size={28} />
               </View>
-              <Text style={styles.balanceDetails}>عرض التفاصيل</Text>
+              <Text style={styles.balanceDetails}>تفاصيل الرصيد</Text>
             </Pressable>
             {displayedBalance === null && walletStatus === 'loading' && (
               <Text style={styles.balanceHint}>جارٍ تحديث الرصيد</Text>
@@ -178,27 +179,27 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                 <Text style={styles.retryLabel}>إعادة المحاولة</Text>
               </Pressable>
             )}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setWalletModal('rules')}
-              style={({pressed}) => [
-                styles.rulesLink,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد؟</Text>
-              <Text style={styles.rulesLinkArrow}>‹</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setWalletModal('transactions')}
-              style={({pressed}) => [
-                styles.rulesLink,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.rulesLinkLabel}>آخر العمليات</Text>
-              <Text style={styles.rulesLinkArrow}>‹</Text>
-            </Pressable>
-          </PremiumCard>
+            <View style={styles.balanceLinks}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setWalletModal('transactions')}
+                style={({pressed}) => [
+                  styles.rulesLink,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.rulesLinkLabel}>آخر العمليات</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setWalletModal('rules')}
+                style={({pressed}) => [
+                  styles.rulesLink,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد؟</Text>
+              </Pressable>
+            </View>
+          </View>
 
           {CAN_START_COIN_CHECKOUT && (
             <SectionHeading style={styles.sectionHeading} title="شحن الرصيد" />
@@ -227,12 +228,8 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
               <Text style={styles.retryLabel}>إعادة المحاولة</Text>
             </Pressable>
           )}
-          <SectionHeading
-            style={styles.sectionHeading}
-            title="اكسب عملات ركن"
-            eyebrow="المكافآت المتاحة لك الآن"
-          />
-          <PremiumCard style={styles.tasksCard}>
+          <SectionHeading style={styles.sectionHeading} title="مكافآت متاحة" />
+          <View style={styles.tasksCard}>
             {displayedTasks.length ? (
               <>
                 {displayedTasks.map((task, index, allTasks) => {
@@ -253,18 +250,20 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                             <TaskBrandIcon value={task.actionKey} />
                           </View>
                           <View style={styles.taskCopy}>
-                            <Text style={styles.taskTitle}>
-                              {formatArabicDisplayText(task.title)}
-                            </Text>
+                            <View style={styles.taskTitleRow}>
+                              <Text style={styles.taskTitle}>
+                                {formatArabicDisplayText(task.title)}
+                              </Text>
+                              <View style={styles.taskReward}>
+                                <Text style={styles.rewardPlus}>+</Text>
+                                <CoinAmount size={15} value={task.reward} />
+                              </View>
+                            </View>
                             {!!task.description && (
                               <Text style={styles.taskDescription}>
                                 {formatArabicDisplayText(task.description)}
                               </Text>
                             )}
-                            <View style={styles.taskReward}>
-                              <Text style={styles.rewardPlus}>+</Text>
-                              <CoinAmount size={15} value={task.reward} />
-                            </View>
                           </View>
                         </View>
                         <Pressable
@@ -333,7 +332,7 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                 )}
               </>
             )}
-          </PremiumCard>
+          </View>
         </ResponsiveFrame>
       </Content>
       <TabBar />

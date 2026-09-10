@@ -39,10 +39,7 @@ export const PortfolioGalleryView = ({
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
-  const {contentWidth, gutter, gridColumns, gridGap} = useResponsiveLayout();
-  const columns = Math.max(1, Math.min(gridColumns, 3));
-  const cardWidth =
-    (contentWidth - gutter * 2 - gridGap * (columns - 1)) / columns;
+  const {fontScale, gridGap} = useResponsiveLayout();
   const {
     addProject,
     addSelectedMedia,
@@ -144,7 +141,7 @@ export const PortfolioGalleryView = ({
             </Text>
           )}
           <PortfolioProjectGrid
-            cardWidth={cardWidth}
+            fontScale={fontScale}
             gap={gridGap}
             onCoverError={handleProjectCoverError}
             onCoverLoad={handleProjectCoverLoad}
@@ -472,7 +469,9 @@ export const PortfolioGalleryView = ({
                                 <Text
                                   numberOfLines={1}
                                   style={styles.eligibleCourse}>
-                                  {formatAuthoredDisplayText(project.courseName)}
+                                  {formatAuthoredDisplayText(
+                                    project.courseName,
+                                  )}
                                 </Text>
                                 <Text
                                   numberOfLines={2}

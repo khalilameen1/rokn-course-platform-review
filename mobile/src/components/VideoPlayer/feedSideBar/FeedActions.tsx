@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
-import {Accessibility} from '../../../constants/designSystem';
+import {Accessibility, Palette} from '../../../constants/designSystem';
 import {Fonts} from '../../../constants/styleConstants';
 
 const ChatIcon = () => (
@@ -33,7 +33,7 @@ const BookmarkIcon = ({filled}: {filled: boolean}) => (
   <Svg width={28} height={28} viewBox="0 0 28 28">
     <Path
       d="M7 5.2c0-1 .8-1.8 1.8-1.8h10.4c1 0 1.8.8 1.8 1.8v19.4l-7-4.3-7 4.3V5.2Z"
-      fill={filled ? '#4B8EF7' : 'rgba(0,0,0,0)'}
+      fill={filled ? Palette.primary : 'rgba(0,0,0,0)'}
       stroke="#fff"
       strokeWidth={1.8}
       strokeLinejoin="round"
@@ -184,9 +184,7 @@ const styles = StyleSheet.create({
     width: Accessibility.minTouchTarget,
     height: Accessibility.minTouchTarget,
     borderRadius: 24,
-    backgroundColor: 'rgba(4,8,13,.48)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.14)',
+    backgroundColor: 'rgba(7,11,18,.86)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -196,8 +194,7 @@ const styles = StyleSheet.create({
     borderRadius: Accessibility.minTouchTarget / 2,
   },
   actionIconActive: {
-    backgroundColor: 'rgba(35,111,232,.24)',
-    borderColor: 'rgba(95,153,247,.45)',
+    backgroundColor: 'rgba(20,47,89,.96)',
   },
   actionLabel: {
     color: '#FFFFFF',
@@ -208,6 +205,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 5,
     width: '100%',
     textAlign: 'center',
+    backgroundColor: 'rgba(7,11,18,.86)',
+    borderRadius: 8,
+    paddingVertical: 3,
   },
   counter: {
     color: '#FFFFFF',

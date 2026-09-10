@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {Palette} from '../../../constants/designSystem';
+import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';
 import type {CoinPackage} from '../../../services/api/coinPackageMapper';
 import type {CourseAccessPlan} from '../../../services/roknApi';
@@ -141,6 +142,26 @@ export const CoursePurchaseDialog = ({
             },
           ]}>
           <View style={styles.sheetHandle} />
+          <View style={styles.sheetNavigation}>
+            <Text numberOfLines={2} style={styles.sheetContext}>
+              {formatAuthoredDisplayText(courseTitle)}
+            </Text>
+            <Pressable
+              accessibilityLabel="إغلاق خيارات شراء الكورس"
+              accessibilityRole="button"
+              accessibilityState={{disabled: interactionBusy}}
+              disabled={interactionBusy}
+              onPress={onClose}
+              style={({pressed}) => [
+                styles.sheetClose,
+                interactionBusy && styles.disabled,
+                pressed && styles.pressed,
+              ]}>
+              <Text allowFontScaling={false} style={styles.sheetCloseText}>
+                ×
+              </Text>
+            </Pressable>
+          </View>
           <ScrollView
             automaticallyAdjustKeyboardInsets
             bounces={false}
@@ -203,24 +224,6 @@ export const CoursePurchaseDialog = ({
                 onChange={onCouponCodeChange}
               />
             )}
-            {dialogStep === 'confirm' && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{busy, disabled: interactionBusy}}
-                disabled={interactionBusy}
-                onPress={onConfirmPurchase}
-                style={({pressed}) => [
-                  styles.sheetPrimary,
-                  pressed && styles.primaryButtonPressed,
-                  interactionBusy && styles.disabled,
-                ]}>
-                {busy ? (
-                  <ActivityIndicator color={Palette.text} />
-                ) : (
-                  <Text style={styles.sheetPrimaryText}>تأكيد الشراء</Text>
-                )}
-              </Pressable>
-            )}
             {(dialogStep === 'confirm' || dialogStep === 'topup') &&
               accessPlans.length > 1 && (
                 <Pressable
@@ -255,6 +258,26 @@ export const CoursePurchaseDialog = ({
               </View>
             )}
           </ScrollView>
+          {dialogStep === 'confirm' && (
+            <View style={styles.sheetFooter}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{busy, disabled: interactionBusy}}
+                disabled={interactionBusy}
+                onPress={onConfirmPurchase}
+                style={({pressed}) => [
+                  styles.sheetPrimary,
+                  pressed && styles.primaryButtonPressed,
+                  interactionBusy && styles.disabled,
+                ]}>
+                {busy ? (
+                  <ActivityIndicator color={Palette.text} />
+                ) : (
+                  <Text style={styles.sheetPrimaryText}>تأكيد الشراء</Text>
+                )}
+              </Pressable>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>

@@ -106,11 +106,20 @@ export const SettingsChoiceModal = ({
                       style={[styles.label, selected && styles.labelSelected]}>
                       {option.label}
                     </Text>
-                    {selected && <Text style={styles.check}>✓</Text>}
+                    <View
+                      style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected && <View style={styles.radioDot} />}
+                    </View>
                   </Pressable>
                 );
               })}
             </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={styles.closeButton}>
+              <Text style={styles.closeLabel}>إغلاق</Text>
+            </Pressable>
           </ScrollView>
         </View>
       </View>
@@ -145,7 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   row: {
-    minHeight: 56,
+    minHeight: 64,
     ...rtlRowStyle,
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -164,10 +173,29 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   labelSelected: {color: '#A9C9FF'},
-  check: {
-    ...Type.bodyStrong,
-    color: Palette.primary,
+  radio: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1.5,
+    borderColor: Palette.textFaint,
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
     marginStart: Spacing.sm,
   },
+  radioSelected: {borderColor: Palette.primary},
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Palette.primary,
+  },
+  closeButton: {
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+  },
+  closeLabel: {...Type.bodyStrong, ...textDirection, color: Palette.textMuted},
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import type {SvgProps} from 'react-native-svg';
+import {MoreSectionArrowLeft} from '../../assets/SVG';
 import {
   fixedIconSlot,
   flexibleTextColumn,
@@ -95,7 +96,7 @@ export const SettingRow = ({
               />
             </View>
           ) : onPress ? (
-            <Text style={styles.chevron}>‹</Text>
+            <MoreSectionArrowLeft width={18} height={18} />
           ) : null}
         </View>
       )}
@@ -105,13 +106,13 @@ export const SettingRow = ({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 64,
+    minHeight: 72,
     ...rtlRowStyle,
     alignItems: 'center',
     columnGap: Spacing.sm,
     overflow: 'hidden',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingHorizontal: 0,
+    paddingVertical: Spacing.md,
   },
   rowBorder: {
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -144,13 +145,11 @@ const styles = StyleSheet.create({
   },
   rowIcon: {
     ...fixedIconSlot,
-    width: 40,
-    minWidth: 40,
+    width: 32,
+    minWidth: 32,
     height: 40,
-    borderRadius: 12,
-    backgroundColor: Palette.primarySoft,
   },
-  rowIconDanger: {backgroundColor: 'rgba(240,100,105,0.12)'},
+  rowIconDanger: {opacity: 0.9},
   rowTitle: {
     ...Type.bodyStrong,
     ...textDirection,
@@ -182,14 +181,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   destructive: {color: Palette.danger},
-  chevron: {
-    width: 28,
-    flexShrink: 0,
-    fontSize: 28,
-    textAlign: 'center',
-    color: Palette.textFaint,
-    lineHeight: 32,
-  },
   switchTrack: {
     position: 'relative',
     width: 48,

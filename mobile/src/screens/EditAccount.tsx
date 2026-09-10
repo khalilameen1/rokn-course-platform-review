@@ -14,11 +14,7 @@ import {launchImageLibrary} from 'react-native-image-picker';
 import {useDispatch, useSelector} from 'react-redux';
 import Button from '../components/touchables/Button';
 import {Container, Content} from '../components/containers/Containers';
-import {
-  PremiumCard,
-  ResponsiveFrame,
-  StatusView,
-} from '../components/ui/PremiumUI';
+import {ResponsiveFrame, StatusView} from '../components/ui/PremiumUI';
 import HeaderWithBack from '../components/view/HeaderWithBack';
 import {
   AsyncKeys,
@@ -453,7 +449,7 @@ export default function EditAccount() {
                     ) : (
                       <DefaultAvatar
                         accessibilityLabel="صورة الحساب"
-                        size={92}
+                        size={104}
                       />
                     )}
                   </View>
@@ -467,7 +463,10 @@ export default function EditAccount() {
                   <Text style={styles.changePhotoLabel}>تغيير الصورة</Text>
                 </Pressable>
               </View>
-              <PremiumCard style={styles.form}>
+              <View style={styles.form}>
+                <Text accessibilityRole="header" style={styles.sectionTitle}>
+                  هويتك في ركن
+                </Text>
                 <Text style={styles.label}>الاسم الظاهر</Text>
                 <TextInput
                   accessibilityLabel="الاسم الظاهر"
@@ -491,16 +490,18 @@ export default function EditAccount() {
                   style={styles.input}
                   value={portfolioHeadline}
                 />
+              </View>
+              <View style={styles.accountSection}>
                 <Text style={styles.label}>البريد المرتبط بالحساب</Text>
                 <View style={[styles.input, styles.readonly]}>
-                  <Text numberOfLines={1} style={styles.readonlyText}>
+                  <Text selectable style={styles.readonlyText}>
                     {email || 'غير متاح'}
                   </Text>
                 </View>
                 <Text style={styles.hint}>
                   يتبع حساب Google أو Facebook أو TikTok أو Apple الذي سجلت به
                 </Text>
-              </PremiumCard>
+              </View>
               <Button
                 disable={saving || hydrationState !== 'ready' || !validName}
                 loader={saving}
@@ -517,31 +518,47 @@ export default function EditAccount() {
 
 const styles = StyleSheet.create({
   frame: {maxWidth: 680},
-  avatarArea: {alignItems: 'center', paddingVertical: Spacing.lg},
+  avatarArea: {
+    alignItems: 'center',
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.xl,
+  },
   avatarButton: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
   },
   avatarPressed: {opacity: 0.78},
   avatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     borderWidth: 2,
     borderColor: Palette.line,
   },
   changePhoto: {
-    minHeight: 44,
+    minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,
   },
   changePhotoLabel: {...Type.bodyStrong, color: '#8BB5FF'},
-  form: {padding: Spacing.lg, marginBottom: Spacing.sm},
-  label: {
-    ...Type.caption,
+  form: {paddingBottom: Spacing.xl},
+  sectionTitle: {
+    ...Type.section,
     ...textDirection,
-    color: Palette.textMuted,
+    color: Palette.text,
+    marginBottom: Spacing.sm,
+  },
+  accountSection: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.line,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.xl,
+  },
+  label: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    color: Palette.text,
     marginTop: Spacing.sm,
     marginBottom: Spacing.xs,
   },
@@ -551,10 +568,11 @@ const styles = StyleSheet.create({
     color: Palette.text,
     minHeight: 52,
     borderRadius: Radius.md,
-    backgroundColor: Palette.surfaceRaised,
+    backgroundColor: Palette.surface,
     borderWidth: 1,
     borderColor: Palette.line,
     paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
   },
   hint: {
     ...Type.caption,
@@ -562,6 +580,17 @@ const styles = StyleSheet.create({
     color: Palette.textFaint,
     marginTop: Spacing.xs,
   },
-  readonly: {justifyContent: 'center', opacity: 0.72},
-  readonlyText: {...Type.body, ...textDirection, color: Palette.textMuted},
+  readonly: {
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    paddingHorizontal: 0,
+  },
+  readonlyText: {
+    ...Type.body,
+    direction: 'ltr',
+    writingDirection: 'ltr',
+    textAlign: 'left',
+    color: Palette.textMuted,
+  },
 });

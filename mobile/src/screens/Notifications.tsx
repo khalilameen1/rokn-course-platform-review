@@ -9,7 +9,6 @@ import {
   Text,
   View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import {NotificationIcon} from '../assets/SVG';
 import {Container} from '../components/containers/Containers';
 import {SectionHeading, StatusView} from '../components/ui/PremiumUI';
@@ -56,12 +55,6 @@ export default function Notifications() {
       const actionable = Boolean(item.link) || !read;
       const imageKey = notificationImageKey(item.image);
       const imageFailed = failedImages[item.id] === imageKey;
-      const gradient =
-        item.tone === 'coins'
-          ? ['rgba(216,166,60,0.18)', 'rgba(17,22,32,0.98)']
-          : item.tone === 'project'
-          ? ['rgba(72,185,138,0.15)', 'rgba(17,22,32,0.98)']
-          : ['rgba(44,105,219,0.17)', 'rgba(17,22,32,0.98)'];
       return (
         <View
           style={[
@@ -85,10 +78,7 @@ export default function Notifications() {
               styles.cardPressable,
               pressed && styles.pressed,
             ]}>
-            <LinearGradient
-              colors={gradient}
-              end={{x: 0, y: 1}}
-              start={{x: 1, y: 0}}
+            <View
               style={[
                 styles.row,
                 compactLayout && styles.rowCompact,
@@ -155,7 +145,7 @@ export default function Notifications() {
                   )}
                 </View>
               </View>
-            </LinearGradient>
+            </View>
           </Pressable>
         </View>
       );

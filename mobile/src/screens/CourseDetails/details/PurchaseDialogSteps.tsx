@@ -7,6 +7,7 @@ import {
   View,
 } from 'react-native';
 import {CoinAmount} from '../../../components/ui/RoknCoin';
+import {MoreSectionArrowLeft} from '../../../assets/SVG';
 import {
   formatArabicDisplayText,
   formatArabicNumber,
@@ -119,8 +120,16 @@ export const PlansStep = ({
           ]}>
           <View style={styles.planHeader}>
             <Text style={styles.planName}>{plan.name}</Text>
-            <CoinAmount size={17} value={plan.priceCoins} />
+            {plan.code === selectedPlan?.code && (
+              <Text style={styles.planSelectedLabel}>محددة</Text>
+            )}
           </View>
+          <CoinAmount
+            size={22}
+            style={styles.planPrice}
+            textStyle={styles.planPriceText}
+            value={plan.priceCoins}
+          />
           <View style={styles.planBenefits}>
             {planBenefits(plan, hasProjects).map(item => (
               <View key={item} style={styles.planBenefitRow}>
@@ -128,6 +137,10 @@ export const PlansStep = ({
                 <Text style={styles.planBenefitText}>{item}</Text>
               </View>
             ))}
+          </View>
+          <View style={styles.planChoose}>
+            <Text style={styles.planChooseText}>اختيار الفئة</Text>
+            <MoreSectionArrowLeft accessible={false} width={18} height={18} />
           </View>
         </Pressable>
       ))}
@@ -172,34 +185,56 @@ export const TopupStep = ({
 }) => (
   <>
     <Text style={styles.sheetEyebrow}>
-      {selectedPlan?.name || 'شحن الرصيد'}
+      {selectedPlan
+        ? `الفئة: ${formatAuthoredDisplayText(selectedPlan.name)}`
+        : 'شحن الرصيد'}
     </Text>
     <Text style={styles.sheetTitle}>أكمل رصيدك</Text>
     <Text style={styles.sheetDescription}>
-      اختر باقة تغطي الرصيد الناقص
-      {'\n'}ثم أكد شراء الكورس
+      اشحن الرصيد الناقص، ثم أكد شراء الكورس.
     </Text>
     <View style={styles.topupSummary}>
       <View style={styles.topupMetric}>
-        <Text style={styles.summaryLabel}>
-          {couponApplied ? 'بعد الخصم' : 'سعر الكورس'}
+        <Text style={styles.topupMetricLabel}>
+          {couponApplied ? 'إجمالي السعر بعد الخصم' : 'إجمالي سعر الفئة'}
         </Text>
-        <CoinAmount size={18} value={purchasePrice} />
+        <CoinAmount
+          size={18}
+          style={styles.summaryCoins}
+          textStyle={styles.topupMetricValue}
+          value={purchasePrice}
+        />
       </View>
       <View style={styles.topupMetric}>
-        <Text style={styles.summaryLabel}>رصيدك</Text>
-        <CoinAmount size={18} value={balance} />
+        <Text style={styles.topupMetricLabel}>المتاح لهذا الكورس</Text>
+        <CoinAmount
+          size={18}
+          style={styles.summaryCoins}
+          textStyle={styles.topupMetricValue}
+          value={usableCurrentBalance}
+        />
       </View>
-      <View style={styles.topupMetric}>
-        <Text style={styles.summaryLabel}>المتاح للشراء</Text>
-        <CoinAmount size={18} value={usableCurrentBalance} />
+      <View style={styles.shortfallRow}>
+        <Text style={styles.shortfallLabel}>تحتاج إلى شحن</Text>
+        <CoinAmount
+          size={20}
+          style={styles.summaryCoins}
+          textStyle={styles.shortfallValue}
+          value={shortfall}
+        />
       </View>
     </View>
+    {balance > usableCurrentBalance && (
+      <Text style={styles.topupBalanceNote}>
+        إجمالي رصيد المحفظة {formatArabicNumber(balance)} عملة؛ ليس كله متاحًا
+        لهذا الكورس.
+      </Text>
+    )}
     {rewardContributionLimit < purchasePrice && (
-      <Text style={styles.packageUnavailable}>
-        عملات المكافآت تغطي حتى {formatArabicNumber(rewardContributionPercent)}٪
-        من هذه الفئة
-        {'\n'}ينقصك {formatArabicNumber(shortfall)} عملة ركن
+      <Text style={styles.topupBalanceNote}>
+        المكافآت تغطي حتى {formatArabicNumber(rewardContributionLimit)} عملة
+        {' (نحو '}
+        {formatArabicNumber(rewardContributionPercent)}٪) من سعر الفئة.
       </Text>
     )}
     <View style={styles.packageList}>
@@ -209,24 +244,46 @@ export const TopupStep = ({
             0,
             balance + item.coins - purchasePrice,
           );
-          const isQuickChoice = item.id === sufficientPackage?.id;
+          const canCompletePurchase = item.coins >= shortfall;
+          const isQuickChoice =
+            canCompletePurchase && item.id === sufficientPackage?.id;
+          const priceLabel =
+            item.displayPrice || `${formatArabicNumber(item.price)} جنيه`;
+          const remainderLabel = canCompletePurchase
+            ? `يتبقى ${formatArabicNumber(
+                remainingAfterPurchase,
+              )} عملة إجمالًا في المحفظة بعد شراء الكورس`
+            : `تحتاج بعدها ${formatArabicNumber(
+                shortfall - item.coins,
+              )} عملة لإكمال الشراء`;
 
           return (
             <Pressable
-              accessibilityLabel={`اشحن ${formatArabicNumber(
-                item.coins,
-              )} عملة ركن مقابل ${
-                item.displayPrice || `${formatArabicNumber(item.price)} جنيه`
-              }`}
+              accessibilityLabel={[
+                formatArabicDisplayText(item.label),
+                `اشحن ${formatArabicNumber(
+                  item.coins,
+                )} عملة ركن مقابل ${priceLabel}`,
+                isQuickChoice ? 'تغطي المبلغ الناقص' : '',
+                remainderLabel,
+              ]
+                .filter(Boolean)
+                .join(' — ')}
+              accessibilityHint={
+                canCompletePurchase
+                  ? 'يشحن المحفظة أولًا، ثم يمكنك تأكيد شراء الكورس'
+                  : 'هذه الباقة لا تغطي الرصيد الناقص لهذا الكورس'
+              }
               accessibilityRole="button"
-              disabled={busy}
+              accessibilityState={{busy, disabled: busy || !canCompletePurchase}}
+              disabled={busy || !canCompletePurchase}
               key={item.id}
               onPress={() => void onBuyCoins(item)}
               style={({pressed}) => [
                 styles.packageCard,
                 isQuickChoice && styles.packageCardSufficient,
                 pressed && styles.pressed,
-                busy && styles.disabled,
+                (busy || !canCompletePurchase) && styles.disabled,
               ]}>
               <View style={styles.packageHeading}>
                 <Text style={styles.packageLabel}>
@@ -236,30 +293,24 @@ export const TopupStep = ({
                   <Text style={styles.packageBadge}>تغطي المبلغ الناقص</Text>
                 )}
               </View>
-              <CoinAmount
-                size={21}
-                style={styles.packageCoins}
-                textStyle={styles.packageCoinsText}
-                value={item.coins}
-              />
-              <Text style={styles.packagePrice}>
-                {item.displayPrice || `${formatArabicNumber(item.price)} جنيه`}
-              </Text>
-              <Text style={styles.packageRemainder}>
-                {item.coins < shortfall
-                  ? `تحتاج بعدها ${formatArabicNumber(
-                      shortfall - item.coins,
-                    )} عملة لإكمال الشراء`
-                  : `يتبقى ${formatArabicNumber(
-                      remainingAfterPurchase,
-                    )} عملة بعد شراء الكورس`}
-              </Text>
+              <View style={styles.packageAmountRow}>
+                <CoinAmount
+                  size={24}
+                  style={styles.packageCoins}
+                  textStyle={styles.packageCoinsText}
+                  value={item.coins}
+                />
+                <Text style={styles.packagePrice}>
+                  {canCompletePurchase ? `اشحن بـ ${priceLabel}` : priceLabel}
+                </Text>
+              </View>
+              <Text style={styles.packageRemainder}>{remainderLabel}</Text>
             </Pressable>
           );
         })
       ) : (
         <Text style={styles.packageUnavailable}>
-          باقات الشحن غير متاحة الآن
+          لا توجد باقة مناسبة لإكمال الشراء الآن
         </Text>
       )}
     </View>
@@ -369,17 +420,25 @@ export const ConfirmStep = ({
       </View>
     )}
     <View style={styles.purchaseSummary}>
-      <View>
+      <View style={styles.summaryRow}>
         <Text style={styles.summaryLabel}>رصيدك</Text>
-        <CoinAmount size={18} value={balance} />
+        <CoinAmount size={18} style={styles.summaryCoins} value={balance} />
       </View>
-      <View>
+      <View style={[styles.summaryRow, styles.summaryRowTotal]}>
         <Text style={styles.summaryLabel}>سنستخدم</Text>
-        <CoinAmount size={18} value={purchasePrice} />
+        <CoinAmount
+          size={18}
+          style={styles.summaryCoins}
+          value={purchasePrice}
+        />
       </View>
-      <View>
+      <View style={styles.summaryRow}>
         <Text style={styles.summaryLabel}>يتبقى</Text>
-        <CoinAmount size={18} value={Math.max(0, balance - purchasePrice)} />
+        <CoinAmount
+          size={18}
+          style={styles.summaryCoins}
+          value={Math.max(0, balance - purchasePrice)}
+        />
       </View>
     </View>
     {couponApplied && (

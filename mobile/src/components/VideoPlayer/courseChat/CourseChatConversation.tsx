@@ -179,6 +179,9 @@ export const CourseChatConversation = ({
                 ? styles.userBubble
                 : styles.assistantBubble,
             ]}>
+            {message.role === 'assistant' && (
+              <Text style={styles.senderLabel}>ركن</Text>
+            )}
             {courseChatTurnShowsActivity(message.deliveryStatus) &&
             !cleanUnicodeText(message.text) ? (
               assistantPresence === 'working' ? (
@@ -196,10 +199,16 @@ export const CourseChatConversation = ({
                 )}
                 {message.attachments?.map(file => (
                   <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`فتح ${cleanUnicodeText(
+                      file.name,
+                      false,
+                    )}`}
                     key={file.serverId || file.uploadId}
                     disabled={!file.serverId && !file.downloadUrl}
+                    style={styles.messageAttachmentAction}
                     onPress={() => onOpenAttachment(file)}>
-                    <Text numberOfLines={1} style={styles.messageAttachment}>
+                    <Text numberOfLines={2} style={styles.messageAttachment}>
                       {cleanUnicodeText(file.name, false)}
                     </Text>
                   </Pressable>
@@ -221,6 +230,7 @@ export const CourseChatConversation = ({
                     <Pressable
                       accessibilityRole="button"
                       disabled={sending}
+                      style={styles.retryAction}
                       onPress={() => onRetry(message.clientRequestId!)}>
                       <Text style={styles.retryText}>
                         {[
@@ -257,8 +267,13 @@ export const CourseChatConversation = ({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`حذف ${file.name}`}
+                  style={styles.attachmentRemoveButton}
                   onPress={() => onRemoveAttachment(file)}>
-                  <Text style={styles.attachmentRemove}>×</Text>
+                  <Text
+                    allowFontScaling={false}
+                    style={styles.attachmentRemove}>
+                    ×
+                  </Text>
                 </Pressable>
               </View>
             ))}
@@ -296,7 +311,9 @@ export const CourseChatConversation = ({
             disabled={sending || attachments.length >= attachmentLimit}
             style={styles.attachButton}
             onPress={onPickAttachments}>
-            <Text style={styles.attachButtonText}>＋</Text>
+            <Text allowFontScaling={false} style={styles.attachButtonText}>
+              ＋
+            </Text>
           </Pressable>
         )}
         <Pressable

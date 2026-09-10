@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {SettingsTermsIcon} from '../../assets/SVG';
 import Button from '../../components/touchables/Button';
 import FullTrackUpgradeSheet from '../../components/FullTrackUpgradeSheet';
 import QRCode from '../../components/ui/QRCode';
@@ -38,7 +39,7 @@ export default function Certificates({
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
-  const {contentWidth} = useResponsiveLayout();
+  const {contentWidth, largeText} = useResponsiveLayout();
   const {
     activeCertificateQrDestination,
     activeCourseTitle,
@@ -168,13 +169,21 @@ export default function Certificates({
                 style={({pressed}) => [
                   styles.card,
                   contentWidth < 700 && styles.cardNarrow,
+                  largeText && styles.cardLargeText,
                   pressed && styles.pressed,
                 ]}>
-                <CertificateArtifactPreview
-                  certificateUrl={certificate.certificateUrl}
-                  courseTitle={certificate.courseName}
-                  pending={certificate.status === 'pending'}
-                />
+                <View
+                  style={[
+                    styles.artifactThumb,
+                    largeText && styles.artifactThumbLargeText,
+                  ]}>
+                  <CertificateArtifactPreview
+                    compact={!largeText}
+                    certificateUrl={certificate.certificateUrl}
+                    courseTitle={certificate.courseName}
+                    pending={certificate.status === 'pending'}
+                  />
+                </View>
                 <View style={styles.cardCopy}>
                   <MetaPill
                     label={
@@ -186,9 +195,7 @@ export default function Certificates({
                       certificate.status === 'pending' ? 'neutral' : 'success'
                     }
                   />
-                  <Text numberOfLines={2} style={styles.title}>
-                    {certificate.courseName}
-                  </Text>
+                  <Text style={styles.title}>{certificate.courseName}</Text>
                   <View style={styles.verifiedRow}>
                     <View style={styles.verifiedDot} />
                     <Text numberOfLines={1} style={styles.verified}>
@@ -220,8 +227,11 @@ export default function Certificates({
                     styles.readyCard,
                     pressed && styles.pressed,
                   ]}>
-                  <View style={[styles.lockedIcon, styles.readyIcon]}>
-                    <Text style={styles.lockedIconText}>◇</Text>
+                  <View
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                    style={styles.lockedIcon}>
+                    <SettingsTermsIcon width={24} height={24} />
                   </View>
                   <View style={styles.lockedCopy}>
                     <Text numberOfLines={2} style={styles.lockedTitle}>
@@ -253,8 +263,11 @@ export default function Certificates({
                     styles.lockedCard,
                     pressed && styles.pressed,
                   ]}>
-                  <View style={styles.lockedIcon}>
-                    <Text style={styles.lockedIconText}>◇</Text>
+                  <View
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                    style={styles.lockedIcon}>
+                    <SettingsTermsIcon width={24} height={24} />
                   </View>
                   <View style={styles.lockedCopy}>
                     <Text numberOfLines={2} style={styles.lockedTitle}>
@@ -292,8 +305,10 @@ export default function Certificates({
             accessibilityLabel="إصدار الشهادة"
             accessibilityViewIsModal
             style={[styles.sheet, styles.issueSheet]}>
-            <View
-              style={[
+            <ScrollView
+              automaticallyAdjustKeyboardInsets
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={[
                 styles.detailCopy,
                 {
                   paddingBottom: Math.max(
@@ -332,7 +347,7 @@ export default function Certificates({
                 title="إلغاء"
                 useGradient={false}
               />
-            </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -389,7 +404,11 @@ export default function Certificates({
                   style={styles.badge}
                 />
                 {activeCertificateQrDestination && (
-                  <View style={styles.qrDestination}>
+                  <View
+                    style={[
+                      styles.qrDestination,
+                      largeText && styles.qrDestinationLargeText,
+                    ]}>
                     <QRCode
                       value={activeCertificateQrDestination.url}
                       size={148}

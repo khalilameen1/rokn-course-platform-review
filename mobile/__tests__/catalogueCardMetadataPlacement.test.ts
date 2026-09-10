@@ -17,14 +17,18 @@ describe('public course metadata placement', () => {
     );
   });
 
-  it('keeps the catalogue decision surface to price or access state', () => {
+  it('keeps catalogue access states without displaying coin prices', () => {
     const courseCard = source('src/components/view/CourseCard.tsx');
     const carouselCard = source('src/components/view/CarouselItem.tsx');
 
-    expect(courseCard).toContain('value={item.coinPrice!}');
-    expect(carouselCard).toContain('value={course.coinPrice}');
-    expect(courseCard).toContain('استكمل من مكانك');
-    expect(carouselCard).toContain('استكمل من مكانك');
+    for (const card of [courseCard, carouselCard]) {
+      expect(card).not.toContain('CoinAmount');
+      expect(card).not.toContain("from '../ui/RoknCoin'");
+      expect(card).not.toMatch(/value=\{(?:item|course)\.coinPrice/);
+      expect(card).not.toMatch(/\$\{(?:item|course)\.coinPrice\}/);
+      expect(card).toContain('مجاني');
+      expect(card).toContain('ضمن كورساتك');
+    }
   });
 
   it('keeps those decision metrics on the course details surface', () => {
@@ -42,8 +46,7 @@ describe('public course metadata placement', () => {
 
     expect(courseCard).toContain('onPress={() => onPress(item)}');
     expect(courseCard).not.toMatch(/opensLearning\s*\?\s*'Reels'/);
-    expect(carouselCard).toContain('title="عرض الكورس"');
-    expect(carouselCard).not.toMatch(/course\.owned\s*\?/);
+    expect(carouselCard).toContain('onPress={onButtonPress}');
   });
 
   it('does not keep stale entitlement decoration while Home refreshes', () => {
@@ -62,14 +65,23 @@ describe('public course metadata placement', () => {
     expect(accessOverlay).toContain('ownerRef.current === identityKey');
   });
 
-  it('loads the next catalogue page once from the vertical feed boundary', () => {
+  it('keeps home pagination at the feed boundary and opts search into rail pagination', () => {
     const homeFeed = source('src/screens/home/HomeCatalogueFeed.tsx');
     const section = source('src/components/view/CoursesSection.tsx');
     const catalogueHook = source(
       'src/screens/home/usePublishedCourseCatalogue.ts',
     );
 
-    expect(section).not.toContain('onEndReached');
+    const homeRows = homeFeed.match(
+      /\{sections\.map\(section => \([\s\S]*?\)\)\}/,
+    )?.[0];
+    expect(homeRows).toBeDefined();
+    expect(homeRows).not.toContain('onLoadMore');
+    expect(section).toContain('onEndReached={onLoadMore}');
+    expect(homeFeed).toContain('data={searchMatches}');
+    expect(homeFeed).toContain(
+      'active && hasMore && !loadingMore && !loadMoreError',
+    );
     expect(homeFeed).not.toContain('onEndReached=');
     expect(catalogueHook).toContain('handleScroll');
     expect(catalogueHook).toContain('(!manualRetry && loadMoreError)');

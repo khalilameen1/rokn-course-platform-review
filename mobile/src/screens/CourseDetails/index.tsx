@@ -19,8 +19,8 @@ import {
   CoursePurchaseDialog,
   CourseRetentionDialog,
 } from './details/PurchaseDialogs';
-import {selectCourseHeroHeight} from './details/selectors';
 import {
+  CourseActionBar,
   CourseBody,
   CourseHero,
   CourseIntro,
@@ -61,7 +61,6 @@ export default function CourseDetails() {
   });
 
   const {
-    courseDescription,
     courseTitle,
     durationMinutes,
     owned,
@@ -173,13 +172,17 @@ export default function CourseDetails() {
     navigation.navigate('Profile', {tab: 'certificates'});
   }, [navigation]);
 
-  const heroHeight = selectCourseHeroHeight(layout);
+  const heroHeight = Math.min(
+    440,
+    (layout.contentWidth - layout.gutter * 2) * 0.625,
+  );
 
   return (
     <View style={styles.screen}>
       <StatusBar barStyle="light-content" backgroundColor={Palette.canvas} />
       <ScrollView
-        contentContainerStyle={{paddingBottom: insets.bottom + 112}}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}>
         <CourseHero
           courseTitle={courseTitle}
@@ -200,15 +203,13 @@ export default function CourseDetails() {
             },
           ]}>
           <CourseIntro
-            courseDescription={courseDescription}
+            courseTitle={courseTitle}
             durationMinutes={durationMinutes}
-            onPrimaryAction={handlePrimaryAction}
             onPreview={() => startPreview()}
             pageReady={pageReady}
-            primaryActionLabel={primaryActionLabel}
-            primaryActionDisabled={primaryActionDisabled}
             ratingAverage={ratingAverage}
             ratingsCount={ratingsCount}
+            remoteCourse={course.value}
             remoteError={course.error}
             showSecondaryPreview={showSecondaryPreview}
             studentsCount={studentsCount}
@@ -262,6 +263,18 @@ export default function CourseDetails() {
           />
         </View>
       </ScrollView>
+
+      {!course.error && (
+        <CourseActionBar
+          bottomInset={insets.bottom}
+          gutter={layout.gutter}
+          maxContentWidth={layout.maxContentWidth}
+          onPrimaryAction={handlePrimaryAction}
+          pageReady={pageReady}
+          primaryActionDisabled={primaryActionDisabled}
+          primaryActionLabel={primaryActionLabel}
+        />
+      )}
 
       <CoursePurchaseDialog
         {...purchase.dialog}

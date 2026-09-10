@@ -1,6 +1,6 @@
 import {useIsFocused, useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
-import React, {useCallback, useEffect, useMemo, useRef} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {
   Alert,
   Image,
@@ -67,6 +67,8 @@ const Home = () => {
   const identityKey = sessionIdentityKey(storedUser);
   const {t} = useTranslation();
   const search = useHomeSearch(identityKey);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchInputRef = useRef<TextInput>(null);
   const courseNavigationFlightRef = useRef(false);
 
   useEffect(() => {
@@ -211,48 +213,72 @@ const Home = () => {
                 style={styles.logo}
               />
             </View>
-            <Pressable
-              accessibilityLabel={t('Notifications')}
-              accessibilityRole="button"
-              hitSlop={6}
-              onPress={() => navigation.navigate('Notifications')}
-              style={({pressed}) => [
-                styles.iconButton,
-                pressed && styles.pressed,
-              ]}>
-              <NotificationIcon />
-            </Pressable>
+            <View style={styles.headerActions}>
+              <Pressable
+                accessibilityLabel="البحث عن كورس"
+                accessibilityRole="button"
+                accessibilityState={{
+                  expanded: searchOpen || Boolean(search.query),
+                }}
+                onPress={() => {
+                  setSearchOpen(true);
+                  searchInputRef.current?.focus();
+                }}
+                style={({pressed}) => [
+                  styles.iconButton,
+                  pressed && styles.pressed,
+                ]}>
+                <SearchIcon color={Palette.text} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={t('Notifications')}
+                accessibilityRole="button"
+                hitSlop={6}
+                onPress={() => navigation.navigate('Notifications')}
+                style={({pressed}) => [
+                  styles.iconButton,
+                  pressed && styles.pressed,
+                ]}>
+                <NotificationIcon />
+              </Pressable>
+            </View>
           </View>
 
-          <View style={styles.searchContainer}>
-            <View style={styles.searchIconSlot}>
-              <SearchIcon color={Palette.textMuted} />
-            </View>
-            <TextInput
-              accessibilityLabel={t('Search')}
-              autoCorrect={false}
-              onBlur={search.blur}
-              onChangeText={search.setQuery}
-              onFocus={search.focus}
-              onSubmitEditing={() => search.commit(search.query)}
-              placeholder="ابحث عن مهارة أو كورس"
-              placeholderTextColor={Palette.textFaint}
-              returnKeyType="search"
-              selectionColor={Palette.primary}
-              style={styles.searchInput}
-              value={search.query}
-            />
-            {!!search.query && (
+          {(searchOpen || Boolean(search.query)) && (
+            <View style={styles.searchContainer}>
+              <View style={styles.searchIconSlot}>
+                <SearchIcon color={Palette.textMuted} />
+              </View>
+              <TextInput
+                ref={searchInputRef}
+                accessibilityLabel={t('Search')}
+                autoCorrect={false}
+                autoFocus={searchOpen}
+                onBlur={search.blur}
+                onChangeText={search.setQuery}
+                onFocus={search.focus}
+                onSubmitEditing={() => search.commit(search.query)}
+                placeholder="ابحث عن مهارة أو كورس"
+                placeholderTextColor={Palette.textFaint}
+                returnKeyType="search"
+                selectionColor={Palette.primary}
+                style={styles.searchInput}
+                value={search.query}
+              />
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={t('Close')}
                 hitSlop={8}
-                onPress={() => search.setQuery('')}
+                onPress={() => {
+                  search.setQuery('');
+                  search.blur();
+                  setSearchOpen(false);
+                }}
                 style={styles.clearSearch}>
                 <Text style={styles.clearSearchText}>×</Text>
               </Pressable>
-            )}
-          </View>
+            </View>
+          )}
           <SearchAssist
             onClearRecent={search.clearHistory}
             onSelect={search.commit}
@@ -304,11 +330,11 @@ const Home = () => {
 
 const styles = StyleSheet.create({
   topView: {
-    minHeight: 70,
+    minHeight: 56,
     ...rtlRowStyle,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.xxs,
   },
   brandCopy: {
     ...flexibleTextColumn,
@@ -316,22 +342,18 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  logo: {width: 94, height: 38, resizeMode: 'contain'},
+  logo: {width: 82, height: 32, resizeMode: 'contain'},
+  headerActions: {...rtlRowStyle, alignItems: 'center', gap: Spacing.xxs},
   iconButton: {
     ...fixedIconSlot,
     borderRadius: Radius.md,
-    backgroundColor: Palette.surface,
-    borderWidth: 1,
-    borderColor: Palette.lineSoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
   searchContainer: {
     alignItems: 'center',
     backgroundColor: Palette.surface,
-    borderColor: Palette.lineSoft,
     borderRadius: Radius.md,
-    borderWidth: 1,
     ...rtlRowStyle,
     minHeight: 52,
     marginBottom: Spacing.lg,

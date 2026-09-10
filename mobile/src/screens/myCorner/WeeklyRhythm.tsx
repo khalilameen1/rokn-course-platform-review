@@ -1,7 +1,6 @@
 import React from 'react';
 import {Text, View} from 'react-native';
-import {PremiumCard, SectionHeading} from '../../components/ui/PremiumUI';
-import StreakFlame from '../../components/ui/StreakFlame';
+import {SectionHeading} from '../../components/ui/PremiumUI';
 import {
   formatArabicDisplayText,
   formatArabicNumber,
@@ -20,26 +19,29 @@ export const WeeklyRhythm = ({
   week: WeekDay[];
 }) => (
   <>
-    <SectionHeading style={styles.section} title="إيقاع هذا الأسبوع" />
-    <PremiumCard style={styles.rhythmCard}>
+    <SectionHeading style={styles.section} title="نشاطك هذا الأسبوع" />
+    <View style={styles.rhythmCard}>
       <View style={styles.streakTop}>
-        <View style={styles.streakIcon}>
-          <StreakFlame size={38} />
-        </View>
         <View style={styles.streakCopy}>
           <Text style={styles.streakTitle}>
             {currentStreak > 0
               ? `${formatArabicNumber(currentStreak)} ${
                   currentStreak === 1 ? 'يوم' : 'أيام'
                 } متتالية`
-              : 'ابدأ سلسلتك اليوم'}
+              : 'لم تبدأ سلسلة متتالية بعد'}
           </Text>
           <Text style={styles.streakHint}>إكمال مقطع يحسب يوم تعلم</Text>
         </View>
       </View>
       <View style={styles.weekRow}>
         {week.map(item => (
-          <View key={item.key} style={styles.day}>
+          <View
+            accessible
+            accessibilityLabel={`${item.day}، ${
+              item.complete ? 'يوم تعلّم مكتمل' : 'لا يوجد إكمال مسجل'
+            }`}
+            key={item.key}
+            style={styles.day}>
             <View style={[styles.dayMark, item.complete && styles.dayComplete]}>
               <Text
                 style={[
@@ -58,10 +60,10 @@ export const WeeklyRhythm = ({
           activityDays.length
             ? `تعلمت في ${
                 week.filter(item => item.complete).length
-              } أيام من آخر ٧ أيام\nمقطع واحد اليوم يحافظ على إيقاعك`
-            : 'ابدأ أول مقطع اليوم\nواستمر بإيقاع يناسب يومك',
+              } أيام من آخر ٧ أيام`
+            : 'لا توجد أيام تعلّم مسجلة بعد',
         )}
       </Text>
-    </PremiumCard>
+    </View>
   </>
 );

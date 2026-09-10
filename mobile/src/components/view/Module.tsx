@@ -3,7 +3,12 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {Fonts} from '../../constants/styleConstants';
-import {rtlRowStyle, textDirection} from '../../constants/designSystem';
+import {
+  Palette,
+  Type,
+  rtlRowStyle,
+  textDirection,
+} from '../../constants/designSystem';
 import {CourseLearningModule, CourseProject} from '../VideoPlayer/types';
 import {
   formatArabicDisplayText,
@@ -126,7 +131,11 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
           </Text>
           <Text style={styles.meta}>
             {formatArabicDisplayText(
-              `${module.reels.length} مقطع · ${percentage}% مكتمل`,
+              `${module.reels.length} مقطع${
+                module.projects?.length
+                  ? ` · ${module.projects.length} مشروع`
+                  : ''
+              } · ${percentage}% مكتمل`,
             )}
           </Text>
         </View>
@@ -184,11 +193,7 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
                       {step.project.title}
                     </Text>
                     <Text style={styles.lockedProjectHint}>
-                      {learningGateTextForStep(
-                        module,
-                        orderedSteps,
-                        stepIndex,
-                      )}
+                      {learningGateTextForStep(module, orderedSteps, stepIndex)}
                     </Text>
                   </View>
                 ) : (
@@ -236,7 +241,7 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
                     </Text>
                   </View>
                   <View style={styles.reelCopy}>
-                    <Text style={styles.reelTitle} numberOfLines={2}>
+                    <Text style={styles.reelTitle}>
                       {formatAuthoredDisplayText(step.reel.title)}
                     </Text>
                     <Text style={styles.reelMeta}>
@@ -279,53 +284,43 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 760,
     alignSelf: 'center',
-    borderRadius: 22,
-    marginBottom: 13,
-    backgroundColor: '#101720',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.075)',
-    overflow: 'hidden',
+    marginBottom: 18,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
   },
   lockedContainer: {
-    opacity: 0.78,
+    opacity: 1,
   },
   header: {
     minHeight: 82,
-    paddingHorizontal: 15,
+    paddingVertical: 18,
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 12,
   },
   moduleOrder: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
+    minWidth: 32,
+    minHeight: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(75,142,247,.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(91,153,251,.22)',
   },
   moduleOrderText: {
-    color: '#8BB6FA',
+    color: Palette.textMuted,
     fontFamily: Fonts.bold,
-    fontSize: 15,
+    fontSize: 18,
   },
   headerCopy: {
     flex: 1,
     minWidth: 0,
   },
   title: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 15,
-    lineHeight: 23,
+    ...Type.bodyStrong,
+    color: Palette.text,
     ...textDirection,
   },
   meta: {
-    color: 'rgba(255,255,255,.47)',
-    fontFamily: Fonts.regular,
-    fontSize: 10,
+    ...Type.caption,
+    color: Palette.textMuted,
     marginTop: 2,
     ...textDirection,
   },
@@ -338,88 +333,84 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,.06)',
   },
   lockPillText: {
-    color: 'rgba(255,255,255,.57)',
-    fontFamily: Fonts.medium,
-    fontSize: 10,
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
   },
   headerActions: {
-    ...rtlRowStyle,
     alignItems: 'center',
-    gap: 9,
+    gap: 8,
     flexShrink: 0,
+    maxWidth: '30%',
   },
   progressTrack: {
     height: 2,
+    marginBottom: 6,
     backgroundColor: 'rgba(255,255,255,.07)',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#4B8EF7',
+    backgroundColor: Palette.textMuted,
   },
   lockedHint: {
-    color: 'rgba(255,255,255,.48)',
-    fontFamily: Fonts.regular,
-    fontSize: 11,
-    lineHeight: 19,
+    ...Type.caption,
+    color: Palette.textMuted,
     marginBottom: 12,
     ...textDirection,
   },
   content: {
-    padding: 14,
+    paddingTop: 14,
+    paddingBottom: 18,
   },
   sectionLabel: {
-    color: 'rgba(255,255,255,.48)',
-    fontFamily: Fonts.medium,
-    fontSize: 10,
+    ...Type.caption,
+    color: Palette.textMuted,
     marginBottom: 8,
     ...textDirection,
   },
   reelsSection: {
-    gap: 5,
+    gap: 0,
   },
   reelRow: {
-    minHeight: 60,
-    borderRadius: 15,
-    paddingHorizontal: 9,
+    minHeight: 72,
+    paddingVertical: 14,
     ...rtlRowStyle,
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,.025)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Palette.lineSoft,
   },
   lockedReelRow: {
-    backgroundColor: 'rgba(255,255,255,.018)',
+    backgroundColor: 'transparent',
   },
   reelNumber: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
+    minWidth: 32,
+    minHeight: 36,
+    paddingHorizontal: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.06)',
   },
   completedReelNumber: {
-    backgroundColor: 'rgba(65,192,132,.13)',
+    borderRadius: 10,
+    backgroundColor: Palette.surface,
   },
   reelNumberText: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 11,
+    ...Type.caption,
+    color: Palette.textMuted,
   },
   reelCopy: {
     flex: 1,
     minWidth: 0,
   },
   reelTitle: {
-    color: 'rgba(255,255,255,.9)',
-    fontFamily: Fonts.medium,
-    fontSize: 12,
+    ...Type.bodyStrong,
+    color: Palette.text,
     ...textDirection,
   },
   reelMeta: {
-    color: 'rgba(255,255,255,.38)',
-    fontFamily: Fonts.regular,
-    fontSize: 9,
-    marginTop: 2,
+    ...Type.caption,
+    color: Palette.textMuted,
+    marginTop: 4,
     ...textDirection,
   },
   playButton: {
@@ -442,68 +433,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,.055)',
+    maxWidth: '30%',
+    flexShrink: 1,
+    paddingVertical: 4,
   },
   lockedStepText: {
-    color: 'rgba(255,255,255,.52)',
-    fontFamily: Fonts.medium,
-    fontSize: 9,
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
   },
   projectCard: {
     direction: 'rtl',
-    marginTop: 18,
-    borderRadius: 19,
+    marginVertical: 14,
+    borderRadius: 16,
     padding: 16,
-    backgroundColor: '#151E29',
-    borderWidth: 1,
-    borderColor: 'rgba(118,169,255,.16)',
+    backgroundColor: Palette.surface,
   },
   lockedProjectPreview: {
-    borderColor: 'rgba(255,255,255,.08)',
-    backgroundColor: 'rgba(255,255,255,.025)',
+    backgroundColor: Palette.surface,
   },
   lockedProjectHint: {
     ...textDirection,
-    color: 'rgba(255,255,255,.42)',
-    fontFamily: Fonts.regular,
-    fontSize: 10,
+    ...Type.caption,
+    color: Palette.textMuted,
     marginTop: 4,
   },
   projectTopRow: {
     ...rtlRowStyle,
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   projectBadge: {
     minHeight: 25,
-    paddingHorizontal: 9,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(75,142,247,.14)',
+    flexShrink: 1,
   },
   projectBadgeText: {
-    color: '#8BB6FA',
-    fontFamily: Fonts.semiBold,
-    fontSize: 10,
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
   },
   passedText: {
-    color: '#67D39B',
-    fontFamily: Fonts.semiBold,
-    fontSize: 10,
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.success,
   },
   projectTitle: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 17,
-    lineHeight: 26,
+    ...Type.section,
+    color: Palette.text,
     marginTop: 10,
     ...textDirection,
   },
   projectRequirements: {
-    color: 'rgba(255,255,255,.62)',
-    fontFamily: Fonts.regular,
-    fontSize: 12,
-    lineHeight: 20,
+    ...Type.body,
+    color: Palette.textMuted,
     marginTop: 5,
     ...textDirection,
   },
@@ -512,21 +496,23 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.surfacePressed,
     marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   disabledButton: {
     opacity: 0.38,
   },
   submitProjectText: {
-    color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 12,
+    ...Type.bodyStrong,
+    ...textDirection,
+    textAlign: 'center',
+    color: Palette.text,
   },
   projectPassedCopy: {
-    color: 'rgba(255,255,255,.45)',
-    fontFamily: Fonts.regular,
-    fontSize: 9,
+    ...Type.caption,
+    color: Palette.textMuted,
     marginTop: 2,
     ...textDirection,
   },

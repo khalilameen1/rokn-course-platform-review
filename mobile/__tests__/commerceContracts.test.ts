@@ -329,7 +329,7 @@ describe('commerce API contracts', () => {
     );
   });
 
-  it('renders coin packages as a horizontal rail with another card visible', () => {
+  it('wires the responsive package rail to one minted coin mark per package', () => {
     const walletView = fs.readFileSync(
       path.resolve(__dirname, '../src/screens/wallet/WalletView.tsx'),
       'utf8',
@@ -342,22 +342,21 @@ describe('commerce API contracts', () => {
       path.resolve(__dirname, '../src/components/ui/RoknCoin.tsx'),
       'utf8',
     );
-    const packageCard = fs.readFileSync(
-      path.resolve(__dirname, '../src/components/view/Package.tsx'),
-      'utf8',
-    );
-
-    expect(packageRail).toContain('width={cardWidth}');
-    expect(packageRail).toContain('title={item.label}');
+    // Viewport/peek geometry is rendered at 320–430dp in walletPresentation;
+    // this boundary protects the live rail, not the retired Package wrapper.
+    expect(packageRail).toContain('{width: cardWidth}');
+    expect(packageRail).toContain('formatArabicDisplayText(item.label)');
+    expect(packageRail).toContain('horizontal');
     expect(packageRail).toContain('snapToInterval={cardWidth + Spacing.sm}');
-    expect(walletView).toContain(
-      'const packageCardWidth = Math.floor(railCardWidth)',
-    );
+    expect(walletView).toContain('cardWidth={packageCardWidth}');
     expect(walletView).not.toContain('packageColumns');
-    expect(coin).toContain('id="coinMark"');
+    expect(coin).toContain(
+      "require('../../assets/images/coins/rokn-coin-minted.png')",
+    );
     expect(coin).not.toContain('#FFF1A9');
-    expect(packageCard).not.toContain('<RoknCoin');
-    expect(packageCard.match(/<CoinAmount/g)).toHaveLength(1);
+    expect(packageRail).not.toContain('<RoknCoin');
+    expect(packageRail.match(/<CoinAmount/g)).toHaveLength(1);
+    expect(packageRail).toContain('value={item.coins}');
   });
 
   it('uses the same package contract in wallet and in-course top-up', () => {
@@ -388,10 +387,20 @@ describe('commerce API contracts', () => {
       'utf8',
     );
 
-    expect(walletRail).toContain("type {CoinPackage}");
-    expect(courseTopup).toContain("type {CoinPackage}");
-    expect(walletRail).toContain('title={item.label}');
-    expect(courseTopup).toContain('formatArabicDisplayText(item.label)');
+    expect(walletRail).toContain('type {CoinPackage}');
+    expect(courseTopup).toContain('type {CoinPackage}');
+    for (const packageSurface of [walletRail, courseTopup]) {
+      expect(packageSurface).toContain('formatArabicDisplayText(item.label)');
+      expect(packageSurface).toContain('value={item.coins}');
+      expect(packageSurface).toContain('item.displayPrice ||');
+      expect(packageSurface).toContain('formatArabicNumber(item.price');
+    }
+    expect(walletRail).toContain('onPress={() => onCheckout(item)}');
+    expect(walletRail).toContain('disabled={disabled}');
+    expect(walletRail).toContain(
+      'const disabled = Boolean(checkoutLoading) || !catalogueReady;',
+    );
+    expect(courseTopup).toContain('onPress={() => void onBuyCoins(item)}');
     expect(walletCheckout).toContain('openCoinCheckout(item');
     expect(courseCheckout).toContain('openCoinCheckout(coinPackage');
     expect(walletCheckout).toContain('coinCheckoutFailureDisposition(code)');

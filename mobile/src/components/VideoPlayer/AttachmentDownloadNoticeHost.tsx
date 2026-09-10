@@ -139,6 +139,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: Spacing.xs,
   },
-  cancel: {...Type.bodyStrong, color: Palette.danger},
-  hide: {...Type.button, color: Palette.primary},
+  cancel: {...Type.bodyStrong, ...textDirection, color: Palette.danger},
+  hide: {...Type.button, ...textDirection, color: Palette.text},
 });

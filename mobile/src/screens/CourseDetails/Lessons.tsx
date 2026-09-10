@@ -10,7 +10,12 @@ import {CourseLearningData} from '../../components/VideoPlayer/types';
 import {isGrantCourseAccess} from '../../components/VideoPlayer/courseEntitlements';
 import Module from '../../components/view/Module';
 import FullTrackUpgradeSheet from '../../components/FullTrackUpgradeSheet';
-import {rtlRowStyle, textDirection} from '../../constants/designSystem';
+import {
+  Palette,
+  Type,
+  rtlRowStyle,
+  textDirection,
+} from '../../constants/designSystem';
 import {Fonts} from '../../constants/styleConstants';
 
 type CourseOutlineProps = {
@@ -96,8 +101,7 @@ export default function CourseOutline({
   return (
     <View style={styles.container}>
       <View style={styles.intro}>
-        <Text style={styles.eyebrow}>خريطة الكورس</Text>
-        <Text style={styles.heading}>كل مقاطع الكورس أمامك</Text>
+        <Text style={styles.heading}>محتوى الكورس</Text>
         <Text style={styles.introCopy}>
           افتح أي مقطع متاح
           {hasProjects ? '\nتظهر المشروعات في موضعها داخل الخريطة' : ''}
@@ -157,11 +161,11 @@ export default function CourseOutline({
               ? 'تفتح بعد إكمال الكورس واجتياز مشروع العبور'
               : 'تفتح بعد إكمال الكورس'}
           </Text>
-        </View>
-        <View style={styles.certificateState}>
-          <Text style={styles.certificateStateText}>
-            {grantAccess ? 'اختياري' : certificateReady ? 'جاهزة' : 'مقفلة'}
-          </Text>
+          <View style={styles.certificateState}>
+            <Text style={styles.certificateStateText}>
+              {grantAccess ? 'اختياري' : certificateReady ? 'جاهزة' : 'مقفلة'}
+            </Text>
+          </View>
         </View>
       </Pressable>
       <FullTrackUpgradeSheet
@@ -179,8 +183,7 @@ export default function CourseOutline({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: 16,
-    paddingBottom: 110,
+    paddingBottom: 20,
   },
   loading: {
     minHeight: 260,
@@ -189,9 +192,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   loadingText: {
-    color: 'rgba(255,255,255,.55)',
-    fontFamily: Fonts.regular,
-    fontSize: 12,
+    ...Type.body,
+    ...textDirection,
+    color: Palette.textMuted,
+    textAlign: 'center',
   },
   errorTitle: {
     color: '#FFFFFF',
@@ -205,8 +209,10 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#236FE8',
+    backgroundColor: Palette.surfacePressed,
     marginTop: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
   retryText: {
     color: '#FFFFFF',
@@ -226,19 +232,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   heading: {
+    ...Type.section,
     ...textDirection,
     color: '#FFFFFF',
-    fontFamily: Fonts.bold,
-    fontSize: 20,
-    lineHeight: 31,
     marginTop: 4,
   },
   introCopy: {
+    ...Type.caption,
     ...textDirection,
-    color: 'rgba(255,255,255,.54)',
-    fontFamily: Fonts.regular,
-    fontSize: 12,
-    lineHeight: 20,
+    color: Palette.textMuted,
     marginTop: 3,
   },
   note: {
@@ -274,23 +276,18 @@ const styles = StyleSheet.create({
     maxWidth: 760,
     minHeight: 86,
     alignSelf: 'center',
-    borderRadius: 20,
-    padding: 14,
+    paddingVertical: 22,
     ...rtlRowStyle,
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
-    backgroundColor: '#0E141C',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.07)',
-    opacity: 0.65,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
   },
   certificateCardReady: {
     opacity: 1,
-    borderColor: 'rgba(93,210,153,.2)',
   },
   certificateCardGrant: {
     opacity: 1,
-    borderColor: 'rgba(118,169,255,.2)',
   },
   certificateIcon: {
     width: 46,
@@ -306,20 +303,18 @@ const styles = StyleSheet.create({
   },
   certificateCopy: {
     flex: 1,
+    minWidth: 0,
   },
   certificateTitle: {
+    ...Type.bodyStrong,
     ...textDirection,
     color: '#FFFFFF',
-    fontFamily: Fonts.semiBold,
-    fontSize: 13,
   },
   certificateDescription: {
+    ...Type.caption,
     ...textDirection,
-    color: 'rgba(255,255,255,.43)',
-    fontFamily: Fonts.regular,
-    fontSize: 9,
-    lineHeight: 15,
-    marginTop: 2,
+    color: Palette.textMuted,
+    marginTop: 6,
   },
   certificateState: {
     minHeight: 28,
@@ -328,10 +323,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,.06)',
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingVertical: 4,
   },
   certificateStateText: {
-    color: 'rgba(255,255,255,.63)',
-    fontFamily: Fonts.medium,
-    fontSize: 9,
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
   },
 });
