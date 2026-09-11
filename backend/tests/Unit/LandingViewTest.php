@@ -33,8 +33,9 @@ final class LandingViewTest extends TestCase
             self::assertStringNotContainsString('معاينة واجهة المشغّل', $html);
             self::assertStringNotContainsString('عبر كاشير', $html);
             self::assertStringNotContainsString('نفس الحساب', $html);
-            self::assertStringContainsString(route('web-wallet.index'), $html);
-            self::assertStringContainsString('class="account-nav"', $html);
+            self::assertStringNotContainsString(route('web-wallet.index'), $html);
+            self::assertStringNotContainsString('class="account-nav"', $html);
+            self::assertStringNotContainsString('class="recharge-section"', $html);
             self::assertStringNotContainsString('class="recharge-nav"', $html);
             self::assertStringNotContainsString('class="welcome-gift"', $html);
             self::assertStringNotContainsString('<details class="download-alternatives"', $html);
@@ -78,7 +79,7 @@ final class LandingViewTest extends TestCase
         self::assertStringNotContainsString('class="direct-saving"', $html);
     }
 
-    public function test_welcome_offer_and_recharge_discount_use_supplied_values(): void
+    public function test_welcome_offer_and_apk_discount_use_supplied_values_without_promoting_checkout(): void
     {
         app()->setLocale('ar');
         $data = $this->pageData('ar');
@@ -97,7 +98,7 @@ final class LandingViewTest extends TestCase
         self::assertStringContainsString('بورتفوليو مش مجرد شهادة', $html);
         self::assertStringContainsString('خصم 12.5%', $html);
         self::assertStringNotContainsString('على الشحن', $html);
-        self::assertStringContainsString('اشحن بخصم 12.5٪', $html);
+        self::assertStringNotContainsString('اشحن بخصم', $html);
         self::assertStringContainsString('سكرول', $html);
         self::assertStringContainsString('واتعلّم', $html);
 

@@ -13,7 +13,7 @@ return [
     'player_ask' => 'اسأل',
     'player_save' => 'احفظ',
     'player_index' => 'الفهرس',
-    'reel_photography' => 'ظبّط الإضاءة',
+    'reel_photography' => 'إضاءة طبيعية',
     'subjects_label' => 'مجالات التعلّم',
     'subject_photography' => 'التصوير',
     'subject_design' => 'التصميم',

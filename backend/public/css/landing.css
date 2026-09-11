@@ -272,6 +272,7 @@ summary {
 }
 .preview-scene figcaption strong {
     display: block;
+    margin-right: 3rem;
     font-size: 0.875rem;
     line-height: 1.6;
     white-space: nowrap;
@@ -490,36 +491,6 @@ summary {
 }
 .learning-points svg[viewBox="0 0 39 39"] {
     stroke-width: 2.6;
-}
-.recharge-section {
-    padding-block: 0.5rem 2rem;
-}
-.recharge-panel {
-    display: flex;
-    gap: 1.25rem;
-    align-items: center;
-    background: #171d29;
-    border: 1px solid #ffffff0d;
-    border-radius: 1.125rem;
-    padding: clamp(1rem, 4vw, 2rem);
-}
-.recharge-panel > img {
-    inline-size: clamp(56px, 16vw, 80px);
-    block-size: auto;
-    flex-shrink: 0;
-}
-.recharge-copy {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    flex: 1;
-    min-inline-size: 0;
-    gap: 1rem;
-}
-.recharge-copy h2 {
-    font-size: clamp(1.35rem, 5vw, 2rem);
-    line-height: 1.5;
 }
 .download-note {
     padding-block: 2rem;
@@ -778,9 +749,6 @@ summary {
     }
     .learning-points svg {
         margin-block-start: 0.15rem;
-    }
-    .recharge-panel {
-        max-inline-size: 1040px;
     }
     .footer-columns,
     .contact-grid,

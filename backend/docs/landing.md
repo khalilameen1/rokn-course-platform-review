@@ -15,9 +15,9 @@ it is not a browser course player or a duplicate student account system.
 - The mobile sticky action only targets a configured release for that device.
   Download links and the entire page remain usable without JavaScript.
 - The optional dashboard-controlled explainer video and legal routes remain available.
-- The header account icon links to the existing `/recharge` student session:
-  social sign-in for a guest and the account/balance for a signed-in student.
-  It does not use the staff guard or personalize the publicly cacheable landing.
+- The download landing does not display recharge or account entry points.
+  `/recharge` remains available separately for targeted offers and returning students.
+  The direct APK discount badge and all-channel welcome gift remain download incentives.
 - `/contact` is an app link to the existing Feedback screen, without a case ID.
   The web fallback keeps configured contact channels and an explicit “Open in Rokn”
   action for browsers that retain same-domain links. Native association/configuration
@@ -28,7 +28,8 @@ it is not a browser course player or a duplicate student account system.
 The hero uses one commissioned vertical photography illustration inside a
 code-rendered representation of the app player. It is not a live student session
 or a screenshot of the sparse test-course catalog. No enrollment counts,
-testimonials or fictitious instructors are added. The caption is a single line.
+testimonials or fictitious instructors are added. The single-line caption reserves
+space for the action rail so it does not read as another label beneath Contents.
 
 The mobile hero places the headline beside the portrait player and the complete
 download group directly underneath. On wider screens the player spans both the

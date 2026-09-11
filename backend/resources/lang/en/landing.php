@@ -13,7 +13,7 @@ return [
     'player_ask' => 'Ask',
     'player_save' => 'Save',
     'player_index' => 'Contents',
-    'reel_photography' => 'Get the lighting right',
+    'reel_photography' => 'Natural light',
     'subjects_label' => 'Learning subjects',
     'subject_photography' => 'Photography',
     'subject_design' => 'Design',

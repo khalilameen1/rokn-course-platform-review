@@ -34,9 +34,11 @@
                 </div>
             </div>
             <div class="navbar-actions">
+                @if($showAccountLink ?? true)
                 <a href="{{ route('web-wallet.index') }}" class="account-nav" aria-label="{{ __('landing.account_action') }}" title="{{ __('landing.account_action') }}">
                     <svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2z"/></svg>
                 </a>
+                @endif
                 <a href="{{ url()->current() }}?lang={{ $locale === 'ar' ? 'en' : 'ar' }}" class="lang-toggle">
                     {{ __('landing.switch_lang') }}
                 </a>

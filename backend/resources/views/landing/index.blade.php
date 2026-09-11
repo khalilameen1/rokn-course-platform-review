@@ -3,7 +3,7 @@
 @php
     $pageTitle = $setting?->{'seo_meta_title_'.$locale} ?: ($setting?->{'site_name_'.$locale} ?: 'Rokn');
     $hasDownloads = collect($downloadChannels ?? [])->filter()->isNotEmpty();
-    $hasDirectDiscount = ($directDiscountPercent ?? 0) > 0;
+    $showAccountLink = false;
     $headline = $designSetting->exists && filled($designSetting->{'slogan_1_'.$locale})
         ? $designSetting->{'slogan_1_'.$locale}
         : __('landing.hero_title');
@@ -59,18 +59,6 @@
                 </li>
             @endforeach
         </ul>
-    </section>
-
-    <section class="recharge-section" aria-labelledby="recharge-title">
-        <div class="landing-container recharge-panel">
-            <img src="{{ asset('images/rokn-coin-minted.png') }}" alt="" width="80" height="80" loading="lazy">
-            <div class="recharge-copy">
-                <h2 id="recharge-title">{{ $hasDirectDiscount
-                    ? __('landing.recharge_title', ['discount' => rtrim(rtrim(number_format($directDiscountPercent, 2, '.', ''), '0'), '.')])
-                    : __('landing.recharge_action') }}</h2>
-                <a class="download-button" href="{{ route('web-wallet.index') }}">{{ __('landing.recharge_action') }}</a>
-            </div>
-        </div>
     </section>
 
     @if($designSetting->show_how_platform_works && $howPlatformWorksVideoUrl)
