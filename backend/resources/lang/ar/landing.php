@@ -22,9 +22,9 @@ return [
     'subject_drawing_alt' => 'صورة تعبيرية للرسم باستخدام قلم ولوح رقمي',
     'learning_label' => 'داخل ركن',
     'learning_benefits' => [
-        'شرح على قدر سؤالك',
-        'ملاحظات تطوّر بها عملك',
-        'اعرض ما أنجزته',
+        'explanations' => 'شرح على قدر سؤالك',
+        'feedback' => 'ملاحظات تطوّر بها عملك',
+        'portfolio' => 'اعرض ما أنجزته',
     ],
     'download_rokn' => 'حمّل ركن',
     'download_on' => 'حمّل من',

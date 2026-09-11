@@ -22,9 +22,9 @@ return [
     'subject_drawing_alt' => 'Editorial illustration of drawing with a stylus and pen display',
     'learning_label' => 'Inside Rokn',
     'learning_benefits' => [
-        'Answers to your questions',
-        'Feedback to improve your work',
-        'Show what you create',
+        'explanations' => 'Answers to your questions',
+        'feedback' => 'Feedback to improve your work',
+        'portfolio' => 'Show what you create',
     ],
     'download_rokn' => 'Get Rokn',
     'download_on' => 'Download on',

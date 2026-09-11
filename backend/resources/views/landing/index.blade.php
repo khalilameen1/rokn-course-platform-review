@@ -39,8 +39,21 @@
 
     <section class="learning-section" aria-label="{{ __('landing.learning_label') }}">
         <ul class="landing-container learning-points">
-            @foreach(__('landing.learning_benefits') as $benefit)
-                <li>{{ $benefit }}</li>
+            @foreach(__('landing.learning_benefits') as $kind => $benefit)
+                <li>
+                    @switch($kind)
+                        @case('explanations')
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/></svg>
+                            @break
+                        @case('feedback')
+                            <svg viewBox="0 0 39 39" aria-hidden="true"><path d="M6.38477 17.5588H25.5397M23.9435 23.9438L27.1359 27.1363L33.5209 20.7513M6.38477 11.1738H25.5397M6.38477 23.9438H19.1547"/></svg>
+                            @break
+                        @case('portfolio')
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M9 5V3h6v2M3 11h18M10 14h4"/></svg>
+                            @break
+                    @endswitch
+                    <span>{{ $benefit }}</span>
+                </li>
             @endforeach
         </ul>
     </section>

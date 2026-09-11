@@ -24,6 +24,13 @@ code-rendered representation of the app player. It is not a live student session
 or a screenshot of the sparse test-course catalog. No enrollment counts,
 testimonials or fictitious instructors are added. The caption is a single line.
 
+The mobile hero places the headline beside the portrait player and the complete
+download group directly underneath. On wider screens the player spans both the
+headline and download rows. Very narrow viewports stack them without shrinking
+the controls. Benefits are readable full-width rows on mobile, not narrow columns.
+Colours and surface radii follow `mobile/src/constants/brandTokens.ts` and the
+mobile design system. The offer badge stays in document flow when its text wraps.
+
 The original built-in image-generation outputs were converted to 432 × 768 WebP
 assets. Only the photography asset is used on the current landing page.
 Exact prompts and final asset paths are in

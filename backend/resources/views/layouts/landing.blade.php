@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <meta name="theme-color" content="#080c12">
+    <meta name="theme-color" content="#070a10">
 
     @php
         $siteName = $setting ? $setting->{'site_name_' . $locale} : ($designSetting->{'name_' . $locale} ?? 'Rokn');
@@ -67,6 +67,7 @@
                 </nav>
             </div>
 
+            @if($socialLinks->isNotEmpty() || ($setting && ($setting->email || $setting->phone)))
             <div class="footer-columns">
                 @if($socialLinks->isNotEmpty())
                     <div>
@@ -109,6 +110,7 @@
                 @endif
             </div>
 
+            @endif
             <div class="footer-nav">
                 <a href="{{ route('privacy') }}">{{ __('landing.nav_privacy') }}</a>
                 <a href="{{ route('terms') }}">{{ __('landing.nav_terms') }}</a>
