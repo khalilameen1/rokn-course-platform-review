@@ -1,5 +1,5 @@
 const DEFAULT_ROKN_API_URL =
-  'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/';
+  'https://rokn.app/api/v1/';
 
 const canonicalApiBase = (configured: string) => {
   try {

@@ -9,7 +9,7 @@
       "distribution": "store",
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/",
+        "EXPO_PUBLIC_API_URL": "https://rokn.app/api/v1/",
         "EXPO_PUBLIC_SENTRY_DSN": "https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production",
         "EXPO_PUBLIC_DISTRIBUTION_CHANNEL": "play",
@@ -32,7 +32,7 @@
       "distribution": "store",
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/",
+        "EXPO_PUBLIC_API_URL": "https://rokn.app/api/v1/",
         "EXPO_PUBLIC_SENTRY_DSN": "https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production",
         "EXPO_PUBLIC_DISTRIBUTION_CHANNEL": "appstore",
@@ -47,7 +47,7 @@
       "distribution": "internal",
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/",
+        "EXPO_PUBLIC_API_URL": "https://rokn.app/api/v1/",
         "EXPO_PUBLIC_SENTRY_DSN": "https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production",
         "EXPO_PUBLIC_DISTRIBUTION_CHANNEL": "direct",
@@ -69,7 +69,7 @@
     "preview-direct": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/",
+        "EXPO_PUBLIC_API_URL": "https://rokn.app/api/v1/",
         "EXPO_PUBLIC_SENTRY_DSN": "https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160",
         "EXPO_PUBLIC_SENTRY_ENVIRONMENT": "production",
         "EXPO_PUBLIC_DISTRIBUTION_CHANNEL": "direct",

@@ -131,8 +131,8 @@ function Test-ProductionApiUrl {
     }
 
     $normalized = $parsed.GetLeftPart([System.UriPartial]::Path).TrimEnd('/') + '/'
-    if ($normalized -cne 'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/' -or $parsed.Query -or $parsed.Fragment) {
-        throw "Production builds must use the deployed API base 'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/'."
+    if ($normalized -cne 'https://rokn.app/api/v1/' -or $parsed.Query -or $parsed.Fragment) {
+        throw "Production builds must use the deployed API base 'https://rokn.app/api/v1/'."
     }
 }
 
@@ -523,8 +523,8 @@ if ($isProduction -and (Test-Path -LiteralPath $r8Mapping -PathType Leaf)) {
 $gitCommit = (& git -C $projectRoot rev-parse HEAD 2>$null | Select-Object -First 1)
 $gitDirty = [bool](& git -C $projectRoot status --porcelain 2>$null | Select-Object -First 1)
 $artifactSha256 = Get-FileSha256 -Path $artifactPath
-$metadataApiHost = 'rokn-course-platform-review-production-b7gpy1.laravel.cloud'
-$metadataApiBase = 'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/'
+$metadataApiHost = 'rokn.app'
+$metadataApiBase = 'https://rokn.app/api/v1/'
 $metadataApiSource = 'source-default'
 if ($env:EXPO_PUBLIC_API_URL) {
     $metadataApiUrl = $null

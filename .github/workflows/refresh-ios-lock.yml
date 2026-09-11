@@ -31,7 +31,7 @@ jobs:
         working-directory: mobile
     env:
       NODE_ENV: production
-      EXPO_PUBLIC_API_URL: https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/
+      EXPO_PUBLIC_API_URL: https://rokn.app/api/v1/
       EXPO_PUBLIC_DISTRIBUTION_CHANNEL: play
       EXPO_PUBLIC_BUILD_PROFILE: production
       EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS: "1"
@@ -124,7 +124,7 @@ jobs:
         if: ${{ !inputs.reuse_native_locks }}
         working-directory: mobile
         env:
-          EXPO_PUBLIC_API_URL: https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/
+          EXPO_PUBLIC_API_URL: https://rokn.app/api/v1/
         run: |
           cd android
           ./gradlew -q \

@@ -94,7 +94,7 @@ const releaseChannels = read('RELEASE_CHANNELS.md');
 const nativePushTokens = read('src/services/nativePushTokens.ts');
 const mobileCi = read('../.github/workflows/mobile-ci.yml');
 const productionApiBase =
-  'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/';
+  'https://rokn.app/api/v1/';
 const firebaseClientPaths = [
   'android/app/google-services.json',
   'ios/GoogleService-Info.plist',

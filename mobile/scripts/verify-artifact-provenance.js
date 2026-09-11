@@ -6,7 +6,7 @@ const path = require('path');
 const {spawnSync} = require('child_process');
 
 const PRODUCTION_API_BASE =
-  'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/';
+  'https://rokn.app/api/v1/';
 const PRODUCTION_API_HOST = new URL(PRODUCTION_API_BASE).host;
 const PRODUCTION_APPLICATION_ID = 'com.rokn';
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;

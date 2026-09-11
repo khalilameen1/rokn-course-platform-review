@@ -1,7 +1,7 @@
 import {normalizeRoknApiUrl} from '../src/constants/apiBaseUrl';
 
 describe('normalizeRoknApiUrl', () => {
-  it('adds the Rokn API path to a bare production origin', () => {
+  it('preserves the legacy origin when it is explicitly configured', () => {
     expect(
       normalizeRoknApiUrl(
         'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud',
@@ -33,7 +33,14 @@ describe('normalizeRoknApiUrl', () => {
 
   it('does not let an invalid release value strand every request', () => {
     expect(normalizeRoknApiUrl('not a url')).toBe(
-      'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/',
+      'https://rokn.app/api/v1/',
+    );
+  });
+
+  it('uses the branded API for releases without an override', () => {
+    expect(normalizeRoknApiUrl()).toBe('https://rokn.app/api/v1/');
+    expect(normalizeRoknApiUrl('https://rokn.app')).toBe(
+      'https://rokn.app/api/v1/',
     );
   });
 });

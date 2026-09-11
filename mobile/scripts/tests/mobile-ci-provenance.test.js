@@ -150,7 +150,7 @@ test('normalizes release signer fingerprints and parses Android tools', () => {
 
 test('production API evidence binds both the full base and its path', () => {
   const apiBase =
-    'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/';
+    'https://rokn.app/api/v1/';
   const evidence = {
     apiBase,
     apiBaseSha256: provenance.sha256(apiBase),
@@ -198,7 +198,7 @@ test('strict candidate verification binds sidecar, binary inspection and protect
     fs.writeFileSync(artifact, 'signed-apk-fixture');
     const digest = provenance.sha256(fs.readFileSync(artifact));
     const apiBase =
-      'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/';
+      'https://rokn.app/api/v1/';
     fs.writeFileSync(
       metadata,
       JSON.stringify({
@@ -214,7 +214,7 @@ test('strict candidate verification binds sidecar, binary inspection and protect
         sha256: digest,
         bytes: fs.statSync(artifact).size,
         signerSha256,
-        apiHost: 'rokn-course-platform-review-production-b7gpy1.laravel.cloud',
+        apiHost: 'rokn.app',
         apiBase,
         apiBaseSha256: provenance.sha256(apiBase),
         apiPathHash: provenance.sha256('/api/v1/'),

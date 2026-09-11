@@ -141,7 +141,7 @@ if (!/^[0-9a-f]{40}$/i.test(gitCommit)) {
 const apiBase = String(process.env.EXPO_PUBLIC_API_URL || '');
 if (
   apiBase !==
-  'https://rokn-course-platform-review-production-b7gpy1.laravel.cloud/api/v1/'
+  'https://rokn.app/api/v1/'
 ) {
   throw new Error('EAS production build has the wrong API base.');
 }
