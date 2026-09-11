@@ -232,22 +232,10 @@ summary {
     background: #101722;
     box-shadow: 0 20px 45px #0008;
 }
-.preview-scenes {
+.preview-scene {
     position: absolute;
     inset: 0;
     block-size: 100%;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    scroll-snap-type: y mandatory;
-    scrollbar-width: none;
-}
-.preview-scenes::-webkit-scrollbar {
-    display: none;
-}
-.preview-scene {
-    position: relative;
-    block-size: 100%;
-    scroll-snap-align: start;
 }
 .preview-scene > img {
     inline-size: 100%;
@@ -330,59 +318,6 @@ summary {
     height: 100%;
     background: white;
 }
-.player-backdrop {
-    position: absolute;
-    top: 12%;
-    inline-size: 35%;
-    max-inline-size: 210px;
-    aspect-ratio: 9 / 16;
-    object-fit: cover;
-    border-radius: 1.15rem;
-    opacity: 0.6;
-}
-.player-backdrop--start {
-    left: 0;
-    transform: rotate(-7deg);
-}
-.player-backdrop--end {
-    right: 0;
-    transform: rotate(7deg);
-}
-.player-caption {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    margin-block-start: 0.9rem;
-}
-.player-caption p {
-    color: #b7c0ce;
-    font-size: 0.875rem;
-}
-.preview-pagination {
-    display: flex;
-    justify-content: center;
-}
-.preview-pagination button {
-    border: 0;
-    background: none;
-    padding: 0;
-    inline-size: 44px;
-    block-size: 32px;
-    cursor: pointer;
-}
-.preview-pagination button::after {
-    content: "";
-    display: block;
-    margin: auto;
-    inline-size: 18px;
-    block-size: 3px;
-    background: #465268;
-    border-radius: 3px;
-}
-.preview-pagination button[aria-pressed="true"]::after {
-    background: #e8edf7;
-}
-
 /* Download artwork remains unmodified */
 .download-options {
     max-inline-size: 29rem;
@@ -450,7 +385,15 @@ summary {
     margin-block-start: 0.7rem;
 }
 .direct-caption {
-    margin-block: 0.5rem 1.25rem;
+    margin-block: 0.5rem 0;
+}
+.direct-download-option {
+    margin-block-end: 1.25rem;
+}
+.direct-saving {
+    color: #f0cc84;
+    font-size: 0.875rem;
+    margin-block-start: 0.35rem;
 }
 .download-dock {
     position: fixed;
@@ -514,25 +457,18 @@ summary {
     border-radius: 1.5rem;
     padding: clamp(1.25rem, 5vw, 3rem);
 }
-.eyebrow {
-    color: #a5b5cd;
-    font-size: 0.875rem;
-}
 .recharge-copy h2 {
     font-size: clamp(2rem, 8vw, 3.5rem);
     line-height: 1.4;
     white-space: pre-line;
     margin-block: 0.5rem 1rem;
 }
-.recharge-copy > p:not(.eyebrow) {
+.recharge-copy > p {
     color: #b7c0ce;
     max-inline-size: 28rem;
 }
 .recharge-copy .download-button {
     margin-block: 1.25rem 0.6rem;
-}
-.recharge-note {
-    font-size: 0.875rem;
 }
 .recharge-art {
     grid-row: 1;

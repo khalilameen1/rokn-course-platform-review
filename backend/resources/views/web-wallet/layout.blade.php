@@ -29,7 +29,11 @@
             @else
                 <span class="avatar avatar-letter" aria-hidden="true">{{ mb_substr($student->name ?: 'ركن', 0, 1) }}</span>
             @endif
-            <div class="account-name"><strong>{{ $student->name ?: 'حسابك في ركن' }}</strong><small dir="auto">{{ $student->email }}</small></div>
+            <div class="account-name">
+                <strong>{{ $student->name ?: 'حسابك في ركن' }}</strong>
+                <small dir="auto">{{ $student->email }}</small>
+                <small class="account-uid"><bdi>UID: {{ $student->getKey() }}</bdi></small>
+            </div>
             <div class="balance"><small>رصيدك</small><strong>{{ number_format($balance) }} <span>عملة</span></strong></div>
         </section>
     @endif

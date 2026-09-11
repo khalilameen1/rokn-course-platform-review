@@ -32,7 +32,6 @@ foreach (['ar', 'en'] as $locale) {
         'locale' => $locale,
         // Loopback-only download of the owner's existing internal test build.
         'downloadChannels' => ['direct' => 'http://127.0.0.1:4178/downloads/rokn-internal-test.apk'],
-        'previewInternalApk' => true,
         'welcomeCoins' => 20,
         'directDiscountPercent' => 10,
         'howPlatformWorksVideoUrl' => null,

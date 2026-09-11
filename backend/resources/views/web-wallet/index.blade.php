@@ -2,11 +2,10 @@
 
 @section('content')
     <h1>شحن رصيدك</h1>
-    <p class="intro">نفس حسابك ونفس رصيدك في ركن</p>
+    @if($discount > 0)<p class="intro">خصم {{ $discount }}٪ على باقات الشحن</p>@endif
     @if(!$student)
         <section class="panel login-panel" aria-labelledby="login-title">
-            <h2 id="login-title">سجّل بحسابك في التطبيق</h2>
-            <p class="muted">اختر نفس طريقة الدخول ليصلك الرصيد في حسابك</p>
+            <h2 id="login-title">سجّل بحسابك في ركن</h2>
             <div class="login-options">
                 @forelse($providers as $provider => $label)
                     <a class="button secondary" href="{{ route('web-wallet.auth.start', $provider) }}">المتابعة مع <bdi>{{ $label }}</bdi></a>
@@ -46,7 +45,6 @@
             </dl>
         </section>
         @if($student)
-            <section class="panel payment-method"><strong>الدفع عبر كاشير</strong><p class="muted">اختر وسيلة الدفع في الخطوة التالية</p></section>
             <form class="pay-bar" action="{{ route('web-wallet.pay') }}" method="post" data-checkout-form>
                 @csrf
                 <input type="hidden" name="expected_account" value="{{ $student->id }}">

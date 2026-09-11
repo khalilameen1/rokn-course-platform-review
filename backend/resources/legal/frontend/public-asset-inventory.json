@@ -442,12 +442,12 @@
     },
     {
       "path": "public/css/landing.css",
-      "sha256": "0ed68759e714cb87e9642f6d079336e80e76d12eb9d63925e3fe4da96247da65",
+      "sha256": "897e04fa9697171408b38bb5f3408b6edb70e0a77814dad9be6294fe3edf0203",
       "classification": "first_party"
     },
     {
       "path": "public/css/web-wallet.css",
-      "sha256": "0c2901ceb02c4fa2827fcd9bc79efab275e8a1f44732edd8177eb53ef4b7492c",
+      "sha256": "5aa8204772f5e3235b11d7a7356bc2a9ca78d548981847fc6199ed56855145b9",
       "classification": "first_party"
     },
     {
@@ -582,7 +582,7 @@
     },
     {
       "path": "public/js/landing.js",
-      "sha256": "144ef45caf65ee502c7c9a08cb198407b01e39eefe9c92435ea2899d8c0ec319",
+      "sha256": "247431524b9c5b3f88aad3c33a73d03e34be580233835305c4c32fa0a2f8c76c",
       "classification": "first_party"
     },
     {

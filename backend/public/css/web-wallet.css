@@ -124,6 +124,10 @@ bdi {
     display: block;
     overflow-wrap: anywhere;
 }
+.account-uid {
+    font-variant-numeric: tabular-nums;
+    margin-top: 0.2rem;
+}
 .balance {
     text-align: end;
     flex-shrink: 0;
@@ -258,9 +262,6 @@ dd {
 }
 .total dt {
     color: var(--text);
-}
-.payment-method p {
-    margin-top: 0.25rem;
 }
 .pay-bar {
     position: sticky;

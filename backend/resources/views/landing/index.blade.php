@@ -3,6 +3,7 @@
 @php
     $pageTitle = $setting?->{'seo_meta_title_'.$locale} ?: ($setting?->{'site_name_'.$locale} ?: 'Rokn');
     $hasDownloads = collect($downloadChannels ?? [])->filter()->isNotEmpty();
+    $hasDirectDiscount = ($directDiscountPercent ?? 0) > 0;
     $headline = $designSetting->exists && filled($designSetting->{'slogan_1_'.$locale})
         ? $designSetting->{'slogan_1_'.$locale}
         : __('landing.hero_title');
@@ -46,15 +47,13 @@
     <section class="recharge-section" aria-labelledby="recharge-title">
         <div class="landing-container recharge-panel">
             <div class="recharge-copy">
-                <p class="eyebrow">{{ __('landing.recharge_label') }}</p>
-                <h2 id="recharge-title">{{ __('landing.recharge_title') }}</h2>
-                <p>{{ __('landing.recharge_description') }}</p>
+                <h2 id="recharge-title">{{ __($hasDirectDiscount ? 'landing.recharge_title' : 'landing.recharge_action') }}</h2>
+                @if($hasDirectDiscount)<p>{{ __('landing.recharge_description') }}</p>@endif
                 <a class="download-button" href="{{ route('web-wallet.index') }}">{{ __('landing.recharge_action') }}</a>
-                <p class="recharge-note">{{ __('landing.recharge_note') }}</p>
             </div>
             <div class="recharge-art">
                 <img src="{{ asset('images/rokn-coin-minted.png') }}" alt="" width="160" height="160" loading="lazy">
-                @if(($directDiscountPercent ?? 0) > 0)
+                @if($hasDirectDiscount)
                     <p><strong>{{ rtrim(rtrim(number_format($directDiscountPercent, 2, '.', ''), '0'), '.') }}<span>%</span></strong>
                     <span>{{ __('landing.recharge_saving') }}</span></p>
                 @endif

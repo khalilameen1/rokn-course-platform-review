@@ -60,7 +60,7 @@ final class WebWalletTest extends TestCase
 
     public function test_guest_sees_social_sign_in_but_cannot_initiate_payment(): void
     {
-        $this->get('/recharge')->assertOk()->assertSee('سجّل بحسابك في التطبيق')
+        $this->get('/recharge')->assertOk()->assertSee('سجّل بحسابك في ركن')->assertDontSee('UID:')
             ->assertDontSee('name="idempotency_key"', false)->assertHeader('Referrer-Policy', 'no-referrer');
         $this->post('/recharge/checkout', $this->terms())->assertRedirect('/recharge');
         $this->assertDatabaseCount('orders', 0);
@@ -73,7 +73,7 @@ final class WebWalletTest extends TestCase
         Package::create(['name_ar' => 'باقة مخفية', 'name_en' => 'Hidden package', 'price' => 50, 'coins' => 200,
             'is_active' => false, 'direct_enabled' => true]);
         $response = $this->actingAs($this->student, 'student')->get('/recharge');
-        $response->assertOk()->assertSee('90.00')->assertSee('500')
+        $response->assertOk()->assertSee('90.00')->assertSee('500')->assertSee('UID: '.$this->student->id)
             ->assertDontSee('متجر فقط')->assertDontSee('باقة مخفية');
         self::assertStringContainsString('no-store', $response->headers->get('Cache-Control'));
     }
@@ -81,7 +81,7 @@ final class WebWalletTest extends TestCase
     public function test_dashboard_login_is_not_a_student_checkout_session(): void
     {
         $this->student->forceFill(['role' => 'admin'])->save();
-        $this->actingAs($this->student, 'web')->get('/recharge')->assertSee('سجّل بحسابك في التطبيق');
+        $this->actingAs($this->student, 'web')->get('/recharge')->assertSee('سجّل بحسابك في ركن');
         $this->post('/recharge/checkout', $this->terms())->assertRedirect('/recharge');
         $this->assertAuthenticatedAs($this->student, 'web');
         $this->assertDatabaseCount('orders', 0);
@@ -126,12 +126,26 @@ final class WebWalletTest extends TestCase
 
     public function test_stale_account_form_and_stale_price_do_not_create_an_order(): void
     {
-        $this->actingAs($this->student, 'student');
-        $this->post('/recharge/checkout', [...$this->terms(), 'expected_account' => $this->student->id + 1])
+        $originalForm = $this->terms();
+        $other = User::forceCreate(['email' => 'switched@example.test', 'role' => 'client', 'active' => true]);
+        $this->actingAs($other, 'student')->post('/recharge/checkout', $originalForm)
             ->assertRedirect('/recharge')->assertSessionHas('error');
+        $this->actingAs($this->student, 'student');
         $this->post('/recharge/checkout', [...$this->terms(), 'expected_amount' => 1])
             ->assertRedirect()->assertSessionHas('error');
         $this->assertDatabaseCount('orders', 0);
+    }
+
+    public function test_submitted_uid_cannot_change_the_account_receiving_the_topup(): void
+    {
+        $other = User::forceCreate(['email' => 'recipient@example.test', 'role' => 'client', 'active' => true]);
+        $this->actingAs($this->student, 'student')->post('/recharge/checkout', [
+            ...$this->terms(), 'user_id' => $other->id, 'uid' => $other->id,
+        ])->assertStatus(303);
+
+        $this->assertDatabaseCount('orders', 1);
+        $this->assertDatabaseHas('orders', ['user_id' => $this->student->id, 'package_coins' => 500]);
+        $this->assertDatabaseMissing('orders', ['user_id' => $other->id]);
     }
 
     public function test_disaster_recovery_blocks_website_checkout_too(): void
@@ -170,6 +184,7 @@ final class WebWalletTest extends TestCase
         foreach ([Order::STATUS_CANCELLED, Order::STATUS_APPROVED] as $status) {
             $order->update(['status' => $status, 'financial_status' => Order::FINANCIAL_REVIEW_REQUIRED]);
             $this->get('/recharge/orders/'.$order->order_ref)->assertOk()
+                ->assertSee('UID: '.$this->student->id)
                 ->assertSee('data-payment-receipt', false)->assertSee('تحديث حالة الدفع')
                 ->assertDontSee('data-unconfirmed-actions', false);
         }

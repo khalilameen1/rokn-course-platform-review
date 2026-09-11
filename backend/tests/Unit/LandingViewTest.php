@@ -21,12 +21,16 @@ final class LandingViewTest extends TestCase
             self::assertSame(4, substr_count($html, 'class="store-btn" aria-disabled="true"'));
             self::assertStringContainsString('images/landing/app-store.svg', $html);
             self::assertStringContainsString('images/landing/google-play.svg', $html);
-            foreach (['photography', 'design', 'drawing'] as $subject) {
-                self::assertStringContainsString('images/landing/'.$subject.'.webp', $html);
-            }
+            self::assertSame(1, substr_count($html, 'class="preview-player"'));
+            self::assertSame(1, substr_count($html, 'images/landing/photography.webp'));
+            self::assertStringNotContainsString('images/landing/design.webp', $html);
+            self::assertStringNotContainsString('images/landing/drawing.webp', $html);
             self::assertStringNotContainsString('rokn-home.webp', $html);
             self::assertStringNotContainsString('rokn-lesson.webp', $html);
-            self::assertStringContainsString('data-preview-scenes', $html);
+            self::assertStringNotContainsString('data-preview-scenes', $html);
+            self::assertStringNotContainsString('معاينة واجهة المشغّل', $html);
+            self::assertStringNotContainsString('عبر كاشير', $html);
+            self::assertStringNotContainsString('نفس الحساب', $html);
             self::assertStringContainsString(route('web-wallet.index'), $html);
             self::assertStringNotContainsString('class="welcome-gift"', $html);
             self::assertStringNotContainsString('<details class="download-alternatives"', $html);
@@ -56,6 +60,7 @@ final class LandingViewTest extends TestCase
             self::assertStringContainsString('href="'.e($urls[$channel]).'"', $html);
             self::assertStringContainsString('data-channel="'.$channel.'"', $html);
             self::assertSame(2, substr_count($html, 'aria-disabled="true"'));
+            self::assertStringContainsString('class="direct-saving"', $html);
         }
 
         $html = view('landing.partials.download-buttons', [
@@ -76,8 +81,8 @@ final class LandingViewTest extends TestCase
         $data['directDiscountPercent'] = 12.5;
         $html = view('landing.index', $data)->render();
 
-        self::assertStringContainsString('37 عملة ركن هديتك', $html);
-        self::assertStringContainsString('سجّل لأول مرة لاستلامها', $html);
+        self::assertStringContainsString('حمّل ركن واحصل على 37 عملة', $html);
+        self::assertStringContainsString('هدية عند تسجيلك الأول', $html);
         self::assertStringContainsString('12.5<span>%</span>', $html);
         self::assertStringContainsString('سكرول', $html);
         self::assertStringContainsString('واتعلّم', $html);
