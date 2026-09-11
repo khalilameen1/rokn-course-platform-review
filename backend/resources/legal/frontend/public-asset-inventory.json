@@ -442,7 +442,7 @@
     },
     {
       "path": "public/css/landing.css",
-      "sha256": "894c8021cc47e7df5c5bfd074a2e131dcc4b9ac1ca9559b6a0b579e1d632c73e",
+      "sha256": "d9f6a1742b14dde3a807d1c8137a5f622278966f98739c3aca3a7f23798a310f",
       "classification": "first_party"
     },
     {
@@ -551,6 +551,11 @@
     {
       "path": "public/images/rokn-coin-minted.png",
       "sha256": "943312eecd4b02a9ae57b20be19e2a4f7eaf1a7a62e2811da02bfc93fcf57eb5",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/images/rokn-symbol.png",
+      "sha256": "cc47ed51bb20e9851f5cc3499bf3d300388391ddf7b0afcc1bd61ca158df269d",
       "classification": "first_party"
     },
     {
