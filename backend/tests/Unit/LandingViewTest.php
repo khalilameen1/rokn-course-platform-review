@@ -45,6 +45,8 @@ final class LandingViewTest extends TestCase
             self::assertStringContainsString(route('privacy'), $html);
             self::assertStringNotContainsString(route('account-deletion.show'), $html);
             self::assertSame(1, substr_count($html, 'class="footer-nav"'));
+            self::assertSame(1, substr_count($html, 'images/rokn-wordmark.png'));
+            self::assertSame(1, substr_count($html, 'images/rokn-symbol.png'));
         }
     }
 
@@ -146,7 +148,8 @@ final class LandingViewTest extends TestCase
             foreach (['about', 'contact', 'privacy', 'terms', 'returns', 'account-deletion'] as $page) {
                 $html = view('static.'.$page, $data)->render();
                 self::assertSame(1, substr_count($html, '<main '), $page.' / '.$locale);
-                self::assertStringContainsString('images/rokn-wordmark.png', $html);
+                self::assertSame(1, substr_count($html, 'images/rokn-wordmark.png'));
+                self::assertSame(1, substr_count($html, 'images/rokn-symbol.png'));
                 self::assertStringContainsString(route('landing'), $html);
                 if ($page === 'contact') {
                     self::assertStringContainsString('href="rokn://contact"', $html);

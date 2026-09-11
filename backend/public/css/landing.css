@@ -529,13 +529,18 @@ summary {
 .app-landing .landing-footer {
     padding-block-end: calc(6rem + env(safe-area-inset-bottom));
 }
-.footer-brand {
+.footer-top {
     display: flex;
     align-items: center;
+    gap: 1.5rem;
+}
+.footer-brand {
+    display: inline-flex;
+    flex: 0 0 4rem;
 }
 .footer-brand img {
-    inline-size: 100px;
-    block-size: auto;
+    inline-size: 4rem;
+    block-size: 4rem;
 }
 .footer-columns {
     display: grid;
@@ -571,9 +576,9 @@ summary {
 }
 .footer-nav {
     display: flex;
+    flex: 1;
     flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
-    margin-block-start: 1.5rem;
 }
 .footer-nav a {
     display: inline-flex;
@@ -589,6 +594,18 @@ summary {
     border-block-start: 1px solid var(--line);
     font-size: 0.875rem;
     color: var(--rokn-text-muted);
+}
+@media (max-width: 600px) {
+    .footer-top {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    .footer-nav {
+        justify-content: center;
+    }
+    .footer-bottom {
+        text-align: center;
+    }
 }
 .page-content {
     max-inline-size: 800px;
