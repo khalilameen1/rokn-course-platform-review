@@ -17,6 +17,7 @@ import Settings from '../screens/Settings';
 import AboutUs from '../screens/Informations/AboutUs';
 import PrivacyPolicy from '../screens/Informations/PrivacyPolicy';
 import TermsOfUse from '../screens/Informations/TermsOfUse';
+import ReturnsPolicy from '../screens/Informations/ReturnsPolicy';
 import Notifications from '../screens/Notifications';
 import EditAccount from '../screens/EditAccount';
 import Feedback from '../screens/Feedback';
@@ -81,6 +82,7 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
       <Stack.Screen name="AboutUs" component={AboutUs} />
       <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicy} />
       <Stack.Screen name="TermsOfUse" component={TermsOfUse} />
+      <Stack.Screen name="ReturnsPolicy" component={ReturnsPolicy} />
       <Stack.Screen name="Settings" component={Settings} />
       <Stack.Group
         screenLayout={({children, navigation, route}) => (

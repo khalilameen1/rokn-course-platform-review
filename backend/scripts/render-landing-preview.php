@@ -41,6 +41,9 @@ foreach (['ar', 'en'] as $locale) {
     File::put($directory.'/contact-'.$locale.'.html', view('static.contact', $data + [
         'publicSettings' => ['support_contacts' => ['email' => 'support@rokn.app']],
     ])->render());
+    foreach (['about', 'privacy', 'terms', 'returns'] as $page) {
+        File::put($directory.'/'.$page.'-'.$locale.'.html', view('static.'.$page, $data)->render());
+    }
 }
 
 fwrite(STDOUT, "Rendered Arabic and English landing previews to storage/app/landing-preview.\n");

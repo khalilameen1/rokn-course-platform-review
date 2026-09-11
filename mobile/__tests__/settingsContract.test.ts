@@ -174,12 +174,12 @@ describe('settings screen contract', () => {
 
   it('routes privacy questions through the same in-app support journey', () => {
     const source = fs.readFileSync(
-      path.join(__dirname, '../src/screens/Informations/PrivacyPolicy.tsx'),
+      path.join(__dirname, '../src/screens/Informations/InformationPage.tsx'),
       'utf8',
     );
 
     expect(source).toContain(
-      "navigation.navigate('Feedback', {sourceScreen: 'privacy'})",
+      "navigation.navigate('Feedback', {sourceScreen: page})",
     );
     expect(source).not.toContain('openSupportWhatsApp');
   });

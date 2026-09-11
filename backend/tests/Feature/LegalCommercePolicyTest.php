@@ -20,8 +20,8 @@ final class LegalCommercePolicyTest extends TestCase
         );
 
         self::assertStringContainsString('شراء العملات نهائي بعد تأكيد الدفع', $terms);
-        self::assertStringContainsString('لا يجوز بيعه أو استبداله أو سحبه', $returns);
-        self::assertStringContainsString('يبدأ الطلب حصريًا عبر دعم ركن', $terms);
+        self::assertStringContainsString('لا يمكن بيعها أو تحويلها بين الحسابات أو استبدالها نقدًا', $returns);
+        self::assertStringContainsString('حقوقك القانونية وسياسة المتجر', $terms);
         self::assertStringContainsString('وسيلة الدفع الأصلية فقط', $returns);
     }
 
@@ -37,7 +37,7 @@ final class LegalCommercePolicyTest extends TestCase
         );
 
         self::assertStringContainsString('A coin purchase is final once payment is confirmed', $terms);
-        self::assertStringContainsString('does not limit any right that cannot legally be waived', $terms);
-        self::assertStringContainsString('transaction reversed by a bank or store is reconciled', $returns);
+        self::assertStringContainsString('Mandatory consumer rights remain', $terms);
+        self::assertStringContainsString('coins or access tied to a refunded transaction are adjusted', $returns);
     }
 }

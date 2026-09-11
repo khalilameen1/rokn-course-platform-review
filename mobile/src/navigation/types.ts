@@ -80,6 +80,7 @@ export type RootStackParamList = {
   AboutUs: undefined;
   PrivacyPolicy: undefined;
   TermsOfUse: undefined;
+  ReturnsPolicy: undefined;
   Notifications: undefined;
   Settings: undefined;
   DeviceSessions: undefined;

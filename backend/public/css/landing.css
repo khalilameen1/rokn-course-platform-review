@@ -650,6 +650,36 @@ summary {
 .policy-content ol {
     padding-inline-start: 1.5rem;
 }
+.legal-page {
+    max-inline-size: 800px;
+}
+.legal-page .policy-content {
+    padding: clamp(1.125rem, 4vw, 2.5rem);
+    line-height: 1.95;
+    overflow-wrap: anywhere;
+}
+.legal-page .policy-content h2 {
+    color: var(--rokn-text);
+    line-height: 1.65;
+}
+.legal-page .policy-content section + section {
+    margin-block-start: 2rem;
+}
+.policy-closing {
+    margin-block-start: 2rem;
+}
+.policy-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    padding-block: 1.25rem;
+}
+.policy-links a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    color: var(--rokn-primary);
+}
 .terms-header {
     display: flex;
     justify-content: space-between;

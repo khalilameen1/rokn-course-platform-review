@@ -1,124 +1,97 @@
 <?php
 
 return [
-    'title' => 'Privacy and Data Protection Policy',
-    'meta_description' => 'Privacy and data protection policy for the Rokn learning platform',
-    'heading' => 'Privacy and Data Protection Policy',
-    'brand' => 'Rokn',
-    'version_label' => 'Version:',
-    'version' => 'v2.0',
-    'intro_title' => 'Your data belongs to you',
-    'intro_text' => 'This policy explains what Rokn needs to operate your experience, why we use it, who may access it, and the choices available to you. It is a notice about processing, not open-ended consent to use your data for unrelated purposes.',
+    'title' => 'Privacy Policy',
+    'meta_description' => 'How Rokn uses your data and the choices you have',
+    'heading' => 'Privacy Policy',
+    'version' => '2026-09-11',
+    'intro_title' => 'Your data in Rokn',
+    'intro_text' => 'This policy covers the data used for your account, courses, payments and learning questions, what others can see, and what you can change or delete.',
     'sections' => [
         [
-            'title' => '1. Controller and scope',
-            'points' => [
-                'Rokn is operated by Rokn for Digital Production and Content – One Person Limited Liability Company, licensed to conduct information technology activities under ITIDA License No. 238.',
-                'This notice applies to rokn.app, Rokn mobile applications, learning, projects, portfolios, certificates, coins, and Rokn AI.',
-                'The ITIDA license concerns the company activity. It is not an accreditation of courses or certificates and does not replace data protection requirements.',
+            'title' => 'Who is responsible for your data?',
+            'body' => [
+                'The website and app are operated in Egypt by ROKN FOR DIGITAL PRODUCTION AND CONTENT, a one-person limited liability company.',
             ],
         ],
         [
-            'title' => '2. Data we process',
-            'points' => [
-                'Account data: the identifier, name, email, and photo made available by your sign-in provider, plus information you add yourself.',
-                'Learning data: courses, progress, last viewing position, saved items, projects, review results, and certificates.',
-                'Portfolio data: your chosen display name, professional title, work samples, descriptions, and links.',
-                'Coins and transaction data: paid and reward balances, earning and spending entries, payment reference, amount, and status.',
-                'Operational data: device type, operating system, app version, network address, notification token, crash reports, and security events.',
-                'Support data: messages and attachments you send when asking for help or submitting a complaint.',
+            'title' => 'Account and sign-in',
+            'body' => [
+                'Your sign-in provider gives us an account identifier and the information it makes available, such as your name, email and profile photo. We do not receive your password for that provider.',
+                'We also keep profile information you add or change. If you link WhatsApp, we keep the number, connection record and communication choices.',
+                'You can browse guest content without an account. Purchases and saving personal account data require sign-in.',
             ],
         ],
         [
-            'title' => '3. Why we use data',
-            'points' => [
-                'To create and secure accounts, deliver courses, save progress, review projects, and issue certificates.',
-                'To complete transactions, manage both coin balances, and resolve payment issues.',
-                'To operate portfolios, saved items, support, and notifications you choose.',
-                'To prevent fraud and reward abuse, improve reliability, investigate faults, and meet legal duties.',
-                'Depending on the activity, processing is based on delivering the service you requested, consent, a legal obligation, or a legitimate interest that does not override your rights.',
+            'title' => 'Learning, payments and support',
+            'body' => [
+                'We keep your courses, progress, playback position, saved items, project submissions and results, portfolio work and certificates so you can continue learning.',
+                'We record purchased coins, rewards, spending, payment references, amounts and statuses to credit your wallet, correct errors and prevent duplicate processing.',
+                'Your card details go to the payment provider. Rokn does not store the full card number or security code.',
+                'We keep support messages and attachments to follow up and resolve your request.',
             ],
         ],
         [
-            'title' => '4. Guest access and sign-in',
-            'points' => [
-                'You may browse areas available to guests. We ask you to sign in when a feature requires saving, syncing, or a transaction.',
-                'When you sign in with Google, Facebook, or TikTok, we receive the necessary data permitted by your account, such as an identifier, name, email, and photo.',
-                'Sign-in is also subject to the selected provider policy, and you can manage its permissions through that provider.',
+            'title' => 'Learning questions and project reviews',
+            'body' => [
+                'Learning questions and project reviews use artificial intelligence to produce responses and reports and assess your submissions.',
+                'We send OpenRouter and the model provider the question or project, necessary attachments, course context and relevant conversation excerpts.',
+                'We store messages, responses and review results to continue conversations, show outcomes and investigate failures. Model providers may process data according to their policies and service settings.',
+                'Send only what is needed for the question or project. Do not include passwords, payment credentials or another person’s private information without the right to do so.',
             ],
         ],
         [
-            'title' => '5. Learning progress and watch history',
-            'points' => [
-                'Learning progress saves your position, unlocks course sections, and records certificate requirements.',
-                'Watch history is a separate record that helps you return to viewed content and may support recommendations when enabled.',
-                'You can disable watch history or delete existing history. Deleting it does not erase course progress or your entitlement to content.',
+            'title' => 'What can other people see?',
+            'body' => [
+                'Anyone with your portfolio link or sharing code can view the name, details and work you place there. Rokn does not list portfolios in a public gallery.',
+                'Sharing work does not share your wallet, saved items or conversations. Email and phone details are not shown unless you include them in your work.',
+                'Depending on the certificate, its code opens verification or your portfolio. Certificate information can include your name, course and completion date.',
             ],
         ],
         [
-            'title' => '6. Coins and payments',
-            'points' => [
-                'We record paid coins and reward coins separately even when the wallet shows a combined total.',
-                'Kashier, Google Play, or the App Store processes payment depending on the app build. Rokn receives the transaction reference, product, amount, and status needed to credit the balance, prevent duplicates, and resolve issues.',
-                'Rokn does not store the full card number or security code. Payment details are entered in the payment provider environment and are subject to its policy.',
+            'title' => 'Operating and improving the service',
+            'body' => [
+                'We use device details, operating system, app version, network address, notification identifier and usage and error records to operate, protect and improve Rokn.',
+                'The website uses session files and local storage to maintain sign-in, language and page functionality.',
+                'Learning data supports progress and relevant suggestions. Transaction and reward records help prevent abuse and correct balances.',
+                'We process data to provide the service you request, meet legal duties and improve and protect operations. We request consent when the purpose requires it.',
             ],
         ],
         [
-            'title' => '7. Rokn AI',
-            'points' => [
-                'When you ask Rokn AI, we send the question and a short course context to OpenRouter and the selected model provider to generate a response.',
-                'Rokn does not build persistent memory from your chats or retrieve old chats in a new session.',
-                'We may retain an anonymized answer to an identical question for a short period to reduce model cost. This temporary cache is not linked to a conversation history in your account and is not shown as chat history.',
-                'OpenRouter or the model provider may process technical logs under its settings and policies. Do not submit health or financial data, passwords, business secrets, or data belonging to another person.',
+            'title' => 'Service providers',
+            'body' => [
+                'Necessary data is shared with sign-in providers, payment services such as Kashier or your app store, hosting and delivery services such as Bunny, notification and error-monitoring services, and OpenRouter and model providers for questions and reviews.',
+                'Team access depends on work responsibilities. Data may also be shared with competent authorities when legally required.',
+                'Some providers operate outside Egypt. Transfers are subject to applicable legal requirements.',
+                'We do not sell personal data. Adding work to your portfolio does not authorize us to use it in advertising without your permission.',
             ],
         ],
         [
-            'title' => '8. Sharing, hosting, and international processing',
-            'body' => 'We do not sell or rent personal data. We share only what is necessary with:',
-            'points' => [
-                'Sign-in providers; Kashier, Google Play, and the App Store for payments; Bunny for storage and delivery of video, images, and files; and OpenRouter and model providers for Rokn AI.',
-                'Operational, notification, and support providers, and the trainer or reviewer where necessary to review your project.',
-                'A competent authority where required by law or a valid court order.',
-                'Some providers may process data outside Egypt. Transfers are made to the extent necessary and subject to applicable legal requirements and safeguards.',
+            'title' => 'Notifications and offers',
+            'body' => [
+                'Learning updates, account notices and offers depend on your choices. You can manage notifications in settings or on your device.',
+                'If you choose to receive WhatsApp offers, we use your number for that purpose. You can change that choice or stop the offers later.',
             ],
         ],
         [
-            'title' => '9. Portfolios and certificates',
-            'points' => [
-                'You retain ownership of your work and give Rokn the limited operational permission needed to store and review portfolio work and display it to people who reach its share link or QR code.',
-                'A portfolio link is unlisted: Rokn does not place it in a public gallery or search results, but anyone with the link or certificate QR code can view its content.',
-                'We do not display your email or phone number on the share page unless you add it yourself to content or a link.',
+            'title' => 'Retention and deletion',
+            'body' => [
+                'Account, learning and portfolio data is retained while needed to provide the service. Retention of conversations and project files varies by purpose, after which data is deleted or de-identified when no longer needed.',
+                'We restrict data access and use connection and storage protections suited to the service.',
+                'You can update your details, request a copy or correction, and delete your account from settings. Contact us if you cannot sign in.',
+                'You can disable or clear watch history in settings without deleting course progress or purchased access.',
+                'Transaction records and information needed to protect rights or comply with the law may remain after deletion. Backup removal may take longer than account closure.',
             ],
         ],
         [
-            'title' => '10. Retention and security',
-            'points' => [
-                'We keep each data category only for as long as the service needs it or the law requires, then delete or anonymize it.',
-                'Limited records such as invoices, transaction evidence, or documented fraud prevention may remain for the statutory period and are not used for marketing.',
-                'We use appropriate technical and organizational controls to protect confidentiality, integrity, and access, but no digital service can promise absolute security.',
-            ],
-        ],
-        [
-            'title' => '11. Your choices, rights, and account deletion',
-            'points' => [
-                'You can update your data, manage notifications and recommendations, and disable or delete watch history.',
-                'Subject to applicable law, you may request access, correction, restriction, or a copy of your data, or withdraw optional consent.',
-                'You can start account deletion from Settings. When the request succeeds, the account is closed and its identity is removed. Technical cleanup of some provider-hosted files and backups may take a limited period.',
-                'We retain only what the law requires and may verify identity before acting.',
-                'If you cannot access your account, contact us through the Contact Us page or roknproduction@gmail.com.',
-            ],
-        ],
-        [
-            'title' => '12. Children, notifications, and updates',
-            'points' => [
-                'Anyone below the legal age to contract must use Rokn with guardian consent. We treat personal data relating to children as sensitive and do not knowingly collect it without the required safeguards.',
-                'You may disable learning and promotional notifications in the app or device settings. Essential security and transaction messages may still be sent where needed.',
-                'If our processing changes, we will update the date and provide notice of any material change.',
-                'For a privacy request, use Contact Us, rokn.app, or roknproduction@gmail.com.',
+            'title' => 'Age and updates',
+            'body' => [
+                'If you are below the legal age to contract, use Rokn with your guardian’s consent and supervision. Guardians can contact us about their child’s data.',
+                'We date policy changes and notify you about material changes in data use, requesting fresh consent where required.',
             ],
         ],
     ],
-    'last_updated' => 'Last updated: August 31, 2026',
-    'copyright' => '© 2026 Rokn for Digital Production and Content – One Person Limited Liability Company — All rights reserved',
-    'fallback' => 'The privacy policy could not be loaded. Please try again or contact support.',
+    'closing' => 'For a question or request about your data, use Contact Us.',
+    'last_updated' => 'Last updated 11 September 2026',
+    'contact_label' => 'Contact Us',
 ];

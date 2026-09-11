@@ -54,7 +54,7 @@ const freshRead = (kind: Discovery): (() => Promise<unknown>) => {
       read = require('../src/services/publicAppSettings').getPublicAppSettings;
     } else if (kind === 'content') {
       const content = require('../src/services/publicContent');
-      read = () => content.getManagedPublicContent('privacy');
+      read = () => content.getPublicContent('privacy');
     } else {
       read = require('../src/services/productFeatures').refreshProductFeatures;
     }
@@ -125,7 +125,7 @@ describe.each<Discovery>(['settings', 'content', 'features'])(
       const expected = kind === 'settings'
         ? {revision: 'current-settings'}
         : kind === 'content'
-        ? 'محتوى منشور'
+        ? {sections: [{body: ['محتوى منشور']}]}
         : {version: 'current-features'};
       await expect(result).resolves.toMatchObject({value: expected});
       expect(mockLoadSession).not.toHaveBeenCalled();

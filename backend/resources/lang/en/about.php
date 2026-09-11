@@ -2,37 +2,38 @@
 
 return [
     'title' => 'About Us',
-    'meta_description' => 'Learn about Rokn - an e-learning platform offering short video courses with practical tasks and certified credentials',
-
+    'meta_description' => 'Focused Arabic courses in short videos with practice, review and a portfolio of your work',
     'heading' => 'About Us',
-    'mission_title' => 'Our Mission',
-    'mission_text' => 'At Rokn, we empower youth, students, and fresh graduates to gain the practical skills the job market demands, through an innovative and engaging learning experience.',
-
-    'vision_title' => 'Our Vision',
-    'vision_text' => 'To be the leading e-learning platform that prepares Arab youth for the job market through practical, focused, and bite-sized educational content.',
-
-    'what_we_offer_title' => 'What We Offer',
-    'offer_1_title' => 'Short Video Courses',
-    'offer_1_text' => 'Educational content designed as focused, bite-sized videos that fit your lifestyle and deliver knowledge quickly and effectively.',
-    'offer_2_title' => 'Hands-On Tasks',
-    'offer_2_text' => 'We go beyond theory — every lesson includes practical assignments where you immediately apply what you learned to build real skills.',
-    'offer_3_title' => 'Verifiable Completion Certificates',
-    'offer_3_text' => 'Earn a Rokn-verified record of course completion that can be checked through its QR code.',
-
-    'audience_title' => 'Who Is This For?',
-    'audience_text' => 'Rokn is designed for youth, university students, and fresh graduates seeking skills that qualify them to enter and excel in the job market.',
-
-    'skills_title' => 'Learning Areas',
-    'skills' => [
-        'Graphic Design',
-        'Content Writing',
-        'Digital Marketing',
-        'Sales',
-        'Project Management',
-        'Photography & Editing',
-        'Social Media Marketing',
-        'UX Design',
-        'Entrepreneurship',
-        'Communication Skills',
+    'version' => '2026-09-11',
+    'intro_title' => 'Learning worth your time',
+    'intro_text' => 'Rokn is an Arabic learning platform from Egypt. Our courses cover a focused subject through connected short videos, without extending the running time just to add hours.',
+    'sections' => [
+        [
+            'title' => 'A full course in a reels format',
+            'body' => [
+                'Swipe through videos on your phone. Each course has a map of its units and lessons so you can see your progress and return to what you need.',
+            ],
+        ],
+        [
+            'title' => 'Learn, practice and ask',
+            'body' => [
+                'Practical courses include projects you complete to continue. Tiers with reports and learning questions let you review your work, understand mistakes and ask for explanations or help while practicing.',
+            ],
+        ],
+        [
+            'title' => 'Work that shows what you learned',
+            'body' => [
+                'Collect your work in a portfolio you can share with one link. Earn a completion certificate when you meet the course requirements and your tier includes it.',
+            ],
+        ],
+        [
+            'title' => 'Choose what you need',
+            'body' => [
+                'Try the available free content, then choose your course and tier. Benefits and prices are shown before purchase.',
+            ],
+        ],
     ],
+    'closing' => 'Rokn is operated in Egypt by ROKN FOR DIGITAL PRODUCTION AND CONTENT, a one-person limited liability company.',
+    'last_updated' => '',
+    'contact_label' => 'Contact Us',
 ];

@@ -75,7 +75,7 @@ class HomeEndpointTest extends ApiTestCase
             ->assertJsonPath('data.slug', 'privacy')
             ->assertJsonPath('data.locale', 'en')
             ->assertJsonPath('data.web_url', route('privacy'))
-            ->assertJsonPath('data.content.heading', 'Privacy and Data Protection Policy')
+            ->assertJsonPath('data.content.heading', 'Privacy Policy')
             ->assertJsonStructure(['data' => ['content' => ['sections']]]);
     }
 

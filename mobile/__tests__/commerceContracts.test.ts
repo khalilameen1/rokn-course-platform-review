@@ -47,7 +47,7 @@ describe('commerce API contracts', () => {
       'utf8',
     );
     const terms = fs.readFileSync(
-      path.resolve(__dirname, '../src/screens/Informations/TermsOfUse.tsx'),
+      path.resolve(__dirname, '../src/content/publicPages.ar.json'),
       'utf8',
     );
 

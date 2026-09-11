@@ -2,149 +2,84 @@
 
 return [
     'title' => 'Terms of Use',
-    'meta_description' => 'Terms of use for the Rokn website and learning application',
-    'heading' => 'Rokn Terms of Use',
-    'brand' => 'Rokn',
-    'version_label' => 'Version:',
-    'version' => 'v3.0',
-    'intro_title' => 'Before you begin',
-    'intro_text' => 'By using Rokn, creating an account, or completing a transaction, you agree to these terms. You may browse guest areas without an account, while some features require sign-in. We wrote these terms directly so that your rights and responsibilities are clear.',
+    'meta_description' => 'Account, course, coin and service terms for Rokn',
+    'heading' => 'Terms of Use',
+    'version' => '2026-09-11',
+    'intro_title' => 'Using Rokn',
+    'intro_text' => 'These terms apply to the Rokn website and app. They explain what the service provides and your responsibilities. Creating an account or completing a purchase means accepting these terms and the Privacy Policy.',
     'sections' => [
         [
-            'title' => '1. Company and platform',
-            'points' => [
-                'Rokn is operated by Rokn for Digital Production and Content – One Person Limited Liability Company, licensed to conduct information technology activities under ITIDA License No. 238.',
-                'Rokn is a digital learning platform offering courses made of connected short videos, projects, attachments, portfolios, certificates, saved items, viewing continuity, and Rokn AI.',
-                'The ITIDA license concerns the company activity and is not an accreditation of courses or certificates.',
+            'title' => 'Company and account',
+            'body' => [
+                'Rokn is operated in Egypt by ROKN FOR DIGITAL PRODUCTION AND CONTENT, a one-person limited liability company.',
+                'Try the guest content and register using the methods shown in the app. Provide accurate details and the name you want on your certificate.',
+                'Your account is personal. Do not sell or share it, and report unauthorized use. Users below the legal age to contract need guardian consent.',
             ],
         ],
         [
-            'title' => '2. Guests, accounts, and legal age',
-            'points' => [
-                'You may browse guest areas. We ask you to sign in when a feature requires saving, syncing, or a transaction, such as enrollment, project submission, or portfolio creation.',
-                'You may sign in with Google, Facebook, or TikTok where available. You are responsible for accurate account data, protecting access, and notifying us of unauthorized use.',
-                'Anyone below the legal age to contract must use Rokn with guardian consent and supervision.',
+            'title' => 'Your course and tier',
+            'body' => [
+                'The course page shows free content, tier prices and included viewing, projects, learning questions, reports and certificates.',
+                'Each course is purchased separately. Buying one does not unlock other courses or services outside your tier.',
+                'A passage project included in the course map must be passed to unlock what follows. Projects, review, reports and discussion vary by course and tier.',
+                'The benefits and price shown when you purchase apply to that purchase. Later price changes do not change what you paid or cancel an acquired right.',
+                'A scholarship includes what its offer states and belongs to the eligible account. It cannot be transferred.',
             ],
         ],
         [
-            'title' => '3. Courses and trainers',
-            'points' => [
-                'Each course page describes its content, free portions, requirements, and included features before enrollment.',
-                'Each trainer is contractually required to provide lawful, non-misleading material and hold the necessary rights. The trainer is responsible to Rokn and rights holders for material and information supplied.',
-                'Rokn remains responsible for obligations that cannot legally be excluded in its role as platform operator and service provider, including clear service information, operation, complaints, and a reasonable response to unlawful content.',
-                'A course does not guarantee employment, income, or a particular outcome. Results depend on practice, experience, and individual circumstances.',
+            'title' => 'Rokn coins',
+            'body' => [
+                'Coins are credit for use within Rokn, not money or an investment. They cannot be sold, transferred between accounts or cashed out.',
+                'Your wallet contains purchased coins and reward coins. The available contribution from each is shown before confirming a course purchase.',
+                'Rewards follow the task or offer terms and the course contribution limit. Purchased coins do not expire while the account and service remain active.',
+                'We may correct credit caused by error, duplication or abuse. We do not reduce legitimately purchased coins just because prices change.',
             ],
         ],
         [
-            'title' => '4. Content access and intellectual property',
-            'points' => [
-                'Unlocking a course gives your account a personal, non-transferable right to view it within Rokn and does not transfer ownership of its files.',
-                'You may not record, copy, download through an unavailable method, republish, sell, share accounts, or bypass content protections.',
-                'We may update course order or materials. If we remove a material part for legal or technical reasons, we will provide an appropriate remedy based on the circumstances and applicable law.',
-                'To report rights-infringing content, use Contact Us or roknproduction@gmail.com.',
+            'title' => 'Payments and refunds',
+            'body' => [
+                'Coin-pack prices and contents are shown before payment. Coins are credited to the purchasing account after confirmation from the payment provider.',
+                'A coin purchase is final once payment is confirmed. We do not cash out coins for a change of mind or non-use, subject to our refund policy, statutory rights and the purchasing store’s policy.',
+                'If payment was taken but credit did not arrive, or paid content cannot be used, contact us with the transaction reference so we can resolve it under the Refunds and Exchanges policy.',
             ],
         ],
         [
-            'title' => 'Education grants',
-            'points' => [
-                'An education partner may make one course available to an eligible account through a grant code. The grant opens the complete course content and projects at no charge.',
-                'Rokn AI and certificate issuance are not included. Purchasing a tier that includes these features is optional and does not remove free learning access or saved progress.',
-                'A grant is personal and non-transferable. The same account or normalized email may claim only one course grant. Support may correct a proven operational assignment error without creating an additional grant.',
+            'title' => 'Content and your work',
+            'body' => [
+                'Buying a course gives you viewing access within Rokn, not ownership of the content or permission to record, republish, sell it or bypass access restrictions.',
+                'You may download attachments offered by a course and use them for the stated purpose and under their license.',
+                'Your work remains yours. You authorize the storage and review needed for the service and display of portfolio work to anyone with its sharing link or code. We do not use your work in advertising without permission.',
+                'Upload only material you have the right to use. Do not publish another person’s private information without a right to do so. You can report content that infringes your rights.',
             ],
         ],
         [
-            'title' => '5. Projects, portfolios, and certificates',
-            'points' => [
-                'You retain ownership of your work and are responsible for having the right to use it and for not including confidential data or third-party rights.',
-                'You give Rokn limited permission to store and review work, operate your portfolio, and display it to people who reach its unlisted share link or QR code. We do not use your project in a standalone advertisement without clear permission.',
-                'Rokn does not list the portfolio in a public gallery or search results, but anyone with its share link or certificate QR code can view its content.',
-                'A Rokn certificate records completion of course requirements. It is not an academic degree or professional license unless the course page clearly identifies a separate accreditation and its scope.',
+            'title' => 'Learning questions and certificates',
+            'body' => [
+                'Learning questions and project reviews use AI within the benefits and limits shown for your tier. The Privacy Policy explains processing of messages and attachments.',
+                'Responses support learning and practice but may be wrong. They do not replace qualified advice for medical, legal or financial decisions.',
+                'A Rokn certificate records completion of course requirements, not a university degree or professional license. Any separate accreditation must be stated in the course description.',
             ],
         ],
         [
-            'title' => '6. Rokn Coins',
-            'points' => [
-                'Rokn Coins are closed-loop digital credit for use only within the platform. They are not cash, cryptocurrency, an investment, or interest-bearing value, and cannot be transferred between accounts or cashed out.',
-                'There are paid coins and reward coins. We record them separately even when the wallet shows a combined total.',
-                'A coin purchase is final once payment is confirmed. Coins do not create a right to cash and may not be sold, exchanged, or redeemed for money.',
-                'When a course is unlocked, reward coins are used first and paid coins second, and the system records the amount used from each balance.',
-                'A reward may be subject to conditions or an expiry shown before it is earned. We may cancel a reward proven to have been obtained through duplication or abuse without affecting correctly purchased credit.',
-                'Package, course, and reward values may change prospectively, but an existing balance is not reduced retroactively.',
+            'title' => 'Use and responsibility',
+            'body' => [
+                'Do not use Rokn to abuse others, impersonate someone, disrupt the service, steal content or manipulate coins, projects or certificates.',
+                'An account that violates these terms may be restricted. Contact us to appeal and request review.',
+                'We address faults and complaints. Access can be affected by your connection or device, maintenance or external services. When a fault on our side prevents paid use, the appropriate remedy follows the refund policy.',
+                'Learning outcomes depend on your practice. We do not promise a job or specific income. These terms do not exclude liability imposed by law.',
             ],
         ],
         [
-            'title' => '7. Payment and refunds',
-            'points' => [
-                'Coin purchases are processed by Kashier, Google Play, or the App Store depending on the app build, and the package amount is shown before confirmation.',
-                'We do not accept refunds for change of mind, non-use, or an unused balance. A confirmed purchase is final and coins are non-transferable, non-withdrawable internal credit.',
-                'If a duplicate charge occurs, a successful payment does not credit the coins, or an ongoing Rokn-side fault prevents use of the paid service and cannot be fixed or suitably replaced, the request must start with Rokn Support for correction or exceptional compensation.',
-                'Any exceptional cash refund approved by us or required by mandatory rules is settled to the original payment method. It never converts a coin balance into cash and does not limit any right that cannot legally be waived.',
-            ],
-        ],
-        [
-            'title' => '8. Rokn AI',
-            'points' => [
-                'Rokn AI is a learning aid and may provide an incomplete or inaccurate answer. It is not a substitute for a trainer or a licensed professional in a regulated field.',
-                'Your question and a short course context are sent to OpenRouter and the selected model provider to generate a response.',
-                'Rokn does not build persistent memory from chats or retrieve old chats in a new session. A provider may process technical logs under its settings and policies.',
-                'Rokn may keep an anonymized answer to an identical question for a short period to reduce model cost, without creating a conversation history linked to your account.',
-                'Do not submit sensitive information or business secrets, and do not treat a response as specialized medical, legal, or financial advice.',
-            ],
-        ],
-        [
-            'title' => '9. Acceptable use',
-            'points' => [
-                'Do not use Rokn for fraud, abuse, impersonation, harmful content, or unlawful conduct.',
-                'Do not disrupt or attack the service, automatically extract content, or manipulate projects, certificates, balances, or rewards.',
-                'Do not sell or share accounts, send spam, or violate the rights of others.',
-            ],
-        ],
-        [
-            'title' => '10. Restrictions and account deletion',
-            'points' => [
-                'We may restrict or suspend an account where there is a violation or security risk, with a way to appeal and without removing rights that cannot legally be waived.',
-                'You can start account deletion from Settings. Before confirmation, we explain the effect on progress, projects, portfolio, certificates, and balance.',
-                'When the request succeeds, the account is closed and its identity is removed. Technical cleanup of some provider-hosted files and backups may take a limited period. We retain only limited records required by law, such as invoices or evidence needed to establish a right or prevent documented fraud.',
-            ],
-        ],
-        [
-            'title' => '11. Responsibility',
-            'points' => [
-                'We use reasonable efforts to operate the service securely and reliably, but it may be affected by internet access, devices, maintenance, or third-party services outside our full control.',
-                'Learning content and Rokn AI do not guarantee a particular professional decision or outcome. Important information should be verified before reliance.',
-                'Nothing in these terms excludes or limits liability or a right where the law does not permit that exclusion or limitation. Mandatory consumer rights remain in force.',
-            ],
-        ],
-        [
-            'title' => '12. Privacy and external services',
-            'points' => [
-                'The Privacy Policy explains how we handle data and forms part of these terms.',
-                'We use Bunny to store and deliver video, images, and files; Kashier, Google Play, and the App Store for payments; and OpenRouter and model providers for Rokn AI.',
-                'External links and services are also subject to their respective terms and policies.',
-            ],
-        ],
-        [
-            'title' => '13. Law, updates, and contact',
-            'points' => [
-                'These terms are governed by the laws of the Arab Republic of Egypt without limiting mandatory consumer protection. Disputes are heard by the legally competent authorities and courts.',
-                'We may update these terms when the service or law changes. We will update the date and notify you of material changes. No amendment retroactively removes a right properly acquired.',
-                'For an inquiry or complaint, use Contact Us, rokn.app, or roknproduction@gmail.com.',
+            'title' => 'Deletion and changes',
+            'body' => [
+                'Request account deletion in settings. The confirmation screen explains its effect on data, courses and credit. Deletion is not a refund request.',
+                'We may update content or the service. Material withdrawal of paid content is addressed through access, an alternative or an applicable refund.',
+                'We date terms updates and notify you of material changes. A later amendment does not cancel a right already acquired.',
+                'Egyptian law applies. Mandatory consumer rights remain, and disputes may be referred to the competent authorities.',
             ],
         ],
     ],
-    'final_acknowledgement' => 'By using Rokn, creating an account, or completing a transaction, you confirm that you have read, understood, and accepted these terms.',
-    'last_updated' => 'Last updated: August 31, 2026',
-    'copyright' => '© 2026 Rokn for Digital Production and Content – One Person Limited Liability Company — All rights reserved',
-
-    // Backward compatibility for older view structure.
-    'general_title' => 'General Terms',
-    'general_text' => 'Please review the detailed and updated clauses on this page.',
-    'user_responsibilities_title' => 'User Responsibilities',
-    'user_responsibilities_text' => 'Use your account lawfully, respect third-party rights, and do not disrupt or manipulate the service.',
-    'intellectual_property_title' => 'Intellectual Property',
-    'intellectual_property_text' => 'Course access is a personal viewing right within Rokn and does not permit copying or republication.',
-    'liability_title' => 'Responsibility',
-    'liability_text' => 'Nothing excludes a right or responsibility where exclusion or limitation is not permitted by law.',
-    'governing_law_title' => 'Governing Law',
-    'governing_law_text' => 'These terms are governed by Egyptian law while mandatory consumer rights remain in force.',
+    'closing' => 'For questions or complaints, use Contact Us.',
+    'last_updated' => 'Last updated 11 September 2026',
+    'contact_label' => 'Contact Us',
 ];
