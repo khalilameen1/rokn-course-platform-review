@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => "Focused courses delivered as reels\nFull explanations without wasted time",
+    'hero_description' => 'Not a minute of filler',
     'hero_title' => 'Scroll and learn',
     'welcome_title' => ':coins welcome coins at sign-up',
     'recharge_action' => 'Top up',

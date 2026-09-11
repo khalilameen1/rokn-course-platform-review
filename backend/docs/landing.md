@@ -47,8 +47,7 @@ The wordmark is unchanged. The app icon is a 128-pixel WebP copy of the existing
 brand image rather than the 743 KB original. Store badge provenance is in
 `resources/legal/frontend/STORE-BADGES.md`.
 
-The page pairs “سكرول واتعلّم” with a complete focused course delivered as reels:
-"كورسات متخصصة في شكل ريلز / شرح كامل من غير وقت ضايع". The format removes
+The page pairs “سكرول واتعلّم” with the approved promise “مفيش دقيقة حشو”. The format removes
 wasted viewing time, not necessary explanation or the time needed to learn a skill.
 Marketing copy uses concise, natural Egyptian Arabic rather than translated
 English phrasing. The direct-download badge says only “خصم 10%” with the actual

@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => "كورسات متخصصة في شكل ريلز\nشرح كامل من غير وقت ضايع",
+    'hero_description' => 'مفيش دقيقة حشو',
     'hero_title' => 'سكرول واتعلّم',
     'welcome_title' => ':coins عملة هدية لأول تسجيل',
     'recharge_action' => 'شحن الرصيد',
