@@ -245,19 +245,18 @@ summary {
 .preview-scene figcaption {
     position: absolute;
     inset: auto 0 0;
-    padding: 3rem 4.6rem 2rem 1rem;
+    padding: 3rem 1rem 2rem;
     background: linear-gradient(transparent, #060910ee);
     text-align: start;
     pointer-events: none;
 }
-.preview-scene figcaption span {
-    font-size: 0.875rem;
-    color: #dde5ef;
-}
 .preview-scene figcaption strong {
     display: block;
-    font-size: 1.125rem;
+    font-size: 1rem;
     line-height: 1.6;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 .player-chrome {
     position: absolute;
@@ -289,7 +288,7 @@ summary {
 .player-tools {
     position: absolute;
     right: 0.6rem;
-    bottom: 2.5rem;
+    bottom: 4.25rem;
     display: grid;
     gap: 0.95rem;
     text-align: center;

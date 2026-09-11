@@ -4,7 +4,6 @@
             <img src="{{ asset('images/landing/photography.webp') }}" width="432" height="768"
                  fetchpriority="high" alt="{{ __('landing.subject_photography_alt') }}">
             <figcaption>
-                <span>{{ __('landing.subject_photography') }}</span>
                 <strong>{{ __('landing.reel_photography') }}</strong>
             </figcaption>
         </figure>

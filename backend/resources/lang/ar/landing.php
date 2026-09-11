@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => 'كورسات دقيقة دقيقة',
+    'hero_description' => 'كورساتنا دقيقة دقيقة',
     'hero_title' => 'سكرول واتعلّم',
     'welcome_title' => ':coins عملة هدية لأول تسجيل',
     'recharge_action' => 'شحن الرصيد',
@@ -12,7 +12,7 @@ return [
     'player_ask' => 'اسأل',
     'player_save' => 'احفظ',
     'player_index' => 'الفهرس',
-    'reel_photography' => 'الضوء يصنع الصورة',
+    'reel_photography' => 'الإضاءة تصنع الصورة',
     'subjects_label' => 'مجالات التعلّم',
     'subject_photography' => 'التصوير',
     'subject_design' => 'التصميم',

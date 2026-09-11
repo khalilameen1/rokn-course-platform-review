@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => 'Courses one minute at a time',
+    'hero_description' => 'Our courses one minute at a time',
     'hero_title' => 'Scroll and learn',
     'welcome_title' => ':coins welcome coins at sign-up',
     'recharge_action' => 'Top up',
@@ -12,7 +12,7 @@ return [
     'player_ask' => 'Ask',
     'player_save' => 'Save',
     'player_index' => 'Contents',
-    'reel_photography' => 'Light makes the photograph',
+    'reel_photography' => 'Lighting the shot',
     'subjects_label' => 'Learning subjects',
     'subject_photography' => 'Photography',
     'subject_design' => 'Design',
