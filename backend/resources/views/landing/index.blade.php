@@ -39,8 +39,8 @@
 
     <section class="learning-section" aria-label="{{ __('landing.learning_label') }}">
         <ul class="landing-container learning-points">
-            @foreach(['ask', 'practice', 'portfolio'] as $feature)
-                <li>{{ __('landing.'.$feature.'_title') }}</li>
+            @foreach(__('landing.learning_benefits') as $benefit)
+                <li>{{ $benefit }}</li>
             @endforeach
         </ul>
     </section>
