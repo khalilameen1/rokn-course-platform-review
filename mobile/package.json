@@ -1,6 +1,6 @@
 {
   "name": "Rokn",
-  "version": "1.0.54",
+  "version": "1.0.55",
   "private": true,
   "main": "index.js",
   "packageManager": "npm@10.9.3",
