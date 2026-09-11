@@ -38,7 +38,7 @@
                         <span>{{ __('landing.welcome_description') }}</span></span>
                     </p>
                 @endif
-                    @include('landing.partials.download-buttons')
+                @include('landing.partials.download-buttons')
             </div>
         </div>
     </section>

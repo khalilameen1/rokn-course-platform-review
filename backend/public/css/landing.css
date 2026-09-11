@@ -115,6 +115,7 @@ summary {
 .landing-navbar .landing-container {
     justify-content: space-between;
     gap: 1rem;
+    flex-wrap: wrap;
 }
 .navbar-left {
     gap: 2rem;
@@ -232,6 +233,8 @@ summary {
     box-shadow: 0 20px 45px #0008;
 }
 .preview-scenes {
+    position: absolute;
+    inset: 0;
     block-size: 100%;
     overflow-y: auto;
     overscroll-behavior: contain;
