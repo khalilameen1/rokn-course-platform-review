@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => 'Focused courses without the filler',
+    'hero_description' => "Focused courses delivered as reels\nFull explanations without wasted time",
     'hero_title' => 'Scroll and learn',
     'welcome_title' => ':coins welcome coins at sign-up',
     'recharge_action' => 'Top up',
@@ -23,9 +23,10 @@ return [
     'subject_drawing_alt' => 'Editorial illustration of drawing with a stylus and pen display',
     'learning_label' => 'Inside Rokn',
     'learning_benefits' => [
-        'explanations' => 'Ask when you get stuck',
-        'feedback' => 'Build projects and get feedback',
-        'portfolio' => 'Build and share your portfolio',
+        'explanations' => 'Ask until it makes sense',
+        'projects' => 'Complete the project to move forward',
+        'feedback' => 'A report after each project to help you improve',
+        'portfolio' => "Not just a paper certificate\nA portfolio of the work you leave with",
     ],
     'download_rokn' => 'Get Rokn',
     'download_on' => 'Download on',

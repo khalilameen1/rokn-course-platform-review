@@ -89,7 +89,11 @@ final class LandingViewTest extends TestCase
         self::assertStringContainsString('37 عملة هدية لأول تسجيل', $html);
         self::assertSame(1, substr_count($html, 'class="welcome-gift"'));
         self::assertGreaterThan(strpos($html, 'images/landing/google-play.svg'), strpos($html, 'class="welcome-gift"'));
-        self::assertStringContainsString('كورسات متخصصة من غير حشو', $html);
+        self::assertStringContainsString('كورسات متخصصة في شكل ريلز', $html);
+        self::assertStringContainsString('شرح كامل من غير وقت ضايع', $html);
+        self::assertCount(4, __('landing.learning_benefits'));
+        self::assertStringContainsString('نفّذ المشاريع للعبور', $html);
+        self::assertStringContainsString('تقرير بعد كل مشروع لتحسين مستواك', $html);
         self::assertStringContainsString('خصم 12.5%', $html);
         self::assertStringNotContainsString('على الشحن', $html);
         self::assertStringContainsString('اشحن بخصم 12.5٪', $html);

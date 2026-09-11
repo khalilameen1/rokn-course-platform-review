@@ -485,6 +485,9 @@ summary {
     stroke-linecap: round;
     stroke-linejoin: round;
 }
+.learning-points span {
+    white-space: pre-line;
+}
 .learning-points svg[viewBox="0 0 39 39"] {
     stroke-width: 2.6;
 }
@@ -766,7 +769,7 @@ summary {
         gap: 0.875rem;
     }
     .learning-points {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         max-inline-size: 1040px;
     }
     .learning-points li {
@@ -803,9 +806,6 @@ summary {
     }
     .navbar-actions {
         gap: 0.65rem;
-    }
-    .recharge-nav {
-        padding-inline: 0.75rem;
     }
     .download-dock > img {
         display: none;

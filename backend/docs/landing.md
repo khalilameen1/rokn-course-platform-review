@@ -47,15 +47,19 @@ The wordmark is unchanged. The app icon is a 128-pixel WebP copy of the existing
 brand image rather than the 743 KB original. Store badge provenance is in
 `resources/legal/frontend/STORE-BADGES.md`.
 
-The page pairs “سكرول واتعلّم” with “كورسات متخصصة من غير حشو”.
+The page pairs “سكرول واتعلّم” with a complete focused course delivered as reels:
+"كورسات متخصصة في شكل ريلز / شرح كامل من غير وقت ضايع". The format removes
+wasted viewing time, not necessary explanation or the time needed to learn a skill.
 Marketing copy uses concise, natural Egyptian Arabic rather than translated
 English phrasing. The direct-download badge says only “خصم 10%” with the actual
 configured percentage. Saved dashboard slogans continue
 to override the defaults and should be reviewed at cutover.
 The welcome gift applies to all download channels; the direct-download discount
 has its own badge. Both amounts come from their existing server-owned rules.
-The three supporting benefits describe contextual explanations, project feedback
-and presenting completed work. Reporting, follow-up and project export remain
+The four supporting benefits separate questions, project gates, improvement reports
+and a portfolio alongside the certificate. The portfolio line describes practical
+course outcomes, not replacement or removal of the actual certificate. Reporting,
+follow-up and project export remain
 subject to the selected course tier; the page does not promise human reviews,
 unlimited messages, mastery or employment. The app's plan picker explains access.
 The preview CI job renders the actual Blade page with empty prelaunch settings

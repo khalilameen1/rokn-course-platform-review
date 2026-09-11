@@ -48,6 +48,9 @@
                         @case('feedback')
                             <svg viewBox="0 0 39 39" aria-hidden="true"><path d="M6.38477 17.5588H25.5397M23.9435 23.9438L27.1359 27.1363L33.5209 20.7513M6.38477 11.1738H25.5397M6.38477 23.9438H19.1547"/></svg>
                             @break
+                        @case('projects')
+                            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m7 12 3 3 7-7"/></svg>
+                            @break
                         @case('portfolio')
                             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="3"/><path d="M9 5V3h6v2M3 11h18M10 14h4"/></svg>
                             @break

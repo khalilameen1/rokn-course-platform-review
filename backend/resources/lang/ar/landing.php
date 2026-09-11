@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => 'كورسات متخصصة من غير حشو',
+    'hero_description' => "كورسات متخصصة في شكل ريلز\nشرح كامل من غير وقت ضايع",
     'hero_title' => 'سكرول واتعلّم',
     'welcome_title' => ':coins عملة هدية لأول تسجيل',
     'recharge_action' => 'شحن الرصيد',
@@ -23,9 +23,10 @@ return [
     'subject_drawing_alt' => 'صورة تعبيرية للرسم باستخدام قلم ولوح رقمي',
     'learning_label' => 'داخل ركن',
     'learning_benefits' => [
-        'explanations' => 'اسأل عن اللي وقف معاك',
-        'feedback' => 'طبّق بمشاريع وخد تقييم لشغلك',
-        'portfolio' => 'اجمع شغلك في بورتفوليو وشاركه',
+        'explanations' => 'اسأل لحد ما تفهم',
+        'projects' => 'نفّذ المشاريع للعبور',
+        'feedback' => 'تقرير بعد كل مشروع لتحسين مستواك',
+        'portfolio' => "شهادتنا مش مجرد ورقة\nشهادتنا هي البورتفوليو اللي هتخرج بيه",
     ],
     'download_rokn' => 'حمّل ركن',
     'download_on' => 'حمّل من',
