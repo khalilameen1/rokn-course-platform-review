@@ -24,9 +24,9 @@ return [
     'learning_label' => 'Inside Rokn',
     'learning_benefits' => [
         'explanations' => 'Ask until it makes sense',
-        'projects' => 'Complete the project to move forward',
-        'feedback' => 'A report after each project to help you improve',
-        'portfolio' => "Not just a paper certificate\nA portfolio of the work you leave with",
+        'projects' => 'Apply it to move forward',
+        'feedback' => 'Spot mistakes and fix them',
+        'portfolio' => 'A portfolio not just a certificate',
     ],
     'download_rokn' => 'Get Rokn',
     'download_on' => 'Download on',

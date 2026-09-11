@@ -24,9 +24,9 @@ return [
     'learning_label' => 'داخل ركن',
     'learning_benefits' => [
         'explanations' => 'اسأل لحد ما تفهم',
-        'projects' => 'نفّذ المشاريع للعبور',
-        'feedback' => 'تقرير بعد كل مشروع لتحسين مستواك',
-        'portfolio' => "شهادتنا مش مجرد ورقة\nشهادتنا هي البورتفوليو اللي هتخرج بيه",
+        'projects' => 'طبّق عشان تعدّي',
+        'feedback' => 'اعرف غلطك وصلّحه',
+        'portfolio' => 'بورتفوليو مش مجرد شهادة',
     ],
     'download_rokn' => 'حمّل ركن',
     'download_on' => 'حمّل من',
