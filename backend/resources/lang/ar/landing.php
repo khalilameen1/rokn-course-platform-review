@@ -3,9 +3,9 @@
 return [
 
     // Landing page
-    'hero_description' => 'كورسات بمقاطع قصيرة',
+    'hero_description' => 'كورسات دقيقة دقيقة',
     'hero_title' => 'سكرول واتعلّم',
-    'welcome_title' => ':coins عملة هدية عند أول تسجيل',
+    'welcome_title' => ':coins عملة هدية لأول تسجيل',
     'recharge_action' => 'شحن الرصيد',
     'recharge_title' => 'اشحن بخصم :discount٪',
     'direct_pending' => 'ستتوفر نسخة Android المباشرة هنا',

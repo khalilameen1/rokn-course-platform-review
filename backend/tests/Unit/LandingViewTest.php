@@ -84,7 +84,10 @@ final class LandingViewTest extends TestCase
         $data['directDiscountPercent'] = 12.5;
         $html = view('landing.index', $data)->render();
 
-        self::assertStringContainsString('37 عملة هدية عند أول تسجيل', $html);
+        self::assertStringContainsString('37 عملة هدية لأول تسجيل', $html);
+        self::assertSame(1, substr_count($html, 'class="welcome-gift"'));
+        self::assertGreaterThan(strpos($html, 'images/landing/google-play.svg'), strpos($html, 'class="welcome-gift"'));
+        self::assertStringContainsString('كورسات دقيقة دقيقة', $html);
         self::assertStringContainsString('اشحن بخصم 12.5٪', $html);
         self::assertStringContainsString('سكرول', $html);
         self::assertStringContainsString('واتعلّم', $html);

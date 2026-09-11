@@ -3,7 +3,7 @@
 return [
 
     // Landing page
-    'hero_description' => 'Courses in short videos',
+    'hero_description' => 'Courses one minute at a time',
     'hero_title' => 'Scroll and learn',
     'welcome_title' => ':coins welcome coins at sign-up',
     'recharge_action' => 'Top up',

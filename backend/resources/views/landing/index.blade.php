@@ -32,12 +32,6 @@
             </div>
 
             <div id="download" class="hero-download">
-                @if(($welcomeCoins ?? 0) > 0)
-                    <p class="welcome-gift">
-                        <img src="{{ asset('images/rokn-coin-minted.png') }}" width="28" height="28" alt="">
-                        <strong>{{ __('landing.welcome_title', ['coins' => number_format($welcomeCoins)]) }}</strong>
-                    </p>
-                @endif
                 @include('landing.partials.download-buttons')
             </div>
         </div>

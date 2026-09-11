@@ -191,16 +191,21 @@ summary {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.5rem;
-    margin-block-end: 1rem;
-    text-align: start;
+    gap: 0.4rem;
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    margin: 1.2rem auto 0;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid #6a5430;
+    border-radius: 999px;
+    background: #211c13;
+    color: #f0cc84;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    text-align: center;
 }
 .welcome-gift img {
-    flex: 0 0 28px;
-}
-.welcome-gift strong {
-    color: #f0cc84;
-    font-size: 1rem;
+    flex: 0 0 24px;
 }
 .hero-visual {
     display: flex;
@@ -705,9 +710,6 @@ summary {
         grid-row: 3;
         grid-column: 1;
         text-align: start;
-    }
-    .welcome-gift {
-        justify-content: flex-start;
     }
     .hero-visual {
         grid-row: 1 / 4;

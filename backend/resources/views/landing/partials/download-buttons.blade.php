@@ -44,4 +44,10 @@
         <p class="release-notice">{{ __('landing.release_unavailable') }}</p>
     @endif
 
+    @if(($welcomeCoins ?? 0) > 0)
+        <p class="welcome-gift">
+            <img src="{{ asset('images/rokn-coin-minted.png') }}" width="24" height="24" alt="">
+            <strong>{{ __('landing.welcome_title', ['coins' => number_format($welcomeCoins)]) }}</strong>
+        </p>
+    @endif
 </div>
