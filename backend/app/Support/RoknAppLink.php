@@ -52,7 +52,7 @@ final class RoknAppLink
         }
 
         $path = rtrim($path, '/');
-        if (preg_match('#\A(home|wallet|profile)\z#i', $path, $match)) {
+        if (preg_match('#\A(home|wallet|profile|contact)\z#i', $path, $match)) {
             return 'rokn://' . strtolower($match[1]);
         }
         if (preg_match('#\Aprofile/(portfolio|certificates|saved)\z#i', $path, $match)) {

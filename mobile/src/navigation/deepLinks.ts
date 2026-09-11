@@ -5,7 +5,7 @@ export type RoknDestination =
       params?: {tab: 'portfolio' | 'certificates' | 'saved'};
     }
   | {name: 'Wallet'}
-  | {name: 'Feedback'; params: {caseId: string}}
+  | {name: 'Feedback'; params?: {caseId: string}}
   | {name: 'CourseDetails'; params: {courseId: string}}
   | {
       name: 'Reels';
@@ -160,6 +160,7 @@ export const parseRoknDestination = (
     return tab ? {name: 'Profile', params: {tab}} : {name: 'Profile'};
   }
   if (/^wallet\/?$/i.test(path)) return {name: 'Wallet'};
+  if (/^contact\/?$/i.test(path)) return {name: 'Feedback'};
   const support = path.match(/^support\/([^/]+)\/?$/i);
   if (support) {
     const caseId = safeSupportCaseId(support[1]);
@@ -177,7 +178,7 @@ export const roknDestinationKey = (destination: RoknDestination): string => {
     return `${destination.name}:${destination.params.courseId}`;
   }
   if (destination.name === 'Feedback') {
-    return `${destination.name}:${destination.params.caseId}`;
+    return `${destination.name}:${destination.params?.caseId || ''}`;
   }
   return [
     destination.name,

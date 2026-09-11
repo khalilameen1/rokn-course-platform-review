@@ -79,6 +79,7 @@
             <data android:path="/home" />
             <data android:path="/profile" />
             <data android:path="/wallet" />
+            <data android:path="/contact" />
             <data android:pathPrefix="/support/" />
             <data android:pathPrefix="/course/" />
         </intent-filter>
@@ -91,6 +92,7 @@
             <data android:path="/home" />
             <data android:path="/profile" />
             <data android:path="/wallet" />
+            <data android:path="/contact" />
             <data android:pathPrefix="/support/" />
             <data android:pathPrefix="/course/" />
         </intent-filter>

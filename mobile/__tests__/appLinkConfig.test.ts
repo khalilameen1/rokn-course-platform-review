@@ -4,7 +4,7 @@ import renderIntentFilters from '@expo/config-plugins/build/android/IntentFilter
 import appConfig from '../app.json';
 
 const hosts = ['rokn.app', 'www.rokn.app'];
-const exactPaths = ['/home', '/profile', '/wallet'];
+const exactPaths = ['/home', '/profile', '/wallet', '/contact'];
 const routePrefixes = ['/support/', '/course/'];
 const expectedData = (host: string) => [
   {scheme: 'https'},
@@ -86,6 +86,8 @@ describe('native app-link scope', () => {
     '/courses/42',
     '/coursesX',
     '/homepage',
+    '/contact-other',
+    '/contact/anything',
   ])('does not claim unrelated website path %s', pathname => {
     const items = appConfig.expo.android.intentFilters.flatMap(
       filter => filter.data,

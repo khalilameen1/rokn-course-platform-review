@@ -5,6 +5,22 @@ import {
 } from '../src/navigation/deepLinks';
 
 describe('Rokn deep links', () => {
+  it.each([
+    'rokn://contact',
+    'https://rokn.app/contact',
+    'https://www.rokn.app/contact',
+  ])('opens Contact without inventing a support case: %s', url => {
+    expect(parseRoknDestination(url)).toEqual({name: 'Feedback'});
+  });
+
+  it.each([
+    'https://other.example/contact',
+    'rokn://contact/anything',
+    'rokn://contact-other',
+  ])('rejects unsupported Contact destinations: %s', url => {
+    expect(parseRoknDestination(url)).toBeNull();
+  });
+
   it('opens only the canonical course link', () => {
     expect(parseRoknDestination('rokn://course/42')).toEqual({
       name: 'CourseDetails',

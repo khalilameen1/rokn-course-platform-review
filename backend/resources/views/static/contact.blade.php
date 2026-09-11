@@ -7,6 +7,7 @@
     <div class="page-content">
         <h1>{{ __('contact.heading') }}</h1>
         <p class="intro-text">{{ __('contact.intro') }}</p>
+        <a href="{{ \App\Support\RoknAppLink::normalize('/contact') }}" class="download-button">{{ __('contact.open_app') }}</a>
 
         @php
             $email = $publicSettings['support_contacts']['email'] ?? null;
@@ -59,8 +60,6 @@
                     @endif
                 </div>
             @endif
-        @else
-            <p class="empty-message">{{ __('contact.empty_message') }}</p>
         @endif
     </div>
 @endsection

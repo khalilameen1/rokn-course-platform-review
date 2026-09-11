@@ -101,6 +101,9 @@ export const roknLinking: LinkingOptions<RootStackParamList> = {
   getStateFromPath(path, options) {
     const destination = parseRoknDestination(path);
     if (!destination) return undefined;
+    if (destination.name === 'Feedback') {
+      return {index: 1, routes: [{name: 'Home'}, destination]};
+    }
     const normalizedPath =
       destination.name === 'Home'
         ? 'home'
@@ -110,8 +113,6 @@ export const roknLinking: LinkingOptions<RootStackParamList> = {
           }`
         : destination.name === 'Wallet'
         ? 'wallet'
-        : destination.name === 'Feedback'
-        ? `support/${destination.params.caseId}`
         : destination.name === 'CourseDetails'
         ? `course/${destination.params.courseId}`
         : destination.params.projectId

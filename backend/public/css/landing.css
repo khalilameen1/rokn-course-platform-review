@@ -148,12 +148,21 @@ summary {
     align-items: center;
     gap: 1rem;
 }
-.recharge-nav {
-    font-size: 0.875rem;
-    border: 1px solid #354054;
-    border-radius: 2rem;
-    padding: 0.5rem 1rem;
-    white-space: nowrap;
+.account-nav {
+    display: grid;
+    place-items: center;
+    inline-size: 44px;
+    block-size: 44px;
+    border-radius: 50%;
+    background: var(--rokn-light-bg);
+    color: var(--rokn-text-muted);
+}
+.account-nav:hover {
+    color: var(--rokn-text);
+}
+.account-nav svg {
+    inline-size: 26px;
+    block-size: 26px;
 }
 .hero-grid {
     display: grid;

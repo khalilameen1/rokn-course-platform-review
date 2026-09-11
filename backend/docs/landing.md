@@ -14,8 +14,14 @@ it is not a browser course player or a duplicate student account system.
   channel discount is used; this page does not introduce another pricing rule.
 - The mobile sticky action only targets a configured release for that device.
   Download links and the entire page remain usable without JavaScript.
-- The optional dashboard-controlled explainer video remains available. Legal and
-  contact pages keep the same routes and content.
+- The optional dashboard-controlled explainer video and legal routes remain available.
+- The header account icon links to the existing `/recharge` student session:
+  social sign-in for a guest and the account/balance for a signed-in student.
+  It does not use the staff guard or personalize the publicly cacheable landing.
+- `/contact` is an app link to the existing Feedback screen, without a case ID.
+  The web fallback keeps configured contact channels and an explicit “Open in Rokn”
+  action for browsers that retain same-domain links. Native association/configuration
+  and navigation must ship in the next app release before installed builds can use it.
 
 ## Images and editorial direction
 
@@ -41,8 +47,10 @@ The wordmark is unchanged. The app icon is a 128-pixel WebP copy of the existing
 brand image rather than the 743 KB original. Store badge provenance is in
 `resources/legal/frontend/STORE-BADGES.md`.
 
-The page uses the approved brand lines “سكرول واتعلّم” and “كورساتنا دقيقة دقيقة”.
-Other copy stays brief and uses plain Arabic. Saved dashboard slogans continue
+The page pairs “سكرول واتعلّم” with “كورسات متخصصة من غير حشو”.
+Marketing copy uses concise, natural Egyptian Arabic rather than translated
+English phrasing. The direct-download badge says only “خصم 10%” with the actual
+configured percentage. Saved dashboard slogans continue
 to override the defaults and should be reviewed at cutover.
 The welcome gift applies to all download channels; the direct-download discount
 has its own badge. Both amounts come from their existing server-owned rules.

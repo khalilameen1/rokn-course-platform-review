@@ -60,6 +60,7 @@ final class AppAssociationController extends Controller
                         '/home',
                         '/profile',
                         '/wallet',
+                        '/contact',
                         '/support/*',
                         '/course/*',
                     ],

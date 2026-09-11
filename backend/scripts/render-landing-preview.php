@@ -26,7 +26,7 @@ File::ensureDirectoryExists($directory);
 
 foreach (['ar', 'en'] as $locale) {
     $app->setLocale($locale);
-    $html = view('landing.index', [
+    $data = [
         'setting' => null,
         'designSetting' => new DesignSetting(['name_ar' => 'ركن', 'name_en' => 'Rokn']),
         'locale' => $locale,
@@ -35,9 +35,12 @@ foreach (['ar', 'en'] as $locale) {
         'welcomeCoins' => 20,
         'directDiscountPercent' => 10,
         'howPlatformWorksVideoUrl' => null,
-    ])->render();
+    ];
 
-    File::put($directory.'/index-'.$locale.'.html', $html);
+    File::put($directory.'/index-'.$locale.'.html', view('landing.index', $data)->render());
+    File::put($directory.'/contact-'.$locale.'.html', view('static.contact', $data + [
+        'publicSettings' => ['support_contacts' => ['email' => 'support@rokn.app']],
+    ])->render());
 }
 
 fwrite(STDOUT, "Rendered Arabic and English landing previews to storage/app/landing-preview.\n");

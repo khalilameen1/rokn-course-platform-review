@@ -34,6 +34,8 @@ final class LandingViewTest extends TestCase
             self::assertStringNotContainsString('عبر كاشير', $html);
             self::assertStringNotContainsString('نفس الحساب', $html);
             self::assertStringContainsString(route('web-wallet.index'), $html);
+            self::assertStringContainsString('class="account-nav"', $html);
+            self::assertStringNotContainsString('class="recharge-nav"', $html);
             self::assertStringNotContainsString('class="welcome-gift"', $html);
             self::assertStringNotContainsString('<details class="download-alternatives"', $html);
             self::assertStringNotContainsString('href="#"', $html);
@@ -87,7 +89,9 @@ final class LandingViewTest extends TestCase
         self::assertStringContainsString('37 عملة هدية لأول تسجيل', $html);
         self::assertSame(1, substr_count($html, 'class="welcome-gift"'));
         self::assertGreaterThan(strpos($html, 'images/landing/google-play.svg'), strpos($html, 'class="welcome-gift"'));
-        self::assertStringContainsString('كورساتنا دقيقة دقيقة', $html);
+        self::assertStringContainsString('كورسات متخصصة من غير حشو', $html);
+        self::assertStringContainsString('خصم 12.5%', $html);
+        self::assertStringNotContainsString('على الشحن', $html);
         self::assertStringContainsString('اشحن بخصم 12.5٪', $html);
         self::assertStringContainsString('سكرول', $html);
         self::assertStringContainsString('واتعلّم', $html);
@@ -137,6 +141,9 @@ final class LandingViewTest extends TestCase
                 self::assertSame(1, substr_count($html, '<main '), $page.' / '.$locale);
                 self::assertStringContainsString('images/rokn-wordmark.png', $html);
                 self::assertStringContainsString(route('landing'), $html);
+                if ($page === 'contact') {
+                    self::assertStringContainsString('href="rokn://contact"', $html);
+                }
             }
         }
     }
