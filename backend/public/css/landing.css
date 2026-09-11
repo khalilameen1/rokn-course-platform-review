@@ -531,6 +531,7 @@ summary {
 }
 .footer-top {
     display: flex;
+    direction: ltr;
     align-items: center;
     gap: 1.5rem;
 }
@@ -580,6 +581,9 @@ summary {
     flex-wrap: wrap;
     gap: 0.5rem 1.5rem;
 }
+[dir="rtl"] .footer-nav {
+    direction: rtl;
+}
 .footer-nav a {
     display: inline-flex;
     align-items: center;
@@ -598,7 +602,11 @@ summary {
 @media (max-width: 600px) {
     .footer-top {
         flex-direction: column;
+        align-items: stretch;
         gap: 0.5rem;
+    }
+    .footer-brand {
+        align-self: flex-start;
     }
     .footer-nav {
         justify-content: center;
