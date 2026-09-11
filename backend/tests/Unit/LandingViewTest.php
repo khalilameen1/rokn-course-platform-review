@@ -60,7 +60,8 @@ final class LandingViewTest extends TestCase
             self::assertStringContainsString('href="'.e($urls[$channel]).'"', $html);
             self::assertStringContainsString('data-channel="'.$channel.'"', $html);
             self::assertSame(2, substr_count($html, 'aria-disabled="true"'));
-            self::assertStringContainsString('class="direct-saving"', $html);
+            self::assertStringContainsString('<span class="direct-saving">', $html);
+            self::assertStringNotContainsString('<p class="direct-saving">', $html);
         }
 
         $html = view('landing.partials.download-buttons', [

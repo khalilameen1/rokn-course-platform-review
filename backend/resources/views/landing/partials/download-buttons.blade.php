@@ -8,7 +8,10 @@
 @endphp
 
 <div class="download-options{{ ($vertical ?? false) ? ' download-options--vertical' : '' }}" data-download-options>
-    <div class="direct-download-option">
+    <div class="direct-download-option{{ ($directDiscountPercent ?? 0) > 0 ? ' direct-download-option--offer' : '' }}">
+        @if(($directDiscountPercent ?? 0) > 0)
+            <span class="direct-saving">{{ __('landing.direct_saving', ['discount' => $discountLabel]) }}</span>
+        @endif
     @if($channels['direct'] ?? null)
         <a href="{{ $channels['direct'] }}" class="store-btn store-btn--direct" data-channel="direct">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -19,9 +22,6 @@
         <span class="store-btn store-btn--direct" aria-disabled="true">{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
         <p class="direct-caption">{{ __('landing.direct_pending') }}</p>
     @endif
-        @if(($directDiscountPercent ?? 0) > 0)
-            <p class="direct-saving">{{ __('landing.direct_saving', ['discount' => $discountLabel]) }}</p>
-        @endif
     </div>
     <div class="store-buttons">
         @foreach($stores as $channel => $store)

@@ -388,12 +388,25 @@ summary {
     margin-block: 0.5rem 0;
 }
 .direct-download-option {
+    position: relative;
     margin-block-end: 1.25rem;
 }
+.direct-download-option--offer {
+    padding-block-start: 1rem;
+}
 .direct-saving {
-    color: #f0cc84;
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline-start: 1rem;
+    max-inline-size: calc(100% - 2rem);
+    padding: 0.2rem 0.75rem;
+    border-radius: 999px;
+    background: #f0cc84;
+    color: #171b24;
     font-size: 0.875rem;
-    margin-block-start: 0.35rem;
+    font-weight: 700;
+    line-height: 1.5;
+    pointer-events: none;
 }
 .download-dock {
     position: fixed;

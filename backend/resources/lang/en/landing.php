@@ -37,7 +37,7 @@ return [
     'download_on' => 'Download on',
     'direct_download' => 'Direct download',
     'other_downloads' => 'Direct Android version',
-    'direct_saving' => ':discount% off top-ups in this version',
+    'direct_saving' => ':discount% off top-ups',
     'release_unavailable' => 'Coming soon to the stores',
     'store_pending' => 'Coming soon on :store',
     'download_app' => 'Download the app',

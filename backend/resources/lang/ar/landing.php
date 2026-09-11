@@ -37,7 +37,7 @@ return [
     'download_on' => 'حمّل من',
     'direct_download' => 'تحميل مباشر',
     'other_downloads' => 'نسخة Android المباشرة',
-    'direct_saving' => 'خصم :discount٪ على الشحن من هذه النسخة',
+    'direct_saving' => 'خصم :discount٪ على الشحن',
     'release_unavailable' => 'قريبًا على المتاجر',
     'store_pending' => 'قريبًا على :store',
     'download_app' => 'حمّل التطبيق',
