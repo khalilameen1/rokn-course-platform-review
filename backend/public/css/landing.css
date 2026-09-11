@@ -191,21 +191,16 @@ summary {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 0.75rem;
-    margin-block-end: 1.2rem;
+    gap: 0.5rem;
+    margin-block-end: 1rem;
     text-align: start;
 }
-.welcome-gift strong,
-.welcome-gift span > span {
-    display: block;
+.welcome-gift img {
+    flex: 0 0 28px;
 }
 .welcome-gift strong {
     color: #f0cc84;
-    font-size: 1.125rem;
-}
-.welcome-gift span > span {
-    color: #b7c0ce;
-    font-size: 0.875rem;
+    font-size: 1rem;
 }
 .hero-visual {
     display: flex;
@@ -432,102 +427,64 @@ summary {
     flex-shrink: 0;
 }
 
-/* Three reasons to continue beyond the first clip */
 .learning-section {
-    padding-block: 1rem;
-    background: #f1f2f4;
-    color: #111723;
+    padding-block: 1.5rem;
+    border-block: 1px solid var(--line);
 }
 .learning-points {
     display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    list-style: none;
+    padding: 0;
+    margin-block: 0;
+    text-align: center;
+    color: #c2cbd8;
 }
-.learning-points article {
-    padding-block: 2rem;
+.learning-points li {
+    padding-inline: 0.6rem;
+    text-wrap: balance;
 }
-.learning-points article + article {
-    border-block-start: 1px solid #cdd1d8;
-}
-.learning-points h2 {
-    font-size: clamp(1.5rem, 6vw, 1.8rem);
-    line-height: 1.5;
-    margin-block-end: 0.6rem;
-}
-.learning-points p {
-    font-size: 1rem;
-    color: #515967;
-    max-inline-size: 28rem;
+.learning-points li + li {
+    border-inline-start: 1px solid var(--line);
 }
 .recharge-section {
-    padding-block: 3.5rem;
+    padding-block: 3rem;
 }
 .recharge-panel {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2rem;
+    display: flex;
+    gap: 1.25rem;
     align-items: center;
     background: #111a29;
     border: 1px solid #29354a;
-    border-radius: 1.5rem;
-    padding: clamp(1.25rem, 5vw, 3rem);
+    border-radius: 1rem;
+    padding: clamp(1rem, 4vw, 2rem);
 }
-.recharge-copy h2 {
-    font-size: clamp(2rem, 8vw, 3.5rem);
-    line-height: 1.4;
-    white-space: pre-line;
-    margin-block: 0.5rem 1rem;
+.recharge-panel > img {
+    inline-size: clamp(56px, 16vw, 80px);
+    block-size: auto;
+    flex-shrink: 0;
 }
-.recharge-copy > p {
-    color: #b7c0ce;
-    max-inline-size: 28rem;
-}
-.recharge-copy .download-button {
-    margin-block: 1.25rem 0.6rem;
-}
-.recharge-art {
-    grid-row: 1;
+.recharge-copy {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    flex: 1;
+    min-inline-size: 0;
     gap: 1rem;
 }
-.recharge-art > img {
-    inline-size: clamp(80px, 25vw, 160px);
-    block-size: auto;
-}
-.recharge-art p > strong {
-    display: block;
-    color: #f0cc84;
-    font: 700 clamp(3rem, 12vw, 5rem) / 1.25 Arial, sans-serif;
-    direction: ltr;
-}
-.recharge-art strong > span {
-    font-size: 0.5em;
-}
-.recharge-art p > span {
-    color: #c6cfdc;
-    font-size: 0.875rem;
-}
-.download-section {
-    padding-block: 4rem;
-    text-align: center;
-}
-.download-section h2 {
-    font-size: clamp(2rem, 8vw, 3.5rem);
+.recharge-copy h2 {
+    font-size: clamp(1.35rem, 5vw, 2rem);
     line-height: 1.5;
 }
-.download-finish > img {
-    margin: 0 auto 1.2rem;
-    border-radius: 1rem;
+.download-note {
+    padding-block: 2rem;
+    text-align: center;
 }
-.download-finish > p {
-    margin-block: 0.8rem 1.5rem;
-    color: var(--rokn-text-muted);
-}
-.download-finish .download-options {
-    margin-inline: auto;
-}
-.download-finish .store-buttons {
-    justify-content: center;
+.download-note h2 {
+    font-size: 1.5rem;
+    line-height: 1.5;
+    margin-block-end: 1rem;
 }
 .landing-how-it-works {
     padding-block: 3rem;
@@ -761,30 +718,10 @@ summary {
     .preview-player {
         inline-size: clamp(240px, 25vw, 310px);
     }
-    .recharge-panel {
-        grid-template-columns: 1.2fr 1fr;
-    }
-    .recharge-art {
-        grid-row: auto;
-        flex-direction: column;
-    }
-    .learning-section {
-        padding-block: 2.5rem;
-    }
-    .learning-points {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 2rem;
-    }
-    .learning-points article + article {
-        border: 0;
-    }
     .footer-columns,
     .contact-grid,
     .offers-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    .download-section {
-        padding-block: 5rem;
     }
     .download-dock {
         display: none;

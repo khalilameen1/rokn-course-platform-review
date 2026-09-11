@@ -18,7 +18,9 @@ final class LandingViewTest extends TestCase
             $html = view('landing.index', $this->pageData($locale))->render();
 
             self::assertStringContainsString('lang="'.$locale.'" dir="'.$direction.'"', $html);
-            self::assertSame(4, substr_count($html, 'class="store-btn" aria-disabled="true"'));
+            self::assertSame(2, substr_count($html, 'class="store-btn" aria-disabled="true"'));
+            self::assertSame(1, substr_count($html, 'data-download-options'));
+            self::assertStringNotContainsString('class="download-note"', $html);
             self::assertStringContainsString('images/landing/app-store.svg', $html);
             self::assertStringContainsString('images/landing/google-play.svg', $html);
             self::assertSame(1, substr_count($html, 'class="preview-player"'));
@@ -82,9 +84,8 @@ final class LandingViewTest extends TestCase
         $data['directDiscountPercent'] = 12.5;
         $html = view('landing.index', $data)->render();
 
-        self::assertStringContainsString('حمّل ركن واحصل على 37 عملة', $html);
-        self::assertStringContainsString('هدية عند تسجيلك الأول', $html);
-        self::assertStringContainsString('12.5<span>%</span>', $html);
+        self::assertStringContainsString('37 عملة هدية عند أول تسجيل', $html);
+        self::assertStringContainsString('اشحن بخصم 12.5٪', $html);
         self::assertStringContainsString('سكرول', $html);
         self::assertStringContainsString('واتعلّم', $html);
 
@@ -92,7 +93,7 @@ final class LandingViewTest extends TestCase
         $data['directDiscountPercent'] = 0;
         $html = view('landing.index', $data)->render();
         self::assertStringNotContainsString('class="welcome-gift"', $html);
-        self::assertStringNotContainsString('<span>%</span>', $html);
+        self::assertStringNotContainsString('اشحن بخصم', $html);
     }
 
     public function test_dashboard_copy_seo_and_optional_video_remain_connected(): void

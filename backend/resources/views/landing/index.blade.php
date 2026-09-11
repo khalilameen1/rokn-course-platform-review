@@ -34,9 +34,8 @@
             <div id="download" class="hero-download">
                 @if(($welcomeCoins ?? 0) > 0)
                     <p class="welcome-gift">
-                        <img src="{{ asset('images/rokn-coin-minted.png') }}" width="40" height="40" alt="">
-                        <span><strong>{{ __('landing.welcome_title', ['coins' => number_format($welcomeCoins)]) }}</strong>
-                        <span>{{ __('landing.welcome_description') }}</span></span>
+                        <img src="{{ asset('images/rokn-coin-minted.png') }}" width="28" height="28" alt="">
+                        <strong>{{ __('landing.welcome_title', ['coins' => number_format($welcomeCoins)]) }}</strong>
                     </p>
                 @endif
                 @include('landing.partials.download-buttons')
@@ -44,31 +43,23 @@
         </div>
     </section>
 
-    <section class="recharge-section" aria-labelledby="recharge-title">
-        <div class="landing-container recharge-panel">
-            <div class="recharge-copy">
-                <h2 id="recharge-title">{{ __($hasDirectDiscount ? 'landing.recharge_title' : 'landing.recharge_action') }}</h2>
-                @if($hasDirectDiscount)<p>{{ __('landing.recharge_description') }}</p>@endif
-                <a class="download-button" href="{{ route('web-wallet.index') }}">{{ __('landing.recharge_action') }}</a>
-            </div>
-            <div class="recharge-art">
-                <img src="{{ asset('images/rokn-coin-minted.png') }}" alt="" width="160" height="160" loading="lazy">
-                @if($hasDirectDiscount)
-                    <p><strong>{{ rtrim(rtrim(number_format($directDiscountPercent, 2, '.', ''), '0'), '.') }}<span>%</span></strong>
-                    <span>{{ __('landing.recharge_saving') }}</span></p>
-                @endif
-            </div>
-        </div>
+    <section class="learning-section" aria-label="{{ __('landing.learning_label') }}">
+        <ul class="landing-container learning-points">
+            @foreach(['ask', 'practice', 'portfolio'] as $feature)
+                <li>{{ __('landing.'.$feature.'_title') }}</li>
+            @endforeach
+        </ul>
     </section>
 
-    <section class="learning-section" aria-label="{{ __('landing.learning_label') }}">
-        <div class="landing-container learning-points">
-            @foreach(['ask', 'practice', 'portfolio'] as $feature)
-                <article>
-                    <h2>{{ __('landing.'.$feature.'_title') }}</h2>
-                    <p>{{ __('landing.'.$feature.'_description') }}</p>
-                </article>
-            @endforeach
+    <section class="recharge-section" aria-labelledby="recharge-title">
+        <div class="landing-container recharge-panel">
+            <img src="{{ asset('images/rokn-coin-minted.png') }}" alt="" width="80" height="80" loading="lazy">
+            <div class="recharge-copy">
+                <h2 id="recharge-title">{{ $hasDirectDiscount
+                    ? __('landing.recharge_title', ['discount' => rtrim(rtrim(number_format($directDiscountPercent, 2, '.', ''), '0'), '.')])
+                    : __('landing.recharge_action') }}</h2>
+                <a class="download-button" href="{{ route('web-wallet.index') }}">{{ __('landing.recharge_action') }}</a>
+            </div>
         </div>
     </section>
 
@@ -85,14 +76,14 @@
         </section>
     @endif
 
-    <section class="download-section" aria-labelledby="download-title">
-        <div class="landing-container download-finish">
-            <img src="{{ asset('images/landing/rokn-icon.webp') }}" alt="" width="64" height="64" loading="lazy">
-            <h2 id="download-title">{{ __('landing.download_title') }}</h2>
-            <p>{{ $designSetting->exists && filled($designSetting->{'slogan_3_'.$locale}) ? $designSetting->{'slogan_3_'.$locale} : __('landing.download_description') }}</p>
-            @include('landing.partials.download-buttons')
-        </div>
-    </section>
+    @if($designSetting->exists && filled($designSetting->{'slogan_3_'.$locale}))
+        <section class="download-note" aria-labelledby="download-title">
+            <div class="landing-container">
+                <h2 id="download-title">{{ $designSetting->{'slogan_3_'.$locale} }}</h2>
+                <a href="#download" class="download-button">{{ __('landing.download_rokn') }}</a>
+            </div>
+        </section>
+    @endif
 
     @if($hasDownloads)
         <aside class="download-dock" data-download-dock hidden aria-label="{{ __('landing.download_app') }}">
