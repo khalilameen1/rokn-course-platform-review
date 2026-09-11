@@ -10,6 +10,7 @@ return [
     'account_action' => 'My account',
     'recharge_title' => 'Save :discount% on top-ups',
     'direct_pending' => 'The direct Android version will be available here',
+    'preview_download' => 'Beta version',
     'player_ask' => 'Ask',
     'player_save' => 'Save',
     'player_index' => 'Contents',

@@ -17,6 +17,9 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span>{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
         </a>
+        @if($directDownloadIsPreview ?? false)
+            <p class="direct-caption">{{ __('landing.preview_download') }}</p>
+        @endif
     @else
         <span class="store-btn store-btn--direct" aria-disabled="true">{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
         <p class="direct-caption">{{ __('landing.direct_pending') }}</p>

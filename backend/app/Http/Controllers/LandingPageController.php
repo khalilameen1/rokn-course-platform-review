@@ -34,6 +34,11 @@ class LandingPageController extends Controller
         $setting = Setting::first();
         $designSetting = DesignSetting::getDefaultSettings();
         $downloadChannels = $releases->urls($setting);
+        $directDownloadIsPreview = !$downloadChannels['direct']
+            && filled(config('app_downloads.android_preview_path'));
+        if ($directDownloadIsPreview) {
+            $downloadChannels['direct'] = route('app-download.preview');
+        }
         $directDiscountPercent = $pricing->directDiscountPercent();
         $welcomeCoins = StudentNotificationService::registrationBonusOffer();
         $howPlatformWorksVideoUrl = $publicSettings->embedVideoUrl(
@@ -45,6 +50,7 @@ class LandingPageController extends Controller
             'designSetting',
             'locale',
             'downloadChannels',
+            'directDownloadIsPreview',
             'directDiscountPercent',
             'welcomeCoins',
             'howPlatformWorksVideoUrl'

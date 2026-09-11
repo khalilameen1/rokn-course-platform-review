@@ -10,6 +10,7 @@ return [
     'account_action' => 'حسابي',
     'recharge_title' => 'اشحن بخصم :discount٪',
     'direct_pending' => 'ستتوفر نسخة Android المباشرة هنا',
+    'preview_download' => 'نسخة تجريبية',
     'player_ask' => 'اسأل',
     'player_save' => 'احفظ',
     'player_index' => 'الفهرس',

@@ -21,6 +21,8 @@ Route::get('/apple-app-site-association', [\App\Http\Controllers\AppAssociationC
     ->name('app-association.apple.root');
 
 Route::get('/', [\App\Http\Controllers\LandingPageController::class, 'index'])->name('landing');
+Route::get('/downloads/rokn-preview.apk', \App\Http\Controllers\PreviewAppDownloadController::class)
+    ->name('app-download.preview');
 // Separate from /wallet, which is an installed-app link. The website uses
 // the same learner and ledger without changing app checkout or staff login.
 Route::prefix('recharge')->name('web-wallet.')
