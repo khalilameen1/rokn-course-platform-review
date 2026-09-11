@@ -24,6 +24,7 @@ final class LandingViewTest extends TestCase
             self::assertStringContainsString('images/landing/app-store.svg', $html);
             self::assertStringContainsString('images/landing/google-play.svg', $html);
             self::assertSame(1, substr_count($html, 'class="preview-player"'));
+            self::assertStringNotContainsString('<span>ROKN</span>', $html);
             self::assertSame(1, substr_count($html, 'images/landing/photography.webp'));
             self::assertStringNotContainsString('images/landing/design.webp', $html);
             self::assertStringNotContainsString('images/landing/drawing.webp', $html);
