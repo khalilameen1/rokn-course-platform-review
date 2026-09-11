@@ -532,9 +532,6 @@ summary {
 .footer-brand {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
 }
 .footer-brand img {
     inline-size: 100px;
@@ -578,11 +575,11 @@ summary {
     gap: 0.5rem 1.5rem;
     margin-block-start: 1.5rem;
 }
-.footer-brand .footer-nav {
-    margin-block-start: 0;
-}
 .footer-nav a {
-    padding-block: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 44px;
+    max-inline-size: 100%;
     font-size: 0.875rem;
     color: var(--rokn-text-muted);
 }

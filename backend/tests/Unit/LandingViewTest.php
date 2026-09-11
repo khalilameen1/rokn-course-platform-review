@@ -43,7 +43,8 @@ final class LandingViewTest extends TestCase
             self::assertStringNotContainsString('data-download-dock', $html);
             self::assertStringNotContainsString('<iframe', $html);
             self::assertStringContainsString(route('privacy'), $html);
-            self::assertStringContainsString(route('account-deletion.show'), $html);
+            self::assertStringNotContainsString(route('account-deletion.show'), $html);
+            self::assertSame(1, substr_count($html, 'class="footer-nav"'));
         }
     }
 
@@ -149,6 +150,9 @@ final class LandingViewTest extends TestCase
                 self::assertStringContainsString(route('landing'), $html);
                 if ($page === 'contact') {
                     self::assertStringContainsString('href="rokn://contact"', $html);
+                }
+                if ($page === 'privacy') {
+                    self::assertStringContainsString(route('account-deletion.show'), $html);
                 }
             }
         }

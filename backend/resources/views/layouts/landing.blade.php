@@ -65,10 +65,6 @@
         <div class="landing-container">
             <div class="footer-brand">
                 <a href="{{ route('landing') }}"><img src="{{ asset('images/rokn-wordmark.png') }}" alt="{{ $siteName ?: 'Rokn' }}" width="100" height="33" loading="lazy"></a>
-                <nav class="footer-nav" aria-label="{{ __('landing.nav_about') }}">
-                    <a href="{{ route('about') }}">{{ __('landing.nav_about') }}</a>
-                    <a href="{{ route('contact') }}">{{ __('landing.nav_contact') }}</a>
-                </nav>
             </div>
 
             @if($socialLinks->isNotEmpty() || ($setting && ($setting->email || $setting->phone)))
@@ -115,13 +111,13 @@
             </div>
 
             @endif
-            <div class="footer-nav">
+            <nav class="footer-nav" aria-label="{{ $locale === 'ar' ? 'عن ركن والسياسات' : 'About Rokn and policies' }}">
+                <a href="{{ route('about') }}">{{ __('landing.nav_about') }}</a>
+                <a href="{{ route('contact') }}">{{ __('landing.nav_contact') }}</a>
                 <a href="{{ route('privacy') }}">{{ __('landing.nav_privacy') }}</a>
                 <a href="{{ route('terms') }}">{{ __('landing.nav_terms') }}</a>
                 <a href="{{ route('returns-policy') }}">{{ __('landing.nav_returns') }}</a>
-                <a href="{{ route('account-deletion.show') }}">{{ $locale === 'ar' ? 'حذف الحساب' : 'Delete account' }}</a>
-
-            </div>
+            </nav>
 
             <div class="footer-bottom">
                 &copy; {{ date('Y') }} {{ $siteName }}. {{ __('landing.all_rights_reserved') }}

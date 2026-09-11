@@ -32,6 +32,8 @@
             @if($page === 'terms')
                 <a href="{{ route('privacy') }}">{{ __('privacy.title') }}</a>
                 <a href="{{ route('returns-policy') }}">{{ __('returns.title') }}</a>
+            @elseif($page === 'privacy')
+                <a href="{{ route('account-deletion.show') }}">{{ $locale === 'ar' ? 'حذف الحساب' : 'Delete account' }}</a>
             @endif
             <a href="{{ route('contact') }}">{{ $document['contact_label'] }}</a>
         </nav>
