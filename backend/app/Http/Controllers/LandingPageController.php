@@ -9,6 +9,7 @@ use App\Models\Setting;
 use App\Services\AppReleaseChannelService;
 use App\Services\PackageChannelPricingService;
 use App\Services\PublicAppSettingsService;
+use App\Services\StudentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -34,6 +35,7 @@ class LandingPageController extends Controller
         $designSetting = DesignSetting::getDefaultSettings();
         $downloadChannels = $releases->urls($setting);
         $directDiscountPercent = $pricing->directDiscountPercent();
+        $welcomeCoins = StudentNotificationService::registrationBonusOffer();
         $howPlatformWorksVideoUrl = $publicSettings->embedVideoUrl(
             $designSetting->how_platform_works_video_link
         );
@@ -44,6 +46,7 @@ class LandingPageController extends Controller
             'locale',
             'downloadChannels',
             'directDiscountPercent',
+            'welcomeCoins',
             'howPlatformWorksVideoUrl'
         ));
     }

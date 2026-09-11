@@ -26,6 +26,10 @@ final class LandingViewTest extends TestCase
             }
             self::assertStringNotContainsString('rokn-home.webp', $html);
             self::assertStringNotContainsString('rokn-lesson.webp', $html);
+            self::assertStringContainsString('data-preview-scenes', $html);
+            self::assertStringContainsString(route('web-wallet.index'), $html);
+            self::assertStringNotContainsString('class="welcome-gift"', $html);
+            self::assertStringNotContainsString('<details class="download-alternatives"', $html);
             self::assertStringNotContainsString('href="#"', $html);
             self::assertStringNotContainsString('data-download-dock', $html);
             self::assertStringNotContainsString('<iframe', $html);
@@ -51,8 +55,7 @@ final class LandingViewTest extends TestCase
             self::assertSame(1, substr_count($html, '<a '));
             self::assertStringContainsString('href="'.e($urls[$channel]).'"', $html);
             self::assertStringContainsString('data-channel="'.$channel.'"', $html);
-            self::assertSame($channel === 'direct' ? 2 : 1, substr_count($html, 'aria-disabled="true"'));
-            self::assertSame($channel === 'direct' ? 1 : 0, substr_count($html, 'class="direct-saving"'));
+            self::assertSame(2, substr_count($html, 'aria-disabled="true"'));
         }
 
         $html = view('landing.partials.download-buttons', [
@@ -63,6 +66,27 @@ final class LandingViewTest extends TestCase
         self::assertSame(3, substr_count($html, '<a '));
         self::assertStringNotContainsString('aria-disabled', $html);
         self::assertStringNotContainsString('class="direct-saving"', $html);
+    }
+
+    public function test_welcome_offer_and_recharge_discount_use_supplied_values(): void
+    {
+        app()->setLocale('ar');
+        $data = $this->pageData('ar');
+        $data['welcomeCoins'] = 37;
+        $data['directDiscountPercent'] = 12.5;
+        $html = view('landing.index', $data)->render();
+
+        self::assertStringContainsString('37 عملة ركن هديتك', $html);
+        self::assertStringContainsString('سجّل لأول مرة لاستلامها', $html);
+        self::assertStringContainsString('12.5<span>%</span>', $html);
+        self::assertStringContainsString('سكرول', $html);
+        self::assertStringContainsString('واتعلّم', $html);
+
+        $data['welcomeCoins'] = 0;
+        $data['directDiscountPercent'] = 0;
+        $html = view('landing.index', $data)->render();
+        self::assertStringNotContainsString('class="welcome-gift"', $html);
+        self::assertStringNotContainsString('<span>%</span>', $html);
     }
 
     public function test_dashboard_copy_seo_and_optional_video_remain_connected(): void

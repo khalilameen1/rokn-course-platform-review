@@ -4,10 +4,19 @@
         'appstore' => ['name' => 'App Store', 'image' => 'app-store.svg', 'width' => 120, 'height' => 40],
         'play' => ['name' => 'Google Play', 'image' => 'google-play.svg', 'width' => 135, 'height' => 40],
     ];
-    $discountLabel = rtrim(rtrim(number_format((float) ($directDiscountPercent ?? 0), 2, '.', ''), '0'), '.');
 @endphp
 
 <div class="download-options{{ ($vertical ?? false) ? ' download-options--vertical' : '' }}" data-download-options>
+    @if($channels['direct'] ?? null)
+        <a href="{{ $channels['direct'] }}" class="store-btn store-btn--direct" data-channel="direct">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
+        </a>
+        <p class="direct-caption">{{ ($previewInternalApk ?? false) ? __('landing.preview_apk_caption') : __('landing.direct_caption') }}</p>
+    @else
+        <span class="store-btn store-btn--direct" aria-disabled="true">{{ __('landing.direct_download') }} <bdi>APK</bdi></span>
+        <p class="direct-caption">{{ __('landing.direct_pending') }}</p>
+    @endif
     <div class="store-buttons">
         @foreach($stores as $channel => $store)
             @if($channels[$channel] ?? null)
@@ -30,19 +39,4 @@
         <p class="release-notice">{{ __('landing.release_unavailable') }}</p>
     @endif
 
-    @if($channels['direct'] ?? null)
-        <details class="download-alternatives">
-            <summary>{{ __('landing.other_downloads') }}</summary>
-            <a href="{{ $channels['direct'] }}" class="store-btn store-btn--direct" data-channel="direct">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4" fill="none" stroke="currentColor"
-                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <span>{{ __('landing.direct_download') }} <bdi>Android</bdi></span>
-            </a>
-            @if((float) ($directDiscountPercent ?? 0) > 0)
-                <p class="direct-saving">{{ __('landing.direct_saving', ['discount' => $discountLabel]) }}</p>
-            @endif
-        </details>
-    @endif
 </div>

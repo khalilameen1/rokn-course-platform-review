@@ -33,9 +33,12 @@
                     <a href="{{ route('contact') }}" class="nav-link">{{ __('landing.nav_contact') }}</a>
                 </div>
             </div>
-            <a href="{{ url()->current() }}?lang={{ $locale === 'ar' ? 'en' : 'ar' }}" class="lang-toggle">
-                {{ __('landing.switch_lang') }}
-            </a>
+            <div class="navbar-actions">
+                <a href="{{ route('web-wallet.index') }}" class="recharge-nav">{{ __('landing.recharge_action') }}</a>
+                <a href="{{ url()->current() }}?lang={{ $locale === 'ar' ? 'en' : 'ar' }}" class="lang-toggle">
+                    {{ __('landing.switch_lang') }}
+                </a>
+            </div>
         </div>
     </nav>
 

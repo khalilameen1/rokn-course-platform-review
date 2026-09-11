@@ -16,8 +16,9 @@ if (! $app->environment(['local', 'testing'])) {
     exit(1);
 }
 
-// Render the actual Blade page without querying accounts, payment services or
-// production settings. The badges deliberately have no prelaunch destinations.
+// Public offer snapshot checked against /api/v1/auth-methods on 2026-09-11.
+// Production resolves this value through the same rule as actual crediting.
+// No accounts or payment services are contacted by this preview renderer.
 URL::forceRootUrl('http://127.0.0.1:4178');
 URL::forceScheme('http');
 $directory = storage_path('app/landing-preview');
@@ -29,8 +30,11 @@ foreach (['ar', 'en'] as $locale) {
         'setting' => null,
         'designSetting' => new DesignSetting(['name_ar' => 'ركن', 'name_en' => 'Rokn']),
         'locale' => $locale,
-        'downloadChannels' => [],
-        'directDiscountPercent' => 0,
+        // Loopback-only download of the owner's existing internal test build.
+        'downloadChannels' => ['direct' => 'http://127.0.0.1:4178/downloads/rokn-internal-test.apk'],
+        'previewInternalApk' => true,
+        'welcomeCoins' => 20,
+        'directDiscountPercent' => 10,
         'howPlatformWorksVideoUrl' => null,
     ])->render();
 

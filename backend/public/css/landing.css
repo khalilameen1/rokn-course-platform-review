@@ -1,12 +1,12 @@
 @font-face {
     font-family: Rokn;
-    src: url('/admin/assets/fonts/cairo/Cairo-Regular.ttf') format('truetype');
+    src: url("/admin/assets/fonts/cairo/Cairo-Regular.ttf") format("truetype");
     font-weight: 400;
     font-display: swap;
 }
 @font-face {
     font-family: Rokn;
-    src: url('/admin/assets/fonts/cairo/Cairo-Bold.ttf') format('truetype');
+    src: url("/admin/assets/fonts/cairo/Cairo-Bold.ttf") format("truetype");
     font-weight: 700;
     font-display: swap;
 }
@@ -138,27 +138,38 @@ summary {
 .app-landing .landing-navbar {
     border: 0;
 }
+.navbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.recharge-nav {
+    font-size: 0.875rem;
+    border: 1px solid #354054;
+    border-radius: 2rem;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+}
 .hero-grid {
     display: grid;
-    gap: 1.75rem;
+    gap: 1.5rem;
 }
 .landing-hero {
-    padding-block: 0.25rem 3.5rem;
+    padding-block: 1rem 3.5rem;
     overflow: clip;
 }
-.hero-copy {
-    grid-row: 2;
+.hero-copy,
+.hero-download {
     text-align: center;
 }
 .landing-hero h1 {
     margin-inline: auto;
     max-inline-size: 14ch;
-    font-size: clamp(2.6rem, 11vw, 4.8rem);
+    font-size: clamp(2.6rem, 11vw, 5rem);
     line-height: 1.35;
     text-wrap: balance;
 }
 .landing-hero h1 span {
-    display: block;
     color: var(--rokn-primary);
 }
 .hero-description {
@@ -169,57 +180,204 @@ summary {
     white-space: pre-line;
     text-wrap: balance;
 }
-.hero-download {
-    margin-block-start: 1.4rem;
-}
-.hero-copy .download-options {
+.hero-download .download-options {
     margin-inline: auto;
 }
-.hero-copy .store-buttons {
+.hero-download .store-buttons {
     justify-content: center;
 }
-.hero-copy summary {
-    margin-inline: auto;
+.welcome-gift {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.75rem;
+    margin-block-end: 1.2rem;
+    text-align: start;
+}
+.welcome-gift strong,
+.welcome-gift span > span {
+    display: block;
+}
+.welcome-gift strong {
+    color: #f0cc84;
+    font-size: 1.125rem;
+}
+.welcome-gift span > span {
+    color: #b7c0ce;
+    font-size: 0.875rem;
 }
 .hero-visual {
-    grid-row: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     min-inline-size: 0;
-    block-size: clamp(280px, 84vw, 370px);
     margin-inline: -1.25rem;
     overflow: clip;
 }
-.portrait-strip {
-    display: flex;
-    flex: none;
-    direction: ltr;
-    gap: 0.75rem;
-    align-items: center;
-}
-.subject-portrait {
+.player-showcase {
     position: relative;
-    flex: none;
-    inline-size: clamp(134px, 37vw, 178px);
-    aspect-ratio: 9 / 16;
-    border-radius: 1.15rem;
+    inline-size: 100%;
+    padding-block: 0.4rem;
+}
+.preview-player {
+    position: relative;
+    z-index: 1;
+    inline-size: clamp(230px, 62vw, 280px);
+    aspect-ratio: 9 / 16.5;
+    margin-inline: auto;
+    border: 5px solid #1b2430;
+    border-radius: 1.75rem;
     overflow: hidden;
-    background: #162027;
+    background: #101722;
+    box-shadow: 0 20px 45px #0008;
 }
-.subject-portrait--photography {
-    inline-size: clamp(160px, 44vw, 208px);
+.preview-scenes {
+    block-size: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
 }
-.subject-portrait--design {
-    transform: translateY(-1rem);
+.preview-scenes::-webkit-scrollbar {
+    display: none;
 }
-.subject-portrait--drawing {
-    transform: translateY(1rem);
+.preview-scene {
+    position: relative;
+    block-size: 100%;
+    scroll-snap-align: start;
 }
-.subject-portrait img {
+.preview-scene > img {
     inline-size: 100%;
     block-size: 100%;
     object-fit: cover;
+}
+.preview-scene figcaption {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 3rem 4.6rem 2rem 1rem;
+    background: linear-gradient(transparent, #060910ee);
+    text-align: start;
+    pointer-events: none;
+}
+.preview-scene figcaption span {
+    font-size: 0.875rem;
+    color: #dde5ef;
+}
+.preview-scene figcaption strong {
+    display: block;
+    font-size: 1.125rem;
+    line-height: 1.6;
+}
+.player-chrome {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    color: white;
+}
+.player-chrome svg {
+    width: 24px;
+    height: 24px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+}
+.player-top {
+    display: flex;
+    direction: ltr;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: linear-gradient(#090b13a6, transparent);
+}
+.player-top > span {
+    font: 700 0.875rem/1 Arial, sans-serif;
+    letter-spacing: 0.12em;
+}
+.player-tools {
+    position: absolute;
+    right: 0.6rem;
+    bottom: 2.5rem;
+    display: grid;
+    gap: 0.95rem;
+    text-align: center;
+}
+.player-tools > span {
+    display: grid;
+    justify-items: center;
+    gap: 0.15rem;
+    font-size: 0.875rem;
+    text-shadow: 0 1px 4px #000;
+}
+.player-tools svg {
+    filter: drop-shadow(0 1px 3px #000);
+}
+.player-timeline {
+    position: absolute;
+    inset: auto 1rem 0.9rem;
+    height: 3px;
+    background: #ffffff55;
+    border-radius: 2px;
+    direction: ltr;
+}
+.player-timeline span {
+    display: block;
+    width: 32%;
+    height: 100%;
+    background: white;
+}
+.player-backdrop {
+    position: absolute;
+    top: 12%;
+    inline-size: 35%;
+    max-inline-size: 210px;
+    aspect-ratio: 9 / 16;
+    object-fit: cover;
+    border-radius: 1.15rem;
+    opacity: 0.6;
+}
+.player-backdrop--start {
+    left: 0;
+    transform: rotate(-7deg);
+}
+.player-backdrop--end {
+    right: 0;
+    transform: rotate(7deg);
+}
+.player-caption {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    margin-block-start: 0.9rem;
+}
+.player-caption p {
+    color: #b7c0ce;
+    font-size: 0.875rem;
+}
+.preview-pagination {
+    display: flex;
+    justify-content: center;
+}
+.preview-pagination button {
+    border: 0;
+    background: none;
+    padding: 0;
+    inline-size: 44px;
+    block-size: 32px;
+    cursor: pointer;
+}
+.preview-pagination button::after {
+    content: "";
+    display: block;
+    margin: auto;
+    inline-size: 18px;
+    block-size: 3px;
+    background: #465268;
+    border-radius: 3px;
+}
+.preview-pagination button[aria-pressed="true"]::after {
+    background: #e8edf7;
 }
 
 /* Download artwork remains unmodified */
@@ -244,7 +402,7 @@ summary {
     block-size: clamp(40px, 11vw, 52px);
     object-fit: contain;
 }
-.store-btn[aria-disabled='true'] {
+.store-btn[aria-disabled="true"] {
     cursor: default;
 }
 .store-btn:hover {
@@ -265,9 +423,14 @@ summary {
     gap: 0.65rem;
 }
 .store-btn--direct {
-    background: transparent;
-    border: 1px solid var(--line);
-    max-inline-size: none;
+    inline-size: 100%;
+    background: #376fed;
+    border: 1px solid #5487f7;
+}
+.store-btn--direct[aria-disabled="true"] {
+    background: #233751;
+    border-color: #3d5270;
+    color: #c1cbdc;
 }
 .store-btn--direct svg {
     inline-size: 22px;
@@ -277,24 +440,14 @@ summary {
     flex-direction: column;
     align-items: stretch;
 }
-.download-alternatives,
-.direct-saving,
+.direct-caption,
 .release-notice {
     color: var(--rokn-text-muted);
     font-size: 0.875rem;
     margin-block-start: 0.7rem;
 }
-.download-alternatives summary {
-    cursor: pointer;
-    min-block-size: 44px;
-    align-content: center;
-    width: fit-content;
-}
-.download-alternatives .store-btn--direct {
-    margin-block-start: 0.6rem;
-}
-.direct-saving {
-    max-inline-size: 29rem;
+.direct-caption {
+    margin-block: 0.5rem 1.25rem;
 }
 .download-dock {
     position: fixed;
@@ -345,6 +498,63 @@ summary {
     color: #515967;
     max-inline-size: 28rem;
 }
+.recharge-section {
+    padding-block: 3.5rem;
+}
+.recharge-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    align-items: center;
+    background: #111a29;
+    border: 1px solid #29354a;
+    border-radius: 1.5rem;
+    padding: clamp(1.25rem, 5vw, 3rem);
+}
+.eyebrow {
+    color: #a5b5cd;
+    font-size: 0.875rem;
+}
+.recharge-copy h2 {
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    line-height: 1.4;
+    white-space: pre-line;
+    margin-block: 0.5rem 1rem;
+}
+.recharge-copy > p:not(.eyebrow) {
+    color: #b7c0ce;
+    max-inline-size: 28rem;
+}
+.recharge-copy .download-button {
+    margin-block: 1.25rem 0.6rem;
+}
+.recharge-note {
+    font-size: 0.875rem;
+}
+.recharge-art {
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+}
+.recharge-art > img {
+    inline-size: clamp(80px, 25vw, 160px);
+    block-size: auto;
+}
+.recharge-art p > strong {
+    display: block;
+    color: #f0cc84;
+    font: 700 clamp(3rem, 12vw, 5rem) / 1.25 Arial, sans-serif;
+    direction: ltr;
+}
+.recharge-art strong > span {
+    font-size: 0.5em;
+}
+.recharge-art p > span {
+    color: #c6cfdc;
+    font-size: 0.875rem;
+}
 .download-section {
     padding-block: 4rem;
     text-align: center;
@@ -366,9 +576,6 @@ summary {
 }
 .download-finish .store-buttons {
     justify-content: center;
-}
-.download-finish summary {
-    margin-inline: auto;
 }
 .landing-how-it-works {
     padding-block: 3rem;
@@ -566,46 +773,48 @@ summary {
         padding-block: 2rem 5rem;
     }
     .hero-grid {
-        grid-template-columns: 1fr 1.2fr;
-        align-items: center;
-        gap: 3rem;
+        grid-template-columns: 1fr 1.15fr;
+        grid-template-rows: 1fr auto 1fr;
+        column-gap: 4rem;
+        row-gap: 1.75rem;
     }
     .hero-copy {
-        grid-row: 1;
+        grid-row: 1 / 3;
         grid-column: 1;
+        align-self: end;
         text-align: start;
     }
     .hero-copy h1,
     .hero-description,
-    .hero-copy .download-options {
+    .hero-download .download-options {
         margin-inline: 0;
     }
-    .hero-copy .store-buttons {
+    .hero-download .store-buttons {
         justify-content: flex-start;
     }
-    .hero-copy summary {
-        margin-inline: 0;
+    .hero-download {
+        grid-row: 3;
+        grid-column: 1;
+        text-align: start;
+    }
+    .welcome-gift {
+        justify-content: flex-start;
     }
     .hero-visual {
-        grid-row: 1;
+        grid-row: 1 / 4;
         grid-column: 2;
-        block-size: 470px;
-        margin-inline: -1rem;
+        margin: 0;
+        overflow: visible;
     }
-    .subject-portrait {
-        inline-size: 190px;
+    .preview-player {
+        inline-size: clamp(240px, 25vw, 310px);
     }
-    .subject-portrait--photography {
-        inline-size: 224px;
+    .recharge-panel {
+        grid-template-columns: 1.2fr 1fr;
     }
-    .portrait-strip {
-        gap: 1rem;
-    }
-    .subject-portrait--design {
-        transform: translateY(-1.5rem);
-    }
-    .subject-portrait--drawing {
-        transform: translateY(1.5rem);
+    .recharge-art {
+        grid-row: auto;
+        flex-direction: column;
     }
     .learning-section {
         padding-block: 2.5rem;
@@ -641,6 +850,15 @@ summary {
     }
     .store-buttons {
         gap: 0.6rem;
+    }
+    .navbar-brand img {
+        inline-size: 80px;
+    }
+    .navbar-actions {
+        gap: 0.65rem;
+    }
+    .recharge-nav {
+        padding-inline: 0.75rem;
     }
     .download-dock > img {
         display: none;

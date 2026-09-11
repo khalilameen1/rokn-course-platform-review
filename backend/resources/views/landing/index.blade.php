@@ -24,21 +24,40 @@
                     @endif
                 </h1>
                 <p class="hero-description">{{ $designSetting->exists && filled($designSetting->{'slogan_2_'.$locale}) ? $designSetting->{'slogan_2_'.$locale} : __('landing.hero_description') }}</p>
-                <div id="download" class="hero-download">
-                    @include('landing.partials.download-buttons')
-                </div>
             </div>
 
-            <div class="hero-visual" aria-label="{{ __('landing.subjects_label') }}">
-                <div class="portrait-strip">
-                    @foreach(['design', 'photography', 'drawing'] as $subject)
-                        <figure class="subject-portrait subject-portrait--{{ $subject }}">
-                            <img src="{{ asset('images/landing/'.$subject.'.webp') }}"
-                                 width="432" height="768" fetchpriority="{{ $subject === 'photography' ? 'high' : 'auto' }}"
-                                 alt="{{ __('landing.subject_'.$subject.'_alt') }}">
-                        </figure>
-                    @endforeach
-                </div>
+            <div class="hero-visual">
+                @include('landing.partials.player-preview')
+            </div>
+
+            <div id="download" class="hero-download">
+                @if(($welcomeCoins ?? 0) > 0)
+                    <p class="welcome-gift">
+                        <img src="{{ asset('images/rokn-coin-minted.png') }}" width="40" height="40" alt="">
+                        <span><strong>{{ __('landing.welcome_title', ['coins' => number_format($welcomeCoins)]) }}</strong>
+                        <span>{{ __('landing.welcome_description') }}</span></span>
+                    </p>
+                @endif
+                    @include('landing.partials.download-buttons')
+            </div>
+        </div>
+    </section>
+
+    <section class="recharge-section" aria-labelledby="recharge-title">
+        <div class="landing-container recharge-panel">
+            <div class="recharge-copy">
+                <p class="eyebrow">{{ __('landing.recharge_label') }}</p>
+                <h2 id="recharge-title">{{ __('landing.recharge_title') }}</h2>
+                <p>{{ __('landing.recharge_description') }}</p>
+                <a class="download-button" href="{{ route('web-wallet.index') }}">{{ __('landing.recharge_action') }}</a>
+                <p class="recharge-note">{{ __('landing.recharge_note') }}</p>
+            </div>
+            <div class="recharge-art">
+                <img src="{{ asset('images/rokn-coin-minted.png') }}" alt="" width="160" height="160" loading="lazy">
+                @if(($directDiscountPercent ?? 0) > 0)
+                    <p><strong>{{ rtrim(rtrim(number_format($directDiscountPercent, 2, '.', ''), '0'), '.') }}<span>%</span></strong>
+                    <span>{{ __('landing.recharge_saving') }}</span></p>
+                @endif
             </div>
         </div>
     </section>
