@@ -127,7 +127,9 @@ Production was inspected read-only. Its catalog and authentication-method routes
 under `/api/v1/` respond successfully; launch readiness still reports missing
 recovery/mobile-release evidence. Do not fabricate release records to clear it.
 
-The subsequent console check still shows the Rokn Google login session expired.
+The expired Google login session was restarted. Google now explicitly requires
+reCAPTCHA identity verification for `roknproduction@gmail.com`; that challenge
+was left for the owner and the Play Console session is still unavailable.
 Public privacy, support and deletion pages return 200. Both Android association
 files advertise the old certificate only; the main Apple association URL returns
 404. Complete the verified identity/key configuration before claiming native

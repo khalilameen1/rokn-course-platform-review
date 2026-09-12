@@ -17,9 +17,10 @@ reviewer journeys and native product configuration.
 - Privacy: `https://rokn.app/privacy-policy`
 - Account/data deletion: `https://rokn.app/account-deletion`
 
-Inspect the existing company records before creating anything. The current
-Google sign-in session is expired and Apple's organization enrollment has not
-been verified. Do not substitute a personal developer account or another
+Inspect the existing company records before creating anything. The expired
+Google session was restarted but Rokn sign-in now requires an owner-completed
+reCAPTCHA challenge. Apple's organization enrollment has not been verified.
+Do not substitute a personal developer account or another
 country. Legal-address, tax, banking and identity fields must come from the
 company's verified records, not placeholders in this repository.
 
