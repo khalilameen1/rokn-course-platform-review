@@ -9,6 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import {
   Palette,
   Type,
@@ -31,6 +32,19 @@ import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {CopyButton} from '../../ui/CopyButton';
 import {AiResponseReportButton} from '../../ui/AiResponseReportButton';
+
+// Decorative marks stay inside labelled 48dp targets; all content still uses
+// the OS font scale and the composer keeps its full-width, wrapping layout.
+const AttachmentActionIcon = ({remove = false}: {remove?: boolean}) => (
+  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <Svg width={22} height={22} viewBox="0 0 24 24">
+      <Path
+        d={remove ? 'm6 6 12 12M18 6 6 18' : 'M12 4v16M4 12h16'}
+        stroke={Palette.text} strokeWidth={1.8} strokeLinecap="round" fill="none"
+      />
+    </Svg>
+  </View>
+);
 
 type Props = {
   attachments: ChatAttachmentDraft[];
@@ -271,9 +285,7 @@ const ProjectFeedbackPanel = ({
                 disabled={sending}
                 style={styles.removeAction}
                 onPress={() => onRemoveAttachment(file)}>
-                <Text allowFontScaling={false} style={styles.attachmentRemove}>
-                  ×
-                </Text>
+                <AttachmentActionIcon remove />
               </Pressable>
             </View>
           ))}
@@ -303,9 +315,7 @@ const ProjectFeedbackPanel = ({
                 }
                 style={styles.attach}
                 onPress={onPickAttachments}>
-                <Text allowFontScaling={false} style={styles.attachText}>
-                  ＋
-                </Text>
+                <AttachmentActionIcon />
               </Pressable>
             )}
             <Pressable
@@ -466,7 +476,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  attachmentRemove: {color: Palette.text, fontSize: 22, lineHeight: 26},
   attachmentPreview: {width: 34, height: 34, borderRadius: 8},
   attach: {
     minWidth: 48,
@@ -476,7 +485,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Palette.surfaceRaised,
   },
-  attachText: {color: Palette.text, fontSize: 22, lineHeight: 26},
   messageAttachments: {gap: 8},
   messageAttachment: {
     minHeight: 48,

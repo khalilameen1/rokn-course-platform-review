@@ -341,6 +341,20 @@ Use the test profile for local investigations; production artifacts never allow 
     if (-not $npmCommand) {
         throw 'npm.cmd was not found on PATH.'
     }
+    $nodeCommand = Get-Command 'node.exe' -ErrorAction SilentlyContinue
+    if (-not $nodeCommand) {
+        throw 'node.exe was not found on PATH.'
+    }
+    $expectedNodeVersion = (Get-Content -LiteralPath (Join-Path $projectRoot '.node-version') -Raw).Trim()
+    $actualNodeVersion = (& $nodeCommand.Source --version | Out-String).Trim().TrimStart('v')
+    if ($LASTEXITCODE -ne 0 -or $actualNodeVersion -ne $expectedNodeVersion) {
+        throw "Production builds require Node $expectedNodeVersion from .node-version; found $actualNodeVersion."
+    }
+    $expectedNpmVersion = ([string]$packageConfig.packageManager) -replace '^npm@', ''
+    $actualNpmVersion = (& $npmCommand.Source --version | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $actualNpmVersion -ne $expectedNpmVersion) {
+        throw "Production builds require npm $expectedNpmVersion from package.json; found $actualNpmVersion."
+    }
     & $npmCommand.Source run verify:release
     if ($LASTEXITCODE -ne 0) {
         throw "JavaScript release quality gates failed with exit code $LASTEXITCODE."

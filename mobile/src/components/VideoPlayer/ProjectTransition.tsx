@@ -11,6 +11,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {ArrowRight} from '../../assets/SVG';
 import {
@@ -23,7 +24,6 @@ import {
   rtlRowStyle,
   textDirection,
 } from '../../constants/designSystem';
-import {Fonts} from '../../constants/styleConstants';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
 import type {ProjectSubmissionOutcome} from './courseLearningApi';
 import type {ProjectResolution} from './courseLearning/projectRemote';
@@ -80,9 +80,22 @@ const StatusHeading = ({
         {busy ? (
           <ActivityIndicator color={color} size="small" />
         ) : (
-          <Text allowFontScaling={false} style={[styles.statusSymbol, {color}]}>
-            {tone === 'success' ? '✓' : '!'}
-          </Text>
+          <Svg
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            width={24}
+            height={24}
+            viewBox="0 0 24 24">
+            <Path
+              d={tone === 'success' ? 'm5 12 4 4L19 6' : 'M12 4v9m0 5h.01'}
+              fill="none"
+              stroke={color}
+              strokeWidth={2.2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
         )}
       </View>
       <View style={styles.statusCopy}>
@@ -114,12 +127,21 @@ const ProjectBrief = ({
       onPress={onToggle}
       style={styles.briefToggle}>
       <Text style={styles.briefToggleText}>تفاصيل المشروع</Text>
-      <Text
-        allowFontScaling={false}
+      <Svg
+        accessible={false}
         accessibilityElementsHidden
-        style={styles.briefToggleSymbol}>
-        {expanded ? '−' : '+'}
-      </Text>
+        importantForAccessibility="no-hide-descendants"
+        width={22}
+        height={22}
+        viewBox="0 0 24 24">
+        <Path
+          d={expanded ? 'M5 12h14' : 'M5 12h14M12 5v14'}
+          fill="none"
+          stroke={Palette.textMuted}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+        />
+      </Svg>
     </Pressable>
     {expanded && (
       <View style={styles.briefBody}>
@@ -616,10 +638,6 @@ const styles = StyleSheet.create({
   progressMark: {
     backgroundColor: Palette.surface,
   },
-  statusSymbol: {
-    fontFamily: Fonts.bold,
-    fontSize: 19,
-  },
   statusCopy: {
     flex: 1,
     minWidth: 0,
@@ -749,11 +767,6 @@ const styles = StyleSheet.create({
     ...Type.bodyStrong,
     color: Palette.textMuted,
     flexShrink: 1,
-  },
-  briefToggleSymbol: {
-    color: Palette.textMuted,
-    fontFamily: Fonts.medium,
-    fontSize: 22,
   },
   briefBody: {
     paddingBottom: Spacing.sm,

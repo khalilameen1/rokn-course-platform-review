@@ -8,6 +8,20 @@ use Tests\TestCase;
 
 final class LegalCommercePolicyTest extends TestCase
 {
+    public function test_privacy_policies_explain_ai_consent_withdrawal_without_erasing_saved_results(): void
+    {
+        $arabic = require resource_path('lang/ar/privacy.php');
+        $english = require resource_path('lang/en/privacy.php');
+        $arabicText = json_encode($arabic, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        $englishText = json_encode($english, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        self::assertSame('2026-09-12', $arabic['version']);
+        self::assertSame($arabic['version'], $english['version']);
+        self::assertStringContainsString('الإعدادات ← الخصوصية والتواصل ← مشاركة البيانات للذكاء الاصطناعي ← إيقاف المشاركة', $arabicText);
+        self::assertStringContainsString('تبقى ردودك المحفوظة وقد يكتمل طلب بدأ قبل الإيقاف', $arabicText);
+        self::assertStringContainsString('Settings → Privacy and contact → AI data sharing → Stop sharing', $englishText);
+        self::assertStringContainsString('A request started before you stop sharing may still finish', $englishText);
+    }
+
     public function test_arabic_terms_and_refund_policy_define_closed_loop_final_coin_purchases(): void
     {
         $terms = json_encode(

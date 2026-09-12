@@ -9620,15 +9620,15 @@
       ]
     },
     {
-      "coordinate": "js-yaml@3.15.1",
+      "coordinate": "js-yaml@3.15.2",
       "name": "js-yaml",
-      "version": "3.15.1",
+      "version": "3.15.2",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-S99WuO3HlhO3XN41EtYUNl9zzXjoJx7QvmipxsJVxtCBT0YHEFy+iOJhjSvrmV12nYhWpZaM8lPHkJm0yUMbag==",
-      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.15.1.tgz",
+      "integrity": "sha512-6EuL879VkRA+1Cz578mKMiKvjPNEuk6+r1JaFzoSWejZmtf7xWbIyw1e3KkxlkzTIt9Taw6JBhEppG7utc1P+w==",
+      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.15.2.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.15.1.tgz",
+      "sourceReference": "https://registry.npmjs.org/js-yaml/-/js-yaml-3.15.2.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [
@@ -9640,15 +9640,15 @@
       ]
     },
     {
-      "coordinate": "js-yaml@4.3.1",
+      "coordinate": "js-yaml@4.3.2",
       "name": "js-yaml",
-      "version": "4.3.1",
+      "version": "4.3.2",
       "selectedLicense": "MIT",
       "declaredLicense": "MIT",
-      "integrity": "sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==",
-      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.1.tgz",
+      "integrity": "sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==",
+      "resolved": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.2.tgz",
       "legalSource": "package-root",
-      "sourceReference": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.1.tgz",
+      "sourceReference": "https://registry.npmjs.org/js-yaml/-/js-yaml-4.3.2.tgz",
       "publishedLegalFileCount": 1,
       "apacheNotice": null,
       "files": [

@@ -343,6 +343,12 @@ describe('project feedback report and conversation presentation', () => {
     base.thread = {...base.thread, messages: [report, failed]};
     render(base);
     await act(async () => button(renderer, `فتح ${file.name}`).props.onPress());
+    expect(renderer.root.findAllByType(Text).every(node => node.props.allowFontScaling !== false)).toBe(true);
+    for (const label of [`إزالة ${file.name}`, 'إضافة مرفق']) {
+      const action = button(renderer, label);
+      expect(action.findAllByType(Text)).toHaveLength(0);
+      expect(action.findAllByProps({accessibilityElementsHidden: true}).length).toBeGreaterThan(0);
+    }
     expect(mockOpenAttachment).toHaveBeenCalledWith({
       projectId: '7',
       threadId: 'thread-1',

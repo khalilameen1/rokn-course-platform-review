@@ -573,6 +573,12 @@ describe('course conversation keyboard ownership', () => {
       history.findAllByProps({accessibilityLabel: 'حذف مشروعي.pdf'}).length,
     ).toBeGreaterThan(0);
     expect(
+      renderer.root.findAllByType(Text).every(node => node.props.allowFontScaling !== false),
+    ).toBe(true);
+    const removeAction = history.findAllByProps({accessibilityLabel: 'حذف مشروعي.pdf'})[0];
+    expect(removeAction.findAllByType(Text)).toHaveLength(0);
+    expect(removeAction.findAllByProps({accessibilityElementsHidden: true}).length).toBeGreaterThan(0);
+    expect(
       history.findAllByType(Text).some(node => node.props.children === 'إيقاف'),
     ).toBe(true);
     expect(history.findAllByProps({accessibilityLabel: 'إرسال'})).toHaveLength(

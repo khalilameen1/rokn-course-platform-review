@@ -50,6 +50,16 @@ const packageJson = json('package.json');
 const packageLock = json('package-lock.json');
 const app = json('app.json').expo;
 const eas = json('eas.json');
+for (const profile of [
+  'production-play',
+  'production-direct',
+  'production-ios',
+]) {
+  assert(
+    eas.build?.[profile]?.node === read('.node-version').trim(),
+    `${profile} must use the checked-in Node version.`,
+  );
+}
 const gitignore = read('.gitignore');
 const androidFirebase = json('android/app/google-services.json');
 const iosFirebaseSourceContents = read('ios/GoogleService-Info.plist');

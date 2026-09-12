@@ -264,4 +264,38 @@ describe('wallet presentation', () => {
     await act(async () => balance.props.onPress());
     expect(controller.setWalletModal).toHaveBeenCalledWith('breakdown');
   });
+
+  it.each([
+    [320, 1],
+    [320, 2],
+    [800, 2],
+  ])(
+    'lets the complete balance wrap without shrinking at %idp / font scale %s',
+    async (width, fontScale) => {
+      mockDimensions = {...mockDimensions, width, fontScale};
+      const amount = 123456789;
+      const root = await render(
+        makeController({displayedBalance: amount, walletModal: 'breakdown'}),
+      );
+      const totals = root
+        .findAllByType(Text)
+        .filter(text => text.props.children === formatArabicNumber(amount));
+      expect(totals).toHaveLength(2);
+      for (const total of totals) {
+        expect(total.props.numberOfLines).toBeUndefined();
+        expect(total.props.adjustsFontSizeToFit).toBeUndefined();
+        expect(total.props.maxFontSizeMultiplier).toBeUndefined();
+        expect(total.props.allowFontScaling).not.toBe(false);
+      }
+      expect(StyleSheet.flatten(totals[0].props.style).width).toBe('100%');
+      expect(
+        StyleSheet.flatten(totals[0].parent!.props.style).flexDirection,
+      ).toBe('column');
+      expect(StyleSheet.flatten(totals[1].parent!.props.style).width).toBe(
+        '100%',
+      );
+      expect(walletStyles.balanceRow.flexWrap).toBe('wrap');
+      expect(walletStyles.balance.maxWidth).toBe('100%');
+    },
+  );
 });

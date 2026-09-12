@@ -153,12 +153,16 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                 styles.balanceButton,
                 pressed && styles.pressed,
               ]}>
-              <View style={styles.balanceRow}>
+              <View
+                style={[
+                  styles.balanceRow,
+                  stackTaskActions && styles.balanceRowStacked,
+                ]}>
                 <Text
-                  maxFontSizeMultiplier={2}
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  style={styles.balance}>
+                  style={[
+                    styles.balance,
+                    stackTaskActions && styles.balanceFullWidth,
+                  ]}>
                   {displayedBalance === null
                     ? '—'
                     : formatArabicNumber(displayedBalance)}
@@ -444,14 +448,19 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                 </>
               ) : (
                 <>
-                  <View style={styles.breakdownHero}>
+                  <View
+                    style={[
+                      styles.breakdownHero,
+                      stackTaskActions && styles.balanceRowStacked,
+                    ]}>
                     <RoknCoin size={58} style={styles.coinSpacing} />
-                    <View style={styles.breakdownHeroCopy}>
+                    <View
+                      style={[
+                        styles.breakdownHeroCopy,
+                        stackTaskActions && styles.breakdownHeroCopyStacked,
+                      ]}>
                       <Text style={styles.breakdownCaption}>إجمالي الرصيد</Text>
-                      <Text
-                        maxFontSizeMultiplier={2}
-                        numberOfLines={1}
-                        style={styles.breakdownTotal}>
+                      <Text style={styles.breakdownTotal}>
                         {formatArabicNumber(displayedBalance ?? 0)}
                       </Text>
                     </View>

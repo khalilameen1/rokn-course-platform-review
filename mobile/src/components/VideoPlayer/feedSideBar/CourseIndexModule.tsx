@@ -108,6 +108,9 @@ const CourseIndexModule = ({
                   key={key}
                   accessibilityRole="button"
                   accessibilityState={{disabled: unavailable}}
+                  accessibilityValue={
+                    reel.isCompleted ? {text: 'مكتمل'} : undefined
+                  }
                   disabled={unavailable}
                   style={[
                     styles.reelRow,
@@ -139,9 +142,22 @@ const CourseIndexModule = ({
                     )}
                   </View>
                   {reel.isCompleted && (
-                    <Text allowFontScaling={false} style={styles.completedMark}>
-                      ✓
-                    </Text>
+                    <Svg
+                      accessible={false}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                      width={16}
+                      height={16}
+                      viewBox="0 0 24 24">
+                      <Path
+                        d="m5 12 4 4L19 6"
+                        fill="none"
+                        stroke={Palette.success}
+                        strokeWidth={2.2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
                   )}
                   {unavailable && <LockIcon />}
                 </Pressable>
@@ -162,11 +178,15 @@ const CourseIndexModule = ({
                 ]}
                 onPress={() => onSelect(`project-${project.id}`)}>
                 <View style={styles.projectGlyph}>
-                  <Text
-                    allowFontScaling={false}
-                    style={styles.projectGlyphText}>
-                    ◆
-                  </Text>
+                  <Svg
+                    accessible={false}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no-hide-descendants"
+                    width={13}
+                    height={13}
+                    viewBox="0 0 16 16">
+                    <Path d="m8 1 7 7-7 7-7-7Z" fill={Palette.textMuted} />
+                  </Svg>
                 </View>
                 <View style={styles.projectCopy}>
                   <Text style={styles.projectTitle}>
@@ -264,7 +284,6 @@ const styles = StyleSheet.create({
     color: Palette.text,
   },
   reelCopy: {flex: 1, minWidth: 0},
-  completedMark: {color: '#67D39B', fontFamily: Fonts.bold, fontSize: 15},
   projectRow: {
     minHeight: 76,
     borderRadius: Radius.md,
@@ -285,7 +304,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Palette.surfacePressed,
   },
-  projectGlyphText: {color: Palette.textMuted, fontSize: 13},
   projectCopy: {flex: 1, minWidth: 0},
   projectTitle: {
     ...Type.bodyStrong,

@@ -8,6 +8,7 @@
     "production-play": {
       "distribution": "store",
       "channel": "production",
+      "node": "24.19.0",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://rokn.app/api/v1/",
         "EXPO_PUBLIC_SENTRY_DSN": "https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160",
@@ -51,6 +52,7 @@
     "production-direct": {
       "distribution": "internal",
       "channel": "production",
+      "node": "24.19.0",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://rokn.app/api/v1/",
         "EXPO_PUBLIC_SENTRY_DSN": "https://8e943a4df919328a657323a1e94a0a1c@o4512022507356160.ingest.de.sentry.io/4512022513582160",

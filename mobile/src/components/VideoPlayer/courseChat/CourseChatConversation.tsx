@@ -51,6 +51,19 @@ const SendIcon = () => (
   </Svg>
 );
 
+// These are decorative controls, not text: keep glyph geometry stable while
+// their labelled buttons and the surrounding learner text remain accessible.
+const AttachmentActionIcon = ({remove = false}: {remove?: boolean}) => (
+  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <Svg width={remove ? 20 : 24} height={remove ? 20 : 24} viewBox="0 0 24 24">
+      <Path
+        d={remove ? 'm6 6 12 12M18 6 6 18' : 'M12 4v16M4 12h16'}
+        stroke="#FFFFFF" strokeWidth={1.8} strokeLinecap="round" fill="none"
+      />
+    </Svg>
+  </View>
+);
+
 const WorkingIndicator = () => {
   const dots = useRef([
     new Animated.Value(0.32),
@@ -281,11 +294,7 @@ export const CourseChatConversation = ({
                   accessibilityLabel={`حذف ${file.name}`}
                   style={styles.attachmentRemoveButton}
                   onPress={() => onRemoveAttachment(file)}>
-                  <Text
-                    allowFontScaling={false}
-                    style={styles.attachmentRemove}>
-                    ×
-                  </Text>
+                  <AttachmentActionIcon remove />
                 </Pressable>
               </View>
             ))}
@@ -323,9 +332,7 @@ export const CourseChatConversation = ({
             disabled={sending || attachments.length >= attachmentLimit}
             style={styles.attachButton}
             onPress={onPickAttachments}>
-            <Text allowFontScaling={false} style={styles.attachButtonText}>
-              ＋
-            </Text>
+            <AttachmentActionIcon />
           </Pressable>
         )}
         <Pressable

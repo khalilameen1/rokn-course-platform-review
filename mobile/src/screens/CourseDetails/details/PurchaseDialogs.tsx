@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {CloseChat} from '../../../assets/SVG';
 import {Palette} from '../../../constants/designSystem';
 import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';
@@ -157,9 +158,13 @@ export const CoursePurchaseDialog = ({
                 interactionBusy && styles.disabled,
                 pressed && styles.pressed,
               ]}>
-              <Text allowFontScaling={false} style={styles.sheetCloseText}>
-                ×
-              </Text>
+              <CloseChat
+                accessible={false}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                width={20}
+                height={20}
+              />
             </Pressable>
           </View>
           <ScrollView

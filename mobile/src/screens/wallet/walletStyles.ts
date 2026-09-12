@@ -17,10 +17,17 @@ export const walletStyles = StyleSheet.create({
   balanceCaption: {...Type.body, ...textDirection, color: Palette.textMuted},
   balanceRow: {
     ...rtlRowStyle,
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: Spacing.sm,
     width: '100%',
   },
+  balanceRowStacked: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  balanceFullWidth: {width: '100%'},
   balanceButton: {
     alignItems: 'flex-start',
     minHeight: Accessibility.minTouchTarget,
@@ -33,6 +40,8 @@ export const walletStyles = StyleSheet.create({
     fontSize: 44,
     lineHeight: 58,
     flexShrink: 1,
+    minWidth: 0,
+    maxWidth: '100%',
   },
   balanceDetails: {
     ...Type.caption,
@@ -263,6 +272,7 @@ export const walletStyles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   breakdownHeroCopy: {flex: 1, minWidth: 0, marginHorizontal: Spacing.sm},
+  breakdownHeroCopyStacked: {flex: 0, width: '100%', marginHorizontal: 0},
   breakdownCaption: {
     ...Type.caption,
     ...textDirection,

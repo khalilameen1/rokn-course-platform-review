@@ -21,6 +21,14 @@ import {
 } from '../src/services/publicContent';
 
 describe('shared public documents', () => {
+  it('explains AI consent withdrawal using the actual settings labels in the offline policy', () => {
+    const privacy = bundledPublicContent('privacy');
+    const body = privacy.sections.flatMap(section => section.body).join('\n');
+    expect(body).toContain('الإعدادات ← الخصوصية والتواصل ← مشاركة البيانات للذكاء الاصطناعي ← إيقاف المشاركة');
+    expect(body).toContain('تبقى ردودك المحفوظة وقد يكتمل طلب بدأ قبل الإيقاف');
+    expect(privacy.last_updated).toContain('١٢ سبتمبر ٢٠٢٦');
+  });
+
   beforeEach(() => {
     jest.resetAllMocks();
     mockRead.mockResolvedValue(null);

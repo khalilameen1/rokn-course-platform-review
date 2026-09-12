@@ -1,5 +1,6 @@
 import React, {useMemo, useState} from 'react';
 import {ActivityIndicator, Image, Pressable, Text, View} from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import {
   AccordionArrowDown,
   AccordionArrowUp,
@@ -326,12 +327,15 @@ export const CourseIntro = ({
           pressed && styles.pressed,
         ]}>
         <Text style={styles.previewButtonText}>شاهد مجانًا</Text>
-        <Text
-          allowFontScaling={false}
+        <Svg
+          accessible={false}
           accessibilityElementsHidden
-          style={styles.previewIcon}>
-          ▶
-        </Text>
+          importantForAccessibility="no-hide-descendants"
+          width={12}
+          height={12}
+          viewBox="0 0 12 12">
+          <Path d="M2 1L11 6L2 11Z" fill={Palette.text} />
+        </Svg>
       </Pressable>
     )}
   </View>
@@ -424,14 +428,18 @@ export const CourseRatingAction = ({
               !editable && styles.disabled,
               pressed && styles.pressed,
             ]}>
-            <Text
-              allowFontScaling={false}
-              style={[
-                styles.ratingStar,
-                value <= (rating ?? 0) && styles.ratingStarSelected,
-              ]}>
-              ★
-            </Text>
+            <Svg
+              accessible={false}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              width={26}
+              height={26}
+              viewBox="0 0 24 24">
+              <Path
+                d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26Z"
+                fill={value <= (rating ?? 0) ? Palette.text : Palette.textFaint}
+              />
+            </Svg>
           </Pressable>
         ))}
         {busy && <ActivityIndicator color={Palette.primary} size="small" />}

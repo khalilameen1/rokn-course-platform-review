@@ -183,9 +183,21 @@ const ProjectSubmissionEditor = ({
               disabled={sending || revisionUpdating}
               style={styles.removeButton}
               onPress={() => onRemoveFile(file)}>
-              <Text allowFontScaling={false} style={styles.attachmentRemove}>
-                ×
-              </Text>
+              <Svg
+                accessible={false}
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                width={20}
+                height={20}
+                viewBox="0 0 24 24">
+                <Path
+                  d="m6 6 12 12M6 18 18 6"
+                  fill="none"
+                  stroke={Palette.textMuted}
+                  strokeWidth={1.8}
+                  strokeLinecap="round"
+                />
+              </Svg>
             </Pressable>
           </View>
         ))}
@@ -336,7 +348,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  attachmentRemove: {color: Palette.textMuted, fontSize: 24, lineHeight: 28},
   attachmentPreview: {width: 34, height: 34, borderRadius: 8},
 });
 

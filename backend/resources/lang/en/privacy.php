@@ -4,7 +4,7 @@ return [
     'title' => 'Privacy Policy',
     'meta_description' => 'How Rokn uses your data and the choices you have',
     'heading' => 'Privacy Policy',
-    'version' => '2026-09-11',
+    'version' => '2026-09-12',
     'intro_title' => 'Your data in Rokn',
     'intro_text' => 'This policy covers the data used for your account, courses, payments and learning questions, what others can see, and what you can change or delete.',
     'sections' => [
@@ -36,6 +36,8 @@ return [
             'body' => [
                 'Learning questions and project reviews use artificial intelligence to produce responses and reports and assess your submissions.',
                 'We send OpenRouter and the model provider the question or project, necessary attachments, course context and relevant conversation excerpts.',
+                'We ask for your consent before sending data to AI providers. You can stop new requests in Settings → Privacy and contact → AI data sharing → Stop sharing.',
+                'Your saved responses remain available. A request started before you stop sharing may still finish.',
                 'We store messages, responses and review results to continue conversations, show outcomes and investigate failures. Model providers may process data according to their policies and service settings.',
                 'Send only what is needed for the question or project. Do not include passwords, payment credentials or another person’s private information without the right to do so.',
             ],
@@ -92,6 +94,6 @@ return [
         ],
     ],
     'closing' => 'For a question or request about your data, use Contact Us.',
-    'last_updated' => 'Last updated 11 September 2026',
+    'last_updated' => 'Last updated 12 September 2026',
     'contact_label' => 'Contact Us',
 ];

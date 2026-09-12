@@ -6,6 +6,37 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
+
+test('production build entry points use the pinned local and cloud toolchains', () => {
+  const mobileRoot = path.resolve(__dirname, '../..');
+  const expectedNode = fs
+    .readFileSync(path.join(mobileRoot, '.node-version'), 'utf8')
+    .trim();
+  const eas = JSON.parse(
+    fs.readFileSync(path.join(mobileRoot, 'eas.json'), 'utf8'),
+  );
+  for (const profile of [
+    'production-play',
+    'production-direct',
+    'production-ios',
+  ]) {
+    assert.equal(eas.build[profile].node, expectedNode);
+  }
+  const script = fs.readFileSync(
+    path.join(mobileRoot, 'scripts/build-android-release.ps1'),
+    'utf8',
+  );
+  assert.match(script, /actualNodeVersion -ne \$expectedNodeVersion/);
+  assert.match(script, /actualNpmVersion -ne \$expectedNpmVersion/);
+  assert.ok(
+    script.indexOf('actualNodeVersion -ne') <
+      script.indexOf('run verify:release'),
+  );
+  assert.ok(
+    script.indexOf('actualNpmVersion -ne') <
+      script.indexOf('run verify:release'),
+  );
+});
 const YAML = require('yaml');
 
 const root = path.resolve(__dirname, '..', '..');
