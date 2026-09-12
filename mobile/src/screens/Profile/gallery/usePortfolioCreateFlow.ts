@@ -466,7 +466,7 @@ export const usePortfolioCreateFlow = ({
           if (publication === 'processing' && mountedRef.current) {
             Alert.alert(
               'يُجهز الفيديو',
-              'سيظهر زر المشاركة فور اكتمال التجهيز',
+              'ستتم مراجعة أعمالك بعد اكتمال التجهيز',
             );
           }
         } catch (error) {

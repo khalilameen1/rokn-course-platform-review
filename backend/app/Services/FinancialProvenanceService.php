@@ -99,6 +99,7 @@ final readonly class FinancialProvenanceService
                 'metadata' => [
                     'package_id' => (int) $packageOrder->package_id,
                     'transaction_id' => $packageOrder->transaction_id,
+                    'store_test_purchase' => $packageOrder->gateway_settlement_status === 'test_purchase',
                 ],
             ]);
         }, 3);
@@ -308,8 +309,11 @@ final readonly class FinancialProvenanceService
     }
 
     /** @return array{recovered:int,unrecovered:int,holds:int} */
-    public function applyPackageReversal(Order $packageOrder, string $reason): array
+    public function applyPackageReversal(Order $packageOrder, string $reason, string $eventKey): array
     {
+        if (trim($eventKey) === '') {
+            throw new \InvalidArgumentException('A package reversal requires its financial event key.');
+        }
         if (!$this->schemaAvailable()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
@@ -367,6 +371,10 @@ final readonly class FinancialProvenanceService
             ];
         }
 
+        // A refund reversal can reactivate this same lot. Scope the wallet
+        // mutation to the new financial event, not the lifetime of the lot.
+        // The lifecycle's order/event lock still deduplicates old event replays.
+        $reversalCycle = hash('sha256', $eventKey);
         $availableFromLot = max(0, (int) $lot->remaining_amount);
         $walletBalances = $this->wallet->balances($user);
         $recoverable = min(
@@ -378,7 +386,7 @@ final readonly class FinancialProvenanceService
                 (int) $user->id,
                 $recoverable,
                 'package_reversal',
-                'financial-reversal:paid-lot:' . $lot->id,
+                'financial-reversal:paid-lot:' . $lot->id . ':' . $reversalCycle,
                 $packageOrder,
                 ['source_order_id' => $packageOrder->id],
                 0
@@ -393,6 +401,7 @@ final readonly class FinancialProvenanceService
             'resolved_at' => null,
             'metadata' => array_merge((array) $lot->metadata, [
                 'reversal_reason' => $reason,
+                'reversal_cycle' => $reversalCycle,
             ]),
         ])->save();
 
@@ -610,6 +619,18 @@ final readonly class FinancialProvenanceService
                 return ['restored_coins' => 0, 'released_holds' => 0];
             }
 
+            // Restore once per refund cycle, even if the provider uses multiple
+            // resolution event IDs. Pre-upgrade frozen lots have no cycle tag;
+            // retain their original restore key without rewriting ledger rows.
+            $reversalCycle = data_get($lot->metadata, 'reversal_cycle');
+            if ($reversalCycle !== null && (
+                !is_string($reversalCycle)
+                || !preg_match('/\A[a-f0-9]{64}\z/', $reversalCycle)
+            )) {
+                throw new FinancialProvenanceException('Invalid package reversal cycle provenance.');
+            }
+            $restoreKey = 'financial-resolution:restore-paid-lot:' . $lot->id
+                . ($reversalCycle !== null ? ':' . $reversalCycle : '');
             $restoredCoins = 0;
             if ($resolution === FinancialEntitlementHold::RESOLUTION_REPAID) {
                 $restoredCoins = max(0, (int) $lot->recovered_amount);
@@ -618,7 +639,7 @@ final readonly class FinancialProvenanceService
                         (int) $lockedOrder->user_id,
                         $restoredCoins,
                         'package_reversal_resolution',
-                        'financial-resolution:restore-paid-lot:' . $lot->id,
+                        $restoreKey,
                         $lockedOrder,
                         ['resolution' => $resolution],
                         WalletTransaction::BUCKET_PAID

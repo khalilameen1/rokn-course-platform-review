@@ -22,6 +22,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
     {
         $owner = $this->owner();
         $item = $this->item($owner);
+        $this->approveFixture($owner);
         $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
         $this->mock(BunnyService::class)->shouldReceive('generateBunnySignedUrl')
             ->andReturn('https://cdn.rokn.test/private-owner-image.jpg');
@@ -57,7 +58,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
         $private = $this->item($owner, false);
         $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
         $preview = route('admin.portfolio-preview.show', $owner);
-        $media = route('admin.portfolio-preview.media', [$owner, $published->mediaFiles->first()->public_id]);
+        $media = app(\App\Services\PublicPortfolioService::class)->adminPreview($owner)['projects'][0]['media'][0]['image_url'];
         $this->get($preview)->assertRedirect();
         $this->get($media)->assertRedirect();
         $this->actingAs($this->owner('moderator'), 'web')->get($preview)->assertForbidden();
@@ -69,7 +70,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
         $this->actingAs($this->owner('admin'), 'web')->get($preview)->assertOk()
             ->assertSee('معاينة إدارية خاصة')->assertSee($published->title)
             ->assertDontSee($private->title)->assertDontSee('الإبلاغ عن محتوى')
-            ->assertSee($media, false)->assertHeader('Referrer-Policy', 'no-referrer');
+            ->assertSee(e($media), false)->assertHeader('Referrer-Policy', 'no-referrer');
         $this->mock(BunnyService::class)->shouldReceive('generateBunnySignedUrl')
             ->once()->andReturn('https://cdn.rokn.test/admin-image.jpg');
         $this->get($media)->assertRedirect('https://cdn.rokn.test/admin-image.jpg');
@@ -85,6 +86,13 @@ final class PortfolioSharingAwarenessTest extends TestCase
             'role' => $role, 'active' => true,
             'portfolio_slug' => 'rokn-'.strtolower(Str::random(24)),
         ]);
+    }
+
+    private function approveFixture(User $owner): void
+    {
+        $owner = $owner->fresh();
+        $snapshot = app(\App\Services\PortfolioModerationService::class)->snapshot($owner);
+        $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
     }
 
     private function item(User $owner, bool $public = true): PortfolioItem

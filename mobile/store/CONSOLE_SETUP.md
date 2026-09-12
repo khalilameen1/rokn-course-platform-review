@@ -17,9 +17,14 @@ reviewer journeys and native product configuration.
 - Privacy: `https://rokn.app/privacy-policy`
 - Account/data deletion: `https://rokn.app/account-deletion`
 
-Inspect the existing company records before creating anything. The expired
-Google session was restarted but Rokn sign-in now requires an owner-completed
-reCAPTCHA challenge. Apple's organization enrollment has not been verified.
+The company Play Console account was inspected on September 13 while signed in
+as Rokn. Website ownership of `https://rokn.app` was verified after the owner's
+confirmed request. Both contact and developer phones were then verified using
+the owner's SMS code and saved successfully. Create app is enabled and the
+availability check accepts `com.rokn`. After the owner confirmed the required
+declarations, the Arabic free-to-download draft `ركن Rokn` was created as app
+record `4974910218344866175`. No binary was uploaded or published at this checkpoint.
+Apple's organization enrollment has not been verified.
 Do not substitute a personal developer account or another
 country. Legal-address, tax, banking and identity fields must come from the
 company's verified records, not placeholders in this repository.
@@ -68,6 +73,9 @@ and inspect the actual archive before creating the TestFlight review build.
 
 Use [listing drafts](listing/README.md) for field mapping and validated text
 lengths. Confirm the name is available before saving either locale.
+The rejected Arabic descriptor was removed from the draft. `ركن Rokn` remains
+the neutral working title of the created draft until the final store name is
+chosen; no proposed descriptor from the naming discussion has been submitted.
 
 The three public support/privacy/deletion URLs above returned HTTP 200 on
 2026-09-12. That does not prove the deletion request completes or the newly

@@ -6,6 +6,8 @@ import {
   valueAsBoolean,
 } from './common';
 import {
+  courseAverageRating,
+  courseCount,
   displayImageUrl,
   displayText,
   stableCourseContentId,
@@ -35,8 +37,8 @@ const hasLearningAccess = (course: CourseDto): boolean =>
 
 const courseUserRating = (value: unknown): number | null => {
   const raw = isApiRecord(value) ? value.rating : value;
-  const rating = Number(raw);
-  return rating >= 1 && rating <= 5 ? rating : null;
+  const rating = courseAverageRating(raw);
+  return rating !== undefined && Number.isInteger(rating) ? rating : null;
 };
 
 const hasValidCourseModuleContract = (rawModules: unknown): boolean => {
@@ -130,30 +132,25 @@ const assertCourseDetailsContract = (course: unknown): CourseDto => {
   const id = stableCourseContentId(course.id);
   const title = displayText(course.title);
   const comingSoon = firstBoolean(course.is_coming_soon);
-  const ratingsCount = Number(course.ratings_count);
+  const ratingsCount = courseCount(course.ratings_count);
   const ratingAverageRaw = course.average_rating;
   const ratingAverage =
     ratingAverageRaw === null || ratingAverageRaw === undefined
       ? null
-      : Number(ratingAverageRaw);
-  const studentsCount = Number(
-    isApiRecord(course.metadata) ? course.metadata.students_count : NaN,
+      : courseAverageRating(ratingAverageRaw);
+  const studentsCount = courseCount(
+    isApiRecord(course.metadata) ? course.metadata.students_count : undefined,
   );
   const publishedRevision = Number(course.published_revision);
   if (
     !id ||
     !title ||
     comingSoon === undefined ||
-    !Number.isSafeInteger(ratingsCount) ||
-    ratingsCount < 0 ||
+    ratingsCount === undefined ||
     (ratingsCount === 0 && ratingAverage !== null) ||
     (ratingsCount > 0 &&
-      (ratingAverage === null ||
-        !Number.isFinite(ratingAverage) ||
-        ratingAverage < 1 ||
-        ratingAverage > 5)) ||
-    !Number.isSafeInteger(studentsCount) ||
-    studentsCount < 0 ||
+      (ratingAverage === null || ratingAverage === undefined)) ||
+    studentsCount === undefined ||
     (!comingSoon &&
       (!Number.isSafeInteger(publishedRevision) || publishedRevision < 1))
   ) {
@@ -327,16 +324,15 @@ export const mapCourseDetailsPayload = (value: unknown): CourseDetails => {
     // sample while the graph contained no playable preview (or hide a real
     // one after a stale counter), ending in an empty player.
     previewReelCount,
-    ratingAverage:
-      Number(course.average_rating) > 0 ? Number(course.average_rating) : null,
-    ratingsCount: Math.max(0, Number(course.ratings_count ?? 0) || 0),
+    ratingAverage: courseAverageRating(course.average_rating) ?? null,
+    ratingsCount: courseCount(course.ratings_count) ?? 0,
     userRating: courseUserRating(course.user_rating),
     ratingVersion: Math.max(0, Number(course.rating_eligibility?.version) || 0),
     ratingEligible: valueAsBoolean(course.rating_eligibility?.can_rate),
     ratingEligibilityReason: String(
       course.rating_eligibility?.reason || 'course_access_required',
     ),
-    studentsCount: Math.max(0, Number(course.metadata?.students_count) || 0),
+    studentsCount: courseCount(course.metadata?.students_count) ?? 0,
     durationMinutes: courseDurationMinutes(course),
     accessPlans,
   };

@@ -287,7 +287,12 @@ export const CourseIntro = ({
             {formatArabicMinutes(durationMinutes)}
           </Text>
         )}
-        {ratingsCount > 0 && ratingAverage !== null ? (
+        {Number.isSafeInteger(ratingsCount) &&
+        ratingsCount > 0 &&
+        typeof ratingAverage === 'number' &&
+        Number.isFinite(ratingAverage) &&
+        ratingAverage >= 1 &&
+        ratingAverage <= 5 ? (
           <View
             accessible
             accessibilityRole="text"
@@ -308,9 +313,11 @@ export const CourseIntro = ({
             </Text>
           </View>
         ) : (
-          <Text style={styles.socialProofText}>لا توجد تقييمات</Text>
+          <Text style={styles.socialProofText}>
+            {ratingsCount === 0 ? 'لا توجد تقييمات' : 'التقييمات غير متاحة'}
+          </Text>
         )}
-        {studentsCount > 0 && (
+        {Number.isSafeInteger(studentsCount) && studentsCount > 0 && (
           <Text style={styles.socialProofText}>
             {formatArabicStudents(studentsCount)}
           </Text>

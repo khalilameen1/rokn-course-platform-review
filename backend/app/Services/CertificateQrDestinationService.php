@@ -29,6 +29,11 @@ final class CertificateQrDestinationService
                 return null;
             }
 
+            // A printed practical-certificate QR is a permanent reference, not
+            // an access token. PublicPortfolioService gates this destination
+            // and every media request on the currently approved snapshot.
+            // Switching it at PDF generation time would permanently remove
+            // the practical certificate's portfolio feature while pending.
             $slug = $this->portfolioShares->ensure($user);
 
             return [

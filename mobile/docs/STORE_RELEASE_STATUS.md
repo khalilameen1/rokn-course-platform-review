@@ -1,9 +1,10 @@
-# Store release status — 2026-09-12
+# Store release status — 2026-09-13
 
 Source: the production monorepo, not the older Desktop checkout.
 Target metadata: 1.0.56, Android 57, iOS 49.
-Status: **Android upload bundle built and inspected locally; not submitted and
-not yet approved for release**. iOS has not been built.
+Status: **Store preparation remains in progress and has not been submitted**.
+The inspected Android bundle below predates the portfolio review UI changes and
+must be rebuilt from the final reviewed source. iOS has not been built.
 
 ## Implemented locally
 
@@ -20,6 +21,15 @@ not yet approved for release**. iOS has not been built.
   collection or changing tracking behavior
 - Added missing Apple login/revocation variable names to both backend example
   environments; no real credentials have been inserted or changed
+- Owner-approved verified store test fulfillment: Google test/Apple sandbox coins
+  retain paid-lot attribution while cash amount, gross revenue and net revenue
+  remain zero. Client flags cannot designate a purchase as a verified test.
+- Google consumption after committed credit, with database-backed leased retry
+  through the existing scheduler. Authenticated notifications recover completed
+  purchases; pending/cancelled payments cannot mint coins.
+- Repeat refund/reversal cycles use distinct financial-event identities. Apple
+  notifications reconcile the newest authenticated signedDate rather than their
+  arrival order; missing or contradictory chronology remains under review.
 
 Store-entry material is prepared in [console setup](../store/CONSOLE_SETUP.md),
 [reviewer access](REVIEW_ACCESS.md) and the [Arabic/English listing files](../store/listing/README.md).
@@ -30,8 +40,36 @@ require actual account/device work.
 These backend changes and their migrations have **not** been deployed. Coordinate
 the mobile/backend rollout using `AI_CONSENT_RELEASE.md`; older clients cannot
 complete new AI work once the server starts requiring affirmative consent.
+Use [STORE_ROLLOUT.md](STORE_ROLLOUT.md) for the newly approved payment and
+pre-publication portfolio deployment requirements.
 
 ## Verification completed
+
+September 13 incremental checks (not an end-to-end store certification):
+
+- Billing, notification recovery, refund cycles and reporting: 63 tests,
+  598 assertions passed. Independent final source review found no additional
+  demonstrated defect in that financial change set.
+- A subsequent integration review reproduced a Google cancellation arriving
+  before the device persisted its older PURCHASED result. Provider-confirmed
+  cancellations now survive until receipt reconciliation. The new regression
+  failed before the fix; seven focused tests then passed with 106 assertions.
+- Mobile portfolio review contract, sharing/QR, account switching and stale
+  reads: the latest focused five suites passed 38 tests. Earlier seven-suite
+  integration run passed 55 tests before the two new stale-request regressions.
+  The production build will run the complete release gate again.
+- Backend portfolio/profile/certificate integration: 73 tests and 616 assertions
+  passed. The separate upload/replay/lease selection passed 41 tests and 395
+  assertions. These selections overlap and must not be added together.
+- The final portfolio integration review found that empty accounts and private
+  drafts entered the pending-review inbox. Its regression failed before the fix;
+  the complete pre-publication review file then passed 10 tests, 124 assertions.
+- Social-proof parsing and presentation: eight mobile suites passed 70 tests,
+  with TypeScript and scoped ESLint passing. Seven backend tests passed 121
+  assertions for real-count contracts and production seeder restrictions. These
+  checks do not establish the authenticity of historical production rows.
+
+September 12 baseline checks for the older artifact:
 
 - Mobile release regression: 269 suites, 2,079 tests passed
 - Mobile release lint and TypeScript checks passed
@@ -53,17 +91,21 @@ signed iOS archive. Full native device/store review flows remain unverified.
 
 ## Release blockers
 
-1. Complete Google identity verification for the company Play Console account
-   and inspect the existing app, upload-key registration and product setup
+1. Finish the first Google app record and its signing/product configuration.
+   Website ownership and both phone fields were verified on September 13 and
+   saved successfully. Create app is enabled and `com.rokn` is available.
+   The owner confirmed the required declarations and the app draft was created
+   as `ركن Rokn`, app record `4974910218344866175`. No binary has been uploaded.
 2. Configure native store products and verified server credentials; live package
    responses currently have no Apple/Google product identifiers
-3. Obtain explicit approval before changing production financial fulfillment to
-   accept verified store sandbox purchases with zero revenue and finalize valid
-   Google purchases server-side. Gateway/model scaffolding exists but fulfillment
-   is intentionally unchanged and production sandbox receipts remain rejected
-4. Obtain explicit approval before introducing pre-publication portfolio review
-   that would pause existing shared portfolios until approved. Reporting and
-   suspension exist; the rejected moderation migration was not applied
+3. Deploy and exercise the now-approved verified-test fulfillment and Google
+   finalization implementation. The September 13 approval is recorded; it is no
+   longer waiting for permission, but actual store configuration and purchases
+   have not been verified.
+4. Deploy the approved pre-publication portfolio review
+   with its owner-facing status UI. Existing shared works also require review.
+   Confirm the old release has drained, then wait the media URL lifetime before
+   the first administrator approval, as detailed in the rollout document.
 5. Configure Apple lifecycle keys, app identity and signing, then produce and
    inspect an actual signed archive on the pinned macOS build environment
 6. Deploy the coordinated backend changes, validate migrations and launch
@@ -75,7 +117,7 @@ signed iOS archive. Full native device/store review flows remain unverified.
    Rebuild if further mobile changes are required; the artifact below covers
    only its recorded source commit
 
-## Artifact state
+## Older inspected artifact — replacement pending
 
 Android artifact: `mobile/artifacts/Rokn-play.aab`
 
@@ -127,9 +169,18 @@ Production was inspected read-only. Its catalog and authentication-method routes
 under `/api/v1/` respond successfully; launch readiness still reports missing
 recovery/mobile-release evidence. Do not fabricate release records to clear it.
 
-The expired Google login session was restarted. Google now explicitly requires
-reCAPTCHA identity verification for `roknproduction@gmail.com`; that challenge
-was left for the owner and the Play Console session is still unavailable.
+The company Play Console account was inspected on September 13 while signed in
+as Rokn. No app records exist. After the owner's specific confirmation, the
+website-verification request completed and Google displayed that ownership of
+`https://rokn.app` was verified. After reloading the console, phone-verification
+controls became available. The owner supplied the SMS code and Google confirmed
+both the contact and public developer phone fields; the changes were saved.
+Create app is now enabled and the package-name check reports `com.rokn` available.
+The Arabic, free-to-download application draft uses the neutral title `ركن Rokn`.
+After the owner's action-time confirmation of the required declarations, Google
+created app record `4974910218344866175`. No binary upload or publication has
+occurred at this checkpoint. Neither account verification nor app creation is
+store review approval.
 Public privacy, support and deletion pages return 200. Both Android association
 files advertise the old certificate only; the main Apple association URL returns
 404. Complete the verified identity/key configuration before claiming native

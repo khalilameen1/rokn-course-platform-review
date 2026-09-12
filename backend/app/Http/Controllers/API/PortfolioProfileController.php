@@ -7,6 +7,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\PortfolioShareIdentityService;
+use App\Services\PortfolioModerationService;
 use App\Services\SafeExternalUrl;
 use App\Support\RoknPublicUrl;
 use App\Support\UnicodeText;
@@ -100,12 +101,12 @@ final class PortfolioProfileController extends Controller
     private function profilePayload(User $user): array
     {
         $slug = $this->portfolioShares->ensure($user);
-        $sharingSuspended = $user->portfolio_sharing_suspended_at !== null;
+        $sharing = app(PortfolioModerationService::class)->ownerState($user);
 
         return [
             'slug' => $slug,
             'share_mode' => 'unlisted',
-            'sharing_suspended' => $sharingSuspended,
+            ...$sharing,
             'headline' => $user->portfolio_headline,
             'location' => $user->portfolio_location,
             'skills' => $user->portfolio_skills ?? [],
@@ -124,7 +125,7 @@ final class PortfolioProfileController extends Controller
                 ->filter()
                 ->values()
                 ->all(),
-            'public_url' => $sharingSuspended ? null : RoknPublicUrl::portfolio($slug),
+            'public_url' => $sharing['sharing_status'] === 'approved' ? RoknPublicUrl::portfolio($slug) : null,
         ];
     }
 }

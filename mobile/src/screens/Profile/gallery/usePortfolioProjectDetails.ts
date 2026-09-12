@@ -249,7 +249,7 @@ export const usePortfolioProjectDetails = ({
         Alert.alert(
           publication === 'processing' ? 'يُجهز الفيديو' : 'المشروع غير مكتمل',
           publication === 'processing'
-            ? 'سيظهر زر المشاركة فور اكتمال التجهيز'
+            ? 'ستتم مراجعة أعمالك بعد اكتمال التجهيز'
             : 'أضف صورة أو فيديو جاهزًا ثم حاول مرة أخرى',
         );
       }
@@ -338,7 +338,7 @@ export const usePortfolioProjectDetails = ({
           if (publication === 'processing' && mountedRef.current) {
             Alert.alert(
               'يُجهز الفيديو',
-              'سيظهر زر المشاركة فور اكتمال التجهيز',
+              'ستتم مراجعة أعمالك بعد اكتمال التجهيز',
             );
           }
         } catch {

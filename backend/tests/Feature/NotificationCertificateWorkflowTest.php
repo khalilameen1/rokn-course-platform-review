@@ -872,6 +872,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
             $table->timestamps();
             $table->softDeletes();
         });
+        (require database_path('migrations/2026_09_13_180000_add_portfolio_prepublication_review.php'))->up();
         Schema::create('course_authoring_revisions', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('canonical_course_id');

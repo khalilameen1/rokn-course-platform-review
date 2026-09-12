@@ -133,6 +133,10 @@ class PortfolioEndpointTest extends ApiTestCase
             ->assertJsonPath('data.is_public', true)
             ->assertJsonPath('data.upload_state', 'ready');
 
+        $this->getJson('/api/v1/portfolio-profile')->assertOk()
+            ->assertJsonPath('data.sharing_status', 'pending')
+            ->assertJsonPath('data.public_url', null);
+
         $this->assertDatabaseHas('portfolio_items', [
             'id' => 1,
             'is_public' => true,
@@ -401,6 +405,12 @@ class PortfolioEndpointTest extends ApiTestCase
             ->andReturn('https://cdn.example.test/public-work');
         $this->app->instance(BunnyService::class, $bunny);
 
+        $owner = $this->user->fresh();
+        $snapshot = app(\App\Services\PortfolioModerationService::class)->snapshot($owner);
+        $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
+        $deliveryUrl = RoknPublicUrl::portfolioMedia($slug, $mediaPublicId).'?'.http_build_query([
+            'revision' => $snapshot['revision'], 'snapshot' => $snapshot['hash'],
+        ]);
         $response = $this->getJson("/api/v1/public/portfolios/{$slug}");
         $response
             ->assertOk()
@@ -408,7 +418,7 @@ class PortfolioEndpointTest extends ApiTestCase
             ->assertJsonPath('data.profile.headline', null)
             ->assertJsonPath(
                 'data.projects.0.media.0.image_url',
-                RoknPublicUrl::portfolioMedia($slug, $mediaPublicId)
+                $deliveryUrl
             )
             ->assertJsonMissingPath('data.profile.bio')
             ->assertJsonMissingPath('data.profile.is_public')
@@ -432,9 +442,7 @@ class PortfolioEndpointTest extends ApiTestCase
             ->assertDontSee('شهادة لا تخص رابط الأعمال')
             ->assertDontSee('الشارات المهنية');
 
-        $mediaResponse = $this->get(
-            RoknPublicUrl::portfolioMedia($slug, $mediaPublicId)
-        );
+        $mediaResponse = $this->get($deliveryUrl);
         $mediaResponse->assertRedirect('https://cdn.example.test/public-work');
         self::assertStringContainsString(
             'no-store',

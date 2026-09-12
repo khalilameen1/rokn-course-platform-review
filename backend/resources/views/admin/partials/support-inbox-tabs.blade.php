@@ -10,4 +10,8 @@
         href="{{ route('admin.contacts.index') }}"
         @if($activeSupportSource === 'website') aria-current="page" @endif
     >رسائل الموقع وطلبات حذف الحساب</a>
+    <a class="btn {{ $activeSupportSource === 'portfolio' ? 'btn-primary' : 'btn-light' }}"
+        href="{{ route('admin.portfolio-reviews.index') }}"
+        @if($activeSupportSource === 'portfolio') aria-current="page" @endif
+    >مراجعة المعارض</a>
 </nav>

@@ -8,15 +8,20 @@ use App\Http\Resources\PortfolioMediaResource;
 use App\Models\PortfolioMedia;
 use App\Services\PublicPortfolioService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 final class PublicPortfolioMediaController extends Controller
 {
     public function portfolio(
         string $slug,
         string $mediaId,
-        PublicPortfolioService $portfolios
+        PublicPortfolioService $portfolios,
+        Request $request
     ): RedirectResponse {
-        return $this->freshRedirect($portfolios->mediaForPortfolio($slug, $mediaId));
+        return $this->freshRedirect($portfolios->mediaForPortfolio($slug, $mediaId,
+            is_string($request->query('revision')) ? $request->query('revision') : '',
+            is_string($request->query('snapshot')) ? $request->query('snapshot') : ''
+        ));
     }
 
     private function freshRedirect(?PortfolioMedia $media): RedirectResponse

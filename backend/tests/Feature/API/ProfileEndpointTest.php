@@ -57,9 +57,7 @@ class ProfileEndpointTest extends ApiTestCase
             ->assertJsonPath('data.name', 'Rokn Learner')
             ->assertJson(fn ($json) => $json
                 ->whereType('data.portfolio_slug', 'string')
-                ->where('data.portfolio_url', \App\Support\RoknPublicUrl::portfolio(
-                    $serverOwnedSlug
-                ))
+                ->where('data.portfolio_url', null)
                 ->etc())
             ->assertJsonPath('data.portfolio_headline', 'Product Designer');
 
@@ -68,6 +66,7 @@ class ProfileEndpointTest extends ApiTestCase
             'name' => 'Rokn Learner',
             'portfolio_slug' => $serverOwnedSlug,
             'portfolio_headline' => 'Product Designer',
+            'portfolio_sharing_status' => 'pending',
         ]);
     }
 

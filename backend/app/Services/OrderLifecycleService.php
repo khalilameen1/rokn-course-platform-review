@@ -226,7 +226,7 @@ final readonly class OrderLifecycleService
             $result = !$wasFulfilled
                 ? ['recovered' => 0, 'unrecovered' => 0, 'holds' => 0]
                 : ($locked->package_id
-                    ? $this->provenance->applyPackageReversal($locked, $reason)
+                    ? $this->provenance->applyPackageReversal($locked, $reason, $eventKey)
                     : ['recovered' => 0, 'unrecovered' => $atRisk, 'holds' => 0]);
             $locked->forceFill([
                 // A provider reversal may win the race against capture. Close
@@ -566,7 +566,23 @@ final readonly class OrderLifecycleService
     {
         $order->loadMissing(['package', 'user']);
         $coins = max(0, (int) $order->package_coins);
-        if (!$order->package || !$order->user || $coins <= 0 || (float) $order->final_amount <= 0) {
+        $verifiedTest = $order->gateway_settlement_status === 'test_purchase'
+            && (float) $order->amount === 0.0
+            && (float) $order->final_amount === 0.0
+            && $order->gateway_gross_amount !== null
+            && (float) $order->gateway_gross_amount === 0.0
+            && $order->storePurchase()
+                ->where('user_id', $order->user_id)
+                ->where('package_id', $order->package_id)
+                ->where('provider', match ($order->payment_method) {
+                    Order::PAYMENT_METHOD_GOOGLE_PLAY => 'google',
+                    Order::PAYMENT_METHOD_APP_STORE => 'apple',
+                    default => 'unsupported',
+                })
+                ->whereIn('environment', ['test', 'sandbox'])
+                ->whereNotNull('verified_at')
+                ->exists();
+        if (!$order->package || !$order->user || $coins <= 0 || ((float) $order->final_amount <= 0 && !$verifiedTest)) {
             throw new \DomainException('Coin package order is incomplete and cannot be approved.');
         }
         $existingCredit = WalletTransaction::query()
@@ -586,6 +602,7 @@ final readonly class OrderLifecycleService
                 [
                     'package_id' => $order->package_id,
                     'transaction_id' => $order->transaction_id,
+                    'store_test_purchase' => $verifiedTest,
                 ],
                 WalletTransaction::BUCKET_PAID
             );

@@ -32,7 +32,8 @@ const RETRY_DELAYS_MS = [3_000, 7_000, 15_000, 30_000];
 /**
  * Owns the short gap between an accepted upload and Bunny making that media
  * playable. Upload state never doubles as publication state: the server is
- * re-read before each retry and only a successful finalize exposes sharing.
+ * re-read before each retry. Finalize completes the owner item; public sharing
+ * separately requires approval of the current portfolio snapshot.
  */
 export const usePortfolioPublication = ({
   commit,

@@ -35,6 +35,14 @@ export type PortfolioProfile = {
   publicUrl: string;
   shareMode: 'unlisted';
   sharingSuspended?: boolean;
+  sharingStatus:
+    | 'pending'
+    | 'approved'
+    | 'rejected'
+    | 'suspended'
+    | 'unavailable';
+  sharingRevision: number;
+  sharingRejectionReason: string;
 };
 
 export type PortfolioItem = {
@@ -91,17 +99,30 @@ export const mapPortfolioProfile = (
   if (!isApiRecord(value)) {
     throw new Error('PORTFOLIO_PROFILE_CONTRACT_INVALID');
   }
+  const sharingSuspended = firstBoolean(value.sharing_suspended) === true;
+  const sharingStatus: PortfolioProfile['sharingStatus'] = sharingSuspended
+    ? 'suspended'
+    : ['pending', 'approved', 'rejected', 'suspended'].includes(
+        String(value.sharing_status),
+      )
+    ? (value.sharing_status as PortfolioProfile['sharingStatus'])
+    : 'unavailable';
   return {
     slug: String(value.slug || fallback.slug || ''),
     headline: String(value.headline || fallback.headline || ''),
     location: String(value.location || ''),
     skills: Array.isArray(value.skills) ? value.skills.map(String) : [],
     publicUrl:
-      firstBoolean(value.sharing_suspended) === true
-        ? ''
-        : String(value.public_url || ''),
+      sharingStatus === 'approved' ? String(value.public_url || '') : '',
     shareMode: 'unlisted',
-    sharingSuspended: firstBoolean(value.sharing_suspended) ?? false,
+    sharingSuspended: sharingStatus === 'suspended',
+    sharingStatus,
+    sharingRevision: Math.max(0, Number(value.sharing_revision) || 0),
+    sharingRejectionReason:
+      sharingStatus === 'rejected' &&
+      typeof value.sharing_rejection_reason === 'string'
+        ? value.sharing_rejection_reason.trim()
+        : '',
   };
 };
 

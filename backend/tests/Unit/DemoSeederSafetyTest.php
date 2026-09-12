@@ -6,8 +6,11 @@ namespace Tests\Unit;
 
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\CourseCodeSeeder;
+use Database\Seeders\RoknExperienceDemoSeeder;
+use Database\Seeders\VisitorTrialDataSeeder;
 use Database\Seeders\Concerns\GuardsDevelopmentFixtures;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 final class DemoSeederSafetyTest extends TestCase
@@ -25,8 +28,10 @@ final class DemoSeederSafetyTest extends TestCase
         if (!class_exists(DatabaseSeeder::class)) {
             require_once database_path('seeders/DatabaseSeeder.php');
         }
-        if (!class_exists(CourseCodeSeeder::class)) {
-            require_once database_path('seeders/CourseCodeSeeder.php');
+        foreach ([CourseCodeSeeder::class, RoknExperienceDemoSeeder::class, VisitorTrialDataSeeder::class] as $seeder) {
+            if (!class_exists($seeder)) {
+                require_once database_path('seeders/'.class_basename($seeder).'.php');
+            }
         }
     }
 
@@ -39,12 +44,22 @@ final class DemoSeederSafetyTest extends TestCase
         (new DatabaseSeeder())->run();
     }
 
-    public function test_direct_fixture_seeder_cannot_bypass_production_gate(): void
+    #[DataProvider('directFixtureSeeders')]
+    public function test_direct_fixture_seeder_cannot_bypass_production_gate(string $seeder): void
     {
         $this->app['env'] = 'production';
         config()->set('demo.seed_enabled', true);
 
         $this->expectException(LogicException::class);
-        (new CourseCodeSeeder())->run();
+        (new $seeder())->run();
+    }
+
+    public static function directFixtureSeeders(): array
+    {
+        return [
+            'course codes' => [CourseCodeSeeder::class],
+            'experience demo' => [RoknExperienceDemoSeeder::class],
+            'synthetic visitors' => [VisitorTrialDataSeeder::class],
+        ];
     }
 }

@@ -8,13 +8,13 @@ use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\User;
 use App\Support\RoknPublicUrl;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 
 final class PublicPortfolioService
 {
     public function __construct(
-        private readonly PortfolioShareIdentityService $shareIdentity
+        private readonly PortfolioShareIdentityService $shareIdentity,
+        private readonly PortfolioModerationService $moderation
     ) {
     }
 
@@ -29,41 +29,60 @@ final class PublicPortfolioService
             return null;
         }
 
-        return $this->fullPortfolio($user, $slug, $projectPage, $projectsPerPage);
+        $snapshot = $this->moderation->snapshot($user);
+        if ($this->moderation->status($user, $snapshot) !== 'approved') return null;
+
+        return $this->fullPortfolio($snapshot, $slug, $projectPage, $projectsPerPage);
     }
 
-    public function mediaForPortfolio(string $slug, string $mediaPublicId): ?PortfolioMedia
+    public function mediaForPortfolio(string $slug, string $mediaPublicId, string $revision = '', string $hash = ''): ?PortfolioMedia
     {
         $user = $this->userForSlug($slug);
-        return $user ? $this->mediaForUser($user, $mediaPublicId) : null;
+        if (!$user) return null;
+        $snapshot = $this->moderation->snapshot($user);
+        if ($this->moderation->status($user, $snapshot) !== 'approved'
+            || !$this->matchesSnapshot($snapshot, $revision, $hash)) return null;
+
+        return $this->mediaFromSnapshot($snapshot, $mediaPublicId);
     }
 
     /** Only the admin-only preview controller may call this suspension bypass. */
     public function adminPreview(User $user): array
     {
-        return $this->fullPortfolio($user, (string) $user->portfolio_slug, null, null, true);
+        $user = $user->fresh();
+        $status = $this->moderation->status($user);
+        $snapshot = $this->moderation->snapshot($user);
+        return $this->fullPortfolio($snapshot, (string) $user->portfolio_slug, null, null, true) + [
+            'review' => [
+                'status' => $status,
+                'revision' => $snapshot['revision'],
+                'snapshot_hash' => $snapshot['hash'],
+                'rejection_reason' => $user->portfolio_sharing_rejection_reason,
+            ],
+        ];
     }
 
     /** Returns only published work, never the learner's private drafts. */
-    public function adminPreviewMedia(User $user, string $mediaPublicId): ?PortfolioMedia
+    public function adminPreviewMedia(User $user, string $mediaPublicId, string $revision = '', string $hash = ''): ?PortfolioMedia
     {
-        return $this->mediaForUser($user, $mediaPublicId);
+        $snapshot = $this->moderation->snapshot($user->fresh());
+        return $this->matchesSnapshot($snapshot, $revision, $hash)
+            ? $this->mediaFromSnapshot($snapshot, $mediaPublicId) : null;
     }
 
-    private function mediaForUser(User $user, string $mediaPublicId): ?PortfolioMedia
+    private function matchesSnapshot(array $snapshot, string $revision, string $hash): bool
+    {
+        return (string) $snapshot['revision'] === $revision && hash_equals($snapshot['hash'], $hash);
+    }
+
+    private function mediaFromSnapshot(array $snapshot, string $mediaPublicId): ?PortfolioMedia
     {
         if (!Str::isUuid($mediaPublicId)) {
             return null;
         }
 
-        return PortfolioMedia::query()
-            ->where('public_id', $mediaPublicId)
-            ->available()
-            ->whereHas('portfolioItem', fn ($items) =>
-                $items->where('user_id', $user->id)
-                    ->shareable()
-            )
-            ->first();
+        return $snapshot['items']->flatMap(fn (PortfolioItem $item) => $item->mediaFiles)
+            ->first(fn (PortfolioMedia $media) => $media->public_id === $mediaPublicId);
     }
 
     private function userForSlug(string $slug): ?User
@@ -78,7 +97,7 @@ final class PublicPortfolioService
         }
 
         $user = User::query()->where('portfolio_slug', $slug)
-            ->whereNull('portfolio_sharing_suspended_at')->first();
+            ->whereNull('portfolio_sharing_suspended_at')->where('active', true)->first();
         if (!$user) {
             return null;
         }
@@ -87,37 +106,27 @@ final class PublicPortfolioService
     }
 
     private function fullPortfolio(
-        User $user,
+        array $snapshot,
         string $slug,
         ?int $projectPage,
         ?int $projectsPerPage,
         bool $adminPreview = false
     ): array
     {
-        $itemsQuery = $user->portfolioItems()
-            ->shareable()
-            ->with(['mediaFiles', 'course'])
-            ->orderByDesc('is_featured')
-            ->orderBy('sort_order')
-            ->latest('id');
+        $user = $snapshot['user'];
+        $items = $snapshot['items'];
         $projectPagination = null;
         if ($projectPage !== null || $projectsPerPage !== null) {
-            /** @var LengthAwarePaginator $paginator */
-            $paginator = $itemsQuery->paginate(
-                max(1, min(100, $projectsPerPage ?? 24)),
-                ['*'],
-                'page',
-                max(1, $projectPage ?? 1)
-            );
-            $items = collect($paginator->items());
+            $perPage = max(1, min(100, $projectsPerPage ?? 24));
+            $page = max(1, $projectPage ?? 1);
+            $total = $items->count();
             $projectPagination = [
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
-                'per_page' => $paginator->perPage(),
-                'total' => $paginator->total(),
+                'current_page' => $page,
+                'last_page' => max(1, (int) ceil($total / $perPage)),
+                'per_page' => $perPage,
+                'total' => $total,
             ];
-        } else {
-            $items = $itemsQuery->get();
+            $items = $items->forPage($page, $perPage);
         }
 
         return [
@@ -125,7 +134,7 @@ final class PublicPortfolioService
                 'name' => $user->name,
                 'headline' => $user->portfolio_headline,
                 'location' => $user->portfolio_location,
-                'image_url' => $user->profile_image_url,
+                'image_url' => $snapshot['profile_image_url'],
                 'skills' => $user->portfolio_skills ?? [],
                 'links' => collect($user->portfolio_links ?? [])
                     ->map(function ($link): ?array {
@@ -146,14 +155,15 @@ final class PublicPortfolioService
                     ->values()
                     ->all(),
                 'slug' => $slug,
-                'public_url' => RoknPublicUrl::portfolio($slug),
+                'public_url' => $adminPreview ? null : RoknPublicUrl::portfolio($slug),
                 'share_mode' => 'unlisted',
             ],
             'projects' => $items
                 ->map(fn (PortfolioItem $item): array => $this->publicProjectPayload(
                     $item,
                     $slug,
-                    $adminPreview
+                    $adminPreview,
+                    $snapshot
                 ))
                 ->values()
                 ->all(),
@@ -165,11 +175,12 @@ final class PublicPortfolioService
     private function publicProjectPayload(
         PortfolioItem $item,
         string $slug,
-        bool $adminPreview = false
+        bool $adminPreview,
+        array $snapshot
     ): array
     {
         $media = $item->mediaFiles
-            ->map(function (PortfolioMedia $media) use ($slug, $item, $adminPreview): ?array {
+            ->map(function (PortfolioMedia $media) use ($slug, $item, $adminPreview, $snapshot): ?array {
                 $mediaPublicId = (string) $media->public_id;
                 $deliveryUrl = Str::isUuid($mediaPublicId)
                     && in_array((string) $media->file_type, ['image', 'video'], true)
@@ -181,6 +192,11 @@ final class PublicPortfolioService
                 if (!$deliveryUrl) {
                     return null;
                 }
+                // These are Rokn delivery routes, NOT signed CDN URLs. The
+                // controller validates this revision before issuing a CDN URL.
+                $deliveryUrl .= '?' . http_build_query([
+                    'revision' => $snapshot['revision'], 'snapshot' => $snapshot['hash'],
+                ]);
 
                 $publicMedia = [
                     'file_type' => $media->file_type,

@@ -26,7 +26,8 @@
                     @csrf
                     <input type="hidden" name="suspend" value="{{ $portfolioOwner->portfolio_sharing_suspended_at ? '0' : '1' }}">
                     <p class="text-muted">إيقاف المشاركة يخفي الصفحة والوسائط عن الآخرين ولا يحذف أعمال الطالب أو يمنعه من التعلم</p>
-                    <button class="btn {{ $portfolioOwner->portfolio_sharing_suspended_at ? 'btn-outline-primary' : 'btn-outline-danger' }}" type="submit">{{ $portfolioOwner->portfolio_sharing_suspended_at ? 'إعادة المشاركة' : 'إيقاف المشاركة' }}</button>
+                    <p class="text-muted">رفع الإيقاف لا يعتمد المحتوى وتعود المشاركة فقط لنسخة معتمدة لم تتغير</p>
+                    <button class="btn {{ $portfolioOwner->portfolio_sharing_suspended_at ? 'btn-outline-primary' : 'btn-outline-danger' }}" type="submit">{{ $portfolioOwner->portfolio_sharing_suspended_at ? 'رفع إيقاف المشاركة' : 'إيقاف المشاركة' }}</button>
                 </form>
             </div></div>
         @endif

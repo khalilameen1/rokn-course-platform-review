@@ -4,6 +4,8 @@ import {courseCategory, usableCourseTags} from './courseContractShared';
 import type {CourseDto} from './courseContractTypes';
 import {
   catalogueMetric,
+  courseAverageRating,
+  courseCount,
   displayImageUrl,
   displayText,
   nonNegativeNumberOr,
@@ -38,7 +40,9 @@ const publicCatalogueRecord = (item: CourseDto): CatalogueCourseRecord => {
   const teachers = Array.isArray(item.teachers) ? item.teachers : [];
   const price = catalogueMetric(item.price);
   const duration = catalogueMetric(metadata.duration_minutes);
-  const ratingAverage = catalogueMetric(item.average_rating);
+  const ratingsCount = courseCount(item.ratings_count) ?? 0;
+  const ratingAverage =
+    ratingsCount > 0 ? courseAverageRating(item.average_rating) : undefined;
   return {
     id: String(item.id).trim(),
     title: displayText(item.title),
@@ -64,15 +68,17 @@ const publicCatalogueRecord = (item: CourseDto): CatalogueCourseRecord => {
     ...(price === undefined ? {} : {coinPrice: price}),
     ...(duration === undefined ? {} : {durationMinutes: duration}),
     ...(ratingAverage === undefined ? {} : {ratingAverage}),
-    ratingsCount: catalogueMetric(item.ratings_count) ?? 0,
-    studentsCount: catalogueMetric(metadata.students_count) ?? 0,
+    ratingsCount,
+    studentsCount: courseCount(metadata.students_count) ?? 0,
     category: courseCategory({...item, tags}),
   };
 };
 
 const searchCatalogueRecord = (item: CourseDto): CatalogueCourseRecord => {
   const duration = catalogueMetric(item.duration_minutes);
-  const ratingAverage = catalogueMetric(item.average_rating);
+  const ratingsCount = courseCount(item.ratings_count) ?? 0;
+  const ratingAverage =
+    ratingsCount > 0 ? courseAverageRating(item.average_rating) : undefined;
   return {
     id: String(item.course_id).trim(),
     title: displayText(item.title),
@@ -87,8 +93,8 @@ const searchCatalogueRecord = (item: CourseDto): CatalogueCourseRecord => {
     homeRows: [],
     ...(duration === undefined ? {} : {durationMinutes: duration}),
     ...(ratingAverage === undefined ? {} : {ratingAverage}),
-    ratingsCount: catalogueMetric(item.ratings_count) ?? 0,
-    studentsCount: catalogueMetric(item.students_count) ?? 0,
+    ratingsCount,
+    studentsCount: courseCount(item.students_count) ?? 0,
     category: 'freelance',
   };
 };

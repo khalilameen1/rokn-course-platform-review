@@ -84,7 +84,8 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             throw new StorePurchaseVerificationException(
                 $state === PurchaseStateContext::PURCHASE_STATE_PENDING
                     ? 'store_purchase_pending'
-                    : 'store_purchase_not_completed',
+                    : ($state === PurchaseStateContext::PURCHASE_STATE_CANCELLED
+                        ? 'store_purchase_cancelled' : 'store_purchase_not_completed'),
                 $state === PurchaseStateContext::PURCHASE_STATE_PENDING
                     ? 'عملية الدفع ما زالت قيد التأكيد.'
                     : 'عملية الشراء غير مكتملة.'

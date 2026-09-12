@@ -11,21 +11,25 @@ final class CourseRatingVersionLifecycleTest extends ApiTestCase
     public function test_http_rating_versions_survive_delete_restore_and_transport_retries(): void
     {
         $this->actingAs($this->user, 'api');
+        $url = '/api/v1/courses/'.$this->courseId.'/rate';
+        $this->postJson($url, ['rating' => 5, 'version' => 0])->assertForbidden();
         $this->postJson('/api/v1/course-codes/redeem', ['code' => 'TESTCODE'])->assertOk();
+        $this->postJson($url, ['rating' => 5, 'version' => 0])->assertForbidden();
+        $this->assertDatabaseCount('course_ratings', 0);
         DB::table('lesson_watch_evidence')->insert([
             'user_id' => $this->user->id, 'lesson_id' => 10, 'course_section_id' => $this->sectionId,
             'duration_seconds' => 900, 'verified_seconds' => 900, 'last_position_seconds' => 900,
             'last_heartbeat_at' => now(), 'completed_at' => now(), 'created_at' => now(), 'updated_at' => now(),
         ]);
-        $url = '/api/v1/courses/'.$this->courseId.'/rate';
         $this->assertDetails(0, null);
-        $first = ['rating' => 4, 'comment' => 'تعليق أول', 'version' => 0];
+        $first = ['rating' => 4, 'comment' => 'تعليق أول', 'version' => 0, 'user_id' => 999999];
         foreach ([1, 2] as $attempt) {
             $this->postJson($url, $first)->assertOk()
                 ->assertJsonPath('data.rating', 4)->assertJsonPath('data.version', 1)
                 ->assertJsonPath('data.ratings_count', 1);
         }
         $rowId = DB::table('course_ratings')->value('id');
+        self::assertSame((int) $this->user->id, (int) DB::table('course_ratings')->value('user_id'));
         $this->assertDetails(1, 4);
         $this->postJson($url, ['rating' => 5, 'comment' => 'تعديل', 'version' => 1])
             ->assertOk()->assertJsonPath('data.version', 2);

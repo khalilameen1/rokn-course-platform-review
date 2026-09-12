@@ -214,6 +214,41 @@ final class CourseCommercialReportServiceTest extends TestCase
         self::assertCount(2, $platform['student_rows']);
     }
 
+    public function test_test_funded_course_has_zero_cash_while_live_source_attribution_is_unchanged(): void
+    {
+        [$course, $period] = $this->periodFixture();
+        $this->periodPurchase(101, 100, 'mentor', $period->start->addDay());
+        DB::table('orders')->where('id', 100)->update([
+            'payment_method' => Order::PAYMENT_METHOD_APP_STORE,
+            'amount' => 0, 'final_amount' => 0,
+            'gateway_gross_amount' => 0, 'gateway_fee_amount' => 0,
+            'gateway_net_amount' => 0, 'gateway_settlement_status' => 'test_purchase',
+        ]);
+        $test = app(CourseCommercialReportService::class)->forCourse($course, $period);
+        self::assertSame(100, $test['paid_coins']);
+        self::assertSame(0.0, $test['cash_gross_egp']);
+        self::assertSame(0.0, $test['cash_net_egp']);
+        self::assertTrue($test['cash_net_complete']);
+        $platform = app(PlatformCommercialReportService::class)->report();
+        self::assertSame(0.0, $platform['gross_egp']);
+        self::assertSame(0.0, $platform['net_egp']);
+
+        // Replace only fixture evidence to provide the matched live control:
+        // 100 course coins / 1000 source coins = 10% of the cash receipt.
+        DB::table('orders')->where('id', 100)->update([
+            'amount' => 100, 'final_amount' => 100,
+            'gateway_gross_amount' => 100, 'gateway_fee_amount' => 5,
+            'gateway_net_amount' => 95, 'gateway_settlement_status' => 'settled',
+        ]);
+        $live = app(CourseCommercialReportService::class)->forCourse($course, $period);
+        self::assertSame(100, $live['paid_coins']);
+        self::assertSame(10.0, $live['cash_gross_egp']);
+        self::assertSame(9.5, $live['cash_net_egp']);
+        $platform = app(PlatformCommercialReportService::class)->report();
+        self::assertSame(10.0, $platform['gross_egp']);
+        self::assertSame(9.5, $platform['net_egp']);
+    }
+
     public function test_shared_invoice_is_not_misrepresented_as_per_student_or_course_cost(): void
     {
         $now = now();
@@ -574,6 +609,7 @@ final class CourseCommercialReportServiceTest extends TestCase
             $table->string('payment_method'); $table->decimal('amount', 12, 2); $table->decimal('discount_amount', 12, 2);
             $table->decimal('final_amount', 12, 2); $table->decimal('gateway_gross_amount', 12, 2)->nullable();
             $table->decimal('gateway_fee_amount', 12, 2)->nullable(); $table->decimal('gateway_net_amount', 12, 2)->nullable();
+            $table->string('gateway_settlement_status')->nullable();
             $table->string('gateway_currency', 3)->nullable(); $table->string('status'); $table->string('financial_status');
             $table->unsignedInteger('total_coins')->default(0); $table->unsignedInteger('paid_coins')->default(0);
             $table->unsignedInteger('reward_coins')->default(0); $table->timestamp('approved_at')->nullable();

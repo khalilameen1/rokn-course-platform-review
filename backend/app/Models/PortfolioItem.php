@@ -4,9 +4,26 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\PortfolioModerationService;
 
 class PortfolioItem extends Model
 {
+    protected static function booted(): void
+    {
+        static::saved(function (PortfolioItem $item): void {
+            if (($item->is_public || $item->getRawOriginal('is_public'))
+                && ($item->wasRecentlyCreated || $item->wasChanged([
+                    'title', 'description', 'role', 'tools', 'external_url', 'completed_at',
+                    'is_public', 'is_featured', 'sort_order', 'course_id', 'deletion_started_at',
+                ]))) {
+                PortfolioModerationService::invalidate((int) $item->user_id);
+            }
+        });
+        static::deleted(function (PortfolioItem $item): void {
+            if ($item->is_public) PortfolioModerationService::invalidate((int) $item->user_id);
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'client_request_id',
@@ -46,7 +63,7 @@ class PortfolioItem extends Model
     {
         return $query->available()
             ->where('is_public', true)
-            ->whereHas('mediaFiles');
+            ->whereHas('mediaFiles', fn ($media) => $media->available());
     }
 
     public function user()

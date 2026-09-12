@@ -44,6 +44,7 @@ final class StorePurchaseServiceTest extends TestCase
         ]);
         $binding = app(StoreBillingAccountIdentity::class)->google($user);
         $gateway = $this->mock(StorePurchaseProviderGateway::class);
+        $gateway->shouldReceive('consumeGoogle')->once()->with('rokn.coins.600', 'purchase-token-one', $binding)->andReturnNull();
         $gateway->shouldReceive('verify')
             ->once()
             ->with('google', 'rokn.coins.600', 'purchase-token-one', null, $binding)
@@ -69,6 +70,7 @@ final class StorePurchaseServiceTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.coins_added', 600)
+            ->assertJsonPath('data.store_finalized', true)
             ->assertJsonPath('data.finalize_transaction', true);
         $secondResponse = $this->actingAs($user, 'api')
             ->postJson('/api/v1/store-purchases/verify', [
@@ -251,6 +253,8 @@ final class StorePurchaseServiceTest extends TestCase
                 currency: 'EGP',
                 grossAmount: 120
             ));
+        $gateway->shouldReceive('consumeGoogle')->once()
+            ->with('rokn.coins.retired.600', 'paid-before-retirement', $binding)->andReturnNull();
 
         $result = app(StorePurchaseService::class)->verifyAndCredit(
             $user,
@@ -363,6 +367,7 @@ final class StorePurchaseServiceTest extends TestCase
             externalTransactionId: 'GPA.REFUND-ONE',
             environment: 'production'
         ));
+        $gateway->shouldReceive('consumeGoogle')->once()->andReturnNull();
         app(StorePurchaseService::class)->verifyAndCredit(
             $user,
             StorePurchase::PROVIDER_GOOGLE,
@@ -452,6 +457,7 @@ final class StorePurchaseServiceTest extends TestCase
 
         $refund = [
             'notificationUUID' => 'apple-refund-event',
+            'signedDate' => 1788117000000,
             'notificationType' => 'REFUND',
             'data' => [
                 'bundleId' => 'com.rokn',
@@ -461,6 +467,7 @@ final class StorePurchaseServiceTest extends TestCase
         ];
         $reversed = [
             'notificationUUID' => 'apple-reversed-event',
+            'signedDate' => 1788117001000,
             'notificationType' => 'REFUND_REVERSED',
             'data' => [
                 'bundleId' => 'com.rokn',

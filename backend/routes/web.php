@@ -149,10 +149,14 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::delete('user-sessions/{sessionId}', 'UserSessionController@destroy')
         ->whereUuid('sessionId')->middleware('admin.only')->name('user-sessions.destroy');
     Route::get('feedback/export', 'FeedbackController@export')->middleware('admin.only')->name('feedback.export');
+    Route::get('portfolio-reviews', 'PortfolioPreviewController@index')
+        ->middleware('admin.only')->name('portfolio-reviews.index');
     Route::get('users/{user}/portfolio-preview', 'PortfolioPreviewController@show')
         ->whereNumber('user')->middleware('admin.only')->name('portfolio-preview.show');
     Route::get('users/{user}/portfolio-preview/media/{mediaId}', 'PortfolioPreviewController@media')
         ->whereNumber('user')->whereUuid('mediaId')->middleware(['admin.only', 'throttle:240,1'])->name('portfolio-preview.media');
+    Route::post('users/{user}/portfolio-review', 'PortfolioPreviewController@decide')
+        ->whereNumber('user')->middleware(['admin.only', 'admin.audit'])->name('portfolio-reviews.decide');
     Route::get('feedback', 'FeedbackController@index')->middleware('admin.only')->name('feedback.index');
     Route::get('feedback/{feedback}', 'FeedbackController@show')->middleware('admin.only')->name('feedback.show');
     Route::post('feedback/{feedback}/portfolio-sharing', [\App\Http\Controllers\PortfolioReportController::class, 'moderate'])

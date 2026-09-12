@@ -38,6 +38,13 @@ final class StorePurchaseProviderEvidenceTest extends TestCase
         ]));
     }
 
+    public function test_google_cancelled_purchase_cannot_be_fulfilled(): void
+    {
+        $this->assertRejected('store_purchase_cancelled', $this->receipt([
+            'purchaseStateContext' => ['purchaseState' => 'CANCELLED'],
+        ]));
+    }
+
     public function test_google_multiple_line_items_cannot_be_partially_consumed(): void
     {
         $this->assertRejected('store_purchase_quantity_unsupported', $this->receipt([

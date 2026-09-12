@@ -34,6 +34,23 @@
 <main class="wrap">
     @if($isAdminPreview ?? false)
         <p role="status">معاينة إدارية خاصة — لا تعيد هذه المعاينة نشر الأعمال أو تفعيل مشاركتها</p>
+        @php($reviewLabels = ['pending' => 'بانتظار المراجعة', 'approved' => 'معتمد للمشاركة', 'rejected' => 'مرفوض للمشاركة', 'suspended' => 'المشاركة موقوفة'])
+        <p>الحالة: {{ $reviewLabels[$portfolio['review']['status']] }} — النسخة {{ $portfolio['review']['revision'] }}</p>
+        @if($portfolio['review']['status'] === 'suspended')<p>يبقى إيقاف المشاركة ساريًا بعد الاعتماد ويمكن رفعه من البلاغ المرتبط</p>@endif
+        @if($portfolio['review']['rejection_reason'])<p>سبب الرفض: {{ $portfolio['review']['rejection_reason'] }}</p>@endif
+        @if(session('success'))<p role="status">{{ session('success') }}</p>@endif
+        @if($errors->any())<p role="alert">{{ $errors->first() }}</p>@endif
+        <p>راجع بيانات المعرض وكل الصور والفيديوهات والروابط قبل القرار وسيعيد أي تعديل على المحتوى المعروض المعرض إلى المراجعة</p>
+        <form class="report" method="POST" action="{{ route('admin.portfolio-reviews.decide', $reviewUser) }}">
+            @csrf
+            <input type="hidden" name="revision" value="{{ $portfolio['review']['revision'] }}">
+            <input type="hidden" name="snapshot_hash" value="{{ $portfolio['review']['snapshot_hash'] }}">
+            <label for="review-reason">سبب الرفض لصاحب المعرض (مطلوب عند الرفض)</label>
+            <textarea id="review-reason" name="reason" rows="3" maxlength="2000">{{ old('reason') }}</textarea>
+            <button type="submit" name="decision" value="approved">اعتماد هذه النسخة للمشاركة</button>
+            <button type="submit" name="decision" value="rejected">رفض المشاركة</button>
+        </form>
+        <p><a href="{{ route('admin.portfolio-reviews.index') }}">قائمة مراجعة المعارض</a></p>
     @endif
     @if(!empty($portfolio['projects']))
     <section><div class="section-head"><h2>المشروعات</h2></div><div class="grid">

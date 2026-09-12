@@ -1080,6 +1080,8 @@ abstract class ApiTestCase extends TestCase
         (require database_path('migrations/2026_09_01_000070_add_public_id_to_portfolio_media.php'))->up();
         (require database_path('migrations/2026_09_01_000073_create_portfolio_video_uploads_table.php'))->up();
         (require database_path('migrations/2026_09_09_000001_create_portfolio_deleted_uploads_table.php'))->up();
+        (require database_path('migrations/2026_09_12_230100_add_portfolio_sharing_suspension.php'))->up();
+        (require database_path('migrations/2026_09_13_180000_add_portfolio_prepublication_review.php'))->up();
         (require database_path('migrations/2026_09_01_000078_create_internal_signals_table.php'))->up();
 
     }

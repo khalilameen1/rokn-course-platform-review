@@ -1,6 +1,6 @@
 import {useNavigation, useRoute} from '@react-navigation/native';
 import type {RootNavigation, RootRoute} from '../../navigation/types';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Image, Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {SettingsIcon, ShareProfileIcon} from '../../assets/SVG';
 import TabBar from '../../components/TabBar';
@@ -43,14 +43,24 @@ export default function Profile() {
     displayName,
     identityKey,
     profileError,
-    portfolioSharingSuspended,
+    portfolioSharingNotice,
     publicPortfolioUrl,
+    refreshPortfolioShareUrl,
     retry,
     role,
     setHasShareablePortfolio,
     sharePortfolio,
   } = useProfileOverview();
   const showPortfolioActions = activeTab === 'portfolio' && canSharePortfolio;
+  const qrContextRef = useRef({activeTab, identityKey, mounted: true});
+  qrContextRef.current = {...qrContextRef.current, activeTab, identityKey};
+
+  useEffect(() => {
+    qrContextRef.current.mounted = true;
+    return () => {
+      qrContextRef.current.mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!showPortfolioActions) setShowPortfolioQr(false);
@@ -156,7 +166,18 @@ export default function Profile() {
                   <Pressable
                     accessibilityLabel="عرض رمز QR للبورتفوليو"
                     accessibilityRole="button"
-                    onPress={() => setShowPortfolioQr(true)}
+                    onPress={async () => {
+                      const url = await refreshPortfolioShareUrl();
+                      const current = qrContextRef.current;
+                      if (
+                        url &&
+                        current.mounted &&
+                        current.activeTab === 'portfolio' &&
+                        current.identityKey === identityKey
+                      ) {
+                        setShowPortfolioQr(true);
+                      }
+                    }}
                     style={({pressed}) => [
                       styles.qrButton,
                       pressed && styles.pressed,
@@ -235,14 +256,12 @@ export default function Profile() {
 
           {activeTab === 'portfolio' && (
             <>
-              {portfolioSharingSuspended && (
+              {!!portfolioSharingNotice && (
                 <View
                   accessibilityLiveRegion="polite"
                   style={styles.staleNotice}>
                   <Text style={styles.staleNoticeText}>
-                    المشاركة موقوفة مؤقتًا للمراجعة. أعمالك محفوظة ويمكنك
-                    تعديلها، وتعلّمك وشهاداتك لم تتأثر. تواصل مع الدعم لمراجعة
-                    القرار.
+                    {portfolioSharingNotice}
                   </Text>
                 </View>
               )}

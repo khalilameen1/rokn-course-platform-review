@@ -39,3 +39,30 @@ export const catalogueMetric = (value: unknown): number | undefined => {
   const number = Number(value);
   return Number.isFinite(number) && number >= 0 ? number : undefined;
 };
+
+// Social-proof fields must be actual numeric values, not JavaScript's
+// coercions of booleans/arrays into invented student or rating counts.
+const socialProofNumber = (value: unknown): number | undefined => {
+  if (
+    typeof value !== 'number' &&
+    (typeof value !== 'string' || value.trim() === '')
+  ) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+export const courseCount = (value: unknown): number | undefined => {
+  const parsed = socialProofNumber(value);
+  return parsed !== undefined && Number.isSafeInteger(parsed) && parsed >= 0
+    ? parsed
+    : undefined;
+};
+
+export const courseAverageRating = (value: unknown): number | undefined => {
+  const parsed = socialProofNumber(value);
+  return parsed !== undefined && parsed >= 1 && parsed <= 5
+    ? parsed
+    : undefined;
+};

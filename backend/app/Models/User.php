@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\PublicDiskUrl;
 use App\Support\RoknPublicUrl;
+use App\Services\PortfolioModerationService;
 
 use App\Models\UserNote;
 use App\Models\Classification;
@@ -21,6 +22,26 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class User extends Authenticatable
 {
     use Notifiable, HasPhoto, HasApiTokens, SoftDeletes, ResolvesLocalizedAttributes, InvalidatesCourseCatalogue;
+
+    protected static function booted(): void
+    {
+        static::updated(function (User $user): void {
+            if (($user->portfolio_slug || $user->getRawOriginal('portfolio_slug'))
+                && $user->wasChanged(PortfolioModerationService::PROFILE_FIELDS)) {
+                PortfolioModerationService::invalidate((int) $user->id);
+                // Only copy review metadata: refreshing the whole model here
+                // would erase change tracking used by other model listeners.
+                $review = static::query()->whereKey($user->id)->first([
+                    'portfolio_sharing_status', 'portfolio_sharing_revision',
+                    'portfolio_approved_hash', 'portfolio_sharing_rejection_reason',
+                ]);
+                foreach ($review->getAttributes() as $key => $value) {
+                    $user->setAttribute($key, $value);
+                    $user->syncOriginalAttribute($key);
+                }
+            }
+        });
+    }
 
     /**
      * Catalogue rows embed instructor identity. Student/profile/session writes
@@ -164,7 +185,8 @@ class User extends Authenticatable
      */
     public function getProfileDeeplinkAttribute(): ?string
     {
-        if (blank($this->portfolio_slug) || $this->portfolio_sharing_suspended_at !== null) {
+        if (!$this->exists || blank($this->portfolio_slug)
+            || app(PortfolioModerationService::class)->ownerState($this)['sharing_status'] !== 'approved') {
             return null;
         }
 
@@ -192,6 +214,9 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'portfolio_skills' => 'array',
         'portfolio_links' => 'array',
+        'portfolio_sharing_revision' => 'integer',
+        'portfolio_reviewed_at' => 'datetime',
+        'portfolio_sharing_suspended_at' => 'datetime',
         'watch_history_enabled' => 'boolean',
         'marketing_notifications_enabled' => 'boolean',
         'playback_speed' => 'float',

@@ -1,6 +1,6 @@
 # ROKN store review access — operational draft
 
-Prepared 2026-09-12 against source `902fe80`. This is **not a verified reviewer
+Updated 2026-09-13. This is **not a verified reviewer
 account or a ready-to-submit access declaration**. See [STORE_RELEASE_STATUS.md](STORE_RELEASE_STATUS.md)
 for the exact Android artifact and undeployed backend changes. No account,
 entitlement, product, payment, or production setting was changed for this guide.
@@ -27,9 +27,10 @@ separate from the reviewer account and product configuration below.
   provider. Never delete the reusable review account during the walkthrough.
 - **Store payments and backend rollout: PENDING.** Last documented production
   inspection found no Google/Apple product IDs in package responses. Production
-  still rejects verified test/sandbox receipts with `store_test_purchase_not_allowed`.
-  Financial-policy approval, fulfillment/recovery work, configuration and an
-  actual end-to-end store test remain prerequisites, not completed steps.
+  has not received the newly approved verified-test fulfillment/recovery code.
+  The local implementation credits verified store tests with zero cash revenue
+  and finalizes Google purchases after credit commits. Deployment, configuration
+  and actual end-to-end store tests remain prerequisites, not completed steps.
 - **Review contact: NOT ENTERED/VERIFIED.** The owner has supplied
   `support@rokn.app` and a contact phone number in the conversation. Use the
   supplied details in the private console fields and confirm the contact name
@@ -93,8 +94,11 @@ Replace the unspecified course/account references with verified details before s
    **الإبلاغ عن محتوى**, describe the issue, optionally provide a contact email,
    then **إرسال البلاغ**. Do not publish abusive material to demonstrate reporting
    or send repeated test reports. Sharing suspension hides the public page/media
-   and tells the owner; private work remains. Pre-publication moderation and
-   viewer blocking are still unresolved release scope, not existing features.
+   and tells the owner; private work remains. The approved pre-publication review
+   requires administrator approval of the current works/profile snapshot before
+   that URL can display content. Edited works return to review. Verify the owner
+   pending/rejected state and the corresponding dashboard decision after rollout.
+   Use an actually approved harmless portfolio for the reporting walkthrough.
 7. **Delete the disposable account last:** Profile → **الإعدادات** → **حذف الحساب**.
    Read the loss-of-data/balance warning, confirm, and authenticate again with the
    same social provider when requested. Verify sign-out and loss of the old

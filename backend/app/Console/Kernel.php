@@ -66,6 +66,10 @@ class Kernel extends ConsoleKernel
             ->everyMinute()
             ->withoutOverlapping(10)
             ->onOneServer();
+        $schedule->command('payments:finalize-store-purchases --limit=25')
+            ->everyMinute()
+            ->withoutOverlapping(30)
+            ->onOneServer();
         $schedule->command('ai:reconcile-provider-costs --limit=10')
             ->everyFifteenMinutes()
             ->withoutOverlapping(10)

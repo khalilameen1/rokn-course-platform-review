@@ -564,7 +564,7 @@ final class PortfolioController extends Controller
         return response()->json([
             'status' => 200,
             'success' => true,
-            'message' => 'تم نشر المشروع',
+            'message' => 'تم حفظ المشروع للمراجعة',
             'data' => new PortfolioItemResource($item),
         ]);
     }

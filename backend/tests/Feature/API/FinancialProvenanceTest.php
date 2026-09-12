@@ -439,6 +439,80 @@ final class FinancialProvenanceTest extends ApiTestCase
         );
     }
 
+    public function test_repeated_refund_cycles_recover_and_restore_only_their_own_coins(): void
+    {
+        $package = $this->paidPackage(1000);
+        $lifecycle = app(OrderLifecycleService::class);
+        $lifecycle->registerReversal($package, Order::FINANCIAL_REFUNDED, 'First refund', 'refund:cycle:1');
+        self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'restore:cycle:1');
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'restore:cycle:1');
+        self::assertSame(1000, (int) $this->user->fresh()->wallet_purchased_coins);
+
+        // Spending between cycles changes the recoverable amount. Replaying
+        // the first debit/credit would either leave phantom coins or conflict.
+        [$courseOrder, $enrollment, $certificate] = $this->courseSpend(400);
+        $second = $lifecycle->registerReversal(
+            $package->fresh(), Order::FINANCIAL_REFUNDED, 'Second refund', 'refund:cycle:2'
+        );
+        self::assertSame(600, $second->recovered_coins);
+        self::assertSame(400, $second->unrecovered_coins);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+        self::assertFalse((bool) $enrollment->fresh()->is_active);
+        self::assertSame('revoked', $certificate->fresh()->status);
+
+        // Old events and same-cycle retries must not settle or charge this
+        // new financial review a second time.
+        $lifecycle->registerReversal($package->fresh(), Order::FINANCIAL_REFUNDED, 'First refund', 'refund:cycle:1');
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'restore:cycle:1');
+        $lifecycle->registerReversal($package->fresh(), Order::FINANCIAL_REFUNDED, 'Second refund', 'refund:cycle:2');
+        self::assertSame(Order::FINANCIAL_REVIEW_REQUIRED, $package->fresh()->financial_status);
+        self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+        self::assertSame(2, WalletTransaction::query()->where('category', 'package_reversal')->count());
+
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'restore:cycle:2');
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'restore:cycle:2');
+        self::assertSame(600, (int) $this->user->fresh()->wallet_purchased_coins);
+        self::assertTrue((bool) $enrollment->fresh()->is_active);
+        self::assertSame('active', $certificate->fresh()->status);
+        self::assertSame(2, WalletTransaction::query()->where('category', 'package_reversal_resolution')->count());
+        $lot = WalletCreditLot::query()->where('source_order_id', $package->id)->firstOrFail();
+        self::assertSame(600, $lot->remaining_amount);
+        self::assertSame(0, $lot->recovered_amount);
+        self::assertSame(WalletCreditLot::STATUS_ACTIVE, $lot->status);
+        self::assertSame(1, FinancialEntitlementHold::query()->where('course_order_id', $courseOrder->id)->count());
+    }
+
+    public function test_legacy_frozen_lot_resolves_once_then_uses_a_new_refund_cycle(): void
+    {
+        $package = $this->paidPackage(500);
+        $lifecycle = app(OrderLifecycleService::class);
+        $lifecycle->registerReversal($package, Order::FINANCIAL_REFUNDED, 'Legacy refund', 'legacy:refund');
+        $lot = WalletCreditLot::query()->where('source_order_id', $package->id)->firstOrFail();
+        // Represent a pre-upgrade frozen lot and its already-issued ledger key.
+        $metadata = (array) $lot->metadata;
+        unset($metadata['reversal_cycle']);
+        $lot->forceFill(['metadata' => $metadata])->save();
+        WalletTransaction::query()->where('category', 'package_reversal')->update([
+            'idempotency_key' => 'financial-reversal:paid-lot:' . $lot->id,
+        ]);
+
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'legacy:restore');
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'legacy:restore');
+        self::assertSame(500, (int) $this->user->fresh()->wallet_purchased_coins);
+        self::assertSame(1, WalletTransaction::query()->where(
+            'idempotency_key', 'financial-resolution:restore-paid-lot:' . $lot->id
+        )->count());
+
+        $lifecycle->registerReversal($package->fresh(), Order::FINANCIAL_REFUNDED, 'New refund', 'new:refund');
+        self::assertSame(0, (int) $this->user->fresh()->wallet_purchased_coins);
+        $lifecycle->resolveFinancialReview($package->fresh(), 'repaid', 'new:restore');
+        self::assertSame(500, (int) $this->user->fresh()->wallet_purchased_coins);
+        self::assertSame(2, WalletTransaction::query()->where('category', 'package_reversal')->count());
+        self::assertSame(2, WalletTransaction::query()->where('category', 'package_reversal_resolution')->count());
+        self::assertSame(500, $lot->fresh()->remaining_amount);
+    }
+
     public function test_later_manual_certificate_revocation_is_never_undone_by_finance_resolution(): void
     {
         $package = $this->paidPackage(300);

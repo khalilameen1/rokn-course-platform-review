@@ -66,19 +66,19 @@ describe('profile recovery contracts', () => {
     );
   });
 
-  it('keeps the share action available when one profile request is stale', () => {
+  it('uses only the reviewed profile URL and keeps share and QR in the works tab', () => {
     const profile = source('src/screens/Profile/index.tsx');
     const overview = source('src/screens/Profile/useProfileOverview.ts');
 
-    expect(overview).toContain('visibleRemoteProfile?.portfolioSlug');
+    expect(overview).not.toContain('portfolioUrlFor(');
+    expect(overview).not.toContain('visibleRemoteProfile?.portfolioUrl');
     expect(overview).toContain(
-      "trustedPortfolioShareUrl(username ? portfolioUrlFor(username) : '')",
-    );
-    expect(overview).toContain(
-      'becameShareable && !publicPortfolioUrlRef.current',
+      "visiblePortfolioProfile?.sharingStatus === 'approved'",
     );
     expect(profile).toContain("activeTab === 'portfolio' && canSharePortfolio");
-    expect(profile).toContain('visible={showPortfolioQr && showPortfolioActions}');
+    expect(profile).toContain(
+      'visible={showPortfolioQr && showPortfolioActions}',
+    );
     expect(profile).toContain('value={publicPortfolioUrl}');
     expect(profile).toMatch(
       /onSharePortfolio=\{\s*canSharePortfolio \? sharePortfolio : undefined\s*\}/,

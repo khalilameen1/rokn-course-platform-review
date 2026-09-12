@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Http\Middleware\AppFrontNameSpace;
+use App\Http\Middleware\RequireAdminMfa;
 use App\Http\Middleware\WebsiteVisitorCount;
 use App\Models\Course;
 use App\Models\CourseRating;
@@ -244,10 +245,16 @@ final class ProductParityContractsTest extends TestCase
 
     public function test_guest_course_social_proof_uses_real_enrollments_and_ratings(): void
     {
+        $path = Path::create(['title_ar' => 'مسار الدليل الاجتماعي', 'title_en' => 'Social proof']);
+        $gradeId = DB::table('grades')->insertGetId([
+            'name_ar' => 'مهارات', 'country' => 'EG', 'created_at' => now(), 'updated_at' => now(),
+        ]);
         $course = $this->course([
             'name_ar' => 'كورس الدليل الاجتماعي',
             'price' => 300,
             'students_count' => 900,
+            'path_id' => $path->id,
+            'grade_id' => $gradeId,
             'is_coming_soon' => false,
             'is_catalog_visible' => true,
         ]);
@@ -309,6 +316,13 @@ final class ProductParityContractsTest extends TestCase
             'updated_at' => now(),
         ]);
         DB::table('users')->where('id', $deletedLearner->id)->update(['deleted_at' => now()]);
+        foreach ([[$this->user(['role' => 'admin']), null], [$this->user(), now()->subMinute()]] as [$excluded, $expiresAt]) {
+            DB::table('course_enrollments')->insert([
+                'tenant_id' => 1, 'user_id' => $excluded->id, 'course_id' => $course->id,
+                'enrolled_at' => now(), 'is_active' => true, 'expires_at' => $expiresAt,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
         (new CourseRating())->forceFill([
             'user_id' => $activeLearners[0]->id,
             'course_id' => $course->id,
@@ -322,12 +336,55 @@ final class ProductParityContractsTest extends TestCase
             'version' => 1,
         ])->save();
 
-        $this->getJson("/api/v1/courses/{$course->id}/details")
-            ->assertOk()
-            ->assertJsonPath('data.metadata.duration_minutes', 7)
-            ->assertJsonPath('data.metadata.students_count', 2)
-            ->assertJsonPath('data.ratings_count', 2)
-            ->assertJsonPath('data.average_rating', 4.5);
+        $surfaces = [
+            ["/api/v1/courses/{$course->id}/details", 'data', 'metadata.students_count'],
+            ['/api/v1/courses/list', 'data.courses.0', 'metadata.students_count'],
+            ['/api/v1/paths', 'data.0.courses.0', 'metadata.students_count'],
+            ["/api/v1/paths/{$path->id}", 'data.courses.0', 'metadata.students_count'],
+            ["/api/v1/grades/{$gradeId}/courses", 'data.courses.0', 'metadata.students_count'],
+            ['/api/v1/search/courses?q='.urlencode('الدليل الاجتماعي'), 'data.items.0', 'students_count'],
+        ];
+        foreach ($surfaces as [$url, $row, $countPath]) {
+            $this->getJson($url)->assertOk()
+                ->assertJsonPath($row.'.'.$countPath, 2)
+                ->assertJsonPath($row.'.ratings_count', 2)
+                ->assertJsonPath($row.'.average_rating', 4.5);
+        }
+
+        // Removing real activity must not resurrect the retained legacy 900
+        // counter, a default five-star score, or a cached social-proof total.
+        $course->enrollments()->get()->each(fn ($enrollment) => $enrollment->update(['is_active' => false]));
+        $course->ratings()->get()->each(fn ($rating) => $rating->delete());
+        foreach ($surfaces as [$url, $row, $countPath]) {
+            $this->getJson($url)->assertOk()
+                ->assertJsonPath($row.'.'.$countPath, 0)
+                ->assertJsonPath($row.'.ratings_count', 0)
+                ->assertJsonPath($row.'.average_rating', null);
+        }
+        self::assertSame(900, (int) $course->fresh()->getRawOriginal('students_count'));
+    }
+
+    public function test_even_an_administrator_cannot_author_social_proof_through_course_updates(): void
+    {
+        $course = $this->course([
+            'name_ar' => 'مسودة أصلية', 'price' => 300, 'students_count' => 900,
+            'is_coming_soon' => true, 'is_catalog_visible' => false, 'authoring_version' => 1,
+        ]);
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $this->actingAs($this->user(['role' => 'admin']), 'web')
+            ->patchJson(route('admin.courses.update', $course), [
+                'name_ar' => 'مسودة محدّثة', 'authoring_version' => 1, 'publishing_intent' => 'save',
+                'students_count' => 999999, 'active_enrollments_count' => 999999,
+                'ratings_count' => 999999, 'average_rating' => 5, 'ratings_avg_rating' => 5,
+                'ratings' => [['user_id' => 1, 'rating' => 5, 'comment' => 'Invented review']],
+            ])->assertOk()->assertJsonPath('status', 'updated');
+
+        $course->refresh();
+        self::assertSame('مسودة محدّثة', $course->name_ar);
+        self::assertSame(900, (int) $course->getRawOriginal('students_count'));
+        self::assertSame(0, $course->activeEnrollments()->count());
+        self::assertSame(0, $course->ratings()->count());
+        self::assertSame(0.0, $course->average_rating);
     }
 
     public function test_learning_dashboard_returns_only_a_valid_resume_projection(): void

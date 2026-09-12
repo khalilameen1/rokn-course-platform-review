@@ -157,17 +157,11 @@ final class DashboardProductParityTest extends TestCase
         $private = new User([
             'portfolio_slug' => 'private-student',
         ]);
-        self::assertSame(
-            rtrim((string) config('public_links.base_url'), '/').'/@private-student',
-            $private->profile_deeplink
-        );
+        self::assertNull($private->profile_deeplink);
 
         $public = new User([
             'portfolio_slug' => 'published-student',
         ]);
-        self::assertSame(
-            rtrim((string) config('public_links.base_url'), '/').'/@published-student',
-            $public->profile_deeplink
-        );
+        self::assertNull($public->profile_deeplink);
     }
 }

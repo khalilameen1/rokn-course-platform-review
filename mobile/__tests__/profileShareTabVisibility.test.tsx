@@ -7,9 +7,11 @@ import path from 'node:path';
 const {execPath} = require('node:process') as {execPath: string};
 const mockSharePortfolio = jest.fn();
 const mockRetry = jest.fn();
+const mockRefreshShareUrl = jest.fn();
 const mockPublicPortfolioUrl = 'https://rokn.app/@student';
 let mockCanSharePortfolio = true;
 let mockProfileError = '';
+let mockSharingNotice = '';
 
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({navigate: jest.fn()}),
@@ -24,8 +26,10 @@ jest.mock('../src/screens/Profile/useProfileOverview', () => ({
     displayName: 'اسم الطالب',
     identityKey: 'account-one',
     profileError: mockProfileError,
+    portfolioSharingNotice: mockSharingNotice,
     publicPortfolioUrl: mockPublicPortfolioUrl,
     retry: mockRetry,
+    refreshPortfolioShareUrl: mockRefreshShareUrl,
     role: '',
     setHasShareablePortfolio: jest.fn(),
     sharePortfolio: mockSharePortfolio,
@@ -65,6 +69,8 @@ describe('profile portfolio share visibility', () => {
     jest.clearAllMocks();
     mockCanSharePortfolio = true;
     mockProfileError = '';
+    mockSharingNotice = '';
+    mockRefreshShareUrl.mockReset().mockResolvedValue(mockPublicPortfolioUrl);
   });
 
   it('shares and opens the QR code without displaying the raw portfolio URL', async () => {
@@ -79,9 +85,11 @@ describe('profile portfolio share visibility', () => {
       }),
     ).toHaveLength(0);
     expect(
-      renderer.root.findAllByType(Text).some(node =>
-        String(node.props.children).includes('rokn.app/@student'),
-      ),
+      renderer.root
+        .findAllByType(Text)
+        .some(node =>
+          String(node.props.children).includes('rokn.app/@student'),
+        ),
     ).toBe(false);
 
     await act(async () => {
@@ -103,48 +111,53 @@ describe('profile portfolio share visibility', () => {
     await act(async () => renderer.unmount());
   });
 
-  it.each([1, 2])('keeps sharing and QR out of profile tab %s', async tabIndex => {
-    let renderer!: TestRenderer.ReactTestRenderer;
-    await act(async () => {
-      renderer = TestRenderer.create(<Profile />);
-    });
-    await act(async () => {
-      renderer.root
-        .findByProps({accessibilityLabel: 'عرض رمز QR للبورتفوليو'})
-        .props.onPress();
-    });
+  it.each([1, 2])(
+    'keeps sharing and QR out of profile tab %s',
+    async tabIndex => {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<Profile />);
+      });
+      await act(async () => {
+        renderer.root
+          .findByProps({accessibilityLabel: 'عرض رمز QR للبورتفوليو'})
+          .props.onPress();
+      });
 
-    await act(async () => {
-      const tabs = renderer.root
-        .findAllByProps({accessibilityRole: 'tab'})
-        .filter(node => typeof node.props.onPress === 'function');
-      tabs[tabIndex].props.onPress();
-    });
+      await act(async () => {
+        const tabs = renderer.root
+          .findAllByProps({accessibilityRole: 'tab'})
+          .filter(node => typeof node.props.onPress === 'function');
+        tabs[tabIndex].props.onPress();
+      });
 
-    expect(
-      renderer.root.findAllByProps({accessibilityLabel: 'مشاركة البورتفوليو'}),
-    ).toHaveLength(0);
-    expect(
-      renderer.root.findAllByProps({
-        accessibilityLabel: 'عرض رمز QR للبورتفوليو',
-      }),
-    ).toHaveLength(0);
-    expect(renderer.root.findByType(Modal).props.visible).toBe(false);
+      expect(
+        renderer.root.findAllByProps({
+          accessibilityLabel: 'مشاركة البورتفوليو',
+        }),
+      ).toHaveLength(0);
+      expect(
+        renderer.root.findAllByProps({
+          accessibilityLabel: 'عرض رمز QR للبورتفوليو',
+        }),
+      ).toHaveLength(0);
+      expect(renderer.root.findByType(Modal).props.visible).toBe(false);
 
-    await act(async () => {
-      const tabs = renderer.root
-        .findAllByProps({accessibilityRole: 'tab'})
-        .filter(node => typeof node.props.onPress === 'function');
-      tabs[0].props.onPress();
-    });
+      await act(async () => {
+        const tabs = renderer.root
+          .findAllByProps({accessibilityRole: 'tab'})
+          .filter(node => typeof node.props.onPress === 'function');
+        tabs[0].props.onPress();
+      });
 
-    expect(
-      renderer.root.findAllByProps({accessibilityLabel: 'مشاركة البورتفوليو'})
-        .length,
-    ).toBeGreaterThan(0);
-    expect(renderer.root.findByType(Modal).props.visible).toBe(false);
-    await act(async () => renderer.unmount());
-  });
+      expect(
+        renderer.root.findAllByProps({accessibilityLabel: 'مشاركة البورتفوليو'})
+          .length,
+      ).toBeGreaterThan(0);
+      expect(renderer.root.findByType(Modal).props.visible).toBe(false);
+      await act(async () => renderer.unmount());
+    },
+  );
 
   it('keeps an unavailable portfolio unshareable and its error retry visible', async () => {
     mockCanSharePortfolio = false;
@@ -163,9 +176,9 @@ describe('profile portfolio share visibility', () => {
       }),
     ).toHaveLength(0);
     expect(
-      renderer.root.findAllByType(Text).some(
-        node => node.props.children === mockProfileError,
-      ),
+      renderer.root
+        .findAllByType(Text)
+        .some(node => node.props.children === mockProfileError),
     ).toBe(true);
     await act(async () => {
       renderer.root
@@ -173,6 +186,59 @@ describe('profile portfolio share visibility', () => {
         .props.onPress();
     });
     expect(mockRetry).toHaveBeenCalledTimes(1);
+    await act(async () => renderer.unmount());
+  });
+
+  it('shows the review state without exposing sharing or QR controls', async () => {
+    mockCanSharePortfolio = false;
+    mockSharingNotice = 'أعمالك قيد المراجعة\nسيظهر رابط المشاركة بعد الموافقة';
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Profile />);
+    });
+    expect(
+      renderer.root
+        .findAllByType(Text)
+        .some(node => node.props.children === mockSharingNotice),
+    ).toBe(true);
+    expect(
+      renderer.root.findAllByProps({accessibilityLabel: 'مشاركة البورتفوليو'}),
+    ).toHaveLength(0);
+    expect(renderer.root.findByType(Modal).props.visible).toBe(false);
+    await act(async () => renderer.unmount());
+  });
+
+  it('does not reopen a QR after its delayed check returns on another tab', async () => {
+    let resolveCheck!: (url: string) => void;
+    mockRefreshShareUrl.mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveCheck = resolve;
+        }),
+    );
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Profile />);
+    });
+    await act(async () => {
+      renderer.root
+        .findByProps({accessibilityLabel: 'عرض رمز QR للبورتفوليو'})
+        .props.onPress();
+    });
+    const tab = (index: number) =>
+      renderer.root
+        .findAllByProps({accessibilityRole: 'tab'})
+        .filter(node => typeof node.props.onPress === 'function')[index];
+    await act(async () => {
+      tab(1).props.onPress();
+    });
+    await act(async () => {
+      resolveCheck(mockPublicPortfolioUrl);
+    });
+    await act(async () => {
+      tab(0).props.onPress();
+    });
+    expect(renderer.root.findByType(Modal).props.visible).toBe(false);
     await act(async () => renderer.unmount());
   });
 
@@ -209,7 +275,8 @@ describe('profile portfolio share visibility', () => {
           height: labelStyle.lineHeight * fontScale,
         };
       });
-      const viewportWidth = width - 2 * Math.max(12, Math.min(18, width * 0.05));
+      const viewportWidth =
+        width - 2 * Math.max(12, Math.min(18, width * 0.05));
       const geometry = JSON.parse(
         execFileSync(
           execPath,
@@ -245,10 +312,16 @@ describe('profile portfolio share visibility', () => {
         const label = geometry[`label-${index}`];
         expect(tab.width).toBeGreaterThanOrEqual(Accessibility.minTouchTarget);
         expect(tab.height).toBeGreaterThanOrEqual(Accessibility.minTouchTarget);
-        expect(label.width).toBeGreaterThanOrEqual(Math.floor(measurement.width));
-        expect(label.height).toBeGreaterThanOrEqual(Math.floor(measurement.height));
+        expect(label.width).toBeGreaterThanOrEqual(
+          Math.floor(measurement.width),
+        );
+        expect(label.height).toBeGreaterThanOrEqual(
+          Math.floor(measurement.height),
+        );
         expect(label.left).toBeGreaterThanOrEqual(tab.left);
-        expect(label.left + label.width).toBeLessThanOrEqual(tab.left + tab.width);
+        expect(label.left + label.width).toBeLessThanOrEqual(
+          tab.left + tab.width,
+        );
       });
       await act(async () => renderer.unmount());
     },

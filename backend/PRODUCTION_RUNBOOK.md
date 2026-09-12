@@ -119,6 +119,20 @@ production as an application rollback.
 11. Keep the scheduler active on exactly one node. Do not start a second scheduler during the release. Distributed scheduler locks require the shared Redis cache.
    The scheduler releases abandoned AI reservations every minute; disabling it
    can leave learner allowances reserved after a killed worker.
+   It also runs `payments:finalize-store-purchases --limit=25` every minute.
+   This retries Google consumption only after verified credit commits; purchase
+   retries never grant a second balance. Confirm the existing Publisher service
+   account can read/consume purchases and RTDN is enabled for one-time products.
+   Verified store test purchases retain coin attribution but record zero cash
+   income. Do not mark internal/sandbox receipts as live revenue.
+
+For the September 13 store rollout, also follow
+`../mobile/docs/STORE_ROLLOUT.md`: the new migration preserves private projects and
+defaults existing shared works to pending. Confirm every old web/worker instance
+has drained, then wait the existing public media URL lifetime before the first
+administrator approval. There is no separate public-portfolio maintenance switch;
+do not treat file-local `artisan down` as a multi-instance ingress control.
+Coordinate affirmative AI consent with the mobile build.
 
 If a post-switch readiness or smoke check fails, move traffic back to the old
 artifact and restart workers on that artifact. Keep the expanded database in

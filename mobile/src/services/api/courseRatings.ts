@@ -1,6 +1,6 @@
 import {publicRequest} from '../../constants/api';
 import {isApiRecord, payload} from './common';
-import {numericRouteId} from './courseFields';
+import {courseAverageRating, courseCount, numericRouteId} from './courseFields';
 
 export type CourseRatingResult = {
   rating: number | null;
@@ -16,19 +16,20 @@ const mapCourseRatingMutation = (
   if (!isApiRecord(value)) {
     throw new Error('COURSE_RATING_CONTRACT_INVALID');
   }
-  const version = Number(value.version);
-  const ratingsCount = Number(value.ratings_count);
-  const rating = value.rating === null ? null : Number(value.rating);
+  const version = courseCount(value.version);
+  const ratingsCount = courseCount(value.ratings_count);
+  const rating =
+    value.rating === null ? null : courseAverageRating(value.rating);
   const average =
-    value.average_rating === null ? null : Number(value.average_rating);
+    value.average_rating === null
+      ? null
+      : courseAverageRating(value.average_rating);
   if (
-    !Number.isSafeInteger(version) ||
+    version === undefined ||
     version < (expectedRating === null ? 0 : 1) ||
-    !Number.isSafeInteger(ratingsCount) ||
-    ratingsCount < 0 ||
+    ratingsCount === undefined ||
     rating !== expectedRating ||
-    (average !== null &&
-      (!Number.isFinite(average) || average < 1 || average > 5)) ||
+    average === undefined ||
     (ratingsCount === 0 && average !== null) ||
     (ratingsCount > 0 && average === null)
   ) {

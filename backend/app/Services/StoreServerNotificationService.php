@@ -15,7 +15,8 @@ final readonly class StoreServerNotificationService
 {
     public function __construct(
         private StoreNotificationAuthenticityVerifier $authenticity,
-        private OrderLifecycleService $orders
+        private OrderLifecycleService $orders,
+        private StorePurchaseService $purchases
     ) {
     }
 
@@ -76,6 +77,9 @@ final readonly class StoreServerNotificationService
             return ['status' => $event->status, 'event_id' => $eventId];
         }
 
+        if ($oneTime && !$voided && in_array((int) ($oneTime['notificationType'] ?? 0), [1, 2], true)) {
+            return $this->handleGoogleOneTime($event, $oneTime, $purchaseToken);
+        }
         if (!$voided) {
             return $this->finish($event, StoreNotificationEvent::STATUS_IGNORED);
         }
@@ -108,10 +112,67 @@ final readonly class StoreServerNotificationService
             'store-notification:google:' . $eventId,
             null,
             Order::PAYMENT_METHOD_GOOGLE_PLAY,
-            trim((string) ($voided['orderId'] ?? '')) ?: $eventId,
+            $eventId,
             $safePayload
         );
         $purchase->forceFill(['status' => 'refunded'])->save();
+
+        return $this->finish($event, StoreNotificationEvent::STATUS_PROCESSED);
+    }
+
+    private function handleGoogleOneTime(StoreNotificationEvent $event, array $notification, string $purchaseToken): array
+    {
+        $productId = trim((string) ($notification['sku'] ?? ''));
+        if ($productId === '' || $purchaseToken === '') {
+            return $this->review($event, 'google_rtdn_purchase_incomplete');
+        }
+        try {
+            // RTDN is a prompt to query current provider state, not proof of
+            // payment. Account lookup uses only the verified opaque binding.
+            $this->purchases->recoverGooglePurchase($productId, $purchaseToken);
+        } catch (StorePurchaseVerificationException $exception) {
+            if ($exception->errorCode === 'store_purchase_cancelled') {
+                $purchaseQuery = StorePurchase::query()
+                    ->where('provider', StorePurchase::PROVIDER_GOOGLE)
+                    ->where('product_id', $productId)
+                    ->where('purchase_token_hash', hash('sha256', $purchaseToken))
+                    ->with('order');
+                $purchase = $purchaseQuery->first();
+                if (!$purchase?->order) {
+                    // A device may already hold an older PURCHASED snapshot.
+                    // Persist the provider-confirmed cancellation so its later
+                    // credit reconciles it, even if this RTDN is acknowledged.
+                    $result = $this->review($event, 'store_purchase_cancelled_before_receipt');
+                    // Close the race where credit committed/reconciled between
+                    // the first lookup and persisting the cancellation marker.
+                    $purchase = $purchaseQuery->first();
+                    if (!$purchase?->order) return $result;
+                }
+                if ($purchase?->order) {
+                    $this->orders->registerReversal(
+                        $purchase->order,
+                        Order::FINANCIAL_REFUNDED,
+                        'Google Play cancelled purchase',
+                        'store-notification:google:' . $event->event_id,
+                        null,
+                        Order::PAYMENT_METHOD_GOOGLE_PLAY,
+                        $event->event_id,
+                        $event->payload
+                    );
+                    $purchase->forceFill(['status' => 'refunded'])->save();
+                }
+
+                return $this->finish($event, StoreNotificationEvent::STATUS_PROCESSED);
+            }
+            if ($exception->errorCode === 'store_purchase_pending') {
+                // A notification can precede provider API propagation. Ask
+                // Pub/Sub to retry; pending payments never receive coins.
+                throw new StorePurchaseVerificationException('store_purchase_pending', 'Purchase confirmation is pending.', 503);
+            }
+            if ($exception->httpStatus >= 500) throw $exception;
+
+            return $this->review($event, $exception->errorCode);
+        }
 
         return $this->finish($event, StoreNotificationEvent::STATUS_PROCESSED);
     }
@@ -142,12 +203,14 @@ final readonly class StoreServerNotificationService
         $transactionId = trim((string) ($transactionClaims['transactionId'] ?? ''));
         $safePayload = [
             'notification_type' => $eventType,
+            'signed_date' => $outer['signedDate'] ?? null,
             'subtype' => $outer['subtype'] ?? null,
             'environment' => $data['environment'] ?? null,
             'bundle_id' => $data['bundleId'] ?? null,
             'transaction_id' => $transactionId ?: null,
             'original_transaction_id' => $transactionClaims['originalTransactionId'] ?? null,
             'product_id' => $transactionClaims['productId'] ?? null,
+            'transaction_type' => $transactionClaims['type'] ?? null,
             'revocation_date' => $transactionClaims['revocationDate'] ?? null,
             'revocation_reason' => $transactionClaims['revocationReason'] ?? null,
         ];
@@ -192,33 +255,12 @@ final readonly class StoreServerNotificationService
         if (!hash_equals((string) $purchase->product_id, (string) ($transactionClaims['productId'] ?? ''))) {
             return $this->review($event, 'store_product_mismatch');
         }
-
-        if ($eventType === 'REFUND') {
-            $this->orders->registerReversal(
-                $purchase->order,
-                Order::FINANCIAL_REFUNDED,
-                'App Store refund',
-                'store-notification:apple:' . $eventId,
-                null,
-                Order::PAYMENT_METHOD_APP_STORE,
-                $transactionId,
-                $safePayload
-            );
-            $purchase->forceFill(['status' => 'refunded'])->save();
-        } elseif ($purchase->order->financial_status === Order::FINANCIAL_REVIEW_REQUIRED) {
-            $this->orders->resolveFinancialReview(
-                $purchase->order,
-                'repaid',
-                'store-notification:apple:' . $eventId,
-                null,
-                'App Store reversed a prior refund.'
-            );
-            $purchase->forceFill(['status' => 'credited'])->save();
-        } elseif ($purchase->order->financial_status !== Order::FINANCIAL_SETTLED) {
-            return $this->review($event, 'refund_reversal_requires_manual_review');
+        if (strtolower((string) ($data['environment'] ?? '')) !== strtolower((string) $purchase->environment)) {
+            return $this->review($event, 'store_purchase_environment_invalid');
         }
+        $this->purchases->reconcileAppleNotifications($purchase);
 
-        return $this->finish($event, StoreNotificationEvent::STATUS_PROCESSED);
+        return ['status' => $event->fresh()->status, 'event_id' => $eventId];
     }
 
     private function receiveEvent(
