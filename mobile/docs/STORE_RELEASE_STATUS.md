@@ -15,6 +15,17 @@ not yet approved for release**. iOS has not been built.
   and an owner-visible suspended state without deleting private work
 - Pinned iOS build environment and Android release provenance checks that fail
   if Git inspection fails or source changes during the build
+- Corrected iOS privacy linkage for account-bound diagnostics and declared the
+  actual product-analytics/first-party campaign purposes, without adding data
+  collection or changing tracking behavior
+- Added missing Apple login/revocation variable names to both backend example
+  environments; no real credentials have been inserted or changed
+
+Store-entry material is prepared in [console setup](../store/CONSOLE_SETUP.md),
+[reviewer access](REVIEW_ACCESS.md) and the [Arabic/English listing files](../store/listing/README.md).
+These drafts have not been entered into either console. Reviewer access,
+screenshots, membership, signing enrollment and native purchase setup still
+require actual account/device work.
 
 These backend changes and their migrations have **not** been deployed. Coordinate
 the mobile/backend rollout using `AI_CONSENT_RELEASE.md`; older clients cannot
@@ -32,6 +43,10 @@ complete new AI work once the server starts requiring affirmative consent.
   files passed
 - Android release lint and native bundle build passed. The Android unit-test
   Gradle task reported NO-SOURCE, not a native unit-test pass
+- After that Android build: 26 release-provenance tests passed including parsed
+  iOS privacy regression checks; release-config validation passed. Listing JSON
+  and platform text limits were checked. These later iOS/entry-preparation
+  changes do not alter the already built Android byte sequence
 
 These are code checks, not evidence of a successful real store purchase or a
 signed iOS archive. Full native device/store review flows remain unverified.
@@ -111,6 +126,13 @@ artifact; the source pin above remains the authoritative artifact revision.
 Production was inspected read-only. Its catalog and authentication-method routes
 under `/api/v1/` respond successfully; launch readiness still reports missing
 recovery/mobile-release evidence. Do not fabricate release records to clear it.
+
+The subsequent console check still shows the Rokn Google login session expired.
+Public privacy, support and deletion pages return 200. Both Android association
+files advertise the old certificate only; the main Apple association URL returns
+404. Complete the verified identity/key configuration before claiming native
+sign-in or app links work for store-installed builds. No console upload, public
+release, backend deployment or production migration has occurred in this work.
 
 Store acceptance is decided by Apple/Google after reviewing the actual binary,
 configuration and listing. Passing the checks above does not guarantee approval.

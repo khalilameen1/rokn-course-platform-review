@@ -19,10 +19,17 @@ public APK.
 
 The direct APK must be signed by the certificate Android sees on Play installs.
 When Play App Signing is enabled, this is the **app-signing certificate**, not
-merely the AAB upload certificate. Before Play enrollment, retain a protected
-copy of the chosen app-signing key or choose an exportable Play option. If the
-Play app-signing private key cannot sign the direct APK, direct and Play installs
-cannot update each other without uninstalling the app.
+merely the AAB upload certificate. For a new enrollment that must support both
+channels, provide Rokn's own app-signing key to Play and retain its protected
+local copy. Google does not offer a private-key download after enrollment;
+do not rely on exporting a Google-generated app-signing key later. Inspect any
+existing enrollment before choosing a key. If its private key is unavailable
+for the direct build, a differently signed direct APK cannot update the Play
+installation in place. Downloading a Play-signed APK does not turn its store
+billing channel into the distinct direct channel.
+
+See [Android signing guidance](https://developer.android.com/studio/publish/app-signing#app-signing-google-play)
+and [console setup](store/CONSOLE_SETUP.md) before accepting first enrollment.
 
 Set `ROKN_ANDROID_APP_SIGNING_SHA256` in the production-direct build environment
 to the public SHA-256 fingerprint of that certificate. The direct build fails
@@ -93,7 +100,11 @@ cannot prove screen-reader focus or system permission behavior:
 5. First refusal permanent refusal and later revocation for notifications and
    the system photo picker. Rokn must not request camera microphone location or
    broad storage access.
-6. Google Play Data safety and App Store privacy answers must match
-   `ios/Rokn/PrivacyInfo.xcprivacy`: account identity phone linking learner
-   media purchase history support product interaction device identity and
-   diagnostics are used for app functionality and are not tracking.
+6. Google Play Data safety and App Store privacy answers must cover the actual
+   app, backend and provider data flows as well as `ios/Rokn/PrivacyInfo.xcprivacy`.
+   Do not classify account-linked diagnostics as anonymous or declare every
+   purpose as app functionality. Retained product analytics and optional
+   marketing require their corresponding purposes. Apple's and Google's
+   purpose definitions differ; a native manifest is not a completed console
+   questionnaire. Recheck provider use and production marketing integrations
+   before answering the separate tracking/sharing questions.

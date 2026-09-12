@@ -40,12 +40,89 @@ test('production build entry points use the pinned local and cloud toolchains', 
 const YAML = require('yaml');
 
 const root = path.resolve(__dirname, '..', '..');
+const plist = require('plist');
 const provenance = require('../verify-artifact-provenance');
 const smoke = require('../run-android-staging-smoke');
 const {runPostInstall} = require('../eas-build-post-install');
 const {runPreInstall, rubySource, versions} = require('../eas-build-pre-install');
 const fixtureUrlName = ['ROKN_SMOKE_FORCED_UPDATE', 'FIXTURE_URL'].join('_');
 const fixtureTokenName = ['ROKN_SMOKE', 'FIXTURE_TOKEN'].join('_');
+
+const readPrivacyManifest = () => plist.parse(
+  fs.readFileSync(path.join(root, 'ios/Rokn/PrivacyInfo.xcprivacy'), 'utf8'),
+);
+const privacyEntry = (manifest, type) => {
+  const entries = manifest.NSPrivacyCollectedDataTypes.filter(
+    entry => entry.NSPrivacyCollectedDataType === `NSPrivacyCollectedDataType${type}`,
+  );
+  assert.equal(entries.length, 1, `${type} must have exactly one declaration`);
+  return entries[0];
+};
+
+test('iOS privacy declares account-linked crash and nonfatal diagnostics', () => {
+  const manifest = readPrivacyManifest();
+  // Sanitizing payloads does not anonymize events that retain an account ID.
+  const sentry = fs.readFileSync(path.join(root, 'src/services/sentryTelemetry.ts'), 'utf8');
+  const clientEvents = fs.readFileSync(
+    path.join(root, '../backend/app/Http/Controllers/API/ClientEventController.php'), 'utf8',
+  );
+  assert.match(sentry, /event\.user\s*=\s*event\.user\?\.id/);
+  assert.match(sentry, /Sentry\.setUser\(/);
+  assert.match(clientEvents, /'user_id'\s*=>\s*\$userId/);
+  for (const type of ['CrashData', 'OtherDiagnosticData']) {
+    const entry = privacyEntry(manifest, type);
+    assert.equal(entry.NSPrivacyCollectedDataTypeLinked, true, type);
+    // Apple includes crash reduction and technical performance in App Functionality.
+    assert.deepEqual(entry.NSPrivacyCollectedDataTypePurposes, [
+      'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+    ]);
+  }
+});
+
+test('iOS privacy separates retained product analytics and first-party campaign purposes', () => {
+  const manifest = readPrivacyManifest();
+  // ProductEventService retains user_id/actor_key; ProductAnalyticsService uses
+  // interactions and purchase-completion events for audience and funnel reports.
+  // Marketing campaigns select course enrollment audiences and deliver to the
+  // selected accounts' device tokens (SendStudentNotification/SendUserPushNotification).
+  const expected = {
+    UserID: ['AppFunctionality', 'Analytics', 'DeveloperAdvertising'],
+    ProductInteraction: ['AppFunctionality', 'Analytics'],
+    DeviceID: ['AppFunctionality', 'DeveloperAdvertising'],
+    PurchaseHistory: ['AppFunctionality', 'Analytics', 'DeveloperAdvertising'],
+  };
+  for (const [type, purposes] of Object.entries(expected)) {
+    const entry = privacyEntry(manifest, type);
+    assert.equal(entry.NSPrivacyCollectedDataTypeLinked, true, type);
+    assert.deepEqual(
+      [...entry.NSPrivacyCollectedDataTypePurposes].sort(),
+      purposes.map(purpose => `NSPrivacyCollectedDataTypePurpose${purpose}`).sort(),
+      type,
+    );
+  }
+});
+
+test('iOS privacy retains specific uploads and support disclosures without inventing tracking', () => {
+  const manifest = readPrivacyManifest();
+  const entries = manifest.NSPrivacyCollectedDataTypes;
+  const types = entries.map(entry => entry.NSPrivacyCollectedDataType);
+  assert.equal(new Set(types).size, types.length, 'collected data types must be unique');
+  for (const type of [
+    'Name', 'EmailAddress', 'PhoneNumber', 'PhotosorVideos',
+    'CustomerSupport', 'OtherUserContent',
+  ]) {
+    const entry = privacyEntry(manifest, type);
+    assert.equal(entry.NSPrivacyCollectedDataTypeLinked, true, type);
+    assert.deepEqual(entry.NSPrivacyCollectedDataTypePurposes, [
+      'NSPrivacyCollectedDataTypePurposeAppFunctionality',
+    ]);
+  }
+  assert.equal(manifest.NSPrivacyTracking, false);
+  assert.deepEqual(manifest.NSPrivacyTrackingDomains || [], []);
+  for (const entry of entries) {
+    assert.equal(entry.NSPrivacyCollectedDataTypeTracking, false, entry.NSPrivacyCollectedDataType);
+  }
+});
 
 test('EAS iOS pins the documented SDK 55 image and existing toolchain', () => {
   const profile = JSON.parse(fs.readFileSync(path.join(root, 'eas.json'), 'utf8'))
