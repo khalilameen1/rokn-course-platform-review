@@ -58,8 +58,8 @@ export const parsePublicContent = (
   const content = record(value);
   const title = plainText(content.title);
   if (!title || !Array.isArray(content.sections)) return null;
-  const sections = content.sections.map(value => {
-    const section = record(value);
+  const sections = content.sections.map(sectionValue => {
+    const section = record(sectionValue);
     return {
       title: plainText(section.title),
       body: [

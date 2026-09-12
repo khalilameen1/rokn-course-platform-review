@@ -34,6 +34,7 @@ export type PortfolioProfile = {
   skills: string[];
   publicUrl: string;
   shareMode: 'unlisted';
+  sharingSuspended?: boolean;
 };
 
 export type PortfolioItem = {
@@ -95,8 +96,12 @@ export const mapPortfolioProfile = (
     headline: String(value.headline || fallback.headline || ''),
     location: String(value.location || ''),
     skills: Array.isArray(value.skills) ? value.skills.map(String) : [],
-    publicUrl: String(value.public_url || ''),
+    publicUrl:
+      firstBoolean(value.sharing_suspended) === true
+        ? ''
+        : String(value.public_url || ''),
     shareMode: 'unlisted',
+    sharingSuspended: firstBoolean(value.sharing_suspended) ?? false,
   };
 };
 

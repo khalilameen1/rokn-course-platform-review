@@ -14,6 +14,7 @@ final class AiFailurePolicy
         $code = trim((string) $code);
 
         return match ($code) {
+            'ai_consent_required' => $this->result('consent', true, 0),
             'chat_provider_outcome_unknown',
             'provider_outcome_unknown' => $this->result('unknown_outcome', false, 0),
 

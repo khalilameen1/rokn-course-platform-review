@@ -114,6 +114,7 @@ export const exchangeAppleSocialToken = (
         provider: 'apple',
         token,
         nonce: pending.verifier,
+        authorization_code: pending.authorizationCode,
         ...(pending.providerName ? {provider_name: pending.providerName} : {}),
         device_os: Platform.OS,
         device_type: Platform.OS,

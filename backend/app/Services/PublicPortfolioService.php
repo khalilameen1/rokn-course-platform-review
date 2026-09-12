@@ -35,7 +35,24 @@ final class PublicPortfolioService
     public function mediaForPortfolio(string $slug, string $mediaPublicId): ?PortfolioMedia
     {
         $user = $this->userForSlug($slug);
-        if (!$user || !Str::isUuid($mediaPublicId)) {
+        return $user ? $this->mediaForUser($user, $mediaPublicId) : null;
+    }
+
+    /** Only the admin-only preview controller may call this suspension bypass. */
+    public function adminPreview(User $user): array
+    {
+        return $this->fullPortfolio($user, (string) $user->portfolio_slug, null, null, true);
+    }
+
+    /** Returns only published work, never the learner's private drafts. */
+    public function adminPreviewMedia(User $user, string $mediaPublicId): ?PortfolioMedia
+    {
+        return $this->mediaForUser($user, $mediaPublicId);
+    }
+
+    private function mediaForUser(User $user, string $mediaPublicId): ?PortfolioMedia
+    {
+        if (!Str::isUuid($mediaPublicId)) {
             return null;
         }
 
@@ -60,7 +77,8 @@ final class PublicPortfolioService
             return null;
         }
 
-        $user = User::query()->where('portfolio_slug', $slug)->first();
+        $user = User::query()->where('portfolio_slug', $slug)
+            ->whereNull('portfolio_sharing_suspended_at')->first();
         if (!$user) {
             return null;
         }
@@ -72,7 +90,8 @@ final class PublicPortfolioService
         User $user,
         string $slug,
         ?int $projectPage,
-        ?int $projectsPerPage
+        ?int $projectsPerPage,
+        bool $adminPreview = false
     ): array
     {
         $itemsQuery = $user->portfolioItems()
@@ -133,7 +152,8 @@ final class PublicPortfolioService
             'projects' => $items
                 ->map(fn (PortfolioItem $item): array => $this->publicProjectPayload(
                     $item,
-                    $slug
+                    $slug,
+                    $adminPreview
                 ))
                 ->values()
                 ->all(),
@@ -144,16 +164,19 @@ final class PublicPortfolioService
     /** Public share payloads use public slugs/UUIDs, never database keys. */
     private function publicProjectPayload(
         PortfolioItem $item,
-        string $slug
+        string $slug,
+        bool $adminPreview = false
     ): array
     {
         $media = $item->mediaFiles
-            ->map(function (PortfolioMedia $media) use ($slug): ?array {
+            ->map(function (PortfolioMedia $media) use ($slug, $item, $adminPreview): ?array {
                 $mediaPublicId = (string) $media->public_id;
                 $deliveryUrl = Str::isUuid($mediaPublicId)
                     && in_array((string) $media->file_type, ['image', 'video'], true)
                     && !$media->deletion_lease_id
-                    ? RoknPublicUrl::portfolioMedia($slug, $mediaPublicId)
+                    ? ($adminPreview
+                        ? route('admin.portfolio-preview.media', ['user' => $item->user_id, 'mediaId' => $mediaPublicId])
+                        : RoknPublicUrl::portfolioMedia($slug, $mediaPublicId))
                     : null;
                 if (!$deliveryUrl) {
                     return null;

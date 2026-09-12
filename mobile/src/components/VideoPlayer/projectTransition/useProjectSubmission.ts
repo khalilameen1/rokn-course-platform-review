@@ -29,6 +29,7 @@ import {formatArabicNumber} from '../../../constants/arabicFormatting';
 import {asRecord} from '../courseLearning/shared';
 import {publishCourseRevisionChange} from '../courseLearning/playbackRevision';
 import {requestProjectRevisionConfirmation} from '../courseLearning/projectRemote';
+import {isAiConsentRequired, requestAiConsent} from '../../../services/aiConsent';
 
 const EMPTY_MIME_TYPES: string[] = [];
 
@@ -451,6 +452,9 @@ export const useProjectSubmission = ({
           boundary,
         );
         assertAccountSessionBoundary(boundary);
+        if (!(await requestAiConsent(boundary))) return;
+        assertAccountSessionBoundary(boundary);
+        if (!ownsProject(id, generation)) return;
         const outcome = await onSubmit(
           fileSubmissionEnabled ? files : [],
           textSubmissionEnabled ? normalizedNote : undefined,
@@ -493,6 +497,10 @@ export const useProjectSubmission = ({
           return;
         }
         const changed = projectDraftRevision(error, id);
+        if (isAiConsentRequired(error)) {
+          Alert.alert('تأكيد استخدام المراجعة', 'أعد المحاولة لتأكيد اختيارك. مشروعك محفوظ');
+          return;
+        }
         if (changed) {
           setRevision(changed);
           setRevisionError('');

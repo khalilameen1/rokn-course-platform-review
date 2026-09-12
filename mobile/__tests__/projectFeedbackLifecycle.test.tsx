@@ -15,6 +15,10 @@ jest.mock('../src/utils/secureRandom', () => ({
 }));
 
 jest.mock('expo-document-picker', () => ({getDocumentAsync: jest.fn()}));
+// Transport recovery cases exercise an already-consented account.
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: jest.fn(async () => true),
+}));
 jest.mock('../src/constants/helpers', () => ({
   assertAccountSessionBoundary: jest.fn((boundary: {epoch: number}) => {
     if (boundary.epoch !== mockEpoch)

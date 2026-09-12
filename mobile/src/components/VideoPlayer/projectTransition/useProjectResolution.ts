@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {requestAiConsent} from '../../../services/aiConsent';
 
 import {
   loadProjectResolution,
@@ -390,6 +391,9 @@ export const useProjectResolution = ({
     try {
       boundary = await captureAccountSessionBoundary();
       if (!ownsFlight()) return;
+      if (!(await requestAiConsent(boundary))) return;
+      assertAccountSessionBoundary(boundary);
+      if (!ownsFlight()) return;
       const next = await retryProjectReport(reportRetryEndpoint);
       assertAccountSessionBoundary(boundary);
       // Only the committed retry response starts polling. Reading while the
@@ -444,6 +448,9 @@ export const useProjectResolution = ({
     let boundary: AccountSessionBoundary | undefined;
     try {
       boundary = await captureAccountSessionBoundary();
+      if (!ownsFlight()) return;
+      if (!reviewReadOnlyRef.current && !(await requestAiConsent(boundary))) return;
+      assertAccountSessionBoundary(boundary);
       if (!ownsFlight()) return;
       const next = reviewReadOnlyRef.current
         ? await loadProjectResolution(projectId)

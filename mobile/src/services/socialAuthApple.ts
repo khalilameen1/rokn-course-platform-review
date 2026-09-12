@@ -57,7 +57,9 @@ export const startAppleSocialAuth = async (options: SocialAuthOptions) => {
       ],
       nonce: nonce.digest,
     });
-    if (!credential.identityToken) throw new Error('LOGIN_SESSION_INVALID');
+    if (!credential.identityToken || !credential.authorizationCode) {
+      throw new Error('LOGIN_SESSION_INVALID');
+    }
 
     const providerName = [
       credential.fullName?.givenName,
@@ -69,6 +71,7 @@ export const startAppleSocialAuth = async (options: SocialAuthOptions) => {
     const recoverableAttempt: PendingSocialAuthAttempt = {
       ...attempt,
       nativeToken: credential.identityToken,
+      authorizationCode: credential.authorizationCode,
       ...(providerName ? {providerName} : {}),
     };
     if (!(await replacePendingSocialAuthAttempt(attempt, recoverableAttempt))) {

@@ -43,6 +43,7 @@ export default function Profile() {
     displayName,
     identityKey,
     profileError,
+    portfolioSharingSuspended,
     publicPortfolioUrl,
     retry,
     role,
@@ -233,11 +234,26 @@ export default function Profile() {
           </ScrollView>
 
           {activeTab === 'portfolio' && (
-            <Gallery
-              key={`portfolio:${identityKey}`}
-              onSharePortfolio={canSharePortfolio ? sharePortfolio : undefined}
-              onShareablePortfolioChange={setHasShareablePortfolio}
-            />
+            <>
+              {portfolioSharingSuspended && (
+                <View
+                  accessibilityLiveRegion="polite"
+                  style={styles.staleNotice}>
+                  <Text style={styles.staleNoticeText}>
+                    المشاركة موقوفة مؤقتًا للمراجعة. أعمالك محفوظة ويمكنك
+                    تعديلها، وتعلّمك وشهاداتك لم تتأثر. تواصل مع الدعم لمراجعة
+                    القرار.
+                  </Text>
+                </View>
+              )}
+              <Gallery
+                key={`portfolio:${identityKey}`}
+                onSharePortfolio={
+                  canSharePortfolio ? sharePortfolio : undefined
+                }
+                onShareablePortfolioChange={setHasShareablePortfolio}
+              />
+            </>
           )}
           {activeTab === 'certificates' && (
             <Certificates

@@ -1,8 +1,7 @@
 /**
  * Distribution-aware commerce guard.
  *
- * Google Play builds are consumption-only. Direct builds keep Rokn's existing
- * in-app browser checkout.
+ * Store builds use native billing. Direct builds use Rokn's web checkout.
  */
 export type DistributionChannel = 'direct' | 'play' | 'appstore';
 
@@ -15,8 +14,8 @@ export type DistributionCapabilities = {
 /**
  * Keep access redemption independent from checkout.
  *
- * Play remains consumption-only: a learner may claim access already issued by
- * an educational organization, but the app never links to or starts payment.
+ * Play may redeem access already issued by an educational organization;
+ * paid coin packages still use Google Play Billing.
  * App Store builds do not expose a generic code/key unlock because App Review
  * Guideline 3.1.1 requires digital-content unlocks to use in-app purchase.
  */
@@ -44,8 +43,8 @@ const distributionCapabilities =
   getDistributionCapabilities(DISTRIBUTION_CHANNEL);
 
 // External checkout is a capability of the explicitly distributed direct APK
-// only. Store builds remain consumption-only and never infer permission from
-// an unknown/missing channel value.
+// only. Store builds use native billing and never infer permission for external
+// checkout from an unknown/missing channel value.
 export const CAN_START_EXTERNAL_CHECKOUT =
   distributionCapabilities.canStartExternalCheckout;
 export const CAN_START_NATIVE_CHECKOUT =

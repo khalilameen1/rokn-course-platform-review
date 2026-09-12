@@ -29,7 +29,7 @@ final class StorePurchaseController extends Controller
         $user = auth('api')->user();
 
         return $this->responses->success([
-            'google_obfuscated_account_id' => $identities->google($user),
+            'google_obfuscated_account_id' => $identities->rememberGoogle($user),
             'apple_app_account_token' => $identities->apple($user),
         ], 'تم تجهيز الدفع من المتجر');
     }

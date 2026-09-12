@@ -14,7 +14,9 @@ final readonly class VerifiedStorePurchase
         public string $environment,
         public ?string $currency = null,
         public ?float $grossAmount = null,
-        public array $auditPayload = []
+        public array $auditPayload = [],
+        public int $quantity = 1,
+        public ?string $accountBinding = null
     ) {
     }
 }

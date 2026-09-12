@@ -100,10 +100,12 @@ final class PortfolioProfileController extends Controller
     private function profilePayload(User $user): array
     {
         $slug = $this->portfolioShares->ensure($user);
+        $sharingSuspended = $user->portfolio_sharing_suspended_at !== null;
 
         return [
             'slug' => $slug,
             'share_mode' => 'unlisted',
+            'sharing_suspended' => $sharingSuspended,
             'headline' => $user->portfolio_headline,
             'location' => $user->portfolio_location,
             'skills' => $user->portfolio_skills ?? [],
@@ -122,7 +124,7 @@ final class PortfolioProfileController extends Controller
                 ->filter()
                 ->values()
                 ->all(),
-            'public_url' => RoknPublicUrl::portfolio($slug),
+            'public_url' => $sharingSuspended ? null : RoknPublicUrl::portfolio($slug),
         ];
     }
 }

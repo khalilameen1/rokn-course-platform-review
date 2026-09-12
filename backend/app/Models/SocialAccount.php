@@ -19,11 +19,16 @@ class SocialAccount extends Model
         'provider_name',
         'avatar_url',
         'last_verified_at',
+        'apple_refresh_token',
+        'apple_client_id',
     ];
 
     protected $casts = [
         'last_verified_at' => 'datetime',
+        'apple_refresh_token' => 'encrypted',
     ];
+
+    protected $hidden = ['apple_refresh_token'];
 
     public function user()
     {

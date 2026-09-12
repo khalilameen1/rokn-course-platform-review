@@ -20,8 +20,9 @@ final class ProjectReportRetryPolicy
                 'provider_unavailable',
                 'ai_rate_limited',
                 'worker_failed',
+                'ai_consent_required',
             ], true)
-            || $retryCount >= 2
+            || ($retryCount >= 2 && $failureReason !== 'ai_consent_required')
         ) {
             return false;
         }

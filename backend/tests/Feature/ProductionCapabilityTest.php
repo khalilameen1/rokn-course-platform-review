@@ -263,6 +263,9 @@ final class ProductionCapabilityTest extends TestCase
             'services.tiktok.client_key' => 'tiktok-client',
             'services.tiktok.client_secret' => 'tiktok-secret',
             'services.apple.client_id' => 'com.rokn',
+            'services.apple.team_id' => 'APPLE-TEST-TEAM',
+            'services.apple.key_id' => 'APPLE-TEST-KEY',
+            'services.apple.key_file' => __FILE__, // Readiness fixture; no real credential is used.
             'social_auth.providers' => ['google', 'facebook', 'tiktok', 'apple'],
             'social_auth.public_api_url' => 'https://api.rokn.test/api/v1',
             'social_auth.return_urls' => ['rokn://auth'],

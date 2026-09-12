@@ -9,6 +9,13 @@ const mockLoadDraft = jest.fn(async (..._args: unknown[]) => ({
 }));
 const mockSaveDraft = jest.fn(async (..._args: unknown[]) => undefined);
 const mockClearDraft = jest.fn(async (..._args: unknown[]) => undefined);
+const mockConsent = jest.fn(async (..._args: unknown[]) => true);
+
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: (...args: unknown[]) => mockConsent(...args),
+  isAiConsentRequired: (error: {code?: string}) =>
+    error?.code === 'ai_consent_required',
+}));
 
 jest.mock('../src/constants/helpers', () => ({
   assertAccountSessionBoundary: jest.fn(),
@@ -60,10 +67,37 @@ describe('project submission draft hydration', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+    mockConsent.mockReset().mockResolvedValue(true);
   });
 
   afterEach(() => {
     jest.useRealTimers();
+  });
+
+  it('keeps the saved draft and sends nothing when AI sharing is declined', async () => {
+    mockConsent.mockResolvedValueOnce(false);
+    const onSubmit = jest.fn();
+    let current!: ReturnType<typeof useProjectSubmission>;
+    const Harness = () => {
+      current = useProjectSubmission({
+        appIsActive: true, project: project(), status: 'draft',
+        submissionAllowed: true, onSubmit, onOutcome: jest.fn(),
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => { renderer = TestRenderer.create(<Harness />); });
+      act(() => current.changeNote('مسودة لا ترسل دون موافقة'));
+      await act(async () => { await current.submit(); });
+      expect(mockConsent).toHaveBeenCalledWith({scope: 'user-a', epoch: 1});
+      expect(mockSaveDraft).toHaveBeenCalled();
+      expect(onSubmit).not.toHaveBeenCalled();
+      expect(mockClearDraft).not.toHaveBeenCalled();
+      expect(current.note).toBe('مسودة لا ترسل دون موافقة');
+    } finally {
+      act(() => renderer.unmount());
+    }
   });
 
   it.each([

@@ -23,7 +23,8 @@ final class AccountDeletionService
         private readonly AcquisitionRewardTombstoneService $rewardTombstones,
         private readonly AiEntitlementBudgetService $aiBudget,
         private readonly PaidAiCallExecutionService $paidAiCalls,
-        private readonly SocialIdentityGuardService $identityGuards
+        private readonly SocialIdentityGuardService $identityGuards,
+        private readonly AppleService $apple
     ) {
     }
 
@@ -61,6 +62,7 @@ final class AccountDeletionService
             // Cover a provider linked in the narrow interval between the first
             // identity snapshot and this aggregate lock.
             $this->identityGuards->markDeletionStarted((int) $locked->id);
+            $this->apple->revokeForAccountDeletion($locked);
             $userId = (int) $locked->id;
             $catalogueEnrollmentCountChanged = strtolower((string) $locked->role) === 'client'
                 && Schema::hasTable('course_enrollments')
@@ -405,6 +407,8 @@ final class AccountDeletionService
                 'password' => Hash::make(Str::random(64)),
                 'social_provider' => null,
                 'social_id' => null,
+                'ai_consent_version' => null,
+                'ai_consent_accepted_at' => null,
                 'api_token' => null,
                 'access_token' => null,
                 'remember_token' => null,

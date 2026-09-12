@@ -81,6 +81,7 @@ class Kernel extends HttpKernel
         'admin.audit' => \App\Http\Middleware\AuditAdminMutation::class,
         'course.draft' => \App\Http\Middleware\ResolveCourseAuthoringDraft::class,
         'product.feature' => \App\Http\Middleware\RequireProductFeature::class,
+        'ai.consent' => \App\Http\Middleware\RequireAiConsent::class,
         'recovery.write' => \App\Http\Middleware\PauseDuringRecovery::class,
         'WebsiteVisitorCount' => WebsiteVisitorCount::class,
     ];

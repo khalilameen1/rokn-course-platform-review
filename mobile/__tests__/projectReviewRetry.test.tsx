@@ -3,6 +3,10 @@ import TestRenderer, {act} from 'react-test-renderer';
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
+const mockConsent = jest.fn(async (..._args: unknown[]) => true);
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: (...args: unknown[]) => mockConsent(...args),
+}));
 jest.mock('../src/constants/api', () => ({
   publicRequest: {
     get: (...args: unknown[]) => mockGet(...args),
@@ -95,7 +99,24 @@ const mount = (input = project) => {
 };
 
 describe('retrying an unavailable saved review', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(assertAccountSessionBoundary).mockReset();
+    mockConsent.mockReset().mockResolvedValue(true);
+  });
+
+  it('does not restart hidden assessment when AI sharing is declined', async () => {
+    mockConsent.mockResolvedValueOnce(false);
+    const screen = mount();
+    try {
+      await act(async () => screen.current.retryReview());
+      expect(mockConsent).toHaveBeenCalledWith({scope: 'user-a', epoch: 1});
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(mockGet).not.toHaveBeenCalled();
+      expect(screen.current.reviewRetrying).toBe(false);
+      expect(screen.current.status).toBe('review_unavailable');
+    } finally { screen.close(); }
+  });
 
   it('maps the distinct state and action into the course without exposing rejection feedback', () => {
     const mapped = mapCourseProject(
@@ -288,7 +309,9 @@ describe('retrying an unavailable saved review', () => {
     expect(screen.onResolution).not.toHaveBeenCalled();
 
     mockPost.mockRejectedValueOnce(new Error('offline'));
-    jest.mocked(assertAccountSessionBoundary).mockImplementationOnce(() => {
+    // A replaced account invalidates this boundary permanently, including the
+    // new pre-send consent boundary and any attempted status recovery.
+    jest.mocked(assertAccountSessionBoundary).mockImplementation(() => {
       throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
     });
     const next = mount();

@@ -16,6 +16,9 @@ jest.mock('../src/screens/settings/useAccountSettingsActions', () => ({
 jest.mock('../src/screens/settings/useSettingsPreferences', () => ({
   useSettingsPreferences: () => ({}),
 }));
+jest.mock('../src/services/aiConsent', () => ({
+  manageAiConsent: jest.fn(),
+}));
 
 describe('settings account identity', () => {
   const readIdentity = (session: unknown) => {

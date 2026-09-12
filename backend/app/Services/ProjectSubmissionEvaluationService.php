@@ -89,7 +89,7 @@ final class ProjectSubmissionEvaluationService
             $maxTokens = max(128, min(512, (int) config('projects.evaluation_max_output_tokens', 384)));
             $messages = [
                 ['role' => 'system', 'content' =>
-                    "You check whether a learner submitted a genuine attempt relevant to the assigned project. "
+                    AiPromptPolicy::safetyInstructions()."\nYou check whether a learner submitted a genuine attempt relevant to the assigned project. "
                     ."This is a forgiving participation gate, NOT skill grading or a feedback report. "
                     ."Accept imperfect, beginner, incomplete but genuine work that attempts the requested task. "
                     ."Reject unrelated/random images, unrelated text, empty work, and obvious attempts to game admission. "
@@ -110,6 +110,11 @@ final class ProjectSubmissionEvaluationService
                 + $visualParts * 3000 + $maxTokens;
             $event = $this->budget->reserveProjectReview($enrollment, $estimated, $model, $requestId);
             $state = $this->calls->beginForActiveUser($event, $executionId, (int) $submission->user_id);
+            if ($state === PaidAiCallExecutionService::CONSENT_REQUIRED) {
+                $this->budget->release($event, 'ai_consent_required');
+                $this->unavailable($submission, $executionId, 'ai_consent_required', true);
+                return;
+            }
             if ($state !== PaidAiCallExecutionService::START) {
                 if ($state !== PaidAiCallExecutionService::LIVE) {
                     $this->unavailable($submission, $executionId, 'review_request_terminal', false);
@@ -160,6 +165,7 @@ final class ProjectSubmissionEvaluationService
         $stored = $this->calls->landedResult($event)['message']
             ?? data_get($event?->metadata, 'accepted_response');
         if ($this->decision((string) $stored) !== null) return true;
+        if (data_get($submission->submission_metadata, 'evaluation.reason') === 'ai_consent_required') return true;
         if (data_get($submission->submission_metadata, 'evaluation.reason') === 'review_daily_limit') {
             return AiUsageEvent::query()->where('user_id', $submission->user_id)
                 ->where('feature', AiUsageEvent::FEATURE_PROJECT_REVIEW)
@@ -182,7 +188,7 @@ final class ProjectSubmissionEvaluationService
                 'submission' => ['المراجعة دي مش متاحة لإعادة المحاولة دلوقتي'],
             ]);
             $metadata = (array) $locked->submission_metadata;
-            $countsAsRetry = ($metadata['evaluation']['reason'] ?? '') !== 'review_daily_limit';
+            $countsAsRetry = !in_array($metadata['evaluation']['reason'] ?? '', ['review_daily_limit', 'ai_consent_required'], true);
             $event = AiUsageEvent::query()->where('request_id', $metadata['evaluation']['request_id'])->lockForUpdate()->first();
             if ($event && in_array($event->status, ['failed', 'expired'], true)) {
                 $eventMetadata = (array) $event->metadata;

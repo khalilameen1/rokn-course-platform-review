@@ -17,6 +17,7 @@ final class PaidAiCallExecutionService
     public const LANDED = 'landed';
     public const TERMINAL = 'terminal';
     public const INACTIVE = 'inactive';
+    public const CONSENT_REQUIRED = 'ai_consent_required';
 
     public function beginForActiveUser(
         AiUsageEvent $event,
@@ -109,6 +110,9 @@ final class PaidAiCallExecutionService
         }
         if (!in_array($state, ['', 'retry_safe'], true)) {
             return self::TERMINAL;
+        }
+        if (!app(AiConsentService::class)->accepted((int) $locked->user_id)) {
+            return self::CONSENT_REQUIRED;
         }
         $metadata['worker_execution_id'] = $executionId;
         $metadata['provider_call_state'] = 'started';

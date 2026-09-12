@@ -353,6 +353,11 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 $budget->release($reservation, 'account_deleted_before_provider');
                 return;
             }
+            if ($callState === PaidAiCallExecutionService::CONSENT_REQUIRED) {
+                $budget->release($reservation, 'ai_consent_required');
+                $this->markFailedWithReply($message->id, $thread->id, 'ai_consent_required');
+                return;
+            }
             if ($callState !== PaidAiCallExecutionService::START) {
                 if ($callState === PaidAiCallExecutionService::LIVE) return;
                 $fresh = $reservation->fresh();

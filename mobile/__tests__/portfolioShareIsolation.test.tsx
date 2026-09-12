@@ -2,6 +2,7 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockShareOnce = jest.fn();
+const mockGetPortfolioProfile = jest.fn();
 
 jest.mock('@react-navigation/native', () => ({
   useFocusEffect: (effect: () => void | (() => void)) => {
@@ -27,14 +28,7 @@ jest.mock('../src/constants/helpers', () => ({
 
 jest.mock('../src/services/roknApi', () => ({
   getProfile: jest.fn(async () => ({name: 'سارة'})),
-  getPortfolioProfile: jest.fn(async () => ({
-    slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
-    headline: '',
-    location: '',
-    skills: [],
-    publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
-    shareMode: 'unlisted',
-  })),
+  getPortfolioProfile: (...args: unknown[]) => mockGetPortfolioProfile(...args),
   hasSession: jest.fn(async () => true),
 }));
 
@@ -49,6 +43,79 @@ describe('portfolio share isolation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockShareOnce.mockResolvedValue(undefined);
+    mockGetPortfolioProfile.mockReset().mockResolvedValue({
+      slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      headline: '',
+      location: '',
+      skills: [],
+      publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      shareMode: 'unlisted',
+      sharingSuspended: false,
+    });
+  });
+
+  it('does not reconstruct a suspended public URL and restores sharing only after a fresh status', async () => {
+    mockGetPortfolioProfile.mockResolvedValue({
+      slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      publicUrl: '',
+      sharingSuspended: true,
+    });
+    let overview!: ReturnType<typeof useProfileOverview>;
+    const Harness = () => {
+      overview = useProfileOverview();
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    await act(async () => {
+      overview.setHasShareablePortfolio(true);
+    });
+    expect(overview.portfolioSharingSuspended).toBe(true);
+    expect(overview.publicPortfolioUrl).toBe('');
+    expect(overview.canSharePortfolio).toBe(false);
+    await act(async () => {
+      await overview.sharePortfolio();
+    });
+    expect(mockShareOnce).not.toHaveBeenCalled();
+    mockGetPortfolioProfile.mockResolvedValue({
+      slug: 'rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      publicUrl: 'https://rokn.app/@rokn-aaaaaaaaaaaaaaaaaaaaaaaa',
+      sharingSuspended: false,
+    });
+    await act(async () => {
+      overview.retry();
+    });
+    expect(overview.canSharePortfolio).toBe(true);
+    await act(async () => renderer.unmount());
+  });
+
+  it('rechecks a suspension issued after the profile loaded before opening the share sheet', async () => {
+    let overview!: ReturnType<typeof useProfileOverview>;
+    const Harness = () => {
+      overview = useProfileOverview();
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    await act(async () => {
+      overview.setHasShareablePortfolio(true);
+    });
+    expect(overview.canSharePortfolio).toBe(true);
+    mockGetPortfolioProfile.mockResolvedValue({
+      sharingSuspended: true,
+      publicUrl: '',
+    });
+    await act(async () => {
+      await overview.sharePortfolio();
+    });
+    expect(mockShareOnce).not.toHaveBeenCalled();
+    expect(overview.portfolioSharingSuspended).toBe(true);
+    expect(overview.canSharePortfolio).toBe(false);
+    await act(async () => renderer.unmount());
   });
 
   it('shares the unlisted works URL without presenting certificates as part of it', async () => {

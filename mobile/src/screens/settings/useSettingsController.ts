@@ -7,6 +7,7 @@ import type {SettingsNavigation} from './types';
 import {useAccountSettingsActions} from './useAccountSettingsActions';
 import {useSettingsPreferences} from './useSettingsPreferences';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import {manageAiConsent} from '../../services/aiConsent';
 
 export const useSettingsController = () => {
   const navigation = useNavigation<SettingsNavigation>();
@@ -51,6 +52,7 @@ export const useSettingsController = () => {
     onOpenReminderTime: preferences.openReminderChoice,
     onPortfolio: () => navigation.navigate('Profile'),
     onPrivacyPolicy: () => navigation.navigate('PrivacyPolicy'),
+    onAiConsent: () => void manageAiConsent().catch(() => undefined),
     onRateApp: account.openStoreRating,
     onTermsOfUse: () => navigation.navigate('TermsOfUse'),
     onToggleMarketing: preferences.toggleMarketing,

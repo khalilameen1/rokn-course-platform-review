@@ -1,4 +1,5 @@
 import {publicRequest} from '../../../constants/api';
+import {requireAiConsent} from '../../../services/aiConsent';
 import {
   asRecord,
   type DataRecord,
@@ -333,6 +334,10 @@ const performProjectSubmissionSync = async (
     if (recovered.kind === 'unavailable') return unconfirmedSubmission();
   }
 
+  // Replaying an old outbox must not send new input before this account has
+  // consented. History/ack recovery above remains available without consent.
+  await requireAiConsent(operation.boundary);
+  assertProjectSubmissionOwner(operation);
   pending.uploadAttempted = true;
   await savePendingProjectSubmission(
     pending,

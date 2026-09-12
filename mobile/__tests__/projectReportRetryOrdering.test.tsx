@@ -3,6 +3,10 @@ import TestRenderer, {act} from 'react-test-renderer';
 
 const mockGet = jest.fn();
 const mockPost = jest.fn();
+const mockConsent = jest.fn(async (..._args: unknown[]) => true);
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: (...args: unknown[]) => mockConsent(...args),
+}));
 let mockEpoch = 1;
 jest.mock('../src/constants/api', () => ({
   publicRequest: {
@@ -142,8 +146,22 @@ describe('report retry acknowledgement ordering', () => {
       .mockReset()
       .mockResolvedValue(response({latest_submission: submission()}));
     mockPost.mockReset();
+    mockConsent.mockReset().mockResolvedValue(true);
   });
   afterEach(() => jest.useRealTimers());
+
+  it('does not retry or poll when AI sharing is declined', async () => {
+    mockConsent.mockResolvedValueOnce(false);
+    const screen = mount();
+    try {
+      await act(async () => screen.current.retryReport());
+      expect(mockConsent).toHaveBeenCalledWith({scope: 'user-a', epoch: mockEpoch});
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(mockGet).not.toHaveBeenCalled();
+      expect(screen.current.reportRetrying).toBe(false);
+      expect(screen.current.reportStatus).toBe('failed');
+    } finally { screen.close(); }
+  });
 
   it('waits for the retry ACK before polling and then observes ready without a second POST', async () => {
     const post = deferred<ReturnType<typeof response>>();

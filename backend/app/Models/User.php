@@ -164,7 +164,7 @@ class User extends Authenticatable
      */
     public function getProfileDeeplinkAttribute(): ?string
     {
-        if (blank($this->portfolio_slug)) {
+        if (blank($this->portfolio_slug) || $this->portfolio_sharing_suspended_at !== null) {
             return null;
         }
 

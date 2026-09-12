@@ -33,4 +33,13 @@ final class AppleNonceAuthenticationTest extends TestCase
             ->assertJsonMissingValidationErrors(['nonce']);
     }
 
+    public function test_apple_social_login_requires_the_authorization_code(): void
+    {
+        $this->postJson('/api/v1/social-login', [
+            'provider' => 'apple',
+            'token' => 'signed-identity-token',
+            'nonce' => str_repeat('a', 64),
+        ])->assertUnprocessable()->assertJsonValidationErrors(['authorization_code']);
+    }
+
 }

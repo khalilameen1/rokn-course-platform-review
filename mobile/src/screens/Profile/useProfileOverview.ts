@@ -78,15 +78,20 @@ export function useProfileOverview() {
     visibleRemoteProfile?.portfolioSlug ||
     (authenticatedIdentity ? user.portfolio_slug || user.username : '') ||
     '';
-  const publicPortfolioUrl =
-    trustedPortfolioShareUrl(visiblePortfolioProfile?.publicUrl) ||
-    trustedPortfolioShareUrl(visibleRemoteProfile?.portfolioUrl) ||
-    trustedPortfolioShareUrl(username ? portfolioUrlFor(username) : '') ||
-    '';
+  const portfolioSharingSuspended = Boolean(
+    visiblePortfolioProfile?.sharingSuspended,
+  );
+  const publicPortfolioUrl = portfolioSharingSuspended
+    ? ''
+    : trustedPortfolioShareUrl(visiblePortfolioProfile?.publicUrl) ||
+      trustedPortfolioShareUrl(visibleRemoteProfile?.portfolioUrl) ||
+      trustedPortfolioShareUrl(username ? portfolioUrlFor(username) : '') ||
+      '';
   publicPortfolioUrlRef.current = publicPortfolioUrl;
   const canSharePortfolio = Boolean(
     serverSession === true &&
       identityLoaded &&
+      !portfolioSharingSuspended &&
       hasShareablePortfolio &&
       publicPortfolioUrl,
   );
@@ -186,15 +191,30 @@ export function useProfileOverview() {
   const sharePortfolio = useCallback(async () => {
     if (!canSharePortfolio) return;
     try {
+      // Moderation can change while this profile remains mounted. Recheck the
+      // owner's authoritative sharing status before opening the system sheet.
+      const boundary = await captureAccountSessionBoundary();
+      const latest = await getPortfolioProfile(boundary);
+      assertAccountSessionBoundary(boundary);
+      setPortfolioProfile(latest);
+      if (latest.sharingSuspended) {
+        Alert.alert(
+          'المشاركة موقوفة مؤقتًا',
+          'أعمالك محفوظة ويمكنك تعديلها. تواصل مع الدعم لمراجعة إيقاف المشاركة.',
+        );
+        return;
+      }
+      const shareUrl = trustedPortfolioShareUrl(latest.publicUrl);
+      if (!shareUrl) throw new Error('PORTFOLIO_SHARE_UNAVAILABLE');
       await shareOnce('portfolio', {
         title: `بورتفوليو ${displayName} على ركن`,
-        message: `شاهد أعمالي على ركن\n${publicPortfolioUrl}`,
-        url: publicPortfolioUrl,
+        message: `شاهد أعمالي على ركن\n${shareUrl}`,
+        url: shareUrl,
       });
     } catch {
       Alert.alert('تعذّرت المشاركة', 'حاول مرة أخرى');
     }
-  }, [canSharePortfolio, displayName, publicPortfolioUrl]);
+  }, [canSharePortfolio, displayName]);
 
   return {
     authenticatedIdentity,
@@ -204,6 +224,7 @@ export function useProfileOverview() {
     displayName,
     identityKey,
     profileError,
+    portfolioSharingSuspended,
     publicPortfolioUrl,
     retry,
     role,

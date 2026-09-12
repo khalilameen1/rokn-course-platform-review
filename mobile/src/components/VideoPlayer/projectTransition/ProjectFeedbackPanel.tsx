@@ -30,6 +30,7 @@ import type {
 import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {CopyButton} from '../../ui/CopyButton';
+import {AiResponseReportButton} from '../../ui/AiResponseReportButton';
 
 type Props = {
   attachments: ChatAttachmentDraft[];
@@ -123,6 +124,11 @@ const FeedbackMessage = ({
           value={copyValue}
           accessibilityLabel={report ? 'نسخ تقرير المشروع' : 'نسخ الرسالة'}
         />
+      )}
+      {message.role === 'assistant' && copyValue && message.status === 'completed' && (
+        <AiResponseReportButton target={{
+          scope: 'project_feedback', thread_id: threadId, message_id: message.id,
+        }} />
       )}
       <MessageAttachments
         message={message}

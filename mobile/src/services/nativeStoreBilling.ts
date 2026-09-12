@@ -31,6 +31,7 @@ type StoreVerificationResult = {
   credited?: unknown;
   financial_status?: unknown;
   finalize_transaction?: unknown;
+  store_finalized?: unknown;
   already_processed?: unknown;
 };
 
@@ -280,7 +281,12 @@ const verifyAndFinish = async (
     // Consumables are finalized only after the backend has atomically recorded
     // and credited them. A network/server failure leaves the transaction in the
     // store queue, so it is recovered without asking the learner to pay again.
-    await finishTransaction({purchase, isConsumable: true});
+    // Google may already have consumed the receipt on the backend. Asking the
+    // bridge to consume it again can report ITEM_NOT_OWNED after a valid credit.
+    // Apple still requires the device to finish its StoreKit transaction.
+    if (!(IS_PLAY_DISTRIBUTION && firstBoolean(verified.store_finalized) === true)) {
+      await finishTransaction({purchase, isConsumable: true});
+    }
 
     return {
       success: credited,

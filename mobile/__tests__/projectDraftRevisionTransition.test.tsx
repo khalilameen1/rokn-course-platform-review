@@ -26,6 +26,12 @@ jest.mock('../src/constants/helpers', () => ({
 jest.mock('../src/constants/api', () => ({
   publicRequest: {get: (...args: unknown[]) => mockGet(...args)},
 }));
+// Revision migration cases start after the learner has accepted AI sharing.
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: jest.fn(async () => true),
+  isAiConsentRequired: (error: {code?: string}) =>
+    error?.code === 'ai_consent_required',
+}));
 jest.mock('../src/services/learnerDraftFiles', () => ({
   cacheLearnerDraftFile: jest.fn(async (_kind, file) => file),
   learnerDraftFileIsReadable: jest.fn(async () => true),

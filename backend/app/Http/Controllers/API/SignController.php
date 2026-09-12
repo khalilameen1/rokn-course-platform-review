@@ -71,6 +71,8 @@ class SignController extends Controller
             'token' => 'required|string|max:10000',
             'provider_name' => 'nullable|string|max:255',
             'nonce' => $nonceRules,
+            'authorization_code' => $request->input('provider') === 'apple'
+                ? 'required|string|max:4096' : 'nullable|string|max:4096',
             'device_os' => 'nullable|string|max:255',
             'device_token' => 'nullable|string|max:500',
             'device_type' => 'nullable|string|max:50',
@@ -103,7 +105,8 @@ class SignController extends Controller
                 $provider,
                 $token,
                 $request->attributes->get('social_expected_nonce_hash'),
-                $validated['nonce'] ?? null
+                $validated['nonce'] ?? null,
+                $validated['authorization_code'] ?? null
             );
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('Social identity verification failed', [
@@ -186,6 +189,7 @@ class SignController extends Controller
                 $name,
                 $picture,
                 $attemptStartedAt,
+                $socialData,
                 $preferredLocale
             ): User {
                 $this->identityGuards->assertLoginStartedAfterLastDeletion(
@@ -282,6 +286,7 @@ class SignController extends Controller
                         'provider_name' => $name,
                         'avatar_url' => $picture,
                         'last_verified_at' => now(),
+                        ...($provider === 'apple' ? $socialData['apple_grant'] : []),
                     ]
                 );
 
@@ -696,6 +701,14 @@ class SignController extends Controller
                     : 'تم حذف الحساب وبياناته الشخصية بنجاح',
                 'data' => null,
             ], $cleanupPending ? 202 : 200);
+        } catch (SocialProviderUnavailableException $exception) {
+            return response()->json([
+                'status' => 503,
+                'success' => false,
+                'code' => 'apple_revocation_unavailable',
+                'message' => "تعذّر إلغاء تفويض Apple الآن\nلم نحذف حسابك، حاول مرة أخرى",
+                'data' => null,
+            ], 503);
         } catch (\Throwable $exception) {
             report($exception);
         }

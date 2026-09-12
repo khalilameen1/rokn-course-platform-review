@@ -68,6 +68,11 @@ $registerCourseApiRoutes = function () {
                 ->whereIn('systemKey', ['guest_registration_prompt', 'welcome_bonus_received']);
 
             Route::middleware('auth:api')->group(function () {
+                Route::get('ai-consent', [\App\Http\Controllers\API\AiConsentController::class, 'show']);
+                Route::put('ai-consent', [\App\Http\Controllers\API\AiConsentController::class, 'update'])
+                    ->middleware('throttle:10,1');
+                Route::post('ai-content-reports', [\App\Http\Controllers\API\AiContentReportController::class, 'store'])
+                    ->middleware('throttle:10,1');
                 /*----Logout------*/
                 Route::post('logout', [\App\Http\Controllers\API\SignController::class,'logout']);
                 Route::post('delete-account', [\App\Http\Controllers\API\SignController::class,'deleteAccount'])->name('delete');
@@ -103,19 +108,19 @@ $registerCourseApiRoutes = function () {
                 // Project Routes
                 Route::get('projects/{project}', [\App\Http\Controllers\API\ProjectController::class, 'show']);
                 Route::post('projects/{project}/submissions', [\App\Http\Controllers\API\ProjectController::class, 'submit'])
-                    ->middleware(['product.feature:project_uploads', 'throttle:8,1']);
+                    ->middleware(['product.feature:project_uploads', 'ai.consent', 'throttle:8,1']);
                 Route::get('projects/{project}/submissions/lookup', [\App\Http\Controllers\API\ProjectController::class, 'lookupSubmission'])
                     ->whereNumber('project');
                 Route::get('project-submissions/{submission}', [\App\Http\Controllers\API\ProjectController::class, 'submissionStatus']);
                 Route::post('project-submissions/{submission}/review/retry', [\App\Http\Controllers\API\ProjectController::class, 'retryEvaluation'])
-                    ->middleware(['product.feature:project_uploads', 'recovery.write', 'throttle:3,1']);
+                    ->middleware(['product.feature:project_uploads', 'ai.consent', 'recovery.write', 'throttle:3,1']);
                 Route::post('project-submissions/{submission}/report/retry', [\App\Http\Controllers\API\ProjectController::class, 'retryInitialReport'])
-                    ->middleware(['product.feature:ai_chat', 'recovery.write', 'throttle:3,1']);
+                    ->middleware(['product.feature:ai_chat', 'ai.consent', 'recovery.write', 'throttle:3,1']);
                 Route::get('project-feedback-threads/{thread}', [\App\Http\Controllers\API\ProjectController::class, 'feedbackThread']);
                 Route::post('project-feedback-threads/{thread}/messages', [\App\Http\Controllers\API\ProjectController::class, 'sendFeedbackMessage'])
-                    ->middleware('throttle:20,1');
+                    ->middleware(['ai.consent', 'throttle:20,1']);
                 Route::post('project-feedback-threads/{thread}/attachments', [\App\Http\Controllers\API\ProjectController::class, 'uploadFeedbackAttachment'])
-                    ->middleware('throttle:20,1');
+                    ->middleware(['ai.consent', 'throttle:20,1']);
                 // Certificates
                 Route::get('certificates', [\App\Http\Controllers\API\CertificateController::class, 'index']);
                 Route::get('certificates/{courseId}', [\App\Http\Controllers\API\CertificateController::class, 'show'])
@@ -186,9 +191,9 @@ $registerCourseApiRoutes = function () {
                     ->whereUuid('clientRequestId')
                     ->middleware(['product.feature:ai_chat', 'throttle:20,1']);
                 Route::post('courses/{course}/chat', [\App\Http\Controllers\API\CourseChatController::class, 'sendForCourse'])
-                    ->middleware(['product.feature:ai_chat', 'throttle:12,1']);
+                    ->middleware(['product.feature:ai_chat', 'ai.consent', 'throttle:12,1']);
                 Route::post('courses/{course}/chat/attachments', [\App\Http\Controllers\API\CourseChatController::class, 'uploadAttachment'])
-                    ->middleware(['product.feature:ai_chat', 'throttle:20,1']);
+                    ->middleware(['product.feature:ai_chat', 'ai.consent', 'throttle:20,1']);
                 Route::get('ai-input-attachments/{attachment}', [\App\Http\Controllers\API\ProjectController::class, 'showInputAttachment'])
                     ->middleware('throttle:60,1');
                 Route::get('courses/{course}/chat-upgrade', [\App\Http\Controllers\API\CourseChatUpgradeController::class, 'quote']);

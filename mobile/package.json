@@ -1,6 +1,6 @@
 {
   "name": "Rokn",
-  "version": "1.0.55",
+  "version": "1.0.56",
   "private": true,
   "main": "index.js",
   "packageManager": "npm@10.9.3",
@@ -30,7 +30,8 @@
     "licenses:native:portable-check": "node scripts/generate-native-third-party-notices.js --check --portable-check",
     "audit:release": "node scripts/audit-production-dependencies.js",
     "audit:a11y": "node scripts/audit-accessibility.js",
-    "eas-build-post-install": "npm run verify:release",
+    "eas-build-pre-install": "node scripts/eas-build-pre-install.js",
+    "eas-build-post-install": "node scripts/eas-build-post-install.js",
     "eas-build-on-success": "node scripts/eas-build-on-success.js",
     "e2e:android:staging": "node scripts/run-android-staging-smoke.js",
     "e2e:android:production-entry": "node scripts/run-android-production-entry-smoke.js",

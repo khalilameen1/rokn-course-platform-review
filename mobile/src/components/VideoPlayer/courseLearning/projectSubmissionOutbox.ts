@@ -1,4 +1,5 @@
 import {requireProductFeature} from '../../../services/productFeatures';
+import {isAiConsentRequired} from '../../../services/aiConsent';
 import type {AccountSessionBoundary} from '../../../constants/helpers';
 import type {SelectedProjectFile} from '../types';
 import {
@@ -216,7 +217,7 @@ const performForegroundSubmission = async (
       return await outcomeFromSync(result, pending, operation);
     } catch (error) {
       assertProjectSubmissionOwner(operation);
-      if (!retryableProjectSubmissionFailure(error)) {
+      if (!retryableProjectSubmissionFailure(error) && !isAiConsentRequired(error)) {
         await clearPendingProjectSubmission(pending, operation);
       }
       throw error;

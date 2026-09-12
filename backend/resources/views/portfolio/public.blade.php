@@ -17,6 +17,7 @@
         .project{grid-column:span 6;overflow:hidden;border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg,var(--surface2),var(--surface));box-shadow:0 18px 60px rgba(0,0,0,.16)}
         .project.featured{grid-column:span 12}.project-media{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line)}.project-media.single{grid-template-columns:1fr}.project-asset{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#0a1524;border:0}.project-body{padding:22px}.project h3{font-size:21px;margin:0 0 7px}.eyebrow{font-size:12px;color:#8ab3ff;margin-bottom:7px}.tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:16px}.tools span{font-size:12px;color:var(--muted);background:rgba(255,255,255,.045);padding:5px 9px;border-radius:8px}
         footer{border-top:1px solid var(--line);padding:26px 0 max(30px,env(safe-area-inset-bottom));color:var(--muted);font-size:13px}
+        .report{margin-top:16px;max-width:560px}.report summary{cursor:pointer}.report label{display:block;margin:12px 0 4px}.report textarea,.report input{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--text);font:inherit}.report button{margin-top:12px;padding:10px 20px;border:0;border-radius:8px;background:#3478f6;color:white;font:inherit}.report-status{color:var(--text)}
         @media(max-width:720px){.wrap{width:min(100% - 24px,1120px)}.identity{grid-template-columns:76px 1fr;gap:15px}.avatar{width:76px;height:76px;border-radius:22px}.project,.project.featured{grid-column:span 12}.hero{padding-top:max(28px,env(safe-area-inset-top))}section{padding:30px 0}.project{border-radius:20px}.project-media{grid-template-columns:1fr}}
     </style>
 </head>
@@ -31,6 +32,9 @@
 </div></header>
 
 <main class="wrap">
+    @if($isAdminPreview ?? false)
+        <p role="status">معاينة إدارية خاصة — لا تعيد هذه المعاينة نشر الأعمال أو تفعيل مشاركتها</p>
+    @endif
     @if(!empty($portfolio['projects']))
     <section><div class="section-head"><h2>المشروعات</h2></div><div class="grid">
         @foreach($portfolio['projects'] as $project)
@@ -54,6 +58,23 @@
     @endif
 
 </main>
-<footer><div class="wrap">بورتفوليو على ركن</div></footer>
+<footer><div class="wrap">بورتفوليو على ركن
+    @unless($isAdminPreview ?? false)
+    @if(session('portfolio_report_sent'))<p class="report-status" role="status">وصل بلاغك وسنراجع المحتوى</p>@endif
+    @if($errors->any())<p class="report-status" role="alert">{{ $errors->first() }}</p>@endif
+    <details class="report" @if($errors->any()) open @endif>
+        <summary>الإبلاغ عن محتوى</summary>
+        <form method="POST" action="{{ route('portfolio.report', $portfolio['profile']['slug']) }}">
+            @csrf
+            <label for="report-message">ما المشكلة؟</label>
+            <textarea id="report-message" name="message" rows="3" minlength="5" maxlength="2000" required>{{ old('message') }}</textarea>
+            <label for="report-email">بريدك للمتابعة (اختياري)</label>
+            <input id="report-email" name="email" type="email" maxlength="255" autocomplete="email" value="{{ old('email') }}">
+            <button type="submit">إرسال البلاغ</button>
+        </form>
+    </details>
+    @endunless
+    <p><a href="{{ route('contact') }}">تواصل معنا</a></p>
+</div></footer>
 </body>
 </html>

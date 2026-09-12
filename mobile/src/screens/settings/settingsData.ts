@@ -82,6 +82,7 @@ export type SettingsSectionsProps = {
   onOpenReminderTime: () => void;
   onPortfolio: () => void;
   onPrivacyPolicy: () => void;
+  onAiConsent?: () => void;
   onRateApp: () => void;
   onTermsOfUse: () => void;
   onToggleMarketing: (value: boolean) => void;
@@ -184,6 +185,12 @@ export const buildSettingsSections = (
   ];
 
   const privacyRows: SettingRowModel[] = [
+    ...(props.authenticated && props.onAiConsent
+      ? [{
+          id: 'privacy.ai-consent', icon: SettingsPrivacyIcon,
+          title: 'مشاركة البيانات للذكاء الاصطناعي', onPress: props.onAiConsent,
+        } satisfies SettingRowModel]
+      : []),
     ...(props.authenticated
       ? [
           {

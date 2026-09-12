@@ -394,6 +394,9 @@ class ProductionPreflightTest extends TestCase
                 'services.tiktok.client_key' => 'configured',
                 'services.tiktok.client_secret' => 'configured',
                 'services.apple.client_id' => 'com.rokn',
+                'services.apple.team_id' => 'APPLE-TEST-TEAM',
+                'services.apple.key_id' => 'APPLE-TEST-KEY',
+                'services.apple.key_file' => __FILE__, // Readiness fixture; no real credential is used.
                 'openrouter.api_key' => 'configured',
                 'openrouter.default_model' => 'configured',
                 'openrouter.project_model' => 'configured',

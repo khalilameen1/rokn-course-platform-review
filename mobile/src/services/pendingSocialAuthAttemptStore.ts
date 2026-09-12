@@ -16,6 +16,7 @@ export type PendingSocialAuthAttempt = {
   purpose?: 'login' | 'reauth';
   authorizationApiUrl?: string;
   nativeToken?: string;
+  authorizationCode?: string;
   providerName?: string;
   completedSession?: unknown;
 };
@@ -100,6 +101,12 @@ export const loadPendingSocialAuthAttempt = async () => {
         (attempt.provider !== 'apple' ||
           typeof attempt.providerName !== 'string' ||
           attempt.providerName.length > 200)) ||
+      (attempt.authorizationCode !== undefined &&
+        (attempt.provider !== 'apple' ||
+          attempt.flow !== 'native' ||
+          typeof attempt.authorizationCode !== 'string' ||
+          attempt.authorizationCode.trim().length === 0 ||
+          attempt.authorizationCode.length > 4096)) ||
       typeof attempt.startedAt !== 'string' ||
       (attempt.purpose !== undefined &&
         !['login', 'reauth'].includes(attempt.purpose))

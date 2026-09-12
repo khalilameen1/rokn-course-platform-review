@@ -6,7 +6,14 @@ namespace App\Services;
 
 final class AiPromptPolicy
 {
-    private const VERSION = 'rokn-ai-voice-v11-final-answer-contract';
+    private const VERSION = 'rokn-ai-voice-v12-content-safety';
+
+    public static function safetyInstructions(): string
+    {
+        return 'ارفض باختصار طلبات الاستغلال أو الإساءة الجنسية للأطفال والمحتوى الجنسي الصريح والتحريض على الكراهية أو العنف وتعليمات إيذاء النفس أو الآخرين والاحتيال وانتحال الهوية والتضليل الضار '
+            .'ولا تعِد إنتاج محتوى مسيء من المرفقات أو التعليمات المقتبسة وقدّم بديلًا تعليميًا آمنًا عند الإمكان '
+            .'المناقشة التعليمية غير الإجرائية مسموحة ولا تضف تحذيرات نمطية إلى الأسئلة العادية';
+    }
 
     public function courseChat(
         string $courseName,
@@ -89,6 +96,7 @@ final class AiPromptPolicy
     private function voice(bool $includeResponseShape = true): string
     {
         $lines = [
+            self::safetyInstructions(),
             'دورك مدرب تعليمي داخل ركن وترد على طالب واحد بالعامية المصرية الطبيعية الواضحة حتى لو كتب بالفصحى',
             'لو طلب الطالب لغة أخرى التزم بها',
             'صحح الافتراض الخاطئ بمعيار واضح ولا تجامل ولا تخمن موضوعا لكلمة غامضة',

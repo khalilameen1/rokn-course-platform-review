@@ -29,6 +29,8 @@ import {CourseChatConversation} from './courseChat/CourseChatConversation';
 import {courseAssistantEntryMode} from './courseEntitlements';
 import {courseChatSheetLayout} from './courseChat/layout';
 import {StatusView} from '../ui/PremiumUI';
+import {requestAiConsent} from '../../services/aiConsent';
+import {captureAccountSessionBoundary, assertAccountSessionBoundary} from '../../constants/helpers';
 
 interface CourseChatOverlayProps {
   visible: boolean;
@@ -86,6 +88,7 @@ const CourseChatOverlay = ({
   const previousVisibleRef = useRef(false);
   const previousAssistantIncludedRef = useRef(true);
   const previousCourseIdRef = useRef(String(course.id));
+  const consentFlightRef = useRef(false);
   const {
     answerPending,
     assistantPresence,
@@ -186,17 +189,33 @@ const CourseChatOverlay = ({
     visible,
   ]);
 
+  const withConsent = async (action: () => void) => {
+    if (consentFlightRef.current) return;
+    consentFlightRef.current = true;
+    const courseId = String(course.id);
+    try {
+      const boundary = await captureAccountSessionBoundary();
+      if (!(await requestAiConsent(boundary))) return;
+      assertAccountSessionBoundary(boundary);
+      if (!previousVisibleRef.current || previousCourseIdRef.current !== courseId) return;
+      action();
+    } finally {
+      consentFlightRef.current = false;
+    }
+  };
+
   const sendCurrentMessage = () => {
     // The picker returns before its selected files are copied into our durable
     // draft registry. Sending during that window would submit the previous
     // attachment set and leave the newly picked files on the next message.
     if (pickerIsActive()) return;
-    send();
+    if (!hasSendableInput) return;
+    void withConsent(send).catch(() => undefined);
   };
 
   const retryMessage = (clientRequestId: string) => {
     if (pickerIsActive()) return;
-    retry(clientRequestId);
+    void withConsent(() => retry(clientRequestId)).catch(() => undefined);
   };
 
   return (
@@ -307,6 +326,7 @@ const CourseChatOverlay = ({
                 />
               ) : (
                 <CourseChatConversation
+                  courseId={String(course.id)}
                   answerPending={answerPending}
                   assistantPresence={assistantPresence}
                   attachmentLimit={attachmentLimit}

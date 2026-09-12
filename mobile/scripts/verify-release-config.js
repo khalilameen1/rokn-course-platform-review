@@ -610,8 +610,10 @@ assert(
 );
 assert(
   eas.cli?.requireCommit === true &&
+    packageJson.scripts?.['eas-build-pre-install'] ===
+      'node scripts/eas-build-pre-install.js' &&
     packageJson.scripts?.['eas-build-post-install'] ===
-      'npm run verify:release' &&
+      'node scripts/eas-build-post-install.js' &&
     packageJson.scripts?.['eas-build-on-success'] ===
       'node scripts/eas-build-on-success.js' &&
     ['production-play', 'production-direct'].every(profileName =>
@@ -620,6 +622,15 @@ assert(
       ),
     ),
   'EAS production builds must require a clean commit, run the release gate, and archive provenance/symbols.',
+);
+assert(
+  eas.build?.['production-ios']?.ios?.image ===
+    'macos-sequoia-15.6-xcode-26.2' &&
+    eas.build?.['production-ios']?.node === read('.node-version').trim() &&
+    eas.build?.['production-ios']?.ios?.bundler === '4.0.20' &&
+    eas.build?.['production-ios']?.ios?.cocoapods === '1.16.2' &&
+    eas.build?.['production-ios']?.ios?.fastlane === '2.231.1',
+  'EAS iOS must pin the SDK 55 Xcode 26.2 image and the checked-in Node/Bundler/CocoaPods toolchain.',
 );
 for (const profileName of [
   'production-play',

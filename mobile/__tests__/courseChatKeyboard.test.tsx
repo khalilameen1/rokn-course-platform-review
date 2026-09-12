@@ -58,6 +58,13 @@ jest.mock(
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   openCourseAssistantAttachment: jest.fn(),
 }));
+jest.mock('../src/constants/api', () => ({
+  publicRequest: {post: jest.fn()},
+}));
+// Keyboard cases exercise an already-consented account.
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: jest.fn(async () => true),
+}));
 jest.mock('../src/services/learnerDraftFiles', () => ({
   removeLearnerDraftFile: jest.fn(),
 }));

@@ -18,7 +18,7 @@ return [
     'capture_request_payload' => env('NIGHTWATCH_CAPTURE_REQUEST_PAYLOAD', false),
     'redact_payload_fields' => explode(',', env(
         'NIGHTWATCH_REDACT_PAYLOAD_FIELDS',
-        '_token,password,password_confirmation,token,access_token,refresh_token,id_token,api_token,device_token,purchase_token,client_secret,secret,api_key,signature,card_number,cvv,cvc'
+        '_token,password,password_confirmation,token,access_token,refresh_token,authorization_code,nonce,id_token,api_token,device_token,purchase_token,client_secret,secret,api_key,signature,card_number,cvv,cvc'
     )),
     'redact_headers' => explode(',', env(
         'NIGHTWATCH_REDACT_HEADERS',

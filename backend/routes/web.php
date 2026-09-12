@@ -103,6 +103,10 @@ Route::get('/@{slug}', [\App\Http\Controllers\PublicPortfolioController::class, 
     ->where('slug', '[a-z0-9-]+')
     ->middleware('throttle:60,1')
     ->name('portfolio.public');
+Route::post('/@{slug}/report', [\App\Http\Controllers\PortfolioReportController::class, 'store'])
+    ->where('slug', '[a-z0-9-]+')
+    ->middleware('throttle:5,1')
+    ->name('portfolio.report');
 Route::group([
     'prefix' => 'dashboard/mfa',
     'namespace' => 'Admin',
@@ -145,8 +149,14 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     Route::delete('user-sessions/{sessionId}', 'UserSessionController@destroy')
         ->whereUuid('sessionId')->middleware('admin.only')->name('user-sessions.destroy');
     Route::get('feedback/export', 'FeedbackController@export')->middleware('admin.only')->name('feedback.export');
+    Route::get('users/{user}/portfolio-preview', 'PortfolioPreviewController@show')
+        ->whereNumber('user')->middleware('admin.only')->name('portfolio-preview.show');
+    Route::get('users/{user}/portfolio-preview/media/{mediaId}', 'PortfolioPreviewController@media')
+        ->whereNumber('user')->whereUuid('mediaId')->middleware(['admin.only', 'throttle:240,1'])->name('portfolio-preview.media');
     Route::get('feedback', 'FeedbackController@index')->middleware('admin.only')->name('feedback.index');
     Route::get('feedback/{feedback}', 'FeedbackController@show')->middleware('admin.only')->name('feedback.show');
+    Route::post('feedback/{feedback}/portfolio-sharing', [\App\Http\Controllers\PortfolioReportController::class, 'moderate'])
+        ->middleware('admin.only')->name('feedback.portfolio-sharing');
     Route::patch('feedback/{feedback}', 'FeedbackController@update')->middleware('admin.only')->name('feedback.update');
     Route::post('feedback/{feedback}/messages', 'FeedbackController@message')->middleware(['admin.only', 'admin.audit'])->name('feedback.message');
     Route::post('feedback/{feedback}/compensate', 'FeedbackController@compensate')->middleware(['admin.only', 'admin.audit'])->name('feedback.compensate');

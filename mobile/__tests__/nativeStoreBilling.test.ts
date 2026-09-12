@@ -182,6 +182,31 @@ describe('native store billing', () => {
     expect(mockExpoIap.finishTransaction).not.toHaveBeenCalled();
   });
 
+  it('does not consume a Google receipt again when the verified server response already finalized it', async () => {
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockApi.post.mockResolvedValue({
+      data: {data: {coins_added: 600, credited: true, finalize_transaction: true, store_finalized: true}},
+    });
+    mockExpoIap.requestPurchase.mockImplementation(async () => {
+      purchaseUpdate({
+        id: 'server-consumed',
+        store: 'google',
+        productId: 'rokn.coins.600',
+        purchaseState: 'purchased',
+        purchaseToken: 'server-consumed-token',
+      });
+    });
+    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+
+    await expect(purchaseNativeCoinPackage({
+      id: '1', coins: 600, price: 120, label: '600',
+      storeProductIds: {google: 'rokn.coins.600'},
+    })).resolves.toMatchObject({success: true, coinsAdded: 600});
+    expect(mockExpoIap.finishTransaction).not.toHaveBeenCalled();
+  });
+
   it('does not let a pending product lock every other coin package', async () => {
     mockExpoIap.getAvailablePurchases.mockResolvedValue([
       {

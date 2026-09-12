@@ -52,7 +52,7 @@ final class ProjectReportRetryService
             $metadata['ai_feedback'] = [
                 'status' => 'queued',
                 'request_id' => $requestId,
-                'retry_count' => $retryCount + 1,
+                'retry_count' => $retryCount + (data_get($metadata, 'ai_feedback.reason') === 'ai_consent_required' ? 0 : 1),
                 'retry_requested_at' => now()->toIso8601String(),
             ];
             $locked->forceFill(['submission_metadata' => $metadata])->save();

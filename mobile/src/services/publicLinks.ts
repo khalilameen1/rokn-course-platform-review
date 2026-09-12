@@ -30,6 +30,7 @@ export const accountDeletionUrl =
 // Kept as a contract export for older callers and tests. The policy remains
 // inside the unified legal pages and is intentionally not a settings row.
 export const returnsPolicyUrl = `${publicWebBaseUrl}returns-policy`;
+export const privacyPolicyUrl = `${publicWebBaseUrl}privacy-policy`;
 
 export const portfolioUrlFor = (username: string) =>
   `${portfolioBaseUrl}/@${encodeURIComponent(username)}`;

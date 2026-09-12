@@ -33,6 +33,9 @@ export const projectFeedbackFailureText = (
   if (normalized === 'plan_limit_reached') {
     return 'اكتملت رسائل متابعة المشروع في هذه الفئة';
   }
+  if (normalized === 'ai_consent_required') {
+    return 'أكد اختيارك لمشاركة المشروع مع خدمة الذكاء الاصطناعي ثم أعد المحاولة';
+  }
   if (normalized === 'provider_outcome_unknown') {
     return 'تعذّر تأكيد الرد الآن';
   }

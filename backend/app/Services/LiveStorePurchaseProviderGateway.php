@@ -12,6 +12,8 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Google\Client as GoogleClient;
 use Google\Service\AndroidPublisher;
+use Google\Service\AndroidPublisher\ProductOfferDetails;
+use Google\Service\AndroidPublisher\ProductPurchaseV2;
 use Google\Service\AndroidPublisher\PurchaseStateContext;
 use GuzzleHttp\Client as HttpClient;
 use Illuminate\Http\Client\Response;
@@ -45,18 +47,10 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
     private function verifyGoogle(
         string $productId,
         string $purchaseToken,
-        string $expectedAccountBinding
+        ?string $expectedAccountBinding
     ): VerifiedStorePurchase {
         try {
-            $client = new GoogleClient();
-            $client->setAuthConfig($this->googleCredentials());
-            $client->setScopes([AndroidPublisher::ANDROIDPUBLISHER]);
-            $client->setHttpClient(new HttpClient([
-                'connect_timeout' => (float) config('store_billing.connect_timeout_seconds', 3),
-                'timeout' => (float) config('store_billing.timeout_seconds', 10),
-            ]));
-
-            $service = new AndroidPublisher($client);
+            $service = $this->googlePublisher();
             $packageName = trim((string) config('store_billing.google.package_name'));
             if ($packageName === '') {
                 throw new \RuntimeException('Google Play package name is not configured.');
@@ -76,6 +70,15 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
             );
         }
 
+        return $this->verifiedGooglePurchase($purchase, $productId, $purchaseToken, $expectedAccountBinding);
+    }
+
+    private function verifiedGooglePurchase(
+        ProductPurchaseV2 $purchase,
+        string $productId,
+        string $purchaseToken,
+        ?string $expectedAccountBinding
+    ): VerifiedStorePurchase {
         $state = $purchase->getPurchaseStateContext()?->getPurchaseState();
         if ($state !== PurchaseStateContext::PURCHASE_STATE_PURCHASED) {
             throw new StorePurchaseVerificationException(
@@ -96,9 +99,17 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         if (!in_array($productId, $verifiedProductIds, true)) {
             throw new StorePurchaseVerificationException('store_product_mismatch');
         }
+        // These coin contracts fulfill exactly one consumable per token.
+        // Multi-quantity must remain disabled in Play Console.
+        $quantity = count($lineItems) === 1
+            ? (int) ($lineItems[0]->getProductOfferDetails()?->getQuantity() ?? 1)
+            : 0;
+        if ($quantity !== 1) {
+            throw new StorePurchaseVerificationException('store_purchase_quantity_unsupported');
+        }
 
         $account = trim((string) $purchase->getObfuscatedExternalAccountId());
-        if ($account === '' || !hash_equals($expectedAccountBinding, $account)) {
+        if ($account === '' || ($expectedAccountBinding !== null && !hash_equals($expectedAccountBinding, $account))) {
             throw new StorePurchaseVerificationException('store_account_mismatch');
         }
 
@@ -117,8 +128,61 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
                 'purchase_completed_at' => $purchase->getPurchaseCompletionTime(),
                 'acknowledgement_state' => $purchase->getAcknowledgementState(),
                 'test_purchase' => $testPurchase,
-            ]
+                'quantity' => $quantity,
+                'consumption_state' => $lineItems[0]->getProductOfferDetails()?->getConsumptionState(),
+            ],
+            quantity: $quantity,
+            accountBinding: $account
         );
+    }
+
+    public function verifyGoogleNotification(string $productId, string $purchaseToken): VerifiedStorePurchase
+    {
+        return $this->verifyGoogle($productId, $purchaseToken, null);
+    }
+
+    public function consumeGoogle(string $productId, string $purchaseToken, string $expectedAccountBinding): void
+    {
+        $verified = $this->verifyGoogle($productId, $purchaseToken, $expectedAccountBinding);
+        if (($verified->auditPayload['consumption_state'] ?? null)
+            === ProductOfferDetails::CONSUMPTION_STATE_CONSUMPTION_STATE_CONSUMED) {
+            return;
+        }
+
+        try {
+            $this->googlePublisher()->purchases_products->consume(
+                (string) config('store_billing.google.package_name'),
+                $productId,
+                $purchaseToken
+            );
+        } catch (\Throwable) {
+            // A device/worker can consume concurrently or a successful response
+            // can be lost. Only provider state, never an error string, proves
+            // that this retry is complete.
+            $verified = $this->verifyGoogle($productId, $purchaseToken, $expectedAccountBinding);
+            if (($verified->auditPayload['consumption_state'] ?? null)
+                === ProductOfferDetails::CONSUMPTION_STATE_CONSUMPTION_STATE_CONSUMED) {
+                return;
+            }
+            throw new StorePurchaseVerificationException(
+                'google_consumption_unavailable',
+                'Google Play consumption will be retried.',
+                503
+            );
+        }
+    }
+
+    private function googlePublisher(): AndroidPublisher
+    {
+        $client = new GoogleClient();
+        $client->setAuthConfig($this->googleCredentials());
+        $client->setScopes([AndroidPublisher::ANDROIDPUBLISHER]);
+        $client->setHttpClient(new HttpClient([
+            'connect_timeout' => (float) config('store_billing.connect_timeout_seconds', 3),
+            'timeout' => (float) config('store_billing.timeout_seconds', 12),
+        ]));
+
+        return new AndroidPublisher($client);
     }
 
     private function verifyApple(
@@ -181,6 +245,12 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
         if (isset($claims['revocationDate']) || (string) ($claims['type'] ?? '') !== 'Consumable') {
             throw new StorePurchaseVerificationException('store_purchase_not_entitled');
         }
+        if ((int) ($claims['quantity'] ?? 1) !== 1) {
+            throw new StorePurchaseVerificationException('store_purchase_quantity_unsupported');
+        }
+        if (strtolower((string) ($claims['environment'] ?? '')) !== $environment) {
+            throw new StorePurchaseVerificationException('store_purchase_environment_invalid');
+        }
 
         $currency = strtoupper((string) ($claims['currency'] ?? ''));
         $price = isset($claims['price']) && is_numeric($claims['price'])
@@ -199,7 +269,9 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
                 'purchase_date' => $claims['purchaseDate'] ?? null,
                 'storefront' => $claims['storefront'] ?? null,
                 'quantity' => $claims['quantity'] ?? 1,
-            ]
+            ],
+            quantity: (int) ($claims['quantity'] ?? 1),
+            accountBinding: (string) $claims['appAccountToken']
         );
     }
 

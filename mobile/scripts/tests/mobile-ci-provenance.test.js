@@ -11,8 +11,156 @@ const YAML = require('yaml');
 const root = path.resolve(__dirname, '..', '..');
 const provenance = require('../verify-artifact-provenance');
 const smoke = require('../run-android-staging-smoke');
+const {runPostInstall} = require('../eas-build-post-install');
+const {runPreInstall, rubySource, versions} = require('../eas-build-pre-install');
 const fixtureUrlName = ['ROKN_SMOKE_FORCED_UPDATE', 'FIXTURE_URL'].join('_');
 const fixtureTokenName = ['ROKN_SMOKE', 'FIXTURE_TOKEN'].join('_');
+
+test('EAS iOS pins the documented SDK 55 image and existing toolchain', () => {
+  const profile = JSON.parse(fs.readFileSync(path.join(root, 'eas.json'), 'utf8'))
+    .build['production-ios'];
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  assert.equal(profile.ios.image, 'macos-sequoia-15.6-xcode-26.2');
+  assert.equal(profile.ios.resourceClass, 'medium');
+  assert.equal(profile.node, fs.readFileSync(path.join(root, '.node-version'), 'utf8').trim());
+  assert.equal(profile.ios.bundler, '4.0.20');
+  assert.equal(profile.ios.cocoapods, '1.16.2');
+  assert.equal(profile.ios.fastlane, versions.fastlane);
+  assert.equal(profile.ios.bundler, versions.bundler);
+  assert.equal(profile.ios.cocoapods, versions.cocoapods);
+  assert.match(fs.readFileSync(path.join(root, 'Gemfile'), 'utf8'), /ruby "3\.3\.6"/);
+  assert.equal(versions.ruby, '3.3.6');
+  assert.equal(manifest.scripts['eas-build-pre-install'], 'node scripts/eas-build-pre-install.js');
+  assert.equal(manifest.scripts['eas-build-post-install'], 'node scripts/eas-build-post-install.js');
+});
+
+const preInstallFixture = (override = {}) => {
+  const calls = [];
+  return {
+    calls,
+    options: {
+      buildPlatform: 'ios', hostPlatform: 'darwin',
+      env: {PATH: '/original/bin', GEM_HOME: '/old/gems', GEM_PATH: '/old/gems'},
+      makeTemporaryDirectory: () => '/temporary/rokn-eas-ruby-fixture',
+      run: (command, args, options) => {
+        calls.push({command, args, options});
+        if (args.includes('print RUBY_VERSION')) return '3.3.6';
+        if (path.basename(command) === 'pod') return '1.16.2\n';
+        return '';
+      },
+      ...override,
+    },
+  };
+};
+
+test('EAS pre-install isolates exact Ruby and publishes its locked CocoaPods environment', () => {
+  const {calls, options} = preInstallFixture();
+  runPreInstall(options);
+  assert.equal(calls[0].command, 'brew');
+  assert.deepEqual(calls[0].args, ['install', 'ruby-build']);
+  assert.equal(calls[0].options.env.HOMEBREW_NO_AUTO_UPDATE, '1');
+  assert.equal(calls[1].command, 'ruby-build');
+  assert.equal(calls[1].args[0], versions.ruby);
+  assert.equal(calls[1].options.env.RUBY_BUILD_TARBALL_OVERRIDE, rubySource);
+  assert.equal(rubySource, 'https://cache.ruby-lang.org/pub/ruby/3.3/ruby-3.3.6.tar.gz' +
+    '#8dc48fffaf270f86f1019053f28e51e4da4cce32a36760a0603a9aee67d7fd8d');
+  const install = calls.find(call => path.basename(call.command) === 'bundle' && call.args[1] === 'install');
+  assert.equal(install.args[0], '_4.0.20_');
+  assert.equal(install.options.env.BUNDLE_FROZEN, 'true');
+  assert.notEqual(install.options.env.GEM_HOME, '/old/gems');
+  assert.equal(install.options.env.GEM_PATH, install.options.env.GEM_HOME);
+  const binstub = calls.find(call => call.args[1] === 'binstubs');
+  assert.deepEqual(binstub.args.slice(0, 4), ['_4.0.20_', 'binstubs', 'cocoapods', '--path']);
+  assert.equal(install.options.env.PATH.split(':')[0], binstub.args[4]);
+  assert.ok(calls.some(call => call.args.join(' ') === 'install fastlane --version 2.231.1 --no-document'));
+  const persisted = calls.filter(call => call.command === 'set-env');
+  assert.equal(persisted.length, 7);
+  for (const {args: [key, value]} of persisted) {
+    assert.equal(value, install.options.env[key]);
+  }
+  assert.equal(install.options.env.POD_INSTALL_DEPLOYMENT, '1');
+  assert.deepEqual(calls[calls.length - persisted.length - 1].args,
+    ['diff', '--exit-code', '--', 'Gemfile.lock']);
+});
+
+test('EAS pre-install never installs tools outside an iOS macOS worker', () => {
+  for (const buildPlatform of ['android', '']) {
+    runPreInstall({
+      buildPlatform, hostPlatform: 'win32',
+      makeTemporaryDirectory: () => assert.fail('No temporary runtime for Android/local npm.'),
+      run: () => assert.fail('No native commands for Android/local npm.'),
+    });
+  }
+  assert.throws(() => runPreInstall({
+    buildPlatform: 'ios', hostPlatform: 'win32',
+    run: () => assert.fail('Cannot install macOS tools on Windows.'),
+  }), /requires macOS/);
+});
+
+test('EAS pre-install fails closed before publishing an incompatible or incomplete runtime', () => {
+  for (const failure of ['ruby', 'bundle', 'pod', 'lock']) {
+    const fixture = preInstallFixture();
+    const defaultRun = fixture.options.run;
+    fixture.options.run = (command, args, options) => {
+      const result = defaultRun(command, args, options);
+      if (failure === 'ruby' && args.includes('print RUBY_VERSION')) return '3.2.0';
+      if (failure === 'bundle' && args[1] === 'install') throw new Error('Frozen lock rejected.');
+      if (failure === 'pod' && path.basename(command) === 'pod') return '1.15.2';
+      if (failure === 'lock' && command === 'git') throw new Error('Gemfile.lock drift.');
+      return result;
+    };
+    assert.throws(() => runPreInstall(fixture.options), /expected|Frozen lock|lock drift/);
+    assert.equal(fixture.calls.some(call => call.command === 'set-env'), false);
+  }
+});
+
+test('EAS iOS verifies the installed lock before the common release gate', () => {
+  const calls = [];
+  runPostInstall({
+    buildPlatform: 'ios', hostPlatform: 'darwin', npmCli: 'test-npm-cli.js',
+    run: (command, args) => calls.push([command, args]),
+  });
+  assert.deepEqual(calls, [
+    [process.execPath, ['test-npm-cli.js', 'run', 'verify:ios-lock']],
+    ['git', ['diff', '--exit-code', '--', 'ios/Podfile.lock']],
+    [process.execPath, ['test-npm-cli.js', 'run', 'verify:release']],
+  ]);
+});
+
+test('Android and ordinary local hooks never invoke macOS-only verification', () => {
+  for (const buildPlatform of ['android', '']) {
+    const calls = [];
+    runPostInstall({
+      buildPlatform, hostPlatform: 'win32', npmCli: 'test-npm-cli.js',
+      run: (command, args) => calls.push([command, args]),
+    });
+    assert.deepEqual(calls, [
+      [process.execPath, ['test-npm-cli.js', 'run', 'verify:release']],
+    ]);
+  }
+});
+
+test('EAS hook fails closed on native gate failure or an invalid iOS host', () => {
+  let calls = 0;
+  assert.throws(() => runPostInstall({
+    buildPlatform: 'ios', hostPlatform: 'darwin', npmCli: 'test-npm-cli.js',
+    run: () => { calls += 1; throw new Error('Native lock drift.'); },
+  }), /Native lock drift/);
+  assert.equal(calls, 1);
+  calls = 0;
+  assert.throws(() => runPostInstall({
+    buildPlatform: 'ios', hostPlatform: 'darwin', npmCli: 'test-npm-cli.js',
+    run: command => {
+      calls += 1;
+      if (command === 'git') throw new Error('Podfile.lock changed.');
+    },
+  }), /Podfile.lock changed/);
+  assert.equal(calls, 2);
+  assert.throws(() => runPostInstall({
+    buildPlatform: 'ios', hostPlatform: 'win32', npmCli: 'test-npm-cli.js',
+    run: () => assert.fail('No native command should run on Windows.'),
+  }), /requires macOS/);
+});
 
 const mobileWorkflow = () => YAML.parse(fs.readFileSync(
   path.join(root, '..', '.github', 'workflows', 'mobile-ci.yml'),

@@ -16,6 +16,21 @@
 @endphp
 
 <div class="admin-page">
+    @if($feedback->screen_key === 'public_portfolio_report')
+        @php($portfolioOwner = \App\Models\User::find($feedback->context['portfolio_owner_id'] ?? null))
+        @if($portfolioOwner)
+            <div class="card admin-card mb-4"><div class="card-body">
+                <h2 class="h5">بلاغ عن أعمال {{ $portfolioOwner->name }}</h2>
+                <p><a href="{{ route('admin.portfolio-preview.show', $portfolioOwner) }}" target="_blank" rel="noopener noreferrer">معاينة الأعمال للإدارة</a></p>
+                <form method="POST" action="{{ route('admin.feedback.portfolio-sharing', $feedback) }}">
+                    @csrf
+                    <input type="hidden" name="suspend" value="{{ $portfolioOwner->portfolio_sharing_suspended_at ? '0' : '1' }}">
+                    <p class="text-muted">إيقاف المشاركة يخفي الصفحة والوسائط عن الآخرين ولا يحذف أعمال الطالب أو يمنعه من التعلم</p>
+                    <button class="btn {{ $portfolioOwner->portfolio_sharing_suspended_at ? 'btn-outline-primary' : 'btn-outline-danger' }}" type="submit">{{ $portfolioOwner->portfolio_sharing_suspended_at ? 'إعادة المشاركة' : 'إيقاف المشاركة' }}</button>
+                </form>
+            </div></div>
+        @endif
+    @endif
     @include('admin.partials.page-header', [
         'pageTitle' => 'حالة '.$caseNumber,
         'pageDescription' => $categories[$feedback->category] ?? 'دعم',

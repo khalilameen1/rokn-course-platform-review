@@ -61,6 +61,7 @@ describe('Apple sign-in nonce binding', () => {
     );
     mockAppleSignIn.mockResolvedValue({
       identityToken: 'signed-apple-identity-token',
+      authorizationCode: 'single-use-apple-authorization-code',
       fullName: {givenName: 'Rokn', familyName: 'Learner'},
     });
     mockPost.mockResolvedValue({
@@ -108,6 +109,7 @@ describe('Apple sign-in nonce binding', () => {
       expect.objectContaining({
         provider: 'apple',
         token: 'signed-apple-identity-token',
+        authorization_code: 'single-use-apple-authorization-code',
         nonce: rawNonce,
         device_id: '11111111-1111-4111-8111-111111111111',
       }),
@@ -156,5 +158,22 @@ describe('Apple sign-in nonce binding', () => {
     expect(deletePendingSocialAuthAttempt).toHaveBeenCalledWith(
       expect.objectContaining({provider: 'apple', flow: 'native'}),
     );
+  });
+
+  it('rejects a credential without an authorization code before creating a session', async () => {
+    mockAppleSignIn.mockResolvedValueOnce({
+      identityToken: 'signed-apple-identity-token',
+    });
+    await expect(
+      signInWithSocialProvider('apple', {
+        providers: ['apple'],
+        authorizationUrls: {},
+        authorizationApiUrl: 'https://rokn.app/api/v1',
+        welcomeBonus: null,
+        recommendedProvider: 'apple',
+        recommendationText: null,
+      }),
+    ).rejects.toThrow('LOGIN_SESSION_INVALID');
+    expect(mockPost).not.toHaveBeenCalled();
   });
 });

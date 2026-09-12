@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {requestAiConsent} from '../../../services/aiConsent';
 import * as DocumentPicker from 'expo-document-picker';
 
 import {
@@ -448,6 +449,9 @@ export const useProjectFeedback = ({
         ) {
           throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
         }
+        if (!(await requestAiConsent(boundary))) return;
+        assertAccountSessionBoundary(boundary);
+        if (!ownsContext()) return;
         const uploaded = await Promise.all(
           files.map(async file => ({
             ...file,

@@ -33,6 +33,8 @@ final class SecurityHeadersTest extends TestCase
         self::assertStringNotContainsString('fonts.gstatic.com', $policy);
         self::assertStringNotContainsString('cdnjs.cloudflare.com', $policy);
         self::assertStringContainsString('https://checkout.kashier.io', $policy);
+        self::assertMatchesRegularExpression("/frame-src\\s+'self'[^;]*https:\/\/iframe\\.mediadelivery\\.net/", $policy);
+        self::assertDoesNotMatchRegularExpression('/frame-src[^;]*\\shttps:(?:\\s|;)/', $policy);
         self::assertStringContainsString('block-all-mixed-content', $policy);
     }
 

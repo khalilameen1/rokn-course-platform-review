@@ -15,4 +15,10 @@ interface StorePurchaseProviderGateway
         ?string $transactionId,
         string $expectedAccountBinding
     ): VerifiedStorePurchase;
+
+    /** Inspect a Google-authenticated receipt before resolving its Rokn owner. */
+    public function verifyGoogleNotification(string $productId, string $purchaseToken): VerifiedStorePurchase;
+
+    /** Idempotently consume an already-fulfilled Google consumable. */
+    public function consumeGoogle(string $productId, string $purchaseToken, string $expectedAccountBinding): void;
 }

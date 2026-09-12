@@ -5,12 +5,34 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 final class StoreBillingAccountIdentity
 {
     public function google(User|int $user): string
     {
         return hash_hmac('sha256', 'google:user:' . $this->id($user), $this->key());
+    }
+
+    public function rememberGoogle(User $user): string
+    {
+        $binding = $this->google($user);
+        DB::table('store_billing_accounts')->insertOrIgnore([
+            'google_account_binding' => $binding,
+            'user_id' => $user->getKey(),
+            'created_at' => now(),
+        ]);
+
+        return $binding;
+    }
+
+    public function googleUser(string $binding): ?User
+    {
+        $userId = DB::table('store_billing_accounts')
+            ->where('google_account_binding', $binding)
+            ->value('user_id');
+
+        return $userId ? User::withTrashed()->find($userId) : null;
     }
 
     public function apple(User|int $user): string

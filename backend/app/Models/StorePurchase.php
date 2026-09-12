@@ -25,6 +25,8 @@ final class StorePurchase extends Model
         'status',
         'provider_payload',
         'verified_at',
+        'finalized_at',
+        'finalization_retry_at',
     ];
 
     protected $hidden = ['purchase_token', 'purchase_token_hash', 'provider_payload'];
@@ -33,6 +35,8 @@ final class StorePurchase extends Model
         'purchase_token' => 'encrypted',
         'provider_payload' => 'array',
         'verified_at' => 'datetime',
+        'finalized_at' => 'datetime',
+        'finalization_retry_at' => 'datetime',
     ];
 
     public function user()

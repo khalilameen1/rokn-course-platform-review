@@ -15,6 +15,7 @@ import {Palette} from '../../../constants/designSystem';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {CopyButton} from '../../ui/CopyButton';
+import {AiResponseReportButton} from '../../ui/AiResponseReportButton';
 import type {ChatAttachmentDraft, ChatMessage} from '../types';
 import {
   courseChatTurnHasRetryAction,
@@ -101,6 +102,7 @@ const WorkingIndicator = () => {
 };
 
 export const CourseChatConversation = ({
+  courseId,
   answerPending,
   assistantPresence,
   attachmentLimit,
@@ -121,6 +123,7 @@ export const CourseChatConversation = ({
   scrollRef,
   sending,
 }: {
+  courseId: string;
   answerPending: boolean;
   assistantPresence: AssistantPresence;
   attachmentLimit: number;
@@ -220,6 +223,15 @@ export const CourseChatConversation = ({
                     color={message.role === 'user' ? Palette.text : undefined}
                   />
                 )}
+                {message.role === 'assistant' &&
+                  message.clientRequestId &&
+                  message.deliveryStatus === 'completed' &&
+                  cleanUnicodeText(message.text) && (
+                    <AiResponseReportButton target={{
+                      scope: 'course_chat', course_id: courseId,
+                      client_request_id: message.clientRequestId,
+                    }} />
+                  )}
                 {message.role === 'assistant' &&
                   message.clientRequestId &&
                   courseChatTurnHasRetryAction(

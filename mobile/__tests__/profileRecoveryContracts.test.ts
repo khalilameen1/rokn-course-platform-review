@@ -80,8 +80,8 @@ describe('profile recovery contracts', () => {
     expect(profile).toContain("activeTab === 'portfolio' && canSharePortfolio");
     expect(profile).toContain('visible={showPortfolioQr && showPortfolioActions}');
     expect(profile).toContain('value={publicPortfolioUrl}');
-    expect(profile).toContain(
-      'onSharePortfolio={canSharePortfolio ? sharePortfolio : undefined}',
+    expect(profile).toMatch(
+      /onSharePortfolio=\{\s*canSharePortfolio \? sharePortfolio : undefined\s*\}/,
     );
   });
 

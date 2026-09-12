@@ -80,7 +80,9 @@ const mapCourseAssistantTurn = (
   const rawStatus = valueAsString(data.turn_status).toLowerCase();
   const blocked = COURSE_CHAT_BLOCK_CODES.has(code);
   const responseText =
-    (blocked && code === 'chat_plan_limit_reached'
+    (code === 'ai_consent_required'
+      ? 'أكد اختيارك لمشاركة السؤال مع خدمة الذكاء الاصطناعي ثم أعد المحاولة'
+      : blocked && code === 'chat_plan_limit_reached'
       ? 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط'
       : cleanUnicodeText(
           valueAsString(data.message, valueAsString(data.reply)),
@@ -176,7 +178,9 @@ export const loadCourseAssistantHistory = async (
       typeof message.can_retry === 'boolean' ? message.can_retry : undefined;
     const text =
       cleanUnicodeText(valueAsString(message.text)) ||
-      (role === 'assistant' && status === 'failed'
+      (role === 'assistant' && message.error_code === 'ai_consent_required'
+        ? 'أكد اختيارك لمشاركة السؤال مع خدمة الذكاء الاصطناعي ثم أعد المحاولة'
+        : role === 'assistant' && status === 'failed'
         ? canRetry
           ? 'لم تكتمل الإجابة\nحاول مرة أخرى'
           : 'تعذّر تأكيد نتيجة الإجابة السابقة'
@@ -414,6 +418,13 @@ export const askCourseAssistant = async ({
       asRecord(failure.data).code,
       valueAsString(asRecord(response.data).code),
     ).toLowerCase();
+    if (errorCode === 'ai_consent_required') {
+      return {
+        text: 'أكد اختيارك لمشاركة السؤال مع خدمة الذكاء الاصطناعي ثم أعد المحاولة',
+        offline: false, unavailable: true, turnStatus: 'failed',
+        code: errorCode, canRetry: true,
+      };
+    }
     if (errorCode === 'chat_upgrade_required') {
       return {
         text: 'الاستفسارات غير مشمولة في المنحة\nيمكنك إضافتها بالترقية',

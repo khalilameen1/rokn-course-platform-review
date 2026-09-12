@@ -55,7 +55,9 @@ final class SecurityHeaders
                 "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.datatables.net https://maps.googleapis.com https://maps.gstatic.com https://checkout.kashier.io https://*.kashier.io",
                 "connect-src 'self' https://maps.googleapis.com https://maps.gstatic.com https://*.bunny.net https://*.bunnycdn.com https://*.b-cdn.net https://*.kashier.io",
                 "media-src 'self' blob: https:",
-                "frame-src https://checkout.kashier.io https://*.kashier.io https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://drive.google.com",
+                // Portfolio video frames first enter a same-origin access-checked
+                // media route, which redirects to a short-lived Bunny embed.
+                "frame-src 'self' https://checkout.kashier.io https://*.kashier.io https://iframe.mediadelivery.net https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://drive.google.com",
                 "worker-src 'self' blob:",
                 "manifest-src 'self'",
                 'block-all-mixed-content',

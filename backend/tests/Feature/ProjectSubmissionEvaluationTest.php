@@ -409,6 +409,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         $user = new User();
         $user->forceFill(['name' => 'Review learner', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
+        app(\App\Services\AiConsentService::class)->record($user, true);
         $course = Course::factory()->make();
         $course->forceFill(['tenant_id' => 1, 'is_coming_soon' => false])->save();
         $project = Project::factory()->create(['requirements_text_ar' => 'صمم شعار شجرة باستخدام الأشكال',

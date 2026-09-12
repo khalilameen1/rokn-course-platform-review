@@ -33,6 +33,12 @@ jest.mock('../src/constants/helpers', () => ({
 jest.mock('../src/services/productFeatures', () => ({
   requireProductFeature: jest.fn(async () => undefined),
 }));
+// Outbox ownership cases exercise an already-consented account.
+jest.mock('../src/services/aiConsent', () => ({
+  requireAiConsent: jest.fn(async () => undefined),
+  isAiConsentRequired: (error: {code?: string}) =>
+    error?.code === 'ai_consent_required',
+}));
 
 jest.mock('../src/services/operationalTelemetry', () => ({
   reportClientError: (...args: unknown[]) => mockReportClientError(...args),

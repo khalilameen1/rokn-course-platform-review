@@ -204,6 +204,11 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         $callState = $paidCalls->beginForActiveUser(
             $event, $this->executionId, (int) $turn->user_id
         );
+        if ($callState === PaidAiCallExecutionService::CONSENT_REQUIRED) {
+            $budget->release($event, 'ai_consent_required');
+            $turns->fail($turn, 'ai_consent_required');
+            return;
+        }
         if ($callState === PaidAiCallExecutionService::INACTIVE) {
             $budget->release($event, 'account_deleted_before_provider');
             $turns->fail($turn, 'chat_entitlement_unavailable');

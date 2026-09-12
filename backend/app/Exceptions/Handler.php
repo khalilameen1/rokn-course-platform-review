@@ -44,6 +44,8 @@ class Handler extends ExceptionHandler
         'token',
         'access_token',
         'refresh_token',
+        'authorization_code',
+        'nonce',
         'id_token',
         'api_token',
         'device_token',

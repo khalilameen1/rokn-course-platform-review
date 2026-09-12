@@ -80,7 +80,7 @@ final class SocialAuthProviderRegistry
             'tiktok' => $this->nonBlank(config('services.tiktok.client_key'))
                 && $this->nonBlank(config('services.tiktok.client_secret'))
                 && $this->validHttpsEndpoint(config('social_auth.tiktok.user_info_url')),
-            'apple' => $this->appleClientIdsAreValid(),
+            'apple' => $this->appleClientIdsAreValid() && $this->apple->revocationConfigured(),
             default => false,
         };
     }
@@ -109,7 +109,7 @@ final class SocialAuthProviderRegistry
             'google' => 'GOOGLE_CLIENT_ID أو GOOGLE_CLIENT_SECRET ناقص',
             'facebook' => 'FACEBOOK_CLIENT_ID أو FACEBOOK_CLIENT_SECRET أو FACEBOOK_GRAPH_VERSION ناقص أو غير صالح',
             'tiktok' => 'TIKTOK_CLIENT_KEY أو TIKTOK_CLIENT_SECRET أو TIKTOK_USER_INFO_URL ناقص أو غير صالح',
-            'apple' => 'APPLE_CLIENT_ID ناقص أو غير صالح',
+            'apple' => 'APPLE_CLIENT_ID أو APPLE_TEAM_ID أو APPLE_KEY_ID أو APPLE_KEY_FILE ناقص أو غير صالح',
             default => 'مزوّد غير مدعوم',
         };
     }
@@ -137,7 +137,8 @@ final class SocialAuthProviderRegistry
         string $provider,
         string $credential,
         ?string $expectedNonceHash = null,
-        ?string $appleRawNonce = null
+        ?string $appleRawNonce = null,
+        ?string $appleAuthorizationCode = null
     ): array {
         if (!$this->isReady($provider)) {
             throw new SocialProviderUnavailableException('Social provider is not configured.');
@@ -147,7 +148,7 @@ final class SocialAuthProviderRegistry
             'facebook' => $this->facebook->verify($credential),
             'google' => $this->google->verify($credential, $expectedNonceHash),
             'tiktok' => $this->tiktok->verify($credential),
-            'apple' => $this->apple->verify($credential, (string) $appleRawNonce),
+            'apple' => $this->apple->exchange($credential, (string) $appleRawNonce, (string) $appleAuthorizationCode),
             default => throw new RuntimeException('Unsupported social provider.'),
         };
 
@@ -165,6 +166,7 @@ final class SocialAuthProviderRegistry
             'email' => isset($identity['email']) ? (string) $identity['email'] : null,
             'email_verified' => (bool) ($identity['email_verified'] ?? false),
             'picture' => isset($identity['picture']) ? (string) $identity['picture'] : null,
+            ...($provider === 'apple' ? ['apple_grant' => $identity['apple_grant']] : []),
         ];
     }
 

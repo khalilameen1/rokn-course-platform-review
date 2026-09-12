@@ -66,6 +66,16 @@ $artifactDirectory = Join-Path $projectRoot 'artifacts'
 $localPluginRepository = Join-Path $projectRoot '.gradle-local\plugin-repo'
 $localPluginInitScript = Join-Path $projectRoot 'scripts\local-plugin-repository.init.gradle'
 
+function Invoke-RepositoryGit {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+
+    $result = @(& git -C $projectRoot @Arguments)
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Could not verify the release source in Git. No artifact will be published.'
+    }
+    return $result
+}
+
 function Import-PublicEnvironmentFile {
     param([Parameter(Mandatory = $true)][string]$Path)
 
@@ -319,7 +329,7 @@ $env:EXPO_PUBLIC_BUILD_PROFILE = $Profile
 $env:EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS = '1'
 
 if ($Profile -eq 'production') {
-    $dirtyPaths = @(& git -C $projectRoot status --porcelain 2>$null)
+    $dirtyPaths = @(Invoke-RepositoryGit -Arguments @('status', '--porcelain'))
     if ($dirtyPaths.Count -gt 0) {
         throw @"
 Production release refused because the source tree is not clean.
@@ -386,6 +396,11 @@ if ($isProduction) {
     $gradleArguments += @(':app:lintRelease', ':app:testReleaseUnitTest')
 }
 $gradleArguments += $releaseTask
+$buildSourceCommit = (Invoke-RepositoryGit -Arguments @('rev-parse', 'HEAD') | Select-Object -First 1)
+$buildSourceDirty = [bool](Invoke-RepositoryGit -Arguments @('status', '--porcelain') | Select-Object -First 1)
+if ($isProduction -and ($buildSourceDirty -or $buildSourceCommit -notmatch '^[0-9a-f]{40,64}$')) {
+    throw 'The source changed during release checks. Commit the final reviewed source and build again.'
+}
 $buildStartedAtUtc = [DateTime]::UtcNow
 
 Push-Location $androidRoot
@@ -482,6 +497,12 @@ if ($isProduction -and $Artifact -eq 'aab') {
     $signerRole = 'play-upload'
 }
 
+$gitCommit = (Invoke-RepositoryGit -Arguments @('rev-parse', 'HEAD') | Select-Object -First 1)
+$gitDirty = [bool](Invoke-RepositoryGit -Arguments @('status', '--porcelain') | Select-Object -First 1)
+if ($isProduction -and ($gitDirty -or $gitCommit -ne $buildSourceCommit)) {
+    throw 'The source changed while Android was building. The artifact cannot be attributed to the reviewed commit.'
+}
+
 New-Item -ItemType Directory -Path $artifactDirectory -Force | Out-Null
 $artifactName = if ($Profile -eq 'test') {
     'Rokn-internal-test.apk'
@@ -520,8 +541,6 @@ if ($isProduction -and (Test-Path -LiteralPath $r8Mapping -PathType Leaf)) {
     Copy-Item -LiteralPath $r8Mapping -Destination (Join-Path $symbolDirectory 'mapping.txt') -Force
 }
 
-$gitCommit = (& git -C $projectRoot rev-parse HEAD 2>$null | Select-Object -First 1)
-$gitDirty = [bool](& git -C $projectRoot status --porcelain 2>$null | Select-Object -First 1)
 $artifactSha256 = Get-FileSha256 -Path $artifactPath
 $metadataApiHost = 'rokn.app'
 $metadataApiBase = 'https://rokn.app/api/v1/'
