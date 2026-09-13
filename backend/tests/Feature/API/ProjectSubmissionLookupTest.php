@@ -10,6 +10,7 @@ use App\Models\AiUsageEvent;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Services\AiConsentService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -98,6 +99,7 @@ final class ProjectSubmissionLookupTest extends TestCase
     public function test_polling_does_not_block_submission_and_exhausted_upload_limit_does_not_block_lookup(): void
     {
         [$user, $project, $submission] = $this->fixture('pending');
+        app(AiConsentService::class)->record($user, true);
         $this->actingAs($user, 'api');
         for ($read = 0; $read < 8; $read++) {
             $this->getJson('/api/v1/course-chat/turns/'.Str::uuid())->assertNotFound();

@@ -23,6 +23,7 @@ use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\ProjectSubmissionService;
+use App\Services\AiConsentService;
 use App\Services\AiEntitlementBudgetService;
 use App\Services\AiInputAttachmentService;
 use App\Services\CourseChatAccessService;
@@ -1117,6 +1118,7 @@ final class BackendHardeningTest extends TestCase
     public function test_course_code_grant_cannot_consume_ai_but_paid_enrollment_can(): void
     {
         $user = $this->user();
+        app(AiConsentService::class)->record($user, true);
         $course = $this->course();
         $grantOrder = $this->order($user, $course, Order::PAYMENT_METHOD_COURSE_CODE, 0, 0);
         $grantCode = CourseCode::query()->create([
@@ -1286,6 +1288,7 @@ final class BackendHardeningTest extends TestCase
     public function test_course_chat_capacity_is_scoped_to_the_purchased_plan(): void
     {
         $user = $this->user();
+        app(AiConsentService::class)->record($user, true);
         $course = $this->course();
         $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
         $plan = $this->paidPlanTerms($course);
@@ -1384,6 +1387,7 @@ final class BackendHardeningTest extends TestCase
     public function test_course_chat_replay_presents_a_settled_answer_without_a_second_provider_call(): void
     {
         $user = $this->user();
+        app(AiConsentService::class)->record($user, true);
         $course = $this->course();
         $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
         $plan = $this->paidPlanTerms($course);
@@ -1470,6 +1474,7 @@ final class BackendHardeningTest extends TestCase
         ]);
         $user = $this->user();
         $courseDescription = 'Build <form method="post"> with <input type="email" required>.';
+        app(AiConsentService::class)->record($user, true);
         $lessonDescription = 'Explain <label for="email"> and <input id="email">.';
         $course = $this->course(['description_ar' => $courseDescription]);
         $lessonId = DB::table('lessons')->insertGetId([
@@ -1938,6 +1943,7 @@ final class BackendHardeningTest extends TestCase
     ): void {
         Http::preventStrayRequests();
         $user = $this->user();
+        app(AiConsentService::class)->record($user, true);
         $course = $this->course();
         $order = $this->order($user, $course, Order::PAYMENT_METHOD_WALLET_COINS, 4000, 4000);
         $enrollmentId = DB::table('course_enrollments')->insertGetId([
@@ -2709,6 +2715,8 @@ final class BackendHardeningTest extends TestCase
             $table->unsignedInteger('wallet_purchased_coins')->default(0);
             $table->unsignedInteger('wallet_reward_coins')->default(0);
             $table->string('api_token')->nullable();
+            $table->string('ai_consent_version', 64)->nullable();
+            $table->timestamp('ai_consent_accepted_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

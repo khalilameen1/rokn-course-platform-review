@@ -17,6 +17,7 @@ use App\Models\LessonWatchEvidence;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
+use App\Services\AiConsentService;
 use App\Services\CourseCompletionService;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
@@ -378,6 +379,7 @@ final class ProjectRevisionLineageTest extends TestCase
             'name_ar' => 'طالب المشروع', 'email' => Str::uuid().'@example.test',
             'role' => 'client', 'active' => true,
         ])->save();
+        app(AiConsentService::class)->record($student, true);
         $course = new Course();
         $course->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس المشروع', 'description_ar' => 'وصف الكورس',

@@ -6,6 +6,7 @@ namespace Tests\Feature\API;
 
 use App\Http\Middleware\RequireProductFeature;
 use App\Models\Project;
+use App\Services\AiConsentService;
 use App\Services\ProjectSubmissionOrchestrator;
 use App\Services\ProjectSubmissionService;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
@@ -20,6 +21,7 @@ final class ProjectUploadFailureResponseTest extends ApiTestCase
 {
     public function test_remote_storage_failure_returns_a_retryable_json_response_before_proxy_timeout(): void
     {
+        app(AiConsentService::class)->record($this->user, true);
         // This test isolates the upload failure contract from the independent
         // operations feature gate exercised by ProductFeatureFlagTest.
         $this->withoutMiddleware(RequireProductFeature::class);
@@ -69,6 +71,7 @@ final class ProjectUploadFailureResponseTest extends ApiTestCase
 
     public function test_file_above_provider_limit_is_rejected_before_storage_or_ai_usage(): void
     {
+        app(AiConsentService::class)->record($this->user, true);
         $this->withoutMiddleware(RequireProductFeature::class);
         config()->set('projects.maximum_file_kilobytes', 25600);
         config()->set('openrouter.attachment_provider_max_bytes', 8 * 1024 * 1024);

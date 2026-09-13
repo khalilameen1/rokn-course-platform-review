@@ -17,6 +17,7 @@ use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\AiConsentService;
 use App\Services\AiEntitlementBudgetService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
@@ -117,6 +118,7 @@ final class ProjectFeedbackReplyPublicationRecoveryTest extends TestCase
         $user = new User();
         $user->forceFill(['name' => 'Report learner', 'email' => Str::uuid().'@test.rokn',
             'password' => bcrypt('test'), 'active' => true, 'role' => 'client'])->save();
+        app(AiConsentService::class)->record($user, true);
         $course = Course::factory()->make();
         $course->forceFill(['tenant_id' => 1])->save();
         $project = Project::factory()->create(['requirements_text_ar' => 'صمم شعار شجرة', 'requirements_text_en' => 'Draw a tree']);

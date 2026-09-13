@@ -21,6 +21,7 @@ use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
+use App\Services\AiConsentService;
 use App\Services\CourseAccessPlanService;
 use App\Services\AiConversationContextService;
 use App\Services\ProjectFeedbackThreadService;
@@ -752,6 +753,7 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
             'role' => 'client',
             'active' => true,
         ])->save();
+        app(AiConsentService::class)->record($user, true);
         $course = Course::factory()->make();
         $course->forceFill(['tenant_id' => 1])->save();
         $project = Project::factory()->create($requirements === null ? [] : [

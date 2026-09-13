@@ -138,6 +138,8 @@ abstract class ApiTestCase extends TestCase
             $table->timestamp('terms_accepted_at')->nullable();
             $table->timestamp('privacy_notice_acknowledged_at')->nullable();
             $table->string('legal_notice_version', 32)->nullable();
+            $table->string('ai_consent_version', 64)->nullable();
+            $table->timestamp('ai_consent_accepted_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
             $table->softDeletes();

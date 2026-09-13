@@ -30,10 +30,15 @@ final class PreviewAppDownloadTest extends TestCase
         $path = 'downloads/internal/rokn-1.0.54.apk';
         $disk->put($path, 'apk-fixture');
         config(['app_downloads.android_preview_path' => $path]);
+        $version = hash('sha256', implode(':', [
+            $path,
+            (string) $disk->size($path),
+            (string) $disk->lastModified($path),
+        ]));
 
         $response = $this->get('/downloads/rokn-preview.apk?path=private.txt');
 
-        $response->assertRedirect($disk->url($path));
+        $response->assertRedirect($disk->url($path).'?v='.$version);
         self::assertTrue($response->headers->hasCacheControlDirective('no-store'));
     }
 

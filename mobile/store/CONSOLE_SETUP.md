@@ -1,7 +1,8 @@
 # Rokn store console setup
 
-Prepared 2026-09-12. This is the entry sequence, not evidence that console fields
-were saved. Use [release status](../docs/STORE_RELEASE_STATUS.md) for artifact
+Updated 2026-09-13. Completed console steps are identified below; the remaining
+entry sequence is not evidence that its fields were saved.
+Use [release status](../docs/STORE_RELEASE_STATUS.md) for artifact
 pins and remaining blockers and [review access](../docs/REVIEW_ACCESS.md) for
 reviewer journeys and native product configuration.
 
@@ -9,7 +10,7 @@ reviewer journeys and native product configuration.
 
 - Company: ROKN FOR DIGITAL PRODUCTION AND CONTENT
 - Organization country: Egypt
-- Application identifier on both platforms: `com.rokn`
+- Intended application identifier on both platforms: `com.rokn`
 - Category: Education
 - Public support email: `support@rokn.app`
 - Website: `https://rokn.app/`
@@ -20,39 +21,71 @@ reviewer journeys and native product configuration.
 The company Play Console account was inspected on September 13 while signed in
 as Rokn. Website ownership of `https://rokn.app` was verified after the owner's
 confirmed request. Both contact and developer phones were then verified using
-the owner's SMS code and saved successfully. Create app is enabled and the
-availability check accepts `com.rokn`. After the owner confirmed the required
+the owner's SMS code and saved successfully. After the owner confirmed the required
 declarations, the Arabic free-to-download draft `ركن Rokn` was created as app
-record `4974910218344866175`. No binary was uploaded or published at this checkpoint.
-Apple's organization enrollment has not been verified.
+record `4974910218344866175`. Signing enrollment is complete with the fingerprints
+below. Google processed the AAB built from clean source `903a13b` as
+`57 (1.0.56)`, minimum API 24 and target API 36, with ReTrace and native symbols
+attached. It was saved to internal track `4700165170808444276`, draft release
+`1`. The accepted upload has not been released to testers or submitted for
+public review.
+Apple's official sign-in page is open, but organization membership, Team ID and
+App Store Connect record have not been verified.
 Do not substitute a personal developer account or another
 country. Legal-address, tax, banking and identity fields must come from the
 company's verified records, not placeholders in this repository.
 
-## Android signing before the first upload
+## Android signing and internal upload
 
-1. Open the `com.rokn` record in the company Play Console and inspect App signing.
-   If no record exists, complete the company account and app-creation steps first.
-2. For first enrollment, preserve the direct/Play upgrade design in
-   [release channels](../RELEASE_CHANNELS.md). Use the existing compatible
-   app-signing key if present and suitable. Never choose the old debug key as
-   a permanent production identity. The new local upload certificate is not
-   automatically the installation certificate.
-3. Compare the registered upload certificate to the AAB sidecar before upload.
-   Keep the private keystore and passwords outside the repository.
-4. Record the actual **app-signing** SHA-1 and SHA-256 from Play. Register the
-   installed-app certificate with the matching Google OAuth/Firebase Android
-   app (`com.rokn`). Preserve the server/web client identity used by sign-in.
-5. Add the actual app-signing SHA-256 to backend
-   `APP_LINK_ANDROID_SHA256_FINGERPRINTS`. Keep any still-supported direct
-   certificate; do not replace every entry with the upload certificate.
-6. Check both hosts' `/.well-known/assetlinks.json`, then verify a Play-installed
+Observed and approved in the company Play Console on September 13:
+
+- App record: `4974910218344866175`, package `com.rokn`, title `ركن Rokn`
+- App-signing SHA-256:
+  `5a49ea3dba91df63f27e60fa87998737efb67657fa102ecb162bd1d63e232d9e`
+- Upload-certificate SHA-256:
+  `0f0cde1dc533559f6f97c0d2df4e474be764b13ad071def14c19dc1a7812586e`
+- Current AAB source: `903a13b18938a992b177adef0905f2a2b9a06dc9`
+- Current AAB SHA-256:
+  `a62b8915efd9a5fa9ff837e6c10944c3cdca6cbecb4d4f6a92680cb366dabf5b`
+
+The signing and upload keys have different roles. Keep private keystores and
+passwords outside the repository. Preserve the direct/Play upgrade design in
+[release channels](../RELEASE_CHANNELS.md); do not substitute the upload key or
+the old debug key as the identity of an installed Play application.
+
+After the owner's explicit confirmation, Firebase saved the app-signing SHA-1
+`ae13b83943fe895c3944b016a95721698c53156e` and the SHA-256 above for `com.rokn`
+in `rokn-production-2026`. The production backend's Google web client belongs to
+the same project number, `112556080712`. The current mobile authentication flow
+uses the backend browser flow; this is not evidence of a tested native login.
+Laravel Cloud saved the new app-signing SHA-256 alongside the existing direct
+certificate as **one pending environment change**. It is not active until a
+deployment applies it. No other environment value was intentionally changed.
+
+Independent static inspection of this exact AAB passed bundletool validation,
+jarsigner verification, upload-certificate matching, `PAGE_ALIGNMENT_16K`, all
+46 ELF64 / 137 LOAD alignment checks and RELRO checks. A derived inspection APK
+passed 16 KB zip alignment and APK signature verification with a temporary
+debug key; it is not distributable. The evidence location and remaining runtime
+checks are recorded in [release status](../docs/STORE_RELEASE_STATUS.md).
+
+Remaining steps:
+
+1. Complete internal-testing setup before releasing saved draft `1` to testers.
+   Google has accepted the upload, not reviewed or approved the public release.
+2. Preserve the registered Firebase fingerprints and the existing server/web
+   client identity used by sign-in.
+3. Apply the saved `APP_LINK_ANDROID_SHA256_FINGERPRINTS` environment change
+   during the coordinated backend deployment after its CI passes. The existing
+   direct certificate must remain alongside the new app-signing certificate.
+4. Check both hosts' `/.well-known/assetlinks.json`, then verify a Play-installed
    build can sign in and open course links. Local signing success is not this
    verification.
 
 Observed on 2026-09-12: both hosts return HTTP 200 but advertise only
 `01:97:0F:4D:0A:A5:9B:F4:D8:F4:DE:FB:CA:7C:B8:77:34:6D:69:BF:B7:15:A5:B6:4F:A6:DC:D2:73:3F:89:3D`.
-No actual Play app-signing fingerprint has been read from the console yet.
+Those older association responses have not yet been verified with the newly
+observed Play app-signing fingerprint.
 Signing behavior is documented by [Android](https://developer.android.com/studio/publish/app-signing).
 
 ## Apple identity and links
