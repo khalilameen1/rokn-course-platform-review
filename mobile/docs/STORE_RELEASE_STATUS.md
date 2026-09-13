@@ -8,7 +8,7 @@ The latest Android AAB was built from clean source
 Its SHA-256 is `4cc831137db744f06f9678a267e0d3619dfeac697c9ac8cc009dec917e38fe89`
 and API base is `https://rokn.app/api/v1/`. Google accepted the bundle and the
 Console confirmed `58 (1.0.57)` available to internal testers on September 14
-at 00:01 Cairo time. Physical-device verification after updating is still pending.
+at 00:01 Cairo time. Physical-device verification is partial as recorded below.
 
 The preceding Android AAB was built successfully from clean source `903a13b` and
 contains the reviewed portfolio UI changes. Google processed and accepted its
@@ -41,6 +41,13 @@ unverified.
   tests, TypeScript, ESLint, dependency/legal checks, Android release lint and the
   signed production AAB build. These are not end-to-end phone acceptance evidence.
 - No phone app data, learner records, purchases or production settings were erased.
+- On the owner's next failure report, ADB still showed Play-installed 57 / 1.0.56.
+  A subsequent read at 00:08 Cairo time confirmed the phone had updated to 58 /
+  1.0.57. The actual screen then showed Blender course checkout, its coin package
+  and the native Google Play test-card purchase sheet, explicitly stating no
+  charge. The agent did not confirm the purchase. This verifies the course and
+  package-loading path progressed on 58; My Corner, other private pages and
+  completed purchase fulfillment are not yet verified by this observation.
 
 ## Implemented in source
 
