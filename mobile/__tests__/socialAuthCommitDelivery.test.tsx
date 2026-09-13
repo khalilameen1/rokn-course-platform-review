@@ -2,7 +2,7 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
-import * as Crypto from 'expo-crypto';
+import * as AccountStorage from '../src/constants/helpers';
 
 const mockDispatch = jest.fn();
 const mockPost = jest.fn();
@@ -12,6 +12,13 @@ const mockNavigation = {
   navigate: jest.fn(),
 };
 const mockCallback = `rokn://auth?attempt=${'C'.repeat(43)}&code=one-use-code`;
+jest.mock('../src/constants/helpers', () => {
+  const actual = jest.requireActual('../src/constants/helpers');
+  return {
+    ...actual,
+    captureAccountSessionBoundary: jest.fn(actual.captureAccountSessionBoundary),
+  };
+});
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => mockNavigation,
   useRoute: () => ({
@@ -119,23 +126,24 @@ describe('committed social authentication reaches its real UI consumer', () => {
       const receipt = new Promise<void>(resolve => {
         releaseReceipt = resolve;
       });
-      const digest = (
-        Crypto.digestStringAsync as jest.Mock
+      const captureBoundary = (
+        AccountStorage.captureAccountSessionBoundary as jest.Mock
       ).getMockImplementation()!;
       let captureDelayed = false;
-      (Crypto.digestStringAsync as jest.Mock).mockImplementation(
-        async (...args: unknown[]) => {
+      (AccountStorage.captureAccountSessionBoundary as jest.Mock).mockImplementation(
+        async () => {
+          const boundary = await captureBoundary();
           if (
             stage === 'capture_account_change' &&
             !captureDelayed &&
-            args[1] === '52' &&
             extractApiToken(peekSecureSession().session) === 'completed-bearer'
           ) {
             captureDelayed = true;
             receiptStarted();
             await receipt;
           }
-          return digest(...args);
+          AccountStorage.assertAccountSessionBoundary(boundary);
+          return boundary;
         },
       );
       (SecureStore.getItemAsync as jest.Mock).mockImplementation(async key => {
@@ -284,7 +292,7 @@ describe('committed social authentication reaches its real UI consumer', () => {
           renderer?.unmount();
         });
         jest.useRealTimers();
-        (Crypto.digestStringAsync as jest.Mock).mockImplementation(digest);
+        (AccountStorage.captureAccountSessionBoundary as jest.Mock).mockImplementation(captureBoundary);
       }
       if (stage.endsWith('account_change')) {
         expect(mockDispatch).not.toHaveBeenCalled();

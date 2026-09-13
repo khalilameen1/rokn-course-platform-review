@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {createHash} from 'crypto';
 
 const mockGet = jest.fn();
 const mockGetLearningCourses = jest.fn();
@@ -33,7 +34,8 @@ describe('learning dashboard partial cache', () => {
   });
 
   it('keeps the last complete secondary panels and does not overwrite that cache with partial empties', async () => {
-    const cacheKey = `@rokn/learning-dashboard/v3:user-${'a'.repeat(24)}`;
+    const accountHash = createHash('sha256').update('44').digest('hex').slice(0, 24);
+    const cacheKey = `@rokn/learning-dashboard/v3:user-${accountHash}`;
     const cached = {
       version: 3,
       savedAt: Date.now(),
