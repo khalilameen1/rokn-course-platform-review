@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
+import {sha256Hex} from '../utils/sha256';
 import {
   deleteSecureSession,
   extractApiToken,
@@ -49,10 +50,9 @@ export const getItem = async <T = unknown>(key: string): Promise<T | null> => {
   return null;
 };
 
-const storageIdentityHash = async (value: string) =>
-  (
-    await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, value)
-  ).slice(0, 24);
+// Cache ownership needs a deterministic hash, not a native bridge operation.
+// Keep the original SHA-256 prefix so existing account/guest keys still match.
+const storageIdentityHash = (value: string) => sha256Hex(value).slice(0, 24);
 
 const getGuestStorageIdentity = (): Promise<string> => {
   if (!guestStorageIdentityPromise) {
