@@ -58,9 +58,10 @@ After the owner's explicit confirmation, Firebase saved the app-signing SHA-1
 in `rokn-production-2026`. The production backend's Google web client belongs to
 the same project number, `112556080712`. The current mobile authentication flow
 uses the backend browser flow; this is not evidence of a tested native login.
-Laravel Cloud saved the new app-signing SHA-256 alongside the existing direct
-certificate as **one pending environment change**. It is not active until a
-deployment applies it. No other environment value was intentionally changed.
+Laravel Cloud applied the saved app-signing SHA-256 alongside the existing direct
+certificate in deployment `202` / `3c72607` on September 13. The post-deployment
+Android association response contains both certificates, not the upload key.
+No other environment value was intentionally changed for this association update.
 
 Independent static inspection of this exact AAB passed bundletool validation,
 jarsigner verification, upload-certificate matching, `PAGE_ALIGNMENT_16K`, all
@@ -75,17 +76,17 @@ Remaining steps:
    Google has accepted the upload, not reviewed or approved the public release.
 2. Preserve the registered Firebase fingerprints and the existing server/web
    client identity used by sign-in.
-3. Apply the saved `APP_LINK_ANDROID_SHA256_FINGERPRINTS` environment change
-   during the coordinated backend deployment after its CI passes. The existing
-   direct certificate must remain alongside the new app-signing certificate.
-4. Check both hosts' `/.well-known/assetlinks.json`, then verify a Play-installed
-   build can sign in and open course links. Local signing success is not this
-   verification.
+3. Preserve the deployed `APP_LINK_ANDROID_SHA256_FINGERPRINTS` association:
+   the existing direct certificate remains alongside the new app-signing certificate.
+4. Verify a Play-installed build can sign in and open course links. Successful
+   association responses and local signing are not native-device verification.
 
 Observed on 2026-09-12: both hosts return HTTP 200 but advertise only
 `01:97:0F:4D:0A:A5:9B:F4:D8:F4:DE:FB:CA:7C:B8:77:34:6D:69:BF:B7:15:A5:B6:4F:A6:DC:D2:73:3F:89:3D`.
-Those older association responses have not yet been verified with the newly
-observed Play app-signing fingerprint.
+After deployment `202` on September 13, the association was verified with that
+existing fingerprint and
+`5A:49:EA:3D:BA:91:DF:63:F2:7E:60:FA:87:99:87:37:EF:B6:76:57:FA:10:2E:CB:16:2B:D1:D6:3E:23:2D:9E`.
+The upload-certificate fingerprint is not an installed-app association identity.
 Signing behavior is documented by [Android](https://developer.android.com/studio/publish/app-signing).
 
 ## Apple identity and links
@@ -110,9 +111,9 @@ The rejected Arabic descriptor was removed from the draft. `ركن Rokn` remains
 the neutral working title of the created draft until the final store name is
 chosen; no proposed descriptor from the naming discussion has been submitted.
 
-The three public support/privacy/deletion URLs above returned HTTP 200 on
-2026-09-12. That does not prove the deletion request completes or the newly
-edited server policy is deployed. Verify both before submission.
+The public policy/contact/deletion URLs returned HTTP 200 again after deployment
+`202` on 2026-09-13. This proves page availability, not completion of an account-
+deletion request; exercise that flow before submission.
 
 Do not answer "no data collected". Account/profile data, learning and purchase
 records, submitted messages/media/documents, support requests and operational

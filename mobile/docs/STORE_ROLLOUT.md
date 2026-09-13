@@ -1,9 +1,32 @@
 # Store rollout — September 13 approved changes
 
 The owner confirmed verified sandbox credit at zero revenue and portfolio
-pre-publication review, including pausing existing shared works. These changes
-are local until a deployment and its evidence are recorded. Do not equate the
-approval with a successful deployment, purchase or store acceptance.
+pre-publication review, including pausing existing shared works. The backend is
+now deployed; native purchase and store acceptance evidence remain separate.
+
+## Recorded deployment — 2026-09-13
+
+After Backend CI `34727103158` succeeded (1,709 passed, 4 skipped, 17,211
+assertions), `main` was fast-forwarded to
+`3c7260785db3696224672ea399bdd11fa6d37c24`. Cloud manual backup
+`before-store-3c72607-20260913` completed at `00:25:47 UTC` (110.3 MB).
+Deployment `202` succeeded at `00:30:56 UTC` in 1 minute 45 seconds; all five
+September 12/13 migrations ran, with App healthy, one ready instance and three
+domains routing. Post-deployment schema-only preflight command `165` passed.
+Runtime command `166` finished at `00:39:31 UTC`: production/Redis, healthy
+scheduler and all seven queues (26–27-second heartbeat ages, queue sizes 0),
+and Google finalization pending/due/deferred counts all 0. Deployment metadata
+was null, so that command does not prove the source SHA. No new purchase or
+actual store charge was performed. See [release status](STORE_RELEASE_STATUS.md)
+for the Cloud source identity, endpoint and association evidence.
+
+There is no explicit log evidence that every old web/worker process and in-flight
+request has drained. No portfolio approval is recorded. Keep portfolios pending
+until the cutover evidence and subsequent 300-second wait below are satisfied.
+The healthy heartbeat check does not replace that old-process drain evidence.
+Play `57 (1.0.56)` remains an internal draft, not released to testers or public
+review. No native purchase is verified. Its AAB remains pinned to source
+`903a13b18938a992b177adef0905f2a2b9a06dc9`; backend promotion did not rebuild it.
 
 ## Deploy together
 

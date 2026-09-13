@@ -8,8 +8,10 @@ contains the reviewed portfolio UI changes. Google processed and accepted its
 upload as `57 (1.0.56)` and it was saved in an internal draft. The draft has not
 been released to testers or submitted for public review.
 No signed iOS archive has been produced.
+The matching backend is now deployed as Laravel Cloud deployment `202`, source
+`3c7260785db3696224672ea399bdd11fa6d37c24`; this does not change the AAB source pin.
 
-## Implemented locally
+## Implemented in source
 
 - Account-bound, revocable third-party AI consent across chat and project review
   with draft preservation, queued-work enforcement and response reporting
@@ -40,9 +42,9 @@ The Google app record and signing enrollment now exist. Complete listing/privacy
 entry, reviewer access, screenshots and native purchase setup still require
 actual account/device work. Apple's organization membership remains unverified.
 
-These backend changes and their migrations have **not** been deployed. Coordinate
-the mobile/backend rollout using `AI_CONSENT_RELEASE.md`; older clients cannot
-complete new AI work once the server starts requiring affirmative consent.
+These backend changes and their five September 12/13 migrations were deployed
+on September 13. Coordinate mobile availability using `AI_CONSENT_RELEASE.md`;
+older clients cannot complete new AI work without affirmative consent.
 Use [STORE_ROLLOUT.md](STORE_ROLLOUT.md) for the newly approved payment and
 pre-publication portfolio deployment requirements.
 
@@ -105,23 +107,23 @@ signed iOS archive. Full native device/store review flows remain unverified.
    Signing enrollment and AAB processing are complete. Internal track
    `4700165170808444276`, draft release `1`, contains `57 (1.0.56)` with ReTrace
    and native symbols attached. It is saved as a draft, not released to testers.
-2. Configure native store products and verified server credentials; live package
-   responses currently have no Apple/Google product identifiers
-3. Deploy and exercise the now-approved verified-test fulfillment and Google
-   finalization implementation. The September 13 approval is recorded; it is no
-   longer waiting for permission, but actual store configuration and purchases
-   have not been verified.
-4. Deploy the approved pre-publication portfolio review
-   with its owner-facing status UI. Existing shared works also require review.
+2. Configure native store products and verified server credentials; the last
+   inspected package responses had no Apple/Google product identifiers.
+3. Exercise the deployed verified-test fulfillment and Google finalization
+   implementation. Actual native store configuration and purchases have not
+   been verified; successful deployment is not purchase evidence.
+4. Verify the deployed pre-publication portfolio review with its owner-facing
+   status UI. Existing shared works also require review.
    Confirm the old release has drained, then wait the media URL lifetime before
    the first administrator approval, as detailed in the rollout document.
 5. Configure Apple lifecycle keys, app identity and signing, then produce and
    inspect an actual signed archive on the pinned macOS build environment
-6. Deploy the coordinated backend changes, validate migrations and launch
-   readiness, and exercise account deletion, purchase recovery, AI consent and
-   public-content reporting against the intended production configuration
-7. Preserve the now-saved Firebase app-signing fingerprints and deploy the
-   pending Android domain-association change. Complete store
+6. Complete strict launch-readiness verification and exercise account deletion,
+   purchase recovery, AI consent and public-content reporting against the intended
+   production configuration. Migrations, command `165` schema-only preflight and
+   command `166` queue/scheduler/finalization status checks have passed.
+7. Preserve the saved Firebase app-signing fingerprints and the now-live Android
+   domain association containing the direct and app-signing certificates. Complete store
    metadata, privacy disclosures and reusable reviewer access, and exercise
    internal-track purchases and native-device flows before requesting review.
    Rebuild if further mobile changes are required; the artifact below covers
@@ -177,9 +179,10 @@ AAB; its sidecar source pin remains authoritative. A push is not a deployment.
 
 ## Production and console checkpoints
 
-Production was inspected read-only. Its catalog and authentication-method routes
-under `/api/v1/` respond successfully; launch readiness still reports missing
-recovery/mobile-release evidence. Do not fabricate release records to clear it.
+The earlier read-only production inspection reported missing recovery/mobile-
+release evidence in launch readiness. Deployment success and the post-deployment
+schema-only preflight do not by themselves clear that separate gate. Do not
+fabricate release records to clear it.
 
 The company Play Console account was inspected on September 13 while signed in
 as Rokn. After the owner's specific confirmation, the
@@ -195,30 +198,60 @@ processed the AAB as `57 (1.0.56)` and the release was saved as internal draft `
 with ReTrace and native symbols attached. No release to testers or public review
 submission occurred. Upload acceptance, account verification and app creation/
 signing enrollment are not store review approval.
-Public privacy, support and deletion pages return 200. Both Android association
-files advertise the old certificate only; the main Apple association URL returns
-404. Complete the verified identity/key configuration before claiming native
-sign-in or app links work for store-installed builds.
+Public policy, contact and account-deletion pages returned HTTP 200 again after
+deployment. The Android domain association now includes the old direct and new
+Play app-signing certificates, not the upload certificate. The earlier main
+Apple association check returned 404; no new Apple association verification is
+recorded. These checks do not prove sign-in or app links on a Play-installed build.
 
 With the owner's specific approval, Firebase saved the new app-signing SHA-1
 and SHA-256 for `com.rokn` in `rokn-production-2026`. The production backend
 Google web client belongs to the same project number, `112556080712`. The app
 currently uses the backend browser-authentication flow, not its unused native
 Google helper. These matching settings do not prove an installed Play login.
-Laravel Cloud saved the new app-signing SHA-256 alongside the existing direct
-certificate as one pending environment change. It has not been deployed or
-verified in a live association response.
+The saved Android association environment change was applied in deployment
+`202`. The post-deployment response was verified with both fingerprints:
 
-Laravel Cloud was inspected directly on September 13. Its active deployment is
+- Existing direct: `01:97:0F:4D:0A:A5:9B:F4:D8:F4:DE:FB:CA:7C:B8:77:34:6D:69:BF:B7:15:A5:B6:4F:A6:DC:D2:73:3F:89:3D`
+- Play app-signing: `5A:49:EA:3D:BA:91:DF:63:F2:7E:60:FA:87:99:87:37:EF:B6:76:57:FA:10:2E:CB:16:2B:D1:D6:3E:23:2D:9E`
+
+Before promotion, Laravel Cloud's active deployment was
 `31e192c5c58b8755d8f2ccec77f9539f1c0dc1cd` from `main`, titled
-`Ship Rokn 1.0.55 test APK`. Push to deploy and deployment hooks are both off.
+`Ship Rokn 1.0.55 test APK`. Push to deploy and deployment hooks were both off.
 The configured build runs Composer install, npm ci, npm run production and
 `php artisan optimize`. Deploy commands are
 `php artisan rokn:preflight --configuration-only --connectivity` followed by
-`php artisan rokn:release-migrate`. These are inspected settings, not commands
-executed during this work. No new backend deployment or production migration
-has occurred. Promote only after the exact candidate Backend CI succeeds and
-then follow the coordinated rollout, not merely after uploading the Android AAB.
+`php artisan rokn:release-migrate`. The following subsequent promotion is now
+recorded separately from the earlier inspection:
+
+- Backend CI [34727103158](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/34727103158)
+  succeeded for `3c7260785db3696224672ea399bdd11fa6d37c24`: 1,709 passed,
+  4 skipped, 17,211 assertions. `main` was fast-forwarded to that exact commit.
+- Cloud manual backup `before-store-3c72607-20260913` completed at
+  `2026-09-13 00:25:47 UTC`, size 110.3 MB, before deployment. This records the
+  provider backup result, not a new signed-artifact verification or restore drill.
+- Laravel Cloud deployment `202` of `3c72607` succeeded at
+  `2026-09-13 00:30:56 UTC` in 1 minute 45 seconds. All five September 12/13
+  migrations completed; Cloud showed App healthy, one ready instance and
+  routing for three domains.
+- Post-deployment `/api/v1/courses/list` returned 12 courses; authentication
+  methods advertised Google and TikTok. Policy/contact/deletion pages returned
+  HTTP 200, and the Android association fingerprints matched those above.
+- Cloud command `165`, `php artisan rokn:preflight --schema-only`, passed.
+  This is not proof that all old workers or in-flight requests have drained.
+  No portfolio approval is recorded; retain the drain and media-lifetime gate
+  in [STORE_ROLLOUT.md](STORE_ROLLOUT.md).
+- Runtime command `166` finished at `2026-09-13T00:39:31Z`: environment
+  `production`, queue connection `redis`; scheduler heartbeat healthy at 27
+  seconds old. All seven queues (`default`, `notifications`, `ai-chat`,
+  `ai-feedback`, `media`, `operations`, `webhooks`) were healthy, each size 0,
+  with heartbeat ages 26–27 seconds. Google finalization counts were 0 pending,
+  0 due and 0 deferred. No new purchase or actual store charge was performed.
+  The command returned `deployment=null` because deployment metadata was not
+  populated; source identity comes from Cloud deployment `202`, not that field.
+  Fresh heartbeats prove queue activity, not old-worker drain or native purchase
+  success. These checks complete the recorded deployment runtime inspection,
+  not the separate strict launch-readiness or store-review gates.
 
 Backend CI run `34725386001` on `903a13b` failed in the full test suite
 (46 failed, 4 skipped, 1,640 passed). The demonstrated failures were traced to
@@ -238,9 +271,9 @@ Focused verification after those fixes:
   two store-recovery integration cases: 3 tests, 64 assertions passed.
 - Preview download: 4 tests, 8 assertions passed as noted above.
 
-Migration execution was verified on test SQLite, not a live MySQL database.
-These focused results do not replace the full Backend CI release gate. The
-corrected branch must pass that gate before promotion; server deployment is held.
+The focused migration tests used SQLite. The later full Backend CI and actual
+production migration execution are recorded above; the earlier deployment hold
+was lifted only after the exact-commit CI result and the owner's authorization.
 
 Apple's official sign-in page is open only. Organization membership, Team ID,
 App Store Connect record and signed iOS archive are not verified.
