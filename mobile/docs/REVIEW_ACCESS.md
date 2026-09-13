@@ -2,7 +2,7 @@
 
 Updated 2026-09-13. This is **not a verified reviewer
 account or a ready-to-submit access declaration**. See [STORE_RELEASE_STATUS.md](STORE_RELEASE_STATUS.md)
-for the exact Android artifact and undeployed backend changes. No account,
+for the exact Android artifact and deployed backend evidence. No account,
 entitlement, product, payment, or production setting was changed for this guide.
 See [CONSOLE_SETUP.md](../store/CONSOLE_SETUP.md) for console access, signing/OAuth
 identities, app links and public policy-page evidence; those prerequisites are
@@ -25,12 +25,16 @@ separate from the reviewer account and product configuration below.
 - **Deletion account: MISSING.** Use a separate disposable social account with no
   real purchases or valuable work; it must support fresh sign-in with the same
   provider. Never delete the reusable review account during the walkthrough.
-- **Store payments and backend rollout: PENDING.** Last documented production
-  inspection found no Google/Apple product IDs in package responses. Production
-  has not received the newly approved verified-test fulfillment/recovery code.
-  The local implementation credits verified store tests with zero cash revenue
-  and finalizes Google purchases after credit commits. Deployment, configuration
-  and actual end-to-end store tests remain prerequisites, not completed steps.
+- **Store payments: PENDING; backend deployed.** Laravel Cloud deployment 203
+  runs `855f7293fe3e96682a87f2b79d69ba4238c98f87`, with backend code unchanged
+  from deployment 202 / `3c72607`, including verified-test fulfillment/recovery.
+  That implementation credits verified store tests with zero cash revenue and
+  finalizes Google purchases after credit commits. Product `rokn.coins.900` is
+  active and bound to package 4, and the Google credential is deployed. The
+  Google channel remains disabled pending app-scoped permissions and verification;
+  authenticated RTDN and Apple products are still incomplete. See
+  STORE_RELEASE_STATUS.md for the current console and configuration evidence.
+  Deployment alone does not verify configuration or an end-to-end store purchase.
 - **Review contact: NOT ENTERED/VERIFIED.** The owner has supplied
   `support@rokn.app` and a contact phone number in the conversation. Use the
   supplied details in the private console fields and confirm the contact name

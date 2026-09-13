@@ -26,9 +26,10 @@ declarations, the Arabic free-to-download draft `ركن Rokn` was created as app
 record `4974910218344866175`. Signing enrollment is complete with the fingerprints
 below. Google processed the AAB built from clean source `903a13b` as
 `57 (1.0.56)`, minimum API 24 and target API 36, with ReTrace and native symbols
-attached. It was saved to internal track `4700165170808444276`, draft release
-`1`. The accepted upload has not been released to testers or submitted for
-public review.
+attached. It was initially saved as draft release `1`, then released to the two
+approved internal testers on track `4700165170808444276` on September 13.
+It has not been submitted for public review. The working opt-in URL is
+`https://play.google.com/apps/internaltest/4700165170808444276`.
 Apple's official sign-in page is open, but organization membership, Team ID and
 App Store Connect record have not been verified.
 Do not substitute a personal developer account or another
@@ -72,8 +73,9 @@ checks are recorded in [release status](../docs/STORE_RELEASE_STATUS.md).
 
 Remaining steps:
 
-1. Complete internal-testing setup before releasing saved draft `1` to testers.
-   Google has accepted the upload, not reviewed or approved the public release.
+1. Install internal release `57 (1.0.56)` through Play using an approved tester
+   account. Google has accepted the upload and made it available internally, not
+   reviewed or approved the public release.
 2. Preserve the registered Firebase fingerprints and the existing server/web
    client identity used by sign-in.
 3. Preserve the deployed `APP_LINK_ANDROID_SHA256_FINGERPRINTS` association:
@@ -146,6 +148,8 @@ The iOS marketing icon at
 1024-by-1024 RGB PNG without an alpha channel. The Expo source icon is RGBA;
 do not substitute it blindly for that prepared iOS asset.
 
+The existing brand icon and feature graphic have been rendered, visually checked
+and saved to the Play listing. Reproducible sources are in [assets](assets/README.md).
 Store screenshots are not ready. Capture the actual store candidate with
 review-ready content and working purchases, not screenshots from an older
 debug APK or a mockup. Supply the phone/tablet sizes requested by each console

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500" role="img" aria-labelledby="title description">
+  <title id="title">ركن — سكرول واتعلم</title>
+  <desc id="description">شعار ركن الأصلي وعبارة سكرول واتعلم، دون صور واجهات أو ادعاءات ترويجية.</desc>
+  <defs>
+    <style>
+      @font-face {
+        font-family: RoknCairo;
+        src: url("../../src/assets/fonts/Cairo/Cairo-Bold.ttf") format("truetype");
+        font-weight: 700;
+      }
+    </style>
+  </defs>
+  <rect width="1024" height="500" fill="#070A10"/>
+  <!-- Keep the approved square icon intact: no tracing, recolouring or crop. -->
+  <image id="brand-icon" href="../../src/assets/images/brand/rokn-app-icon-1024.png" x="524" y="0" width="500" height="500" preserveAspectRatio="xMidYMid meet"/>
+  <text id="tagline" x="267.5" y="250" text-anchor="middle" dominant-baseline="middle" direction="rtl" unicode-bidi="embed" font-family="RoknCairo, Cairo" font-size="54" font-weight="700" fill="#F7F9FC">سكرول واتعلم</text>
+</svg>

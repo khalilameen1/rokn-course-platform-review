@@ -5,11 +5,13 @@ Target metadata: 1.0.56, Android 57, iOS 49.
 Status: **Store preparation remains in progress; no submission for store review**.
 The current Android AAB was built successfully from clean source `903a13b` and
 contains the reviewed portfolio UI changes. Google processed and accepted its
-upload as `57 (1.0.56)` and it was saved in an internal draft. The draft has not
-been released to testers or submitted for public review.
+upload as `57 (1.0.56)`. It is now available to the two approved internal testers
+on track `4700165170808444276`. It has not been submitted for public review.
 No signed iOS archive has been produced.
-The matching backend is now deployed as Laravel Cloud deployment `202`, source
-`3c7260785db3696224672ea399bdd11fa6d37c24`; this does not change the AAB source pin.
+The matching backend is now deployed as Laravel Cloud deployment `203`, source
+`855f7293fe3e96682a87f2b79d69ba4238c98f87`. Its backend code is unchanged from
+deployment `202` / `3c72607`; deployment `203` applied the Google billing secret.
+Neither deployment changes the AAB source pin.
 
 ## Implemented in source
 
@@ -102,13 +104,15 @@ signed iOS archive. Full native device/store review flows remain unverified.
 
 ## Release blockers
 
-1. Complete the internal-testing setup before distributing the saved draft.
-   Google app record `4974910218344866175` exists as `ركن Rokn` / `com.rokn`.
-   Signing enrollment and AAB processing are complete. Internal track
-   `4700165170808444276`, draft release `1`, contains `57 (1.0.56)` with ReTrace
-   and native symbols attached. It is saved as a draft, not released to testers.
-2. Configure native store products and verified server credentials; the last
-   inspected package responses had no Apple/Google product identifiers.
+1. Install the released internal build and verify its actual login and learning
+   flows. Google app record `4974910218344866175` exists as `ركن Rokn` / `com.rokn`.
+   Track `4700165170808444276` now offers `57 (1.0.56)` to the approved testers,
+   with ReTrace and native symbols attached. This is not public-review approval.
+2. Finish app-scoped Play service-account permissions and verify server access.
+   Product `rokn.coins.900` is active and bound to package 4, and the production
+   credential is configured. Package 4's Google channel deliberately remains
+   disabled until verification works. Configure authenticated RTDN before public
+   release. Other Google packages and Apple products are not configured.
 3. Exercise the deployed verified-test fulfillment and Google finalization
    implementation. Actual native store configuration and purchases have not
    been verified; successful deployment is not purchase evidence.
@@ -169,8 +173,8 @@ The local evidence record is
 `C:/Users/TechNook/.codex/visualizations/2026/08/11/019ff0d4-72c9-77d0-ba28-6c94f828b54c/aab-903a13b-inspection-aa7c5071858644d4a38d4cb0d65e3b4f/verification.json`.
 
 Google Play displays `57 (1.0.56)`, minimum API 24 and target API 36, with ReTrace
-and native symbols attached. Its processed upload is saved in the internal
-draft only. No physical-device/16 KB runtime or completed internal-track
+and native symbols attached. Its processed upload is released to the approved
+internal testers only. No physical-device/16 KB runtime or completed internal-track
 purchase evidence is recorded. Symbol upload to Sentry remains unverified.
 
 Source `903a13b` was pushed to `origin/codex/mobile-first-landing` after the
@@ -194,9 +198,10 @@ The Arabic, free-to-download application draft uses the neutral title `ركن Ro
 After the owner's action-time confirmation of the required declarations, Google
 created app record `4974910218344866175`. App signing was then enrolled with the
 distinct app-signing/upload certificate fingerprints recorded above. Google
-processed the AAB as `57 (1.0.56)` and the release was saved as internal draft `1`,
-with ReTrace and native symbols attached. No release to testers or public review
-submission occurred. Upload acceptance, account verification and app creation/
+processed the AAB as `57 (1.0.56)` and the release was initially saved as internal
+draft `1`, with ReTrace and native symbols attached. It was subsequently released
+to the two approved internal testers on September 13. No public review submission
+occurred. Upload acceptance, account verification and app creation/
 signing enrollment are not store review approval.
 Public policy, contact and account-deletion pages returned HTTP 200 again after
 deployment. The Android domain association now includes the old direct and new
@@ -274,6 +279,77 @@ Focused verification after those fixes:
 The focused migration tests used SQLite. The later full Backend CI and actual
 production migration execution are recorded above; the earlier deployment hold
 was lifted only after the exact-commit CI result and the owner's authorization.
+
+### Internal billing setup (September 13 continuation)
+
+- The company Google Payments profile is now accessible from Play Console;
+  the one-time-product screen is no longer blocked by merchant setup. No payout
+  method, real charge or service-fee-program enrollment was completed here.
+- Internal tester list `Rokn internal QA` was saved and attached to track
+  `4700165170808444276` with only `roknproduction@gmail.com` and
+  `khalilameen52@gmail.com`. Release 57 is now active and available to internal
+  testers, marked unreviewed. The opt-in URL was opened successfully and displays
+  an invitation, not a completed installation:
+  `https://play.google.com/apps/internaltest/4700165170808444276`.
+  The same two accounts were saved as License Testing accounts after the owner's
+  specific confirmation of its developer-account-wide scope; response mode is
+  `RESPOND_NORMALLY`.
+- Service account `rokn-play-billing@rokn-production-2026.iam.gserviceaccount.com`
+  was created without project-wide IAM roles. Android Publisher API is enabled.
+  Exactly one JSON key was created following confirmation. Its validated value
+  was saved as the Cloud organization secret `GOOGLE_PLAY_SERVICE_ACCOUNT_BASE64`,
+  linked only to this application's production environment. The plaintext local
+  download remains pending cleanup after server-access verification; never commit
+  it. Play's final service-account invitation remains unsubmitted: the requested
+  app-scoped order-management permission also includes refunds, and confirmation
+  of that broader capability is pending. Do not infer API access from key creation.
+- Cloud command `167` confirmed package name `com.rokn`, no configured Google
+  service-account file/base64 credentials and no RTDN audience/service account.
+  That was the earlier inspection, superseded for credentials/package 4 below.
+  No RTDN setup has subsequently been verified.
+- `rokn.coins.900` was saved and activated after the earlier incomplete form.
+  Its single `standard` buy option is backward-compatible, Egypt-only, EGP 11.11,
+  with multi-quantity disabled. No duplicate product or other regional sale was
+  created. The earlier automatically rounded EGP 12.99 was not retained.
+- Deployment `203` / `855f7293fe3e96682a87f2b79d69ba4238c98f87` succeeded after
+  linking the secret. Compared with deployment `202`, Git changes are mobile
+  documentation only; backend code and infrastructure sizing are unchanged.
+- Cloud command `168` finished successfully. It validated the deployed credential's
+  type/project/client identity without printing the secret and atomically bound
+  package 4 to `rokn.coins.900`. Readback: 900 coins, price 11.11, active, direct
+  enabled, Google disabled, Apple disabled. Existing prices, coin quantities and
+  other channels were preserved. This is configuration evidence, not an OAuth or
+  purchase-verification success.
+- The existing Pixel_9a emulator booted with Play Store present. Its installed
+  Rokn is still versionCode 36, installer null. No Play-installed 57 login,
+  purchase, consumption, refund or repeated-purchase test has occurred.
+
+### Listing setup (September 13 continuation)
+
+- Arabic name `ركن Rokn`, short/full descriptions, Education category and
+  `https://rokn.app/privacy-policy` were saved without submitting for review.
+- The existing Rokn icon was rendered to the required 512-by-512 RGB PNG; the
+  1024-by-500 feature graphic uses that same mark and `سكرول واتعلم`. Both were
+  visually inspected and uploaded successfully. Reproducible sources and checksums
+  are in `mobile/store/assets/`; no synthetic app screenshot was used.
+- At least two actual phone/tablet screenshots of the released candidate remain
+  missing. Do not substitute the emulator's older version 36 or mockups.
+- Public support email and website fields still await their final save/publish
+  action. App content shows nine uncompleted declarations: ads, app access,
+  content rating, target audience, Data safety, advertising ID, government,
+  financial features and health. Final answers must match actual code, catalog
+  and account/provider settings. Reusable reviewer access is not yet verified.
+- Publishing overview contains unsent changes. The public review action is
+  disabled until setup is complete; managed publishing was observed off and was
+  not changed. Internal availability is not acceptance for public distribution.
+- Read-only Cloud command `169` at `2026-09-13T11:05:20Z` confirmed actual
+  production settings: OpenRouter provider data collection `allow`, ZDR `false`,
+  backend Sentry DSN absent, Nightwatch enabled and request-payload capture off.
+  No setting or secret was changed. Do not claim provider non-retention, no data
+  sharing, or active backend Sentry merely from repository defaults/SDK presence.
+- Google Cloud's project topic and subscription lists were inspected and both
+  were empty. RTDN needs real resources as well as the two missing backend values;
+  no topic/subscription, push identity or Pub/Sub permissions were created here.
 
 Apple's official sign-in page is open only. Organization membership, Team ID,
 App Store Connect record and signed iOS archive are not verified.

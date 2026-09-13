@@ -1,0 +1,31 @@
+{
+  "method": "deterministic-sharp-svg-export-no-ai-generated-imagery",
+  "source": {
+    "file": "mobile/src/assets/images/brand/rokn-app-icon-1024.png",
+    "sha256": "7cbbeb281e9c06ab3409e406513d380a7581e8fbfd7cc9e63d28d387f980f6ca"
+  },
+  "font": {
+    "file": "mobile/src/assets/fonts/Cairo/Cairo-Bold.ttf",
+    "sha256": "a0e58d71b85b15902ea87914d8e31a6d22da48ac2db70213dcfd1a7dad3f198a"
+  },
+  "slogan": "سكرول واتعلم",
+  "sharp": "0.35.4",
+  "outputs": [
+    {
+      "file": "play-icon-512.png",
+      "width": 512,
+      "height": 512,
+      "bytes": 242692,
+      "alpha": false,
+      "sha256": "ce8235b0d58d9a2294386b0b3940d999fa7bec01ad104bb4d2de343b9523c6b0"
+    },
+    {
+      "file": "play-feature-graphic-1024x500.png",
+      "width": 1024,
+      "height": 500,
+      "bytes": 230959,
+      "alpha": false,
+      "sha256": "24e91245a8e0031ca6f55acfdecac4d31e5ae54566b146687af1d883f9cae422"
+    }
+  ]
+}
