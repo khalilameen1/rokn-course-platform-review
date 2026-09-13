@@ -1,17 +1,46 @@
-# Store release status — 2026-09-13
+# Store release status — 2026-09-14
 
 Source: the production monorepo, not the older Desktop checkout.
-Target metadata: 1.0.56, Android 57, iOS 49.
+Target metadata: 1.0.57, Android 58, iOS 49.
 Status: **Store preparation remains in progress; no submission for store review**.
-The current Android AAB was built successfully from clean source `903a13b` and
+The latest Android AAB was built from clean source
+`6d718e28f265148df6d12c3fda1c05fce44ce390` as `58 (1.0.57)`.
+Its SHA-256 is `4cc831137db744f06f9678a267e0d3619dfeac697c9ac8cc009dec917e38fe89`
+and API base is `https://rokn.app/api/v1/`. Google accepted the bundle and the
+Console confirmed `58 (1.0.57)` available to internal testers on September 14
+at 00:01 Cairo time. Physical-device verification after updating is still pending.
+
+The preceding Android AAB was built successfully from clean source `903a13b` and
 contains the reviewed portfolio UI changes. Google processed and accepted its
-upload as `57 (1.0.56)`. It is now available to the two approved internal testers
+upload as `57 (1.0.56)`. It is now available to the three approved internal testers
 on track `4700165170808444276`. It has not been submitted for public review.
 No signed iOS archive has been produced.
-The matching backend is now deployed as Laravel Cloud deployment `203`, source
+The matching backend is now deployed as Laravel Cloud deployment `204`, source
 `855f7293fe3e96682a87f2b79d69ba4238c98f87`. Its backend code is unchanged from
-deployment `202` / `3c72607`; deployment `203` applied the Google billing secret.
-Neither deployment changes the AAB source pin.
+deployment `202` / `3c72607`; deployment `203` applied the Google billing secret
+and deployment `204` applied the two RTDN verification values. Neither changes
+the AAB source pin. Authenticated Google Play test delivery was verified on
+production and package 4's Google channel is enabled; a native purchase is still
+unverified.
+
+## Android 58 account-page loading fix
+
+- The owner's physical phone was verified as Google Play-installed Android 57
+  / 1.0.56, not the older emulator build. Its My Corner screen displayed the
+  specific pre-request account-boundary preparation error while a session existed.
+- Removed the native Expo digest dependency from deterministic local account and
+  guest storage keys. The existing JS SHA-256 implementation produces the same
+  key prefixes; authentication persistence and account-change guards are unchanged.
+- The exact native exception was not captured on the phone. The shared failing
+  branch is established, but successful physical-device behavior after the change
+  must still be verified before calling the incident resolved.
+- The new regression failed before the source fix and passed afterward. Existing
+  cache/race fixtures now exercise real hashes and the account-boundary contract
+  instead of relying on the removed native digest call.
+- Complete release gates passed: 273 Jest suites / 2129 tests, 93 release-script
+  tests, TypeScript, ESLint, dependency/legal checks, Android release lint and the
+  signed production AAB build. These are not end-to-end phone acceptance evidence.
+- No phone app data, learner records, purchases or production settings were erased.
 
 ## Implemented in source
 
@@ -108,11 +137,17 @@ signed iOS archive. Full native device/store review flows remain unverified.
    flows. Google app record `4974910218344866175` exists as `ركن Rokn` / `com.rokn`.
    Track `4700165170808444276` now offers `57 (1.0.56)` to the approved testers,
    with ReTrace and native symbols attached. This is not public-review approval.
-2. Finish app-scoped Play service-account permissions and verify server access.
-   Product `rokn.coins.900` is active and bound to package 4, and the production
-   credential is configured. Package 4's Google channel deliberately remains
-   disabled until verification works. Configure authenticated RTDN before public
-   release. Other Google packages and Apple products are not configured.
+2. Finish native billing configuration and purchase testing. The earlier Android
+   Publisher denial no longer reproduces: command `172` at 12:23:52 UTC on
+   September 13 returned `oauth_ok=true` and `app_purchase_read_ok=true`, using
+   the same credential and permission scope without another permission change.
+   This establishes purchase-read access, not a successful purchase. Product
+   `rokn.coins.900` is active and bound to package 4; its Google channel was
+   enabled in command `175` after product readback and authenticated RTDN test
+   delivery in command `173`. The earlier denial's cause is unresolved, not a
+   proven wrong key or propagation delay. Cloud billing, topic, subscription,
+   push identity and Play topic configuration now exist. Other Google packages
+   and Apple products are not configured.
 3. Exercise the deployed verified-test fulfillment and Google finalization
    implementation. Actual native store configuration and purchases have not
    been verified; successful deployment is not purchase evidence.
@@ -131,7 +166,12 @@ signed iOS archive. Full native device/store review flows remain unverified.
    metadata, privacy disclosures and reusable reviewer access, and exercise
    internal-track purchases and native-device flows before requesting review.
    Rebuild if further mobile changes are required; the artifact below covers
-   only its recorded source commit
+   only its recorded source commit.
+8. Align actual eligibility and policy with the owner's explicit **12+** audience,
+   superseding the earlier 18+ proposal. Gemini must not be treated as eligible
+   for this audience. Resolve OpenRouter's downstream age terms and an approved
+   substitute route before changing the live service. No model/age-gate change
+   or Play age selection has been made; IARC's final content rating is separate.
 
 ## Current Android artifact
 
@@ -299,14 +339,17 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   Exactly one JSON key was created following confirmation. Its validated value
   was saved as the Cloud organization secret `GOOGLE_PLAY_SERVICE_ACCOUNT_BASE64`,
   linked only to this application's production environment. The plaintext local
-  download remains pending cleanup after server-access verification; never commit
-  it. Play's final service-account invitation remains unsubmitted: the requested
-  app-scoped order-management permission also includes refunds, and confirmation
-  of that broader capability is pending. Do not infer API access from key creation.
+  download remains pending owner-specific cleanup confirmation; no deletion was
+  performed and it must never be committed. After the owner's explicit approval
+  including refunds, the Play invitation
+  was saved and the service account became Active. Readback showed only the four
+  approved permissions for `com.rokn`: app read, app-quality information,
+  financial-data view and order/subscription management including refunds. No
+  account-wide administrator or release permission was granted.
 - Cloud command `167` confirmed package name `com.rokn`, no configured Google
   service-account file/base64 credentials and no RTDN audience/service account.
-  That was the earlier inspection, superseded for credentials/package 4 below.
-  No RTDN setup has subsequently been verified.
+  That earlier inspection is superseded by the credential/package updates and
+  authenticated notification-transport verification below.
 - `rokn.coins.900` was saved and activated after the earlier incomplete form.
   Its single `standard` buy option is backward-compatible, Egypt-only, EGP 11.11,
   with multi-quantity disabled. No duplicate product or other regional sale was
@@ -320,9 +363,119 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   enabled, Google disabled, Apple disabled. Existing prices, coin quantities and
   other channels were preserved. This is configuration evidence, not an OAuth or
   purchase-verification success.
+- Cloud command `170` then confirmed OAuth and credential identity, and read the
+  active `rokn.coins.900` product with its backward-compatible buy option and
+  Egypt price EGP 11.11. Its voided-purchase GET returned HTTP 401. A fresh bounded
+  probe in command `171`, completed at `2026-09-13T11:22:10Z`, again reported
+  `oauth_ok=true`, `app_purchase_read_ok=false`, HTTP 401, domain
+  `androidpublisher`, reason `permissionDenied`. The four saved permissions were
+  re-read and still matched the approved scope. Propagation is possible but not
+  established; no broader permission change, purchase or refund was performed.
+  Package 4's Google channel remained `false` at this checkpoint; command `175`
+  below records its later enablement after the access and RTDN checks.
 - The existing Pixel_9a emulator booted with Play Store present. Its installed
   Rokn is still versionCode 36, installer null. No Play-installed 57 login,
   purchase, consumption, refund or repeated-purchase test has occurred.
+- Follow-up command `172`, completed at `2026-09-13T12:23:52Z`, reran the same
+  bounded, read-only OAuth and voided-purchases probe. It returned
+  `oauth_ok=true` and `app_purchase_read_ok=true`. This supersedes the unresolved
+  access result of commands 170/171; it does not establish why the earlier
+  denial occurred. No credential rotation, broader permission, purchase, refund
+  or Google package enablement was performed for this check.
+- The dedicated review Google account was created and registered as a student
+  through the installed app's normal OAuth flow. App profile and web recharge
+  then showed the same identity and 35-coin balance. This is account provisioning
+  on version 36, not candidate-57 verification or full review access. See
+  [review access](REVIEW_ACCESS.md). Following specific owner confirmation, the
+  existing `Rokn internal QA` list was updated from two to three accounts without
+  removing its original members. Both internal testing and license testing use
+  that selected list; License Testing readback showed three members and unchanged
+  `RESPOND_NORMALLY`. The review account accepted the internal invitation and
+  Play confirmed tester membership. Its test listing is accessible, but says
+  the account has no devices; signing into Play on the emulator is still required.
+- At the earlier billing checkpoint, Google Cloud showed no linked billing account. The free-trial
+  signup is open for the Rokn account with Egypt selected, optional marketing
+  unchecked, and an advertised $300 / 90-day offer with no automatic charges.
+  With the owner's confirmation, `Agree & continue` advanced to payment
+  verification. Google selected the existing Egyptian organization payments
+  profile and an existing Mastercard. After explicit owner confirmation to use
+  the saved card for the free trial, `Start free` was clicked. Google then displayed
+  `One-time prepayment required`: this payment method requires a USD 30 prepayment
+  before the trial becomes active, refundable on closing the Cloud billing
+  account. The owner subsequently explicitly authorized this USD 30 payment.
+  The exact amount and saved Mastercard were verified on the payment review
+  screen and `Pay now` was submitted once. CIB's 3-D Secure challenge then requested
+  a six-digit SMS code for Google / USD 30.00. Charge and trial activation were
+  not established at that checkpoint; the confirmed result is recorded below.
+  Do not submit another payment.
+  No paid upgrade was selected in that flow. This pending-payment observation
+  was superseded by the September 13 follow-up below.
+
+### Cloud activation and tax follow-up (September 13)
+
+- Google Payments emailed confirmation that the USD 30 prepayment succeeded
+  and was received for billing account `019AE0-CF89EB-504632`. The Cloud console
+  subsequently displayed an active free trial with USD 300 credit and 90 days
+  remaining, with an Upgrade button still offered. No second payment was made.
+- Firebase separately emailed that linking the Cloud billing account switched
+  the project to its Blaze plan. This is not evidence that the Cloud free-trial
+  billing account itself was upgraded to an unrestricted paid account.
+- Egypt tax info asks for TRN and UIN, not company-document uploads. No tax form
+  was submitted. The owner explicitly deferred UIN completion and requested
+  continuation of store setup. Do not enter the commercial-register unified
+  number in the UIN field or mark tax verification complete. No observed Play
+  rejection or review blocker has been attributed to the missing UIN.
+- An authenticated taxpayer portal account is accessible, but adding the
+  company's official correspondence settings returned a duplicate tax-ID
+  error. No company or previous non-core linking request appears in that
+  account. This does not establish which other account, if any, holds the ID.
+  Mail searches found today's account-verification email, not a UIN or prior
+  correspondence-confirmation message. No tax filing or new taxpayer
+  registration was submitted.
+
+### Google Play notification transport (September 13 continuation)
+
+- Created topic `projects/rokn-production-2026/topics/rokn-play-rtdn` without
+  a default subscription, exports, transforms or topic-level retention.
+- After explicit action-time confirmation, granted
+  `google-play-developer-notifications@system.gserviceaccount.com` the
+  `Pub/Sub Publisher` role on this topic only. The Console confirmed
+  `Policy updated`; no project-wide administrator access was granted.
+- Created the authenticated push subscription
+  `rokn-play-rtdn-push` with endpoint
+  `https://rokn.app/api/store-notifications/google`. The route prefix was
+  checked in RouteServiceProvider; this endpoint is outside the `/api/v1`
+  course API group. Payload unwrapping remains off.
+- Created the dedicated service identity `rokn-play-rtdn-push` after the owner's
+  action-time confirmation. The Console confirmed creation and lists it enabled
+  with no keys, unique ID `102220628208040821922`. No project-wide roles were
+  assigned to it.
+- The saved push subscription uses the same endpoint as its explicit audience,
+  a 60-second acknowledgement deadline, 10-to-600-second exponential backoff,
+  seven-day unacknowledged-message retention and no inactivity expiration.
+  Authenticated delivery is enabled; payload unwrapping is off.
+- After action-time confirmation, granted Pub/Sub service agent
+  `service-112556080712@gcp-sa-pubsub.iam.gserviceaccount.com`
+  `Service Account Token Creator` on the dedicated push identity only, not the
+  project. Readback showed `No inheritance` on this service-account resource.
+- Added only `GOOGLE_PLAY_RTDN_AUDIENCE` and
+  `GOOGLE_PLAY_RTDN_SERVICE_ACCOUNT_EMAIL` to the existing production environment
+  after comparing the full editor contents with the intended change. Deployment
+  `204` succeeded using unchanged source `855f7293fe3e96682a87f2b79d69ba4238c98f87`.
+- Saved the topic in Google Play monetization settings with subscriptions,
+  voided purchases and all one-time products selected. Sent one official Play
+  test notification after deployment. Production read-only command `173` at
+  `2026-09-13T13:58:05Z` confirmed both expected RTDN values and event
+  `21807048248284341`, received and processed at `2026-09-13T13:57:27Z`, with no
+  error. Its `other` / `ignored` state is expected for a test notification: it
+  proves authenticated transport without creating a purchase or granting coins.
+- Read-only command `174` at `2026-09-13T13:59:36Z` verified active product
+  `rokn.coins.900`, package `com.rokn`, legacy-compatible option `standard`,
+  Egypt availability and EGP 11.11, matching local package 4's 900 coins.
+  Guarded command `175` then enabled only that package's Google channel and
+  confirmed Google configuration readiness. Prices, coin quantities, direct
+  availability and Apple configuration were unchanged. No purchase, consumption,
+  refund or credit to a user was performed. Native purchase testing remains open.
 
 ### Listing setup (September 13 continuation)
 
@@ -334,11 +487,30 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   are in `mobile/store/assets/`; no synthetic app screenshot was used.
 - At least two actual phone/tablet screenshots of the released candidate remain
   missing. Do not substitute the emulator's older version 36 or mockups.
-- Public support email and website fields still await their final save/publish
-  action. App content shows nine uncompleted declarations: ads, app access,
-  content rating, target audience, Data safety, advertising ID, government,
-  financial features and health. Final answers must match actual code, catalog
-  and account/provider settings. Reusable reviewer access is not yet verified.
+- Public support email `support@rokn.app` and website `https://rokn.app` were
+  saved with the Console's Publish action. This contact update did not submit
+  the application for public review. Following the owner's explicit confirmation,
+  Ads was saved as No and the Console outstanding count decreased to eight.
+  These eight App content declarations remain incomplete: app access, content rating, target audience, Data safety,
+  advertising ID, government, financial features and health. IARC terms were
+  accepted with the support email and category Other apps. Its draft currently
+  records no rating-relevant bundled content and yes to user-content sharing;
+  the remaining exact questions/authorization and final rating are not completed.
+  Reusable reviewer access is still missing.
+- The owner subsequently specified **12+**, replacing the earlier 18+ proposal,
+  and authorized changing Gemini through OpenRouter if required. This has not
+  been entered in the blocked Target audience form and is not a final IARC rating.
+  Both [Gemini API terms](https://ai.google.dev/gemini-api/terms) and
+  [Google Cloud terms, section 20(d)](https://cloud.google.com/terms/service-terms)
+  restrict generative-AI use in services directed to or likely accessed by
+  under-18s. [OpenRouter sections 2 and 5.2](https://openrouter.ai/terms/) also
+  require clarification of downstream minors' eligibility under its own 18+
+  Service rule; merely replacing Gemini is not a verified resolution. Claude
+  permits minor-serving products subject to its additional safeguards and
+  disclosures, but that does not establish OpenRouter permission. No runtime
+  model, age gate or production setting was changed, and no provider request
+  has yet been sent. See CONSOLE_SETUP.md for primary sources and next action.
+  Competitors' displayed ratings do not establish their target-audience choices.
 - Publishing overview contains unsent changes. The public review action is
   disabled until setup is complete; managed publishing was observed off and was
   not changed. Internal availability is not acceptance for public distribution.
@@ -347,9 +519,98 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   backend Sentry DSN absent, Nightwatch enabled and request-payload capture off.
   No setting or secret was changed. Do not claim provider non-retention, no data
   sharing, or active backend Sentry merely from repository defaults/SDK presence.
-- Google Cloud's project topic and subscription lists were inspected and both
-  were empty. RTDN needs real resources as well as the two missing backend values;
-  no topic/subscription, push identity or Pub/Sub permissions were created here.
+- Earlier inspection found empty topic/subscription lists and no linked Cloud
+  billing account. This historical state is superseded by the Cloud activation
+  and notification transport updates above. A Play Payments profile alone is
+  not a Google Cloud billing account.
+
+### September 13 follow-up: live media billing blocker
+
+- Signed into Bunny using the authorized `roknproduction@gmail.com` Google
+  identity. The account's own overview and Billing pages explicitly show an
+  expired free trial, $0 paid balance, $20 expired trial credits, $0.04 trial
+  usage and no billing records. Recharge was initially disabled until billing
+  information was completed. That pre-payment state is superseded below.
+- Production read-only command `177` at `2026-09-13T14:39:07Z` confirms Stream
+  library `739603`, CDN `vz-946c2d1a-bba.b-cdn.net` and storage zone/CDN
+  `rokn-production-assets` / `rokn-production-assets.b-cdn.net`, matching the
+  authenticated Bunny account. This is a production dependency, not a different
+  unused trial account. Post-payment media verification is recorded below;
+  this does not establish the complete candidate-app journey.
+- Command `176` failed before executing PHP because the command lacked the
+  `php artisan` prefix. It made no application changes; command `177` is the
+  successful read-only replacement.
+- After the owner's explicit confirmation, the company name and Egyptian
+  billing address were saved. Bunny confirmed "Account details successfully
+  updated. Saved" and enabled Recharge Account. The owner then completed
+  the authorized $10 card recharge. Billing confirmed a September 13 payment
+  and $10 available balance. The live tax rate now displays 14%.
+  Auto-recharge remains disabled; no second payment was submitted.
+- Library `739603` shows 48 videos and 13 GB storage. Its video
+  `ab15c084-d9ef-4dfd-aecf-5d2f41f3b9cd` played in the embedded player and
+  advanced to about 38 seconds before being paused. This is provider-player
+  verification, not a candidate-57 native-device test.
+- Public `/api/v1/courses/list` and course details succeeded. Fresh guest
+  preview URLs for courses 3, 8, 9, 10, 13 and 14 returned valid HLS masters,
+  a rendition playlist and HTTP 200 for the first media segment (HEAD).
+  Paid lessons, every rendition and native playback remain unverified.
+- Removed legacy demonstration course 1 (30 videos / one minute total,
+  two-second guest preview) after the owner's explicit deletion approval and
+  successful dashboard MFA. The dashboard first unlisted it. Since
+  `AdminCourseLifecycleService::archive` only unlists published courses,
+  production command 178 then soft-deleted this exact, already hidden course
+  with identity checks and a transaction at 2026-09-13 18:16:38 UTC.
+  Verified `soft_deleted: true`; its two orders, two enrollments and 30 lesson
+  records were retained. No physical media were deleted. The operation is
+  recoverable and did not change other courses. Public catalog verification
+  lists real courses 3, 8, 9, 10, 13 and 14 plus five coming-soon cards; course 1
+  is absent and its public details endpoint returns HTTP 404.
+- The separately confirmed Google Play Advertising ID declaration was saved
+  as No. Google confirmed the save; public review was not submitted.
+- The owner also confirmed and Google saved three declarations: non-government,
+  no health features, and rewards/points/incentives only under Financial
+  features. No banking, money-transfer or cryptocurrency feature was declared;
+  Google requested no additional financial documentation for this selection.
+  At that checkpoint App content showed four remaining declarations. The later
+  content-rating save below reduced the count to three. No public review submission.
+- Rechecked the Google Play App access page. No access declaration is saved;
+  the page explicitly requires the reviewer to access paid features without
+  purchasing. Existing social QA account alone does not prove this requirement.
+- Generated and inspected a new campaign feature graphic using the built-in
+  image generator and the existing course artwork. Preserved source and
+  1024x500 opaque PNG export under `mobile/store/assets/play-feature-generated-v2*`.
+  Prompt/provenance and export script are beside it. This is not a screenshot,
+  was not uploaded, and does not close the candidate screenshot requirement.
+
+### September 13 follow-up: content declarations and reviewer provisioning
+
+- IARC questionnaire completed and saved in Play Console. The generated ratings
+  include IARC Generic 3+, PEGI 3 and ESRB Everyone with user interaction and
+  in-app purchase descriptors. These are content ratings, not approval of the
+  intended 12+ audience or the AI provider's downstream-user eligibility.
+  App content's outstanding count decreased from four to three: App access,
+  Target audience and Data safety. No public review was submitted.
+- Data safety's 17 selected data types were completed and saved as a draft.
+  The expanded preview was checked, including device-ID purposes for push
+  communications and marketing. Optional account/content/purchase data and
+  required interactions/diagnostics/device identifiers are distinguished.
+  OAuth, encryption in transit and the live account-deletion URL are included.
+  Sharing exclusions rely on the actual user-initiated/explicit-consent and
+  processor flows, not a claim that OpenRouter never retains data. Production
+  provider data collection remains allowed and ZDR remains false. The final
+  submission is blocked by the unfinished Target audience declaration.
+- Production command 179 confirmed reviewer user 13 and published course 3's
+  mentor plan 12, with 50 messages and normal project/chat budgets. Attempts
+  180-182 to provision a complimentary full-plan enrollment all rolled back:
+  the first lacked the plan-order link, the second failed the paid-contribution
+  floor, and the third's zero-floor snapshot was rejected by plan validation.
+  No runtime constraint was removed and no paid credits or receipts were faked.
+  Read-only command 183 confirmed zero matching enrollments and zero generated
+  review codes after these attempts. The account still lacks paid-feature access.
+- Next access route is an actual licensed-test purchase from candidate 57 via
+  Google Play, then normal course purchase and entitlement verification. This
+  does not by itself establish reusable cross-location reviewer login. Candidate
+  installation, purchase, screenshots and the native walkthrough remain pending.
 
 Apple's official sign-in page is open only. Organization membership, Team ID,
 App Store Connect record and signed iOS archive are not verified.
