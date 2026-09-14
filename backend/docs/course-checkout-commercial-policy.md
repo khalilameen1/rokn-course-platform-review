@@ -9,6 +9,21 @@
 - `CourseAccessPlanService::projectsEnabledForEnrollment()` owns legacy fallback and fails closed for malformed plan-backed receipts.
 - Deploy the version-6 MySQL CHECK migration before enabling new writers. It retains all historical schema branches. Do not restore an older CHECK after version-6 orders exist.
 
+### Explicit Basic-only activation
+
+After the new code and schema pass deployment checks, inspect each intended canonical course's current `authoring_version`. Run one course per invocation, substituting its actual ID and version:
+
+```text
+php artisan courses:activate-watch-only-basic <course-id> --expected-version=<current-version>
+php artisan courses:activate-watch-only-basic <course-id> --expected-version=<same-version> --apply
+```
+
+The default is a read-only readiness preview. `--apply` creates its own fresh staged draft and publishes through the usual health/revision checks, atomically. Any pre-existing draft, stale version, missing plan identity or publication failure stops the command; there is no force/override. A failed publication rolls back the draft as well as its changes. An already watch-only Basic is a no-op when the expected version is current.
+
+Only Basic's chat/project/certificate capabilities and their unused budgets are disabled. Plan names/IDs, all coin prices and paid floors, delivery-cost inputs, Plus/Pro terms, catalogue visibility and the main-course choice are preserved. Existing order/enrollment receipts are not rewritten. A successful publication advances the authoring revision normally and follows the normal course-update notification path; this is reported in the command output. It is not a silent direct SQL edit.
+
+Do not use `syncAdminPlans()` for this narrow rollout: that editor save intentionally resynchronizes all three tiers against the global runtime policy. Do not reuse an existing draft, disable readiness or fabricate cost inputs to force activation.
+
 ## Promotions
 
 `settings.max_course_promotion_percent` is the combined percentage ceiling for earned coins and coupons. Its initial value is 20. The older `max_reward_contribution_per_course` remains an independently stored historical **coin amount**, not a percentage.
