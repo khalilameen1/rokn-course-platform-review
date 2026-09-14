@@ -57,6 +57,8 @@ final readonly class WalletQueryService
             'reward_balance' => $rewardBalance,
             'course_spendable_balance' => $courseSpendableBalance,
             'reward_contribution_cap_per_course' => $rewardContributionCap,
+            'max_course_promotion_percent' => min(20, max(0, (int) ($setting->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)))),
+            'course_quote_required' => true,
             'breakdown' => [
                 'total_balance' => $totalBalance,
                 'purchased_balance' => $purchasedBalance,

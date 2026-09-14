@@ -47,6 +47,8 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
     public function test_mysql_reordered_v3_is_verified_against_its_original_digest_without_rehashing(): void
     {
         $snapshot = $this->legacy($this->snapshot());
+        self::assertSame(5, $snapshot['access']['terms']['version']);
+        self::assertArrayNotHasKey('projects_enabled', $snapshot['access']['terms']);
         $reordered = $this->reorderObjects($snapshot);
         self::assertNotSame($snapshot['fingerprint'], $this->legacyDigest($reordered));
         self::assertNotNull($this->read($reordered));
@@ -96,6 +98,16 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
         self::assertNull($this->read($this->reorderObjects($snapshot)));
     }
 
+    public function test_changing_or_adding_project_entitlement_does_not_preserve_a_signed_snapshot(): void
+    {
+        foreach ([3, 4] as $version) {
+            $snapshot = $this->snapshot();
+            if ($version === 3) $snapshot = $this->legacy($snapshot);
+            $snapshot['access']['terms']['projects_enabled'] = false;
+            self::assertNull($this->read($this->reorderObjects($snapshot)), "version {$version}");
+        }
+    }
+
     private function read(array $snapshot): ?array
     {
         $submission = new ProjectSubmission();
@@ -130,6 +142,10 @@ final class ProjectSubmissionEvaluationSnapshotTest extends TestCase
     private function legacy(array $snapshot): array
     {
         $snapshot['version'] = 3;
+        // The historical v3 evaluator captured v5 access receipts. Do not let
+        // the current receipt writer fabricate a never-issued v3/v6 layout.
+        $snapshot['access']['terms']['version'] = 5;
+        unset($snapshot['access']['terms']['projects_enabled']);
         $snapshot['fingerprint'] = $this->legacyDigest($snapshot);
         return $snapshot;
     }

@@ -352,7 +352,7 @@ describe('course checkout requotes rejected discounts without automatic purchase
     expect(mockOpenCoinCheckout).not.toHaveBeenCalled();
   });
 
-  it('requotes after pending top-up credit before enabling confirmation', async () => {
+  it('does not let legacy top-up credit re-quote or close the new intent-owned sheet', async () => {
     harness = await renderPurchase({initialBalance: 0});
     await applyCoupon(harness);
     mockOpenCoinCheckout.mockResolvedValue({
@@ -364,38 +364,18 @@ describe('course checkout requotes rejected discounts without automatic purchase
     expect(harness.read().dialogStep).toBe('topup');
     expect(mockQuote).not.toHaveBeenCalled();
 
-    const currentQuote = deferred<CoursePurchaseQuote>();
-    mockQuote.mockReturnValueOnce(currentQuote.promise);
     await harness.credit(1000);
-    expect(harness.read().busy).toBe(true);
-    expect(mockQuote).toHaveBeenCalledWith('52', 'guided', 'SAVE', 4);
-    await act(async () => harness!.read().onConfirmPurchase());
-    expect(mockPurchaseCourse).not.toHaveBeenCalled();
-
-    await act(async () =>
-      currentQuote.resolve(
-        quote({finalPrice: 800, discountAmount: 200, discountPercentage: 20}),
-      ),
-    );
     expect(harness.read()).toMatchObject({
       busy: false,
-      dialogStep: 'confirm',
-      purchasePrice: 800,
-      couponApplied: true,
+      dialogStep: 'topup',
+      balance: 1000,
     });
+    expect(mockQuote).not.toHaveBeenCalled();
     expect(mockOpenCoinCheckout).toHaveBeenCalledTimes(1);
     expect(mockPurchaseCourse).not.toHaveBeenCalled();
-    await act(async () => harness!.read().onConfirmPurchase());
-    expect(mockPurchaseCourse).toHaveBeenLastCalledWith(
-      '52',
-      'guided',
-      'SAVE',
-      800,
-      4,
-    );
   });
 
-  it('shows the new shortfall when delayed credit no longer covers the invalid coupon total', async () => {
+  it('leaves delayed-credit price and coupon validation to the durable checkout controller', async () => {
     harness = await renderPurchase({initialBalance: 0});
     await applyCoupon(harness);
     mockWallet.mockResolvedValue(wallet(500));
@@ -405,12 +385,9 @@ describe('course checkout requotes rejected discounts without automatic purchase
     await harness.credit(500);
     expect(harness.read()).toMatchObject({
       dialogStep: 'topup',
-      couponApplied: false,
-      purchasePrice: 1000,
-      shortfall: 500,
       balance: 500,
     });
-    expect(mockQuote).toHaveBeenCalledTimes(2);
+    expect(mockQuote).not.toHaveBeenCalled();
     expect(mockOpenCoinCheckout).not.toHaveBeenCalled();
     expect(mockPurchaseCourse).not.toHaveBeenCalled();
   });

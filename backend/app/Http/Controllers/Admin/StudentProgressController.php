@@ -10,13 +10,16 @@ use App\Models\CourseSection;
 use App\Services\CourseSectionSequenceService;
 use App\Services\StudentProgressSummaryService;
 use App\Services\CourseRevisionLearnerReadService;
+use App\Services\CourseAccessPlanService;
+use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
 
 class StudentProgressController extends Controller
 {
     public function __construct(
         private readonly CourseSectionSequenceService $sectionSequence,
-        private readonly CourseRevisionLearnerReadService $revisionReads
+        private readonly CourseRevisionLearnerReadService $revisionReads,
+        private readonly CourseAccessPlanService $plans
     ) {
     }
 
@@ -112,7 +115,10 @@ class StudentProgressController extends Controller
 
         // Calculate progress for each enrolled course
         $coursesProgress = $enrollments->map(function ($enrollment) use ($sectionsByCourse, $progressBySection) {
-            $sections = $sectionsByCourse->get($enrollment->course_id, collect());
+            $projectsEnabled = $this->plans->projectsEnabledForEnrollment($enrollment);
+            $sections = $this->sectionSequence->forProjectsPolicy(
+                $sectionsByCourse->get($enrollment->course_id, collect()), $projectsEnabled
+            );
             $completed = $sections->filter(
                 fn ($section): bool => (bool) ($progressBySection->get($section->id)?->is_completed ?? false)
             );
@@ -128,6 +134,7 @@ class StudentProgressController extends Controller
             $completedCount = $completed->count();
             $progressData = [
                 'total_sections' => $total,
+                'projects_enabled' => $projectsEnabled,
                 'completed_sections' => $completedCount,
                 'progress_percentage' => $total > 0
                     ? min(100, (int) round(($completedCount / $total) * 100))
@@ -178,12 +185,7 @@ class StudentProgressController extends Controller
      */
     private function calculateCourseProgress($userId, $courseId)
     {
-        // Get all sections for the course
-        $sections = CourseSection::where('course_id', $courseId)
-            ->with('sectionable')
-            ->orderBy('order')
-            ->get();
-        $sections = $this->sectionSequence->learning($sections);
+        $sections = $this->entitledLearningSections((int) $userId, (int) $courseId);
 
         $totalSections = $sections->count();
 
@@ -243,11 +245,7 @@ class StudentProgressController extends Controller
      */
     private function getSectionsDetail($userId, $courseId)
     {
-        $sections = CourseSection::where('course_id', $courseId)
-            ->with('sectionable')
-            ->orderBy('order')
-            ->get();
-        $sections = $this->sectionSequence->learning($sections);
+        $sections = $this->entitledLearningSections((int) $userId, (int) $courseId);
 
         $progress = $this->revisionReads
             ->sectionProgressRows((int) $userId, $sections->pluck('id'))
@@ -278,9 +276,7 @@ class StudentProgressController extends Controller
      */
     private function getLastActivity($userId, $courseId)
     {
-        $sectionIds = $this->sectionSequence
-            ->learning(CourseSection::where('course_id', $courseId)->get())
-            ->pluck('id');
+        $sectionIds = $this->entitledLearningSections((int) $userId, (int) $courseId)->pluck('id');
 
         $lastProgress = $this->revisionReads
             ->sectionProgressRows((int) $userId, $sectionIds)
@@ -303,7 +299,10 @@ class StudentProgressController extends Controller
         $activeEnrollmentRows = CourseEnrollment::query()
             ->active()
             ->whereHas('user', fn ($users) => $users->students())
-            ->get(['user_id', 'course_id'])
+            // Snapshot and completion scope must survive projection. Loading
+            // only user/course IDs silently treats watch-only as legacy access.
+            ->orderByDesc('id')
+            ->get(['id', 'user_id', 'course_id', 'access_plan_id', 'access_plan_snapshot', 'completed_with_projects'])
             ->unique(fn (CourseEnrollment $row) => $row->user_id . ':' . $row->course_id)
             ->values();
         $activeEnrollments = $activeEnrollmentRows->count();
@@ -312,28 +311,34 @@ class StudentProgressController extends Controller
             ->whereIn('course_id', $activeEnrollmentRows->pluck('course_id')->unique())
             ->get(['id', 'course_id', 'module_id', 'order', 'section_type', 'sectionable_type']));
         $learningSectionIds = $learningSections->pluck('id');
-        $sectionCounts = $learningSections->countBy('course_id');
+        $sectionsByCourse = $learningSections->groupBy('course_id');
         $courseBySection = $learningSections->pluck('course_id', 'id');
         $activePairs = $activeEnrollmentRows->keyBy(
             fn (CourseEnrollment $row): string => $row->user_id . ':' . $row->course_id
+        );
+        $entitledSectionsByPair = $activePairs->map(fn (CourseEnrollment $enrollment) =>
+            $this->sectionSequence->forProjectsPolicy(
+                $sectionsByCourse->get($enrollment->course_id, collect()),
+                $this->plans->projectsEnabledForEnrollment($enrollment)
+            )->pluck('id')->mapWithKeys(fn ($id) => [(int) $id => true])
         );
         $completedRows = $this->revisionReads->sectionProgressRowsForUsers(
             $activeEnrollmentRows->pluck('user_id'),
             $learningSectionIds
         )->where('is_completed', true)
-            ->filter(function ($row) use ($courseBySection, $activePairs): bool {
+            ->filter(function ($row) use ($courseBySection, $entitledSectionsByPair): bool {
                 $courseId = $courseBySection->get((int) $row->course_section_id);
 
                 return $courseId !== null
-                    && $activePairs->has($row->user_id . ':' . $courseId);
+                    && ($entitledSectionsByPair->get($row->user_id . ':' . $courseId)?->has((int) $row->course_section_id) ?? false);
             });
         $completedCounts = $completedRows
             ->groupBy(fn ($row): string => $row->user_id . ':'
                 . $courseBySection->get((int) $row->course_section_id))
             ->map->count();
         $progressPercentages = $activeEnrollmentRows
-            ->map(function (CourseEnrollment $enrollment) use ($sectionCounts, $completedCounts): ?float {
-                $total = (int) ($sectionCounts[$enrollment->course_id] ?? 0);
+            ->map(function (CourseEnrollment $enrollment) use ($entitledSectionsByPair, $completedCounts): ?float {
+                $total = $entitledSectionsByPair->get($enrollment->user_id . ':' . $enrollment->course_id)?->count() ?? 0;
                 if ($total === 0) {
                     return null;
                 }
@@ -402,5 +407,18 @@ class StudentProgressController extends Controller
             'course_id' => $courseId,
             'comparisons' => $comparison
         ]);
+    }
+
+    /** Staff reads follow the purchased path, not today's mutable offer. */
+    private function entitledLearningSections(int $userId, int $courseId): Collection
+    {
+        $enrollment = CourseEnrollment::query()->where('user_id', $userId)
+            ->where('course_id', $courseId)->active()->orderByDesc('id')->first();
+        if (!$enrollment) return collect();
+
+        return $this->sectionSequence->learning(
+            CourseSection::query()->where('course_id', $courseId)->get(),
+            $this->plans->projectsEnabledForEnrollment($enrollment)
+        );
     }
 }

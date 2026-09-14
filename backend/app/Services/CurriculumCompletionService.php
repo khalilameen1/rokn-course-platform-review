@@ -19,7 +19,8 @@ final class CurriculumCompletionService
 {
     public function __construct(
         private readonly CourseSectionSequenceService $sectionSequence,
-        private readonly CourseRevisionLearnerReadService $revisionReads
+        private readonly CourseRevisionLearnerReadService $revisionReads,
+        private readonly CourseAccessPlanService $plans
     ) {
     }
 
@@ -61,14 +62,17 @@ final class CurriculumCompletionService
             }
 
             $earnedRevision = (int) ($enrollment->completed_curriculum_revision ?? 0);
-            if ($earnedRevision > 0) {
+            $projectsEnabled = $this->plans->projectsEnabledForEnrollment($enrollment);
+            $watchOnlyCompletion = $enrollment->completed_with_projects === false;
+            if ($earnedRevision > 0 && !($watchOnlyCompletion && $projectsEnabled)) {
                 return $earnedRevision;
             }
 
             // The durable marker is itself the authority. Never trust a
             // caller merely because it named its signal `course.completed`.
             $learningSectionIds = $this->sectionSequence->learning(
-                CourseSection::query()->where('course_id', $courseId)->get()
+                CourseSection::query()->where('course_id', $courseId)->get(),
+                $projectsEnabled
             )->pluck('id');
             if ($learningSectionIds->isEmpty()) {
                 return null;
@@ -80,10 +84,18 @@ final class CurriculumCompletionService
                 return null;
             }
 
-            $enrollment->forceFill([
+            $completion = [
                 'completed_curriculum_revision' => $revision,
                 'curriculum_completed_at' => now(),
-            ])->save();
+            ];
+            if (Schema::hasColumn('course_enrollments', 'completed_with_projects')) {
+                $completion['completed_with_projects'] = $projectsEnabled;
+            } elseif (!$projectsEnabled) {
+                // A rolling deployment may not mistake watching for completing
+                // the practical curriculum before its additive scope column exists.
+                return null;
+            }
+            $enrollment->forceFill($completion)->save();
 
             return $revision;
         }, 3);
@@ -97,7 +109,9 @@ final class CurriculumCompletionService
 
         $revision = (int) ($enrollment->completed_curriculum_revision ?? 0);
 
-        return $revision > 0 ? $revision : null;
+        // Completing the watch-only path must not award a practical certificate
+        // immediately after an upgrade. The required projects still need passing.
+        return $revision > 0 && $enrollment->completed_with_projects !== false ? $revision : null;
     }
 
     /**
@@ -116,6 +130,7 @@ final class CurriculumCompletionService
         return $enrollments
             ->filter(fn (CourseEnrollment $enrollment): bool =>
                 (int) ($enrollment->completed_curriculum_revision ?? 0) > 0
+                    && $enrollment->completed_with_projects !== false
             )
             ->mapWithKeys(fn (CourseEnrollment $enrollment): array => [
                 (int) $enrollment->id => (int) $enrollment->completed_curriculum_revision,

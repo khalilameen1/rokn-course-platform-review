@@ -15,8 +15,8 @@ use LogicException;
  */
 final class CourseAccessPlanSnapshot
 {
-    public const CURRENT_VERSION = 5;
-    public const SUPPORTED_VERSIONS = [1, 2, 3, 4, self::CURRENT_VERSION];
+    public const CURRENT_VERSION = 6;
+    public const SUPPORTED_VERSIONS = [1, 2, 3, 4, 5, self::CURRENT_VERSION];
 
     /** @var list<string> */
     private const REQUIRED_KEYS = [
@@ -154,6 +154,19 @@ final class CourseAccessPlanSnapshot
             if (($projectEnabled && (!$enhanced || $projectMaximum < 1 || $projectMaximum > 5))
                 || (!$projectEnabled && $projectMaximum !== 0)) {
                 throw new LogicException('The access-plan snapshot contains an invalid project attachment contract.');
+            }
+        }
+        if ($version >= 6) {
+            if (!array_key_exists('projects_enabled', $snapshot)
+                || !is_bool($snapshot['projects_enabled'])) {
+                throw new LogicException('The access-plan snapshot requires an explicit project entitlement.');
+            }
+            if (!$snapshot['projects_enabled'] && (
+                (bool) $snapshot['certificate_enabled']
+                || (string) $snapshot['project_feedback_level'] !== CourseAccessPlan::FEEDBACK_PASS_ONLY
+                || (bool) $snapshot['project_output_enabled']
+            )) {
+                throw new LogicException('A watch-only contract cannot include projects or a certificate.');
             }
         }
         if ((int) $snapshot['plan_id'] !== $accessPlanId) {

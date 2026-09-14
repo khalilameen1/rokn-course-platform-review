@@ -50,7 +50,7 @@
                 <div class="row">
                     @foreach([
                         'reward_balance_cap' => ['أقصى رصيد مكافآت', 1200, 0],
-                        'max_reward_contribution_per_course' => ['أقصى مكافآت في كورس واحد', 1200, 0],
+                        'max_reward_contribution_per_course' => ['السقف القديم بالعملات وليس بالنسبة', 1200, 0],
                     ] as $field => [$label, $fallback, $minimum])
                         <div class="col-md-6 col-lg-4 mb-3">
                             <label class="form-label font-weight-bold" for="{{ $field }}">{{ $label }}</label>
@@ -67,6 +67,15 @@
                             @error($field)<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     @endforeach
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <label class="form-label font-weight-bold" for="max_course_promotion_percent">المكافآت والكوبونات معًا بحد أقصى ٪</label>
+                        <input class="form-control @error('max_course_promotion_percent') is-invalid @enderror"
+                            id="max_course_promotion_percent" name="max_course_promotion_percent" type="number"
+                            min="0" max="20" step="1" required
+                            value="{{ old('max_course_promotion_percent', $setting?->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)) }}">
+                        <small class="form-text text-muted">من سعر الاشتراك ويشمل الترقيات السابقة ولا يقيّد العملات المشتراة</small>
+                        @error('max_course_promotion_percent')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                 </div>
                 <hr>
                 <h6 class="font-weight-bold mb-3">عرض التسجيل الموصى به</h6>

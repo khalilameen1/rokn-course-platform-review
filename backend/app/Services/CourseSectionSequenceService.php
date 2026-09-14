@@ -33,13 +33,22 @@ final class CourseSectionSequenceService
     }
 
     /** Only reels and crossing projects take part in course progression. */
-    public function learning(Collection $sections): Collection
+    public function learning(Collection $sections, bool $projectsEnabled = true): Collection
     {
         return $this->ordered(
             $sections->filter(
-                fn ($section): bool => in_array($section->getSectionType(), self::LEARNING_TYPES, true)
+                fn ($section): bool => $section->getSectionType() === 'lesson'
+                    || ($projectsEnabled && $section->getSectionType() === 'project')
             )
         );
+    }
+
+    /** Preserve canonical ordering while removing steps outside a captured plan. */
+    public function forProjectsPolicy(Collection $sections, bool $projectsEnabled): Collection
+    {
+        return $projectsEnabled ? $sections : $sections
+            ->reject(fn ($section): bool => $section->getSectionType() === 'project')
+            ->values();
     }
 
     /**

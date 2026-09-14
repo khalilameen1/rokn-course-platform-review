@@ -178,6 +178,18 @@ $registerCourseApiRoutes = function () {
                 Route::get('course-codes/my-codes', [\App\Http\Controllers\API\CourseCodeController::class,'myCodes']);
 
                 // Course Authorization routes
+                Route::get('course-checkouts', [\App\Http\Controllers\API\CourseCheckoutController::class, 'latest'])
+                    ->middleware(['product.feature:checkout', 'throttle:60,1']);
+                Route::post('course-checkouts', [\App\Http\Controllers\API\CourseCheckoutController::class, 'create'])
+                    ->middleware(['product.feature:checkout', 'throttle:30,1']);
+                Route::get('course-checkouts/{checkout}', [\App\Http\Controllers\API\CourseCheckoutController::class, 'show'])
+                    ->whereUuid('checkout')->middleware(['product.feature:checkout', 'throttle:60,1']);
+                Route::post('course-checkouts/{checkout}/authorize', [\App\Http\Controllers\API\CourseCheckoutController::class, 'authorizeCheckout'])
+                    ->whereUuid('checkout')->middleware(['product.feature:checkout', 'throttle:12,1']);
+                Route::post('course-checkouts/{checkout}/resume', [\App\Http\Controllers\API\CourseCheckoutController::class, 'resume'])
+                    ->whereUuid('checkout')->middleware(['product.feature:checkout', 'throttle:30,1']);
+                Route::post('course-checkouts/{checkout}/cancel', [\App\Http\Controllers\API\CourseCheckoutController::class, 'cancel'])
+                    ->whereUuid('checkout')->middleware(['product.feature:checkout', 'throttle:20,1']);
                 Route::post('courses/purchase-quote', [\App\Http\Controllers\API\CoursePurchaseController::class,'quote'])
                     ->middleware('throttle:20,1');
                 Route::post('courses/authorize', [\App\Http\Controllers\API\CoursePurchaseController::class,'authorizeCourse'])

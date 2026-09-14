@@ -14,6 +14,24 @@ use Tests\TestCase;
 
 class ProductionPreflightTest extends TestCase
 {
+    public function test_checkout_schema_requires_durable_terms_and_unique_order_binding(): void
+    {
+        Schema::create('course_checkouts', function (Blueprint $table): void {
+            $table->id();
+            $table->string('public_id');
+            $table->unsignedBigInteger('funding_order_id')->nullable();
+        });
+        try {
+            $method = new \ReflectionMethod(ProductionPreflight::class, 'requiredProductSchemaFailures');
+            $failures = implode('\n', $method->invoke(app(ProductionPreflight::class)));
+            self::assertStringContainsString('terms_hash', $failures);
+            self::assertStringContainsString('authorized_at', $failures);
+            self::assertStringContainsString('Course checkout funding_order_id ownership is not unique', $failures);
+        } finally {
+            Schema::dropIfExists('course_checkouts');
+        }
+    }
+
     public function test_preflight_checks_the_actual_curl_runtime_capability(): void
     {
         $method = new \ReflectionMethod(ProductionPreflight::class, 'configurationFailures');

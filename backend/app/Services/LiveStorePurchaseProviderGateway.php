@@ -127,6 +127,8 @@ final class LiveStorePurchaseProviderGateway implements StorePurchaseProviderGat
                 'order_id' => $orderId !== '' ? $orderId : null,
                 'region_code' => $purchase->getRegionCode(),
                 'purchase_completed_at' => $purchase->getPurchaseCompletionTime(),
+                // Google-verified per-purchase profile, separate from account identity.
+                'checkout_profile_id' => $purchase->getObfuscatedExternalProfileId(),
                 'acknowledgement_state' => $purchase->getAcknowledgementState(),
                 'test_purchase' => $testPurchase,
                 'quantity' => $quantity,

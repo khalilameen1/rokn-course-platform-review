@@ -313,6 +313,23 @@ final readonly class StorePurchaseService
         // Includes outer caller transactions. A rolled-back credit must never
         // consume a paid token. The persisted unfinalized row is the retry queue.
         DB::afterCommit(fn () => $this->finalization->attempt((int) $purchase->id));
+        // A signed per-checkout Google profile allows RTDN/device-loss recovery.
+        // No SKU guessing: ordinary wallet purchases have no checkout profile.
+        $profile = data_get($purchase->provider_payload, 'checkout_profile_id');
+        if ($purchase->provider === StorePurchase::PROVIDER_GOOGLE && is_string($profile) && Str::isUuid($profile)) {
+            $purchaseId = (int) $purchase->id;
+            DB::afterCommit(static function () use ($purchaseId, $profile): void {
+                try {
+                    $receipt = StorePurchase::query()->find($purchaseId);
+                    $owner = $receipt ? User::query()->find($receipt->user_id) : null;
+                    if ($receipt && $owner) app(CourseCheckoutService::class)->bindStorePurchase($owner, $profile, $receipt);
+                } catch (\Throwable $exception) {
+                    // Credit is committed independently; the reconciler retries
+                    // the durable provider profile, never repeats the credit.
+                    report($exception);
+                }
+            });
+        }
     }
 
     /**

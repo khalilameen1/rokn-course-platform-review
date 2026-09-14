@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\StudentSectionProgress;
@@ -19,7 +20,8 @@ final readonly class CourseCompletionService
         private CourseModuleAccessService $courseAccess,
         private InternalSignalService $internalSignals,
         private CourseRevisionLearnerReadService $revisionReads,
-        private CourseStagedAuthoringService $revisions
+        private CourseStagedAuthoringService $revisions,
+        private CourseAccessPlanService $plans
     ) {
     }
 
@@ -71,6 +73,9 @@ final readonly class CourseCompletionService
         }
         if (!$this->courseAccess->hasCourseAccess($user, $course)) {
             return $this->failure(403, 'You are not authorized to access this course');
+        }
+        if ($section->getSectionType() === 'project' && !$this->projectsIncluded($user, $course)) {
+            return $this->failure(403, 'Projects are not included in this subscription', 'projects_not_included');
         }
 
         $existingProgress = $this->revisionReads->completedSectionProgress(
@@ -245,6 +250,9 @@ final readonly class CourseCompletionService
                 'lock_reason' => 'course_purchase_required',
             ];
         }
+        if ($section->getSectionType() === 'project' && !$this->projectsIncluded($user, $course)) {
+            return ['can_access' => false, 'is_locked' => true, 'lock_reason' => 'projects_not_included'];
+        }
 
         $sections = CourseSection::query()
             ->where('course_id', $section->course_id)
@@ -267,6 +275,16 @@ final readonly class CourseCompletionService
                 ? (string) $state['lock_reason']
                 : null,
         ];
+    }
+
+    private function projectsIncluded(User $user, Course $course): bool
+    {
+        $enrollment = CourseEnrollment::query()->where('user_id', $user->id)
+            ->where('course_id', $course->id)->first();
+
+        // Course access has already been verified. Legacy module access keeps
+        // its historical project path; explicit enrollment contracts govern new sales.
+        return !$enrollment || $this->plans->projectsEnabledForEnrollment($enrollment);
     }
 
     /** @return array<string, mixed> */

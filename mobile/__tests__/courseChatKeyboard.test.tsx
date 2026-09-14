@@ -1,4 +1,5 @@
 import React from 'react';
+jest.mock('../src/components/FullTrackUpgradeSheet', () => () => null);
 import {
   KeyboardAvoidingView,
   Keyboard,

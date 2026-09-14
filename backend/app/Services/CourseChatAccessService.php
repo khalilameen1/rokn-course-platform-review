@@ -100,6 +100,7 @@ final class CourseChatAccessService
             'access_type' => 'none',
             'chat_available' => false,
             'certificate_available' => false,
+            'projects_available' => false,
             'plan_code' => null,
             'plan_name' => null,
             'project_feedback_level' => 'pass_only',
@@ -120,6 +121,7 @@ final class CourseChatAccessService
             'access_type' => $isPaid ? 'paid' : ($isGrant ? 'scholarship' : ($isCourseCode ? 'course_code' : 'free')),
             'chat_available' => $chatAvailable,
             'certificate_available' => $this->certificateAllowedByPlan($enrollment, $terms),
+            'projects_available' => $this->plans->projectsEnabledForEnrollment($enrollment),
             'plan_code' => $terms['code'] ?? $enrollment->accessPlan?->code,
             'plan_name' => $terms['name_ar'] ?? $enrollment->accessPlan?->name_ar,
             'chat_message_limit' => $chatAvailable ? (int) ($publicTerms['chat_message_limit'] ?? 0) : 0,
@@ -191,10 +193,14 @@ final class CourseChatAccessService
         return $resolved['entitlement']['chat_available'] ? $resolved['enrollment'] : null;
     }
 
-    /** Pass-only projects use the same enrollment without requiring an AI plan. */
+    /** Existing pass-only contracts retain projects; new watch-only contracts do not. */
     public function activeProjectEnrollmentFor(int $userId, int $courseId): ?CourseEnrollment
     {
-        return $this->activeEnrollmentFor($userId, $courseId);
+        $enrollment = $this->activeEnrollmentFor($userId, $courseId);
+
+        return $enrollment && $this->plans->projectsEnabledForEnrollment($enrollment)
+            ? $enrollment
+            : null;
     }
 
     public function enrollmentGrantsCourse(CourseEnrollment $enrollment, int $courseId): bool

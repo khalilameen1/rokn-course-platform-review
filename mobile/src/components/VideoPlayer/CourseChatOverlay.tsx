@@ -25,12 +25,16 @@ import {openCourseAssistantAttachment} from './courseLearningApi';
 import {useCourseChatAttachments} from './courseChat/useCourseChatAttachments';
 import {courseChatStyles as styles} from './courseChat/styles';
 import {CourseChatGate} from './courseChat/CourseChatGate';
+import FullTrackUpgradeSheet from '../FullTrackUpgradeSheet';
 import {CourseChatConversation} from './courseChat/CourseChatConversation';
 import {courseAssistantEntryMode} from './courseEntitlements';
 import {courseChatSheetLayout} from './courseChat/layout';
 import {StatusView} from '../ui/PremiumUI';
 import {requestAiConsent} from '../../services/aiConsent';
-import {captureAccountSessionBoundary, assertAccountSessionBoundary} from '../../constants/helpers';
+import {
+  captureAccountSessionBoundary,
+  assertAccountSessionBoundary,
+} from '../../constants/helpers';
 
 interface CourseChatOverlayProps {
   visible: boolean;
@@ -197,7 +201,11 @@ const CourseChatOverlay = ({
       const boundary = await captureAccountSessionBoundary();
       if (!(await requestAiConsent(boundary))) return;
       assertAccountSessionBoundary(boundary);
-      if (!previousVisibleRef.current || previousCourseIdRef.current !== courseId) return;
+      if (
+        !previousVisibleRef.current ||
+        previousCourseIdRef.current !== courseId
+      )
+        return;
       action();
     } finally {
       consentFlightRef.current = false;
@@ -296,7 +304,19 @@ const CourseChatOverlay = ({
                 </Pressable>
               </View>
 
-              {!assistantIncluded ? (
+              {!assistantIncluded &&
+              !chatAccessUnavailable &&
+              !courseAccessRequired &&
+              !courseChatUnavailable ? (
+                <FullTrackUpgradeSheet
+                  visible={visible}
+                  courseId={String(course.id)}
+                  courseTitle={course.title}
+                  onClose={onClose}
+                  onUpgraded={onEntitlementChanged}
+                  embedded
+                />
+              ) : !assistantIncluded ? (
                 <CourseChatGate
                   accessUnavailable={chatAccessUnavailable}
                   courseAccessRequired={courseAccessRequired}

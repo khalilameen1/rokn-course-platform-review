@@ -70,7 +70,22 @@ final readonly class CourseAccessPlanService
             ]);
         }
 
+        $this->assertPurchasableEconomics($plan);
         return $plan;
+    }
+
+    /** Guard new sales only; never re-price or revoke an existing receipt. */
+    public function assertPurchasableEconomics(CourseAccessPlan $plan): void
+    {
+        if (!config('course_plans.enforce_commercial_floor') || (int) $plan->price_coins <= 0) return;
+        $economics = app(CoursePlanEconomicsService::class)->evaluate($plan->getAttributes());
+        if (!$economics['configured'] || !$economics['meets_floor']) {
+            // Public callers must not receive internal provider costs or net
+            // settlement rates from an administrator validation message.
+            throw ValidationException::withMessages([
+                'access_plan_code' => ['هذا الاشتراك غير متاح للشراء الآن جرّب لاحقًا'],
+            ]);
+        }
     }
 
     public function planForEnrollment(CourseEnrollment $enrollment): ?CourseAccessPlan
@@ -116,6 +131,7 @@ final readonly class CourseAccessPlanService
             'project_feedback_level' => (string) $plan->project_feedback_level,
             'project_output_enabled' => (bool) $plan->project_output_enabled,
             'certificate_enabled' => (bool) $plan->certificate_enabled,
+            'projects_enabled' => (bool) ($plan->projects_enabled ?? true),
             'purchased_at' => ($purchasedAt ?: now())->toIso8601String(),
         ];
     }
@@ -143,6 +159,14 @@ final readonly class CourseAccessPlanService
         }
 
         return $snapshot;
+    }
+
+    /** Legacy receipts retain projects; a malformed paid receipt fails closed. */
+    public function projectsEnabledForEnrollment(CourseEnrollment $enrollment): bool
+    {
+        if (!$enrollment->access_plan_id) return true;
+        $terms = $this->termsForEnrollment($enrollment);
+        return $terms !== null && (bool) ($terms['projects_enabled'] ?? true);
     }
 
     /** Public value contract; provider names and dollar budgets never leak to the learner. */
@@ -173,6 +197,7 @@ final readonly class CourseAccessPlanService
             'project_followup_reserve_usd' => $plan->project_followup_reserve_usd,
             'project_output_enabled' => $plan->project_output_enabled,
             'certificate_enabled' => $plan->certificate_enabled,
+            'projects_enabled' => $plan->projects_enabled ?? true,
         ]);
     }
 
@@ -253,6 +278,7 @@ final readonly class CourseAccessPlanService
             'project_output_enabled' => $threadEnabled
                 && (bool) ($terms['project_output_enabled'] ?? false),
             'certificate_enabled' => (bool) ($terms['certificate_enabled'] ?? false),
+            'projects_enabled' => (bool) ($terms['projects_enabled'] ?? true),
         ];
     }
 
@@ -290,6 +316,9 @@ final readonly class CourseAccessPlanService
                 if ($tier === [] || $template === []) continue;
 
                 $values = $this->applyAiPolicy($plan->getAttributes(), $tier, $template);
+                // A global capacity change is also a commercial change for
+                // future purchasers; it cannot bypass a costed offer's floor.
+                app(CoursePlanEconomicsService::class)->assertCommercialFloor($values, $plan->code);
                 $plan->forceFill(array_intersect_key(
                     $values,
                     array_flip(self::AI_RUNTIME_FIELDS)
@@ -475,6 +504,11 @@ final readonly class CourseAccessPlanService
                 if ($tier !== [] && $template !== []) {
                     $runtime = $this->applyAiPolicy($runtime, $tier, $template);
                 }
+                // Editing Basic publishes the new watch-only offer. It does
+                // not modify already-purchased enrollment/order snapshots.
+                if ($code === CourseAccessPlan::BASIC) {
+                    $runtime = (array) $policyDefaults->get(CourseAccessPlan::BASIC, []);
+                }
                 foreach (self::AI_RUNTIME_FIELDS as $field) {
                     $row[$field] = $runtime[$field] ?? null;
                 }
@@ -559,6 +593,13 @@ final readonly class CourseAccessPlanService
                     ]);
                 }
 
+                $deliveryCost = array_key_exists('delivery_cost_usd', $row)
+                    ? ($row['delivery_cost_usd'] === '' ? null : $row['delivery_cost_usd'])
+                    : $existingPlan?->delivery_cost_usd;
+                app(CoursePlanEconomicsService::class)->assertCommercialFloor(array_merge($row, [
+                    'delivery_cost_usd' => $deliveryCost,
+                ]), $code);
+
                 $lockedCourse->accessPlans()->updateOrCreate(['code' => $code], [
                     'name_ar' => trim((string) ($row['name_ar'] ?? '')) ?: $this->defaultName($code),
                     'name_en' => trim((string) ($row['name_en'] ?? '')) ?: null,
@@ -599,8 +640,10 @@ final readonly class CourseAccessPlanService
                     'project_feedback_level' => $feedback,
                     'project_output_enabled' => $feedback === 'enhanced'
                         && !empty($row['project_output_enabled']),
-                    'certificate_enabled' => !array_key_exists('certificate_enabled', $row)
-                        || !empty($row['certificate_enabled']),
+                    'projects_enabled' => $code !== CourseAccessPlan::BASIC,
+                    'certificate_enabled' => $code !== CourseAccessPlan::BASIC
+                        && (!array_key_exists('certificate_enabled', $row) || !empty($row['certificate_enabled'])),
+                    'delivery_cost_usd' => $deliveryCost,
                     'is_active' => !empty($row['is_active']),
                     'sort_order' => ($position + 1) * 10,
                 ]);
@@ -652,6 +695,7 @@ final readonly class CourseAccessPlanService
                         && (bool) $plan->project_followup_attachments_enabled);
                     if (!$chatEnabled && !$projectEnabled) continue;
                     $snapshot['version'] = CourseAccessPlanSnapshot::CURRENT_VERSION;
+                    $snapshot['projects_enabled'] = (bool) ($snapshot['projects_enabled'] ?? true);
                     $snapshot['chat_attachments_enabled'] = $chatEnabled;
                     $snapshot['chat_attachment_max_files'] = $chatEnabled ? min(
                         5, max(1, (int) $plan->chat_attachment_max_files)
@@ -670,9 +714,9 @@ final readonly class CourseAccessPlanService
     private function defaultName(string $code): string
     {
         return match ($code) {
-            CourseAccessPlan::GUIDED => 'التعلّم بإرشاد',
-            CourseAccessPlan::MENTOR => 'التعلّم بمتابعة',
-            default => 'التعلّم',
+            CourseAccessPlan::GUIDED => 'Plus',
+            CourseAccessPlan::MENTOR => 'Pro',
+            default => 'Basic',
         };
     }
 
@@ -693,8 +737,8 @@ final readonly class CourseAccessPlanService
         return [
             [
                 'code' => 'basic',
-                'name_ar' => 'التعلّم',
-                'name_en' => 'Learning',
+                'name_ar' => 'Basic',
+                'name_en' => 'Basic',
                 'price_coins' => $base,
                 'minimum_paid_coins' => 0,
                 'chat_enabled' => false,
@@ -716,14 +760,15 @@ final readonly class CourseAccessPlanService
                 'project_followup_reserve_usd' => 0,
                 'project_feedback_level' => 'pass_only',
                 'project_output_enabled' => false,
-                'certificate_enabled' => true,
+                'projects_enabled' => false,
+                'certificate_enabled' => false,
                 'is_active' => true,
                 'sort_order' => 10,
             ],
             [
                 'code' => 'guided',
-                'name_ar' => 'التعلّم بإرشاد',
-                'name_en' => 'Guided learning',
+                'name_ar' => 'Plus',
+                'name_en' => 'Plus',
                 'price_coins' => $guidedPrice,
                 'minimum_paid_coins' => $this->costToCoins($guidedCost, $round),
                 'chat_enabled' => true,
@@ -751,8 +796,8 @@ final readonly class CourseAccessPlanService
             ],
             [
                 'code' => 'mentor',
-                'name_ar' => 'التعلّم بمتابعة',
-                'name_en' => 'Supported learning',
+                'name_ar' => 'Pro',
+                'name_en' => 'Pro',
                 'price_coins' => $mentorPrice,
                 'minimum_paid_coins' => $this->costToCoins($mentorCost, $round),
                 'chat_enabled' => true,

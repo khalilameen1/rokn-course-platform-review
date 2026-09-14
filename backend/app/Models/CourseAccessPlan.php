@@ -37,6 +37,7 @@ final class CourseAccessPlan extends Model
         'project_followup_budget_usd', 'project_followup_reserve_usd',
         'model_override', 'project_feedback_level', 'project_output_enabled',
         'certificate_enabled', 'is_active', 'sort_order',
+        'projects_enabled', 'delivery_cost_usd',
     ];
 
     protected $casts = [
@@ -61,6 +62,8 @@ final class CourseAccessPlan extends Model
         'max_output_tokens' => 'integer',
         'project_output_enabled' => 'boolean',
         'certificate_enabled' => 'boolean',
+        'projects_enabled' => 'boolean',
+        'delivery_cost_usd' => 'decimal:6',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];

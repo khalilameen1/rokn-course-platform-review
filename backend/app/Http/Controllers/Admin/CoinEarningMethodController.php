@@ -49,6 +49,7 @@ class CoinEarningMethodController extends Controller
             'how_to_use_coins_en' => 'nullable|string|max:12000',
             'reward_balance_cap' => 'required|integer|min:0|max:1000000',
             'max_reward_contribution_per_course' => 'required|integer|min:0|max:1000000',
+            'max_course_promotion_percent' => 'sometimes|required|integer|min:0|max:20',
             'recommended_social_provider' => [
                 'required',
                 'string',
@@ -89,6 +90,26 @@ class CoinEarningMethodController extends Controller
                 ->lockForUpdate()
                 ->get();
             $this->ensureRewardsFitProposedBalanceCap($proposed, $activeRules, $activeMethods);
+            if (array_key_exists('max_course_promotion_percent', $validated)
+                && (int) $validated['max_course_promotion_percent'] !== (int) $setting->max_course_promotion_percent) {
+                $economics = app(\App\Services\CoursePlanEconomicsService::class);
+                \App\Models\CourseAccessPlan::query()->where('is_active', true)->orderBy('id')
+                    ->chunkById(200, function ($plans) use ($economics, $validated): void {
+                        foreach ($plans as $plan) {
+                            try {
+                                $economics->assertCommercialFloor(
+                                    $plan->getAttributes(), $plan->code, (int) $validated['max_course_promotion_percent']
+                                );
+                            } catch (ValidationException $exception) {
+                                throw ValidationException::withMessages([
+                                    'max_course_promotion_percent' => [
+                                        "راجع تسعير الكورس {$plan->course_id} قبل زيادة الخصم أو تغيير حدّه",
+                                    ],
+                                ]);
+                            }
+                        }
+                    });
+            }
             $setting->update($validated);
         }, 3);
         return redirect()->route('admin.coin-earning-methods.index')
@@ -522,6 +543,7 @@ class CoinEarningMethodController extends Controller
             (string) ($setting?->how_to_use_coins_en ?? ''),
             (int) ($setting?->reward_balance_cap ?? 1200),
             (int) ($setting?->max_reward_contribution_per_course ?? 1200),
+            (int) ($setting?->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)),
             (string) ($setting?->recommended_social_provider ?? config('social_auth.recommended_provider')),
             (int) ($setting?->recommended_provider_bonus_coins ?? 0),
             (string) ($setting?->recommended_provider_badge_ar ?? ''),

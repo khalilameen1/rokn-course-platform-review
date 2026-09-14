@@ -59,7 +59,7 @@ function setup(overrides: Partial<EntryParams> = {}) {
   const Harness = ({ready}: {ready: boolean}) => {
     usePurchaseEntry(ready ? {
       ...params,
-      primaryAction: {kind: 'choose_plan', label: 'اختر الفئة المناسبة لك'},
+      primaryAction: {kind: 'choose_plan', label: 'اختر الاشتراك'},
       effectiveSpendableBalance: 900,
       spendableBalance: 900,
     } : params);

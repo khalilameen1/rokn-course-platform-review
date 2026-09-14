@@ -1,3 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+const mockCheckoutId = '11111111-1111-4111-8111-111111111111';
+
 const mockExpoIap = {
   fetchProducts: jest.fn(),
   finishTransaction: jest.fn(),
@@ -33,7 +36,8 @@ describe('native store billing', () => {
   let purchaseUpdate: (purchase: Record<string, unknown>) => void;
   let purchaseFailure: (error: Record<string, unknown>) => void;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
     jest.resetModules();
     Object.values(mockExpoIap).forEach(mock => mock.mockReset());
     mockApi.get.mockReset();
@@ -87,6 +91,145 @@ describe('native store billing', () => {
       skus: ['rokn.coins.600'],
       type: 'in-app',
     });
+  });
+
+  it('durably binds course authorization before payment and restores it on receipt verification', async () => {
+    const currentStorage = require('@react-native-async-storage/async-storage');
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockApi.post.mockResolvedValue({
+      data: {
+        data: {
+          coins_added: 600,
+          finalize_transaction: true,
+          checkout: {id: mockCheckoutId, status: 'completed'},
+        },
+      },
+    });
+    mockExpoIap.requestPurchase.mockImplementation(async () => {
+      expect(
+        await currentStorage.getItem(
+          '@rokn/native-course-checkout/v1/rokn.coins.600:user-a',
+        ),
+      ).toBe(mockCheckoutId);
+      purchaseUpdate({
+        id: 'course-buy',
+        store: 'google',
+        productId: 'rokn.coins.600',
+        purchaseState: 'purchased',
+        purchaseToken: 'course-token',
+      });
+    });
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
+    await expect(
+      purchaseNativeCoinPackage(
+        {
+          id: '1',
+          coins: 600,
+          price: 120,
+          label: '600',
+          storeProductIds: {google: 'rokn.coins.600'},
+        },
+        {courseCheckoutId: mockCheckoutId},
+      ),
+    ).resolves.toMatchObject({success: true});
+    expect(mockApi.post).toHaveBeenCalledWith(
+      'store-purchases/verify',
+      expect.objectContaining({checkout_id: mockCheckoutId}),
+    );
+    expect(
+      await currentStorage.getItem(
+        '@rokn/native-course-checkout/v1/rokn.coins.600:user-a',
+      ),
+    ).toBeNull();
+    expect(mockExpoIap.requestPurchase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: {
+          google: {
+            skus: ['rokn.coins.600'],
+            obfuscatedAccountId: 'account-binding',
+            obfuscatedProfileId: mockCheckoutId,
+          },
+        },
+      }),
+    );
+  });
+
+  it('does not discard a current intent binding when a stale receipt only credits the wallet', async () => {
+    const currentStorage = require('@react-native-async-storage/async-storage');
+    await currentStorage.setItem(
+      '@rokn/native-course-checkout/v1/rokn.coins.600:user-a',
+      mockCheckoutId,
+    );
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockApi.post.mockResolvedValue({
+      data: {
+        data: {
+          coins_added: 600,
+          finalize_transaction: true,
+          checkout_error: 'course_checkout_receipt_too_old',
+        },
+      },
+    });
+    mockExpoIap.getAvailablePurchases.mockResolvedValue([
+      {
+        id: 'stale-receipt',
+        store: 'google',
+        productId: 'rokn.coins.600',
+        purchaseState: 'purchased',
+        purchaseToken: 'old-token',
+      },
+    ]);
+    const {
+      reconcileNativeStorePurchases,
+    } = require('../src/services/nativeStoreBilling');
+    await reconcileNativeStorePurchases();
+    expect(
+      await currentStorage.getItem(
+        '@rokn/native-course-checkout/v1/rokn.coins.600:user-a',
+      ),
+    ).toBe(mockCheckoutId);
+    expect(mockExpoIap.finishTransaction).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores malformed recovery hints instead of blocking a valid paid receipt', async () => {
+    const currentStorage = require('@react-native-async-storage/async-storage');
+    await currentStorage.setItem(
+      '@rokn/native-course-checkout/v1/rokn.coins.600:user-a',
+      'broken-local-hint',
+    );
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockApi.post.mockResolvedValue({
+      data: {data: {coins_added: 600, finalize_transaction: true}},
+    });
+    mockExpoIap.getAvailablePurchases.mockResolvedValue([
+      {
+        id: 'valid-receipt',
+        store: 'google',
+        productId: 'rokn.coins.600',
+        purchaseState: 'purchased',
+        purchaseToken: 'paid-token',
+        obfuscatedProfileIdAndroid: 'bad-profile',
+      },
+    ]);
+    const {
+      reconcileNativeStorePurchases,
+    } = require('../src/services/nativeStoreBilling');
+    await expect(reconcileNativeStorePurchases()).resolves.toMatchObject({
+      reconciled: 1,
+    });
+    expect(mockApi.post).toHaveBeenCalledWith(
+      'store-purchases/verify',
+      expect.not.objectContaining({checkout_id: expect.anything()}),
+    );
+    expect(mockExpoIap.finishTransaction).toHaveBeenCalledTimes(1);
   });
 
   it('finishes a consumable only after the backend verifies and credits it', async () => {
@@ -187,7 +330,14 @@ describe('native store billing', () => {
       data: {data: {google_obfuscated_account_id: 'account-binding'}},
     });
     mockApi.post.mockResolvedValue({
-      data: {data: {coins_added: 600, credited: true, finalize_transaction: true, store_finalized: true}},
+      data: {
+        data: {
+          coins_added: 600,
+          credited: true,
+          finalize_transaction: true,
+          store_finalized: true,
+        },
+      },
     });
     mockExpoIap.requestPurchase.mockImplementation(async () => {
       purchaseUpdate({
@@ -198,12 +348,19 @@ describe('native store billing', () => {
         purchaseToken: 'server-consumed-token',
       });
     });
-    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {
+      purchaseNativeCoinPackage,
+    } = require('../src/services/nativeStoreBilling');
 
-    await expect(purchaseNativeCoinPackage({
-      id: '1', coins: 600, price: 120, label: '600',
-      storeProductIds: {google: 'rokn.coins.600'},
-    })).resolves.toMatchObject({success: true, coinsAdded: 600});
+    await expect(
+      purchaseNativeCoinPackage({
+        id: '1',
+        coins: 600,
+        price: 120,
+        label: '600',
+        storeProductIds: {google: 'rokn.coins.600'},
+      }),
+    ).resolves.toMatchObject({success: true, coinsAdded: 600});
     expect(mockExpoIap.finishTransaction).not.toHaveBeenCalled();
   });
 

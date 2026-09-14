@@ -108,6 +108,7 @@ const checkoutProviderSnapshot = (coinPackage: CoinPackage) => {
 const coinCheckoutIntentKey = (
   coinPackage: CoinPackage,
   returnTo?: LoginReturnTo,
+  courseCheckoutId?: string,
 ) =>
   [
     'v1',
@@ -116,6 +117,7 @@ const coinCheckoutIntentKey = (
     Math.round(coinPackage.price * 100),
     ...checkoutProviderSnapshot(coinPackage),
     ...checkoutReturnIntentParts(returnTo),
+    courseCheckoutId,
   ]
     .map(intentPart)
     .join('|');
@@ -197,13 +199,14 @@ const runCoinCheckout = async (
   coinPackage: CoinPackage,
   boundary: AccountSessionBoundary,
   allowFreshRetry = true,
+  courseCheckoutId?: string,
 ): Promise<CoinCheckoutResult> => {
   assertAccountSessionBoundary(boundary);
   const packageId = validCoinPackage(coinPackage);
   if (CAN_START_NATIVE_CHECKOUT) {
     await requireProductFeature('checkout');
     const {purchaseNativeCoinPackage} = await import('./nativeStoreBilling');
-    return purchaseNativeCoinPackage(coinPackage);
+    return purchaseNativeCoinPackage(coinPackage, {courseCheckoutId});
   }
   if (!CAN_START_EXTERNAL_CHECKOUT) {
     throw new Error('CHECKOUT_DISABLED_FOR_DISTRIBUTION');
@@ -241,6 +244,7 @@ const runCoinCheckout = async (
         expectedAmount: attempt.expectedPrice,
         expectedCoins: attempt.expectedCoins,
         idempotencyKey: attempt.idempotencyKey,
+        courseCheckoutId,
       },
       boundary,
     );
@@ -305,7 +309,7 @@ const runCoinCheckout = async (
           ['cancelled', 'rejected', 'failed'].includes(failure.status)))
     ) {
       await clearCoinCheckoutAttempt(attempt.idempotencyKey, boundary);
-      return runCoinCheckout(coinPackage, boundary, false);
+      return runCoinCheckout(coinPackage, boundary, false, courseCheckoutId);
     }
 
     if (failure.code === 'payment_under_review' && failure.orderRef) {
@@ -405,7 +409,12 @@ const runCoinCheckout = async (
           };
         }
         if (allowFreshRetry) {
-          return runCoinCheckout(coinPackage, boundary, false);
+          return runCoinCheckout(
+            coinPackage,
+            boundary,
+            false,
+            courseCheckoutId,
+          );
         }
         throw new Error('COIN_PACKAGE_TERMS_CHANGED_DURING_CHECKOUT');
       }
@@ -511,11 +520,15 @@ export const reconcilePendingCoinCheckout = async () => {
 
 export const openCoinCheckout = async (
   coinPackage: CoinPackage,
-  options: {returnTo?: LoginReturnTo} = {},
+  options: {returnTo?: LoginReturnTo; courseCheckoutId?: string} = {},
 ): Promise<CoinCheckoutResult> => {
   const boundary = await captureAccountSessionBoundary();
   const ownerKey = `${await coinCheckoutOwnerKey(boundary)}:${boundary.epoch}`;
-  const intentKey = coinCheckoutIntentKey(coinPackage, options.returnTo);
+  const intentKey = coinCheckoutIntentKey(
+    coinPackage,
+    options.returnTo,
+    options.courseCheckoutId,
+  );
   const flight = runCoinCheckoutSingleFlight(ownerKey, intentKey, async () => {
     const returnClaim = options.returnTo
       ? await savePendingCheckoutReturn(options.returnTo, boundary).catch(
@@ -524,7 +537,12 @@ export const openCoinCheckout = async (
       : undefined;
     let result: CoinCheckoutResult | undefined;
     try {
-      result = await runCoinCheckout(coinPackage, boundary);
+      result = await runCoinCheckout(
+        coinPackage,
+        boundary,
+        true,
+        options.courseCheckoutId,
+      );
       assertAccountSessionBoundary(boundary);
       // The initiating screen may have been removed while reconciliation was
       // pending. Credit belongs to this operation, not that screen's lifetime.

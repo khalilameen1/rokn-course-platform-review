@@ -241,6 +241,7 @@ class ProductionPreflight extends Command
             'wallet and rewards' => ['wallet_transactions', 'user_coin_task_attempts', 'reward_rules'],
             'WhatsApp linking' => ['user_whatsapp_connections', 'whatsapp_link_tokens'],
             'store billing' => ['store_purchases', 'store_notification_events'],
+            'course checkout' => ['course_checkouts'],
             'discounts' => ['coupon_redemptions'],
             'operations' => [
                 'admin_audit_logs',
@@ -314,6 +315,7 @@ class ProductionPreflight extends Command
                 'artifact_checked_at',
             ],
             'course_access_plans' => [
+                'projects_enabled', 'delivery_cost_usd',
                 'project_followup_message_limit',
                 'project_followup_token_budget',
                 'project_followup_budget_usd',
@@ -324,6 +326,7 @@ class ProductionPreflight extends Command
                 'access_plan_id', 'access_plan_order_id', 'access_plan_snapshot',
                 'enrolled_at', 'expires_at', 'is_active', 'access_granted_at',
                 'completed_curriculum_revision', 'curriculum_completed_at',
+                'completed_with_projects',
             ],
             'ai_usage_events' => ['reservation_expires_at'],
             'wallet_transactions' => [
@@ -336,7 +339,12 @@ class ProductionPreflight extends Command
                 'wallet_coins', 'wallet_purchased_coins', 'wallet_reward_coins',
                 'profile_revision',
             ],
-            'settings' => ['ai_plan_policy', 'direct_checkout_discount_percent'],
+            'settings' => ['ai_plan_policy', 'direct_checkout_discount_percent', 'max_course_promotion_percent'],
+            'course_checkouts' => [
+                'public_id', 'user_id', 'course_id', 'channel', 'status',
+                'terms', 'terms_hash', 'package_id', 'funding_order_id',
+                'course_order_id', 'authorized_at', 'expires_at', 'completed_at', 'error_code',
+            ],
             'orders' => [
                 'user_id', 'course_id', 'access_plan_id', 'access_plan_snapshot',
                 'parent_order_id', 'package_id', 'package_coins', 'course_code_id',
@@ -426,6 +434,13 @@ class ProductionPreflight extends Command
             && Schema::hasColumn('user_device_tokens', 'device_id')
             && !Schema::hasIndex('user_device_tokens', ['device_id'], 'unique')) {
             $failures[] = 'Push installation ownership is not unique. Run the notification delivery migration before release.';
+        }
+        if (Schema::hasTable('course_checkouts')) {
+            foreach (['public_id', 'funding_order_id', 'course_order_id'] as $column) {
+                if (!Schema::hasIndex('course_checkouts', [$column], 'unique')) {
+                    $failures[] = "Course checkout {$column} ownership is not unique. Run the checkout migration before release.";
+                }
+            }
         }
         if (Schema::hasTable('certificates')
             && Schema::hasColumns('certificates', ['user_id', 'course_id'])

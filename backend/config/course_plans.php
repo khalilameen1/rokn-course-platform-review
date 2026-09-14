@@ -1,6 +1,15 @@
 <?php
 
 return [
+    'max_promotion_percent' => 20,
+    'target_contribution_margin_percent' => 40,
+    // Suggested positioning, not an automatic repricing of live offers.
+    'price_ratio_to_plus' => ['basic' => 0.60, 'guided' => 1.00, 'mentor' => 1.50],
+    // Enable only once finance has supplied verified net coin value and the
+    // fully allocated non-provider cost for each offer. Internal-test prices
+    // remain explicitly unverified while this switch is off.
+    'enforce_commercial_floor' => (bool) env('ROKN_ENFORCE_COMMERCIAL_FLOOR', false),
+
     'economics_configured' => trim((string) env('ROKN_NET_USD_PER_PAID_COIN', '')) !== ''
         && trim((string) env('ROKN_AI_COST_SAFETY_MULTIPLIER', '')) !== '',
 

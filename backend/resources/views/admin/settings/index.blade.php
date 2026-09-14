@@ -494,7 +494,7 @@
                         الكورس المجاني والمنحة لا يحصلان على خدمة مدفوعة لم تمنحها الفئة
                     </div>
                     <div class="form-row">
-                        @foreach(['basic' => 'التعلّم', 'guided' => 'التعلّم بإرشاد', 'mentor' => 'التعلّم بمتابعة'] as $code => $label)
+                        @foreach(['basic' => 'Basic', 'guided' => 'Plus', 'mentor' => 'Pro'] as $code => $label)
                             @php
                                 $tier = (array) ($aiPlanPolicy[$code] ?? []);
                                 $tierChatCeiling = (int) data_get($aiTierDefaults, $code . '.chat_message_limit', 0);
@@ -508,7 +508,7 @@
                                     <input type="hidden" name="ai_plan_policy[basic][chat_attachments_enabled]" value="0">
                                     <input type="hidden" name="ai_plan_policy[basic][project_feedback_level]" value="pass_only">
                                     <input type="hidden" name="ai_plan_policy[basic][project_followup_message_limit]" value="0">
-                                    <p class="text-muted mb-0">عبور المشاريع دون تقرير أو شات مدفوع</p>
+                                    <p class="text-muted mb-0">الاشتراك الجديد للمشاهدة فقط دون تدريب أو مشاريع أو شهادة</p>
                                 @else
                                 <input type="hidden" name="ai_plan_policy[{{ $code }}][chat_enabled]" value="0">
                                 <label><input type="checkbox" name="ai_plan_policy[{{ $code }}][chat_enabled]" value="1" @checked(!empty($tier['chat_enabled']))> شات ركن</label>
@@ -519,7 +519,7 @@
                                 <label>تقييم المشروع</label>
                                 <select class="form-control-modern" name="ai_plan_policy[{{ $code }}][project_feedback_level]">
                                     @foreach(($code === 'mentor'
-                                        ? ['pass_only' => 'عبور فقط', 'report' => 'تقرير', 'enhanced' => 'تقرير ومتابعة']
+                                        ? ['pass_only' => 'عبور فقط', 'report' => 'تقرير', 'enhanced' => 'تدريب أعمق']
                                         : ['pass_only' => 'عبور فقط', 'report' => 'تقرير']) as $value => $text)
                                         <option value="{{ $value }}" @selected(($tier['project_feedback_level'] ?? 'pass_only') === $value)>{{ $text }}</option>
                                     @endforeach

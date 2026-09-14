@@ -65,7 +65,8 @@ final class CourseCouponService
         $calculatedDiscount = intdiv($price * $percentage, 100);
         // A coupon can reduce content margin, never the paid floor that funds
         // the variable-cost capabilities of the selected plan.
-        $maximumDiscount = max(0, $price - min($price, max(0, $minimumPaidCoins)));
+        $promotion = app(CoursePromotionPolicy::class)->allowance($userId, $courseId, $price);
+        $maximumDiscount = min($promotion['remaining'], max(0, $price - min($price, max(0, $minimumPaidCoins))));
         $discount = min($calculatedDiscount, $maximumDiscount);
         if ($discount <= 0) {
             throw new \DomainException('coupon_not_applicable');

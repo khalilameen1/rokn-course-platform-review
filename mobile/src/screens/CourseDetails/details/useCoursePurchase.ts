@@ -99,7 +99,10 @@ export const useCoursePurchase = ({
       return;
     }
     if (!accessPlans.some(plan => plan.code === selectedPlanCode)) {
-      ensurePlan(accessPlans[0].code);
+      ensurePlan(
+        (accessPlans.find(plan => plan.code === 'guided') || accessPlans[0])
+          .code,
+      );
     }
   }, [
     accessPlans,
@@ -183,27 +186,8 @@ export const useCoursePurchase = ({
     setPackages: commerce.setPackages,
     updateWallet: commerce.updateWallet,
   });
-  const reviewAfterCredit = checkout.reviewAfterCredit;
-
-  useEffect(() => {
-    if (
-      dialogStep !== 'topup' ||
-      checkout.busy ||
-      couponBusy ||
-      commerce.balance === null ||
-      effectiveShortfall > 0
-    ) {
-      return;
-    }
-    void reviewAfterCredit();
-  }, [
-    checkout.busy,
-    commerce.balance,
-    couponBusy,
-    dialogStep,
-    effectiveShortfall,
-    reviewAfterCredit,
-  ]);
+  // Verified top-ups belong to CourseSubscriptionSheet's durable checkout
+  // intent. Never let the legacy quote refresh reopen or close that flow.
 
   useEffect(() => {
     if (!owned || dialogStep === null || dialogStep === 'success') return;
@@ -273,6 +257,13 @@ export const useCoursePurchase = ({
     runPrimaryAction,
     retention,
     dialog: {
+      courseId,
+      courseRevision: remoteCourse?.publishedRevision,
+      onSubscribed: async () => {
+        course.setOwned(true);
+        showSuccess();
+        course.reload();
+      },
       accessPlans,
       balance,
       busy: checkout.busy,

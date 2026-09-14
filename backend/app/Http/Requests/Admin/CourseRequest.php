@@ -16,6 +16,7 @@ class CourseRequest extends FormRequest
         'minimum_paid_coins',
         'is_active',
         'certificate_enabled',
+        'delivery_cost_usd',
     ];
 
     protected function prepareForValidation(): void
@@ -48,6 +49,11 @@ class CourseRequest extends FormRequest
                     $plans[$code],
                     array_flip(self::EDITABLE_PLAN_FIELDS)
                 );
+                // Cost approval is an administrator operation. Moderators may
+                // edit content/offers but cannot declare their delivery free.
+                if ($this->user()?->role !== 'admin') {
+                    unset($plans[$code]['delivery_cost_usd']);
+                }
                 foreach (['name_ar', 'name_en'] as $field) {
                     if (array_key_exists($field, $plans[$code])) {
                         $plans[$code][$field] = UnicodeText::clean(
@@ -144,6 +150,7 @@ class CourseRequest extends FormRequest
             'access_plans.*.minimum_paid_coins' => 'required_with:access_plans|integer|min:0|max:100000000',
             'access_plans.*.is_active' => 'nullable|boolean',
             'access_plans.*.certificate_enabled' => 'nullable|boolean',
+            'access_plans.*.delivery_cost_usd' => 'nullable|numeric|min:0|max:999999.999999',
         ];
     }
 

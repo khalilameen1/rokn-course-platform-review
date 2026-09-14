@@ -9,6 +9,7 @@ use App\Models\Package;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
@@ -66,6 +67,7 @@ final readonly class KashierCheckoutFlowService
                 'package_id' => 'required|integer|exists:packages,id',
                 'expected_amount' => 'nullable|numeric|min:0.01|max:100000000',
                 'expected_coins' => 'nullable|integer|min:1|max:1000000000',
+                'course_checkout_id' => 'nullable|uuid',
                 'idempotency_key' => [
                     'nullable',
                     'string',
@@ -115,13 +117,26 @@ final readonly class KashierCheckoutFlowService
         $clientRequestKey = (string) ($validated['idempotency_key'] ?? '');
         $orderRef = null;
         try {
-            $checkout = $this->payments->beginCheckout(
-                $user,
-                $package,
-                $clientRequestKey,
-                isset($validated['expected_amount']) ? (float) $validated['expected_amount'] : null,
-                isset($validated['expected_coins']) ? (int) $validated['expected_coins'] : null
-            );
+            $checkout = DB::transaction(function () use ($user, $package, $clientRequestKey, $validated): array {
+                $checkout = $this->payments->beginCheckout(
+                    $user,
+                    $package,
+                    $clientRequestKey,
+                    isset($validated['expected_amount']) ? (float) $validated['expected_amount'] : null,
+                    isset($validated['expected_coins']) ? (int) $validated['expected_coins'] : null
+                );
+                if (!empty($validated['course_checkout_id'])) {
+                    // Bind before returning any payment URL. A rejected binding
+                    // rolls back the local order and cannot leave a phantom payment.
+                    app(CourseCheckoutService::class)->bindFundingOrder(
+                        $user,
+                        (string) $validated['course_checkout_id'],
+                        $checkout['order']
+                    );
+                }
+
+                return $checkout;
+            }, 3);
 
             /** @var Order $order */
             $order = $checkout['order'];
@@ -163,6 +178,15 @@ final readonly class KashierCheckoutFlowService
                 'is_premium_user' => $order->is_premium_user,
                 'idempotent_replay' => $checkout['reused'],
             ]);
+        } catch (ValidationException $exception) {
+            return $this->responses->make(false, 'راجع تفاصيل الاشتراك قبل الدفع', [], 409,
+                'course_checkout_changed', $exception->errors());
+        } catch (\Illuminate\Auth\Access\AuthorizationException|\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+            return $this->responses->make(false, 'طلب الاشتراك غير متاح لحسابك', [], 403,
+                'course_checkout_unavailable');
+        } catch (\DomainException $exception) {
+            return $this->responses->make(false, 'راجع تفاصيل الاشتراك قبل الدفع', [], 409,
+                'course_checkout_changed');
         } catch (\UnexpectedValueException $exception) {
             $pendingCheckout = $exception->getMessage() === 'A previous payment is still pending confirmation.';
             $packageUnavailable = $exception->getMessage()
@@ -284,6 +308,7 @@ final readonly class KashierCheckoutFlowService
 
         return $this->responses->make(true, 'تم تجهيز صفحة الدفع', [
             'checkout_state' => 'created',
+            'course_checkout_id' => $validated['course_checkout_id'] ?? null,
             'payment_url' => $hppUrl,
             'order_ref' => $orderRef,
             'idempotency_key' => $order->checkout_request_key,

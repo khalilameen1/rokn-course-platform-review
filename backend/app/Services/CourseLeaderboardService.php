@@ -13,7 +13,8 @@ final readonly class CourseLeaderboardService
 {
     public function __construct(
         private CourseSectionSequenceService $sectionSequence,
-        private CourseRevisionLearnerReadService $revisionReads
+        private CourseRevisionLearnerReadService $revisionReads,
+        private CourseAccessPlanService $plans
     ) {}
 
     /**
@@ -27,26 +28,24 @@ final readonly class CourseLeaderboardService
             ->findOrFail($courseId);
 
         $lastFriday = BusinessClock::now();
-        while ($lastFriday->dayOfWeek !== Carbon::FRIDAY) {
-            $lastFriday->subDay();
-        }
-        $lastFridayDate = $lastFriday->addDay()->startOfDay()->utc();
+        // BusinessClock is immutable. A mutation-only weekday loop never
+        // advanced on six days of the week and could exhaust an API worker.
+        $daysSinceFriday = ($lastFriday->dayOfWeek - Carbon::FRIDAY + 7) % 7;
+        $lastFridayDate = $lastFriday->subDays($daysSinceFriday)->addDay()->startOfDay()->utc();
         $learningSections = $this->sectionSequence->learning($course->sections);
 
         $students = User::query()
             ->whereHas('enrollments', function ($enrollments) use ($courseId): void {
                 $enrollments->where('course_id', $courseId)->active();
             })
+            ->with(['enrollments' => fn ($enrollments) => $enrollments
+                ->where('course_id', $courseId)->active()->orderByDesc('id')])
             ->get();
         $progressByStudent = $this->revisionReads->sectionProgressRowsForUsers(
             $students->pluck('id'),
             $learningSections->pluck('id'),
             $lastFridayDate
         )->groupBy('user_id');
-        $students->each(fn (User $student) => $student->setRelation(
-            'sectionProgress',
-            $progressByStudent->get((int) $student->id, collect())
-        ));
 
         $totalSections = $learningSections->count();
         $coursePayload = [
@@ -76,7 +75,19 @@ final readonly class CourseLeaderboardService
 
         $isVeryShortCourse = $totalSections <= 3;
         $studentsData = $students
-            ->map(fn (User $student): array => $this->studentPayload($student, $totalSections))
+            ->map(function (User $student) use ($learningSections, $progressByStudent): array {
+                $enrollment = $student->enrollments->first();
+                $projectsEnabled = $enrollment !== null
+                    && $this->plans->projectsEnabledForEnrollment($enrollment);
+                $entitledSections = $this->sectionSequence->forProjectsPolicy($learningSections, $projectsEnabled);
+                $sectionIds = $entitledSections->pluck('id')->all();
+                $student->setRelation('sectionProgress', $progressByStudent
+                    ->get((int) $student->id, collect())
+                    ->whereIn('course_section_id', $sectionIds)
+                    ->where('is_completed', true));
+
+                return $this->studentPayload($student, $entitledSections->count(), $projectsEnabled);
+            })
             ->all();
 
         usort(
@@ -110,7 +121,7 @@ final readonly class CourseLeaderboardService
     /**
      * @return array<string, mixed>
      */
-    private function studentPayload(User $user, int $totalSections): array
+    private function studentPayload(User $user, int $totalSections, bool $projectsEnabled): array
     {
         $completedSections = $user->sectionProgress;
         $completedCount = $completedSections->count();
@@ -128,6 +139,7 @@ final readonly class CourseLeaderboardService
             'progress' => [
                 'completed_sections' => $completedCount,
                 'total_sections' => $totalSections,
+                'projects_enabled' => $projectsEnabled,
                 'progress_percentage' => round($progressPercentage, 2),
                 'is_fully_completed' => $isFullyCompleted,
                 'first_completion_date' => $this->formatCompletionDate($firstCompletionDate),

@@ -34,6 +34,7 @@ class CourseResource extends BaseCourseResource
     private ?CourseEnrollment $resolvedEnrollment;
     private User $resourceUser;
     private ?User $dashboardPreviewUser = null;
+    private bool $projectsEnabled = true;
 
     /** Reuse the access/progress work already performed by the details query. */
     public function withLearningContext(
@@ -89,6 +90,7 @@ class CourseResource extends BaseCourseResource
         // follows the same branch as the app. Their own progress, attempts and
         // submissions must never leak into a fresh-student preview.
         $learnerStateUser = $this->dashboardPreviewUser ? null : $user;
+        $this->projectsEnabled = (bool) ($this->resolvedEntitlement['projects_available'] ?? true);
         $sections = $this->relationLoaded('modules')
             ? app(\App\Services\CourseSectionSequenceService::class)
                 ->fromModules($this->modules)
@@ -112,7 +114,8 @@ class CourseResource extends BaseCourseResource
             ->sectionLockStatus(
                 $sections,
                 $completedSectionIds,
-                $learnerStateUser ? (int) $learnerStateUser->id : null
+                $learnerStateUser ? (int) $learnerStateUser->id : null,
+                $this->projectsEnabled
             )
             ->keyBy('section_id');
 
@@ -232,6 +235,7 @@ class CourseResource extends BaseCourseResource
         $baseData['chat_attachment_max_files'] = $baseData['chat_attachments_enabled']
             ? min(5, $planAttachmentMax)
             : 0;
+        $baseData['projects_available'] = $hasCourseAccess && $this->projectsEnabled;
 
         // Override modules with full content and lock status for sections
         $baseData['modules'] = $this->whenLoaded('modules', function() {
@@ -244,6 +248,8 @@ class CourseResource extends BaseCourseResource
                 $moduleSections = $module->sections
                     ? $module->sections->sortBy('order')->values()
                     : collect();
+                $moduleSections = app(\App\Services\CourseSectionSequenceService::class)
+                    ->forProjectsPolicy($moduleSections, $this->projectsEnabled);
                 $firstSection = $moduleSections->first();
                 $firstMediaUnavailable = $firstSection
                     && $firstSection->getSectionType() === 'lesson'
@@ -268,7 +274,7 @@ class CourseResource extends BaseCourseResource
                 ];
 
                 return $moduleData;
-            });
+            })->filter(fn (array $module): bool => $module['sections']->isNotEmpty())->values();
         });
 
         return $baseData;

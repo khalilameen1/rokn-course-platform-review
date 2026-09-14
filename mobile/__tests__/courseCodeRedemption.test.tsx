@@ -1,7 +1,46 @@
 import React from 'react';
-import {StyleSheet} from 'react-native';
-import ReactTestRenderer from 'react-test-renderer';
+import TestRenderer, {act} from 'react-test-renderer';
+import {
+  getDistributionCapabilities,
+  type DistributionChannel,
+} from '../src/constants/distribution';
+import {CoursePurchaseDialog} from '../src/screens/CourseDetails/details/PurchaseDialogs';
+import type {CourseAccessPlan} from '../src/services/roknApi';
 
+const mockConfirm = jest.fn();
+const mockApply = jest.fn();
+const mockSetCoupon = jest.fn();
+let mockBusy = false;
+let mockPending = false;
+jest.mock('../src/hooks/useCourseSubscriptionCheckout', () => ({
+  useCourseSubscriptionCheckout: () => ({
+    quote: {
+      status: 'quoted',
+      planCode: 'basic',
+      originalPrice: 500,
+      discountAmount: 0,
+      finalPrice: 500,
+      paidCoins: 400,
+      rewardCoins: 100,
+      paidBalance: 0,
+      rewardBalance: 100,
+      deficit: 400,
+      remainingPaidCoins: 0,
+    },
+    coinPackage: {id: '1', coins: 400, price: 20, displayPrice: '٢٠ ج م'},
+    loading: false,
+    busy: mockBusy,
+    pending: mockPending,
+    notice: '',
+    coupon: 'SAVE',
+    setCoupon: mockSetCoupon,
+    appliedCoupon: '',
+    applyCoupon: mockApply,
+    confirm: mockConfirm,
+    cancelPending: jest.fn(),
+    retry: jest.fn(),
+  }),
+}));
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({bottom: 0, left: 0, right: 0, top: 0}),
@@ -11,31 +50,26 @@ jest.mock('react-native/Libraries/Modal/Modal', () => ({
   default: 'Modal',
 }));
 
-import {
-  getDistributionCapabilities,
-  type DistributionChannel,
-} from '../src/constants/distribution';
-import {CoursePurchaseDialog} from '../src/screens/CourseDetails/details/PurchaseDialogs';
-import type {CourseAccessPlan} from '../src/services/roknApi';
-
 const plans: CourseAccessPlan[] = [
   {
     code: 'basic',
-    name: 'التعلّم',
+    name: 'Basic',
     priceCoins: 300,
     chatEnabled: false,
     chatMessageLimit: 0,
+    projectsEnabled: false,
     projectFeedbackLevel: 'pass_only',
     projectReportEnabled: false,
     projectOutputEnabled: false,
-    certificateEnabled: true,
+    certificateEnabled: false,
   },
   {
     code: 'guided',
-    name: 'التعلّم بإرشاد',
+    name: 'Plus',
     priceCoins: 500,
     chatEnabled: true,
-    chatMessageLimit: 25,
+    chatMessageLimit: 50,
+    projectsEnabled: true,
     projectFeedbackLevel: 'report',
     projectReportEnabled: true,
     projectOutputEnabled: false,
@@ -43,12 +77,15 @@ const plans: CourseAccessPlan[] = [
   },
   {
     code: 'mentor',
-    name: 'التعلّم بمتابعة',
-    priceCoins: 700,
+    name: 'Pro',
+    priceCoins: 750,
     chatEnabled: true,
-    chatMessageLimit: 80,
+    chatMessageLimit: 150,
+    projectsEnabled: true,
     projectFeedbackLevel: 'enhanced',
     projectReportEnabled: true,
+    projectFollowupEnabled: true,
+    projectFollowupMessageLimit: 50,
     projectOutputEnabled: true,
     certificateEnabled: true,
   },
@@ -60,7 +97,7 @@ describe('course-code distribution boundary', () => {
     ['play', false, true, true],
     ['appstore', false, true, false],
   ])(
-    'applies the expected checkout/redemption policy to %s',
+    'retains channel policy for %s',
     (
       channel,
       canStartExternalCheckout,
@@ -76,22 +113,27 @@ describe('course-code distribution boundary', () => {
   );
 });
 
-describe('course-code redemption UI', () => {
-  it('keeps all three plans and reveals educational code entry inside the purchase dialog', async () => {
+describe('compact course subscription sheet', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockBusy = false;
+    mockPending = false;
+  });
+  async function mount() {
     const onSelectPlan = jest.fn();
     const onRedeem = jest.fn();
-    const onCourseCodeChange = jest.fn();
-    let renderer: ReactTestRenderer.ReactTestRenderer;
-
-    await ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(
+    const onCodeChange = jest.fn();
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(() => {
+      renderer = TestRenderer.create(
         <CoursePurchaseDialog
+          courseId="3"
           accessPlans={plans}
-          balance={1000}
+          balance={100}
           bottomInset={0}
           busy={false}
-          codeBusy={false}
           courseTitle="كورس الإنتاج"
+          projectCount={3}
           courseCode="GRANT-42"
           courseCodeEnabled
           dialogStep="plans"
@@ -101,180 +143,117 @@ describe('course-code redemption UI', () => {
           onBuyCoins={jest.fn()}
           onClose={jest.fn()}
           onConfirmPurchase={jest.fn()}
-          onCourseCodeChange={onCourseCodeChange}
+          onCourseCodeChange={onCodeChange}
           onRedeemCourseCode={onRedeem}
           onSelectPlan={onSelectPlan}
           onSuccessStart={jest.fn()}
           packages={[]}
-          purchasePrice={300}
-          rewardContributionLimit={300}
-          rewardContributionPercent={100}
-          selectedPlan={plans[0]}
-          shortfall={0}
-          usableCurrentBalance={300}
-        />,
-      );
-    });
-
-    const tree = JSON.stringify(renderer!.toJSON());
-    for (const plan of plans) expect(tree).toContain(plan.name);
-    expect(tree).toContain('اكتب الكود');
-    expect(tree).not.toContain('كود خصم');
-    const input = renderer!.root.find(
-      node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
-    );
-    const submit = renderer!.root.find(
-      node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
-    );
-    expect(input.props.value).toBe('GRANT-42');
-    await ReactTestRenderer.act(() => input.props.onChangeText('NEW-CODE'));
-    await ReactTestRenderer.act(() => submit.props.onPress());
-    expect(onCourseCodeChange).toHaveBeenCalledWith('NEW-CODE');
-    expect(onRedeem).toHaveBeenCalledTimes(1);
-
-    await ReactTestRenderer.act(() => renderer!.unmount());
-  });
-
-  it('reveals the promo code only after a pricing tier has been selected', async () => {
-    let renderer: ReactTestRenderer.ReactTestRenderer;
-
-    await ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(
-        <CoursePurchaseDialog
-          accessPlans={plans}
-          balance={1000}
-          bottomInset={0}
-          busy={false}
-          courseTitle="كورس الإنتاج"
-          couponCode="SAVE"
-          dialogStep="confirm"
-          grantActivated={false}
-          isTablet={false}
-          notice=""
-          onApplyCoupon={jest.fn()}
-          onBuyCoins={jest.fn()}
-          onClose={jest.fn()}
-          onConfirmPurchase={jest.fn()}
-          onSelectPlan={jest.fn()}
-          onSuccessStart={jest.fn()}
-          packages={[]}
-          purchasePrice={300}
-          rewardContributionLimit={300}
-          rewardContributionPercent={100}
-          selectedPlan={plans[0]}
-          shortfall={0}
-          usableCurrentBalance={300}
-        />,
-      );
-    });
-
-    const tree = JSON.stringify(renderer!.toJSON());
-    expect(tree).toContain('كود خصم');
-    expect(tree).toContain('SAVE');
-
-    await ReactTestRenderer.act(() => renderer!.unmount());
-  });
-
-  it.each([false, true])('keeps inline top-up actions consistent with coupon calculation (busy=%s)', async couponBusy => {
-    const onBuyCoins = jest.fn();
-    const onChangePlan = jest.fn();
-    let renderer: ReactTestRenderer.ReactTestRenderer;
-
-    await ReactTestRenderer.act(() => {
-      renderer = ReactTestRenderer.create(
-        <CoursePurchaseDialog
-          accessPlans={plans}
-          balance={100}
-          bottomInset={0}
-          busy={false}
-          courseTitle="كورس الإنتاج"
-          couponBusy={couponBusy}
-          dialogStep="topup"
-          grantActivated={false}
-          isTablet={false}
-          notice=""
-          onBuyCoins={onBuyCoins}
-          onChangePlan={onChangePlan}
-          onClose={jest.fn()}
-          onConfirmPurchase={jest.fn()}
-          onSelectPlan={jest.fn()}
-          onSuccessStart={jest.fn()}
-          packages={[
-            {
-              id: 'coins-1000',
-              coins: 1000,
-              price: 99,
-              label: 'باقة رصيد مدفوع للاستخدام في الكورسات العملية',
-              displayPrice: '٩٩٫٠٠ جنيه مصري شامل الضريبة',
-            },
-            {
-              id: 'coins-1500',
-              coins: 1500,
-              price: 139,
-              label: 'رصيد مدفوع',
-            },
-          ]}
-          purchasePrice={700}
-          rewardContributionLimit={300}
-          rewardContributionPercent={42}
-          selectedPlan={plans[2]}
-          shortfall={600}
-          sufficientPackage={{
-            id: 'coins-1000',
-            coins: 1000,
-            price: 99,
-            label: 'رصيد مدفوع',
-          }}
+          purchasePrice={500}
+          rewardContributionLimit={100}
+          rewardContributionPercent={20}
+          selectedPlan={plans[1]}
+          shortfall={400}
           usableCurrentBalance={100}
         />,
       );
     });
+    return {renderer, onSelectPlan, onRedeem, onCodeChange};
+  }
+  const buttonWithText = (
+    renderer: TestRenderer.ReactTestRenderer,
+    text: string,
+  ) =>
+    renderer.root
+      .findAll(
+        node =>
+          node.props.accessibilityRole === 'button' &&
+          typeof node.props.onPress === 'function',
+      )
+      .find(node =>
+        JSON.stringify(
+          node
+            .findAllByType(require('react-native').Text)
+            .map(item => item.props.children),
+        ).includes(text),
+      )!;
 
-    const tree = JSON.stringify(renderer!.toJSON());
-    expect(tree).toContain('تغطي المبلغ الناقص');
-    expect(tree).toContain('٩٩٫٠٠ جنيه مصري شامل الضريبة');
-    expect(tree).toContain('١٣٩');
-    expect(tree).toContain('جنيه');
-    expect(tree).toContain('يتبقى ');
-    expect(tree).toContain('٤٠٠');
-    expect(tree).not.toContain('اختيار الباقة');
-    const actions = renderer!.root.findAll(
+  it('shows three concise choices and real cash shortfall without a package catalogue', async () => {
+    const view = await mount();
+    const tree = JSON.stringify(view.renderer.toJSON());
+    expect(tree).toContain('اختر الاشتراك');
+    for (const plan of plans) expect(tree).toContain(plan.name);
+    expect(tree).toContain('تدريب أعمق وتطوير مشروعك');
+    expect(tree).toContain('٢٠ ج م');
+    expect(tree).toContain('مكافآت مستخدمة');
+    expect(tree).not.toContain('تغطي المبلغ الناقص');
+    expect(tree).not.toContain('تغيير الفئة');
+    expect(tree).not.toContain('كود الوصول إلى الكورس');
+    await act(() =>
+      buttonWithText(view.renderer, 'شحن واشتراك').props.onPress(),
+    );
+    expect(mockConfirm).toHaveBeenCalledTimes(1);
+    await act(() => view.renderer.unmount());
+  });
+
+  it('keeps optional coupon and educational code behind one disclosure', async () => {
+    const view = await mount();
+    await act(() => buttonWithText(view.renderer, 'معاك كود').props.onPress());
+    const input = view.renderer.root.find(
+      node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
+    );
+    expect(input.props.value).toBe('GRANT-42');
+    await act(() => input.props.onChangeText('NEW-CODE'));
+    const submit = view.renderer.root.find(
+      node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
+    );
+    await act(() => submit.props.onPress());
+    expect(view.onCodeChange).toHaveBeenCalledWith('NEW-CODE');
+    expect(view.onRedeem).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(view.renderer.toJSON())).toContain('SAVE');
+    await act(() => view.renderer.unmount());
+  });
+
+  it('discloses actual message limits only on request', async () => {
+    const view = await mount();
+    expect(JSON.stringify(view.renderer.toJSON())).not.toContain(
+      'حتى ٥٠ رسالة للأسئلة',
+    );
+    const disclosure = view.renderer.root.find(
+      node => node.props.accessibilityLabel === 'تفاصيل Plus',
+    );
+    await act(() => disclosure.props.onPress());
+    expect(JSON.stringify(view.renderer.toJSON())).toContain(
+      'حتى ٥٠ رسالة للأسئلة',
+    );
+    await act(() => view.renderer.unmount());
+  });
+
+  it('shows the actual recovered pending plan instead of the default Plus selection', async () => {
+    mockPending = true;
+    const view = await mount();
+    const radios = view.renderer.root.findAll(
       node =>
-        node.props.accessibilityRole === 'button' &&
+        node.props.accessibilityRole === 'radio' &&
         typeof node.props.onPress === 'function',
     );
-    const paymentAction = actions.find(node =>
-      String(node.props.accessibilityLabel || '').includes(
-        '٩٩٫٠٠ جنيه مصري شامل الضريبة',
-      ),
+    expect(radios[0].props.accessibilityState.checked).toBe(true);
+    expect(radios[1].props.accessibilityState.checked).toBe(false);
+    expect(JSON.stringify(view.renderer.toJSON())).toContain(
+      'إلغاء طلب الاشتراك',
     );
-    expect(paymentAction).toBeDefined();
-    expect(paymentAction!.props.disabled).toBe(couponBusy);
-    const unresolvedPackageCardStyle = paymentAction!.props.style;
-    const packageCardStyle = StyleSheet.flatten(
-      typeof unresolvedPackageCardStyle === 'function'
-        ? unresolvedPackageCardStyle({pressed: false})
-        : unresolvedPackageCardStyle,
-    );
-    expect(packageCardStyle).toMatchObject({
-      minWidth: 0,
-      padding: 15,
-      width: '100%',
-    });
-    const changePlan = renderer!.root.find(
-      node => node.props.accessibilityLabel === 'تغيير فئة الكورس',
-    );
-    expect(changePlan.props.disabled).toBe(couponBusy);
-    if (!couponBusy) {
-      await ReactTestRenderer.act(() => paymentAction!.props.onPress());
-      expect(onBuyCoins).toHaveBeenCalledTimes(1);
-      expect(onBuyCoins).toHaveBeenCalledWith(
-        expect.objectContaining({id: 'coins-1000'}),
-      );
-      await ReactTestRenderer.act(() => changePlan.props.onPress());
-      expect(onChangePlan).toHaveBeenCalledTimes(1);
-    }
+    await act(() => view.renderer.unmount());
+  });
 
-    await ReactTestRenderer.act(() => renderer!.unmount());
+  it('locks plan changes while a store authorization is running', async () => {
+    mockBusy = true;
+    const view = await mount();
+    const radios = view.renderer.root.findAll(
+      node =>
+        node.props.accessibilityRole === 'radio' &&
+        typeof node.props.onPress === 'function',
+    );
+    expect(radios).toHaveLength(3);
+    radios.forEach(node => expect(node.props.disabled).toBe(true));
+    await act(() => view.renderer.unmount());
   });
 });

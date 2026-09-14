@@ -110,7 +110,7 @@ describe('course details presentation contract', () => {
         remoteCourse: {...course, owned: true, started: false},
       }).primaryAction,
     ).toEqual({kind: 'start', label: 'ابدأ الكورس'});
-    expect(presentation().primaryActionLabel).toBe('اختر الفئة المناسبة لك');
+    expect(presentation().primaryActionLabel).toBe('اختر الاشتراك');
   });
 
   it('derives ownership only from the course entitlement snapshot', () => {
@@ -167,7 +167,7 @@ describe('course details presentation contract', () => {
 
     expect(result.primaryAction).toEqual({
       kind: 'choose_plan',
-      label: 'اختر الفئة المناسبة لك',
+      label: 'اختر الاشتراك',
     });
   });
 

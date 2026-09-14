@@ -93,18 +93,22 @@ final class RedactSensitiveContextTest extends TestCase
     {
         $courseCodes = file_get_contents(app_path('Models/CourseCode.php'));
         $coursePurchases = file_get_contents(
-            app_path('Http/Controllers/API/CoursePurchaseController.php')
+            app_path('Services/CoursePurchaseAction.php')
         );
 
         self::assertIsString($courseCodes);
         self::assertStringNotContainsString("'coupon_code' => \$this->code", $courseCodes);
         self::assertStringNotContainsString("'notes' => 'Course code redemption: '", $courseCodes);
         self::assertIsString($coursePurchases);
+        $debitStart = strpos($coursePurchases, '$walletTransaction = $walletService->debit(');
+        $debitEnd = strpos($coursePurchases, '// Course orders preserve');
+        self::assertIsInt($debitStart, 'The shared purchase action must own the wallet debit');
+        self::assertIsInt($debitEnd, 'The debit metadata must end before order attribution');
+        self::assertGreaterThan($debitStart, $debitEnd);
         $walletMetadata = substr(
             $coursePurchases,
-            strpos($coursePurchases, '$walletTransaction = $walletService->debit('),
-            strpos($coursePurchases, '// Course orders preserve')
-                - strpos($coursePurchases, '$walletTransaction = $walletService->debit(')
+            $debitStart,
+            $debitEnd - $debitStart
         );
         self::assertStringNotContainsString("'coupon_code'", $walletMetadata);
         self::assertStringNotContainsString("'notes' => 'Idempotency: '", $coursePurchases);

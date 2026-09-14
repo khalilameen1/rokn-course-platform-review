@@ -45,6 +45,7 @@ class CourseEnrollment extends Model
         'access_granted_at',
         'completed_curriculum_revision',
         'curriculum_completed_at',
+        'completed_with_projects',
     ];
 
     protected $casts = [
@@ -53,6 +54,7 @@ class CourseEnrollment extends Model
         'access_granted_at' => 'datetime',
         'curriculum_completed_at' => 'immutable_datetime',
         'completed_curriculum_revision' => 'integer',
+        'completed_with_projects' => 'boolean',
         'is_active' => 'boolean',
         'access_plan_snapshot' => 'array',
         'access_plan_order_id' => 'integer',

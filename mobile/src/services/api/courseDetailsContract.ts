@@ -252,6 +252,10 @@ const mapAccessPlans = (course: CourseDto): CourseAccessPlan[] => {
         priceCoins: Number(plan.price_coins),
         minimumPaidCoins: Math.max(0, Number(plan.minimum_paid_coins) || 0),
         chatEnabled: valueAsBoolean(plan.chat_enabled),
+        projectsEnabled:
+          plan.projects_enabled === undefined
+            ? true
+            : valueAsBoolean(plan.projects_enabled),
         chatMessageLimit: Math.max(0, Number(plan.chat_message_limit) || 0),
         projectFeedbackLevel: String(
           ['pass_only', 'report', 'enhanced'].includes(

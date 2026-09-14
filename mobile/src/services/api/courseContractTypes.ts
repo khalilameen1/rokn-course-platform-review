@@ -77,6 +77,7 @@ export type CourseAccessPlan = {
   chatEnabled: boolean;
   chatMessageLimit: number;
   projectFeedbackLevel: 'pass_only' | 'report' | 'enhanced' | string;
+  projectsEnabled?: boolean;
   projectReportEnabled: boolean;
   projectFollowupEnabled?: boolean;
   projectFollowupMessageLimit?: number;

@@ -434,6 +434,19 @@
     font-weight: 600;
 }
 
+.course-editor .course-editor__plan-history,
+.course-editor .course-editor__plan-economics {
+    margin-block: .85rem;
+}
+
+.course-editor .course-editor__plan-history > summary,
+.course-editor .course-editor__plan-economics > summary {
+    cursor: pointer;
+    font-size: .85rem;
+    font-weight: 600;
+    margin-bottom: .65rem;
+}
+
 .course-editor .course-editor__preview-status {
     margin-top: 1rem;
     padding-inline-start: .5rem;

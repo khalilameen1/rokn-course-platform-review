@@ -45,6 +45,7 @@ final class LearningRewardService
             'welcome_bonus_coins' => (int) ($welcome?->coins_amount ?? 0),
             'reward_balance_cap' => (int) $settings->reward_balance_cap,
             'max_reward_contribution_per_course' => (int) $settings->max_reward_contribution_per_course,
+            'max_course_promotion_percent' => min(20, max(0, (int) ($settings->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)))),
             'daily' => [
                 'enabled' => $daily !== null,
                 'coins' => (int) ($daily?->coins_amount ?? 0),

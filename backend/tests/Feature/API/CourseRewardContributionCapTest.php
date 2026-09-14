@@ -54,6 +54,7 @@ final class CourseRewardContributionCapTest extends TestCase
         Setting::query()->create([
             'site_name_ar' => 'Rokn',
             'max_reward_contribution_per_course' => 100,
+            'max_course_promotion_percent' => 20,
         ]);
     }
 
@@ -142,10 +143,10 @@ final class CourseRewardContributionCapTest extends TestCase
                 'idempotency_key' => $baseKey,
             ])
             ->assertOk()
-            ->assertJsonPath('data.allocation.paid_coins', 0)
-            ->assertJsonPath('data.allocation.reward_coins', 40)
-            ->assertJsonPath('data.reward_contribution_used_for_course', 40)
-            ->assertJsonPath('data.reward_contribution_remaining_for_course', 60);
+            ->assertJsonPath('data.allocation.paid_coins', 32)
+            ->assertJsonPath('data.allocation.reward_coins', 8)
+            ->assertJsonPath('data.reward_contribution_used_for_course', 8)
+            ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
 
         $this->actingAs($user, 'api')
             ->postJson('/api/v1/courses/authorize', [
@@ -156,8 +157,8 @@ final class CourseRewardContributionCapTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.idempotent_replay', true)
             ->assertJsonPath('data.amount_deducted', 0)
-            ->assertJsonPath('data.reward_contribution_used_for_course', 40)
-            ->assertJsonPath('data.reward_contribution_remaining_for_course', 60);
+            ->assertJsonPath('data.reward_contribution_used_for_course', 8)
+            ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
 
         $this->creditReward($user, 40);
         $guidedKey = 'test-course-guided-upgrade-0001';
@@ -169,8 +170,8 @@ final class CourseRewardContributionCapTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.amount_deducted', 40)
-            ->assertJsonPath('data.reward_contribution_used_for_course', 79)
-            ->assertJsonPath('data.reward_contribution_remaining_for_course', 21);
+            ->assertJsonPath('data.reward_contribution_used_for_course', 16)
+            ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
 
         $this->creditReward($user, 40);
         Package::query()->firstOrFail()->update([
@@ -201,13 +202,13 @@ final class CourseRewardContributionCapTest extends TestCase
             )
             ->assertOk()
             ->assertJsonPath('data.upgrade_price', 150)
-            ->assertJsonPath('data.reward_contribution_cap_per_course', 100)
-            ->assertJsonPath('data.reward_contribution_used_for_course', 79)
-            ->assertJsonPath('data.reward_contribution_remaining_for_course', 21)
-            ->assertJsonPath('data.estimated_allocation.reward_coins', 21)
-            ->assertJsonPath('data.estimated_allocation.paid_coins', 99)
-            ->assertJsonPath('data.spendable_balance', 120)
-            ->assertJsonPath('data.deficit', 30)
+            ->assertJsonPath('data.reward_contribution_cap_per_course', 46)
+            ->assertJsonPath('data.reward_contribution_used_for_course', 16)
+            ->assertJsonPath('data.reward_contribution_remaining_for_course', 30)
+            ->assertJsonPath('data.estimated_allocation.reward_coins', 30)
+            ->assertJsonPath('data.estimated_allocation.paid_coins', 36)
+            ->assertJsonPath('data.spendable_balance', 66)
+            ->assertJsonPath('data.deficit', 84)
             ->assertJsonPath('data.recommended_packages.0.price', 100)
             ->assertJsonPath('data.recommended_packages.0.direct_price', 90)
             ->assertJsonPath('data.recommended_packages.0.channels.google', true)
@@ -216,7 +217,7 @@ final class CourseRewardContributionCapTest extends TestCase
                 'rokn.coins.100.apple'
             );
 
-        $this->creditPaid($user, 30);
+        $this->creditPaid($user, 84);
         $mentorKey = 'test-course-mentor-upgrade-0001';
         $this->actingAs($user, 'api')
             ->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
@@ -226,7 +227,7 @@ final class CourseRewardContributionCapTest extends TestCase
             ])
             ->assertOk()
             ->assertJsonPath('data.amount_deducted', 150)
-            ->assertJsonPath('data.reward_contribution_used_for_course', 100)
+            ->assertJsonPath('data.reward_contribution_used_for_course', 46)
             ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
 
         $this->actingAs($user, 'api')
@@ -248,8 +249,8 @@ final class CourseRewardContributionCapTest extends TestCase
         self::assertSame(['basic', 'guided', 'mentor'], $orders
             ->map(fn (Order $order): string => (string) data_get($order->access_plan_snapshot, 'code'))
             ->all());
-        self::assertSame([40, 39, 21], $orders->pluck('reward_coins')->map(fn ($value): int => (int) $value)->all());
-        self::assertSame([0, 1, 129], $orders->pluck('paid_coins')->map(fn ($value): int => (int) $value)->all());
+        self::assertSame([8, 8, 30], $orders->pluck('reward_coins')->map(fn ($value): int => (int) $value)->all());
+        self::assertSame([32, 32, 120], $orders->pluck('paid_coins')->map(fn ($value): int => (int) $value)->all());
         self::assertSame((int) $orders[0]->id, (int) $orders[1]->parent_order_id);
         self::assertSame((int) $orders[1]->id, (int) $orders[2]->parent_order_id);
 
@@ -259,16 +260,16 @@ final class CourseRewardContributionCapTest extends TestCase
             ->where('source_id', $course->id)
             ->where('direction', WalletTransaction::DIRECTION_DEBIT);
         self::assertSame(3, (clone $courseDebits)->count());
-        self::assertSame(100, (int) (clone $courseDebits)->sum('reward_amount'));
-        self::assertSame(130, (int) (clone $courseDebits)->sum('paid_amount'));
-        self::assertSame(130, (int) WalletDebitAllocation::query()
+        self::assertSame(46, (int) (clone $courseDebits)->sum('reward_amount'));
+        self::assertSame(184, (int) (clone $courseDebits)->sum('paid_amount'));
+        self::assertSame(184, (int) WalletDebitAllocation::query()
             ->whereIn('course_order_id', $orders->pluck('id'))
             ->sum('amount'));
 
         $fresh = $user->fresh();
-        self::assertSame(20, (int) $fresh->wallet_coins);
+        self::assertSame(74, (int) $fresh->wallet_coins);
         self::assertSame(0, (int) $fresh->wallet_purchased_coins);
-        self::assertSame(20, (int) $fresh->wallet_reward_coins);
+        self::assertSame(74, (int) $fresh->wallet_reward_coins);
     }
 
     public function test_ai_plan_floor_uses_paid_coins_even_when_reward_balance_is_large_and_isolates_a_forged_enrollment(): void
@@ -288,15 +289,15 @@ final class CourseRewardContributionCapTest extends TestCase
             'course_id' => $course->id,
             'access_plan_code' => 'basic',
             'idempotency_key' => 'paid-floor-base-purchase-0001',
-        ])->assertOk()->assertJsonPath('data.allocation.reward_coins', 40);
+        ])->assertOk()->assertJsonPath('data.allocation.reward_coins', 8);
 
         $this->actingAs($user, 'api')->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
             'target_plan_code' => 'guided',
             'expected_price' => 40,
             'idempotency_key' => 'paid-floor-guided-upgrade-0001',
         ])->assertOk()
-            ->assertJsonPath('data.allocation.paid_coins', 40)
-            ->assertJsonPath('data.allocation.reward_coins', 0)
+            ->assertJsonPath('data.allocation.paid_coins', 32)
+            ->assertJsonPath('data.allocation.reward_coins', 8)
             ->assertJsonPath('data.financial_review_required', false);
 
         $this->actingAs($user, 'api')->postJson("/api/v1/courses/{$course->id}/full-track-upgrade", [
@@ -304,8 +305,8 @@ final class CourseRewardContributionCapTest extends TestCase
             'expected_price' => 150,
             'idempotency_key' => 'paid-floor-mentor-upgrade-0001',
         ])->assertOk()
-            ->assertJsonPath('data.allocation.paid_coins', 150)
-            ->assertJsonPath('data.allocation.reward_coins', 0)
+            ->assertJsonPath('data.allocation.paid_coins', 126)
+            ->assertJsonPath('data.allocation.reward_coins', 24)
             ->assertJsonPath('data.financial_review_required', false);
 
         self::assertSame(190, app(WalletService::class)->coursePaidContribution(

@@ -103,6 +103,22 @@ final readonly class OrderLifecycleService
             }
             $this->recordEvent($locked, 'approved', 'approval', $actorId, $notes);
 
+            if ($locked->package_id && $locked->payment_method === Order::PAYMENT_METHOD_KASHIER) {
+                $fundingOrderId = (int) $locked->id;
+                DB::afterCommit(static function () use ($fundingOrderId): void {
+                    try {
+                        $fundingOrder = Order::query()->find($fundingOrderId);
+                        if ($fundingOrder) {
+                            app(CourseCheckoutService::class)->resumeFundingOrder($fundingOrder);
+                        }
+                    } catch (\Throwable $exception) {
+                        // Package credit is final. A durable authorized checkout
+                        // remains retryable by the client and scheduled reconciler.
+                        report($exception);
+                    }
+                });
+            }
+
             return $locked->fresh($locked->package_id
                 ? ['package', 'user']
                 : ['bill', 'course', 'user']);

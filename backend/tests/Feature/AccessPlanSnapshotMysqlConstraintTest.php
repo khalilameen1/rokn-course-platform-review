@@ -116,6 +116,30 @@ final class AccessPlanSnapshotMysqlConstraintTest extends TestCase
         );
     }
 
+    public function test_v6_watch_only_requires_its_project_flag_and_cannot_claim_a_certificate(): void
+    {
+        $fixture = $this->commercialFixture('basic');
+        $snapshot = $this->snapshot(6, $fixture['plan_id'], 'basic');
+        $snapshot['projects_enabled'] = false;
+        $snapshot['certificate_enabled'] = false;
+        $orderId = $this->insertOrder($fixture, $snapshot);
+        $this->insertEnrollment($fixture, $orderId, $snapshot);
+
+        $missing = $snapshot;
+        unset($missing['projects_enabled']);
+        $contradictory = array_replace($snapshot, ['certificate_enabled' => true]);
+        foreach ([$missing, $contradictory] as $invalid) {
+            $this->assertConstraintRejects(
+                'orders_access_plan_snapshot_check',
+                fn (): int => $this->insertOrder($fixture, $invalid)
+            );
+            $this->assertConstraintRejects(
+                'enrollments_access_plan_snapshot_check',
+                fn () => $this->insertEnrollment($fixture, $orderId, $invalid)
+            );
+        }
+    }
+
     public function test_wallet_course_purchase_and_same_key_replay_write_one_complete_financial_receipt(): void
     {
         $fixture = $this->commercialFixture('mentor');

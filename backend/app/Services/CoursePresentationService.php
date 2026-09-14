@@ -20,7 +20,8 @@ final readonly class CoursePresentationService
         private LearningProgressStateService $progressState,
         private CertificateEligibilityService $certificateEligibility,
         private CourseRevisionLearnerReadService $revisionReads,
-        private LatestWatchResumeService $latestResume
+        private LatestWatchResumeService $latestResume,
+        private CourseAccessPlanService $plans
     )
     {
     }
@@ -165,6 +166,7 @@ final readonly class CoursePresentationService
             'access_type' => $accessType,
             'chat_available' => (bool) ($planContract['chat_enabled'] ?? false),
             'certificate_available' => (bool) ($planContract['certificate_enabled'] ?? false),
+            'projects_available' => (bool) ($planContract['projects_enabled'] ?? true),
             'project_feedback_level' => (string) (
                 $planContract['project_feedback_level'] ?? 'pass_only'
             ),
@@ -192,7 +194,8 @@ final readonly class CoursePresentationService
         int $userId
     ): array {
         $learningSections = $this->sectionSequence->learning(
-            $this->sectionSequence->fromModules($course->modules)
+            $this->sectionSequence->fromModules($course->modules),
+            $this->plans->projectsEnabledForEnrollment($enrollment)
         );
         $completedSectionIds = $this->revisionReads->completedSectionIds(
             $userId,
@@ -229,9 +232,11 @@ final readonly class CoursePresentationService
     public function sectionLockStatus(
         Collection $sections,
         Collection $completedSectionIds,
-        ?int $userId = null
+        ?int $userId = null,
+        ?bool $projectsEnabled = null
     ): Collection {
-        $orderedSections = $this->sectionSequence->learning($sections);
+        $projectsEnabled ??= $this->projectsEnabledForUser($userId, (int) $sections->first()?->course_id);
+        $orderedSections = $this->sectionSequence->learning($sections, $projectsEnabled);
 
         $projectIds = $orderedSections
             ->filter(fn ($section): bool => $section->getSectionType() === 'project')
@@ -293,7 +298,8 @@ final readonly class CoursePresentationService
                 ->orderBy('order'),
         ])->findOrFail($courseId);
         $learningSections = $this->sectionSequence->learning(
-            $this->sectionSequence->fromModules($course->modules)
+            $this->sectionSequence->fromModules($course->modules),
+            $this->projectsEnabledForUser($userId, $courseId)
         );
         $completedSectionIds = $this->revisionReads->completedSectionIds(
             $userId,
@@ -303,5 +309,17 @@ final readonly class CoursePresentationService
             $learningSections,
             $completedSectionIds
         );
+    }
+
+    private function projectsEnabledForUser(?int $userId, int $courseId): bool
+    {
+        if (!$userId || !$courseId) return true;
+
+        $enrollment = CourseEnrollment::query()
+            ->where('user_id', $userId)->where('course_id', $courseId)->first();
+
+        // Public/legacy callers retain the full curriculum. Access itself is
+        // enforced separately; only an explicit captured watch-only plan skips projects.
+        return !$enrollment || $this->plans->projectsEnabledForEnrollment($enrollment);
     }
 }

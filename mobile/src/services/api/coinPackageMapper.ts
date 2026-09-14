@@ -7,6 +7,7 @@ export type CoinPackage = {
   price: number;
   label: string;
   displayPrice?: string;
+  currency?: string;
   storeProductIds?: {
     google?: string;
     apple?: string;

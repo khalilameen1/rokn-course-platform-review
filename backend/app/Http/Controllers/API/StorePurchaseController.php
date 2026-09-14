@@ -44,6 +44,7 @@ final class StorePurchaseController extends Controller
             'product_id' => ['required', 'string', 'max:191'],
             'purchase_token' => ['required', 'string', 'max:30000'],
             'transaction_id' => ['nullable', 'string', 'max:191'],
+            'checkout_id' => ['nullable', 'uuid'],
         ]);
         /** @var User $user */
         $user = auth('api')->user();
@@ -63,6 +64,24 @@ final class StorePurchaseController extends Controller
                 null,
                 ['code' => $exception->errorCode]
             );
+        }
+
+        if (!empty($validated['checkout_id'])) {
+            // Opt-in only: legacy receipts retain their existing behavior.
+            // Verified coins belong to the learner even if consent expired.
+            // The separately returned checkout status never hides that credit.
+            try {
+                $purchase = StorePurchase::query()->where('public_id', $result['purchase_id'])
+                    ->where('user_id', $user->id)->firstOrFail();
+                $result['checkout'] = app(\App\Services\CourseCheckoutService::class)
+                    ->bindStorePurchase($user, $validated['checkout_id'], $purchase);
+                $result['wallet'] = app(\App\Services\WalletQueryService::class)->summary($user->fresh());
+            } catch (\DomainException|\Illuminate\Database\Eloquent\ModelNotFoundException $exception) {
+                $result['checkout_error'] = 'checkout_funding_mismatch';
+            } catch (\Throwable $exception) {
+                report($exception);
+                $result['checkout_error'] = 'checkout_resume_required';
+            }
         }
 
         return $this->responses->success(

@@ -192,7 +192,7 @@ describe('learning async ownership contracts', () => {
 
   it('does not apply device or paid-upgrade results after an account switch', () => {
     const devices = source('src/screens/DeviceSessions.tsx');
-    const upgrade = source('src/components/FullTrackUpgradeSheet.tsx');
+    const upgrade = source('src/hooks/useCourseSubscriptionCheckout.ts');
 
     expect(devices).toMatch(
       /const boundary = await captureAccountSessionBoundary\(\);[\s\S]*await getDeviceSessions\(\);[\s\S]*assertAccountSessionBoundary\(boundary\)/,
@@ -201,10 +201,10 @@ describe('learning async ownership contracts', () => {
       /await revokeDeviceSession\(session\.id\);[\s\S]*assertAccountSessionBoundary\(boundary\)/,
     );
     expect(upgrade).toMatch(
-      /boundary = await captureAccountSessionBoundary\(\);[\s\S]*await purchaseFullTrackUpgrade\([\s\S]*assertAccountSessionBoundary\(boundary\)/,
+      /boundary = await captureAccountSessionBoundary\(\);[\s\S]*await authorizeCourseCheckout\([\s\S]*assertAccountSessionBoundary\(boundary\)/,
     );
     expect(upgrade).toContain(
-      "requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'",
+      'if (!owns(token)) return;',
     );
   });
 });

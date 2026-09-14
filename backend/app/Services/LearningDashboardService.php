@@ -148,6 +148,10 @@ final readonly class LearningDashboardService
             $course = $enrollment->course;
             $courseId = (int) $course->id;
             $courseSections = $sectionsByCourse->get($courseId, collect());
+            $courseSections = $this->sectionSequence->forProjectsPolicy(
+                $courseSections,
+                (bool) ($entitlements[$courseId]['projects_available'] ?? true)
+            );
             $state = $this->progressState->summarize(
                 $courseSections,
                 $completedSectionIds->keys()
@@ -216,6 +220,7 @@ final readonly class LearningDashboardService
                     : null,
                 'access_type' => (string) $entitlement['access_type'],
                 'chat_available' => (bool) $entitlement['chat_available'],
+                'projects_available' => (bool) ($entitlement['projects_available'] ?? true),
                 'certificate_included' => (bool) $certificateStatus['included'],
                 'certificate_available' => (bool) $certificateStatus['available'],
                 'access_granted_at' => $enrollment->access_granted_at?->toIso8601String(),

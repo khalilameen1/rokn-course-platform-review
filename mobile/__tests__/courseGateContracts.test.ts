@@ -83,7 +83,8 @@ describe('course gate contracts', () => {
       'src/screens/CourseDetails/details/PurchaseDialogSteps.tsx',
     );
     expect(dialogs).not.toContain('CourseCodeRedemptionDialog');
-    expect(dialogs).toContain("dialogStep === 'plans'");
+    expect(dialogs).toContain('<CourseSubscriptionSheet');
+    expect(dialogs).not.toContain("dialogStep === 'topup'");
     expect(dialogSteps).toContain('export const CourseCodeEntry');
     expect(dialogSteps).toContain('<CourseCodeEntry');
   });

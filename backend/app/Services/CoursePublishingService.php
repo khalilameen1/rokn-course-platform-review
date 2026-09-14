@@ -401,6 +401,15 @@ class CoursePublishingService
                 $issues[] = "الفئة «{$plan->name_ar}» تحتاج حدًا مدفوعًا صالحًا لتغطية خدماتها";
             }
 
+            $economics = app(CoursePlanEconomicsService::class)->evaluate($plan->getAttributes());
+            if ($price > 0 && !$economics['configured']) {
+                $message = "الفئة «{$plan->name_ar}» لم يكتمل اعتماد تكلفتها وصافي قيمة العملات";
+                if (config('course_plans.enforce_commercial_floor')) $issues[] = $message;
+                else $warnings[] = $message;
+            } elseif ($price > 0 && !$economics['meets_floor']) {
+                $issues[] = "الفئة «{$plan->name_ar}» لا تغطي التكلفة والهامش بعد المكافآت والكوبونات";
+            }
+
             // AI limits, token budgets and attachment ceilings are enforced by
             // the administrator-owned global plan policy when these rows are
             // saved. They are not course-authoring requirements and must not

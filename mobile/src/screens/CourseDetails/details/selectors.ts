@@ -72,7 +72,9 @@ export const selectCourseDetailsPresentation = ({
   const baseCoursePrice = remoteCourse?.price ?? null;
   const accessPlans: CourseAccessPlan[] = remoteCourse?.accessPlans || [];
   const selectedPlan =
-    accessPlans.find(plan => plan.code === selectedPlanCode) || accessPlans[0];
+    accessPlans.find(plan => plan.code === selectedPlanCode) ||
+    accessPlans.find(plan => plan.code === 'guided') ||
+    accessPlans[0];
   const coursePrice = accessPlans.length
     ? Math.min(...accessPlans.map(plan => plan.priceCoins))
     : baseCoursePrice;
@@ -156,7 +158,7 @@ export const selectCourseDetailsPresentation = ({
     : requiresWallet && remoteBalance === null
     ? ({kind: 'wallet_unavailable', label: 'شراء الكورس'} as const)
     : accessPlans.length > 1
-    ? ({kind: 'choose_plan', label: 'اختر الفئة المناسبة لك'} as const)
+    ? ({kind: 'choose_plan', label: 'اختر الاشتراك'} as const)
     : coursePrice === 0
     ? ({kind: 'free', label: 'ابدأ التعلّم مجانًا'} as const)
     : ({kind: 'purchase', label: 'شراء الكورس'} as const);

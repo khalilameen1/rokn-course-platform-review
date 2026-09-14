@@ -14,7 +14,8 @@ final class StudentProgressSummaryService
 {
     public function __construct(
         private readonly CourseSectionSequenceService $sectionSequence,
-        private readonly CourseRevisionLearnerReadService $revisionReads
+        private readonly CourseRevisionLearnerReadService $revisionReads,
+        private readonly CourseAccessPlanService $plans
     ) {
     }
 
@@ -78,6 +79,10 @@ final class StudentProgressSummaryService
             }
 
             $sections = $sectionsByCourse->get($enrollment->course_id, collect());
+            $sections = $this->sectionSequence->forProjectsPolicy(
+                $sections,
+                $this->plans->projectsEnabledForEnrollment($enrollment)
+            );
             $sectionIdSet = $sections->pluck('id')->flip();
             $progress = $progressByUser
                 ->get($user->id, collect())

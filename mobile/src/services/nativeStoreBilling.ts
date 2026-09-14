@@ -17,9 +17,15 @@ import {
   IS_PLAY_DISTRIBUTION,
 } from '../constants/distribution';
 import type {CoinPackage} from './api/coinPackageMapper';
-import {firstBoolean, payload} from './api/common';
+import {firstBoolean, isApiRecord, payload} from './api/common';
 import {reportClientError} from './operationalTelemetry';
 import {errorCode} from '../utils/errorPayload';
+import {
+  clearNativeCourseCheckout,
+  readNativeCourseCheckout,
+  rememberNativeCourseCheckout,
+  validCourseCheckoutId,
+} from './nativeCourseCheckoutBinding';
 
 type StoreBillingContext = {
   google_obfuscated_account_id?: unknown;
@@ -27,6 +33,7 @@ type StoreBillingContext = {
 };
 
 type StoreVerificationResult = {
+  checkout?: unknown;
   coins_added?: unknown;
   credited?: unknown;
   financial_status?: unknown;
@@ -199,7 +206,9 @@ const cancelledError = (error: {code?: unknown}) => {
 
 const pendingError = (error: {code?: unknown}) =>
   ['pending', 'deferred-payment'].includes(
-    String(error.code || '').trim().toLowerCase(),
+    String(error.code || '')
+      .trim()
+      .toLowerCase(),
   );
 
 const pendingResult = (): NativeCoinCheckoutResult => ({
@@ -256,11 +265,19 @@ const verifyAndFinish = async (
     if (currentScope !== accountScope) {
       throw new Error('STORE_PURCHASE_ACCOUNT_CHANGED');
     }
+    const receiptCheckoutId =
+      'obfuscatedProfileIdAndroid' in purchase
+        ? String(purchase.obfuscatedProfileIdAndroid || '').trim()
+        : '';
+    const courseCheckoutId = validCourseCheckoutId(receiptCheckoutId)
+      ? receiptCheckoutId
+      : await readNativeCourseCheckout(purchase.productId);
     const response = await publicRequest.post('store-purchases/verify', {
       provider: provider(),
       product_id: purchase.productId,
       purchase_token: purchaseToken,
       transaction_id: purchaseTransactionId(purchase),
+      ...(courseCheckoutId ? {checkout_id: courseCheckoutId} : {}),
     });
     const verified = payload<StoreVerificationResult>(response);
     if (firstBoolean(verified.finalize_transaction) !== true) {
@@ -284,8 +301,20 @@ const verifyAndFinish = async (
     // Google may already have consumed the receipt on the backend. Asking the
     // bridge to consume it again can report ITEM_NOT_OWNED after a valid credit.
     // Apple still requires the device to finish its StoreKit transaction.
-    if (!(IS_PLAY_DISTRIBUTION && firstBoolean(verified.store_finalized) === true)) {
+    if (
+      !(IS_PLAY_DISTRIBUTION && firstBoolean(verified.store_finalized) === true)
+    ) {
       await finishTransaction({purchase, isConsumable: true});
+    }
+    if (
+      courseCheckoutId &&
+      isApiRecord(verified.checkout) &&
+      verified.checkout.id === courseCheckoutId &&
+      ['completed', 'cancelled', 'expired', 'reconfirm_required'].includes(
+        String(verified.checkout.status),
+      )
+    ) {
+      await clearNativeCourseCheckout(purchase.productId, courseCheckoutId);
     }
 
     return {
@@ -499,13 +528,18 @@ export const hydrateNativeStorePackages = async (
   return configured.flatMap(({coinPackage, productId}) => {
     const product = byId.get(productId);
     if (!product) return [];
+    if (
+      !Number.isFinite(Number(product.price)) ||
+      Number(product.price) <= 0 ||
+      !product.displayPrice
+    )
+      return [];
     return [
       {
         ...coinPackage,
-        price: Number.isFinite(Number(product.price))
-          ? Number(product.price)
-          : coinPackage.price,
+        price: Number(product.price),
         displayPrice: product.displayPrice,
+        currency: product.currency,
       },
     ];
   });
@@ -513,6 +547,7 @@ export const hydrateNativeStorePackages = async (
 
 export const purchaseNativeCoinPackage = async (
   coinPackage: CoinPackage,
+  options: {courseCheckoutId?: string} = {},
 ): Promise<NativeCoinCheckoutResult> => {
   const productId = packageProductId(coinPackage);
   if (!productId) throw new Error('STORE_PRODUCT_NOT_CONFIGURED');
@@ -532,6 +567,9 @@ export const purchaseNativeCoinPackage = async (
   );
   if (confirmedAccountScope !== owner.accountScope) {
     throw new Error('STORE_PURCHASE_ACCOUNT_CHANGED');
+  }
+  if (options.courseCheckoutId) {
+    await rememberNativeCourseCheckout(productId, options.courseCheckoutId);
   }
 
   let resolvePurchase!: (value: NativeCoinCheckoutResult) => void;
@@ -566,6 +604,9 @@ export const purchaseNativeCoinPackage = async (
             google: {
               skus: [productId],
               obfuscatedAccountId: owner.accountBinding,
+              ...(options.courseCheckoutId
+                ? {obfuscatedProfileId: options.courseCheckoutId}
+                : {}),
             },
           }
         : {
@@ -596,7 +637,10 @@ export const purchaseNativeCoinPackage = async (
     });
   }
 
-  return outcome;
+  const result = await outcome;
+  if (result.cancelled && options.courseCheckoutId)
+    await clearNativeCourseCheckout(productId, options.courseCheckoutId);
+  return result;
 };
 
 export const subscribeNativeStoreCredits = (

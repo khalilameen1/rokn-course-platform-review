@@ -2,39 +2,54 @@
     $isAdministrator = $canViewCommercialReport;
     $accessPlansByCode = $course->accessPlans->keyBy('code');
     $planLabels = [
-        'basic' => 'التعلّم',
-        'guided' => 'التعلّم بإرشاد',
-        'mentor' => 'التعلّم بمتابعة',
+        'basic' => 'Basic',
+        'guided' => 'Plus',
+        'mentor' => 'Pro',
     ];
+    $economicsService = app(\App\Services\CoursePlanEconomicsService::class);
+    $promotionPercent = $economicsService->promotionPercent();
 @endphp
 <div class="form-section" id="course-editor-plans">
     @include('admin.courses.partials.publishing-area-issues', ['area' => 'plans'])
-    <h2 class="section-title"><div class="section-icon"><i class="fa fa-layer-group"></i></div>فئات الكورس</h2>
+    <h2 class="section-title"><div class="section-icon"><i class="fa fa-layer-group"></i></div>اشتراكات الكورس</h2>
     <div class="form-help course-editor__section-help">
-        عدّل الاسم والسعر والإتاحة هنا
-        مزايا الذكاء الاصطناعي لكل فئة يديرها الأدمن مرة واحدة من إعدادات Rokn AI
-        المشتريات السابقة لا تتغير
+        التغييرات للمشتريات الجديدة فقط
+        المكافآت والكوبونات معًا حتى {{ $promotionPercent }}٪
     </div>
     <div class="course-editor__plan-grid">
         @foreach($planLabels as $code => $label)
             @php
                 $plan = $accessPlansByCode->get($code);
-                $features = ['الكورس والمشروعات والعبور'];
-                if ($plan?->chat_enabled) $features[] = 'Rokn AI';
-                if (in_array((string) $plan?->project_feedback_level, ['report', 'enhanced'], true)) {
+                $features = $code === 'basic' ? ['مشاهدة الكورس'] : ['الكورس ومشاريع العبور'];
+                if ($code !== 'basic' && $plan?->chat_enabled) $features[] = number_format($plan->chat_message_limit) . ' رسالة';
+                if ($code !== 'basic' && in_array((string) $plan?->project_feedback_level, ['report', 'enhanced'], true)) {
                     $features[] = 'تقرير المشروع';
                 }
-                if ((string) $plan?->project_feedback_level === 'enhanced') {
-                    $features[] = 'محادثة التقرير';
+                if ($code !== 'basic' && (string) $plan?->project_feedback_level === 'enhanced') {
+                    $features[] = 'تدريب أعمق';
                 }
-                if ($plan?->certificate_enabled) $features[] = 'الشهادة';
+                if ($code !== 'basic' && $plan?->certificate_enabled) $features[] = 'الشهادة';
                 $description = implode(' · ', $features);
+                $financialTerms = $plan?->getAttributes() ?? [];
+                $financialTerms['delivery_cost_usd'] = old("access_plans.$code.delivery_cost_usd", $plan?->delivery_cost_usd);
+                $financialTerms['price_coins'] = old("access_plans.$code.price_coins", $plan?->price_coins ?? 0);
+                $financialTerms['minimum_paid_coins'] = old("access_plans.$code.minimum_paid_coins", $plan?->minimum_paid_coins ?? 0);
+                if ($code === 'basic') {
+                    $financialTerms['chat_enabled'] = false;
+                    $financialTerms['project_feedback_level'] = 'pass_only';
+                }
+                $economics = $economicsService->evaluate($financialTerms, $promotionPercent);
             @endphp
             <div class="course-editor__plan-card">
                 <div class="course-editor__plan-title">{{ $label }}</div>
                 <div class="course-editor__plan-description">{{ $description }}</div>
+                @if($code === 'basic' && $plan?->exists && ($plan->projects_enabled || $plan->certificate_enabled))
+                    <div class="course-editor__plan-note">العرض الحالي يتضمن مزايا قديمة وسيصبح Basic للمشاهدة فقط عند نشر هذه التعديلات دون تغيير حقوق المشترين السابقين</div>
+                @endif
                 @if($isAdministrator && $plan && $planStats->has($code))
                     @php $stats = $planStats->get($code); @endphp
+                    <details class="course-editor__plan-history">
+                    <summary>المبيعات والاستخدام</summary>
                     <div class="course-editor__plan-stats">
                         <span>عمليات الشراء <strong>{{ number_format($stats['sales_count']) }}</strong></span>
                         <span>إجمالي العملات <strong>{{ number_format($stats['total_coins']) }}</strong></span>
@@ -52,11 +67,12 @@
                             <span class="course-editor__plan-stats-total text-warning">طلبات بلا نتيجة مؤكدة <strong>{{ number_format($stats['total_unanswered_requests']) }}</strong></span>
                         @endif
                     </div>
+                    </details>
                 @endif
-                <label class="form-label-modern">اسم الفئة الظاهر للطالب</label>
+                <label class="form-label-modern">اسم الاشتراك</label>
                 <input class="form-control-modern" type="text" maxlength="120" name="access_plans[{{ $code }}][name_ar]" value="{{ old("access_plans.$code.name_ar", $plan?->name_ar ?? $label) }}" required>
                 @if($enableEnglish)
-                    <label class="form-label-modern">اسم الفئة بالإنجليزية</label>
+                    <label class="form-label-modern">الاسم بالإنجليزية</label>
                     <input class="form-control-modern" type="text" maxlength="120" name="access_plans[{{ $code }}][name_en]" value="{{ old("access_plans.$code.name_en", $plan?->name_en) }}">
                 @else
                     <input type="hidden" name="access_plans[{{ $code }}][name_en]" value="{{ $plan?->name_en }}">
@@ -70,10 +86,33 @@
                 <label class="form-label-modern">الحد الأدنى من العملات المدفوعة</label>
                 <input class="form-control-modern" type="number" min="0" name="access_plans[{{ $code }}][minimum_paid_coins]" value="{{ old("access_plans.$code.minimum_paid_coins", $plan?->minimum_paid_coins ?? 0) }}" required>
                 <input type="hidden" name="access_plans[{{ $code }}][certificate_enabled]" value="0">
+                @if($code !== 'basic')
                 <label class="course-editor__inline-check course-editor__inline-check--top">
                     <input type="checkbox" name="access_plans[{{ $code }}][certificate_enabled]" value="1" {{ old("access_plans.$code.certificate_enabled", $plan?->certificate_enabled ?? true) ? 'checked' : '' }}> إصدار شهادة عند إتمام الكورس
                 </label>
+                @endif
+                @if($isAdministrator)
+                    <details class="course-editor__plan-economics" @if(!$economics['configured'] || !$economics['meets_floor']) open @endif>
+                        <summary>التكلفة وحد السعر</summary>
+                        <label class="form-label-modern" for="delivery-cost-{{ $code }}">تكلفة تقديم الاشتراك بالدولار</label>
+                        <input class="form-control-modern" id="delivery-cost-{{ $code }}" type="number" min="0" max="999999.999999" step="0.000001"
+                            name="access_plans[{{ $code }}][delivery_cost_usd]" value="{{ $financialTerms['delivery_cost_usd'] }}">
+                        <div class="form-help">نصيب البيعة من الإنتاج والتشغيل والدعم وفحص المشاريع ولا يشمل ميزانيات التدريب المضافة تلقائيًا</div>
+                        @if($economics['configured'])
+                            <div class="course-editor__plan-note">
+                                الحد المحسوب {{ number_format($economics['required_price_coins']) }} عملة
+                                والحد المدفوع {{ number_format($economics['required_paid_coins']) }}
+                                بهامش مستهدف {{ $economics['target_margin_percent'] }}٪ قبل ضريبة الدخل
+                                @if(!$economics['meets_floor'])<strong>السعر أو الحد المدفوع أقل من المطلوب</strong>@endif
+                            </div>
+                        @else
+                            <div class="course-editor__plan-note">التسعير غير معتمد<br>{{ implode(' · ', $economics['problems']) }}</div>
+                        @endif
+                        <div class="form-help">الحساب حسب القيم المحفوظة ويُراجع عند الحفظ ولا يُخصم من صافي العملة أي عمولات أو ضرائب مرة أخرى</div>
+                    </details>
+                @endif
             </div>
         @endforeach
     </div>
+    <div class="form-help course-editor__section-help">التدرج المقترح Basic أقل من Plus بـ٤٠٪ وPro أعلى من Plus بـ٥٠٪ بشرط تغطية تكلفة كل اشتراك ولا تُغيّر الأسعار تلقائيًا</div>
 </div>

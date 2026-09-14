@@ -3,19 +3,26 @@ import {
   assertAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../constants/helpers';
-import {asRecord, errorCode, errorPayload, errorStatus} from '../utils/errorPayload';
+import {
+  asRecord,
+  errorCode,
+  errorPayload,
+  errorStatus,
+} from '../utils/errorPayload';
 import type {CoinCheckoutOrderStatus} from './coinCheckoutTypes';
 
-type CheckoutInitiation = {
-  state: 'payable';
-  paymentUrl: string;
-  orderRef: string;
-  idempotencyKey: string;
-} | {
-  state: 'paid';
-  orderRef: string;
-  coinsAdded: number;
-};
+type CheckoutInitiation =
+  | {
+      state: 'payable';
+      paymentUrl: string;
+      orderRef: string;
+      idempotencyKey: string;
+    }
+  | {
+      state: 'paid';
+      orderRef: string;
+      coinsAdded: number;
+    };
 
 export type CheckoutFailure = {
   code: string;
@@ -68,6 +75,7 @@ export const initiateCoinCheckout = async (
     expectedAmount: number;
     expectedCoins: number;
     idempotencyKey: string;
+    courseCheckoutId?: string;
   },
   boundary: AccountSessionBoundary,
 ): Promise<CheckoutInitiation> => {
@@ -79,6 +87,9 @@ export const initiateCoinCheckout = async (
       expected_amount: request.expectedAmount,
       expected_coins: request.expectedCoins,
       idempotency_key: request.idempotencyKey,
+      ...(request.courseCheckoutId
+        ? {course_checkout_id: request.courseCheckoutId}
+        : {}),
     },
     {headers: {'Idempotency-Key': request.idempotencyKey}},
   );
@@ -164,12 +175,9 @@ export const reconcileCoinCheckoutOrder = async (
     }
     if (
       (status === 'approved' &&
-        [
-          'refunded',
-          'chargeback',
-          'reversed',
-          'partially_recovered',
-        ].includes(financialStatus)) ||
+        ['refunded', 'chargeback', 'reversed', 'partially_recovered'].includes(
+          financialStatus,
+        )) ||
       ['failed', 'cancelled', 'rejected'].includes(status)
     ) {
       return {approved: false, pending: false, coinsAdded: 0};
