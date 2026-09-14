@@ -79,7 +79,7 @@ final class CourseCheckoutServiceTest extends TestCase
         [$user, $course, $service] = $this->fixture(0, 200);
         $package = $this->storePackage(350);
         $quote = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
-        self::assertSame(320, $quote['deficit']);
+        self::assertSame(350, $quote['deficit']);
         self::assertSame(['paid_coins' => 350, 'reward_coins' => 50], $quote['allocation']);
         self::assertSame(150, $quote['remaining_reward_balance']);
         self::assertSame('pending_payment', $service->authorize($user, $quote['id'])['status']);
@@ -99,7 +99,69 @@ final class CourseCheckoutServiceTest extends TestCase
         $package = $this->storePackage(900);
         $quote = $service->create($user, $this->input($course) + ['package_id' => $package->id]);
         self::assertSame(0, $quote['allocation']['reward_coins']);
+        self::assertSame(400, $quote['allocation']['paid_coins']);
+        self::assertSame(400, $quote['deficit']);
         self::assertSame(500, $quote['remaining_purchased_balance']);
+    }
+
+    public function test_unbound_quote_keeps_all_reward_eligible_packages_for_native_price_selection(): void
+    {
+        [$user, $course, $service] = $this->fixture(0, 200);
+        $small = $this->storePackage(320);
+        $large = $this->storePackage(900);
+        // Catalogue price order need not match the native store's localized
+        // prices. Do not preselect the large package and hide the small one.
+        $large->forceFill(['price' => 50])->save();
+        $quote = $service->create($user, $this->input($course));
+        self::assertNull($quote['selected_package']);
+        self::assertSame(['paid_coins' => 320, 'reward_coins' => 80], $quote['allocation']);
+        self::assertSame(320, $quote['deficit']);
+        self::assertSame([(int) $large->id, (int) $small->id], array_column($quote['recommended_packages'], 'id'));
+        try {
+            $service->authorize($user, $quote['id']);
+            self::fail('A native funding package must be bound before authorization');
+        } catch (\DomainException $exception) {
+            self::assertSame('checkout_package_required', $exception->getMessage());
+        }
+        self::assertSame('quoted', $service->show($user, $quote['id'])['status']);
+        self::assertSame(200, (int) $user->fresh()->wallet_reward_coins);
+        self::assertSame(0, CourseEnrollment::query()->count());
+
+        $bound = $service->create($user, $this->input($course) + ['package_id' => $small->id]);
+        self::assertSame(320, $bound['deficit']);
+        self::assertSame(80, $bound['allocation']['reward_coins']);
+        self::assertSame('pending_payment', $service->authorize($user, $bound['id'])['status']);
+    }
+
+    public function test_http_reviewer_wallet_quote_has_consistent_deficit_before_and_after_package_binding(): void
+    {
+        [$user, $course] = $this->fixture(20, 30);
+        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $package = $this->storePackage(900);
+        foreach (['basic' => 400, 'guided' => 650] as $code => $price) {
+            $input = array_replace($this->input($course), ['access_plan_code' => $code]);
+            $unbound = $this->actingAs($user, 'api')->postJson('/api/v1/course-checkouts', $input)->assertOk()->json('data');
+            self::assertNull($unbound['selected_package']);
+            self::assertSame($price - 50, $unbound['deficit']);
+            self::assertSame(30, $unbound['allocation']['reward_coins']);
+
+            $bound = $this->postJson('/api/v1/course-checkouts', $input + ['package_id' => $package->id])->assertOk()->json('data');
+            self::assertSame(0, $bound['allocation']['reward_coins']);
+            self::assertSame($price, $bound['allocation']['paid_coins']);
+            self::assertSame($price - 20, $bound['deficit']);
+            self::assertSame(920 - $price, $bound['remaining_purchased_balance']);
+            self::assertSame(30, $bound['remaining_reward_balance']);
+            foreach ([$unbound, $bound] as $snapshot) {
+                self::assertSame($snapshot['final_price'], array_sum($snapshot['allocation']));
+                self::assertSame(max(0, $snapshot['allocation']['paid_coins'] - $snapshot['purchased_balance']), $snapshot['deficit']);
+                self::assertSame($snapshot['final_price'] + $snapshot['discount_amount'], $snapshot['original_price']);
+            }
+            $this->getJson('/api/v1/course-checkouts/'.$bound['id'])->assertOk()
+                ->assertJsonPath('data.deficit', $price - 20);
+        }
+        self::assertSame(20, (int) $user->fresh()->wallet_purchased_coins);
+        self::assertSame(30, (int) $user->fresh()->wallet_reward_coins);
+        self::assertSame(0, CourseEnrollment::query()->count());
     }
 
     public function test_cancelled_or_expired_authorization_never_auto_spends_late_funding(): void

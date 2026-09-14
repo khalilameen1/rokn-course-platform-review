@@ -45,26 +45,30 @@ final readonly class CourseCheckoutQuoteService
         $final = (int) $coupon['final'];
         $balances = $this->wallet->balances($user);
         $maxReward = min($balances['reward'], max(0, $promotion['remaining'] - $coupon['discount']), max(0, $final - $paidFloor));
-        $deficit = max(0, $final - $balances['paid'] - $maxReward);
+        // Discover every package that can fund the course with the allowed
+        // rewards. Native localized prices, not catalogue price order, decide
+        // which package the client binds in the next quote.
+        $minimumDeficit = max(0, $final - $balances['paid'] - $maxReward);
         $channel = $input['channel'];
         if (!in_array($channel, ['google', 'apple', 'direct'], true)) throw new \DomainException('checkout_channel_invalid');
         $eligible = Package::query()->where('is_active', true)->where('coins', '>', 0)->where('price', '>', 0)
             ->where($channel.'_enabled', true)->orderBy('price')->orderBy('coins')->get()
             ->filter(fn (Package $package): bool => $package->availableChannels()[$channel])
-            ->filter(fn (Package $package): bool => (int) $package->coins >= $deficit)->values();
+            ->filter(fn (Package $package): bool => (int) $package->coins >= $minimumDeficit)->values();
         $selected = null;
         $packageId = $input['package_id'] ?? $input['selected_package']['id'] ?? null;
         if ($packageId) {
             // After funding, its issued immutable coin contract remains valid even
             // when the catalogue disables future sales of that denomination.
             $selected = $selectPackage ? $eligible->firstWhere('id', (int) $packageId) : Package::query()->find($packageId);
-            if (!$selected || ($selectPackage && $deficit === 0)) throw new \DomainException('checkout_package_unavailable');
-        } elseif ($selectPackage && $deficit > 0) {
-            $selected = $eligible->first();
+            if (!$selected || ($selectPackage && $minimumDeficit === 0)) throw new \DomainException('checkout_package_unavailable');
         }
         $reward = $selected
             ? min($maxReward, max(0, $final - $balances['paid'] - (int) $selected->coins))
             : $maxReward;
+        // A larger top-up can preserve rewards. The public deficit must agree
+        // with that final allocation, not the earlier eligibility minimum.
+        $deficit = max(0, $final - $balances['paid'] - $reward);
         $snapshot = $this->plans->snapshot($plan);
         unset($snapshot['purchased_at']);
         $package = $selected ? $this->pricing->packagePayload($selected) : null;
@@ -85,7 +89,7 @@ final readonly class CourseCheckoutQuoteService
             'remaining_purchased_balance' => max(0, $balances['paid'] + (int) ($package['coins'] ?? 0) - $final + $reward),
             'remaining_reward_balance' => $balances['reward'] - $reward,
             'deficit' => $deficit, 'selected_package' => $package,
-            'recommended_packages' => $deficit > 0 ? $eligible->map(fn ($row) => $this->pricing->packagePayload($row))->all() : [],
+            'recommended_packages' => $minimumDeficit > 0 ? $eligible->map(fn ($row) => $this->pricing->packagePayload($row))->all() : [],
         ];
     }
 
