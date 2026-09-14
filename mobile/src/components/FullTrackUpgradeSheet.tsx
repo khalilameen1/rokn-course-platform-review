@@ -104,7 +104,7 @@ export default function FullTrackUpgradeSheet({
       />
     );
   const loading = (
-    <View style={styles.loading}>
+    <View accessibilityViewIsModal={!embedded} style={styles.loading}>
       {error ? (
         <>
           <Text accessibilityRole="alert" style={styles.error}>
@@ -118,7 +118,10 @@ export default function FullTrackUpgradeSheet({
           </Pressable>
         </>
       ) : (
-        <ActivityIndicator color={Palette.primary} />
+        <ActivityIndicator
+          accessibilityLabel="جارٍ تجهيز الترقية"
+          color={Palette.primary}
+        />
       )}
       {!embedded && (
         <Pressable
