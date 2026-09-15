@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\CertificateIssuanceSnapshotService;
+use App\Services\CertificateTextTemplateService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -15,6 +17,11 @@ class Certificate extends Model
         'course_name',
         'certificate_text_template_key',
         'certificate_text',
+        'certificate_design_version',
+        'certificate_completion_text',
+        'certificate_curriculum_revision',
+        'certificate_project_evidence',
+        'certificate_qr_snapshot',
         'image_path',
         'generation_lease_id',
         'generated_at',
@@ -35,6 +42,9 @@ class Certificate extends Model
         'recovery_next_attempt_at' => 'datetime',
         'recovery_failed_at' => 'datetime',
         'artifact_checked_at' => 'datetime',
+        'certificate_curriculum_revision' => 'integer',
+        'certificate_project_evidence' => 'array',
+        'certificate_qr_snapshot' => 'array',
     ];
 
     protected static function booted(): void
@@ -46,6 +56,19 @@ class Certificate extends Model
         });
 
         static::updating(function (Certificate $certificate): void {
+            // Even an empty suffix or an absent legacy snapshot is final.
+            // Issuance fills these once on create; recovery cannot add claims.
+            foreach ([
+                'certificate_design_version',
+                'certificate_completion_text',
+                'certificate_curriculum_revision',
+                'certificate_project_evidence',
+                'certificate_qr_snapshot',
+            ] as $attribute) {
+                if ($certificate->isDirty($attribute)) {
+                    $certificate->setAttribute($attribute, $certificate->getOriginal($attribute));
+                }
+            }
             foreach ([
                 'public_id',
                 'holder_name',
@@ -125,7 +148,66 @@ class Certificate extends Model
                 (string) $this->verification_level,
                 ['completion', 'reviewed_project'],
                 true
-            );
+            )
+            && $this->hasCompleteDesignSnapshot();
     }
 
+    private function hasCompleteDesignSnapshot(): bool
+    {
+        if ($this->certificate_design_version === null) {
+            return true;
+        }
+        if ($this->certificate_design_version !== CertificateIssuanceSnapshotService::DESIGN_VERSION
+            || $this->certificate_text !== CertificateTextTemplateService::COMPLETION_PREFIX
+            || !in_array($this->certificate_completion_text, [
+                '', CertificateTextTemplateService::PROJECTS_COMPLETION,
+            ], true)) {
+            return false;
+        }
+
+        $revision = $this->certificate_curriculum_revision;
+        $evidence = $this->certificate_project_evidence;
+        if (($revision !== null && (!is_int($revision) || $revision < 1))
+            || !is_array($evidence) || !array_is_list($evidence)) {
+            return false;
+        }
+        if ($this->certificate_completion_text === '') {
+            if ($evidence !== []) return false;
+        } else {
+            if ($revision === null || $evidence === []) return false;
+            $projectIds = [];
+            $submissionIds = [];
+            foreach ($evidence as $row) {
+                if (!is_array($row)
+                    || !is_int($row['project_id'] ?? null) || $row['project_id'] < 1
+                    || !is_int($row['submission_id'] ?? null) || $row['submission_id'] < 1
+                    || isset($projectIds[$row['project_id']])
+                    || isset($submissionIds[$row['submission_id']])) {
+                    return false;
+                }
+                $projectIds[$row['project_id']] = true;
+                $submissionIds[$row['submission_id']] = true;
+            }
+        }
+
+        $qr = $this->certificate_qr_snapshot;
+        if (!is_array($qr) || !in_array($qr['type'] ?? null, ['portfolio', 'certificate'], true)) {
+            return false;
+        }
+        foreach (['url', 'title', 'hint'] as $key) {
+            if (!is_string($qr[$key] ?? null) || trim($qr[$key]) === '') return false;
+        }
+        $url = parse_url($qr['url']);
+        if (filter_var($qr['url'], FILTER_VALIDATE_URL) === false
+            || !is_array($url) || ($url['scheme'] ?? null) !== 'https'
+            || !isset($url['host'])
+            || isset($url['user']) || isset($url['pass']) || isset($url['port'])
+            || isset($url['query']) || isset($url['fragment'])) {
+            return false;
+        }
+
+        return $qr['type'] === 'certificate'
+            ? ($url['path'] ?? null) === '/c/'.rawurlencode((string) $this->public_id)
+            : preg_match('/^\/@rokn-(?:[a-z0-9]{24}|[a-f0-9]{32})$/D', (string) ($url['path'] ?? '')) === 1;
+    }
 }

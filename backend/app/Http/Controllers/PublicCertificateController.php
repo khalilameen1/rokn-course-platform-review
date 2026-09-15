@@ -32,6 +32,8 @@ final class PublicCertificateController extends Controller
             'holder_name' => (string) $certificate->holder_name,
             'course_name' => (string) $certificate->course_name,
             'achievement' => (string) $certificate->certificate_text,
+            'design_version' => $certificate->certificate_design_version,
+            'completion_text' => (string) $certificate->certificate_completion_text,
             'public_id' => (string) $certificate->public_id,
             'issued_at' => $certificate->generated_at?->locale('ar')->translatedFormat('j F Y'),
             'status' => $revoked ? 'revoked' : 'active',
@@ -76,7 +78,7 @@ final class PublicCertificateController extends Controller
             ? $extension
             : 'png';
         $name = DownloadFilename::safe(
-            'شهادة ركن ' . (string) $certificate->holder_name,
+            'شهادة رُكن ' . (string) $certificate->holder_name,
             'rokn-certificate',
             $extension
         );

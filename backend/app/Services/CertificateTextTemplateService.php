@@ -13,6 +13,9 @@ use App\Support\UnicodeText;
  */
 final class CertificateTextTemplateService
 {
+    public const COMPLETION_PREFIX = 'أتم كورس';
+    public const PROJECTS_COMPLETION = 'واجتاز مشروعاته';
+
     /**
      * @return array<string,array{label:string,description:string,text:string,qr_destination:string}>
      */
@@ -79,6 +82,17 @@ final class CertificateTextTemplateService
         // model, so the current model attribute is the one shared contract for
         // authoring preview, publish validation and immutable snapshotting.
         return $this->resolve((string) $course->certificate_text_template_key);
+    }
+
+    /** New wording keeps existing authoring keys without deriving achievement from them. */
+    public function forIssuance(Course $course): ?array
+    {
+        $template = $this->forCourse($course);
+
+        return $template === null ? null : [
+            'key' => $template['key'],
+            'text' => self::COMPLETION_PREFIX,
+        ];
     }
 
     public function qrDestination(string $key): string

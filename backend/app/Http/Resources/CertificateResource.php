@@ -37,6 +37,9 @@ class CertificateResource extends JsonResource
             'course_name' => $courseName !== '' ? $courseName : null,
             'certificate_text_template_key' => $textTemplateKey !== '' ? $textTemplateKey : null,
             'certificate_text' => $certificateText !== '' ? $certificateText : null,
+            'certificate_design_version' => $this->certificate_design_version,
+            'certificate_completion_text' => $this->certificate_completion_text !== null
+                ? trim((string) $this->certificate_completion_text) : null,
             'certificate_url' => $artifactReady && $publicId !== ''
                 ? RoknPublicUrl::certificateArtifact($publicId)
                 : '',

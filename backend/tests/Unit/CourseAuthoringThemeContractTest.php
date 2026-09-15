@@ -43,6 +43,7 @@ final class CourseAuthoringThemeContractTest extends TestCase
             'editor' => ['course-editor.css'],
             'workspace' => ['course-workspace.css'],
             'student preview' => ['course-student-preview.css'],
+            'certificate preview' => ['course-certificate-preview.css'],
         ];
     }
 

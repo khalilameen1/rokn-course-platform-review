@@ -306,7 +306,7 @@ final class PublicCertificateIntegrityTest extends TestCase
 
     public function test_long_arabic_certificate_fields_stay_inside_the_editorial_main_field(): void
     {
-        $reflection = new \ReflectionClass(CertificateService::class);
+        $reflection = new \ReflectionClass(\App\Services\LegacyCertificateArtworkRenderer::class);
         $service = $reflection->newInstanceWithoutConstructor();
         $shape = $reflection->getMethod('shapeIfArabic');
         $fit = $reflection->getMethod('fittedFontSize');

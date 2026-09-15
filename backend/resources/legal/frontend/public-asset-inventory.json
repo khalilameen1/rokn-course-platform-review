@@ -40,6 +40,11 @@
       "family": "bootstrap-admin"
     },
     {
+      "path": "public/admin/assets/css/course-certificate-preview.css",
+      "sha256": "f6ca1882e3c538b38c3e82dadea19ed9a767670af311090ed627a52755af3cab",
+      "classification": "first_party"
+    },
+    {
       "path": "public/admin/assets/css/course-codes-create.css",
       "sha256": "d97b3547fa378e7adf7f7f1fc045639e54af2df5ef8ba3f853e2bbffe4d35c92",
       "classification": "first_party"

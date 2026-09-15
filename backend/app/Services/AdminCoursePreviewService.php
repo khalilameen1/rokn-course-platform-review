@@ -50,7 +50,7 @@ final readonly class AdminCoursePreviewService
             return ['error' => 'هذه الفئة لم تعد متاحة للمعاينة.'];
         }
 
-        $certificateTextTemplate = $this->certificateTemplates->forCourse($previewCourse);
+        $certificateTextTemplate = $this->certificateTemplates->forIssuance($previewCourse);
         if ($certificateTextTemplate === null) {
             return ['error' => 'اختر صياغة شهادة صالحة قبل معاينة تجربة الطالب.'];
         }

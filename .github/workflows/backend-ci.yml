@@ -18,6 +18,52 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  certificate-artwork:
+    name: Certificate artwork QA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_URL: https://preview.invalid
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ":memory:"
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      NIGHTWATCH_ENABLED: "false"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up PHP 8.4 with certificate extensions
+        uses: shivammathur/setup-php@accd6127cb78bee3e8082180cb391013d204ef9f # v2.37.0
+        with:
+          php-version: "8.4"
+          extensions: calendar, curl, fileinfo, gd, intl, mbstring, openssl, pdo_sqlite, redis, zip
+          coverage: none
+          tools: composer:2.10.3
+      - name: Install locked dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist --optimize-autoloader
+      - name: Render offline production certificate samples
+        id: render
+        run: php scripts/render-certificate-preview.php
+      - name: Verify production certificate pixels
+        run: vendor/bin/phpunit tests/Unit/CertificateArtworkRendererTest.php
+      - name: Verify certificate issuance, recovery and authoring contracts
+        run: vendor/bin/phpunit --filter 'CertificateIssuanceSnapshotTest|CertificateTextTemplateServiceTest|PublicCertificateIntegrityTest|NotificationCertificateWorkflowTest|CertificateEndpointTest|AdminCourseCertificatePreviewTest|CourseAuthoringThemeContractTest|AdminAuthorizationMatrixTest|ModeratorCourseWorkspaceContractTest|AdminCourseUpdateJsonContractTest'
+      - name: Keep certificate artwork for visual review
+        if: always() && steps.render.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: certificate-artwork
+          path: backend/storage/app/certificate-artwork
+          if-no-files-found: error
+          retention-days: 7
+
   landing-preview:
     name: Landing preview
     runs-on: ubuntu-24.04

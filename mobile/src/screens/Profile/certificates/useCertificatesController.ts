@@ -303,7 +303,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
     if (!selectedCertificate || !activeCertificateLink) return;
     try {
       await shareOnce(`certificate:${activeCredential}`, {
-        message: `شهادتي الموثقة على ركن\n${activeCertificateLink}`,
+        message: `شهادتي على رُكن\n${activeCertificateLink}`,
         url: activeCertificateLink,
       });
     } catch {

@@ -203,7 +203,7 @@ export default function Certificates({
                         'اضغط لتحديث الحالة'
                       ) : (
                         <>
-                          رقم الاعتماد ·{' '}
+                          رقم الشهادة ·{' '}
                           {isolateBidirectionalText(certificate.publicId)}
                         </>
                       )}
@@ -363,6 +363,25 @@ export default function Certificates({
             accessibilityLabel="تفاصيل الشهادة"
             accessibilityViewIsModal
             style={styles.sheet}>
+            <View
+              style={[
+                styles.detailHeader,
+                {
+                  paddingLeft: Math.max(Spacing.md, insets.left + Spacing.md),
+                  paddingRight: Math.max(Spacing.md, insets.right + Spacing.md),
+                },
+              ]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="إغلاق تفاصيل الشهادة"
+                onPress={() => closeSelectedCertificate()}
+                style={({pressed}) => [
+                  styles.closeDetail,
+                  pressed && styles.detailActionPressed,
+                ]}>
+                <Text style={styles.closeDetailText}>إغلاق</Text>
+              </Pressable>
+            </View>
             <ScrollView
               contentContainerStyle={[
                 styles.sheetContent,
@@ -389,20 +408,13 @@ export default function Certificates({
                     ),
                   },
                 ]}>
-                <View style={styles.verifiedRow}>
-                  <View style={styles.verifiedDot} />
-                  <Text style={styles.verified}>شهادة موثقة من ركن</Text>
-                </View>
-                <Text style={styles.detailTitle}>{activeCourseTitle}</Text>
+                <Text accessibilityRole="header" style={styles.detailTitle}>
+                  {activeCourseTitle}
+                </Text>
                 <Text style={styles.detailMeta}>
-                  رقم الاعتماد {'\n'}
+                  رقم الشهادة {'\n'}
                   {isolateBidirectionalText(activeCredential)}
                 </Text>
-                <MetaPill
-                  label="قابلة للتحقق والمشاركة"
-                  tone="success"
-                  style={styles.badge}
-                />
                 {activeCertificateQrDestination && (
                   <View
                     style={[
@@ -410,6 +422,11 @@ export default function Certificates({
                       largeText && styles.qrDestinationLargeText,
                     ]}>
                     <QRCode
+                      accessibilityLabel={
+                        activeCertificateQrDestination.type === 'portfolio'
+                          ? 'رمز QR لعرض الأعمال'
+                          : 'رمز QR للتحقق من الشهادة'
+                      }
                       value={activeCertificateQrDestination.url}
                       size={148}
                     />
@@ -417,48 +434,62 @@ export default function Certificates({
                       <Text style={styles.qrTitle}>
                         {activeCertificateQrDestination.title}
                       </Text>
-                      <Text numberOfLines={2} style={styles.qrLink}>
-                        {isolateBidirectionalText(
-                          activeCertificateQrDestination.url,
-                        )}
-                      </Text>
-                      <Text style={styles.qrHint}>
-                        {activeCertificateQrDestination.hint}
-                      </Text>
                     </View>
                   </View>
                 )}
-                <Button
-                  onPress={() => void openCertificate()}
-                  title="فتح صفحة التحقق"
-                />
-                <Button
-                  onPress={() => void shareCertificate()}
-                  title="مشاركة رابط الشهادة"
-                  useGradient={false}
-                />
-                {(selectedCertificate?.certificatePdfUrl ||
-                  selectedCertificate?.certificateUrl) && (
-                  <Button
-                    onPress={cancelCertificateDownload || saveCertificate}
-                    title={
-                      cancelCertificateDownload
-                        ? 'إلغاء التنزيل'
-                        : 'حفظ الشهادة'
-                    }
-                    accessibilityLabel={
-                      cancelCertificateDownload
-                        ? `إلغاء تنزيل شهادة ${activeCourseTitle}`
-                        : 'حفظ الشهادة'
-                    }
-                    useGradient={false}
-                  />
-                )}
-                <Button
-                  onPress={() => closeSelectedCertificate()}
-                  title="إغلاق"
-                  useGradient={false}
-                />
+                <View style={styles.detailActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="مشاركة الشهادة"
+                    onPress={() => void shareCertificate()}
+                    style={({pressed}) => [
+                      styles.shareAction,
+                      pressed && styles.shareActionPressed,
+                    ]}>
+                    <Text style={styles.shareActionText}>مشاركة الشهادة</Text>
+                  </Pressable>
+                  <View
+                    style={[
+                      styles.secondaryActions,
+                      largeText && styles.secondaryActionsLargeText,
+                    ]}>
+                    {(selectedCertificate?.certificatePdfUrl ||
+                      selectedCertificate?.certificateUrl) && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          cancelCertificateDownload
+                            ? `إلغاء تنزيل شهادة ${activeCourseTitle}`
+                            : 'حفظ الشهادة'
+                        }
+                        onPress={cancelCertificateDownload || saveCertificate}
+                        style={({pressed}) => [
+                          styles.secondaryAction,
+                          largeText && styles.secondaryActionLargeText,
+                          pressed && styles.detailActionPressed,
+                        ]}>
+                        <Text style={styles.secondaryActionText}>
+                          {cancelCertificateDownload
+                            ? 'إلغاء التنزيل'
+                            : 'حفظ الشهادة'}
+                        </Text>
+                      </Pressable>
+                    )}
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="التحقق من الشهادة"
+                      onPress={() => void openCertificate()}
+                      style={({pressed}) => [
+                        styles.secondaryAction,
+                        largeText && styles.secondaryActionLargeText,
+                        pressed && styles.detailActionPressed,
+                      ]}>
+                      <Text style={styles.secondaryActionText}>
+                        التحقق من الشهادة
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
               </View>
             </ScrollView>
           </View>

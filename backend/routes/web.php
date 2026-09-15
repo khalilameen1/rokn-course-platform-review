@@ -194,6 +194,9 @@ Route::group(['prefix' => 'dashboard', 'namespace' => 'Admin', 'as' => 'admin.',
     // must not acquire a cloned draft merely because a moderator opened it.
     Route::get('courses/{course}/student-preview', 'CourseController@studentPreview')
         ->name('courses.student-preview');
+    Route::get('courses/{course}/certificate-preview', 'CourseCertificatePreviewController')
+        ->middleware('throttle:30,1')
+        ->name('courses.certificate-preview');
     Route::post('courses/{course}/media-health/probe', 'MediaHealthController@probeCourse')
         ->middleware('course.draft')->name('courses.media-health.probe');
 

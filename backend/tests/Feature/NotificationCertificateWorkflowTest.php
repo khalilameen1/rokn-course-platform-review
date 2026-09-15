@@ -655,9 +655,10 @@ final class NotificationCertificateWorkflowTest extends TestCase
         self::assertNotNull($certificate);
         self::assertSame('projects', $certificate->certificate_text_template_key);
         self::assertSame(
-            'تقديرًا لإنجاز مشروعات كورس',
+            'أتم كورس',
             $certificate->certificate_text
         );
+        self::assertSame('editorial_v1', $certificate->certificate_design_version);
     }
 
     private function user(string $email): User
@@ -806,6 +807,11 @@ final class NotificationCertificateWorkflowTest extends TestCase
             $table->string('course_name')->nullable();
             $table->string('certificate_text_template_key', 32)->nullable();
             $table->string('certificate_text')->nullable();
+            $table->string('certificate_design_version', 32)->nullable();
+            $table->string('certificate_completion_text')->nullable();
+            $table->unsignedBigInteger('certificate_curriculum_revision')->nullable();
+            $table->json('certificate_project_evidence')->nullable();
+            $table->json('certificate_qr_snapshot')->nullable();
             $table->string('image_path');
             $table->uuid('generation_lease_id')->nullable()->index();
             $table->timestamp('generated_at')->nullable();

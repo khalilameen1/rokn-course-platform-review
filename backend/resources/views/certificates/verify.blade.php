@@ -34,7 +34,15 @@
         <dl>
             <div class="row"><dt>صاحب الشهادة</dt><dd>{{ $verification['holder_name'] }}</dd></div>
             <div class="row"><dt>الكورس</dt><dd class="course">{{ $verification['course_name'] }}</dd></div>
-            <div class="row"><dt>الإنجاز</dt><dd>{{ $verification['achievement'] }}</dd></div>
+            <div class="row"><dt>الإنجاز</dt><dd>
+                {{ $verification['achievement'] }}
+                @if(($verification['design_version'] ?? null) === 'editorial_v1')
+                    {{ $verification['course_name'] }}
+                    @if(trim((string) ($verification['completion_text'] ?? '')) !== '')
+                        <br>{{ $verification['completion_text'] }}
+                    @endif
+                @endif
+            </dd></div>
             <div class="row"><dt>نوع التحقق</dt><dd>{{ $verification['verification_label'] }}</dd></div>
             <div class="row"><dt>تاريخ الإتمام</dt><dd>{{ $verification['issued_at'] }}</dd></div>
             <div class="row"><dt>رقم الشهادة</dt><dd class="number">{{ $verification['public_id'] }}</dd></div>

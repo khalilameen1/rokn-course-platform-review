@@ -470,6 +470,11 @@ abstract class ApiTestCase extends TestCase
             $table->string('course_name')->nullable();
             $table->string('certificate_text_template_key', 32)->nullable();
             $table->string('certificate_text')->nullable();
+            $table->string('certificate_design_version', 32)->nullable();
+            $table->string('certificate_completion_text')->nullable();
+            $table->unsignedBigInteger('certificate_curriculum_revision')->nullable();
+            $table->json('certificate_project_evidence')->nullable();
+            $table->json('certificate_qr_snapshot')->nullable();
             $table->string('image_path')->default('pending');
             $table->uuid('generation_lease_id')->nullable();
             $table->string('status', 20)->default('active');

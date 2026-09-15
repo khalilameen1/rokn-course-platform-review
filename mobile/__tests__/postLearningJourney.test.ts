@@ -65,6 +65,7 @@ describe('post-learning journey contract', () => {
     expect(certificates).not.toContain('أتم بنجاح كورس');
     expect(certificates).not.toContain('const CertificateArtwork');
     expect(officialPreview).not.toContain('<CertificateArtwork');
-    expect(officialPreview).toContain('onLoad={() => setArtifactLoaded(true)}');
+    expect(officialPreview).toContain('source={{uri: certificateUrl}}');
+    expect(officialPreview).toContain('setArtifactLoaded(true)');
   });
 });

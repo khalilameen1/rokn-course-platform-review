@@ -414,8 +414,10 @@ describe('return to a hidden iOS attachment transfer', () => {
       ).toBeGreaterThan(0);
       act(() => progressModal().props.onRequestClose());
       act(() => progressModal().props.onDismiss());
-      if (returningFrom === 'details reopen') await press('إغلاق');
-      else
+      if (returningFrom === 'details reopen') {
+        await press('إغلاق تفاصيل الشهادة');
+        expect(visibleCancellation('إلغاء تنزيل شهادة الكورس')).toHaveLength(0);
+      } else
         await act(async () => {
           renderer.update(
             <>

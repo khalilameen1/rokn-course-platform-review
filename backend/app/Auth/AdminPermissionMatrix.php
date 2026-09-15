@@ -37,6 +37,7 @@ final class AdminPermissionMatrix
         'admin.courses.edit' => ['GET'],
         'admin.courses.update' => ['PUT', 'PATCH'],
         'admin.courses.student-preview' => ['GET'],
+        'admin.courses.certificate-preview' => ['GET'],
         'admin.courses.media-health.probe' => ['POST'],
 
         // Learner-home rows are editorial content, not platform taxonomy

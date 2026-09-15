@@ -141,10 +141,7 @@
                 <h3>حالة الشهادة</h3>
                 <p>{{ !empty($previewPayload['certificate_included']) ? 'ضمن هذه الفئة · تصدر بعد إتمام المطلوب' : 'ليست ضمن هذه الفئة' }}</p>
                 @if(!empty($previewPayload['certificate_included']))
-                    <p class="learner-preview__certificate-text">
-                        {{ $certificateTextTemplate['text'] }}
-                        <strong>{{ $previewPayload['title'] }}</strong>
-                    </p>
+                    <a class="learner-preview__back" href="{{ route('admin.courses.certificate-preview', $previewCourse) }}" target="_blank" rel="noopener">معاينة الشهادة</a>
                 @endif
             </section>
         </aside>

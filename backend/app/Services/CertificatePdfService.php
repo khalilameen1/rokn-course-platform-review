@@ -51,7 +51,7 @@ final class CertificatePdfService
 
         // 300 mm keeps the generated page comfortably inside mPDF limits.
         // The second dimension is derived from the issued image, preventing
-        // A4 stretching or white rails around the 4:3 certificate artwork.
+        // A4 stretching or white rails around either certificate design.
         $pageWidth = 300.0;
         $pageHeight = $pageWidth * ((int) $image[1] / (int) $image[0]);
         $pdf = new Mpdf([
@@ -72,9 +72,9 @@ final class CertificatePdfService
             'شهادة ' . (string) $certificate->course_name,
             false
         ));
-        $pdf->SetSubject('شهادة إتمام موثقة من ركن');
+        $pdf->SetSubject('شهادة من رُكن');
 
-        $mime = match ((int) ($image['imagetype'] ?? 0)) {
+        $mime = match ((int) ($image[2] ?? 0)) {
             IMAGETYPE_JPEG => 'image/jpeg',
             IMAGETYPE_WEBP => 'image/webp',
             default => 'image/png',
@@ -89,7 +89,7 @@ final class CertificatePdfService
 
         $contents = $pdf->Output('', Destination::STRING_RETURN);
         $filename = DownloadFilename::safe(
-            'شهادة ركن ' . (string) $certificate->holder_name,
+            'شهادة رُكن ' . (string) $certificate->holder_name,
             'rokn-certificate',
             'pdf'
         );
