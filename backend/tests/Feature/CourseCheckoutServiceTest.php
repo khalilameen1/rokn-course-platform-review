@@ -207,7 +207,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(0, CourseEnrollment::query()->count());
     }
 
-    public function test_coupon_and_rewards_share_twenty_percent_and_upgrades_do_not_reset_allowance(): void
+    public function test_upgrade_charges_only_the_plan_difference_from_purchased_coins(): void
     {
         [$user, $course, $service] = $this->fixture(1000, 500);
         Coupon::query()->forceCreate(['name_ar' => 'Discount', 'name_en' => 'Discount', 'code' => 'HALFPRICE', 'balance' => 50, 'active' => true]);
@@ -218,8 +218,10 @@ final class CourseCheckoutServiceTest extends TestCase
         $upgrade = $service->create($user, ['course_id' => $course->id, 'access_plan_code' => 'guided', 'mode' => 'upgrade', 'channel' => 'google']);
         self::assertSame(130, $upgrade['promotion']['cap']);
         self::assertSame(80, $upgrade['promotion']['used']);
-        self::assertSame(50, $upgrade['allocation']['reward_coins']);
+        self::assertSame(250, $upgrade['final_price']);
+        self::assertSame(['paid_coins' => 250, 'reward_coins' => 0], $upgrade['allocation']);
         self::assertSame('completed', $service->authorize($user, $upgrade['id'])['status']);
+        self::assertSame(500, (int) $user->fresh()->wallet_reward_coins);
     }
 
     private function fixture(int $paid, int $reward): array
@@ -244,7 +246,7 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(1, CourseEnrollment::query()->count());
     }
 
-    public function test_legacy_purchase_response_and_upgrade_quote_report_the_enforced_percentage(): void
+    public function test_legacy_purchase_can_use_rewards_but_upgrade_quote_cannot(): void
     {
         [$user, $course] = $this->fixture(1000, 500);
         $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
@@ -253,8 +255,8 @@ final class CourseCheckoutServiceTest extends TestCase
         ])->assertOk()->assertJsonPath('data.reward_contribution_cap_per_course', 80)
             ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
         $this->getJson('/api/v1/courses/'.$course->id.'/full-track-upgrade?target_plan_code=guided')
-            ->assertOk()->assertJsonPath('data.reward_contribution_cap_per_course', 130)
-            ->assertJsonPath('data.reward_contribution_remaining_for_course', 50);
+            ->assertOk()->assertJsonPath('data.reward_contribution_cap_per_course', 0)
+            ->assertJsonPath('data.reward_contribution_remaining_for_course', 0);
     }
 
     public function test_verified_store_endpoint_explicitly_fulfills_authorized_checkout_once(): void

@@ -8,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -137,7 +136,6 @@ export default function CourseSubscriptionSheet({
   const canPay = Boolean(
     quote && (quote.status !== 'quoted' || quote.deficit === 0 || coinPackage),
   );
-  const remainingPaid = quote?.remainingPaidCoins ?? 0;
   useEffect(() => {
     setExpanded(false);
   }, [selectedPlan?.code]);
@@ -276,44 +274,24 @@ export default function CourseSubscriptionSheet({
             )}
             {quote && (
               <View style={styles.summary}>
-                {!!checkout.rewardCashSaving && (
-                  <Text style={styles.note}>
-                    وفرت {checkout.rewardCashSaving} بمكافآتك
-                  </Text>
-                )}
-                {quote.discountAmount > 0 && (
-                  <SummaryLine label="خصم الكود" value={quote.discountAmount} />
-                )}
                 {quote.rewardCoins > 0 && (
                   <SummaryLine
-                    label="مكافآت مستخدمة"
+                    label="تم خصم من عملات المكافأة"
                     value={quote.rewardCoins}
                   />
                 )}
-                {Math.min(quote.paidBalance, quote.paidCoins) > 0 && (
-                  <SummaryLine
-                    label="من رصيدك المشترى"
-                    value={Math.min(quote.paidBalance, quote.paidCoins)}
-                  />
-                )}
-                {quote.rewardBalance > 0 && quote.rewardCoins === 0 && (
-                  <Text style={styles.note}>مكافآتك المتبقية محفوظة</Text>
-                )}
                 {coinPackage && (
                   <View style={styles.cashRow}>
-                    <Text style={styles.cashLabel}>المطلوب دفعه</Text>
+                    <Text style={styles.cashLabel}>مطلوب دفع</Text>
                     <Text style={styles.cashValue}>
                       {coinPackage.displayPrice ||
                         `${formatArabicNumber(coinPackage.price)} ج م`}
                     </Text>
                   </View>
                 )}
-                {coinPackage && remainingPaid > 0 && (
-                  <SummaryLine label="يتبقى رصيد مشترى" value={remainingPaid} />
-                )}
               </View>
             )}
-            {mode === 'purchase' && !pending && (
+            {mode === 'purchase' && !pending && accessCodeEntry && (
               <>
                 <Pressable
                   accessibilityRole="button"
@@ -324,36 +302,16 @@ export default function CourseSubscriptionSheet({
                   disabled={locked}
                   onPress={() => setCodeExpanded(value => !value)}
                   style={styles.disclosure}>
-                  <Text style={styles.detailAction}>معاك كود</Text>
+                  <Text style={styles.detailAction}>
+                    كود جامعة أو جهة تعليمية
+                  </Text>
                   <Text style={styles.detailAction}>
                     {codeExpanded ? 'إخفاء' : 'إضافة'}
                   </Text>
                 </Pressable>
                 {codeExpanded && (
                   <View style={styles.details}>
-                    <View style={styles.codeRow}>
-                      <TextInput
-                        accessibilityLabel="كود خصم الكورس"
-                        editable={!locked && !loading}
-                        value={checkout.coupon}
-                        onChangeText={checkout.setCoupon}
-                        onSubmitEditing={checkout.applyCoupon}
-                        autoCapitalize="characters"
-                        autoCorrect={false}
-                        maxLength={50}
-                        placeholder="كود الخصم"
-                        placeholderTextColor={Palette.textFaint}
-                        style={styles.codeInput}
-                      />
-                      <Pressable
-                        accessibilityRole="button"
-                        disabled={locked || loading || !checkout.coupon.trim()}
-                        onPress={checkout.applyCoupon}
-                        style={styles.codeApply}>
-                        <Text style={styles.detailTitle}>تطبيق</Text>
-                      </Pressable>
-                    </View>
-                    {accessCodeEntry?.(locked || loading)}
+                    {accessCodeEntry(locked || loading)}
                   </View>
                 )}
               </>
@@ -596,24 +554,6 @@ const styles = StyleSheet.create({
   },
   cashLabel: {...Type.bodyStrong, ...textDirection, color: Palette.text},
   cashValue: {...Type.section, color: Palette.text},
-  codeRow: {...rtlRowStyle, alignItems: 'center', gap: 8},
-  codeInput: {
-    ...Type.body,
-    ...textDirection,
-    flex: 1,
-    color: Palette.text,
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: Palette.line,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-  },
-  codeApply: {
-    minHeight: 48,
-    minWidth: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.line,

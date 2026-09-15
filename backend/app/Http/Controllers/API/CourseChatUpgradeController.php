@@ -355,23 +355,14 @@ final class CourseChatUpgradeController extends Controller
         $balances = $wallet->balances($user);
         $total = $balances['total'];
         $paid = $balances['paid'];
-        $reward = $balances['reward'];
-        $rewardPolicy = $this->rewardContribution(
-            $wallet,
-            (int) $user->id,
-            (int) $course->id,
-            (int) ($targetPlan?->price_coins ?? $course->price)
-        );
         $minimumPaidCoins = max(0, (int) ($targetPlan?->minimum_paid_coins ?? 0));
         $paidForCourse = $wallet->coursePaidContribution((int) $user->id, (int) $course->id);
         $paidFloorRemaining = max(0, $minimumPaidCoins - $paidForCourse);
-        $maximumRewardForUpgrade = min(
-            $rewardPolicy['remaining'],
-            max(0, $price - min($price, $paidFloorRemaining))
-        );
-        $rewardContribution = min($price, $reward, $maximumRewardForUpgrade);
-        $paidContribution = min($paid, max(0, $price - $rewardContribution));
-        $spendable = $paid + min($reward, $maximumRewardForUpgrade);
+        // The upgrade is exactly the price difference and can be paid only
+        // with purchased coins. Rewards are intentionally excluded here.
+        $rewardContribution = 0;
+        $paidContribution = min($paid, $price);
+        $spendable = $paid;
         $deficit = max(0, $price - $spendable);
 
         $targetContract = $targetPlan
@@ -393,11 +384,11 @@ final class CourseChatUpgradeController extends Controller
                 ? (int) ($targetContract['chat_message_limit'] ?? 0) : null,
             'total_balance' => $total,
             'purchased_balance' => $paid,
-            'reward_balance' => $reward,
+            'reward_balance' => $balances['reward'],
             'spendable_balance' => $spendable,
-            'reward_contribution_cap_per_course' => $rewardPolicy['cap'],
-            'reward_contribution_used_for_course' => $rewardPolicy['used'],
-            'reward_contribution_remaining_for_course' => $rewardPolicy['remaining'],
+            'reward_contribution_cap_per_course' => 0,
+            'reward_contribution_used_for_course' => 0,
+            'reward_contribution_remaining_for_course' => 0,
             'minimum_paid_coins_required' => $minimumPaidCoins,
             'paid_coin_floor_remaining' => $paidFloorRemaining,
             'estimated_allocation' => [
@@ -418,12 +409,6 @@ final class CourseChatUpgradeController extends Controller
                     ->map(fn (Package $package): array => $this->packagePricing->packagePayload($package))
                 : [],
         ];
-    }
-
-    /** @return array{cap:int,used:int,remaining:int} */
-    private function rewardContribution(WalletService $wallet, int $userId, int $courseId, int $targetPrice): array
-    {
-        return app(\App\Services\CoursePromotionPolicy::class)->allowance($userId, $courseId, $targetPrice);
     }
 
     private function isSameUpgradeReplay(

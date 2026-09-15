@@ -48,12 +48,9 @@ export function useCourseSubscriptionCheckout({
 }: Params) {
   const [quote, setQuote] = useState<CourseCheckout | null>(null);
   const [coinPackage, setCoinPackage] = useState<CoinPackage>();
-  const [rewardCashSaving, setRewardCashSaving] = useState('');
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const [coupon, setCoupon] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
   const generation = useRef(0);
   const flight = useRef(false);
@@ -81,15 +78,9 @@ export function useCourseSubscriptionCheckout({
   }, []);
 
   useEffect(() => {
-    setCoupon('');
-    setAppliedCoupon('');
-  }, [courseId, planCode]);
-
-  useEffect(() => {
     const token = ++generation.current;
     setQuote(null);
     setCoinPackage(undefined);
-    setRewardCashSaving('');
     setNotice('');
     setBusy(false);
     flight.current = false;
@@ -120,7 +111,7 @@ export function useCourseSubscriptionCheckout({
         }
         // A completed old purchase may precede a new upgrade. A fresh quote
         // remains authoritative for whether this requested target is available.
-        const input = {courseId, planCode, mode, couponCode: appliedCoupon};
+        const input = {courseId, planCode, mode};
         let next = await quoteCourseCheckout(input);
         assertAccountSessionBoundary(boundary);
         if (!owns(token)) return;
@@ -155,26 +146,6 @@ export function useCourseSubscriptionCheckout({
             )
               throw new Error('COURSE_CHECKOUT_PACKAGE_CHANGED');
             setCoinPackage(chosen);
-            const withoutRewards = selectCheckoutPackage(
-              eligiblePackages,
-              Math.max(0, next.finalPrice - next.paidBalance),
-            );
-            if (
-              next.rewardCoins > 0 &&
-              withoutRewards &&
-              withoutRewards.price > chosen.price &&
-              withoutRewards.currency === chosen.currency
-            ) {
-              const currency =
-                chosen.currency || (!IS_STORE_DISTRIBUTION ? 'EGP' : '');
-              if (currency)
-                setRewardCashSaving(
-                  new Intl.NumberFormat('ar-EG', {
-                    style: 'currency',
-                    currency,
-                  }).format(withoutRewards.price - chosen.price),
-                );
-            }
           } else {
             setNotice('الدفع غير متاح لهذا الاشتراك الآن');
           }
@@ -196,7 +167,6 @@ export function useCourseSubscriptionCheckout({
     };
   }, [
     acceptCompleted,
-    appliedCoupon,
     courseId,
     courseRevision,
     mode,
@@ -381,25 +351,12 @@ export function useCourseSubscriptionCheckout({
       }
     }
   }, [acceptCompleted, owns]);
-  const applyCoupon = useCallback(() => {
-    if (!flight.current) setAppliedCoupon(coupon.trim());
-  }, [coupon]);
-  const changeCoupon = useCallback((value: string) => {
-    if (flight.current) return;
-    setCoupon(value);
-    if (!value.trim()) setAppliedCoupon('');
-  }, []);
   return {
     quote,
     coinPackage,
-    rewardCashSaving,
     loading,
     busy,
     notice,
-    coupon,
-    setCoupon: changeCoupon,
-    appliedCoupon,
-    applyCoupon,
     confirm,
     cancelPending,
     retry,

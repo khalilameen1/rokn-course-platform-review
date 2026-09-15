@@ -8,8 +8,6 @@ import {CoursePurchaseDialog} from '../src/screens/CourseDetails/details/Purchas
 import type {CourseAccessPlan} from '../src/services/roknApi';
 
 const mockConfirm = jest.fn();
-const mockApply = jest.fn();
-const mockSetCoupon = jest.fn();
 let mockBusy = false;
 let mockPending = false;
 jest.mock('../src/hooks/useCourseSubscriptionCheckout', () => ({
@@ -32,10 +30,6 @@ jest.mock('../src/hooks/useCourseSubscriptionCheckout', () => ({
     busy: mockBusy,
     pending: mockPending,
     notice: '',
-    coupon: 'SAVE',
-    setCoupon: mockSetCoupon,
-    appliedCoupon: '',
-    applyCoupon: mockApply,
     confirm: mockConfirm,
     cancelPending: jest.fn(),
     retry: jest.fn(),
@@ -184,7 +178,11 @@ describe('compact course subscription sheet', () => {
     for (const plan of plans) expect(tree).toContain(plan.name);
     expect(tree).toContain('تدريب أعمق وتطوير مشروعك');
     expect(tree).toContain('٢٠ ج م');
-    expect(tree).toContain('مكافآت مستخدمة');
+    expect(tree).toContain('تم خصم من عملات المكافأة');
+    expect(tree).toContain('مطلوب دفع');
+    expect(tree).not.toContain('من رصيدك المشترى');
+    expect(tree).not.toContain('يتبقى رصيد مشترى');
+    expect(tree).not.toContain('مكافآتك المتبقية محفوظة');
     expect(tree).not.toContain('تغطي المبلغ الناقص');
     expect(tree).not.toContain('تغيير الفئة');
     expect(tree).not.toContain('كود الوصول إلى الكورس');
@@ -195,9 +193,11 @@ describe('compact course subscription sheet', () => {
     await act(() => view.renderer.unmount());
   });
 
-  it('keeps optional coupon and educational code behind one disclosure', async () => {
+  it('shows only the educational access code behind one disclosure', async () => {
     const view = await mount();
-    await act(() => buttonWithText(view.renderer, 'معاك كود').props.onPress());
+    await act(() =>
+      buttonWithText(view.renderer, 'كود جامعة أو جهة تعليمية').props.onPress(),
+    );
     const input = view.renderer.root.find(
       node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
     );
@@ -209,7 +209,7 @@ describe('compact course subscription sheet', () => {
     await act(() => submit.props.onPress());
     expect(view.onCodeChange).toHaveBeenCalledWith('NEW-CODE');
     expect(view.onRedeem).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(view.renderer.toJSON())).toContain('SAVE');
+    expect(JSON.stringify(view.renderer.toJSON())).not.toContain('كود خصم الكورس');
     await act(() => view.renderer.unmount());
   });
 

@@ -25,7 +25,7 @@ final class CoursePlanUpgradeAction
 
     public function execute(User $user, Course $course, string $requestedCode,
         ?string $clientIdempotencyKey, int $expectedPrice,
-        ?int $expectedCourseRevision, ?int $rewardLimit = null): array
+        ?int $expectedCourseRevision): array
     {
         $access = $this->access;
         $wallet = $this->wallet;
@@ -41,8 +41,7 @@ final class CoursePlanUpgradeAction
                 $requestedCode,
                 $clientIdempotencyKey,
                 $expectedPrice,
-                $expectedCourseRevision,
-                $rewardLimit
+                $expectedCourseRevision
             ): array {
                 User::query()->lockForUpdate()->findOrFail($user->id);
                 $entitlement = $access->entitlementFor((int) $user->id, (int) $course->id);
@@ -228,15 +227,6 @@ final class CoursePlanUpgradeAction
                     'notes' => 'Course access-plan upgrade from order #' . $originalOrderId,
                 ]);
 
-                // The learner and paid-course rows are locked above. Every
-                // order in the base/upgrade lineage consumes the same reward
-                // allowance recorded in the wallet ledger.
-                $rewardContribution = $this->rewardContribution(
-                    $wallet,
-                    (int) $user->id,
-                    (int) $paidCourse->id,
-                    (int) $targetPlan->price_coins
-                );
                 $minimumPaidCoins = max(0, (int) ($planSnapshot['minimum_paid_coins'] ?? 0));
                 $paidFloorRemaining = max(
                     0,
@@ -245,11 +235,9 @@ final class CoursePlanUpgradeAction
                         (int) $paidCourse->id
                     )
                 );
-                $maximumRewardForUpgrade = min(
-                    $rewardContribution['remaining'],
-                    $rewardLimit ?? PHP_INT_MAX,
-                    max(0, $price - min($price, $paidFloorRemaining))
-                );
+                // Upgrades charge the difference between the previous plan
+                // and the selected plan from purchased coins only. Reward
+                // coins stay untouched for a later first-course purchase.
                 $walletTransaction = $wallet->debit(
                     (int) $user->id,
                     $price,
@@ -264,7 +252,7 @@ final class CoursePlanUpgradeAction
                         'minimum_paid_coins' => $minimumPaidCoins,
                         'paid_floor_remaining_before_upgrade' => $paidFloorRemaining,
                     ],
-                    $maximumRewardForUpgrade
+                    0
                 );
 
                 $order->forceFill([
@@ -308,11 +296,6 @@ final class CoursePlanUpgradeAction
                     'plan_terms' => $planSnapshot,
                 ];
             }, 3);
-    }
-
-    private function rewardContribution(WalletService $wallet, int $userId, int $courseId, int $targetPrice): array
-    {
-        return app(CoursePromotionPolicy::class)->allowance($userId, $courseId, $targetPrice);
     }
 
     public function targetPlan(

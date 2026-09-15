@@ -184,7 +184,7 @@ final readonly class CourseCheckoutService
             $course = Course::query()->findOrFail($checkout->course_id);
             $key = 'course-checkout:'.$checkout->public_id;
             $result = $terms['mode'] === 'upgrade'
-                ? $this->upgrades->execute($user, $course, $terms['access_plan_code'], $key, $terms['final_price'], $terms['course_revision'], $terms['allocation']['reward_coins'])
+                ? $this->upgrades->execute($user, $course, $terms['access_plan_code'], $key, $terms['final_price'], $terms['course_revision'])
                 : $this->purchases->execute($user, $course, $terms['access_plan_code'], $key, $terms['final_price'], $terms['course_revision'], $terms['coupon_code'], $terms['allocation']['reward_coins']);
             if (!empty($result['access_changed']) || empty($result['order'])) return $this->stop($checkout, 'reconfirm_required', 'course_access_changed');
             $checkout->forceFill(['course_order_id' => $result['order']->id, 'status' => 'completed', 'completed_at' => now(), 'error_code' => null])->save();

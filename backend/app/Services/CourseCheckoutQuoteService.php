@@ -44,7 +44,12 @@ final readonly class CourseCheckoutQuoteService
             : $this->coupons->quote((int) $user->id, (int) $course->id, $price, $paidFloor, $input['coupon_code'] ?? null);
         $final = (int) $coupon['final'];
         $balances = $this->wallet->balances($user);
-        $maxReward = min($balances['reward'], max(0, $promotion['remaining'] - $coupon['discount']), max(0, $final - $paidFloor));
+        // A plan upgrade settles only the difference between the two plan
+        // prices. It is not a second promotional course purchase, so reward
+        // coins never reduce that difference.
+        $maxReward = $mode === 'upgrade'
+            ? 0
+            : min($balances['reward'], max(0, $promotion['remaining'] - $coupon['discount']), max(0, $final - $paidFloor));
         // Discover every package that can fund the course with the allowed
         // rewards. Native localized prices, not catalogue price order, decide
         // which package the client binds in the next quote.
@@ -83,7 +88,9 @@ final readonly class CourseCheckoutQuoteService
             'original_price' => $price, 'discount_amount' => (int) $coupon['discount'], 'final_price' => $final,
             'coupon_code' => $coupon['code'], 'plan_contract' => $snapshot,
             'enrollment_id' => $enrollment?->id, 'enrollment_order_id' => $enrollment?->access_plan_order_id,
-            'paid_coin_floor_remaining' => $paidFloor, 'promotion' => $promotion,
+            'paid_coin_floor_remaining' => $paidFloor,
+            'reward_policy' => $mode === 'upgrade' ? 'purchased_only' : 'promotion_allowed',
+            'promotion' => $promotion,
             'wallet' => $balances, 'purchased_balance' => $balances['paid'], 'reward_balance' => $balances['reward'],
             'allocation' => ['paid_coins' => $final - $reward, 'reward_coins' => $reward],
             'remaining_purchased_balance' => max(0, $balances['paid'] + (int) ($package['coins'] ?? 0) - $final + $reward),
@@ -96,7 +103,7 @@ final readonly class CourseCheckoutQuoteService
     public function commercialHash(array $terms): string
     {
         $fields = array_intersect_key($terms, array_flip(['course_id', 'course_revision', 'access_plan_code', 'mode', 'channel',
-            'original_price', 'discount_amount', 'final_price', 'coupon_code', 'plan_contract', 'enrollment_id', 'enrollment_order_id', 'paid_coin_floor_remaining']));
+            'original_price', 'discount_amount', 'final_price', 'coupon_code', 'plan_contract', 'enrollment_id', 'enrollment_order_id', 'paid_coin_floor_remaining', 'reward_policy']));
         $fields['promotion_percent'] = $terms['promotion']['percent'];
         $package = $terms['selected_package'];
         $fields['package'] = $package ? ['id' => $package['id'], 'coins' => $package['coins'],
