@@ -47,6 +47,7 @@ final class CertificateArtworkRendererTest extends TestCase
                 self::assertSame(self::PAPER, imagecolorat($image, $x, $y) & 0xffffff);
             }
             self::assertGreaterThan(100, $this->inkPixels($image, 1268, 160, 264, 88), 'The original wordmark must be visible.');
+            self::assertGreaterThan(1000, $this->colorPixels($image, 1268, 160, 264, 88, 0x101c2d), 'The wordmark must use the approved navy ink.');
             self::assertGreaterThan(80, $this->inkPixels($image, 1148, 1414, 504, 168), 'The Arabic signature must be visible.');
             self::assertGreaterThan(500, $this->inkPixels($image, 500, 1380, 240, 240), 'The QR must not be empty.');
             self::assertGreaterThan(80, $this->inkPixels($image, 900, 1700, 1000, 64), 'The credential identifier must be visible.');
@@ -130,6 +131,18 @@ final class CertificateArtworkRendererTest extends TestCase
             imagedestroy($firstImage);
             imagedestroy($nextImage);
         }
+    }
+
+    public function test_date_is_prepared_in_visual_rtl_order_without_reversing_its_digits(): void
+    {
+        $renderer = app(CertificateArtworkRenderer::class);
+        $method = (new \ReflectionClass($renderer))->getMethod('visualDate');
+        $date = $method->invoke($renderer, new \DateTimeImmutable('2026-09-15 12:00:00'));
+
+        self::assertStringStartsWith('٢٠٢٦ ', $date);
+        self::assertStringEndsWith(' ١٥', $date);
+        self::assertStringNotContainsString('٦٢٠٢', $date);
+        self::assertStringNotContainsString('٥١', $date);
     }
 
     #[DataProvider('literalNumericEntities')]
@@ -227,6 +240,17 @@ final class CertificateArtworkRendererTest extends TestCase
                 if ((imagecolorat($image, $x, $y) & 0xffffff) !== self::PAPER) {
                     $count++;
                 }
+            }
+        }
+        return $count;
+    }
+
+    private function colorPixels(\GdImage $image, int $left, int $top, int $width, int $height, int $color): int
+    {
+        $count = 0;
+        for ($y = $top; $y < $top + $height; $y++) {
+            for ($x = $left; $x < $left + $width; $x++) {
+                if ((imagecolorat($image, $x, $y) & 0xffffff) === $color) $count++;
             }
         }
         return $count;

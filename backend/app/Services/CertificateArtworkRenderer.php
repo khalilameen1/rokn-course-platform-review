@@ -73,9 +73,10 @@ final class CertificateArtworkRenderer
             $this->text($canvas, 'CEO', 700, 669, 15, 'Medium', self::SECONDARY);
             $this->text($canvas, $destination['title'], 308, 669, 16, 'Regular', self::SECONDARY, 360);
 
-            $date = CarbonImmutable::instance($certificate->generated_at)->locale('ar')->translatedFormat('j F Y');
-            $date = strtr($date, ['0'=>'٠','1'=>'١','2'=>'٢','3'=>'٣','4'=>'٤','5'=>'٥','6'=>'٦','7'=>'٧','8'=>'٨','9'=>'٩']);
-            $this->text($canvas, $date, 1092, 749, 22, 'Medium', self::INK, 360);
+            // GD has no bidi engine. Give it the final visual order so the
+            // day and year remain readable instead of becoming ٥١ and ٦٢٠٢.
+            $this->text($canvas, $this->visualDate($certificate->generated_at),
+                1092, 749, 22, 'Medium', self::INK, 360, true);
             $this->placeAsset($canvas, 'signature.png', 700, 749, 252, 84);
             $this->qr($canvas, $destination['url'], 308, 749);
 
@@ -118,9 +119,9 @@ final class CertificateArtworkRenderer
 
     /** Draw around the real glyph bounds, not GD's inconsistent RTL alignment. */
     private function text(\GdImage $canvas, string $value, float $x, float $y, int $size,
-        string $weight, array $color, int $maxWidth = 1176): void
+        string $weight, array $color, int $maxWidth = 1176, bool $alreadyShaped = false): void
     {
-        $text = $this->shape($value);
+        $text = $alreadyShaped ? $value : $this->shape($value);
         // GD decodes numeric entities in both imagettfbbox and imagettftext.
         // Preserve the literal snapshot, as Intervention\Image\Gd\Font does:
         // an authored "&#65;" must not silently become "A" on the credential.
@@ -177,19 +178,57 @@ final class CertificateArtworkRenderer
         return $text;
     }
 
+    private function visualDate(\DateTimeInterface $issuedAt): string
+    {
+        $date = CarbonImmutable::instance($issuedAt)->locale('ar');
+        $digits = static fn (string $value): string => strtr($value, [
+            '0'=>'٠','1'=>'١','2'=>'٢','3'=>'٣','4'=>'٤',
+            '5'=>'٥','6'=>'٦','7'=>'٧','8'=>'٨','9'=>'٩',
+        ]);
+
+        // imagettftext paints left-to-right. Paint the RTL components from
+        // their visual left edge: year, shaped month, then day.
+        return $digits($date->format('Y')).' '
+            .$this->shape($date->translatedFormat('F')).' '
+            .$digits($date->format('j'));
+    }
+
     private function placeAsset(\GdImage $canvas, string $file, float $x, float $y,
         float $width, float $height, bool $tint = false): void
     {
         $asset = imagecreatefrompng($this->asset($file));
         if (!$asset) throw new \RuntimeException('Certificate brand asset is unavailable.');
         try {
-            if ($tint) imagefilter($asset, IMG_FILTER_COLORIZE, -239, -227, -210);
+            if ($tint) {
+                $tinted = $this->solidAsset($asset, self::INK);
+                imagedestroy($asset);
+                $asset = $tinted;
+            }
             imagecopyresampled($canvas, $asset,
                 (int) round(($x - $width / 2) * self::SCALE), (int) round(($y - $height / 2) * self::SCALE),
                 0, 0, (int) round($width * self::SCALE), (int) round($height * self::SCALE), imagesx($asset), imagesy($asset));
         } finally {
             imagedestroy($asset);
         }
+    }
+
+    /** Preserve the original alpha mask while using the exact brand ink. */
+    private function solidAsset(\GdImage $source, array $color): \GdImage
+    {
+        $result = imagecreatetruecolor(imagesx($source), imagesy($source));
+        if (!$result) throw new \RuntimeException('Unable to tint certificate brand asset.');
+        imagealphablending($result, false);
+        imagesavealpha($result, true);
+        $palette = [];
+        for ($y = 0; $y < imagesy($source); $y++) {
+            for ($x = 0; $x < imagesx($source); $x++) {
+                $alpha = imagecolorsforindex($source, imagecolorat($source, $x, $y))['alpha'];
+                $palette[$alpha] ??= imagecolorallocatealpha($result, ...$color, $alpha);
+                imagesetpixel($result, $x, $y, $palette[$alpha]);
+            }
+        }
+        imagealphablending($result, true);
+        return $result;
     }
 
     private function qr(\GdImage $canvas, string $url, int $x, int $y): void

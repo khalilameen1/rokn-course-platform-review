@@ -9,6 +9,7 @@ use App\Http\Middleware\RequireAdminMfa;
 use App\Models\Certificate;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
+use App\Models\CourseModule;
 use App\Models\CourseSection;
 use App\Models\Project;
 use App\Models\User;
@@ -224,12 +225,16 @@ final class AdminCourseCertificatePreviewTest extends TestCase
 
     private function project(Course $course, bool $graduation): void
     {
+        $module = CourseModule::query()->firstOrCreate(
+            ['course_id' => $course->id], ['title_ar' => 'الوحدة', 'order' => 1]
+        );
         $project = Project::query()->create([
             'requirements_text_ar' => 'نفذ المشروع',
             'is_graduation_project' => $graduation,
         ]);
         CourseSection::query()->create([
             'course_id' => $course->id,
+            'module_id' => $module->id,
             'title_ar' => 'المشروع',
             'sectionable_type' => Project::class,
             'sectionable_id' => $project->id,
