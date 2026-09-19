@@ -219,11 +219,12 @@ final class CertificateArtworkRenderer
         if (!$result) throw new \RuntimeException('Unable to tint certificate brand asset.');
         imagealphablending($result, false);
         imagesavealpha($result, true);
+        [$red, $green, $blue] = $color;
         $palette = [];
         for ($y = 0; $y < imagesy($source); $y++) {
             for ($x = 0; $x < imagesx($source); $x++) {
                 $alpha = imagecolorsforindex($source, imagecolorat($source, $x, $y))['alpha'];
-                $palette[$alpha] ??= imagecolorallocatealpha($result, ...$color, $alpha);
+                $palette[$alpha] ??= imagecolorallocatealpha($result, $red, $green, $blue, $alpha);
                 imagesetpixel($result, $x, $y, $palette[$alpha]);
             }
         }
