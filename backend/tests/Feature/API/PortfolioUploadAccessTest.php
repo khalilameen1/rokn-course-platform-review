@@ -61,7 +61,7 @@ final class PortfolioUploadAccessTest extends ApiTestCase
             ->assertJsonPath('has_subscription', $hasSubscription)
             ->assertJsonPath('message', $expectedMessage);
         $this->post('/api/v1/portfolio/1/media', [
-            'file' => UploadedFile::fake()->image('work.jpg', 10, 10),
+            'file' => UploadedFile::fake()->image('work.jpg', 100, 100)->size(2),
             'file_type' => 'image', 'client_request_id' => (string) Str::uuid(),
         ], ['Accept' => 'application/json'])->assertForbidden()
             ->assertJsonPath('code', PortfolioUploadAccessService::DENIED_CODE);
@@ -92,7 +92,7 @@ final class PortfolioUploadAccessTest extends ApiTestCase
         $bunny->shouldReceive('generateBunnySignedUrl')->andReturn('https://media.example.test/work.jpg');
         $this->app->instance(BunnyService::class, $bunny);
         $this->post('/api/v1/portfolio/1/media', [
-            'file' => UploadedFile::fake()->image('work.jpg', 10, 10),
+            'file' => UploadedFile::fake()->image('work.jpg', 100, 100)->size(2),
             'file_type' => 'image', 'client_request_id' => (string) Str::uuid(),
         ], ['Accept' => 'application/json'])->assertOk();
     }

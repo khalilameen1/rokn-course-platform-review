@@ -1124,6 +1124,14 @@
         color: white;
     }
 
+    .design-artwork-preview {
+        width: 128px;
+        height: 128px;
+        object-fit: contain;
+        background: #f0f1f3;
+        border-radius: 12px;
+    }
+
     /* Responsive adjustments for demo section */
     @media (max-width: 768px) {
         .demo-modes-container {

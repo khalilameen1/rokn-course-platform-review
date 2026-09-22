@@ -18,6 +18,13 @@ class PathEndpointTest extends ApiTestCase
     {
         parent::setUp();
 
+        // Level artwork is now read from dashboard-owned design settings.
+        Schema::create('design_settings', function (Blueprint $table): void {
+            $table->id();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
         Schema::create('levels', function (Blueprint $table): void {
             $table->id();
             $table->string('name_ar');
@@ -51,6 +58,7 @@ class PathEndpointTest extends ApiTestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('design_settings');
         Schema::dropIfExists('classification_path');
         Schema::dropIfExists('levels');
 

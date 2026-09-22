@@ -74,6 +74,7 @@ final class PortfolioVideoUploadLeaseTest extends TestCase
             'tenant_id' => 1, 'name_ar' => 'كورس بشهادة', 'price' => 100,
         ]);
         \App\Models\CourseEnrollment::query()->forceCreate([
+            'tenant_id' => $course->tenant_id,
             'user_id' => $user->id, 'course_id' => $course->id, 'is_active' => true,
         ]);
         $this->app->instance(BunnyService::class, $bunny);

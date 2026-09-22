@@ -248,7 +248,7 @@
                                         </div>
                                         <div class="current-image-preview">
                                             <label>الصورة الحالية</label>
-                                            <img src="{{ $artwork[$key] }}" alt="{{ $asset['label'] }}" style="width:128px;height:128px;object-fit:contain;background:#f0f1f3;border-radius:12px">
+                                            <img src="{{ $artwork[$key] }}" alt="{{ $asset['label'] }}" class="design-artwork-preview">
                                         </div>
                                     </div>
                                 </div>

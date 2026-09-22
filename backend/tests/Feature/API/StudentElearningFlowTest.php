@@ -527,6 +527,27 @@ class StudentElearningFlowTest extends ApiTestCase
         $getFolderResponse = $this->actingAs($student, 'api')->getJson("/api/v1/saved-folders/{$folderId}");
         $getFolderResponse->assertStatus(200);
 
+        // A scholarship permits studying, not portfolio storage. Capture a
+        // paid certificate-plan upgrade before the learner adds their work.
+        $this->actingAs($student, 'api')->postJson('/api/v1/portfolio', [
+            'title' => 'مشروع التخرج في البرمجة',
+        ])->assertForbidden()->assertJsonPath('code', 'PORTFOLIO_CERTIFICATE_SUBSCRIPTION_REQUIRED');
+        $enrollment = \App\Models\CourseEnrollment::query()
+            ->where('user_id', $student->id)->where('course_id', $this->courseId)->firstOrFail();
+        $plan = \App\Models\CourseAccessPlan::query()
+            ->where('course_id', $this->courseId)->where('code', 'guided')->firstOrFail();
+        $snapshot = app(\App\Services\CourseAccessPlanService::class)->snapshot($plan);
+        $upgradeId = DB::table('orders')->insertGetId([
+            'user_id' => $student->id, 'course_id' => $this->courseId,
+            'parent_order_id' => $enrollment->order_id,
+            'status' => 'approved', 'financial_status' => 'settled', 'final_amount' => 200,
+            'access_plan_id' => $plan->id, 'access_plan_snapshot' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+        ]);
+        $enrollment->update([
+            'access_plan_id' => $plan->id, 'access_plan_order_id' => $upgradeId,
+            'access_plan_snapshot' => $snapshot,
+        ]);
+
         // 3. Create a portfolio item to showcase achievements
         $portfolioResponse = $this->actingAs($student, 'api')->postJson('/api/v1/portfolio', [
             'title' => 'مشروع التخرج في البرمجة',

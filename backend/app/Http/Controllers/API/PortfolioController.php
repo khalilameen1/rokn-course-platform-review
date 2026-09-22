@@ -48,6 +48,7 @@ final class PortfolioController extends Controller
         return response()->json([
             'status' => 200,
             'success' => true,
+            'message' => 'تم التحقق من إمكانية إضافة أعمال',
             'data' => $this->uploadAccess->decision(auth('api')->user()),
         ]);
     }
