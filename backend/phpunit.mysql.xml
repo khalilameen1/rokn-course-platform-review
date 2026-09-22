@@ -5,6 +5,7 @@
          colors="true">
   <testsuites>
     <testsuite name="MySQL contract">
+      <file>./tests/Feature/AppArtworkMysqlStorageTest.php</file>
       <file>./tests/Feature/AccessPlanSnapshotMysqlConstraintTest.php</file>
       <file>./tests/Feature/CourseStagedAccessPlanIdentityTest.php</file>
       <file>./tests/Unit/ProjectSubmissionEvaluationSnapshotTest.php</file>
