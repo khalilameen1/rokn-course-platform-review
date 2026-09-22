@@ -290,6 +290,7 @@ abstract class ApiTestCase extends TestCase
             $table->unsignedBigInteger('course_id')->nullable();
             $table->unsignedBigInteger('access_plan_id')->nullable();
             $table->json('access_plan_snapshot')->nullable();
+            $table->unsignedBigInteger('parent_order_id')->nullable();
             $table->unsignedBigInteger('package_id')->nullable();
             $table->unsignedBigInteger('course_code_id')->nullable();
             $table->unsignedBigInteger('coupon_id')->nullable();
