@@ -82,6 +82,7 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('@react-native-clipboard/clipboard', () => ({setString: jest.fn()}));
 
 import CourseChatOverlay from '../src/components/VideoPlayer/CourseChatOverlay';
+import FullTrackUpgradeSheet from '../src/components/FullTrackUpgradeSheet';
 import type {CourseLearningData} from '../src/components/VideoPlayer/types';
 
 describe('course conversation keyboard ownership', () => {
@@ -116,6 +117,7 @@ describe('course conversation keyboard ownership', () => {
     mockChatState.input = 'سؤال مكتوب';
     mockChatState.hydrated = true;
     mockChatState.hydrationError = '';
+    mockChatState.assistantIncluded = true;
     mockInsets.top = 0;
     mockInsets.bottom = 0;
   });
@@ -138,6 +140,32 @@ describe('course conversation keyboard ownership', () => {
     await act(async () => retry.props.onPress());
     expect(mockChatState.retryHydration).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('opens chat-specific checkout only after a tap and returns to the explanation on reopen', async () => {
+    mockChatState.assistantIncluded = false;
+    await render();
+    expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(0);
+    await act(async () =>
+      renderer.root
+        .findByProps({accessibilityLabel: 'ترقية الاشتراك'})
+        .props.onPress(),
+    );
+    expect(
+      renderer.root.findByType(FullTrackUpgradeSheet).props.requiredFeature,
+    ).toBe('chat');
+    const props = renderer.root.findByType(CourseChatOverlay)
+      .props as React.ComponentProps<typeof CourseChatOverlay>;
+    await act(async () =>
+      renderer.update(<CourseChatOverlay {...props} visible={false} />),
+    );
+    await act(async () =>
+      renderer.update(<CourseChatOverlay {...props} visible />),
+    );
+    expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(0);
+    expect(
+      renderer.root.findByProps({accessibilityLabel: 'ترقية الاشتراك'}),
+    ).toBeDefined();
   });
 
   it.each(['android', 'ios'] as const)(
@@ -574,11 +602,17 @@ describe('course conversation keyboard ownership', () => {
       history.findAllByProps({accessibilityLabel: 'حذف مشروعي.pdf'}).length,
     ).toBeGreaterThan(0);
     expect(
-      renderer.root.findAllByType(Text).every(node => node.props.allowFontScaling !== false),
+      renderer.root
+        .findAllByType(Text)
+        .every(node => node.props.allowFontScaling !== false),
     ).toBe(true);
-    const removeAction = history.findAllByProps({accessibilityLabel: 'حذف مشروعي.pdf'})[0];
+    const removeAction = history.findAllByProps({
+      accessibilityLabel: 'حذف مشروعي.pdf',
+    })[0];
     expect(removeAction.findAllByType(Text)).toHaveLength(0);
-    expect(removeAction.findAllByProps({accessibilityElementsHidden: true}).length).toBeGreaterThan(0);
+    expect(
+      removeAction.findAllByProps({accessibilityElementsHidden: true}).length,
+    ).toBeGreaterThan(0);
     expect(
       history.findAllByType(Text).some(node => node.props.children === 'إيقاف'),
     ).toBe(true);

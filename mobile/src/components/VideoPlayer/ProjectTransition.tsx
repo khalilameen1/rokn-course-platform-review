@@ -30,6 +30,7 @@ import type {ProjectResolution} from './courseLearning/projectRemote';
 import type {CourseProject, SelectedProjectFile} from './types';
 import ProjectFeedbackPanel from './projectTransition/ProjectFeedbackPanel';
 import ProjectSubmissionEditor from './projectTransition/ProjectSubmissionEditor';
+import FullTrackUpgradeSheet from '../FullTrackUpgradeSheet';
 import {useProjectTransitionController} from './projectTransition/useProjectTransitionController';
 
 interface ProjectTransitionProps {
@@ -46,6 +47,9 @@ interface ProjectTransitionProps {
   ) => Promise<ProjectSubmissionOutcome>;
   onContinue?: () => void;
   onReviewResolution?: (resolution: ProjectResolution) => void;
+  courseId?: string;
+  courseTitle?: string;
+  onEntitlementChanged?: () => void | Promise<void>;
 }
 
 type StatusTone = 'progress' | 'success' | 'danger';
@@ -167,9 +171,13 @@ const ProjectTransition = ({
   onSubmit,
   onContinue,
   onReviewResolution,
+  courseId,
+  courseTitle = '',
+  onEntitlementChanged,
 }: ProjectTransitionProps) => {
   const navigation = useNavigation<RootNavigation>();
   const [briefExpanded, setBriefExpanded] = useState(false);
+  const [discussionUpgradeOpen, setDiscussionUpgradeOpen] = useState(false);
   const controller = useProjectTransitionController({
     active,
     project,
@@ -180,6 +188,9 @@ const ProjectTransition = ({
   useEffect(() => {
     setBriefExpanded(false);
   }, [project.id]);
+  useEffect(() => {
+    setDiscussionUpgradeOpen(false);
+  }, [active, courseId, project.id]);
 
   const hasInterruptedReport =
     ['failed', 'failed_retryable'].includes(controller.reportViewState) &&
@@ -190,6 +201,7 @@ const ProjectTransition = ({
     (controller.reportViewState === 'ready' || hasInterruptedReport) &&
     controller.feedbackThread ? (
       <ProjectFeedbackPanel
+        key={`${project.id}:${controller.feedbackThread.id}`}
         attachments={controller.feedbackAttachments}
         canReply={controller.canReplyToFeedback}
         draft={controller.feedbackDraft}
@@ -209,6 +221,7 @@ const ProjectTransition = ({
           void controller.retryFeedbackMessage(message)
         }
         onSend={() => void controller.sendFeedback()}
+        onRequestDiscussionUpgrade={() => setDiscussionUpgradeOpen(true)}
       />
     ) : null;
   const canContinue = controller.canContinue && Boolean(onContinue);
@@ -221,312 +234,324 @@ const ProjectTransition = ({
   const showEditAction = controller.journeyState === 'needs_changes';
 
   return (
-    <KeyboardAvoidingView
-      // Padding preserves the measured page height instead of KAV's initial frame.
-      // Android starts edge-to-edge at y=0; safe-area spacing is inside this page.
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === 'ios' ? topInset : 0}
-      style={[styles.page, {width, height}]}>
-      <View style={[styles.navigation, {paddingTop: topInset + 6}]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="العودة"
-          style={styles.backButton}
-          onPress={() => goBackOrHome(navigation)}>
-          <ArrowRight accessible={false} />
-        </Pressable>
-        <Text style={styles.navigationTitle}>المشروع</Text>
-      </View>
-      <ScrollView
-        style={styles.scroll}
-        keyboardDismissMode="on-drag"
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingTop: Spacing.md,
-            paddingBottom:
-              showSubmitAction || showContinueAction || showEditAction
-                ? Spacing.section
-                : bottomInset + Spacing.section,
-          },
-        ]}>
-        <View style={styles.context}>
-          <Text style={styles.projectKind}>
-            {project.isGraduationProject ? 'مشروع التخرج' : 'مشروع العبور'}
-          </Text>
-          {!!moduleTitle && (
-            <Text style={styles.moduleTitle}>
-              {formatAuthoredDisplayText(moduleTitle)}
-            </Text>
-          )}
+    <>
+      <KeyboardAvoidingView
+        // Padding preserves the measured page height instead of KAV's initial frame.
+        // Android starts edge-to-edge at y=0; safe-area spacing is inside this page.
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === 'ios' ? topInset : 0}
+        style={[styles.page, {width, height}]}>
+        <View style={[styles.navigation, {paddingTop: topInset + 6}]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="العودة"
+            style={styles.backButton}
+            onPress={() => goBackOrHome(navigation)}>
+            <ArrowRight accessible={false} />
+          </Pressable>
+          <Text style={styles.navigationTitle}>المشروع</Text>
         </View>
-
-        {controller.journeyState === 'draft' && (
-          <View style={styles.instructions}>
-            <Text accessibilityRole="header" style={styles.projectTitle}>
-              {formatAuthoredDisplayText(project.title)}
-            </Text>
-            <Text style={styles.projectRequirements}>
-              {formatAuthoredDisplayText(project.requirements)}
-            </Text>
-          </View>
-        )}
-
-        <View
-          style={[
-            styles.lifecycle,
-            controller.journeyState === 'draft' && styles.draftLifecycle,
+        <ScrollView
+          style={styles.scroll}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingTop: Spacing.md,
+              paddingBottom:
+                showSubmitAction || showContinueAction || showEditAction
+                  ? Spacing.section
+                  : bottomInset + Spacing.section,
+            },
           ]}>
-          {controller.journeyState === 'passed' ? (
-            <>
-              <StatusHeading
-                description={
-                  canContinue
-                    ? 'فتحنا لك المقطع التالي'
-                    : 'تم اعتماد النتيجة وحفظ تقدمك'
-                }
-                title="تم اعتماد مشروعك"
-                tone="success"
-              />
-              {!!controller.syncNote && (
-                <Text style={styles.syncNote}>{controller.syncNote}</Text>
-              )}
+          <View style={styles.context}>
+            <Text style={styles.projectKind}>
+              {project.isGraduationProject ? 'مشروع التخرج' : 'مشروع العبور'}
+            </Text>
+            {!!moduleTitle && (
+              <Text style={styles.moduleTitle}>
+                {formatAuthoredDisplayText(moduleTitle)}
+              </Text>
+            )}
+          </View>
 
-              {project.outputEnabled && (
-                <View style={styles.actionGroup}>
+          {controller.journeyState === 'draft' && (
+            <View style={styles.instructions}>
+              <Text accessibilityRole="header" style={styles.projectTitle}>
+                {formatAuthoredDisplayText(project.title)}
+              </Text>
+              <Text style={styles.projectRequirements}>
+                {formatAuthoredDisplayText(project.requirements)}
+              </Text>
+            </View>
+          )}
+
+          <View
+            style={[
+              styles.lifecycle,
+              controller.journeyState === 'draft' && styles.draftLifecycle,
+            ]}>
+            {controller.journeyState === 'passed' ? (
+              <>
+                <StatusHeading
+                  description={
+                    canContinue
+                      ? 'فتحنا لك المقطع التالي'
+                      : 'تم اعتماد النتيجة وحفظ تقدمك'
+                  }
+                  title="تم اعتماد مشروعك"
+                  tone="success"
+                />
+                {!!controller.syncNote && (
+                  <Text style={styles.syncNote}>{controller.syncNote}</Text>
+                )}
+
+                {project.outputEnabled && (
+                  <View style={styles.actionGroup}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="أضف مشروعك إلى البورتفوليو"
+                      style={styles.secondaryButton}
+                      onPress={() =>
+                        navigation.navigate('Profile', {tab: 'portfolio'})
+                      }>
+                      <Text style={styles.secondaryButtonText}>
+                        أضف مشروعك إلى البورتفوليو
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
+
+                {(controller.reportViewState === 'preparing' ||
+                  controller.reportViewState === 'loading') && (
+                  <View style={styles.reportLoading}>
+                    <ActivityIndicator color={Palette.primary} size="small" />
+                    <Text style={styles.reportState}>
+                      {controller.reportViewState === 'preparing'
+                        ? 'نجهّز تقرير مشروعك'
+                        : 'نحمّل تقرير مشروعك'}
+                    </Text>
+                  </View>
+                )}
+                {controller.reportViewState === 'failed_retryable' && (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="أضف مشروعك إلى البورتفوليو"
-                    style={styles.secondaryButton}
-                    onPress={() =>
-                      navigation.navigate('Profile', {tab: 'portfolio'})
-                    }>
-                    <Text style={styles.secondaryButtonText}>
-                      أضف مشروعك إلى البورتفوليو
+                    accessibilityState={{disabled: controller.reportRetrying}}
+                    disabled={controller.reportRetrying}
+                    onPress={() => void controller.retryReport()}
+                    style={styles.reportRetry}>
+                    <Text style={styles.reportRetryText}>
+                      {controller.reportRetrying
+                        ? 'نحاول الآن'
+                        : 'تعذّر تجهيز التقرير  حاول مرة أخرى'}
                     </Text>
                   </Pressable>
-                </View>
-              )}
-
-              {(controller.reportViewState === 'preparing' ||
-                controller.reportViewState === 'loading') && (
-                <View style={styles.reportLoading}>
-                  <ActivityIndicator color={Palette.primary} size="small" />
-                  <Text style={styles.reportState}>
-                    {controller.reportViewState === 'preparing'
-                      ? 'نجهّز تقرير مشروعك'
-                      : 'نحمّل تقرير مشروعك'}
-                  </Text>
-                </View>
-              )}
-              {controller.reportViewState === 'failed_retryable' && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{disabled: controller.reportRetrying}}
-                  disabled={controller.reportRetrying}
-                  onPress={() => void controller.retryReport()}
-                  style={styles.reportRetry}>
-                  <Text style={styles.reportRetryText}>
-                    {controller.reportRetrying
-                      ? 'نحاول الآن'
-                      : 'تعذّر تجهيز التقرير  حاول مرة أخرى'}
-                  </Text>
-                </Pressable>
-              )}
-              {controller.reportViewState === 'failed' && (
-                <Text style={styles.reportError}>تعذّر تجهيز التقرير</Text>
-              )}
-              {feedbackPanel && (
-                <View style={styles.reportSection}>{feedbackPanel}</View>
-              )}
-            </>
-          ) : controller.journeyState === 'submitting' ? (
-            <StatusHeading
-              busy
-              description="نحفظ الملفات الآن"
-              title="نسلّم مشروعك"
-              tone="progress"
-            />
-          ) : controller.journeyState === 'reviewing' ? (
-            <>
+                )}
+                {controller.reportViewState === 'failed' && (
+                  <Text style={styles.reportError}>تعذّر تجهيز التقرير</Text>
+                )}
+                {feedbackPanel && (
+                  <View style={styles.reportSection}>{feedbackPanel}</View>
+                )}
+              </>
+            ) : controller.journeyState === 'submitting' ? (
               <StatusHeading
                 busy
-                description="سنحدّث النتيجة هنا"
-                title="مشروعك محفوظ"
+                description="نحفظ الملفات الآن"
+                title="نسلّم مشروعك"
                 tone="progress"
               />
-              {!!controller.syncNote && (
-                <Text style={styles.syncNote}>{controller.syncNote}</Text>
-              )}
-            </>
-          ) : controller.journeyState === 'review_unavailable' ? (
-            <>
-              <StatusHeading
-                description="تسليمك محفوظ ولم تكتمل مراجعته"
-                title="تعذّرت مراجعة المشروع"
-                tone="progress"
-              />
-              {!!controller.reviewRecoveryError && (
-                <Text style={styles.reportError}>
-                  {controller.reviewRecoveryError}
-                </Text>
-              )}
-              {(controller.reviewRetryAvailable ||
-                controller.reviewRecoveryRequired) && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{disabled: controller.reviewRetrying}}
-                  disabled={controller.reviewRetrying}
-                  style={[
-                    styles.primaryButton,
-                    controller.reviewRetrying && styles.disabledButton,
-                  ]}
-                  onPress={() => void controller.retryReview()}>
-                  <Text style={styles.primaryButtonText}>
-                    {controller.reviewRetrying
-                      ? 'نحدّث المراجعة'
-                      : controller.reviewRecoveryRequired
-                      ? 'تحديث حالة المراجعة'
-                      : 'إعادة المراجعة'}
+            ) : controller.journeyState === 'reviewing' ? (
+              <>
+                <StatusHeading
+                  busy
+                  description="سنحدّث النتيجة هنا"
+                  title="مشروعك محفوظ"
+                  tone="progress"
+                />
+                {!!controller.syncNote && (
+                  <Text style={styles.syncNote}>{controller.syncNote}</Text>
+                )}
+              </>
+            ) : controller.journeyState === 'review_unavailable' ? (
+              <>
+                <StatusHeading
+                  description="تسليمك محفوظ ولم تكتمل مراجعته"
+                  title="تعذّرت مراجعة المشروع"
+                  tone="progress"
+                />
+                {!!controller.reviewRecoveryError && (
+                  <Text style={styles.reportError}>
+                    {controller.reviewRecoveryError}
                   </Text>
-                </Pressable>
-              )}
-            </>
-          ) : controller.journeyState === 'needs_changes' ? (
-            <>
-              <StatusHeading
-                description="راجع الملاحظات ثم أرسل من جديد"
-                title="يحتاج المشروع إلى تعديل"
-                tone="danger"
-              />
-              {!!controller.reviewFeedback && (
-                <View style={styles.reviewFeedback}>
-                  <Text style={styles.reviewFeedbackText}>
-                    {formatAuthoredDisplayText(controller.reviewFeedback)}
-                  </Text>
-                </View>
-              )}
-              {feedbackPanel && (
-                <View style={styles.reportSection}>{feedbackPanel}</View>
-              )}
-            </>
-          ) : controller.journeyState === 'details' ? (
-            <>
-              <StatusHeading
-                busy={!controller.submissionDraftRestoreError}
-                description={
-                  controller.submissionDraftRestoreError
-                    ? 'حاول مرة أخرى لاستعادة النص والملفات'
-                    : 'نجهّز بيانات التسليم'
+                )}
+                {(controller.reviewRetryAvailable ||
+                  controller.reviewRecoveryRequired) && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{disabled: controller.reviewRetrying}}
+                    disabled={controller.reviewRetrying}
+                    style={[
+                      styles.primaryButton,
+                      controller.reviewRetrying && styles.disabledButton,
+                    ]}
+                    onPress={() => void controller.retryReview()}>
+                    <Text style={styles.primaryButtonText}>
+                      {controller.reviewRetrying
+                        ? 'نحدّث المراجعة'
+                        : controller.reviewRecoveryRequired
+                        ? 'تحديث حالة المراجعة'
+                        : 'إعادة المراجعة'}
+                    </Text>
+                  </Pressable>
+                )}
+              </>
+            ) : controller.journeyState === 'needs_changes' ? (
+              <>
+                <StatusHeading
+                  description="راجع الملاحظات ثم أرسل من جديد"
+                  title="يحتاج المشروع إلى تعديل"
+                  tone="danger"
+                />
+                {!!controller.reviewFeedback && (
+                  <View style={styles.reviewFeedback}>
+                    <Text style={styles.reviewFeedbackText}>
+                      {formatAuthoredDisplayText(controller.reviewFeedback)}
+                    </Text>
+                  </View>
+                )}
+                {feedbackPanel && (
+                  <View style={styles.reportSection}>{feedbackPanel}</View>
+                )}
+              </>
+            ) : controller.journeyState === 'details' ? (
+              <>
+                <StatusHeading
+                  busy={!controller.submissionDraftRestoreError}
+                  description={
+                    controller.submissionDraftRestoreError
+                      ? 'حاول مرة أخرى لاستعادة النص والملفات'
+                      : 'نجهّز بيانات التسليم'
+                  }
+                  title={
+                    controller.submissionDraftRestoreError
+                      ? 'تعذّر استعادة المسودة'
+                      : 'نحمّل المشروع'
+                  }
+                  tone="progress"
+                />
+                {controller.submissionDraftRestoreError && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="إعادة استعادة مسودة المشروع"
+                    style={styles.primaryButton}
+                    onPress={controller.retrySubmissionDraftRestore}>
+                    <Text style={styles.primaryButtonText}>إعادة المحاولة</Text>
+                  </Pressable>
+                )}
+              </>
+            ) : (
+              <ProjectSubmissionEditor
+                showSubmitAction={false}
+                draftSaveError={controller.submissionDraftSaveError}
+                revisionMessage={controller.submissionRevisionMessage}
+                revisionUpdating={controller.submissionRevisionUpdating}
+                canReviewUpdatedProject={controller.canReviewUpdatedProject}
+                revisionActionLabel={controller.revisionActionLabel}
+                onReviewUpdatedProject={() =>
+                  void controller.reviewUpdatedProject()
                 }
-                title={
-                  controller.submissionDraftRestoreError
-                    ? 'تعذّر استعادة المسودة'
-                    : 'نحمّل المشروع'
-                }
-                tone="progress"
+                draftCompatibilityMessage={controller.draftCompatibilityMessage}
+                fileSubmissionEnabled={controller.fileSubmissionEnabled}
+                filePickerDisabled={controller.filePickerDisabled}
+                fileTypesLabel={controller.fileTypesLabel}
+                maximumFiles={controller.submissionMaximumFiles}
+                maximumFileSizeLabel={controller.submissionMaximumFileSizeLabel}
+                note={controller.submissionNote}
+                selectedFiles={controller.selectedFiles}
+                sending={controller.submissionSending}
+                submitDisabled={controller.submitDisabled}
+                textSubmissionEnabled={controller.textSubmissionEnabled}
+                onChangeNote={controller.changeSubmissionNote}
+                onChooseFile={() => void controller.chooseProjectFile()}
+                onRemoveFile={controller.removeSubmissionFile}
+                onSubmit={() => void controller.submit()}
               />
-              {controller.submissionDraftRestoreError && (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="إعادة استعادة مسودة المشروع"
-                  style={styles.primaryButton}
-                  onPress={controller.retrySubmissionDraftRestore}>
-                  <Text style={styles.primaryButtonText}>إعادة المحاولة</Text>
-                </Pressable>
-              )}
-            </>
-          ) : (
-            <ProjectSubmissionEditor
-              showSubmitAction={false}
-              draftSaveError={controller.submissionDraftSaveError}
-              revisionMessage={controller.submissionRevisionMessage}
-              revisionUpdating={controller.submissionRevisionUpdating}
-              canReviewUpdatedProject={controller.canReviewUpdatedProject}
-              revisionActionLabel={controller.revisionActionLabel}
-              onReviewUpdatedProject={() =>
-                void controller.reviewUpdatedProject()
-              }
-              draftCompatibilityMessage={controller.draftCompatibilityMessage}
-              fileSubmissionEnabled={controller.fileSubmissionEnabled}
-              filePickerDisabled={controller.filePickerDisabled}
-              fileTypesLabel={controller.fileTypesLabel}
-              maximumFiles={controller.submissionMaximumFiles}
-              maximumFileSizeLabel={controller.submissionMaximumFileSizeLabel}
-              note={controller.submissionNote}
-              selectedFiles={controller.selectedFiles}
-              sending={controller.submissionSending}
-              submitDisabled={controller.submitDisabled}
-              textSubmissionEnabled={controller.textSubmissionEnabled}
-              onChangeNote={controller.changeSubmissionNote}
-              onChooseFile={() => void controller.chooseProjectFile()}
-              onRemoveFile={controller.removeSubmissionFile}
-              onSubmit={() => void controller.submit()}
-            />
-          )}
-        </View>
-
-        {showProjectBrief && (
-          <ProjectBrief
-            expanded={briefExpanded}
-            project={project}
-            onToggle={() => setBriefExpanded(value => !value)}
-          />
-        )}
-      </ScrollView>
-      {(showSubmitAction || showContinueAction || showEditAction) && (
-        <View
-          style={[styles.footer, {paddingBottom: Math.max(bottomInset, 12)}]}>
-          <View style={styles.footerContent}>
-            {showSubmitAction && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{
-                  busy: controller.submissionSending,
-                  disabled: controller.submitDisabled,
-                }}
-                disabled={controller.submitDisabled}
-                onPress={() => void controller.submit()}
-                style={[
-                  styles.primaryButton,
-                  controller.submitDisabled && styles.disabledButton,
-                ]}>
-                <Text style={styles.primaryButtonText}>
-                  {controller.submissionSending
-                    ? 'جارٍ التسليم'
-                    : 'سلّم المشروع'}
-                </Text>
-              </Pressable>
-            )}
-            {showContinueAction && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="أكمل الكورس"
-                style={styles.primaryButton}
-                onPress={onContinue!}>
-                <Text style={styles.primaryButtonText}>أكمل الكورس</Text>
-              </Pressable>
-            )}
-            {showEditAction && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="عدّل التسليم"
-                accessibilityState={{disabled: !controller.submissionAllowed}}
-                disabled={!controller.submissionAllowed}
-                onPress={controller.editRetry}
-                style={[
-                  styles.primaryButton,
-                  !controller.submissionAllowed && styles.disabledButton,
-                ]}>
-                <Text style={styles.primaryButtonText}>عدّل التسليم</Text>
-              </Pressable>
             )}
           </View>
-        </View>
+
+          {showProjectBrief && (
+            <ProjectBrief
+              expanded={briefExpanded}
+              project={project}
+              onToggle={() => setBriefExpanded(value => !value)}
+            />
+          )}
+        </ScrollView>
+        {(showSubmitAction || showContinueAction || showEditAction) && (
+          <View
+            style={[styles.footer, {paddingBottom: Math.max(bottomInset, 12)}]}>
+            <View style={styles.footerContent}>
+              {showSubmitAction && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    busy: controller.submissionSending,
+                    disabled: controller.submitDisabled,
+                  }}
+                  disabled={controller.submitDisabled}
+                  onPress={() => void controller.submit()}
+                  style={[
+                    styles.primaryButton,
+                    controller.submitDisabled && styles.disabledButton,
+                  ]}>
+                  <Text style={styles.primaryButtonText}>
+                    {controller.submissionSending
+                      ? 'جارٍ التسليم'
+                      : 'سلّم المشروع'}
+                  </Text>
+                </Pressable>
+              )}
+              {showContinueAction && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="أكمل الكورس"
+                  style={styles.primaryButton}
+                  onPress={onContinue!}>
+                  <Text style={styles.primaryButtonText}>كمّل الكورس</Text>
+                </Pressable>
+              )}
+              {showEditAction && (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="عدّل التسليم"
+                  accessibilityState={{disabled: !controller.submissionAllowed}}
+                  disabled={!controller.submissionAllowed}
+                  onPress={controller.editRetry}
+                  style={[
+                    styles.primaryButton,
+                    !controller.submissionAllowed && styles.disabledButton,
+                  ]}>
+                  <Text style={styles.primaryButtonText}>عدّل التسليم</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+      {active && discussionUpgradeOpen && courseId && (
+        <FullTrackUpgradeSheet
+          visible
+          courseId={courseId}
+          courseTitle={courseTitle}
+          requiredFeature="project_discussion"
+          onClose={() => setDiscussionUpgradeOpen(false)}
+          onUpgraded={onEntitlementChanged}
+        />
       )}
-    </KeyboardAvoidingView>
+    </>
   );
 };
 

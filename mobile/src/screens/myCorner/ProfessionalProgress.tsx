@@ -1,7 +1,9 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, Text, View} from 'react-native';
+import Svg, {Path} from 'react-native-svg';
+import {Palette} from '../../constants/designSystem';
 import {SectionHeading} from '../../components/ui/PremiumUI';
-import {CourseArtwork} from '../../components/ui/CourseArtwork';
+import {AppArtwork, levelArtworkKey} from '../../components/ui/AppArtwork';
 import {
   formatArabicDisplayText,
   formatAuthoredDisplayText,
@@ -12,16 +14,6 @@ import type {
 } from '../../services/roknApi';
 import type {LearningBadge} from './model';
 import {styles} from './styles';
-
-const juniorBadgeImage = require('../../assets/images/badges/junior.png');
-const midLevelBadgeImage = require('../../assets/images/badges/mid-level.png');
-const seniorBadgeImage = require('../../assets/images/badges/senior.png');
-
-const localBadgeImage = (title: string) => {
-  if (/senior/i.test(title)) return seniorBadgeImage;
-  if (/mid/i.test(title)) return midLevelBadgeImage;
-  return juniorBadgeImage;
-};
 
 type Props = {
   badges: LearningBadge[];
@@ -46,7 +38,16 @@ export const ProfessionalProgress = ({
   selectedPath,
   visible,
 }: Props) => {
+  const [showAllLevels, setShowAllLevels] = useState(false);
+  const [showBadges, setShowBadges] = useState(false);
+  useEffect(() => {
+    setShowAllLevels(false);
+    setShowBadges(false);
+  }, [selectedPath?.id]);
   if (!visible || (!selectedPath && !earnedBadge)) return null;
+  const laterLevels =
+    selectedPath?.upcomingLevels.filter(level => level.id !== nextLevel?.id) ||
+    [];
 
   return (
     <>
@@ -100,15 +101,6 @@ export const ProfessionalProgress = ({
           <View style={styles.progressTrack}>
             <View style={[styles.progressFill, {width: `${pathProgress}%`}]} />
           </View>
-          {nextLevel && (
-            <Text style={styles.pathHint}>
-              {formatArabicDisplayText(
-                `متبقي ${Math.round(
-                  selectedPath.remainingToNextLevel || 0,
-                )}% للوصول للهدف التالي`,
-              )}
-            </Text>
-          )}
           {Boolean(
             selectedPath.currentLevel || selectedPath.upcomingLevels.length,
           ) && (
@@ -120,18 +112,42 @@ export const ProfessionalProgress = ({
                   status="مستواك الحالي"
                 />
               )}
-              {selectedPath.upcomingLevels.map(level => (
-                <PathLevelRow
-                  key={level.id}
-                  level={level}
-                  status={level.id === nextLevel?.id ? 'الهدف التالي' : 'بعده'}
-                />
-              ))}
+              {nextLevel && (
+                <PathLevelRow level={nextLevel} status="الهدف التالي" />
+              )}
+              {showAllLevels &&
+                laterLevels.map(level => (
+                  <PathLevelRow key={level.id} level={level} status="لاحقًا" />
+                ))}
             </View>
+          )}
+          {laterLevels.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{expanded: showAllLevels}}
+              onPress={() => setShowAllLevels(value => !value)}
+              style={styles.levelsToggle}>
+              <Text style={styles.levelStatus}>
+                {showAllLevels ? 'إخفاء المستويات' : 'كل المستويات'}
+              </Text>
+              <DisclosureChevron expanded={showAllLevels} />
+            </Pressable>
           )}
         </View>
       )}
-      {earnedBadge && (
+      {earnedBadge && selectedPath && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{expanded: showBadges}}
+          onPress={() => setShowBadges(value => !value)}
+          style={styles.levelsToggle}>
+          <Text style={styles.levelStatus}>
+            {showBadges ? 'إخفاء الشارات' : 'شاراتك المكتسبة'}
+          </Text>
+          <DisclosureChevron expanded={showBadges} />
+        </Pressable>
+      )}
+      {earnedBadge && (!selectedPath || showBadges) && (
         <View style={styles.badgeGrid}>
           {badges.map(badge => (
             <View
@@ -140,9 +156,10 @@ export const ProfessionalProgress = ({
                 styles.badgeCard,
                 largeText && styles.badgeCardLargeText,
               ]}>
-              <CourseArtwork
-                fallback={localBadgeImage(badge.title)}
-                source={badge.imageUrl ? {uri: badge.imageUrl} : undefined}
+              <AppArtwork
+                asset={levelArtworkKey(badge.order)}
+                uri={badge.imageUrl}
+                resizeMode="contain"
                 style={styles.badgeArtwork}
               />
               <View style={styles.badgeCopy}>
@@ -165,6 +182,19 @@ export const ProfessionalProgress = ({
   );
 };
 
+const DisclosureChevron = ({expanded}: {expanded: boolean}) => (
+  <Svg width={18} height={18} viewBox="0 0 20 20" accessibilityElementsHidden>
+    <Path
+      d={expanded ? 'm5 12 5-5 5 5' : 'm5 8 5 5 5-5'}
+      fill="none"
+      stroke={Palette.textMuted}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 const PathLevelRow = ({
   current = false,
   level,
@@ -175,9 +205,10 @@ const PathLevelRow = ({
   status: string;
 }) => (
   <View style={[styles.levelRow, current && styles.levelRowCurrent]}>
-    <CourseArtwork
-      fallback={localBadgeImage(level.name)}
-      source={level.imageUrl ? {uri: level.imageUrl} : undefined}
+    <AppArtwork
+      asset={levelArtworkKey(level.order)}
+      uri={level.imageUrl}
+      resizeMode="contain"
       style={styles.levelArtwork}
     />
     <View style={styles.levelCopy}>

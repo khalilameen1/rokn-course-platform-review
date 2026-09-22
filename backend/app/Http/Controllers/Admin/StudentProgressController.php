@@ -93,7 +93,7 @@ class StudentProgressController extends Controller
         // Get all active enrollments for the user
         $enrollments = CourseEnrollment::where('user_id', $userId)
             ->active()
-            ->with('course')
+            ->with(['course', 'order'])
             ->orderBy('enrolled_at', 'desc')
             ->orderByDesc('id')
             ->get();

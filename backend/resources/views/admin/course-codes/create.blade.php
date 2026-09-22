@@ -164,7 +164,8 @@
                                         <div class="form-check mb-3">
                                             <input type="hidden" name="is_grant" value="0">
                                             <input class="form-check-input" type="checkbox" name="is_grant" id="is_grant" value="1" {{ old('is_grant') ? 'checked' : '' }}>
-                                            <label class="form-check-label" for="is_grant"><strong>منحة كلية — كورس ومشاريع كاملة بلا Rokn AI أو شهادة</strong></label>
+                                            <label class="form-check-label" for="is_grant"><strong>منحة واحدة لكل حساب</strong></label>
+                                            <div class="form-help">الكود يفتح مشاهدة الكورس مجانًا بدون شات أو مشاريع أو تقييم أو شهادة ويمكن أن تكون الجهة المانحة جامعة أو أي جهة أخرى</div>
                                             <small class="form-text text-muted d-block">كل حساب وبريد يمكنه استخدام منحة واحدة لكورس واحد فقط. يمكنه لاحقًا ترقية نفس الكورس للمسار الكامل.</small>
                                         </div>
                                         <label for="allowed_email_domains"><i class="fa fa-university"></i> نطاقات البريد المسموح بها (اختياري)</label>

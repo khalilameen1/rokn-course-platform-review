@@ -161,10 +161,12 @@ final readonly class CourseAccessPlanService
         return $snapshot;
     }
 
-    /** Legacy receipts retain projects; a malformed paid receipt fails closed. */
+    /** Code access is watch-only until a paid plan captures project access. */
     public function projectsEnabledForEnrollment(CourseEnrollment $enrollment): bool
     {
-        if (!$enrollment->access_plan_id) return true;
+        if (!$enrollment->access_plan_id) {
+            return $enrollment->order?->payment_method !== \App\Models\Order::PAYMENT_METHOD_COURSE_CODE;
+        }
         $terms = $this->termsForEnrollment($enrollment);
         return $terms !== null && (bool) ($terms['projects_enabled'] ?? true);
     }

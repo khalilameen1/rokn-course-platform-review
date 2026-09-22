@@ -5,7 +5,7 @@
 export default {
   Home: 'الرئيسية',
   'My Corner': 'ركني',
-  Wallet: 'المحفظة',
+  Wallet: 'مكافآتي',
   Me: 'أنا',
   Notifications: 'الإشعارات',
   Search: 'بحث',

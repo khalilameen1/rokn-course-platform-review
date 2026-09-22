@@ -2,7 +2,6 @@ import {useNavigation} from '@react-navigation/native';
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
-import {Fonts} from '../../constants/styleConstants';
 import {
   Palette,
   Type,
@@ -29,75 +28,89 @@ interface ModuleProps {
   initiallyExpanded?: boolean;
 }
 
-const Chevron = ({open}: {open: boolean}) => (
-  <Svg width={18} height={18} viewBox="0 0 20 20">
+const StepIcon = ({
+  kind,
+}: {
+  kind: 'lock' | 'check' | 'play' | 'project' | 'open' | 'closed';
+}) => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" accessibilityElementsHidden>
     <Path
-      d={open ? 'm4 12 6-6 6 6' : 'm4 8 6 6 6-6'}
+      d={
+        {
+          lock: 'M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3',
+          check: 'm5 12 4 4L19 6',
+          play: 'm9 5 10 7-10 7z',
+          project: 'M4 6h6l2 2h8v12H4zM8 13h8M8 16h5',
+          open: 'm6 15 6-6 6 6',
+          closed: 'm6 9 6 6 6-6',
+        }[kind]
+      }
       fill="none"
-      stroke="rgba(255,255,255,.72)"
-      strokeWidth={1.8}
+      stroke={kind === 'check' ? Palette.success : Palette.textMuted}
+      strokeWidth={1.6}
       strokeLinecap="round"
       strokeLinejoin="round"
     />
   </Svg>
 );
 
+const projectStatus = (project: CourseProject) => {
+  if (project.status === 'evaluating') return 'قيد التقييم';
+  if (project.status === 'needs_changes') return 'يحتاج تعديل';
+  if (project.status === 'passed') {
+    return project.reportEnabled && project.reportStatus === 'queued'
+      ? 'التقرير قيد التجهيز'
+      : 'تم الاجتياز';
+  }
+  return project.isGraduationProject ? 'مشروع التخرج' : 'مشروع عبور';
+};
+
 const MapProjectCard = ({
   project,
   locked = false,
+  lockHint,
   onOpen,
 }: {
   project: CourseProject;
   locked?: boolean;
+  lockHint?: string;
   onOpen: () => void;
 }) => (
-  <View style={[styles.projectCard, locked && styles.lockedProjectPreview]}>
-    <View style={styles.projectTopRow}>
-      <View style={styles.projectBadge}>
-        <Text style={styles.projectBadgeText}>
-          {project.isGraduationProject ? 'مشروع التخرج' : 'مشروع العبور'}
-        </Text>
-      </View>
-      {project.status === 'passed' ? (
-        <Text style={styles.passedText}>تم العبور ✓</Text>
-      ) : locked ? (
-        <View style={styles.lockPill}>
-          <Text style={styles.lockPillText}>مغلق</Text>
-        </View>
-      ) : null}
+  <Pressable
+    accessibilityRole="button"
+    accessibilityLabel={
+      formatAuthoredDisplayText(project.title) +
+      ' ' +
+      (locked ? 'مغلق' : projectStatus(project))
+    }
+    accessibilityHint={locked ? lockHint : 'فتح المشروع'}
+    accessibilityState={{disabled: locked}}
+    disabled={locked}
+    onPress={onOpen}
+    style={({pressed}) => [
+      styles.row,
+      styles.projectRow,
+      pressed && styles.pressed,
+    ]}>
+    <View style={styles.leading}>
+      <StepIcon kind="project" />
     </View>
-    <Text style={styles.projectTitle}>{project.title}</Text>
-    {!!project.requirements && (
-      <Text style={styles.projectRequirements} numberOfLines={3}>
-        {formatAuthoredDisplayText(project.requirements)}
+    <View style={styles.copy}>
+      <Text style={styles.rowTitle}>
+        {formatAuthoredDisplayText(project.title)}
       </Text>
-    )}
-    <Text style={styles.projectPassedCopy}>
-      {locked
-        ? 'أكمل الخطوة السابقة'
-        : project.status === 'evaluating'
-        ? 'نراجع تسليمك الآن'
-        : project.status === 'needs_changes'
-        ? 'يحتاج إلى تعديل'
-        : project.status === 'passed'
-        ? project.reportEnabled && project.reportStatus === 'queued'
-          ? 'نجهّز تقرير مشروعك'
-          : project.reportEnabled
-          ? 'افتح النتيجة والتقرير'
-          : 'تم اعتماد المشروع'
-        : 'افتح تفاصيل المشروع'}
-    </Text>
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{disabled: locked}}
-      disabled={locked}
-      onPress={onOpen}
-      style={[styles.submitProject, locked && styles.disabledButton]}>
-      <Text style={styles.submitProjectText}>
-        {project.status === 'needs_changes' ? 'راجع النتيجة' : 'فتح المشروع'}
+      <Text style={styles.meta}>
+        {locked
+          ? project.isGraduationProject
+            ? 'مشروع التخرج'
+            : 'مشروع عبور'
+          : projectStatus(project)}
       </Text>
-    </Pressable>
-  </View>
+    </View>
+    <StepIcon
+      kind={locked ? 'lock' : project.status === 'passed' ? 'check' : 'play'}
+    />
+  </Pressable>
 );
 
 const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
@@ -108,51 +121,46 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
   const percentage = Math.round(
     (completed / Math.max(1, orderedSteps.length)) * 100,
   );
-
+  const firstLocked = orderedSteps.findIndex((_, index) => {
+    const gate = courseLearningGateState(module, orderedSteps, index);
+    return gate === 'locked_purchase' || gate === 'locked_project';
+  });
   useEffect(() => {
     if (initiallyExpanded) setExpanded(true);
   }, [initiallyExpanded]);
 
   return (
-    <View style={[styles.container, module.isLocked && styles.lockedContainer]}>
+    <View style={styles.container}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{expanded}}
         style={styles.header}
         onPress={() => setExpanded(value => !value)}>
-        <View style={styles.moduleOrder}>
-          <Text style={styles.moduleOrderText}>
+        <View style={styles.leading}>
+          <Text style={styles.order}>
             {formatArabicDisplayText(module.order)}
           </Text>
         </View>
-        <View style={styles.headerCopy}>
+        <View style={styles.copy}>
           <Text style={styles.title}>
             {formatAuthoredDisplayText(module.title)}
           </Text>
           <Text style={styles.meta}>
             {formatArabicDisplayText(
-              `${module.reels.length} مقطع${
-                module.projects?.length
-                  ? ` · ${module.projects.length} مشروع`
-                  : ''
-              } · ${percentage}% مكتمل`,
+              completed + ' من ' + orderedSteps.length + ' مكتمل',
             )}
           </Text>
         </View>
-        <View style={styles.headerActions}>
-          {module.isLocked && (
-            <View style={styles.lockPill}>
-              <Text style={styles.lockPillText}>مغلق</Text>
-            </View>
-          )}
-          <Chevron open={expanded} />
-        </View>
+        {module.isLocked && <StepIcon kind="lock" />}
+        <StepIcon kind={expanded ? 'open' : 'closed'} />
       </Pressable>
-
-      <View style={styles.progressTrack}>
+      <View
+        accessibilityRole="progressbar"
+        accessibilityValue={{min: 0, max: 100, now: percentage}}
+        accessibilityLabel="تقدم الوحدة"
+        style={styles.progressTrack}>
         <View style={[styles.progressFill, {width: `${percentage}%`}]} />
       </View>
-
       {expanded && (
         <View style={styles.content}>
           {module.isLocked && (
@@ -160,47 +168,32 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
               {learningGateText(module.lockReason)}
             </Text>
           )}
-
-          <View style={styles.reelsSection}>
-            <Text style={styles.sectionLabel}>محتوى الوحدة</Text>
-            {orderedSteps.map((step, stepIndex) => {
-              const gateState = courseLearningGateState(
-                module,
-                orderedSteps,
-                stepIndex,
-              );
-              const unavailable =
-                gateState === 'locked_purchase' ||
-                gateState === 'locked_project';
-              if (step.type === 'project') {
-                return unavailable ? (
-                  <View
-                    key={`ordered-project-${step.project.id}`}
-                    style={[styles.projectCard, styles.lockedProjectPreview]}>
-                    <View style={styles.projectTopRow}>
-                      <View style={styles.projectBadge}>
-                        <Text style={styles.projectBadgeText}>
-                          {step.project.isGraduationProject
-                            ? 'مشروع التخرج'
-                            : 'مشروع العبور'}
-                        </Text>
-                      </View>
-                      <View style={styles.lockPill}>
-                        <Text style={styles.lockPillText}>مغلق</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.projectTitle}>
-                      {step.project.title}
-                    </Text>
-                    <Text style={styles.lockedProjectHint}>
-                      {learningGateTextForStep(module, orderedSteps, stepIndex)}
-                    </Text>
-                  </View>
-                ) : (
+          {orderedSteps.map((step, stepIndex) => {
+            const gateState = courseLearningGateState(
+              module,
+              orderedSteps,
+              stepIndex,
+            );
+            const unavailable =
+              gateState === 'locked_purchase' || gateState === 'locked_project';
+            const lockHint = unavailable
+              ? learningGateTextForStep(module, orderedSteps, stepIndex)
+              : undefined;
+            return (
+              <React.Fragment
+                key={
+                  step.type +
+                  '-' +
+                  (step.type === 'project' ? step.project.id : step.reel.id)
+                }>
+                {!module.isLocked && stepIndex === firstLocked && (
+                  <Text style={styles.lockedHint}>{lockHint}</Text>
+                )}
+                {step.type === 'project' ? (
                   <MapProjectCard
-                    key={`ordered-project-${step.project.id}`}
                     project={step.project}
-                    locked={false}
+                    locked={unavailable}
+                    lockHint={lockHint}
                     onOpen={() =>
                       navigation.navigate('Reels', {
                         courseId,
@@ -212,63 +205,56 @@ const Module = ({courseId, module, initiallyExpanded = false}: ModuleProps) => {
                       })
                     }
                   />
-                );
-              }
-              return (
-                <Pressable
-                  key={`ordered-reel-${step.reel.id}`}
-                  accessibilityRole="button"
-                  accessibilityState={{disabled: unavailable}}
-                  disabled={unavailable}
-                  style={[styles.reelRow, unavailable && styles.lockedReelRow]}
-                  onPress={() =>
-                    navigation.navigate('Reels', {
-                      courseId,
-                      reelId: step.reel.id,
-                      lessonId: undefined,
-                      projectId: undefined,
-                      preview: false,
-                      previewCount: undefined,
-                    })
-                  }>
-                  <View
-                    style={[
-                      styles.reelNumber,
-                      step.reel.isCompleted && styles.completedReelNumber,
-                    ]}>
-                    <Text style={styles.reelNumberText}>
-                      {formatArabicDisplayText(step.reel.reelNumber)}
-                    </Text>
-                  </View>
-                  <View style={styles.reelCopy}>
-                    <Text style={styles.reelTitle}>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{disabled: unavailable}}
+                    accessibilityLabel={
+                      formatAuthoredDisplayText(step.reel.title) +
+                      (unavailable
+                        ? ' مغلق'
+                        : step.reel.isCompleted
+                        ? ' مكتمل'
+                        : '')
+                    }
+                    accessibilityHint={lockHint}
+                    disabled={unavailable}
+                    style={({pressed}) => [
+                      styles.row,
+                      pressed && styles.pressed,
+                    ]}
+                    onPress={() =>
+                      navigation.navigate('Reels', {
+                        courseId,
+                        reelId: step.reel.id,
+                        lessonId: undefined,
+                        projectId: undefined,
+                        preview: false,
+                        previewCount: undefined,
+                      })
+                    }>
+                    <View style={styles.leading}>
+                      <Text style={styles.order}>
+                        {formatArabicDisplayText(step.reel.reelNumber)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.rowTitle, styles.copy]}>
                       {formatAuthoredDisplayText(step.reel.title)}
                     </Text>
-                    <Text style={styles.reelMeta}>
-                      {unavailable
-                        ? learningGateTextForStep(
-                            module,
-                            orderedSteps,
-                            stepIndex,
-                          )
-                        : step.reel.isCompleted
-                        ? 'شوهدت'
-                        : 'مقطع قصير'}
-                    </Text>
-                  </View>
-                  {unavailable ? (
-                    <View style={styles.lockedStepPill}>
-                      <Text style={styles.lockedStepText}>مغلق</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.playButton}>
-                      <Text style={styles.playText}>▶</Text>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
+                    <StepIcon
+                      kind={
+                        unavailable
+                          ? 'lock'
+                          : step.reel.isCompleted
+                          ? 'check'
+                          : 'play'
+                      }
+                    />
+                  </Pressable>
+                )}
+              </React.Fragment>
+            );
+          })}
         </View>
       )}
     </View>
@@ -285,235 +271,49 @@ const styles = StyleSheet.create({
     maxWidth: 760,
     alignSelf: 'center',
     marginBottom: 18,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.lineSoft,
-  },
-  lockedContainer: {
-    opacity: 1,
   },
   header: {
-    minHeight: 82,
-    paddingVertical: 18,
     ...rtlRowStyle,
+    minHeight: 76,
+    paddingVertical: 14,
     alignItems: 'center',
     gap: 12,
   },
-  moduleOrder: {
-    minWidth: 32,
-    minHeight: 40,
+  leading: {
+    width: 32,
+    minHeight: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
-  moduleOrderText: {
-    color: Palette.textMuted,
-    fontFamily: Fonts.bold,
-    fontSize: 18,
-  },
-  headerCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  title: {
-    ...Type.bodyStrong,
-    color: Palette.text,
-    ...textDirection,
-  },
+  order: {...Type.caption, color: Palette.textMuted},
+  copy: {flex: 1, minWidth: 0},
+  title: {...Type.bodyStrong, ...textDirection, color: Palette.text},
+  rowTitle: {...Type.body, ...textDirection, color: Palette.text},
   meta: {
     ...Type.caption,
-    color: Palette.textMuted,
-    marginTop: 2,
-    ...textDirection,
-  },
-  lockPill: {
-    minHeight: 27,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.06)',
-  },
-  lockPillText: {
-    ...Type.caption,
     ...textDirection,
     color: Palette.textMuted,
+    marginTop: 3,
   },
-  headerActions: {
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
-    maxWidth: '30%',
-  },
-  progressTrack: {
-    height: 2,
-    marginBottom: 6,
-    backgroundColor: 'rgba(255,255,255,.07)',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Palette.textMuted,
-  },
-  lockedHint: {
-    ...Type.caption,
-    color: Palette.textMuted,
-    marginBottom: 12,
-    ...textDirection,
-  },
-  content: {
-    paddingTop: 14,
-    paddingBottom: 18,
-  },
-  sectionLabel: {
-    ...Type.caption,
-    color: Palette.textMuted,
-    marginBottom: 8,
-    ...textDirection,
-  },
-  reelsSection: {
-    gap: 0,
-  },
-  reelRow: {
-    minHeight: 72,
-    paddingVertical: 14,
+  progressTrack: {height: 2, backgroundColor: Palette.lineSoft},
+  progressFill: {height: '100%', backgroundColor: Palette.primary},
+  content: {paddingTop: 6, paddingBottom: 12},
+  row: {
     ...rtlRowStyle,
+    minHeight: 60,
+    paddingVertical: 12,
     alignItems: 'center',
     gap: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Palette.lineSoft,
   },
-  lockedReelRow: {
-    backgroundColor: 'transparent',
-  },
-  reelNumber: {
-    minWidth: 32,
-    minHeight: 36,
-    paddingHorizontal: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completedReelNumber: {
-    borderRadius: 10,
-    backgroundColor: Palette.surface,
-  },
-  reelNumberText: {
-    ...Type.caption,
-    color: Palette.textMuted,
-  },
-  reelCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  reelTitle: {
-    ...Type.bodyStrong,
-    color: Palette.text,
-    ...textDirection,
-  },
-  reelMeta: {
-    ...Type.caption,
-    color: Palette.textMuted,
-    marginTop: 4,
-    ...textDirection,
-  },
-  playButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.07)',
-  },
-  playText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    marginLeft: 2,
-  },
-  lockedStepPill: {
-    minHeight: 28,
-    paddingHorizontal: 9,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,.055)',
-    maxWidth: '30%',
-    flexShrink: 1,
-    paddingVertical: 4,
-  },
-  lockedStepText: {
+  projectRow: {minHeight: 72},
+  lockedHint: {
     ...Type.caption,
     ...textDirection,
     color: Palette.textMuted,
-  },
-  projectCard: {
-    direction: 'rtl',
-    marginVertical: 14,
-    borderRadius: 16,
-    padding: 16,
-    backgroundColor: Palette.surface,
-  },
-  lockedProjectPreview: {
-    backgroundColor: Palette.surface,
-  },
-  lockedProjectHint: {
-    ...textDirection,
-    ...Type.caption,
-    color: Palette.textMuted,
-    marginTop: 4,
-  },
-  projectTopRow: {
-    ...rtlRowStyle,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  projectBadge: {
-    minHeight: 25,
-    flexShrink: 1,
-  },
-  projectBadgeText: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-  },
-  passedText: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.success,
-  },
-  projectTitle: {
-    ...Type.section,
-    color: Palette.text,
-    marginTop: 10,
-    ...textDirection,
-  },
-  projectRequirements: {
-    ...Type.body,
-    color: Palette.textMuted,
-    marginTop: 5,
-    ...textDirection,
-  },
-  submitProject: {
-    minHeight: 48,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.surfacePressed,
-    marginTop: 10,
-    paddingHorizontal: 14,
     paddingVertical: 12,
   },
-  disabledButton: {
-    opacity: 0.38,
-  },
-  submitProjectText: {
-    ...Type.bodyStrong,
-    ...textDirection,
-    textAlign: 'center',
-    color: Palette.text,
-  },
-  projectPassedCopy: {
-    ...Type.caption,
-    color: Palette.textMuted,
-    marginTop: 2,
-    ...textDirection,
-  },
+  pressed: {opacity: 0.75},
 });

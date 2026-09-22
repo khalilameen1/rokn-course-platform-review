@@ -62,7 +62,7 @@ final class CertificateIssuanceSnapshotTest extends TestCase
         $course->forceFill(['certificate_text_template_key' => 'knowledge'])->save();
         self::assertSame('واجتاز مشروعاته', $service->forPreview($course)['certificate_completion_text']);
         self::assertSame('أتم كورس', $service->forPreview($course)['certificate_text']);
-        self::assertSame('editorial_v1', $service->forPreview($course)['certificate_design_version']);
+        self::assertSame('editorial_v2', $service->forPreview($course)['certificate_design_version']);
     }
 
     public function test_claim_requires_every_project_to_have_passed_before_earned_completion(): void
@@ -226,7 +226,7 @@ final class CertificateIssuanceSnapshotTest extends TestCase
             'certificate_qr_snapshot' => ['type' => 'portfolio', 'url' => 'https://other.test', 'title' => 'changed', 'hint' => 'changed'],
         ])->save();
         $certificate = $certificate->fresh();
-        self::assertSame('editorial_v1', $certificate->certificate_design_version);
+        self::assertSame('editorial_v2', $certificate->certificate_design_version);
         self::assertSame('', $certificate->certificate_completion_text);
         self::assertNull($certificate->certificate_curriculum_revision);
         self::assertSame([], $certificate->certificate_project_evidence);
@@ -303,7 +303,7 @@ final class CertificateIssuanceSnapshotTest extends TestCase
         $payload = (new CertificateResource($certificate))->resolve();
         self::assertSame('أتم كورس', $payload['certificate_text']);
         self::assertSame('واجتاز مشروعاته', $payload['certificate_completion_text']);
-        self::assertSame('editorial_v1', $payload['certificate_design_version']);
+        self::assertSame('editorial_v2', $payload['certificate_design_version']);
         $course->forceFill(['name_ar' => 'اسم لاحق', 'certificate_text_template_key' => 'knowledge'])->save();
         $this->get('/c/'.$publicId)->assertOk()
             ->assertSee('أتم كورس')->assertSee('واجتاز مشروعاته')

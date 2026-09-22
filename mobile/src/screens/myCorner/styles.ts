@@ -175,7 +175,13 @@ export const styles = StyleSheet.create({
     borderBottomColor: Palette.lineSoft,
   },
   levelRowCurrent: {backgroundColor: 'transparent'},
-  levelArtwork: {width: 36, height: 36, resizeMode: 'contain'},
+  levelArtwork: {width: 56, height: 56, resizeMode: 'contain'},
+  levelsToggle: {
+    ...rtlRowStyle,
+    minHeight: 48,
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   levelCopy: {flex: 1, minWidth: 0, marginStart: Spacing.md},
   levelName: {...Type.bodyStrong, ...textDirection, color: Palette.text},
   levelStatus: {

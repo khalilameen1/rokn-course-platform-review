@@ -38,6 +38,19 @@ final readonly class CourseCheckoutQuoteService
             $plan = $this->plans->selectedPlan($course, $code);
             $price = max(0, (int) $plan->price_coins);
         }
+        $requiredFeature = $input['required_feature'] ?? null;
+        if ($requiredFeature !== null) {
+            $capabilities = $this->plans->publicPayload($plan);
+            $available = match ($requiredFeature) {
+                'chat' => (bool) ($capabilities['chat_enabled'] ?? false)
+                    && (int) ($capabilities['chat_message_limit'] ?? 0) > 0,
+                'project_discussion' => (bool) ($capabilities['projects_enabled'] ?? false)
+                    && (bool) ($capabilities['project_thread_reply_enabled'] ?? false)
+                    && (int) ($capabilities['project_message_limit'] ?? 0) > 0,
+                default => false,
+            };
+            if (!$available) throw new \DomainException('checkout_feature_unavailable');
+        }
         $promotion = $this->promotions->allowance((int) $user->id, (int) $course->id, (int) $plan->price_coins);
         $paidFloor = max(0, (int) $plan->minimum_paid_coins - $this->wallet->coursePaidContribution((int) $user->id, (int) $course->id));
         $coupon = $mode === 'upgrade' ? ['final' => $price, 'discount' => 0, 'code' => null]
@@ -85,6 +98,7 @@ final readonly class CourseCheckoutQuoteService
         return [
             'course_id' => (int) $course->id, 'course_revision' => max(1, (int) ($course->last_published_authoring_version ?: $course->authoring_version)),
             'access_plan_code' => $code, 'mode' => $mode, 'channel' => $channel,
+            ...($requiredFeature !== null ? ['required_feature' => $requiredFeature] : []),
             'original_price' => $price, 'discount_amount' => (int) $coupon['discount'], 'final_price' => $final,
             'coupon_code' => $coupon['code'], 'plan_contract' => $snapshot,
             'enrollment_id' => $enrollment?->id, 'enrollment_order_id' => $enrollment?->access_plan_order_id,
@@ -103,7 +117,7 @@ final readonly class CourseCheckoutQuoteService
     public function commercialHash(array $terms): string
     {
         $fields = array_intersect_key($terms, array_flip(['course_id', 'course_revision', 'access_plan_code', 'mode', 'channel',
-            'original_price', 'discount_amount', 'final_price', 'coupon_code', 'plan_contract', 'enrollment_id', 'enrollment_order_id', 'paid_coin_floor_remaining', 'reward_policy']));
+            'original_price', 'discount_amount', 'final_price', 'coupon_code', 'plan_contract', 'enrollment_id', 'enrollment_order_id', 'paid_coin_floor_remaining', 'reward_policy', 'required_feature']));
         $fields['promotion_percent'] = $terms['promotion']['percent'];
         $package = $terms['selected_package'];
         $fields['package'] = $package ? ['id' => $package['id'], 'coins' => $package['coins'],

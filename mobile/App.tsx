@@ -8,6 +8,7 @@ import {
 } from './src/services/productAnalytics';
 import {bootstrapOperationalDiagnostics} from './src/services/operationalTelemetry';
 import {bootstrapProductFeatures} from './src/services/productFeatures';
+import {AppArtworkProvider} from './src/components/AppArtworkProvider';
 
 const App = () => {
   useEffect(() => {
@@ -19,10 +20,10 @@ const App = () => {
     void bootstrapProductFeatures().catch(() => undefined);
   }, []);
   return (
-    <>
+    <AppArtworkProvider>
       <AppInitializer />
       <AttachmentDownloadNoticeHost />
-    </>
+    </AppArtworkProvider>
   );
 };
 export default App;

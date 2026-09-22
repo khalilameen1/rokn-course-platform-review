@@ -4,7 +4,15 @@ import {isServerTimestampFresh, serverNowMs} from '../utils/serverClock';
 import {trustedUpdateUrl} from './appVersionPolicy';
 import {payload as apiPayload} from './api/common';
 
+export type AppArtworkUrls = Partial<
+  Record<
+    'coin' | 'coin_stack' | 'badge_junior' | 'badge_mid' | 'badge_senior',
+    string
+  >
+>;
+
 export type PublicAppSettings = {
+  artwork?: AppArtworkUrls;
   contract_version?: number;
   revision?: string;
   android_app_url?: unknown;
@@ -27,7 +35,7 @@ let pendingRequest: Promise<PublicAppSettings> | null = null;
 
 const CACHE_TTL_MS = 60 * 1000;
 const MAX_STALE_MS = 24 * 60 * 60 * 1000;
-const CACHE_STORAGE_KEY = '@rokn/public-app-settings/v2/ar';
+const CACHE_STORAGE_KEY = '@rokn/public-app-settings/v3/ar';
 
 type StoredPublicAppSettings = {
   settings: PublicAppSettings;
@@ -35,9 +43,7 @@ type StoredPublicAppSettings = {
 };
 
 const readStoredSettings = async () => {
-  const stored = await getItem<StoredPublicAppSettings>(
-    CACHE_STORAGE_KEY,
-  );
+  const stored = await getItem<StoredPublicAppSettings>(CACHE_STORAGE_KEY);
   if (
     !stored?.settings ||
     typeof stored.settings !== 'object' ||
@@ -79,7 +85,18 @@ const normalizeSettings = (value: unknown): PublicAppSettings | null => {
     !Array.isArray(raw.social_media)
       ? (raw.social_media as Record<string, unknown>)
       : {};
+  const artwork =
+    raw.artwork &&
+    typeof raw.artwork === 'object' &&
+    !Array.isArray(raw.artwork)
+      ? (raw.artwork as Record<string, unknown>)
+      : {};
   return {
+    artwork: Object.fromEntries(
+      ['coin', 'coin_stack', 'badge_junior', 'badge_mid', 'badge_senior'].map(
+        key => [key, safeHttpsUrl(artwork[key]) || undefined],
+      ),
+    ),
     contract_version: Number.isInteger(raw.contract_version)
       ? Number(raw.contract_version)
       : undefined,
@@ -88,8 +105,7 @@ const normalizeSettings = (value: unknown): PublicAppSettings | null => {
         ? raw.revision
         : undefined,
     android_app_url: trustedUpdateUrl(raw.android_app_url, 'play') || undefined,
-    ios_app_url:
-      trustedUpdateUrl(raw.ios_app_url, 'appstore') || undefined,
+    ios_app_url: trustedUpdateUrl(raw.ios_app_url, 'appstore') || undefined,
     direct_android_app_url:
       trustedUpdateUrl(raw.direct_android_app_url, 'direct') || undefined,
     support_whatsapp_url:
@@ -106,10 +122,7 @@ const normalizeSettings = (value: unknown): PublicAppSettings | null => {
 };
 
 export const getPublicAppSettings = async (): Promise<PublicAppSettings> => {
-  if (
-    cachedSettings &&
-    isServerTimestampFresh(cachedAt, CACHE_TTL_MS)
-  ) {
+  if (cachedSettings && isServerTimestampFresh(cachedAt, CACHE_TTL_MS)) {
     return cachedSettings;
   }
   if (pendingRequest) return pendingRequest;

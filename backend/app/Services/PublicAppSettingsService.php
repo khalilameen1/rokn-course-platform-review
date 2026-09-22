@@ -13,7 +13,7 @@ use Throwable;
 
 final class PublicAppSettingsService
 {
-    private const CACHE_KEY_PREFIX = 'public-app-settings:v3:';
+    private const CACHE_KEY_PREFIX = 'public-app-settings:v4:';
     private const CACHE_GENERATION_KEY = 'public-app-settings:generation';
 
     private const SOCIAL_HOSTS = [
@@ -55,6 +55,10 @@ final class PublicAppSettingsService
                     'icon_url' => $this->publicMediaUrl($design->icon_url),
                     'home_background_url' => $this->publicMediaUrl($design->home_background_url),
                 ],
+                'artwork' => array_map(
+                    fn (string $url): ?string => $this->publicMediaUrl($url),
+                    app(AppArtworkService::class)->urls($design)
+                ),
                 'social_media' => [
                     'facebook' => $this->socialUrl('facebook', $design->facebook_url),
                     'youtube' => $this->socialUrl('youtube', $design->youtube_url),

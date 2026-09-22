@@ -1,5 +1,6 @@
 import React from 'react';
-import {Image, Modal, Pressable, Text, TextInput, View} from 'react-native';
+import {Modal, Pressable, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../components/ui/RasterImage';
 
 import {StatusView} from '../../components/ui/PremiumUI';
 import {Palette} from '../../constants/designSystem';

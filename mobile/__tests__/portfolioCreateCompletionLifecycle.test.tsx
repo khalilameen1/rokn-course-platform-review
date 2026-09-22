@@ -11,7 +11,10 @@ let mockUuid = 0;
 const mockCaptureBoundary = jest.fn(async () => mockBoundary);
 jest.mock('../src/constants/api', () => ({
   publicRequest: {
-    get: (...args: unknown[]) => mockGet(...args),
+    get: (...args: unknown[]) =>
+      args[0] === 'portfolio/upload-access'
+        ? Promise.resolve({data: {data: {can_upload: true}}})
+        : mockGet(...args),
     post: (...args: unknown[]) => mockPost(...args),
   },
 }));

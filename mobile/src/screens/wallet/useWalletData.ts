@@ -25,7 +25,7 @@ import {
 
 export type WalletAreaStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-export const useWalletData = (identityKey: string) => {
+export const useWalletData = (identityKey: string, loadPackages = true) => {
   const [wallet, setWallet] = useState<WalletSnapshot | null>(null);
   const [packages, setPackages] = useState<CoinPackage[]>([]);
   const [tasks, setTasks] = useState<CoinTask[]>([]);
@@ -141,7 +141,9 @@ export const useWalletData = (identityKey: string) => {
         throw error;
       },
     );
-    const packagesRequest = getCoinPackages().then(
+    const packagesRequest = (
+      loadPackages ? getCoinPackages() : Promise.resolve([])
+    ).then(
       value => {
         if (requestOwnsData()) {
           packagesCacheInvalidatedRef.current = false;
@@ -188,6 +190,7 @@ export const useWalletData = (identityKey: string) => {
       setWalletStatus(walletReadFailed ? 'error' : 'ready');
     }
     if (
+      loadPackages &&
       cached?.packages &&
       !packagesKnownRef.current &&
       !packagesCacheInvalidatedRef.current
@@ -213,7 +216,7 @@ export const useWalletData = (identityKey: string) => {
       ...(tasksKnownRef.current ? {tasks: tasksRef.current} : {}),
     };
     void saveWalletCache(boundary, nextCache).catch(() => undefined);
-  }, [ownsBoundary]);
+  }, [loadPackages, ownsBoundary]);
 
   const refresh = useCallback(() => {
     if (!mountedRef.current) return Promise.resolve();

@@ -80,8 +80,10 @@ describe('wallet details on demand', () => {
   const pressText = async (text: string) => {
     const button = renderer.root
       .findAll(node => typeof node.props.onPress === 'function')
-      .find(node =>
-        node.findAllByType(Text).some(child => child.props.children === text),
+      .find(
+        node =>
+          node.props.accessibilityLabel === text ||
+          node.findAllByType(Text).some(child => child.props.children === text),
       );
     expect(button).toBeDefined();
     await act(async () => {
@@ -94,34 +96,38 @@ describe('wallet details on demand', () => {
 
   it('keeps transactions hidden until selected and closes with the shared sheet', async () => {
     await render();
-    expect(hasText('آخر العمليات')).toBe(true);
+    expect(
+      renderer.root.findAll(
+        node => node.props.accessibilityLabel === 'سجل المكافآت',
+      ).length,
+    ).toBeGreaterThan(0);
     expect(hasText(transaction.title)).toBe(false);
-    await pressText('آخر العمليات');
+    await pressText('سجل المكافآت');
     expect(hasText(transaction.title)).toBe(true);
-    expect(hasText('كيف يعمل الرصيد؟')).toBe(true);
+    expect(hasText('كيف يعمل الرصيد')).toBe(true);
     await act(async () => {
       renderer.root.findByType(Modal).props.onRequestClose();
     });
     expect(hasText(transaction.title)).toBe(false);
-    await pressText('كيف يعمل الرصيد؟');
+    await pressText('كيف يعمل الرصيد');
     expect(hasText('استخدم العملات لفتح الكورسات')).toBe(true);
     expect(hasText(transaction.title)).toBe(false);
   });
 
   it('keeps a clear empty history behind the same entry point', async () => {
     await render([]);
-    expect(hasText('لا توجد عمليات بعد')).toBe(false);
-    await pressText('آخر العمليات');
-    expect(hasText('لا توجد عمليات بعد')).toBe(true);
+    expect(hasText('لا توجد مكافآت بعد')).toBe(false);
+    await pressText('سجل المكافآت');
+    expect(hasText('لا توجد مكافآت بعد')).toBe(true);
     await pressText('تم');
-    expect(hasText('لا توجد عمليات بعد')).toBe(false);
+    expect(hasText('لا توجد مكافآت بعد')).toBe(false);
   });
 
   it('does not describe a failed history load as an empty wallet', async () => {
     await render([], 'error');
-    await pressText('آخر العمليات');
-    expect(hasText('تعذّر تحميل العمليات')).toBe(true);
-    expect(hasText('لا توجد عمليات بعد')).toBe(false);
+    await pressText('سجل المكافآت');
+    expect(hasText('تعذّر تحميل السجل')).toBe(true);
+    expect(hasText('لا توجد مكافآت بعد')).toBe(false);
     await pressText('إعادة المحاولة');
     expect(refreshWallet).toHaveBeenCalledTimes(1);
   });

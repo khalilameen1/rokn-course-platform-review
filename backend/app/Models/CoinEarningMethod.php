@@ -12,6 +12,8 @@ class CoinEarningMethod extends Model
 {
     use SoftDeletes;
 
+    public const AUTOMATIC_ACTION_KEYS = ['register', 'welcome_bonus'];
+
     public static function bootSoftDeletes(): void
     {
         if (
@@ -109,7 +111,7 @@ class CoinEarningMethod extends Model
         return $query->active()
             ->whereNotNull('action_key')
             ->where('action_key', '!=', '')
-            ->where('action_key', '!=', 'register')
+            ->whereNotIn('action_key', self::AUTOMATIC_ACTION_KEYS)
             ->where('coins_amount', '>', 0);
     }
 
@@ -119,7 +121,7 @@ class CoinEarningMethod extends Model
 
         return $this->isAvailableNow()
             && $actionKey !== ''
-            && $actionKey !== 'register'
+            && !in_array($actionKey, self::AUTOMATIC_ACTION_KEYS, true)
             && (int) $this->coins_amount > 0;
     }
 
@@ -169,10 +171,10 @@ class CoinEarningMethod extends Model
         if (!$this->titleRevealsMechanism($title) && $title !== '') return $title;
 
         if (str_contains($key, 'coin_guide')) return 'تعرّف إلى رصيد ركن';
-        if (str_contains($key, 'instagram')) return 'تابعنا على Instagram';
-        if (str_contains($key, 'tiktok')) return 'تابعنا على TikTok';
-        if (str_contains($key, 'facebook')) return 'تابعنا على Facebook';
-        if (str_contains($key, 'youtube')) return 'تابعنا على YouTube';
+        if (str_contains($key, 'instagram')) return 'تابعنا على إنستجرام';
+        if (str_contains($key, 'tiktok')) return 'تابعنا على تيك توك';
+        if (str_contains($key, 'facebook')) return 'تابعنا على فيسبوك';
+        if (str_contains($key, 'youtube')) return 'اشترك في قناتنا على يوتيوب';
         if ($key === 'link_whatsapp') return 'اربط واتسابك بركن';
 
         return 'مهمة مكافأة';
@@ -189,7 +191,7 @@ class CoinEarningMethod extends Model
         if (str_contains($key, 'instagram')) return 'Follow us on Instagram';
         if (str_contains($key, 'tiktok')) return 'Follow us on TikTok';
         if (str_contains($key, 'facebook')) return 'Follow us on Facebook';
-        if (str_contains($key, 'youtube')) return 'Follow us on YouTube';
+        if (str_contains($key, 'youtube')) return 'Subscribe to our YouTube channel';
         if ($key === 'link_whatsapp') return 'Link WhatsApp to Rokn';
 
         return 'Reward task';

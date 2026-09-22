@@ -7,6 +7,7 @@
         'mentor' => 'Pro',
     ];
     $economicsService = app(\App\Services\CoursePlanEconomicsService::class);
+    $planService = app(\App\Services\CourseAccessPlanService::class);
     $promotionPercent = $economicsService->promotionPercent();
 @endphp
 <div class="form-section" id="course-editor-plans">
@@ -14,21 +15,24 @@
     <h2 class="section-title"><div class="section-icon"><i class="fa fa-layer-group"></i></div>اشتراكات الكورس</h2>
     <div class="form-help course-editor__section-help">
         التغييرات للمشتريات الجديدة فقط
-        المكافآت والكوبونات معًا حتى {{ $promotionPercent }}٪
+        المكافآت حتى {{ $promotionPercent }}٪ عند الشراء والترقية بفرق السعر بدون مكافآت
     </div>
     <div class="course-editor__plan-grid">
         @foreach($planLabels as $code => $label)
             @php
                 $plan = $accessPlansByCode->get($code);
-                $features = $code === 'basic' ? ['مشاهدة الكورس'] : ['الكورس ومشاريع العبور'];
-                if ($code !== 'basic' && $plan?->chat_enabled) $features[] = number_format($plan->chat_message_limit) . ' رسالة';
-                if ($code !== 'basic' && in_array((string) $plan?->project_feedback_level, ['report', 'enhanced'], true)) {
-                    $features[] = 'تقرير المشروع';
+                $capabilities = $plan ? $planService->publicPayload($plan) : [];
+                $features = $code === 'basic'
+                    ? ['مشاهدة الكورس كاملًا', 'بدون شات أو مشاريع أو تقييم أو شهادة', 'كود المنحة متاح مع Basic فقط']
+                    : [];
+                if ($code !== 'basic' && ($capabilities['chat_enabled'] ?? false)) $features[] = number_format($capabilities['chat_message_limit']) . ' رسالة لمناقشة محتوى الكورس';
+                if ($code !== 'basic' && ($capabilities['projects_enabled'] ?? false) && $course->sections->contains('section_type', 'project')) {
+                    $features[] = ($capabilities['project_report_enabled'] ?? false)
+                        ? 'تنفيذ مشاريع عملية والحصول على تقييم لتحسين مستواك'
+                        : 'تنفيذ مشاريع عبور عملية';
+                    if (($capabilities['project_thread_reply_enabled'] ?? false)) $features[] = number_format($capabilities['project_message_limit']) . ' رسالة لمناقشة المشاريع';
                 }
-                if ($code !== 'basic' && (string) $plan?->project_feedback_level === 'enhanced') {
-                    $features[] = 'تدريب أعمق';
-                }
-                if ($code !== 'basic' && $plan?->certificate_enabled) $features[] = 'الشهادة';
+                if ($code !== 'basic' && ($capabilities['certificate_enabled'] ?? false)) $features[] = 'شهادة بعد اجتياز الكورس';
                 $description = implode(' · ', $features);
                 $financialTerms = $plan?->getAttributes() ?? [];
                 $financialTerms['delivery_cost_usd'] = old("access_plans.$code.delivery_cost_usd", $plan?->delivery_cost_usd);
@@ -81,7 +85,7 @@
                      disable switch here was a false operation: the same save
                      then failed readiness because all three must be active. --}}
                 <input type="hidden" name="access_plans[{{ $code }}][is_active]" value="1">
-                <label class="form-label-modern">السعر بعملات ركن</label>
+                <label class="form-label-modern">السعر بعملات رُكن</label>
                 <input class="form-control-modern" type="number" min="0" name="access_plans[{{ $code }}][price_coins]" value="{{ old("access_plans.$code.price_coins", $plan?->price_coins ?? 0) }}" required>
                 <label class="form-label-modern">الحد الأدنى من العملات المدفوعة</label>
                 <input class="form-control-modern" type="number" min="0" name="access_plans[{{ $code }}][minimum_paid_coins]" value="{{ old("access_plans.$code.minimum_paid_coins", $plan?->minimum_paid_coins ?? 0) }}" required>

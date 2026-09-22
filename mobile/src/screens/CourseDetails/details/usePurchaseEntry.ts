@@ -9,26 +9,19 @@ import type {
 } from '../../../navigation/types';
 import type {CourseAccessPlan} from '../../../services/roknApi';
 import {trackProductEvent} from '../../../services/productAnalytics';
-import {normalizeHumanIdentifier} from '../../../utils/unicodeText';
 import type {DialogStep, PurchaseFlowTerms} from './useCoursePurchaseFlow';
 import {type CoursePrimaryAction} from './selectors';
 
 type Params = {
   accessPlans: CourseAccessPlan[];
-  busy: boolean;
-  couponBusy: boolean;
   courseId: string;
   dialogStep: DialogStep;
-  effectivePurchasePrice: number;
-  effectiveSpendableBalance: number;
   identityKey: string;
   navigation: RootNavigation;
   owned: boolean;
   pageReady: boolean;
   primaryAction: CoursePrimaryAction;
-  purchaseCouponCode: string;
   purchasePrice: number;
-  purchaseRestoreStatus: 'idle' | 'quoting' | 'ready' | 'failed';
   remoteSession: boolean | null;
   routeParams: CourseDetailsRouteParams;
   selectedPlanCode?: string;
@@ -58,20 +51,14 @@ const rememberRetentionOffer = (key: string) => {
 
 export function usePurchaseEntry({
   accessPlans,
-  busy,
-  couponBusy,
   courseId,
   dialogStep,
-  effectivePurchasePrice,
-  effectiveSpendableBalance,
   identityKey,
   navigation,
   owned,
   pageReady,
   primaryAction,
-  purchaseCouponCode,
   purchasePrice,
-  purchaseRestoreStatus,
   remoteSession,
   routeParams,
   selectedPlanCode,
@@ -104,16 +91,12 @@ export function usePurchaseEntry({
     const planCode = accessPlans.some(plan => plan.code === requestedPlan)
       ? requestedPlan
       : '';
-    const couponCode = normalizeHumanIdentifier(
-      purchaseCouponCode || routeParams.purchaseCouponCode,
-    );
     const returnTo: LoginReturnTo = {
       name: 'CourseDetails',
       params: {
         courseId,
         openPurchase: true,
         ...(planCode ? {purchasePlanCode: planCode} : {}),
-        ...(couponCode ? {purchaseCouponCode: couponCode} : {}),
         ...(routeParams.resumeAfterPreview
           ? {
               resumeAfterPreview: true,
@@ -129,8 +112,6 @@ export function usePurchaseEntry({
     accessPlans,
     courseId,
     navigation,
-    purchaseCouponCode,
-    routeParams.purchaseCouponCode,
     routeParams.purchasePlanCode,
     routeParams.resumeAfterPreview,
     routeParams.resumeReelId,
@@ -205,9 +186,6 @@ export function usePurchaseEntry({
 
   useEffect(() => {
     const resumedPlanCode = String(routeParams.purchasePlanCode || '').trim();
-    const resumedCoupon = normalizeHumanIdentifier(
-      routeParams.purchaseCouponCode,
-    );
     if (
       !routeParams.openPurchase ||
       autoHandledRef.current ||
@@ -233,26 +211,15 @@ export function usePurchaseEntry({
     if (resumedPlanCode) {
       if (!accessPlans.some(plan => plan.code === resumedPlanCode)) {
         autoHandledRef.current = true;
-        setNotice('تغيّرت فئات الكورس\nاختر الفئة المناسبة');
+        setNotice('تغيّرت الاشتراكات المتاحة\nاختر الاشتراك المناسب');
         showPlans();
         consumeRouteIntent();
         return;
       }
       if (selectedPlanCode !== resumedPlanCode) return;
     }
-    if (
-      resumedCoupon &&
-      (purchaseRestoreStatus === 'idle' || purchaseRestoreStatus === 'quoting')
-    ) {
-      return;
-    }
-    if (resumedCoupon && purchaseRestoreStatus === 'failed') {
-      autoHandledRef.current = true;
-      consumeRouteIntent();
-      return;
-    }
     autoHandledRef.current = true;
-    if (purchaseRestoreStatus !== 'failed') setNotice('');
+    setNotice('');
     if (primaryAction.kind === 'price_unavailable') {
       setNotice('سعر الكورس لم يُنشر بعد\nلم نبدأ أي عملية شراء');
       consumeRouteIntent();
@@ -265,23 +232,21 @@ export function usePurchaseEntry({
     }
     openForTerms({
       forcePlanSelection: !resumedPlanCode && accessPlans.length > 1,
-      purchasePrice: effectivePurchasePrice,
-      spendableBalance: effectiveSpendableBalance,
+      purchasePrice,
+      spendableBalance,
     });
     consumeRouteIntent();
   }, [
     accessPlans,
     consumeRouteIntent,
-    effectivePurchasePrice,
-    effectiveSpendableBalance,
+    purchasePrice,
+    spendableBalance,
     openLogin,
     owned,
     pageReady,
     primaryAction.kind,
-    purchaseRestoreStatus,
     remoteSession,
     routeParams.openPurchase,
-    routeParams.purchaseCouponCode,
     routeParams.purchasePlanCode,
     selectedPlanCode,
     showPlans,
@@ -299,7 +264,6 @@ export function usePurchaseEntry({
   }, [dialogStep, owned, retentionQueued]);
 
   const closeDialog = useCallback(() => {
-    if (busy || couponBusy) return;
     const retentionKey = `${identityKey}:${courseId}`;
     const shouldOfferTasks =
       dialogStep !== null &&
@@ -318,15 +282,7 @@ export function usePurchaseEntry({
       });
     }
     closePurchase();
-  }, [
-    busy,
-    closePurchase,
-    couponBusy,
-    courseId,
-    dialogStep,
-    identityKey,
-    owned,
-  ]);
+  }, [closePurchase, courseId, dialogStep, identityKey, owned]);
 
   const closeRetention = useCallback(() => setRetentionVisible(false), []);
 

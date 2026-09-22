@@ -13,6 +13,16 @@ use Mockery;
 
 final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        DB::table('course_enrollments')->insert([
+            'user_id' => $this->user->id,
+            'course_id' => $this->courseId,
+            'is_active' => true,
+        ]);
+    }
+
     public function test_replay_after_finalization_keeps_the_original_media_and_publication(): void
     {
         $bunny = $this->fakeBunny();

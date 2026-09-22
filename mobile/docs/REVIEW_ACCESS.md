@@ -1,45 +1,113 @@
-# ROKN store review access — operational draft
+# ROKN store review access — verified Android reviewer account
 
-Updated 2026-09-13. This is **not a verified reviewer
-account or a ready-to-submit access declaration**. See [STORE_RELEASE_STATUS.md](STORE_RELEASE_STATUS.md)
-for the exact Android artifact and deployed backend evidence. No account,
-entitlement, product, payment, or production setting was changed for this guide.
+Updated 2026-09-14. The dedicated replacement reviewer account is registered as
+ROKN user **14**, enrolled in the shared internal/license test, and verified on
+Android release **58 (1.0.57)**. Google Play Billing resolved the live package,
+completed a no-charge licensed test purchase for 900 coins, and the app then used
+those coins through its normal checkout to enroll the reviewer in the Blender
+course's mentor plan. Lesson access, mentor chat, enhanced project feedback and
+certificate eligibility were visible; the post-enrollment balance is 35 coins.
+The reusable Google login and English walkthrough were saved in Play Console's
+private App access declaration with full paid/premium-content access selected.
+Credentials remain out of this repository. Target audience, Data safety and the
+store listing are complete. Play is set to 18+ only with Google-known minors
+blocked. Four authentic release-58 screenshots and the generated feature graphic
+are in the listing; the latter is disclosed as AI-generated. Production release
+58 is staged for Egypt. Google's automated pre-submission checks completed
+without a reported problem; only the final review request remains.
+See [STORE_RELEASE_STATUS.md](STORE_RELEASE_STATUS.md) for artifact and backend pins.
+
+A first dedicated Google review account was created on 2026-09-13 and registered
+as ROKN user 13. It was replaced on September 14 by the final reviewer identity,
+ROKN user 14, because the first account's password was not reusable. The final
+account completed the normal app Google flow on emulator-5554, accepted the
+internal-test invitation, resolved Play Billing and received the verified mentor
+enrollment described above. The old user 13 remains historical and unenrolled.
 See [CONSOLE_SETUP.md](../store/CONSOLE_SETUP.md) for console access, signing/OAuth
 identities, app links and public policy-page evidence; those prerequisites are
 separate from the reviewer account and product configuration below.
 
 ## Required before entering review instructions
 
-- **Reusable reviewer social account: MISSING.** Record the chosen provider,
-  dedicated account identifier, working sign-in instructions, and access to all
-  restricted features in the stores' private review fields, not this repository.
-  The current app presents social sign-in; it has no reviewer password/backdoor.
-  A provider challenge requiring an operator's phone or one-time intervention is
-  not verified reusable access. Resolve that through an approved account/access
-  arrangement; do not weaken production authentication or invent credentials.
-- **Review content and access: NOT SELECTED/VERIFIED.** Record an actual published
-  course title, guest sample, unit/project, and the review account's plan/access.
-  Prepare separate documented access for the three plan behaviors below through
-  the normal authorized workflow. Do not assume a new social account already has
-  coins, an enrollment, AI quota, a completed project, or a certificate.
+### Owner phone-test access — updated September 14
+
+After the owner's purchase on release 58, read-only command 188 at 00:18:53
+Cairo on September 14 confirmed user 6's Google purchase 1 / order 17 for
+`rokn.coins.900`: test environment, credited, approved/settled and finalized,
+with zero cash revenue and no reversal or finalization retry. Course order 18
+created active enrollment 8 in course 10, mentor plan 27 with chat enabled,
+50 messages and certificate eligibility. This is owner acceptance evidence;
+the separate final reviewer verification is recorded below. Refund/recovery
+testing remains incomplete.
+
+Earlier, read-only production command 184 confirmed that the owner's existing Rokn
+account (user 6) already has paid mentor access to published Blender course 3:
+learning, chat with a 50-message limit, enhanced project feedback and certificate
+availability. No grant, balance adjustment or plan modification was needed.
+The personal Khalil account (user 5) has no enrollment in that course. The final
+reviewer account now has its own normally purchased mentor entitlement. The
+shared Play tester list contains four approved identities and is selected for
+both internal testing and license testing.
+
+The internal-test link is
+`https://play.google.com/apps/internaltest/4700165170808444276`.
+Sign in to Play with an included identity and join the test before installing.
+For a purchase test use Google's explicitly labeled test payment instrument,
+not an ordinary saved card. Four release 58 candidate screenshots were captured
+from the verified emulator session and uploaded. No old-build screenshot was
+submitted as a candidate image.
+
+- **Reviewer Google account: VERIFIED AND SAVED.** The final account is ROKN user
+  14. It is a member of the four-account `Rokn internal QA` list used for both
+  internal and license testing, accepted the internal-test invitation, signed in
+  through the normal Google OAuth flow on emulator-5554 and required no OTP or
+  operator intervention during verification. Its identifier, password and English
+  instructions are stored only in Play Console's private App access declaration.
+  Full paid/premium-content access is explicitly declared there; no reviewer
+  password or authentication bypass was added to the app or repository.
+- **Review content: PROVISIONED AND VERIFIED THROUGH THE NORMAL FLOW.** On release
+  58, the account resolved `rokn.coins.900` at the localized EGP 11.11 price. The
+  Google sheet explicitly identified the transaction as a test order with no
+  charge and used the always-approves test instrument. The 900 coins were credited,
+  then spent through the app's normal course checkout on published course 3,
+  **أساسيات الرسم والتحريك في Blender**, mentor plan 12. The balance changed from
+  935 to 35 coins. The first lesson loaded, the mentor Ask panel opened, and My
+  Corner displayed the enrolled course with Continue. The plan includes learning,
+  50 mentor messages, enhanced project feedback and certificate eligibility. No
+  fake receipt, complimentary grant, balance edit or authentication bypass was used.
 - **Deletion account: MISSING.** Use a separate disposable social account with no
   real purchases or valuable work; it must support fresh sign-in with the same
   provider. Never delete the reusable review account during the walkthrough.
-- **Store payments: PENDING; backend deployed.** Laravel Cloud deployment 203
+- **Owner Google test purchase: VERIFIED; recovery/refund testing incomplete.** Laravel Cloud deployment 204
   runs `855f7293fe3e96682a87f2b79d69ba4238c98f87`, with backend code unchanged
   from deployment 202 / `3c72607`, including verified-test fulfillment/recovery.
   That implementation credits verified store tests with zero cash revenue and
   finalizes Google purchases after credit commits. Product `rokn.coins.900` is
   active and bound to package 4, and the Google credential is deployed. The
-  Google channel remains disabled pending app-scoped permissions and verification;
-  authenticated RTDN and Apple products are still incomplete. See
+  service account is Active with the approved app-scoped permissions. OAuth and
+  product reads succeeded. The earlier purchase-read denial in command 171 was
+  superseded by command 172 at 12:23:52 UTC, which returned both OAuth and
+  purchase-read success without a credential or permission change. Command 188
+  subsequently verified the owner purchase and finalization recorded above.
+  Authenticated Play test event
+  `21807048248284341` reached production on September 13 at 13:57:27 UTC with
+  no error, verified by command 173. Command 174 re-read the active product and
+  matching Egypt price; command 175 enabled package 4's Google channel without
+  changing its price or any user's balance. Cloud trial billing is active.
+  Apple products are incomplete. See
   STORE_RELEASE_STATUS.md for the current console and configuration evidence.
   Deployment alone does not verify configuration or an end-to-end store purchase.
-- **Review contact: NOT ENTERED/VERIFIED.** The owner has supplied
-  `support@rokn.app` and a contact phone number in the conversation. Use the
-  supplied details in the private console fields and confirm the contact name
-  against the company record; do not copy the private phone into this repository.
-  Keep someone available throughout review.
+- **Public support contact: SAVED; private review contact not verified.**
+  `support@rokn.app` and `https://rokn.app` were saved with the Console's Publish
+  action. IARC uses that support email, but this does not establish reusable
+  sign-in or the private reviewer-contact fields. Use the owner's supplied phone
+  only in those private fields and verify the contact name against company records;
+  do not copy the phone here. Keep someone available throughout review.
+- **Audience eligibility: SAVED AS 18+ ONLY.** Google-known minors are blocked.
+  This matches the live privacy policy and the current AI-provider eligibility
+  boundary without inventing a parental-consent or minor-access flow. IARC's
+  Generic 3+ content rating is separate from the target-audience declaration.
+  See [console setup](../store/CONSOLE_SETUP.md).
 
 Google requires English instructions, reusable access from any location, and
 complete details for third-party sign-in and paywalled content. Enter them under
@@ -72,7 +140,9 @@ Replace the unspecified course/account references with verified details before s
    (Choose your plan) or **شراء الكورس** (Buy course) → **تأكيد الشراء** (Confirm).
    Buying coins alone does not enroll the account; the course confirmation spends
    the displayed usable balance. Never substitute an external checkout link.
-   Do not describe this step as working until the payment blocker above is resolved.
+   This path succeeded for both the owner and the final reviewer on release 58.
+   The reviewer now has a pre-provisioned mentor entitlement and will not need to
+   purchase access during review.
 4. **Projects by plan:** Start/resume the designated enrolled course, complete its
    required unit, and open its project from the course contents/transition. Use
    a harmless, non-personal sample file matching that project's instructions.
@@ -152,9 +222,17 @@ Replace the unspecified course/account references with verified details before s
   deployments. The app binds receipts and calls `POST /api/v1/store-purchases/verify`
   with `provider`, `product_id`, `purchase_token`, optional `transaction_id`.
   Do not hand-submit fabricated receipts or infer success from the native sheet alone.
-- [ ] Record actual successful credit, cancellation/pending handling and retry
-  without duplicate coins. Sandbox fulfillment and Google server finalization
-  remain pending; do not mark this checkbox based on scaffolding or unit tests.
+- [x] Owner Google licensed-test credit and server finalization verified by
+  command 188 on release 58, followed by course 10 enrollment.
+- [x] Final reviewer user 14 signed in on release 58, resolved the native Google
+  package, completed a no-charge 900-coin licensed test purchase and bought course
+  3's mentor plan through normal in-app checkout; lesson/chat access and 35-coin
+  remaining balance were verified in the UI.
+- [x] Play Console App access contains the final reusable Google credentials,
+  English walkthrough and the full paid/premium-content-access declaration.
+- [ ] Verify cancellation/pending handling, retry without duplicate coins,
+  refund/recovery and repeat purchase. The successful owner purchase does not
+  establish these cases or Apple's sandbox fulfillment.
 - [ ] Verify the deployed consent/reporting/deletion endpoints through the real UI;
   new backend routes include `/api/v1/ai-consent` and `/api/v1/ai-content-reports`.
   Review `GET /api/health/launch-ready`, including its body on HTTP 503. Health and
@@ -162,4 +240,6 @@ Replace the unspecified course/account references with verified details before s
 - [ ] Record binary/version, device/OS, backend deployment, chosen course/project,
   account-access confirmation, and date/result for each walkthrough step in the
   private release record. Keep both stores' access instructions current and leave
-  the reusable review account active. All checkboxes above are currently unverified.
+  the reusable review account active. Unchecked items remain incomplete; Android
+  reviewer purchase and mentor access are now verified, while the remaining
+  consent/reporting/deletion and recovery cases are not.

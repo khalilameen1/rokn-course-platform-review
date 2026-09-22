@@ -31,7 +31,7 @@ final readonly class WalletQueryService
         // Every wallet writer serializes on the user row. Read the aggregate
         // behind the same lock so the balance and ledger tail always describe
         // one committed wallet state rather than two adjacent transactions.
-        [$balances, $recent] = DB::transaction(function () use ($user): array {
+        [$balances, $recent, $rewardRecent] = DB::transaction(function () use ($user): array {
             $freshUser = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
             $balances = $this->wallet->balances($freshUser);
             $recent = WalletTransaction::query()
@@ -41,7 +41,26 @@ final readonly class WalletQueryService
                 ->get()
                 ->map(fn (WalletTransaction $transaction): array => $this->payload($transaction));
 
-            return [$balances, $recent];
+            // Reward history must not disappear behind unrelated paid top-ups.
+            // For mixed debits expose only the reward portion, not the full price.
+            $rewardRecent = WalletTransaction::query()
+                ->where('user_id', $user->id)
+                ->where('reward_amount', '>', 0)
+                ->latest('id')->limit(10)->get()
+                ->map(function (WalletTransaction $transaction): array {
+                    $item = $this->payload($transaction);
+                    return [
+                        'id' => $item['id'],
+                        'direction' => $item['direction'],
+                        'category' => $item['category'],
+                        'label_ar' => $item['label_ar'],
+                        'label_en' => $item['label_en'],
+                        'amount' => (int) $transaction->reward_amount,
+                        'occurred_at' => $item['occurred_at'],
+                    ];
+                });
+
+            return [$balances, $recent, $rewardRecent];
         }, 3);
 
         $totalBalance = $balances['total'];
@@ -71,6 +90,11 @@ final readonly class WalletQueryService
             'currency_type' => 'rokn_coins',
             'is_withdrawable' => false,
             'recent_transactions' => $recent,
+            'rewards' => [
+                'balance' => $rewardBalance,
+                'help' => $setting->rewards_help,
+                'recent_transactions' => $rewardRecent,
+            ],
         ];
     }
 

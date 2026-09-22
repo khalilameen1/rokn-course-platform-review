@@ -1,5 +1,5 @@
 import React from 'react';
-import {FlatList, StatusBar, StyleSheet, View} from 'react-native';
+import {FlatList, StyleSheet, View} from 'react-native';
 import CourseChatOverlay from '../../components/VideoPlayer/CourseChatOverlay';
 import NotificationPermissionPrimer from '../../components/ui/NotificationPermissionPrimer';
 import {
@@ -15,11 +15,6 @@ const ReelsSurface = (controller: ReelsController) => {
 
   return (
     <View style={styles.screen} onLayout={controller.onLayout}>
-      <StatusBar
-        translucent
-        barStyle="light-content"
-        backgroundColor="transparent"
-      />
       {loading || (!course && !loadError) || !layout.height ? (
         <ReelsLoadingState />
       ) : loadError || !course ? (

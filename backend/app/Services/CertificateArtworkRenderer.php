@@ -20,20 +20,39 @@ use Endroid\QrCode\Writer\PngWriter;
  */
 final class CertificateArtworkRenderer
 {
-    public const VERSION = 'editorial_v1';
+    public const VERSION = 'editorial_v2';
+    public const SUPPORTED_VERSIONS = ['editorial_v1', self::VERSION];
     public const WIDTH = 2800;
     public const HEIGHT = 1900;
     private const SCALE = 2;
     private const INK = [16, 28, 45];
     private const SECONDARY = [102, 112, 123];
     private const PAPER = [252, 252, 250];
+    // Issued snapshots retain their original geometry during artifact recovery.
+    private const LAYOUTS = [
+        'editorial_v1' => [
+            'logo_y' => 102, 'statement_top' => 222,
+            'course_size' => 42, 'course_height' => 65.1,
+            'rule_color' => [220, 224, 227], 'rule_width' => 1,
+            'identifier_size' => 10,
+        ],
+        'editorial_v2' => [
+            'logo_y' => 134, 'statement_top' => 208,
+            'course_size' => 48, 'course_height' => 74.4,
+            'rule_color' => [185, 193, 201], 'rule_width' => 2,
+            'identifier_size' => 13,
+            'accent' => [44, 105, 219],
+            'corner_artwork' => true,
+        ],
+    ];
 
     /** @param array{url:string,title:string,hint:string,type:string} $destination */
     public function render(Certificate $certificate, array $destination): string
     {
-        if ($certificate->certificate_design_version !== self::VERSION) {
+        if (!in_array($certificate->certificate_design_version, self::SUPPORTED_VERSIONS, true)) {
             throw new \InvalidArgumentException('Unsupported certificate artwork version.');
         }
+        $layout = self::LAYOUTS[$certificate->certificate_design_version];
         foreach (['holder_name', 'course_name', 'certificate_text', 'public_id'] as $field) {
             if (UnicodeText::clean($certificate->{$field}, false) === '') {
                 throw new \InvalidArgumentException('Incomplete certificate artwork snapshot.');
@@ -56,19 +75,22 @@ final class CertificateArtworkRenderer
         if (!$canvas) throw new \RuntimeException('Unable to create certificate canvas.');
         try {
             imagefill($canvas, 0, 0, imagecolorallocate($canvas, ...self::PAPER));
-            $this->placeAsset($canvas, 'wordmark.png', 700, 102, 132, 43.34, true);
+            if ($layout['corner_artwork'] ?? false) (new CertificateCornerArtwork())->draw($canvas);
+            $this->placeAsset($canvas, 'wordmark.png', 700, $layout['logo_y'], 132, 43.34, $layout['accent'] ?? self::INK);
 
-            $lines = $this->statement($certificate);
+            $lines = $this->statement($certificate, $layout);
             $height = array_sum(array_column($lines, 'height')) + array_sum(array_column($lines, 'after'));
-            $top = 222 + (330 - $height) / 2;
+            $top = $layout['statement_top'] + (330 - $height) / 2;
             foreach ($lines as $line) {
                 $this->text($canvas, $line['text'], 700, $top + $line['height'] / 2,
                     $line['size'], $line['weight'], $line['color'], 1176);
                 $top += $line['height'] + $line['after'];
             }
 
-            $rule = imagecolorallocate($canvas, 220, 224, 227);
+            $rule = imagecolorallocate($canvas, ...$layout['rule_color']);
+            imagesetthickness($canvas, $layout['rule_width']);
             imageline($canvas, 224, 1256, 2576, 1256, $rule);
+            imagesetthickness($canvas, 1);
             $this->text($canvas, 'تاريخ الإتمام', 1092, 669, 16, 'Regular', self::SECONDARY);
             $this->text($canvas, 'CEO', 700, 669, 15, 'Medium', self::SECONDARY);
             $this->text($canvas, $destination['title'], 308, 669, 16, 'Regular', self::SECONDARY, 360);
@@ -83,11 +105,12 @@ final class CertificateArtworkRenderer
             // One centred identifier group, with the label to its right in RTL.
             $id = (string) $certificate->public_id;
             $label = 'رقم الشهادة';
-            $labelWidth = $this->measure($this->shape($label), 10, 'Regular')['width'] / self::SCALE;
-            $idWidth = $this->measure($id, 10, 'Regular')['width'] / self::SCALE;
+            $identifierSize = $layout['identifier_size'];
+            $labelWidth = $this->measure($this->shape($label), $identifierSize, 'Regular')['width'] / self::SCALE;
+            $idWidth = $this->measure($id, $identifierSize, 'Regular')['width'] / self::SCALE;
             $left = 700 - ($idWidth + 12 + $labelWidth) / 2;
-            $this->text($canvas, $id, $left + $idWidth / 2, 866, 10, 'Regular', self::SECONDARY);
-            $this->text($canvas, $label, $left + $idWidth + 12 + $labelWidth / 2, 866, 10, 'Regular', self::SECONDARY);
+            $this->text($canvas, $id, $left + $idWidth / 2, 866, $identifierSize, 'Regular', self::SECONDARY);
+            $this->text($canvas, $label, $left + $idWidth + 12 + $labelWidth / 2, 866, $identifierSize, 'Regular', self::SECONDARY);
 
             ob_start();
             try {
@@ -102,14 +125,14 @@ final class CertificateArtworkRenderer
     }
 
     /** @return list<array{text:string,size:int,weight:string,color:array,height:float,after:int}> */
-    private function statement(Certificate $certificate): array
+    private function statement(Certificate $certificate, array $layout): array
     {
         $completion = UnicodeText::clean($certificate->certificate_completion_text, false);
         $lines = [
             ['text'=>'تشهد رُكن أن','size'=>24,'weight'=>'Regular','color'=>self::SECONDARY,'height'=>37.2,'after'=>8],
             ['text'=>(string) $certificate->holder_name,'size'=>66,'weight'=>'SemiBold','color'=>self::INK,'height'=>99.0,'after'=>14],
             ['text'=>(string) $certificate->certificate_text,'size'=>23,'weight'=>'Regular','color'=>self::SECONDARY,'height'=>36.8,'after'=>2],
-            ['text'=>(string) $certificate->course_name,'size'=>42,'weight'=>'SemiBold','color'=>self::INK,'height'=>65.1,'after'=>$completion === '' ? 0 : 8],
+            ['text'=>(string) $certificate->course_name,'size'=>$layout['course_size'],'weight'=>'SemiBold','color'=>$layout['accent'] ?? self::INK,'height'=>$layout['course_height'],'after'=>$completion === '' ? 0 : 8],
         ];
         if ($completion !== '') {
             $lines[] = ['text'=>$completion,'size'=>22,'weight'=>'Regular','color'=>self::SECONDARY,'height'=>35.2,'after'=>0];
@@ -194,13 +217,13 @@ final class CertificateArtworkRenderer
     }
 
     private function placeAsset(\GdImage $canvas, string $file, float $x, float $y,
-        float $width, float $height, bool $tint = false): void
+        float $width, float $height, ?array $tint = null): void
     {
         $asset = imagecreatefrompng($this->asset($file));
         if (!$asset) throw new \RuntimeException('Certificate brand asset is unavailable.');
         try {
             if ($tint) {
-                $tinted = $this->solidAsset($asset, self::INK);
+                $tinted = $this->solidAsset($asset, $tint);
                 imagedestroy($asset);
                 $asset = $tinted;
             }

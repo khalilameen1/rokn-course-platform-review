@@ -137,6 +137,7 @@ $registerCourseApiRoutes = function () {
 
                 // Portfolio
                 Route::get('portfolio', [\App\Http\Controllers\API\PortfolioController::class, 'index']);
+                Route::get('portfolio/upload-access', [\App\Http\Controllers\API\PortfolioController::class, 'uploadAccess']);
                 Route::get('portfolio/eligible-projects', [\App\Http\Controllers\API\PortfolioController::class, 'eligibleProjects']);
                 Route::get('portfolio-profile', [\App\Http\Controllers\API\PortfolioProfileController::class, 'show']);
                 Route::put('portfolio-profile', [\App\Http\Controllers\API\PortfolioProfileController::class, 'update']);

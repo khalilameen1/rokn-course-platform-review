@@ -1,13 +1,7 @@
 import {useNavigation} from '@react-navigation/native';
 import React from 'react';
-import {
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {Pressable, ScrollView, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {Swipeable} from 'react-native-gesture-handler';
 import {CloseChat, PlayInSavedVideosIcon} from '../../assets/SVG';
 import {StatusView, SectionHeading} from '../../components/ui/PremiumUI';

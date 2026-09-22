@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\DownloadFilename;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -27,7 +28,8 @@ final class PortfolioMediaAuthoringService
 
     public function __construct(
         private PortfolioVideoUploadService $videoUploads,
-        private BunnyService $bunny
+        private BunnyService $bunny,
+        private PortfolioUploadAccessService $uploadAccess
     ) {
     }
 
@@ -51,7 +53,7 @@ final class PortfolioMediaAuthoringService
                 (string) $input['original_name'],
                 (string) $input['sha256']
             );
-        } catch (PortfolioOperationException|ValidationException|ModelNotFoundException $exception) {
+        } catch (PortfolioOperationException|ValidationException|ModelNotFoundException|HttpResponseException $exception) {
             throw $exception;
         } catch (RuntimeException $exception) {
             report($exception);
@@ -66,7 +68,7 @@ final class PortfolioMediaAuthoringService
 
         try {
             return $this->videoUploads->renew($user, $itemId, $claim);
-        } catch (PortfolioOperationException|ValidationException|ModelNotFoundException $exception) {
+        } catch (PortfolioOperationException|ValidationException|ModelNotFoundException|HttpResponseException $exception) {
             throw $exception;
         } catch (RuntimeException $exception) {
             report($exception);
@@ -123,6 +125,7 @@ final class PortfolioMediaAuthoringService
             if ($item->mediaFiles()->where('content_sha256', $fingerprint['sha256'])->exists()) {
                 throw ValidationException::withMessages(['file' => ['هذا الملف مضاف بالفعل']]);
             }
+            $this->uploadAccess->assertAllowed($user);
             $this->assertCapacityAvailable($item, $fingerprint['sha256']);
 
             $path = $this->bunny->uploadFileToStorage(

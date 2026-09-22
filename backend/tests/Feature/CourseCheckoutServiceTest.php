@@ -61,6 +61,39 @@ final class CourseCheckoutServiceTest extends TestCase
         self::assertSame(700, (int) $user->fresh()->wallet_coins);
     }
 
+    public function test_chat_intent_rejects_a_projects_only_upgrade_without_spending(): void
+    {
+        [$user, $course, $service] = $this->fixture(2000, 500);
+        $this->withoutMiddleware(\App\Http\Middleware\WebsiteVisitorCount::class);
+        $base = $service->create($user, $this->input($course));
+        $service->authorize($user, $base['id']);
+        $before = (int) $user->fresh()->wallet_coins;
+        $course->accessPlans()->where('code', 'guided')->update(['chat_enabled' => false]);
+        $this->actingAs($user, 'api')->postJson('/api/v1/course-checkouts', [
+            'course_id' => $course->id, 'access_plan_code' => 'guided', 'mode' => 'upgrade',
+            'channel' => 'google', 'required_feature' => 'chat',
+        ])->assertStatus(409)->assertJsonPath('code', 'checkout_feature_unavailable');
+        self::assertSame($before, (int) $user->fresh()->wallet_coins);
+        self::assertSame('basic', CourseEnrollment::query()->where('user_id', $user->id)->firstOrFail()->access_plan_snapshot['code']);
+        $valid = $service->create($user, ['course_id' => $course->id, 'access_plan_code' => 'mentor',
+            'mode' => 'upgrade', 'channel' => 'google', 'required_feature' => 'chat']);
+        self::assertSame('chat', $valid['required_feature']);
+        self::assertSame('completed', $service->authorize($user, $valid['id'])['status']);
+    }
+
+    public function test_required_feature_is_rechecked_before_authorization(): void
+    {
+        [$user, $course, $service] = $this->fixture(2000, 500);
+        $base = $service->create($user, $this->input($course));
+        $service->authorize($user, $base['id']);
+        $quote = $service->create($user, ['course_id' => $course->id, 'access_plan_code' => 'guided',
+            'mode' => 'upgrade', 'channel' => 'google', 'required_feature' => 'chat']);
+        $before = (int) $user->fresh()->wallet_coins;
+        $course->accessPlans()->where('code', 'guided')->update(['chat_enabled' => false]);
+        self::assertSame('reconfirm_required', $service->authorize($user, $quote['id'])['status']);
+        self::assertSame($before, (int) $user->fresh()->wallet_coins);
+    }
+
     public function test_authorization_and_resume_are_idempotent_and_use_existing_ledger(): void
     {
         [$user, $course, $service] = $this->fixture(500, 200);

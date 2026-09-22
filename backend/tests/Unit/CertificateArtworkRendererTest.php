@@ -43,17 +43,43 @@ final class CertificateArtworkRendererTest extends TestCase
 
         $image = $this->decode($bytes);
         try {
-            foreach ([[0, 0], [2799, 0], [0, 1899], [2799, 1899], [1400, 1200]] as [$x, $y]) {
+            foreach ([[0, 0], [2799, 0], [2799, 1899], [1400, 1200]] as [$x, $y]) {
                 self::assertSame(self::PAPER, imagecolorat($image, $x, $y) & 0xffffff);
             }
-            self::assertGreaterThan(100, $this->inkPixels($image, 1268, 160, 264, 88), 'The original wordmark must be visible.');
-            self::assertGreaterThan(1000, $this->colorPixels($image, 1268, 160, 264, 88, 0x101c2d), 'The wordmark must use the approved navy ink.');
+            self::assertGreaterThan(100, $this->inkPixels($image, 1268, 224, 264, 88), 'The original wordmark must be visible.');
+            self::assertGreaterThan(1000, $this->colorPixels($image, 1268, 224, 264, 88, 0x2c69db), 'The wordmark must use Rokn brand blue.');
             self::assertGreaterThan(80, $this->inkPixels($image, 1148, 1414, 504, 168), 'The Arabic signature must be visible.');
             self::assertGreaterThan(500, $this->inkPixels($image, 500, 1380, 240, 240), 'The QR must not be empty.');
             self::assertGreaterThan(80, $this->inkPixels($image, 900, 1700, 1000, 64), 'The credential identifier must be visible.');
-            self::assertSame(0xdce0e3, imagecolorat($image, 1400, 1256) & 0xffffff);
+            self::assertSame(0xb9c1c9, imagecolorat($image, 1400, 1256) & 0xffffff);
         } finally {
             imagedestroy($image);
+        }
+    }
+
+    public function test_previous_editorial_version_keeps_its_original_layout(): void
+    {
+        $renderer = app(CertificateArtworkRenderer::class);
+        $old = $this->decode($renderer->render($this->certificate([
+            'certificate_design_version' => 'editorial_v1',
+        ]), $this->destination()));
+        $current = $this->decode($renderer->render($this->certificate(), $this->destination()));
+        try {
+            self::assertGreaterThan(1000, $this->colorPixels($old, 1268, 160, 264, 88, 0x101c2d));
+            self::assertSame(0xdce0e3, imagecolorat($old, 1400, 1256) & 0xffffff);
+            self::assertGreaterThan(
+                $this->inkPixels($old, 700, 1700, 1400, 64),
+                $this->inkPixels($current, 700, 1700, 1400, 64),
+                'The new identifier must be larger without changing old credentials.'
+            );
+            self::assertSame(
+                $this->regionHash($old, 400, 1300, 2400, 340),
+                $this->regionHash($current, 400, 1300, 2400, 340),
+                'Date, signature and QR must retain their approved alignment.'
+            );
+        } finally {
+            imagedestroy($old);
+            imagedestroy($current);
         }
     }
 
@@ -68,7 +94,8 @@ final class CertificateArtworkRendererTest extends TestCase
         try {
             self::assertGreaterThan(1000, $this->inkPixels($image, 224, 444, 2352, 660));
             self::assertSame(0, $this->inkPixels($image, 0, 420, 212, 720), 'The learner must not overflow the left margin.');
-            self::assertSame(0, $this->inkPixels($image, 2588, 420, 212, 720), 'The learner must not overflow the right margin.');
+            self::assertSame(0, $this->colorPixels($image, 2588, 420, 212, 720, 0x101c2d), 'The learner must not overflow the right margin.');
+            self::assertSame(0, $this->colorPixels($image, 2588, 420, 212, 720, 0x2c69db), 'The course must not overflow the right margin.');
             self::assertSame(0, $this->inkPixels($image, 224, 1150, 2352, 100), 'The statement must stay above the footer.');
         } finally {
             imagedestroy($image);
@@ -91,8 +118,8 @@ final class CertificateArtworkRendererTest extends TestCase
         $theoryImage = $this->decode($theory);
         $practicalImage = $this->decode($practical);
         try {
-            self::assertSame(0, $this->inkPixels($theoryImage, 700, 1030, 1400, 80));
-            self::assertGreaterThan(50, $this->inkPixels($practicalImage, 700, 1030, 1400, 80), 'The practical completion line must actually appear.');
+            self::assertSame(0, $this->inkPixels($theoryImage, 700, 1000, 1400, 80));
+            self::assertGreaterThan(50, $this->inkPixels($practicalImage, 700, 1000, 1400, 80), 'The practical completion line must actually appear.');
             self::assertSame(
                 $this->regionHash($theoryImage, 0, 1250, 2800, 650),
                 $this->regionHash($practicalImage, 0, 1250, 2800, 650),

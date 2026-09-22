@@ -26,7 +26,10 @@ final readonly class PortfolioVideoUploadService
     public const MIMES = ['video/mp4', 'video/quicktime', 'video/webm'];
     private const MAX_MEDIA_PER_ITEM = 12;
 
-    public function __construct(private BunnyService $bunny) {}
+    public function __construct(
+        private BunnyService $bunny,
+        private PortfolioUploadAccessService $uploadAccess,
+    ) {}
 
     /** @return array<string,mixed> */
     public function issue(
@@ -38,6 +41,7 @@ final readonly class PortfolioVideoUploadService
         string $originalName,
         string $sha256
     ): array {
+        $this->uploadAccess->assertAllowed($user);
         $mime = strtolower(trim($mime));
         $originalName = basename(str_replace('\\', '/', trim($originalName)));
         if ($size < 1 || $size > self::MAX_BYTES || !in_array($mime, self::MIMES, true)) {
@@ -219,6 +223,7 @@ final readonly class PortfolioVideoUploadService
     /** @return array<string,mixed> */
     public function renew(User $user, int $itemId, string $claim): array
     {
+        $this->uploadAccess->assertAllowed($user);
         $session = $this->sessionFromClaim($user, $itemId, $claim, false);
         if ($session->status === 'attached') {
             $this->mediaForSession($session);

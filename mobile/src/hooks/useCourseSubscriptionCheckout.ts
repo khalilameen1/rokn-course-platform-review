@@ -13,7 +13,12 @@ import {
   openCoinCheckout,
   subscribeCoinCheckoutCredits,
 } from '../services/coinCheckout';
-import {errorCode, learnerErrorMessage} from '../utils/errorPayload';
+import {
+  asRecord,
+  errorCode,
+  errorPayload,
+  learnerErrorMessage,
+} from '../utils/errorPayload';
 import {
   authorizeCourseCheckout,
   cancelCourseCheckout,
@@ -24,6 +29,7 @@ import {
   selectCheckoutPackage,
   type CourseCheckout,
   type CourseCheckoutMode,
+  type CourseCheckoutFeature,
 } from '../services/api/courseCheckout';
 import type {CoinPackage} from '../services/api/coinPackageMapper';
 
@@ -32,6 +38,7 @@ type Params = {
   mode?: CourseCheckoutMode;
   planCode?: string;
   courseRevision?: number;
+  requiredFeature?: CourseCheckoutFeature;
   visible: boolean;
   onCompleted: () => void | Promise<void>;
 };
@@ -43,6 +50,7 @@ export function useCourseSubscriptionCheckout({
   mode = 'purchase',
   planCode,
   courseRevision,
+  requiredFeature,
   visible,
   onCompleted,
 }: Params) {
@@ -51,6 +59,10 @@ export function useCourseSubscriptionCheckout({
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
+  const [blockingCheckout, setBlockingCheckout] = useState<{
+    id: string;
+    courseId: string;
+  } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const generation = useRef(0);
   const flight = useRef(false);
@@ -82,6 +94,7 @@ export function useCourseSubscriptionCheckout({
     setQuote(null);
     setCoinPackage(undefined);
     setNotice('');
+    setBlockingCheckout(null);
     setBusy(false);
     flight.current = false;
     if (!visible || !planCode) {
@@ -111,7 +124,7 @@ export function useCourseSubscriptionCheckout({
         }
         // A completed old purchase may precede a new upgrade. A fresh quote
         // remains authoritative for whether this requested target is available.
-        const input = {courseId, planCode, mode};
+        const input = {courseId, planCode, mode, requiredFeature};
         let next = await quoteCourseCheckout(input);
         assertAccountSessionBoundary(boundary);
         if (!owns(token)) return;
@@ -173,10 +186,61 @@ export function useCourseSubscriptionCheckout({
     owns,
     planCode,
     reloadKey,
+    requiredFeature,
     visible,
   ]);
 
+  // A pending checkout belongs to the account, not necessarily this course.
+  // Resolve it separately so its receipt can never mark this course as bought.
+  const resolveBlockingCheckout = useCallback(
+    async (action: 'resume' | 'cancel') => {
+      if (!blockingCheckout || flight.current) return;
+      const token = generation.current;
+      flight.current = true;
+      setBusy(true);
+      try {
+        const boundary = await captureAccountSessionBoundary();
+        const next = await (action === 'cancel'
+          ? cancelCourseCheckout(blockingCheckout.id)
+          : resumeCourseCheckout(blockingCheckout.id));
+        assertAccountSessionBoundary(boundary);
+        if (!owns(token)) return;
+        if (
+          next.id !== blockingCheckout.id ||
+          next.courseId !== blockingCheckout.courseId
+        )
+          throw new Error('CHECKOUT_RECOVERY_MISMATCH');
+        if (next.status === 'pending_payment') {
+          setNotice(
+            'الدفع السابق قيد التأكيد\nتحقق منه أو ألغِ طلبه قبل اشتراك جديد',
+          );
+          return;
+        }
+        setBlockingCheckout(null);
+        if (next.courseId === courseId && next.status === 'completed') {
+          await acceptCompleted(next);
+        } else {
+          // Requote the current course against the authoritative updated balance.
+          setReloadKey(value => value + 1);
+        }
+      } catch {
+        if (owns(token))
+          setNotice('تعذّر تأكيد حالة الدفع السابق\nحاول مرة أخرى');
+      } finally {
+        if (owns(token)) {
+          flight.current = false;
+          setBusy(false);
+        }
+      }
+    },
+    [acceptCompleted, blockingCheckout, courseId, owns],
+  );
+
   const refreshPending = useCallback(async () => {
+    if (blockingCheckout) {
+      await resolveBlockingCheckout('resume');
+      return;
+    }
     const previous = quoteRef.current;
     if (!previous || previous.status !== 'pending_payment' || flight.current)
       return;
@@ -202,7 +266,7 @@ export function useCourseSubscriptionCheckout({
         setBusy(false);
       }
     }
-  }, [acceptCompleted, owns]);
+  }, [acceptCompleted, blockingCheckout, owns, resolveBlockingCheckout]);
 
   useEffect(() => {
     if (!visible) return;
@@ -220,6 +284,10 @@ export function useCourseSubscriptionCheckout({
 
   const confirm = useCallback(async () => {
     if (!quote || loading || flight.current || !CAN_START_COIN_CHECKOUT) return;
+    if (blockingCheckout) {
+      await resolveBlockingCheckout('resume');
+      return;
+    }
     if (quote.status === 'pending_payment') {
       await refreshPending();
       return;
@@ -284,6 +352,24 @@ export function useCourseSubscriptionCheckout({
         setNotice('تم تحديث الرصيد\nراجع تفاصيل الاشتراك قبل المتابعة');
     } catch (error) {
       if (!owns(token)) return;
+      if (errorCode(error) === 'checkout_already_pending') {
+        const active = asRecord(
+          asRecord(errorPayload(error).data)?.active_checkout,
+        );
+        const id = typeof active?.id === 'string' ? active.id : '';
+        const activeCourseId = Number(active?.course_id);
+        if (
+          /^[a-zA-Z0-9-]{1,100}$/.test(id) &&
+          Number.isSafeInteger(activeCourseId) &&
+          activeCourseId > 0
+        ) {
+          setBlockingCheckout({id, courseId: String(activeCourseId)});
+          setNotice(
+            'عندك طلب اشتراك سابق لم يُحسم\nتحقق من الدفع أو ألغِ الطلب السابق',
+          );
+          return;
+        }
+      }
       // A lost authorization response can still represent a committed debit.
       // Read its durable result before allowing another payment attempt.
       try {
@@ -312,6 +398,7 @@ export function useCourseSubscriptionCheckout({
     }
   }, [
     acceptCompleted,
+    blockingCheckout,
     coinPackage,
     courseId,
     loading,
@@ -320,12 +407,17 @@ export function useCourseSubscriptionCheckout({
     planCode,
     quote,
     refreshPending,
+    resolveBlockingCheckout,
   ]);
 
   const retry = useCallback(() => {
     if (!flight.current) setReloadKey(value => value + 1);
   }, []);
   const cancelPending = useCallback(async () => {
+    if (blockingCheckout) {
+      await resolveBlockingCheckout('cancel');
+      return;
+    }
     const previous = quoteRef.current;
     if (!previous || previous.status !== 'pending_payment' || flight.current)
       return;
@@ -350,7 +442,7 @@ export function useCourseSubscriptionCheckout({
         setBusy(false);
       }
     }
-  }, [acceptCompleted, owns]);
+  }, [acceptCompleted, blockingCheckout, owns, resolveBlockingCheckout]);
   return {
     quote,
     coinPackage,
@@ -360,6 +452,7 @@ export function useCourseSubscriptionCheckout({
     confirm,
     cancelPending,
     retry,
+    blockedByPreviousCheckout: Boolean(blockingCheckout),
     pending: quote?.status === 'pending_payment',
   };
 }

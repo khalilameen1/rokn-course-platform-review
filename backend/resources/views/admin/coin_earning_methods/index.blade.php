@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('page.title', 'طرق ربح العملات')
+@section('page.title', 'المكافآت')
 
 @section('styles')
 <link rel="stylesheet" href="{{ versioned_asset('admin/assets/css/admin-learning-views.css') }}">
@@ -9,8 +9,8 @@
 @section('content')
 <div class="fade-in admin-learning admin-learning--coins admin-page">
     @include('admin.partials.page-header', [
-        'pageTitle' => 'طرق ربح العملات',
-        'pageDescription' => 'إدارة طرق الربح وقواعد المكافآت وحدود استخدامها',
+        'pageTitle' => 'المكافآت',
+        'pageDescription' => 'مهام اكسب عملات والمكافآت التلقائية وحدود الخصم',
         'pageIcon' => 'fa-money',
         'pageActionUrl' => route('admin.coin-earning-methods.create'),
         'pageActionLabel' => 'إضافة طريقة جديدة',
@@ -21,12 +21,24 @@
     <div class="card shadow-sm border-0 mb-4 coin-panel">
         <div class="card-header bg-white py-3 d-flex align-items-center">
             <i class="fa fa-info-circle coin-accent-icon ml-2"></i>
-            <h6 class="mb-0 font-weight-bold">نص "كيفية استخدام العملات"</h6>
+            <h6 class="mb-0 font-weight-bold">كيف يعمل الرصيد</h6>
         </div>
         <div class="card-body p-4">
             <form action="{{ route('admin.coin-earning-methods.update-settings') }}" method="POST">
                 @csrf
                 <input type="hidden" name="editor_version" value="{{ $settingsEditorVersion }}">
+                <p class="text-muted small">يظهر الشرح عند الضغط على كيف يعمل الرصيد في صفحة مكافآتي ولا تظهر باقات شحن في التطبيق الجديد</p>
+                <div class="row">
+                    @foreach(['ar' => 'العربية', 'en' => 'English'] as $locale => $label)
+                        <div class="col-md-6 mb-3">
+                            <label for="rewards_help_{{ $locale }}">{{ $label }}</label>
+                            <textarea class="form-control @error('rewards_help_'.$locale) is-invalid @enderror" id="rewards_help_{{ $locale }}" name="rewards_help_{{ $locale }}" rows="3" maxlength="600" dir="{{ $locale === 'ar' ? 'rtl' : 'ltr' }}">{{ old('rewards_help_'.$locale, $setting?->{'rewards_help_'.$locale} ?? \App\Models\Setting::defaultRewardsHelp($locale)) }}</textarea>
+                            @error('rewards_help_'.$locale)<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    @endforeach
+                </div>
+                <details class="mb-3">
+                <summary class="text-muted">نص المحفظة للإصدارات السابقة والموقع</summary>
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label font-weight-bold" for="how_to_use_coins_ar">بالعربية</label>
@@ -47,6 +59,7 @@
                         @enderror
                     </div>
                 </div>
+                </details>
                 <div class="row">
                     @foreach([
                         'reward_balance_cap' => ['أقصى رصيد مكافآت', 1200, 0],
@@ -113,7 +126,8 @@
             <div class="d-flex align-items-center">
                 <i class="fa fa-bolt coin-accent-icon ml-2"></i>
                 <div>
-                    <h6 class="mb-1 font-weight-bold">مكافآت الأحداث داخل التطبيق</h6>
+                    <h6 class="mb-1 font-weight-bold">المكافآت التلقائية</h6>
+                    <p class="mb-1 text-muted small">الترحيب يضاف عند التسجيل ولا يظهر كمهمة أو زر استلام</p>
                     <p class="mb-0 text-muted small">كل قاعدة قابلة للإضافة والتعديل والتعطيل والحذف. حذف القاعدة يوقف الحدث ولا يمس العملات التي استلمها المستخدمون.</p>
                 </div>
             </div>
@@ -207,7 +221,7 @@
         </div>
     </div>
 
-    <h2 class="h5 mb-3">مهام ربح العملات</h2>
+    <h2 class="h5 mb-3">اكسب عملات</h2>
     <div class="row">
         @forelse($methods as $method)
             <div class="col-md-6 col-lg-4">

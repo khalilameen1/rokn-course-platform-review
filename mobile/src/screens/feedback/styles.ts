@@ -159,18 +159,6 @@ export const styles = StyleSheet.create({
     color: Palette.text,
     marginTop: Spacing.lg,
   },
-  categoryLabel: {
-    ...Type.bodyStrong,
-    ...textDirection,
-    color: Palette.text,
-    marginTop: Spacing.xl,
-  },
-  intro: {
-    ...Type.body,
-    ...textDirection,
-    color: Palette.textMuted,
-    marginTop: Spacing.xs,
-  },
   categories: {
     ...rtlRowStyle,
     flexWrap: 'wrap',
@@ -178,7 +166,8 @@ export const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   category: {
-    maxWidth: '100%',
+    width: '48%',
+    flexGrow: 1,
     minHeight: Accessibility.minTouchTarget,
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,
@@ -199,8 +188,7 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
   },
   categoryTextSelected: {color: '#9ABFFF'},
-  form: {marginTop: Spacing.xl},
-  label: {...Type.bodyStrong, ...textDirection, color: Palette.text},
+  form: {marginTop: Spacing.md},
   input: {
     ...Type.body,
     ...textDirection,

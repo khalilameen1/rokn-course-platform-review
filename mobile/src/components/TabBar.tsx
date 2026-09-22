@@ -16,7 +16,7 @@ import {
   FullNameIcon,
   HomeIcon,
   MyCornerIcon,
-  MyWalletIcon,
+  RewardsIcon,
 } from '../assets/SVG';
 import {
   Accessibility,
@@ -104,7 +104,7 @@ const TabBar: FC = () => {
             selectRootTab(navigation, 'Wallet', authenticated);
           }}>
           <View style={styles.tabSpace}>
-            <MyWalletIcon
+            <RewardsIcon
               width={PixelPerfect(24)}
               height={PixelPerfect(24)}
               stroke={active === 'Wallet' ? Palette.primary : Palette.textMuted}

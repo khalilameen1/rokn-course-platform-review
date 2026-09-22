@@ -24,7 +24,7 @@ final readonly class AdminEconomyReadService
             // family below. Its historical method row is only the immutable
             // audit source used by login and must not appear as a second task.
             ->where(function ($query): void {
-                $query->whereNull('action_key')->orWhere('action_key', '!=', 'register');
+                $query->whereNull('action_key')->orWhereNotIn('action_key', CoinEarningMethod::AUTOMATIC_ACTION_KEYS);
             })
             ->withCount('userEarnings')
             ->orderBy('sort_order')

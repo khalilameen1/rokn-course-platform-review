@@ -1,15 +1,8 @@
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
 import React, {useEffect, useRef, useState} from 'react';
-import {
-  Alert,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../components/ui/RasterImage';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useDispatch, useSelector} from 'react-redux';
 import Button from '../components/touchables/Button';

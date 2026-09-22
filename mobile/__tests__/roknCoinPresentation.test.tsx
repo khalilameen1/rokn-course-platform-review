@@ -1,5 +1,5 @@
 import React from 'react';
-import {Image, StyleSheet, Text} from 'react-native';
+import {Image, StyleSheet, Text, View} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import RoknCoin, {CoinAmount} from '../src/components/ui/RoknCoin';
 import {Palette} from '../src/constants/designSystem';
@@ -33,7 +33,15 @@ describe('Rokn coin presentation', () => {
         resizeMethod: 'resize',
         fadeDuration: 0,
       });
-      expect(coin.parent?.props.accessibilityElementsHidden).toBe(true);
+      expect(
+        renderer!.root
+          .findAllByType(View)
+          .some(
+            view =>
+              view.props.accessibilityElementsHidden === true &&
+              view.props.importantForAccessibility === 'no-hide-descendants',
+          ),
+      ).toBe(true);
     },
   );
 

@@ -58,6 +58,7 @@ export const useReelsFeedRenderer = ({
   onContentOverlayVisibilityChange,
   submitProject,
   applyReviewResolution,
+  refreshCourseEntitlements,
   toggleSaved,
   topInset,
 }: {
@@ -76,6 +77,7 @@ export const useReelsFeedRenderer = ({
   ) => void;
   layout: {width: number; height: number};
   load: (target?: CourseReloadTarget) => Promise<void>;
+  refreshCourseEntitlements?: () => void | Promise<void>;
   navigation: ReelsNavigation;
   persistProgress: (
     reel: CourseReel,
@@ -129,6 +131,7 @@ export const useReelsFeedRenderer = ({
         manifestRefreshDelayMs(reel?.playbackExpiresAt) === 0;
       return (
         <FeedRow
+          onEntitlementChanged={refreshCourseEntitlements}
           item={item}
           course={course}
           pageWidth={layout.width}
@@ -224,6 +227,7 @@ export const useReelsFeedRenderer = ({
       layout.height,
       layout.width,
       load,
+      refreshCourseEntitlements,
       navigation,
       persistProgress,
       playbackSpeed,

@@ -41,6 +41,25 @@ const validCachedWallet = (value: unknown): value is WalletSnapshot => {
         ) &&
     Array.isArray(wallet.coinRules) &&
     wallet.coinRules.every(rule => typeof rule === 'string') &&
+    (wallet.rewardRules === undefined ||
+      (Array.isArray(wallet.rewardRules) &&
+        wallet.rewardRules.every(rule => typeof rule === 'string'))) &&
+    (wallet.rewardTransactions === undefined ||
+      (Array.isArray(wallet.rewardTransactions) &&
+        wallet.rewardTransactions.every(
+          item =>
+            item &&
+            typeof item.id === 'string' &&
+            item.id.trim().length > 0 &&
+            typeof item.label === 'string' &&
+            item.label.trim().length > 0 &&
+            Number.isSafeInteger(item.amount) &&
+            item.amount !== 0 &&
+            (item.category === undefined ||
+              typeof item.category === 'string') &&
+            (item.occurred_at === undefined ||
+              typeof item.occurred_at === 'string'),
+        ))) &&
     Array.isArray(wallet.transactions) &&
     wallet.transactions.every(
       item =>

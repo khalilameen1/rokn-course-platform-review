@@ -3,6 +3,7 @@ import {Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockFinalize = jest.fn();
+const mockUploadAccess = jest.fn();
 const mockGetItem = jest.fn();
 const mockUpdate = jest.fn();
 const mockDeleteMedia = jest.fn();
@@ -15,6 +16,7 @@ jest.mock('../src/constants/helpers', () => ({
   assertAccountSessionBoundary: jest.fn(),
 }));
 jest.mock('../src/services/roknApi', () => ({
+  assertPortfolioUploadAccess: () => mockUploadAccess(),
   finalizePortfolioItem: (...args: unknown[]) => mockFinalize(...args),
   getPortfolioItem: (...args: unknown[]) => mockGetItem(...args),
   updatePortfolioItem: (...args: unknown[]) => mockUpdate(...args),
@@ -137,6 +139,7 @@ describe('portfolio publication versus newer mutations', () => {
   beforeEach(async () => {
     jest.useFakeTimers();
     jest.resetAllMocks();
+    mockUploadAccess.mockResolvedValue(undefined);
     mountedRef.current = true;
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     mockGetItem.mockResolvedValue(item());
@@ -151,6 +154,16 @@ describe('portfolio publication versus newer mutations', () => {
     jest.clearAllTimers();
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it('keeps an existing project readable but refuses file selection without upload rights', async () => {
+    const message = 'إضافة أعمال للبورتفوليو متاحة مع اشتراك يشمل شهادة';
+    mockUploadAccess.mockRejectedValue({status: 403, data: {message}});
+    await settle(() => owner.addSelectedMedia());
+    expect(mockLaunchImageLibrary).not.toHaveBeenCalled();
+    expect(mockUploadMedia).not.toHaveBeenCalled();
+    expect(owner.selected?.id).toBe('9');
+    expect(Alert.alert).toHaveBeenCalledWith(expect.any(String), message);
   });
 
   it('does not restore an old title and lets the next background publication update the open item', async () => {

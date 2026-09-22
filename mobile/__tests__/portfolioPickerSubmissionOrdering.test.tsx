@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockPicker = jest.fn();
+const mockUploadAccess = jest.fn(async () => undefined);
 const mockCacheFile = jest.fn();
 const mockCreate = jest.fn();
 const mockStage = jest.fn();
@@ -48,6 +49,7 @@ jest.mock('../src/hooks/useReducedMotion', () => ({
   useReducedMotion: () => true,
 }));
 jest.mock('../src/services/roknApi', () => ({
+  assertPortfolioUploadAccess: () => mockUploadAccess(),
   getEligibleProjects: async () => [],
   createPortfolioItem: (...args: unknown[]) => mockCreate(...args),
 }));
@@ -126,6 +128,7 @@ describe('portfolio picker versus create submission', () => {
   beforeEach(async () => {
     jest.useFakeTimers();
     jest.clearAllMocks();
+    mockUploadAccess.mockReset().mockResolvedValue(undefined);
     mockBoundary = {...mockBoundary, epoch: mockBoundary.epoch + 1};
     mockCaptureBoundary
       .mockReset()
@@ -177,6 +180,33 @@ describe('portfolio picker versus create submission', () => {
     renderer = undefined;
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  it('blocks a new form and the native picker when the subscription excludes certificates', async () => {
+    const denied = {
+      status: 403,
+      data: {
+        code: 'PORTFOLIO_CERTIFICATE_SUBSCRIPTION_REQUIRED',
+        message: 'إضافة أعمال للبورتفوليو متاحة مع اشتراك يشمل شهادة',
+      },
+    };
+    mockUploadAccess.mockRejectedValue(denied);
+    await act(async () => {
+      flow.closeAddProject();
+      flow.openAddProject();
+      await flush();
+    });
+    expect(flow.adding).toBe(false);
+    await act(async () => {
+      await flow.pickCover();
+    });
+    expect(mockPicker).not.toHaveBeenCalled();
+    expect(mockCacheFile).not.toHaveBeenCalled();
+    expect(Alert.alert).toHaveBeenLastCalledWith(
+      'لإضافة أعمالك',
+      'اشترك في كورس باشتراك يشمل شهادة',
+      expect.any(Array),
+    );
   });
 
   it('does not send the old files while a replacement selection is being copied', async () => {

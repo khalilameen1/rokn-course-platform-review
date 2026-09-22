@@ -1,15 +1,6 @@
 import React, {FC, useEffect, useRef, useState} from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Linking,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {RasterImage as Image} from './ui/RasterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   Palette,

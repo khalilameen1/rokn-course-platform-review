@@ -658,7 +658,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
             'أتم كورس',
             $certificate->certificate_text
         );
-        self::assertSame('editorial_v1', $certificate->certificate_design_version);
+        self::assertSame('editorial_v2', $certificate->certificate_design_version);
     }
 
     private function user(string $email): User

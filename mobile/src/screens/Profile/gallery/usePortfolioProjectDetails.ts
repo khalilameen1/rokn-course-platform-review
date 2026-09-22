@@ -8,6 +8,7 @@ import {
 } from '../../../constants/helpers';
 import {
   deletePortfolioItem,
+  assertPortfolioUploadAccess,
   deletePortfolioMedia,
   updatePortfolioItem,
   type PortfolioItem,
@@ -22,6 +23,10 @@ import {
   uploadPortfolioMediaFiles,
 } from '../../../services/portfolioMediaUpload';
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
+import {
+  showPortfolioUploadGate,
+  type PortfolioSubscriptionAction,
+} from '../../../components/portfolioUploadGate';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {portfolioAction, portfolioMediaSlots} from '../portfolioState';
@@ -30,6 +35,7 @@ import {usePortfolioPublication} from './usePortfolioPublication';
 import {usePortfolioProjectSelection} from './usePortfolioProjectSelection';
 
 type Options = {
+  onSubscriptions?: PortfolioSubscriptionAction;
   cancelLibraryLoad: () => void;
   captureBoundary: () => Promise<AccountSessionBoundary>;
   isCreateBusy: () => boolean;
@@ -40,6 +46,7 @@ type Options = {
 
 /** Owns the details → edit/media/finalize/delete half of Gallery. */
 export const usePortfolioProjectDetails = ({
+  onSubscriptions,
   cancelLibraryLoad,
   captureBoundary,
   isCreateBusy,
@@ -282,6 +289,13 @@ export const usePortfolioProjectDetails = ({
     const generation = detailGenerationRef.current;
     try {
       const boundary = await captureBoundary();
+      await assertPortfolioUploadAccess(boundary);
+      if (
+        !mountedRef.current ||
+        detailGenerationRef.current !== generation ||
+        selectedRef.current?.id !== projectId
+      )
+        return;
       const result = await launchImageLibrary({
         mediaType: 'mixed' as MediaType,
         selectionLimit: Math.max(1, portfolioMediaSlots(current)),
@@ -355,6 +369,8 @@ export const usePortfolioProjectDetails = ({
       }
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
+        if (showPortfolioUploadGate(error, onSubscriptions, closeSelection))
+          return;
         Alert.alert(
           'تعذّر رفع الملف',
           learnerErrorMessage(error, 'حاول مرة أخرى'),
@@ -367,10 +383,12 @@ export const usePortfolioProjectDetails = ({
     applyUploadedMedia,
     beginMutation,
     captureBoundary,
+    closeSelection,
     detailGenerationRef,
     finalizeAfterUpload,
     finishMutation,
     mountedRef,
+    onSubscriptions,
     reconcileProject,
     saving,
     selectedRef,

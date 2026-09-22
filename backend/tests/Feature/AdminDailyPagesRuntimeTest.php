@@ -332,6 +332,9 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         $this->actingAs($this->dashboardUser('admin'), 'web');
         $response = $this->withSession(['success' => 'تم حفظ قاعدة الاختبار'])
             ->get(route('admin.coin-earning-methods.index'))->assertOk();
+        $response->assertSee('كيف يعمل الرصيد')->assertSee('المكافآت التلقائية')->assertSee('اكسب عملات')
+            ->assertSee('name="rewards_help_ar"', false)->assertSee('name="rewards_help_en"', false)
+            ->assertSee('name="how_to_use_coins_ar"', false);
         $document = new DOMDocument();
         @$document->loadHTML('<?xml encoding="utf-8" ?>'.$response->getContent());
         $xpath = new DOMXPath($document);

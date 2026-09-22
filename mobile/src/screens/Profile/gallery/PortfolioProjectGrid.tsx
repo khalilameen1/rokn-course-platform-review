@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
-import {Image, Pressable, Text, View} from 'react-native';
+import {Pressable, Text, View} from 'react-native';
+import {RasterImage as Image} from '../../../components/ui/RasterImage';
 
 import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import {portfolioProjectCoverUri, type Project} from './portfolioModel';

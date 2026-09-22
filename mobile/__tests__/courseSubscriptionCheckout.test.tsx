@@ -80,6 +80,16 @@ const deferred = <T,>() => {
 describe('same-sheet course checkout authorization', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    [
+      mockLatest,
+      mockQuote,
+      mockPackages,
+      mockAuthorize,
+      mockResume,
+      mockGet,
+      mockCancel,
+      mockPayment,
+    ].forEach(mock => mock.mockReset());
     mockLatest.mockResolvedValue(null);
     mockQuote.mockResolvedValue(base);
     mockPackages.mockResolvedValue([coinPackage]);
@@ -173,6 +183,85 @@ describe('same-sheet course checkout authorization', () => {
     expect(mockPayment).not.toHaveBeenCalled();
     expect(mockPackages).not.toHaveBeenCalled();
     expect(view.complete).toHaveBeenCalledTimes(1);
+    await act(() => view.renderer.unmount());
+  });
+
+  const conflict = {
+    status: 409,
+    data: {
+      code: 'checkout_already_pending',
+      data: {active_checkout: {id: 'older-checkout', course_id: 8}},
+    },
+  };
+  it.each(['resume', 'cancel'] as const)(
+    'resolves a different course checkout via %s without buying the current course',
+    async action => {
+      mockAuthorize.mockRejectedValueOnce(conflict);
+      const view = await mount();
+      await act(async () => {
+        await view.current().confirm();
+      });
+      expect(view.current().blockedByPreviousCheckout).toBe(true);
+      expect(mockGet).not.toHaveBeenCalled();
+      const previous = {
+        ...base,
+        id: 'older-checkout',
+        courseId: '8',
+        status: 'completed',
+      };
+      mockResume.mockResolvedValueOnce(previous);
+      mockCancel.mockResolvedValueOnce(previous);
+      await act(async () => {
+        if (action === 'cancel') await view.current().cancelPending();
+        else await view.current().confirm();
+      });
+      expect(
+        action === 'cancel' ? mockCancel : mockResume,
+      ).toHaveBeenCalledWith('older-checkout');
+      expect(view.current().blockedByPreviousCheckout).toBe(false);
+      expect(view.current().quote?.courseId).toBe('3');
+      expect(view.current().quote?.status).toBe('quoted');
+      expect(view.complete).not.toHaveBeenCalled();
+      expect(mockPayment).not.toHaveBeenCalled();
+      expect(mockAuthorize).toHaveBeenCalledTimes(1);
+      await act(() => view.renderer.unmount());
+    },
+  );
+
+  it('keeps recovery actionable across pending results and network failures without charging again', async () => {
+    mockAuthorize.mockRejectedValueOnce(conflict);
+    const view = await mount();
+    await act(async () => {
+      await view.current().confirm();
+    });
+    mockResume.mockResolvedValueOnce({
+      ...base,
+      id: 'older-checkout',
+      courseId: '8',
+      status: 'pending_payment',
+    });
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(view.current().blockedByPreviousCheckout).toBe(true);
+    mockCancel.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      await view.current().cancelPending();
+    });
+    expect(view.current().blockedByPreviousCheckout).toBe(true);
+    expect(view.current().notice).toContain('حاول مرة أخرى');
+    mockCancel.mockResolvedValueOnce({
+      ...base,
+      id: 'older-checkout',
+      courseId: '8',
+      status: 'cancelled',
+    });
+    await act(async () => {
+      await view.current().cancelPending();
+    });
+    expect(view.current().blockedByPreviousCheckout).toBe(false);
+    expect(view.complete).not.toHaveBeenCalled();
+    expect(mockPayment).not.toHaveBeenCalled();
     await act(() => view.renderer.unmount());
   });
 

@@ -17,6 +17,7 @@ use App\Services\CourseAccessPlanService;
 use App\Services\CourseRevisionLearnerReadService;
 use App\Services\CourseStagedAuthoringService;
 use App\Services\PortfolioMediaMutationService;
+use App\Services\PortfolioUploadAccessService;
 use App\Services\SafeExternalUrl;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
@@ -37,8 +38,18 @@ final class PortfolioController extends Controller
         private CourseAccessPlanService $accessPlans,
         private PortfolioMediaMutationService $mediaMutations,
         private CourseRevisionLearnerReadService $revisionReads,
-        private CourseStagedAuthoringService $stagedAuthoring
+        private CourseStagedAuthoringService $stagedAuthoring,
+        private PortfolioUploadAccessService $uploadAccess
     ) {
+    }
+
+    public function uploadAccess(): JsonResponse
+    {
+        return response()->json([
+            'status' => 200,
+            'success' => true,
+            'data' => $this->uploadAccess->decision(auth('api')->user()),
+        ]);
     }
 
     /**
@@ -296,6 +307,8 @@ final class PortfolioController extends Controller
                     );
                     return $this->createdItemResponse($existingRequest, true);
                 }
+
+                $this->uploadAccess->assertAllowed($user);
 
                 if ($currentSourceProjectId) {
                     if ($user->portfolioItems()

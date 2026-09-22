@@ -47,6 +47,8 @@ class CoinEarningMethodController extends Controller
             // bytes, so oversized Arabic copy is rejected before the write.
             'how_to_use_coins_ar' => 'nullable|string|max:12000',
             'how_to_use_coins_en' => 'nullable|string|max:12000',
+            'rewards_help_ar' => 'nullable|string|max:600',
+            'rewards_help_en' => 'nullable|string|max:600',
             'reward_balance_cap' => 'required|integer|min:0|max:1000000',
             'max_reward_contribution_per_course' => 'required|integer|min:0|max:1000000',
             'max_course_promotion_percent' => 'sometimes|required|integer|min:0|max:20',
@@ -297,7 +299,7 @@ class CoinEarningMethodController extends Controller
             'title_ar' => ['required', 'string', 'max:255'],
             'title_en' => ['required', 'string', 'max:255'],
             'coins_amount' => ['required', 'integer', 'min:1'],
-            'action_key' => ['required', 'string', 'max:255', 'not_in:register'],
+            'action_key' => ['required', 'string', 'max:255', Rule::notIn(CoinEarningMethod::AUTOMATIC_ACTION_KEYS)],
             'campaign_key' => [
                 'nullable', 'string', 'max:80', 'regex:/^[A-Za-z0-9._:-]+$/', $campaignKey,
             ],
@@ -541,6 +543,8 @@ class CoinEarningMethodController extends Controller
         return hash('sha256', json_encode([
             (string) ($setting?->how_to_use_coins_ar ?? ''),
             (string) ($setting?->how_to_use_coins_en ?? ''),
+            (string) ($setting?->rewards_help_ar ?? ''),
+            (string) ($setting?->rewards_help_en ?? ''),
             (int) ($setting?->reward_balance_cap ?? 1200),
             (int) ($setting?->max_reward_contribution_per_course ?? 1200),
             (int) ($setting?->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)),

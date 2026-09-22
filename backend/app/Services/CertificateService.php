@@ -330,7 +330,7 @@ class CertificateService
             // Dispatch from immutable issuance metadata, never today's course settings.
             $version = trim((string) $certificate->certificate_design_version);
             $encoded = match ($version) {
-                CertificateArtworkRenderer::VERSION => $this->artwork->render($certificate, $destination),
+                'editorial_v1', CertificateArtworkRenderer::VERSION => $this->artwork->render($certificate, $destination),
                 '' => $this->legacyArtwork->render($certificate, $generatedAt, $destination),
                 default => throw new \RuntimeException('Unsupported certificate design version.'),
             };

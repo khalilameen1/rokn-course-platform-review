@@ -20,6 +20,16 @@ use Mockery;
  */
 class PortfolioEndpointTest extends ApiTestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        DB::table('course_enrollments')->insert([
+            'user_id' => $this->user->id,
+            'course_id' => $this->courseId,
+            'is_active' => true,
+        ]);
+    }
+
     public function test_can_list_portfolio_items(): void
     {
         $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/portfolio');

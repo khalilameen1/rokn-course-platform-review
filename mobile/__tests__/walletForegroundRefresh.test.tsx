@@ -76,6 +76,22 @@ const deferred = <T,>() => {
 };
 
 describe('wallet foreground snapshot after external task credit', () => {
+  it('loads rewards without consulting store packages, including foreground refresh', async () => {
+    const Rewards = () => {
+      data = useWalletData('account-a', false);
+      return null;
+    };
+    mockPackages.mockRejectedValue(new Error('STORE_UNAVAILABLE'));
+    await act(async () => {
+      renderer = TestRenderer.create(<Rewards />);
+    });
+    expect(data.wallet?.rewardBalance).toBe(100);
+    expect(data.tasks).toHaveLength(1);
+    await emit('background', 'active');
+    expect(mockPackages).not.toHaveBeenCalled();
+    expect(data.walletStatus).toBe('ready');
+    expect(mockWallet).toHaveBeenCalledTimes(2);
+  });
   let renderer: TestRenderer.ReactTestRenderer | undefined;
   let data!: ReturnType<typeof useWalletData>;
   let listeners: Set<(state: AppStateStatus) => void>;

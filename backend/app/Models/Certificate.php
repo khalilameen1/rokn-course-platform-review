@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Services\CertificateIssuanceSnapshotService;
+use App\Services\CertificateArtworkRenderer;
 use App\Services\CertificateTextTemplateService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -157,7 +157,7 @@ class Certificate extends Model
         if ($this->certificate_design_version === null) {
             return true;
         }
-        if ($this->certificate_design_version !== CertificateIssuanceSnapshotService::DESIGN_VERSION
+        if (!in_array($this->certificate_design_version, CertificateArtworkRenderer::SUPPORTED_VERSIONS, true)
             || $this->certificate_text !== CertificateTextTemplateService::COMPLETION_PREFIX
             || !in_array($this->certificate_completion_text, [
                 '', CertificateTextTemplateService::PROJECTS_COMPLETION,

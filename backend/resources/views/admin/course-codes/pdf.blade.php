@@ -168,7 +168,7 @@
                     <div class="code-name">{{ $code->name }}</div>
                     <div class="target-content">{{ $code->target_content_name }}</div>
                     @if(!empty($code->is_grant))
-                        <div class="grant-label">منحة تعليمية — المحتوى والمشاريع فقط</div>
+                        <div class="grant-label">منحة مشاهدة الكورس بدون شات أو مشاريع أو شهادة</div>
                     @endif
                     <div class="code-display">{{ $code->code }}</div>
                     <div class="platform-name">{{ $platform_name }}</div>

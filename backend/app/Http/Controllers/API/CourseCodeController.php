@@ -99,8 +99,10 @@ final class CourseCodeController extends Controller
                         'code' => $code->code,
                         'type' => $code->type,
                         'access_type' => $entitlement['access_type'],
+                        'learning_access' => $entitlement['has_learning_access'],
                         'chat_available' => $entitlement['chat_available'],
                         'certificate_available' => $entitlement['certificate_available'],
+                        'projects_available' => $entitlement['projects_available'],
                         'already_enrolled' => true,
                         'course' => $code->course ? [
                             'id' => $code->course->id,
@@ -153,7 +155,7 @@ final class CourseCodeController extends Controller
                 $response = [
                     'status' => 200,
                     'success' => true,
-                    'message' => 'تم تفعيل الكود بنجاح',
+                    'message' => 'تم تفعيل المنحة',
                     'data' => [
                         'code' => $code->code,
                         'type' => $code->type,
@@ -161,6 +163,7 @@ final class CourseCodeController extends Controller
                         'learning_access' => true,
                         'chat_available' => $entitlement['chat_available'],
                         'certificate_available' => $entitlement['certificate_available'],
+                        'projects_available' => $entitlement['projects_available'],
                         'target_content_name' => $code->target_content_name,
                     ]
                 ];

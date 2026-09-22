@@ -24,6 +24,31 @@ class CourseCodeEndpointTest extends ApiTestCase
         $this->assertNotEquals(404, $response->status());
     }
 
+    public function test_grant_redemption_returns_watch_only_access_and_retry_does_not_charge(): void
+    {
+        DB::table('course_codes')->where('code', 'TESTCODE')->update(['is_grant' => true]);
+        $input = ['code' => 'TESTCODE', 'course_id' => $this->courseId];
+        $this->actingAs($this->user, 'api')->postJson('/api/v1/course-codes/redeem', $input)
+            ->assertOk()
+            ->assertJsonPath('data.learning_access', true)
+            ->assertJsonPath('data.access_type', 'scholarship')
+            ->assertJsonPath('data.chat_available', false)
+            ->assertJsonPath('data.projects_available', false)
+            ->assertJsonPath('data.certificate_available', false);
+        $this->actingAs($this->user, 'api')->postJson('/api/v1/course-codes/redeem', $input)
+            ->assertOk()
+            ->assertJsonPath('data.already_enrolled', true)
+            ->assertJsonPath('data.learning_access', true)
+            ->assertJsonPath('data.projects_available', false);
+        $this->assertDatabaseHas('course_codes', ['code' => 'TESTCODE', 'used_count' => 1]);
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $this->user->id,
+            'course_id' => $this->courseId,
+            'payment_method' => \App\Models\Order::PAYMENT_METHOD_COURSE_CODE,
+            'final_amount' => 0,
+        ]);
+    }
+
     public function test_can_view_my_codes(): void
     {
         $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/course-codes/my-codes');

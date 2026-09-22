@@ -1,5 +1,5 @@
 import React, {useMemo, useState} from 'react';
-import {ActivityIndicator, Image, Pressable, Text, View} from 'react-native';
+import {ActivityIndicator, Pressable, Text, View} from 'react-native';
 import Svg, {Path} from 'react-native-svg';
 import {
   AccordionArrowDown,
@@ -9,7 +9,7 @@ import {
 import {CourseDetailsSkeleton} from '../../../components/ui/Skeleton';
 import {StatusView} from '../../../components/ui/PremiumUI';
 import {CourseArtwork} from '../../../components/ui/CourseArtwork';
-import {Palette, useResponsiveLayout} from '../../../constants/designSystem';
+import {Palette} from '../../../constants/designSystem';
 import {
   formatArabicMinutes,
   formatArabicNumber,
@@ -21,59 +21,8 @@ import type {CourseDetails as CourseDetailsDto} from '../../../services/roknApi'
 import type {CourseLearningData} from '../../../components/VideoPlayer/types';
 import Lessons from '../Lessons';
 import styles from './styles';
-
-export const CourseAbout = ({details}: {details?: CourseDetailsDto | null}) => {
-  const {isTablet, largeText} = useResponsiveLayout();
-  const description = details?.description || '';
-  const instructorName = details?.instructor || '';
-  const instructorBio = details?.instructorBio || '';
-  return (
-    <View style={styles.aboutWrap}>
-      <View
-        style={[
-          styles.aboutGrid,
-          isTablet && !largeText && styles.aboutGridTablet,
-        ]}>
-        <View style={styles.aboutMain}>
-          <Text style={styles.sectionTitle}>عن هذا الكورس</Text>
-          {!!description && (
-            <Text style={styles.bodyCopy}>
-              {formatAuthoredDisplayText(description)}
-            </Text>
-          )}
-        </View>
-
-        {!!instructorName && (
-          <View
-            style={[
-              styles.instructorCard,
-              isTablet && !largeText && styles.instructorCardTablet,
-            ]}>
-            <Image
-              source={
-                details?.instructorImage
-                  ? {uri: details.instructorImage}
-                  : require('../../../assets/images/default-avatar.png')
-              }
-              style={styles.instructorImage}
-            />
-            <View style={styles.instructorCopy}>
-              <Text style={styles.instructorLabel}>تعرّف على المدرب</Text>
-              <Text style={styles.instructorName}>
-                {formatAuthoredDisplayText(instructorName)}
-              </Text>
-              {!!instructorBio && (
-                <Text style={styles.instructorBio}>
-                  {formatAuthoredDisplayText(instructorBio)}
-                </Text>
-              )}
-            </View>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-};
+import {CourseAbout} from './CourseAbout';
+export {CourseAbout} from './CourseAbout';
 
 export const LockedOutline = ({
   details,
@@ -86,7 +35,6 @@ export const LockedOutline = ({
   const modules = useMemo(() => details?.modules || [], [details]);
   return (
     <View style={styles.lockedOutline}>
-      <Text style={styles.sectionTitle}>محتوى الكورس</Text>
       {details && !modules.length && (
         <Text style={styles.lockedNote}>لم تُنشر خريطة هذا الكورس بعد</Text>
       )}
@@ -131,6 +79,16 @@ export const LockedOutline = ({
                   const canPreview = item.type === 'reel' && item.isPreview;
                   return (
                     <Pressable
+                      accessible
+                      accessibilityLabel={`${formatAuthoredDisplayText(
+                        item.title,
+                      )} ${
+                        item.type === 'project'
+                          ? 'مشروع عبور'
+                          : canPreview
+                          ? 'شاهد مجانًا'
+                          : 'مغلق'
+                      }`}
                       accessibilityRole={canPreview ? 'button' : undefined}
                       disabled={!canPreview}
                       key={item.id}
@@ -150,30 +108,40 @@ export const LockedOutline = ({
                         <Text style={styles.outlineItemTitle}>
                           {formatAuthoredDisplayText(item.title)}
                         </Text>
-                        <Text style={styles.outlineItemMeta}>
-                          {item.type === 'project'
-                            ? 'مشروع عبور · يُفتح بعد إكمال الوحدة'
-                            : canPreview
-                            ? 'مفتوح للمشاهدة الآن'
-                            : 'يُفتح مع الكورس'}
-                        </Text>
                       </View>
                       <View
                         style={[
                           styles.itemStatus,
                           canPreview && styles.itemStatusOpen,
                         ]}>
-                        <Text
-                          style={[
-                            styles.itemStatusText,
-                            canPreview && styles.itemStatusTextOpen,
-                          ]}>
-                          {item.type === 'project'
-                            ? 'مشروع'
-                            : canPreview
-                            ? 'شاهد'
-                            : 'مغلق'}
-                        </Text>
+                        {item.type === 'reel' && !canPreview ? (
+                          <Svg
+                            accessible={false}
+                            width={20}
+                            height={20}
+                            viewBox="0 0 24 24">
+                            <Path
+                              d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5zM12 14v3"
+                              fill="none"
+                              stroke={Palette.textMuted}
+                              strokeWidth={1.6}
+                              strokeLinejoin="round"
+                              strokeLinecap="round"
+                            />
+                          </Svg>
+                        ) : (
+                          <Text
+                            style={[
+                              styles.itemStatusText,
+                              canPreview && styles.itemStatusTextOpen,
+                            ]}>
+                            {item.type === 'project'
+                              ? 'مشروع'
+                              : canPreview
+                              ? 'شاهد'
+                              : 'مغلق'}
+                          </Text>
+                        )}
                       </View>
                     </Pressable>
                   );
@@ -183,10 +151,6 @@ export const LockedOutline = ({
           </View>
         );
       })}
-      <Text style={styles.lockedNote}>
-        يمكنك رؤية الخريطة قبل الشراء
-        {'\n'}تُفتح المقاطع والمرفقات بعد شراء الكورس
-      </Text>
     </View>
   );
 };
@@ -533,7 +497,7 @@ export const CourseBody = ({
                 styles.tabText,
                 activeTab === 'outline' && styles.tabTextActive,
               ]}>
-              خريطة الكورس
+              المحتوى
             </Text>
           </Pressable>
         </View>

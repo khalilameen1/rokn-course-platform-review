@@ -150,7 +150,8 @@ final class CourseChatAccessService
         return (!$this->isGrantEnrollment($enrollment) || $this->isPaidPlanUpgrade($enrollment))
             && ($terms
                 ? (bool) ($terms['certificate_enabled'] ?? false)
-                : $enrollment->access_plan_id === null);
+                : $enrollment->access_plan_id === null
+                    && $enrollment->order?->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE);
     }
 
     public function hasLearningAccess(int $userId, int $courseId): bool

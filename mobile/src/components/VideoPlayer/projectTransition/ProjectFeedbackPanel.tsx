@@ -1,14 +1,6 @@
-import React from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import React, {useEffect, useState} from 'react';
+import {ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../ui/RasterImage';
 import Svg, {Path} from 'react-native-svg';
 import {
   Palette,
@@ -36,11 +28,16 @@ import {AiResponseReportButton} from '../../ui/AiResponseReportButton';
 // Decorative marks stay inside labelled 48dp targets; all content still uses
 // the OS font scale and the composer keeps its full-width, wrapping layout.
 const AttachmentActionIcon = ({remove = false}: {remove?: boolean}) => (
-  <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+  <View
+    accessibilityElementsHidden
+    importantForAccessibility="no-hide-descendants">
     <Svg width={22} height={22} viewBox="0 0 24 24">
       <Path
         d={remove ? 'm6 6 12 12M18 6 6 18' : 'M12 4v16M4 12h16'}
-        stroke={Palette.text} strokeWidth={1.8} strokeLinecap="round" fill="none"
+        stroke={Palette.text}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        fill="none"
       />
     </Svg>
   </View>
@@ -64,6 +61,7 @@ type Props = {
   onRemoveAttachment: (file: ChatAttachmentDraft) => void;
   onRetryMessage: (message: ProjectFeedbackMessage) => void;
   onSend: () => void;
+  onRequestDiscussionUpgrade?: () => void;
 };
 
 const MessageAttachments = ({
@@ -139,11 +137,17 @@ const FeedbackMessage = ({
           accessibilityLabel={report ? 'نسخ تقرير المشروع' : 'نسخ الرسالة'}
         />
       )}
-      {message.role === 'assistant' && copyValue && message.status === 'completed' && (
-        <AiResponseReportButton target={{
-          scope: 'project_feedback', thread_id: threadId, message_id: message.id,
-        }} />
-      )}
+      {message.role === 'assistant' &&
+        copyValue &&
+        message.status === 'completed' && (
+          <AiResponseReportButton
+            target={{
+              scope: 'project_feedback',
+              thread_id: threadId,
+              message_id: message.id,
+            }}
+          />
+        )}
       <MessageAttachments
         message={message}
         projectId={projectId}
@@ -210,7 +214,10 @@ const ProjectFeedbackPanel = ({
   onRemoveAttachment,
   onRetryMessage,
   onSend,
+  onRequestDiscussionUpgrade,
 }: Props) => {
+  const [discussionOpen, setDiscussionOpen] = useState(false);
+  useEffect(() => setDiscussionOpen(false), [projectId, thread.id]);
   // The server retains the initial report at the head of the ordered thread,
   // even when older follow-ups fall outside its history window.
   const report =
@@ -239,146 +246,178 @@ const ProjectFeedbackPanel = ({
         )}
       </View>
 
-      {(canReply || conversation.length > 0) && (
-        <View style={styles.conversation}>
-          <Text accessibilityRole="header" style={styles.conversationTitle}>
-            استفسارات عن التقرير
-          </Text>
-          {conversation.map(message => (
-            <FeedbackMessage
-              key={message.id}
-              message={message}
-              projectId={projectId}
-              sending={sending}
-              threadId={thread.id}
-              onRetry={onRetryMessage}
-            />
-          ))}
-        </View>
-      )}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={discussionOpen ? 'إغلاق المناقشة' : 'هل لديك سؤال؟'}
+        accessibilityState={{expanded: discussionOpen}}
+        style={styles.discussionToggle}
+        onPress={() => {
+          if (
+            !discussionOpen &&
+            feedbackLevel === 'report' &&
+            !conversation.length
+          ) {
+            onRequestDiscussionUpgrade?.();
+            return;
+          }
+          setDiscussionOpen(value => !value);
+        }}>
+        <Text style={styles.gateActionText}>
+          {discussionOpen ? 'إغلاق المناقشة' : 'هل لديك سؤال؟'}
+        </Text>
+      </Pressable>
 
-      {pending && !hasPendingAssistant && (
-        <View accessibilityLiveRegion="polite" style={styles.pendingState}>
-          <ActivityIndicator color={Palette.textMuted} size="small" />
-          <Text style={styles.state}>جارٍ تجهيز الرد</Text>
-        </View>
-      )}
-
-      {attachments.length > 0 && (
-        <View style={styles.attachmentList}>
-          {attachments.map(file => (
-            <View key={file.uploadId} style={styles.attachmentChip}>
-              {file.type.startsWith('image/') && !!file.uri && (
-                <Image
-                  progressiveRenderingEnabled
-                  resizeMethod="resize"
-                  source={{uri: file.uri}}
-                  style={styles.attachmentPreview}
-                />
-              )}
-              <Text numberOfLines={1} style={styles.attachmentName}>
-                {file.name}
+      {discussionOpen && (
+        <View style={styles.discussionBody}>
+          {(canReply || conversation.length > 0) && (
+            <View style={styles.conversation}>
+              <Text accessibilityRole="header" style={styles.conversationTitle}>
+                مناقشة المشروع
               </Text>
+              {conversation.map(message => (
+                <FeedbackMessage
+                  key={message.id}
+                  message={message}
+                  projectId={projectId}
+                  sending={sending}
+                  threadId={thread.id}
+                  onRetry={onRetryMessage}
+                />
+              ))}
+            </View>
+          )}
+
+          {pending && !hasPendingAssistant && (
+            <View accessibilityLiveRegion="polite" style={styles.pendingState}>
+              <ActivityIndicator color={Palette.textMuted} size="small" />
+              <Text style={styles.state}>جارٍ تجهيز الرد</Text>
+            </View>
+          )}
+
+          {attachments.length > 0 && (
+            <View style={styles.attachmentList}>
+              {attachments.map(file => (
+                <View key={file.uploadId} style={styles.attachmentChip}>
+                  {file.type.startsWith('image/') && !!file.uri && (
+                    <Image
+                      progressiveRenderingEnabled
+                      resizeMethod="resize"
+                      source={{uri: file.uri}}
+                      style={styles.attachmentPreview}
+                    />
+                  )}
+                  <Text numberOfLines={1} style={styles.attachmentName}>
+                    {file.name}
+                  </Text>
+                  <Pressable
+                    accessibilityLabel={`إزالة ${file.name}`}
+                    accessibilityRole="button"
+                    disabled={sending}
+                    style={styles.removeAction}
+                    onPress={() => onRemoveAttachment(file)}>
+                    <AttachmentActionIcon remove />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {canReply && thread.remainingMessages > 0 && !pending && (
+            <View style={styles.composer}>
+              <TextInput
+                accessibilityLabel="استفسارك عن تقرير المشروع"
+                multiline
+                editable={!sending}
+                value={draft}
+                onChangeText={onChangeDraft}
+                placeholder="اسأل عن مشروعك"
+                placeholderTextColor="rgba(255,255,255,.38)"
+                style={styles.input}
+              />
+              <View style={styles.composerActions}>
+                {thread.attachmentsEnabled && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="إضافة مرفق"
+                    disabled={
+                      sending ||
+                      attachments.length >= (thread.attachmentMaxFiles || 0)
+                    }
+                    style={styles.attach}
+                    onPress={onPickAttachments}>
+                    <AttachmentActionIcon />
+                  </Pressable>
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="إرسال الاستفسار"
+                  accessibilityState={{busy: sending}}
+                  disabled={
+                    (!normalizedDraft && attachments.length === 0) || sending
+                  }
+                  onPress={onSend}
+                  style={[
+                    styles.send,
+                    ((!normalizedDraft && attachments.length === 0) ||
+                      sending) &&
+                      styles.disabled,
+                  ]}>
+                  {sending ? (
+                    <ActivityIndicator color={Palette.text} size="small" />
+                  ) : (
+                    <Text style={styles.sendText}>إرسال</Text>
+                  )}
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {!canReply && feedbackLevel === 'report' && (
+            <View style={styles.reportGate}>
               <Pressable
-                accessibilityLabel={`إزالة ${file.name}`}
                 accessibilityRole="button"
-                disabled={sending}
-                style={styles.removeAction}
-                onPress={() => onRemoveAttachment(file)}>
-                <AttachmentActionIcon remove />
+                accessibilityLabel="ترقية الاشتراك للمناقشة"
+                onPress={onRequestDiscussionUpgrade}
+                style={styles.gateAction}>
+                <Text style={styles.gateActionText}>
+                  ترقية الاشتراك للمناقشة
+                </Text>
               </Pressable>
             </View>
-          ))}
-        </View>
-      )}
+          )}
 
-      {canReply && thread.remainingMessages > 0 && !pending && (
-        <View style={styles.composer}>
-          <TextInput
-            accessibilityLabel="استفسارك عن تقرير المشروع"
-            multiline
-            editable={!sending}
-            value={draft}
-            onChangeText={onChangeDraft}
-            placeholder="اسأل عن مشروعك"
-            placeholderTextColor="rgba(255,255,255,.38)"
-            style={styles.input}
-          />
-          <View style={styles.composerActions}>
-            {thread.attachmentsEnabled && (
+          {feedbackLevel === 'enhanced' &&
+            thread.remainingMessages <= 0 &&
+            !pending && (
+              <Text style={styles.state}>استخدمت كل رسائل مناقشة المشاريع</Text>
+            )}
+          {feedbackLevel === 'enhanced' &&
+            !canReply &&
+            !draftRestoreError &&
+            !pending &&
+            thread.remainingMessages > 0 && (
+              <Text style={styles.state}>المناقشة غير متاحة الآن</Text>
+            )}
+          {draftRestoreError && (
+            <View>
+              <Text accessibilityRole="alert" style={styles.error}>
+                تعذّر استعادة مسودة الرسالة
+              </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="إضافة مرفق"
-                disabled={
-                  sending ||
-                  attachments.length >= (thread.attachmentMaxFiles || 0)
-                }
-                style={styles.attach}
-                onPress={onPickAttachments}>
-                <AttachmentActionIcon />
+                accessibilityLabel="إعادة استعادة مسودة الرسالة"
+                style={styles.retryAction}
+                onPress={onRetryDraftRestore}>
+                <Text style={styles.retry}>إعادة المحاولة</Text>
               </Pressable>
-            )}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="إرسال الاستفسار"
-              accessibilityState={{busy: sending}}
-              disabled={
-                (!normalizedDraft && attachments.length === 0) || sending
-              }
-              onPress={onSend}
-              style={[
-                styles.send,
-                ((!normalizedDraft && attachments.length === 0) || sending) &&
-                  styles.disabled,
-              ]}>
-              {sending ? (
-                <ActivityIndicator color={Palette.text} size="small" />
-              ) : (
-                <Text style={styles.sendText}>إرسال</Text>
-              )}
-            </Pressable>
-          </View>
+            </View>
+          )}
         </View>
-      )}
-
-      {!canReply && feedbackLevel === 'report' && (
-        <View style={styles.reportGate}>
-          <Text style={styles.state}>
-            فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="اعرف فئة الرد على التقرير"
-            onPress={() =>
-              Alert.alert('الرد غير مشمول', 'الردود متاحة في فئة المتابعة')
-            }
-            style={styles.gateAction}>
-            <Text style={styles.gateActionText}>الرد على التقرير</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {canReply && thread.remainingMessages <= 0 && (
-        <Text style={styles.state}>اكتملت رسائل الفئة</Text>
       )}
       {!!error && (
         <Text accessibilityRole="alert" style={styles.error}>
           {error}
         </Text>
-      )}
-      {draftRestoreError && (
-        <View>
-          <Text accessibilityRole="alert" style={styles.error}>
-            تعذّر استعادة مسودة الرسالة
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="إعادة استعادة مسودة الرسالة"
-            style={styles.retryAction}
-            onPress={onRetryDraftRestore}>
-            <Text style={styles.retry}>إعادة المحاولة</Text>
-          </Pressable>
-        </View>
       )}
     </View>
   );
@@ -392,6 +431,17 @@ const styles = StyleSheet.create({
     gap: 24,
   },
   report: {gap: 16},
+  discussionBody: {gap: 20},
+  discussionToggle: {
+    minHeight: 48,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Palette.lineSoft,
+    borderRadius: 12,
+  },
   conversation: {
     gap: 24,
     paddingTop: 24,

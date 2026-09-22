@@ -1,5 +1,6 @@
 import React from 'react';
-import {Image, ImageSourcePropType, StyleSheet, Text, View} from 'react-native';
+import {ImageSourcePropType, StyleSheet, Text, View} from 'react-native';
+import {RasterImage as Image} from '../ui/RasterImage';
 import {Colors, Fonts, PixelPerfect} from '../../constants/styleConstants';
 import {rtlRowStyle, textDirection} from '../../constants/designSystem';
 

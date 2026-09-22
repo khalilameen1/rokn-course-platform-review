@@ -28,6 +28,11 @@ class DesignSetting extends Model
         'color_4',
         'header_background',
         'home_background_url',
+        'coin_image_url',
+        'coin_stack_image_url',
+        'badge_junior_image_url',
+        'badge_mid_image_url',
+        'badge_senior_image_url',
         'facebook_url',
         'youtube_url',
         'instagram_url',
@@ -52,6 +57,7 @@ class DesignSetting extends Model
     protected static function booted(): void
     {
         $invalidate = static function (): void {
+            app(\App\Services\AppArtworkService::class)->forget();
             PublicAppSettingsService::invalidate();
         };
         static::saved($invalidate);

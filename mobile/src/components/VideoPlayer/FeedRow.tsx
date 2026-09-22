@@ -1,12 +1,6 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import {RasterImage as Image} from '../ui/RasterImage';
 import {CourseLearningData, CourseFeedItem, VideoQuality} from './types';
 import VideoComponent from './VideoComponent';
 import FeedFooter from './FeedFooter';
@@ -60,6 +54,7 @@ interface FeedRowProps {
   ) => Promise<ProjectSubmissionOutcome>;
   onContinueAfterProject?: () => void;
   onReviewResolution?: (resolution: ProjectResolution) => void;
+  onEntitlementChanged?: () => void | Promise<void>;
 }
 
 const FeedRow = ({
@@ -93,6 +88,7 @@ const FeedRow = ({
   onSubmitProject,
   onContinueAfterProject,
   onReviewResolution,
+  onEntitlementChanged,
 }: FeedRowProps) => {
   const [currentTime, setCurrentTime] = useState(0);
   const attachmentClockRef = useRef(0);
@@ -213,6 +209,9 @@ const FeedRow = ({
     return (
       <View style={[styles.page, {width: pageWidth, height: pageHeight}]}>
         <ProjectTransition
+          courseId={String(course.id)}
+          courseTitle={course.title}
+          onEntitlementChanged={onEntitlementChanged}
           key={item.project.id}
           active={isVisible}
           project={item.project}

@@ -25,9 +25,45 @@ Existing live prices and purchased balances are not automatically converted. The
 
 Populate verified net paid-coin value and per-enrollment delivery allocations before enabling `ROKN_ENFORCE_COMMERCIAL_FLOOR=true` for commercial activation. Unknown costs remain unknown. See `backend/docs/course-checkout-commercial-policy.md`.
 
-## Evidence at source preparation
+## Verified evidence — September 15, 2026
 
-- Backend broad local run exercised 1,750 tests and 17,408 assertions. Three compatibility/fixture/migration failures were identified and fixed with focused reruns; this is not recorded as a fully green final run.
-- Payment audit fixes include infeasible paid-floor upgrades, valid project-only upgrades, repeated direct checkout and cross-account order binding.
-- Native TypeScript, changed-file ESLint and focused checkout regressions passed. A full mobile run's two obsolete assertions were corrected and rerun. The signed build must still pass its complete release gate.
-- Artifact digest, final CI runs, deployed source and Play availability are to be recorded only after verification.
+### Source and backend deployment
+
+- Canonical repository: `khalilameen1/rokn-course-platform-review`. `main` is at `a5b770b1e785277e3095dadb91e2913a48b719e0`.
+- Following explicit user approval, [Laravel Cloud deployment 205](https://cloud.laravel.com/rokn-production/rokn-course-platform-review/production/deployments/205/2f38815) reached `DEPLOYED` on backend commit `2f38815e491c0148650dcc17c76f2e8c31d38172`. The later `a5b770b` native accessibility fix does not change the deployed backend.
+- The pre-deployment database backup `before-course-checkout-r59-20260915` completed at **2026-09-14 21:47:19 UTC**, size **110.8 MB**.
+- [Backend CI 34901791179](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/34901791179) passed on the deployed backend commit: **1,760 passed, 5 skipped, 17,519 assertions** in the full suite. The mandatory MySQL suite separately passed **16 tests / 113 assertions**; the SQLite skips are MySQL-only cases. Wallet/shared payment contracts passed **107 tests / 546 assertions**.
+- Post-deployment `rokn:preflight --schema-only --connectivity` passed. `schedule:list` confirmed `courses:resume-checkouts` runs every minute.
+- Public settings and course 3 returned HTTP 200. Unauthenticated access to the checkout endpoints returned HTTP 401 as expected. These public probes are not a substitute for an authenticated native purchase test.
+
+### Watch-only Basic activation
+
+The dedicated Basic command completed both dry run and apply successfully for all six intended courses through normal staged publication. Published revisions were verified as follows:
+
+| Course ID | Published revision |
+| --- | --- |
+| 3 | 36 |
+| 8 | 22 |
+| 9 | 18 |
+| 10 | 23 |
+| 13 | 17 |
+| 14 | 19 |
+
+Public API checks verified `projects_enabled=false`, `certificate_enabled=false` and `chat_enabled=false` for Basic on all six courses. Basic / Plus / Pro prices remained **400 / 650 / 900 coins**. The rollout preserves plan identities and purchased receipt terms; normal staged publication changes content graph IDs while retaining their learner-state lineage.
+
+The user clarified that the existing accounts are internal tests, not actual historical customers. Cost inputs are still unverified, so this remains an **internal-test catalogue only**, not approval of commercial profitability.
+
+### Mobile verification and remaining gates
+
+- The earlier full mobile run on `0f1ea8b520f69a2fcc001eec10041b974fa96035` passed **275 suites / 2,148 tests**.
+- A subsequent accessibility check found a real missing loading-modal accessibility prop. Commit `a5b770b` fixes it; the **10 targeted tests**, accessibility scan of **404 source files**, changed-file ESLint and TypeScript checks passed afterward. The source-file count is not a test count.
+- The complete quality gates within signed-build session `97828` now passed on `a5b770b1e785277e3095dadb91e2913a48b719e0`: **276 suites / 2,150 tests**, duration **49.551 seconds**; accessibility scan of **404 source files**; full ESLint and TypeScript checks; and **93 release-script checks**.
+- The same run passed the secrets scan of **967 files** and repository history, dependency audits, and licence verification covering **734 npm / 241 Maven / 127 CocoaPods dependencies**.
+- The native **Gradle build is still running** in session `97828`. Passing the complete quality gates does not mean the signed artifact is finished. No final signed artifact or artifact digest has been verified yet.
+
+Remaining release gates:
+
+- [x] Pass the complete pre-build quality gates on the final mobile source `a5b770b`.
+- [ ] Complete the native Gradle build and final signing/artifact checks; record the artifact path, version, source commit, signing verification and SHA-256 digest.
+- [ ] Inspect the actual native subscription sheet and verify licensed-store purchase, automatic enrollment, cancellation, retry/recovery and upgrade behavior.
+- [ ] Upload the verified signed AAB to the existing Google Play **internal testing** track, then verify its availability. No final release-59 upload or public review submission is recorded as completed.

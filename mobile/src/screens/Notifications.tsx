@@ -1,14 +1,7 @@
 import {useNavigation} from '@react-navigation/native';
 import React, {useCallback, useMemo} from 'react';
-import {
-  FlatList,
-  Image,
-  type ListRenderItemInfo,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from 'react-native';
+import {FlatList, type ListRenderItemInfo, Platform, Pressable, Text, View} from 'react-native';
+import {RasterImage as Image} from '../components/ui/RasterImage';
 import {NotificationIcon} from '../assets/SVG';
 import {Container} from '../components/containers/Containers';
 import {SectionHeading, StatusView} from '../components/ui/PremiumUI';

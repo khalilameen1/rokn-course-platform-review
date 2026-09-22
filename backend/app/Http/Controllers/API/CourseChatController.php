@@ -403,7 +403,7 @@ final class CourseChatController extends Controller
                 'status' => 403,
                 'success' => false,
                 'code' => 'chat_upgrade_required',
-                'message' => "الاستفسارات غير مشمولة في فئتك\nيمكنك إضافتها بالترقية",
+                'message' => "اشتراكك لا يشمل الشات\nقم بترقية اشتراكك وادفع فرق السعر فقط",
                 'data' => null,
             ], 403);
         }
@@ -479,7 +479,7 @@ final class CourseChatController extends Controller
                 'status' => 403,
                 'success' => false,
                 'code' => 'chat_upgrade_required',
-                'message' => 'الاستفسارات غير مشمولة في فئتك',
+                'message' => "اشتراكك لا يشمل الشات\nقم بترقية اشتراكك وادفع فرق السعر فقط",
                 'data' => null,
             ], 403);
         }
@@ -652,7 +652,7 @@ final class CourseChatController extends Controller
             );
             return $this->gracefulUnavailable(
                 $turn,
-                'استخدمت الرسائل المتاحة في فئتك',
+                "استخدمت كل رسائلك\nقم بترقية اشتراكك للحصول على رسائل أكثر وادفع فرق السعر فقط",
                 1,
                 'chat_plan_limit_reached',
                 $clientRequestId

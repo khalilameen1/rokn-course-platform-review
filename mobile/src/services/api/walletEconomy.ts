@@ -11,6 +11,7 @@ import {
 } from '../walletSettlement';
 import type {CoinPackage} from './coinPackageMapper';
 import {mapCoinPackages} from './coinPackageMapper';
+import {mapRewardWallet, type RewardTransaction} from './rewardWalletMapper';
 import {
   isApiRecord,
   isResourceListPayload,
@@ -29,6 +30,7 @@ type WalletTransactionDto = {
 };
 
 type WalletDto = {
+  rewards?: unknown;
   total_balance?: unknown;
   purchased_balance?: unknown;
   reward_balance?: unknown;
@@ -40,6 +42,8 @@ type WalletDto = {
 };
 
 export type WalletSnapshot = {
+  rewardTransactions?: RewardTransaction[];
+  rewardRules?: string[];
   balance: number;
   spendableBalance: number;
   paidBalance: number;
@@ -191,7 +195,14 @@ export const getWallet = async (): Promise<WalletSnapshot> => {
     throw new Error('API_CONTRACT_INVALID_WALLET_TRANSACTIONS');
   }
 
+  const rewards = mapRewardWallet(
+    data.rewards,
+    data.recent_transactions,
+    rewardBalance,
+  );
   const snapshot: WalletSnapshot = {
+    rewardTransactions: rewards.transactions,
+    rewardRules: rewards.rules,
     balance,
     paidBalance,
     rewardBalance,

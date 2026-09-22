@@ -18,6 +18,7 @@ import {isServerTimestampFresh, serverNowMs} from '../../utils/serverClock';
 import {settleWithin} from '../../utils/settleWithin';
 
 type EarnedBadgeDto = {
+  order?: unknown;
   id?: unknown;
   level_id?: unknown;
   name_ar?: unknown;
@@ -68,6 +69,7 @@ export type LearningDashboard = {
   courses: LearningCourse[];
   paths: LearningPathProgress[];
   badges: Array<{
+    order?: number;
     id: string;
     levelId?: string;
     title: string;
@@ -409,6 +411,11 @@ export const getLearningDashboard = async (): Promise<LearningDashboard> => {
             return [
               {
                 id,
+                order:
+                  Number.isSafeInteger(Number(badge.order)) &&
+                  Number(badge.order) > 0
+                    ? Number(badge.order)
+                    : undefined,
                 levelId: badge.level_id ? String(badge.level_id) : undefined,
                 title: String(badge.name_ar || badge.name_en || 'شارة مهنية'),
                 imageUrl: badge.badge_image

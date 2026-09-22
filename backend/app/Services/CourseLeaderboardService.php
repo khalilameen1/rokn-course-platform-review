@@ -39,7 +39,7 @@ final readonly class CourseLeaderboardService
                 $enrollments->where('course_id', $courseId)->active();
             })
             ->with(['enrollments' => fn ($enrollments) => $enrollments
-                ->where('course_id', $courseId)->active()->orderByDesc('id')])
+                ->where('course_id', $courseId)->active()->with('order')->orderByDesc('id')])
             ->get();
         $progressByStudent = $this->revisionReads->sectionProgressRowsForUsers(
             $students->pluck('id'),

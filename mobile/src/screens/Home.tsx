@@ -1,15 +1,8 @@
 import {useIsFocused, useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {
-  Alert,
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../components/ui/RasterImage';
 import {useTranslation} from 'react-i18next';
 import {NotificationIcon, SearchIcon} from '../assets/SVG';
 import TabBar from '../components/TabBar';

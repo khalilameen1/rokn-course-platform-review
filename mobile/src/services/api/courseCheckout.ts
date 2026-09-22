@@ -13,6 +13,7 @@ import {isApiRecord, payload} from './common';
 import type {CoinPackage} from './coinPackageMapper';
 
 export type CourseCheckoutMode = 'purchase' | 'upgrade';
+export type CourseCheckoutFeature = 'chat' | 'project_discussion';
 export type CourseCheckoutStatus =
   | 'quoted'
   | 'pending_payment'
@@ -124,6 +125,7 @@ export const quoteCourseCheckout = (input: {
   courseId: string;
   planCode: string;
   mode: CourseCheckoutMode;
+  requiredFeature?: CourseCheckoutFeature;
   couponCode?: string;
   packageId?: string;
 }) =>
@@ -132,6 +134,9 @@ export const quoteCourseCheckout = (input: {
       course_id: numericCourseId(input.courseId),
       access_plan_code: canonicalAccessPlanCode(input.planCode),
       mode: input.mode,
+      ...(input.requiredFeature
+        ? {required_feature: input.requiredFeature}
+        : {}),
       channel:
         DISTRIBUTION_CHANNEL === 'play'
           ? 'google'

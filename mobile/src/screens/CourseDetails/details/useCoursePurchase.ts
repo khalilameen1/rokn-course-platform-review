@@ -7,10 +7,7 @@ import type {
 } from '../../../navigation/types';
 import type {CourseDetails as CourseDetailsDto} from '../../../services/roknApi';
 import {selectCourseDetailsPresentation} from './selectors';
-import {derivePurchaseTerms} from './purchaseTerms';
 import {useCourseAccessCode} from './useCourseAccessCode';
-import {useCourseCheckout} from './useCourseCheckout';
-import {useCourseCoupon} from './useCourseCoupon';
 import {useCoursePurchaseFlow} from './useCoursePurchaseFlow';
 import {usePurchaseEntry} from './usePurchaseEntry';
 import type {CourseDetailsData} from './useCourseDetailsData';
@@ -43,10 +40,8 @@ export const useCoursePurchase = ({
     restoredPlanKey,
     selectPlanForTerms,
     selectedPlanCode,
-    showConfirm,
     showPlans,
     showSuccess,
-    showTopup,
     step: dialogStep,
   } = useCoursePurchaseFlow();
 
@@ -67,15 +62,12 @@ export const useCoursePurchase = ({
 
   const {
     accessPlans,
-    balance,
     canChooseAccess,
     owned,
-    packages,
     pageReady,
     planSpendableBalances,
     primaryAction,
     purchasePrice,
-    rewardContributionLimit,
     selectedPlan,
     spendableBalance,
   } = presentation;
@@ -115,79 +107,8 @@ export const useCoursePurchase = ({
     selectedPlanCode,
   ]);
 
-  const coupon = useCourseCoupon({
-    balance,
-    courseId,
-    identityKey,
-    originalPrice: purchasePrice,
-    packages,
-    pageReady,
-    paidBalance: commerce.paidBalance,
-    publishedRevision: remoteCourse?.publishedRevision,
-    rewardBalance: commerce.rewardBalance,
-    rewardContributionLimit,
-    routeParams,
-    selectedPlan,
-    session: course.session,
-    showConfirm,
-    showTopup,
-    setNotice,
-  });
-  const appliedCoupon = coupon.applied;
-  const applyCoupon = coupon.apply;
-  const couponBusy = coupon.busy;
-  const couponQuote = coupon.quote;
-  const changeCouponCode = coupon.changeCode;
-  const effectivePurchasePrice = coupon.effectivePrice;
-  const invalidateCoupon = coupon.invalidate;
-  const purchaseCouponCode = coupon.code;
-  const replaceCouponQuote = coupon.replaceQuote;
-  const purchaseTerms = derivePurchaseTerms({
-    balance,
-    minimumPaidCoins: selectedPlan?.minimumPaidCoins ?? 0,
-    packages,
-    paidBalance: commerce.paidBalance,
-    price: effectivePurchasePrice,
-    rewardBalance: commerce.rewardBalance,
-    rewardContributionLimit,
-  });
-  const {
-    rewardContributionLimit: effectiveRewardContributionLimit,
-    rewardContributionPercent: effectiveRewardContributionPercent,
-    shortfall: effectiveShortfall,
-    spendableBalance: effectiveSpendableBalance,
-    sufficientPackage: effectiveSufficientPackage,
-    sufficientPackages: effectivePackages,
-    usableCurrentBalance: effectiveUsableCurrentBalance,
-  } = purchaseTerms;
-
-  const purchaseRestoreStatus = coupon.restoreStatus;
-  const checkout = useCourseCheckout({
-    closePurchase,
-    couponApplied: appliedCoupon,
-    couponCode: couponQuote?.couponCode,
-    courseId,
-    effectivePrice: effectivePurchasePrice,
-    identityKey,
-    invalidateCoupon,
-    packages,
-    publishedRevision: remoteCourse?.publishedRevision,
-    purchasePrice,
-    reload: course.reload,
-    replaceCouponQuote,
-    selectedPlan,
-    shortfall: effectiveShortfall,
-    showConfirm,
-    showPlans,
-    showSuccess,
-    showTopup,
-    setNotice,
-    setOwned: course.setOwned,
-    setPackages: commerce.setPackages,
-    updateWallet: commerce.updateWallet,
-  });
-  // Verified top-ups belong to CourseSubscriptionSheet's durable checkout
-  // intent. Never let the legacy quote refresh reopen or close that flow.
+  // CourseSubscriptionSheet owns quotes, payment and recovery for every plan.
+  // Grant access codes are the only alternate entry on this screen.
 
   useEffect(() => {
     if (!owned || dialogStep === null || dialogStep === 'success') return;
@@ -198,20 +119,14 @@ export const useCoursePurchase = ({
   const {closeDialog, openLogin, retention, runPrimaryAction} =
     usePurchaseEntry({
       accessPlans,
-      busy: checkout.busy,
-      couponBusy,
       courseId,
       dialogStep,
-      effectivePurchasePrice,
-      effectiveSpendableBalance,
       identityKey,
       navigation,
       owned,
       pageReady,
       primaryAction,
-      purchaseCouponCode,
       purchasePrice,
-      purchaseRestoreStatus,
       remoteSession: course.session,
       routeParams,
       selectedPlanCode: selectedPlan?.code,
@@ -223,7 +138,8 @@ export const useCoursePurchase = ({
     });
 
   const accessCode = useCourseAccessCode({
-    checkoutBusy: checkout.busy,
+    // CourseSubscriptionSheet locks this entry while authorizing payment.
+    checkoutBusy: false,
     courseId,
     identityKey,
     openLogin,
@@ -234,22 +150,15 @@ export const useCoursePurchase = ({
     setOwned: course.setOwned,
   });
 
-  const changePlan = useCallback(() => {
-    invalidateCoupon(true);
-    setNotice('');
-    showPlans();
-  }, [invalidateCoupon, setNotice, showPlans]);
-
   const selectPlan = useCallback(
     (plan: (typeof accessPlans)[number]) => {
-      invalidateCoupon(true);
       setNotice('');
       selectPlanForTerms(plan.code, {
         purchasePrice: plan.priceCoins,
         spendableBalance: planSpendableBalances[plan.code] ?? 0,
       });
     },
-    [invalidateCoupon, planSpendableBalances, selectPlanForTerms, setNotice],
+    [planSpendableBalances, selectPlanForTerms, setNotice],
   );
 
   return {
@@ -265,37 +174,16 @@ export const useCoursePurchase = ({
         course.reload();
       },
       accessPlans,
-      balance,
-      busy: checkout.busy,
       codeBusy: accessCode.busy,
+      grantActivated: accessCode.grantActivated,
       courseCode: accessCode.code,
       courseCodeEnabled: CAN_REDEEM_COURSE_ACCESS_CODE && canChooseAccess,
-      couponApplied: appliedCoupon,
-      couponBusy,
-      couponCode: purchaseCouponCode,
-      couponDiscountAmount: appliedCoupon
-        ? couponQuote?.discountAmount ?? 0
-        : 0,
       dialogStep,
-      grantActivated: accessCode.grantActivated,
-      onApplyCoupon: applyCoupon,
-      onBuyCoins: checkout.buyCoins,
-      onChangePlan: changePlan,
       onClose: closeDialog,
-      onConfirmPurchase: checkout.confirm,
-      onCouponCodeChange: changeCouponCode,
       onCourseCodeChange: accessCode.setCode,
       onRedeemCourseCode: accessCode.redeem,
       onSelectPlan: selectPlan,
-      packages: effectivePackages,
-      originalPurchasePrice: purchasePrice,
-      purchasePrice: effectivePurchasePrice,
-      rewardContributionLimit: effectiveRewardContributionLimit,
-      rewardContributionPercent: effectiveRewardContributionPercent,
       selectedPlan,
-      shortfall: effectiveShortfall,
-      sufficientPackage: effectiveSufficientPackage,
-      usableCurrentBalance: effectiveUsableCurrentBalance,
     },
     closeSuccess: closePurchase,
   };

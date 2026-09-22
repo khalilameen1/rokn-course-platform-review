@@ -87,7 +87,7 @@ final readonly class AdminCoursePreviewService
     {
         return [
             'code' => 'grant',
-            'name' => 'منحة جهة تعليمية',
+            'name' => 'منحة مشاهدة الكورس',
             'price_coins' => 0,
             'minimum_paid_coins' => 0,
             'chat_enabled' => false,
@@ -103,6 +103,7 @@ final readonly class AdminCoursePreviewService
             'project_attachment_max_files' => 0,
             'project_output_enabled' => false,
             'certificate_enabled' => false,
+            'projects_enabled' => false,
         ];
     }
 }

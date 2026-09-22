@@ -13,6 +13,7 @@ import {
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
 import {
   createPortfolioItem,
+  assertPortfolioUploadAccess,
   getEligibleProjects,
   type EligibleProject,
   type PortfolioMedia,
@@ -22,6 +23,10 @@ import {
   uploadPortfolioMediaFiles,
 } from '../../../services/portfolioMediaUpload';
 import {learnerErrorMessage} from '../../../utils/errorPayload';
+import {
+  showPortfolioUploadGate,
+  type PortfolioSubscriptionAction,
+} from '../../../components/portfolioUploadGate';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {settleWithin} from '../../../utils/settleWithin';
 import {
@@ -36,6 +41,7 @@ import {
 import type {PortfolioPublicationResult} from './usePortfolioPublication';
 
 type Options = {
+  onSubscriptions?: PortfolioSubscriptionAction;
   appActive: boolean;
   busyRef: React.MutableRefObject<boolean>;
   cancelLibraryLoad: () => void;
@@ -80,6 +86,7 @@ const discardPickerFiles = (files: PortfolioDraftAsset[]) => {
 
 /** Owns eligible source selection, the durable draft and create/upload. */
 export const usePortfolioCreateFlow = ({
+  onSubscriptions,
   appActive,
   busyRef,
   cancelLibraryLoad,
@@ -139,11 +146,17 @@ export const usePortfolioCreateFlow = ({
 
   const openAddProject = useCallback(() => {
     if (serverSession !== true || busyRef.current || isDetailBusy()) return;
-    setAdding(true);
     const generation = ++eligibleGenerationRef.current;
     setEligibleLoading(true);
     void captureBoundary()
-      .then(boundary => getEligibleProjects(boundary))
+      .then(async boundary => {
+        await assertPortfolioUploadAccess(boundary);
+        if (!mountedRef.current || eligibleGenerationRef.current !== generation)
+          return [];
+        setAdding(true);
+        // Suggestions are optional and do not determine upload entitlement.
+        return getEligibleProjects(boundary).catch(() => []);
+      })
       .then(items => {
         if (
           mountedRef.current &&
@@ -152,12 +165,27 @@ export const usePortfolioCreateFlow = ({
           setEligibleProjects(items);
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (
           mountedRef.current &&
           eligibleGenerationRef.current === generation
         ) {
           setEligibleProjects([]);
+          if (!isPortfolioAccountChangedError(error)) {
+            if (
+              showPortfolioUploadGate(error, onSubscriptions, () =>
+                setAdding(false),
+              )
+            )
+              return;
+            Alert.alert(
+              'إضافة عمل',
+              learnerErrorMessage(
+                error,
+                'تعذّر التحقق من الاشتراك\nحاول مرة أخرى',
+              ),
+            );
+          }
         }
       })
       .finally(() => {
@@ -168,7 +196,14 @@ export const usePortfolioCreateFlow = ({
           setEligibleLoading(false);
         }
       });
-  }, [busyRef, captureBoundary, isDetailBusy, mountedRef, serverSession]);
+  }, [
+    busyRef,
+    captureBoundary,
+    isDetailBusy,
+    mountedRef,
+    serverSession,
+    onSubscriptions,
+  ]);
 
   const closeAddProject = useCallback(() => {
     if (busyRef.current) return;
@@ -193,6 +228,7 @@ export const usePortfolioCreateFlow = ({
     const generation = ++pickerGenerationRef.current;
     try {
       const boundary = await captureBoundary();
+      await assertPortfolioUploadAccess(boundary);
       assertAccountSessionBoundary(boundary);
       if (!mountedRef.current || pickerGenerationRef.current !== generation)
         return;
@@ -263,11 +299,17 @@ export const usePortfolioCreateFlow = ({
       discardPickerFiles(previous);
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
-        showMediaPickerFailure(
-          typeof error === 'object' && error && 'errorCode' in error
-            ? String(error.errorCode)
-            : undefined,
-        );
+        if (
+          !showPortfolioUploadGate(error, onSubscriptions, () =>
+            setAdding(false),
+          )
+        ) {
+          showMediaPickerFailure(
+            typeof error === 'object' && error && 'errorCode' in error
+              ? String(error.errorCode)
+              : undefined,
+          );
+        }
       }
     } finally {
       pickerFlightRef.current = false;
@@ -281,6 +323,7 @@ export const usePortfolioCreateFlow = ({
     draftReady,
     isDetailBusy,
     mountedRef,
+    onSubscriptions,
     saving,
     setDraftCover,
     setDraftCoverAsset,
@@ -489,6 +532,12 @@ export const usePortfolioCreateFlow = ({
       if (mountedRef.current) setAdding(false);
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
+        if (
+          showPortfolioUploadGate(error, onSubscriptions, () =>
+            setAdding(false),
+          )
+        )
+          return;
         Alert.alert(
           remoteProjectCreated ? 'حُفظ المشروع كمسودة' : 'تعذّر إضافة المشروع',
           remoteProjectCreated
@@ -517,6 +566,7 @@ export const usePortfolioCreateFlow = ({
     isDetailBusy,
     mountedRef,
     onMediaUploaded,
+    onSubscriptions,
     reconcileProject,
     saving,
     selectedSourceProject,

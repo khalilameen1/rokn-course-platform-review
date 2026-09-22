@@ -1,5 +1,6 @@
 import React from 'react';
-import {Image, Pressable, Text, TextInput, View} from 'react-native';
+import {Pressable, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../components/ui/RasterImage';
 import Svg, {Path} from 'react-native-svg';
 
 import {SectionHeading, StatusView} from '../../components/ui/PremiumUI';
@@ -69,9 +70,10 @@ export const FeedbackForm = ({
   ) : (
     <>
       <SectionHeading style={styles.heading} title="كيف نساعدك؟" />
-      <Text style={styles.intro}>اكتب المشكلة أو الاقتراح بوضوح</Text>
-      <Text style={styles.categoryLabel}>نوع الرسالة</Text>
-      <View accessibilityRole="radiogroup" style={styles.categories}>
+      <View
+        accessibilityLabel="نوع الرسالة"
+        accessibilityRole="radiogroup"
+        style={styles.categories}>
         {CATEGORIES.map(item => {
           const selected = item.key === category;
           return (
@@ -103,7 +105,6 @@ export const FeedbackForm = ({
       </View>
 
       <View style={styles.form}>
-        <Text style={styles.label}>اكتب التفاصيل</Text>
         <TextInput
           accessibilityHint="اكتب عشرة أحرف على الأقل"
           accessibilityLabel="تفاصيل الملاحظة"
@@ -111,16 +112,18 @@ export const FeedbackForm = ({
           maxLength={1600}
           editable={ready && !busy}
           onChangeText={onMessageChange}
-          placeholder="أين كنت وما الذي ظهر لك"
+          placeholder="اكتب التفاصيل هنا"
           placeholderTextColor={Palette.textFaint}
           selectionColor={Palette.primary}
           style={styles.input}
           textAlignVertical="top"
           value={message}
         />
-        <Text style={styles.counter}>
-          {toArabicDigits(message.length)} من ١٦٠٠
-        </Text>
+        {message.length >= 1400 && (
+          <Text style={styles.counter}>
+            {toArabicDigits(message.length)} من ١٦٠٠
+          </Text>
+        )}
 
         {attachment ? (
           <View style={styles.attachmentRow}>
@@ -152,9 +155,7 @@ export const FeedbackForm = ({
               styles.attachmentButton,
               pressed && styles.pressed,
             ]}>
-            <Text style={styles.attachmentButtonText}>
-              أضف صورة إذا كانت توضح المشكلة
-            </Text>
+            <Text style={styles.attachmentButtonText}>إضافة صورة</Text>
           </Pressable>
         )}
 

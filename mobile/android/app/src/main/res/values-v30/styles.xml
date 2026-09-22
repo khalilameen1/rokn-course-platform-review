@@ -1,0 +1,8 @@
+<resources>
+    <!-- ALWAYS is supported from API 30. Older Android versions retain their
+         compatible cutout policy without affecting Android 15/16. -->
+    <style name="AppTheme" parent="RoknBaseTheme">
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+    </style>
+</resources>

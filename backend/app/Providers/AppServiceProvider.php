@@ -39,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
         // Notification resources resolve this service once per request so a
         // paginated inbox loads the dashboard template family in one query.
         $this->app->scoped(StudentNotificationPresentationService::class);
+        $this->app->scoped(\App\Services\AppArtworkService::class);
 
         // We use only FCM from the Firebase Admin SDK. Binding the contract
         // directly keeps the integration small and avoids coupling the whole

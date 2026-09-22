@@ -8,6 +8,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -20,7 +21,10 @@ import {
 import {useReducedMotion} from '../hooks/useReducedMotion';
 import {useCourseSubscriptionCheckout} from '../hooks/useCourseSubscriptionCheckout';
 import type {CourseAccessPlan} from '../services/roknApi';
-import type {CourseCheckoutMode} from '../services/api/courseCheckout';
+import type {
+  CourseCheckoutMode,
+  CourseCheckoutFeature,
+} from '../services/api/courseCheckout';
 import {CoinAmount} from './ui/RoknCoin';
 import {formatArabicNumber} from '../constants/arabicFormatting';
 
@@ -55,24 +59,52 @@ export const subscriptionPlanSummary = (
 export const subscriptionPlanDetails = (
   plan: CourseAccessPlan,
   hasProjects: boolean,
-) => [
-  'مشاهدة الكورس كاملًا',
-  ...(plan.chatEnabled
-    ? [`حتى ${formatArabicNumber(plan.chatMessageLimit)} رسالة للأسئلة`]
-    : []),
-  ...(hasProjects && plan.projectsEnabled !== false
-    ? [plan.projectReportEnabled ? 'مشاريع وتقارير على شغلك' : 'مشاريع عبور']
-    : []),
-  ...(hasProjects && plan.projectFollowupEnabled
-    ? [
-        `حتى ${formatArabicNumber(
-          plan.projectFollowupMessageLimit || 0,
-        )} رسالة لمناقشة المشاريع`,
-      ]
-    : []),
-  ...(plan.projectOutputEnabled ? ['تطوير مخرجات مشروعك'] : []),
-  ...(plan.certificateEnabled ? ['شهادة بعد اجتياز متطلبات الكورس'] : []),
-];
+  grant = false,
+): Array<{text: string; available?: boolean}> => {
+  if (grant || plan.code === 'basic') {
+    return [
+      {
+        text: grant ? 'مشاهدة الكورس مجانًا' : 'مشاهدة الكورس كاملًا',
+        available: true,
+      },
+      {text: 'غير متاح الشات مع مدرب رُكن للأسئلة', available: false},
+      {text: 'لا توجد مشاريع عبور عملية ولا تقييم عليها', available: false},
+      {text: 'بدون شهادة اجتياز للكورس', available: false},
+    ];
+  }
+  return [
+    ...(plan.chatEnabled
+      ? [
+          {
+            text: `${formatArabicNumber(
+              plan.chatMessageLimit,
+            )} رسالة لمناقشة محتوى الكورس`,
+          },
+        ]
+      : []),
+    ...(hasProjects && plan.projectsEnabled !== false
+      ? [
+          {
+            text: plan.projectReportEnabled
+              ? 'تنفيذ مشاريع عملية والحصول على تقييم لتحسين مستواك'
+              : 'تنفيذ مشاريع عبور عملية',
+          },
+        ]
+      : []),
+    ...(hasProjects &&
+    plan.projectsEnabled !== false &&
+    plan.projectFollowupEnabled
+      ? [
+          {
+            text: `${formatArabicNumber(
+              plan.projectFollowupMessageLimit || 0,
+            )} رسالة لمناقشة المشاريع`,
+          },
+        ]
+      : []),
+    ...(plan.certificateEnabled ? [{text: 'شهادة بعد اجتياز الكورس'}] : []),
+  ];
+};
 
 export type CourseSubscriptionSheetProps = {
   visible: boolean;
@@ -87,7 +119,9 @@ export type CourseSubscriptionSheetProps = {
   onStart?: () => void;
   hasProjects?: boolean;
   mode?: CourseCheckoutMode;
+  requiredFeature?: CourseCheckoutFeature;
   success?: boolean;
+  grantActivated?: boolean;
   accessCodeEntry?: (disabled: boolean) => React.ReactNode;
   externalBusy?: boolean;
   externalNotice?: string;
@@ -109,35 +143,64 @@ export default function CourseSubscriptionSheet({
   onStart,
   hasProjects = false,
   mode = 'purchase',
+  requiredFeature,
   success = false,
+  grantActivated = false,
   accessCodeEntry,
   externalBusy = false,
   externalNotice = '',
   embedded = false,
 }: CourseSubscriptionSheetProps) {
   const insets = useSafeAreaInsets();
+  const {fontScale} = useWindowDimensions();
+  // Keep the comparison horizontal on phones, including enlarged system text.
+  // Very large text gets wider, scrollable choices instead of a tall stack.
+  const minimumOptionWidth = 88 * Math.max(1, fontScale / 1.5);
   const reducedMotion = useReducedMotion();
-  const [expanded, setExpanded] = useState(false);
   const [codeExpanded, setCodeExpanded] = useState(false);
   const checkout = useCourseSubscriptionCheckout({
     courseId,
     mode,
     planCode: selectedPlan?.code,
     courseRevision,
+    requiredFeature,
     visible: visible && !success,
     onCompleted,
   });
-  const {quote, coinPackage, loading, busy, pending} = checkout;
+  const {
+    quote,
+    coinPackage,
+    loading,
+    busy,
+    pending,
+    blockedByPreviousCheckout,
+  } = checkout;
   const displayedPlan = pending
     ? plans.find(plan => plan.code === quote?.planCode)
     : selectedPlan;
-  const locked = busy || pending || externalBusy;
+  const locked = busy || pending || blockedByPreviousCheckout || externalBusy;
   const finished = success || quote?.status === 'completed';
+  const grantFinished = finished && grantActivated;
+  const grantEntryVisible =
+    !finished &&
+    mode === 'purchase' &&
+    displayedPlan?.code === 'basic' &&
+    !pending &&
+    !blockedByPreviousCheckout &&
+    Boolean(accessCodeEntry);
+  const inlineCodeNotice =
+    grantEntryVisible && codeExpanded ? externalNotice : '';
+  const notice = checkout.notice || (inlineCodeNotice ? '' : externalNotice);
+  const detailPlan = grantFinished
+    ? plans.find(plan => plan.code === 'basic')
+    : displayedPlan;
   const canPay = Boolean(
-    quote && (quote.status !== 'quoted' || quote.deficit === 0 || coinPackage),
+    blockedByPreviousCheckout ||
+      (quote &&
+        (quote.status !== 'quoted' || quote.deficit === 0 || coinPackage)),
   );
   useEffect(() => {
-    setExpanded(false);
+    setCodeExpanded(false);
   }, [selectedPlan?.code]);
   useEffect(() => {
     if (!visible) setCodeExpanded(false);
@@ -158,7 +221,9 @@ export default function CourseSubscriptionSheet({
       <View style={styles.heading}>
         <View style={styles.headingCopy}>
           <Text style={styles.title}>
-            {finished
+            {grantFinished
+              ? 'تم تفعيل المنحة'
+              : finished
               ? 'أصبح الاشتراك لك'
               : mode === 'upgrade'
               ? 'ترقية الاشتراك'
@@ -188,7 +253,13 @@ export default function CourseSubscriptionSheet({
         contentContainerStyle={styles.content}>
         {!finished && (
           <>
-            <View accessibilityRole="radiogroup" style={styles.options}>
+            <ScrollView
+              horizontal
+              keyboardShouldPersistTaps="handled"
+              accessibilityRole="radiogroup"
+              accessibilityLabel="اختيارات الاشتراك"
+              style={styles.optionScroll}
+              contentContainerStyle={styles.options}>
               {plans.map(plan => {
                 const selected = plan.code === displayedPlan?.code;
                 const price =
@@ -213,19 +284,13 @@ export default function CourseSubscriptionSheet({
                     onPress={() => onSelectPlan(plan)}
                     style={({pressed}) => [
                       styles.option,
+                      {minWidth: minimumOptionWidth},
                       selected && styles.selected,
                       pressed && styles.pressed,
                     ]}>
-                    <View
-                      style={[styles.radio, selected && styles.radioSelected]}>
-                      {selected && <View style={styles.radioDot} />}
-                    </View>
                     <View style={styles.optionCopy}>
                       <Text style={styles.name}>
                         {subscriptionPlanName(plan)}
-                      </Text>
-                      <Text style={styles.description}>
-                        {subscriptionPlanSummary(plan, hasProjects)}
                       </Text>
                     </View>
                     {price !== undefined ? (
@@ -241,57 +306,28 @@ export default function CourseSubscriptionSheet({
                   </Pressable>
                 );
               })}
-            </View>
-            {!!displayedPlan && (
-              <>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{expanded}}
-                  accessibilityLabel={`تفاصيل ${subscriptionPlanName(
-                    displayedPlan,
-                  )}`}
-                  onPress={() => setExpanded(value => !value)}
-                  style={styles.disclosure}>
-                  <Text style={styles.detailTitle}>
-                    تفاصيل {subscriptionPlanName(displayedPlan)}
-                  </Text>
-                  <Text style={styles.detailAction}>
-                    {expanded ? 'إخفاء' : 'عرض'}
-                  </Text>
-                </Pressable>
-                {expanded && (
-                  <View style={styles.details}>
-                    {subscriptionPlanDetails(displayedPlan, hasProjects).map(
-                      text => (
-                        <Text key={text} style={styles.detail}>
-                          {text}
-                        </Text>
-                      ),
-                    )}
-                  </View>
-                )}
-              </>
-            )}
-            {quote && (
-              <View style={styles.summary}>
-                {quote.rewardCoins > 0 && (
-                  <SummaryLine
-                    label="تم خصم من عملات المكافأة"
-                    value={quote.rewardCoins}
-                  />
-                )}
-                {coinPackage && (
-                  <View style={styles.cashRow}>
-                    <Text style={styles.cashLabel}>مطلوب دفع</Text>
-                    <Text style={styles.cashValue}>
-                      {coinPackage.displayPrice ||
-                        `${formatArabicNumber(coinPackage.price)} ج م`}
-                    </Text>
-                  </View>
-                )}
+            </ScrollView>
+          </>
+        )}
+        {detailPlan && (!finished || grantFinished) && (
+          <View style={styles.planDetails}>
+            {subscriptionPlanDetails(
+              detailPlan,
+              hasProjects,
+              grantFinished,
+            ).map(({text, available}) => (
+              <View key={text} style={styles.featureRow}>
+                <Text accessible={false} style={styles.featureMark}>
+                  {available === undefined ? '—' : available ? '✓' : '×'}
+                </Text>
+                <Text style={styles.detail}>{text}</Text>
               </View>
-            )}
-            {mode === 'purchase' && !pending && accessCodeEntry && (
+            ))}
+          </View>
+        )}
+        {!finished && (
+          <>
+            {grantEntryVisible && accessCodeEntry && (
               <>
                 <Pressable
                   accessibilityRole="button"
@@ -302,9 +338,7 @@ export default function CourseSubscriptionSheet({
                   disabled={locked}
                   onPress={() => setCodeExpanded(value => !value)}
                   style={styles.disclosure}>
-                  <Text style={styles.detailAction}>
-                    كود جامعة أو جهة تعليمية
-                  </Text>
+                  <Text style={styles.detailAction}>كود منحة</Text>
                   <Text style={styles.detailAction}>
                     {codeExpanded ? 'إخفاء' : 'إضافة'}
                   </Text>
@@ -312,32 +346,66 @@ export default function CourseSubscriptionSheet({
                 {codeExpanded && (
                   <View style={styles.details}>
                     {accessCodeEntry(locked || loading)}
+                    {!!inlineCodeNotice && (
+                      <Text
+                        accessibilityRole="alert"
+                        accessibilityLiveRegion="polite"
+                        style={styles.notice}>
+                        {inlineCodeNotice}
+                      </Text>
+                    )}
                   </View>
                 )}
               </>
             )}
+            {quote && (
+              <View style={styles.summary}>
+                {mode === 'purchase' && quote.rewardCoins > 0 && (
+                  <SummaryLine label="حصلت على خصم" value={quote.rewardCoins} />
+                )}
+                {coinPackage && (
+                  <View style={styles.cashRow}>
+                    <Text style={styles.cashLabel}>المطلوب دفعه</Text>
+                    <Text style={styles.cashValue}>
+                      {coinPackage.displayPrice ||
+                        `${formatArabicNumber(coinPackage.price)} ج م`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </>
         )}
-        {finished && <Text style={styles.success}>تقدر تبدأ الآن</Text>}
-        {checkout.notice || externalNotice ? (
+        {finished && !grantFinished && (
+          <Text style={styles.success}>تقدر تبدأ الآن</Text>
+        )}
+        {notice ? (
           <Text
             accessibilityRole="alert"
             accessibilityLiveRegion="polite"
             style={styles.notice}>
-            {checkout.notice || externalNotice}
+            {notice}
           </Text>
         ) : null}
       </ScrollView>
       <View style={styles.footer}>
-        {pending && (
+        {(pending || blockedByPreviousCheckout) && (
           <View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="إلغاء طلب الاشتراك"
+              accessibilityLabel={
+                blockedByPreviousCheckout
+                  ? 'إلغاء الطلب السابق'
+                  : 'إلغاء طلب الاشتراك'
+              }
               disabled={busy}
               onPress={() => void checkout.cancelPending()}
               style={styles.disclosure}>
-              <Text style={styles.detailAction}>إلغاء طلب الاشتراك</Text>
+              <Text style={styles.detailAction}>
+                {blockedByPreviousCheckout
+                  ? 'إلغاء الطلب السابق'
+                  : 'إلغاء طلب الاشتراك'}
+              </Text>
             </Pressable>
             <Text style={styles.note}>أي شحن تم دفعه يظل في رصيدك</Text>
           </View>
@@ -380,16 +448,14 @@ export default function CourseSubscriptionSheet({
             <Text style={styles.primaryText}>
               {finished
                 ? 'ابدأ الكورس'
+                : blockedByPreviousCheckout
+                ? 'التحقق من الدفع السابق'
                 : pending
                 ? 'التحقق من الدفع'
                 : !quote
                 ? 'إعادة المحاولة'
                 : quote.status !== 'quoted'
                 ? 'مراجعة الاشتراك'
-                : quote.deficit > 0
-                ? mode === 'upgrade'
-                  ? 'شحن وترقية'
-                  : 'شحن واشتراك'
                 : mode === 'upgrade'
                 ? 'ترقية الاشتراك'
                 : 'اشترك'}
@@ -473,14 +539,18 @@ const styles = StyleSheet.create({
   closeText: {fontSize: 28, color: Palette.textMuted},
   scroll: {flexGrow: 0},
   content: {paddingBottom: 4},
-  options: {gap: 10},
+  optionScroll: {flexGrow: 0},
+  options: {...rtlRowStyle, gap: 8, flexGrow: 1},
   option: {
-    ...rtlRowStyle,
+    flexGrow: 1,
+    flexShrink: 0,
+    flexBasis: 0,
     alignItems: 'center',
-    gap: 11,
-    paddingHorizontal: 14,
-    paddingVertical: 15,
-    minHeight: 91,
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 14,
+    minHeight: 88,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: Palette.line,
@@ -490,24 +560,8 @@ const styles = StyleSheet.create({
     borderColor: Palette.primary,
     backgroundColor: Palette.primarySoft,
   },
-  radio: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    borderWidth: 1.5,
-    borderColor: Palette.textMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioSelected: {borderColor: Palette.primary},
-  radioDot: {
-    width: 9,
-    height: 9,
-    borderRadius: 5,
-    backgroundColor: Palette.primary,
-  },
-  optionCopy: {flex: 1, minWidth: 0},
-  name: {...Type.section, ...textDirection, color: Palette.text},
+  optionCopy: {minWidth: 0},
+  name: {...Type.section, color: Palette.text, textAlign: 'center'},
   description: {
     ...Type.caption,
     ...textDirection,
@@ -523,10 +577,23 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 12,
   },
-  detailTitle: {...Type.caption, ...textDirection, color: Palette.text},
   detailAction: {...Type.caption, ...textDirection, color: Palette.textMuted},
   details: {gap: 8, paddingBottom: 14},
-  detail: {...Type.caption, ...textDirection, color: Palette.textMuted},
+  planDetails: {gap: 8, paddingTop: 18, paddingBottom: 10},
+  featureRow: {...rtlRowStyle, alignItems: 'flex-start', gap: 9},
+  featureMark: {
+    ...Type.caption,
+    color: Palette.textMuted,
+    width: 14,
+    textAlign: 'center',
+  },
+  detail: {
+    ...Type.caption,
+    ...textDirection,
+    color: Palette.textMuted,
+    flex: 1,
+    minWidth: 0,
+  },
   summary: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: Palette.line,

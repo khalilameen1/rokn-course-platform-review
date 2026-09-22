@@ -83,6 +83,47 @@ describe('project feedback interrupted hydration', () => {
     mockLoadThread.mockReset();
   });
 
+  it('reloads quota and reply permissions after upgrading a report-only enrollment without losing its draft', async () => {
+    const reportOnly = {
+      ...loadedThread,
+      feedbackLevel: 'report' as const,
+      canReply: false,
+      remainingMessages: 0,
+    };
+    mockLoadThread.mockResolvedValue(loadedThread);
+    let current!: ReturnType<typeof useProjectFeedback>;
+    const Harness = ({upgraded = false}: {upgraded?: boolean}) => {
+      current = useProjectFeedback({
+        active: true,
+        appIsActive: true,
+        projectId: '7',
+        seedThread: reportOnly,
+        feedbackLevel: upgraded ? 'enhanced' : 'report',
+        replyEnabled: upgraded,
+        reportStatus: 'ready',
+      });
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness />);
+      });
+      act(() => current.changeDraft('سؤالي محفوظ'));
+      expect(current.canReply).toBe(false);
+      expect(mockLoadThread).not.toHaveBeenCalled();
+      await act(async () => {
+        renderer.update(<Harness upgraded />);
+      });
+      expect(mockLoadThread).toHaveBeenCalledWith('7', 'thread-7');
+      expect(current.thread?.remainingMessages).toBe(5);
+      expect(current.canReply).toBe(true);
+      expect(current.draft).toBe('سؤالي محفوظ');
+    } finally {
+      if (renderer) await act(async () => renderer.unmount());
+    }
+  });
+
   it.each([
     ['background', 'ready'],
     ['close', 'ready'],

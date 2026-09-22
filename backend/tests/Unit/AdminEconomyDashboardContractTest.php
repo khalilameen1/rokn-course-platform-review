@@ -100,13 +100,14 @@ final class AdminEconomyDashboardContractTest extends TestCase
         $read = $this->source('app/Services/AdminEconomyReadService.php');
 
         self::assertStringContainsString('scopeLearnerTask', $model);
-        self::assertStringContainsString('CoinEarningMethod::learnerTask()', $api);
+        self::assertStringContainsString('$available->learnerTask()', $api);
+        self::assertStringContainsString('completed_by_learner', $api);
         self::assertStringContainsString('$lockedMethod->isLearnerTask()', $api);
         self::assertStringContainsString('->learnerTask()', $engagement);
         self::assertStringContainsString("->orderBy('sort_order')", $engagement);
         self::assertStringContainsString("'coins_amount' => ['required', 'integer', 'min:1']", $admin);
-        self::assertStringContainsString("'action_key' => ['required', 'string', 'max:255', 'not_in:register']", $admin);
-        self::assertStringContainsString("orWhere('action_key', '!=', 'register')", $read);
+        self::assertStringContainsString('Rule::notIn(CoinEarningMethod::AUTOMATIC_ACTION_KEYS)', $admin);
+        self::assertStringContainsString('orWhereNotIn(\'action_key\', CoinEarningMethod::AUTOMATIC_ACTION_KEYS)', $read);
     }
 
     public function test_one_time_task_receipt_is_enforced_by_the_database(): void

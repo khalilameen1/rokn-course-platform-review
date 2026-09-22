@@ -48,6 +48,8 @@ class Setting extends Model
         'support_whatsapp_url',
         'how_to_use_coins_ar',
         'how_to_use_coins_en',
+        'rewards_help_ar',
+        'rewards_help_en',
         'welcome_bonus_coins',
         'recommended_social_provider',
         'recommended_provider_bonus_coins',
@@ -185,6 +187,20 @@ class Setting extends Model
         }
 
         return $arabic !== '' ? $arabic : ($english !== '' ? $english : self::DEFAULT_COIN_RULES_AR);
+    }
+
+    public function getRewardsHelpAttribute(): string
+    {
+        $locale = RoknLocale::isArabic() ? 'ar' : 'en';
+        $text = trim((string) ($this->attributes["rewards_help_{$locale}"] ?? ''));
+        return $text !== '' ? $text : self::defaultRewardsHelp($locale);
+    }
+
+    public static function defaultRewardsHelp(string $locale): string
+    {
+        return $locale === 'ar'
+            ? "اكسب عملات من المهام واستخدمها للحصول على خصم على اشتراك الكورس\nقيمة الخصم والمبلغ المطلوب يظهران لك قبل الدفع"
+            : "Earn coins from tasks and use them for a discount on a course subscription\nYour discount and the amount due are shown before payment";
     }
 
     /**

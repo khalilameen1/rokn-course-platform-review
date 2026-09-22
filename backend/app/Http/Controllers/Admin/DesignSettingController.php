@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use App\Services\PublicAppSettingsService;
+use App\Services\AppArtworkService;
 use App\Services\StoredFileDeletionService;
 use App\Services\AdminAuthoringCreateIntentService;
 use Illuminate\Validation\ValidationException;
@@ -25,6 +26,7 @@ final class DesignSettingController extends Controller
         return view('admin.design-settings.index', [
             'settings' => $settings,
             'editorVersion' => $this->editorVersion($settings),
+            'artwork' => app(AppArtworkService::class)->urls($settings),
         ]);
     }
 
@@ -57,13 +59,14 @@ final class DesignSettingController extends Controller
                 'how_platform_works_video_link' => ['أضف رابط الفيديو قبل إظهار هذا القسم'],
             ]);
         }
-        $data = collect($validated)->except([
+        $artworkInputs = array_map(fn (string $key): string => $key.'_image_file', array_keys(AppArtworkService::ASSETS));
+        $data = collect($validated)->except(array_merge([
             'logo_file',
             'icon_file',
             'home_background_file',
             'editor_version',
             'authoring_request_id',
-        ])->all();
+        ], $artworkInputs))->all();
         $data['show_how_platform_works'] = $request->boolean('show_how_platform_works');
 
         $settings = DesignSetting::query()->first();
@@ -71,11 +74,15 @@ final class DesignSettingController extends Controller
         $oldFiles = [];
 
         try {
-            foreach ([
+            $uploads = [
                 'logo_file' => ['logo_url', 'design-settings/logos'],
                 'icon_file' => ['icon_url', 'design-settings/icons'],
                 'home_background_file' => ['home_background_url', 'design-settings/home-backgrounds'],
-            ] as $input => [$attribute, $directory]) {
+            ];
+            foreach (array_keys(AppArtworkService::ASSETS) as $key) {
+                $uploads[$key.'_image_file'] = [$key.'_image_url', 'design-settings/artwork'];
+            }
+            foreach ($uploads as $input => [$attribute, $directory]) {
                 if (!$request->hasFile($input)) {
                     continue;
                 }
@@ -141,7 +148,7 @@ final class DesignSettingController extends Controller
     /** @return array<string, string|array<int, string>> */
     private function rules(): array
     {
-        return [
+        $rules = [
             'name_ar' => ['required', 'string', 'max:255'],
             'name_en' => ['required', 'string', 'max:255'],
             'slogan_1_ar' => ['nullable', 'string', 'max:255'],
@@ -164,6 +171,10 @@ final class DesignSettingController extends Controller
             'editor_version' => ['required', 'string', 'size:64'],
             'authoring_request_id' => ['required', 'uuid'],
         ];
+        foreach (array_keys(AppArtworkService::ASSETS) as $key) {
+            $rules[$key.'_image_file'] = ['nullable', 'image', 'mimes:png,webp', 'max:4096', 'dimensions:max_width=4096,max_height=4096'];
+        }
+        return $rules;
     }
 
     private function publicPathFromUrl(string $url): ?string
@@ -173,9 +184,9 @@ final class DesignSettingController extends Controller
 
     private function editorVersion(DesignSetting $settings): string
     {
-        return hash('sha256', implode('|', [
-            (string) ($settings->id ?? 'new'),
-            (string) optional($settings->updated_at)->format('Y-m-d H:i:s.u'),
-        ]));
+        // Content identity also detects two saves within the same second.
+        $attributes = $settings->getAttributes();
+        ksort($attributes);
+        return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR));
     }
 }

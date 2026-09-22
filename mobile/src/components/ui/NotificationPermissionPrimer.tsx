@@ -1,16 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {
-  ActivityIndicator,
-  AppState,
-  Image,
-  Linking,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {ActivityIndicator, AppState, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {RasterImage as Image} from './RasterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Svg, {Circle, Path} from 'react-native-svg';
 import {

@@ -1,12 +1,6 @@
 import React from 'react';
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../ui/RasterImage';
 import Svg, {Path} from 'react-native-svg';
 import {
   Palette,

@@ -20,10 +20,11 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
-import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.rokn.BuildConfig
@@ -38,13 +39,14 @@ class CheckoutActivity : AppCompatActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    WindowCompat.setDecorFitsSystemWindows(window, false)
+    enableEdgeToEdge(
+      statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+      navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+    )
     WindowInsetsControllerCompat(window, window.decorView).apply {
       isAppearanceLightStatusBars = false
       isAppearanceLightNavigationBars = false
     }
-    window.statusBarColor = BACKGROUND
-    window.navigationBarColor = BACKGROUND
     setContentView(buildContent())
     onBackPressedDispatcher.addCallback(
       this,

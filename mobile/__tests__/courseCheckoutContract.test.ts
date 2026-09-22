@@ -1,11 +1,18 @@
-jest.mock('../src/constants/api', () => ({publicRequest: {}}));
-jest.mock('../src/constants/helpers', () => ({}));
+const mockPost = jest.fn();
+jest.mock('../src/constants/api', () => ({
+  publicRequest: {post: (...args: unknown[]) => mockPost(...args)},
+}));
+jest.mock('../src/constants/helpers', () => ({
+  captureAccountSessionBoundary: async () => ({scope: 'user-1', epoch: 1}),
+  assertAccountSessionBoundary: jest.fn(),
+}));
 jest.mock('../src/constants/distribution', () => ({
   DISTRIBUTION_CHANNEL: 'play',
 }));
 import {
   mapCourseCheckout,
   selectCheckoutPackage,
+  quoteCourseCheckout,
 } from '../src/services/api/courseCheckout';
 
 const data = {
@@ -28,6 +35,32 @@ const data = {
   selected_package: null,
 };
 describe('authoritative course checkout contract', () => {
+  it('sends the required capability on both quotes including the store package binding', async () => {
+    mockPost.mockResolvedValue({data: {success: true, status: 200, data}});
+    await quoteCourseCheckout({
+      courseId: '3',
+      planCode: 'mentor',
+      mode: 'upgrade',
+      requiredFeature: 'chat',
+    });
+    await quoteCourseCheckout({
+      courseId: '3',
+      planCode: 'mentor',
+      mode: 'upgrade',
+      requiredFeature: 'chat',
+      packageId: '5',
+    });
+    expect(mockPost).toHaveBeenNthCalledWith(
+      1,
+      'course-checkouts',
+      expect.objectContaining({required_feature: 'chat', mode: 'upgrade'}),
+    );
+    expect(mockPost).toHaveBeenNthCalledWith(
+      2,
+      'course-checkouts',
+      expect.objectContaining({required_feature: 'chat', package_id: 5}),
+    );
+  });
   it('keeps paid and rewarded value separate', () =>
     expect(mapCourseCheckout(data)).toMatchObject({
       paidCoins: 400,

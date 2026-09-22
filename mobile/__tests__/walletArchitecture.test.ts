@@ -29,6 +29,10 @@ describe('wallet architecture', () => {
     expect(controller).not.toContain('startCoinTask');
     expect(controller).not.toContain('openCoinCheckout');
     expect(controller).not.toContain('useRoute');
+    expect(controller).not.toContain('useWalletCheckout');
+    expect(controller).toContain('useWalletData(identityKey, false)');
+    expect(view).not.toContain('WalletPackageRail');
+    expect(view).not.toContain('CAN_START_COIN_CHECKOUT');
     expect(cache).toContain("WALLET_CACHE_KEY = '@rokn/wallet-cache/v2'");
     expect(data).toContain('getCoinPackages');
     expect(view).not.toContain('StyleSheet.create');

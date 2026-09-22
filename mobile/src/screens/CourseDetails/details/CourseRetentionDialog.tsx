@@ -58,11 +58,11 @@ export const CourseRetentionDialog = ({
               <Text style={styles.retentionMarkText}>＋</Text>
             </View>
             <Text style={[styles.sheetTitle, styles.centerText]}>
-              يمكنك المتابعة دون شحن الآن
+              اكسب عملات وخفّض سعر الاشتراك
             </Text>
             <Text style={[styles.sheetDescription, styles.centerText]}>
-              أنجز مهمة مرة واحدة واحصل على عملات ركن
-              {'\n'}ثم ارجع للكورس من مكانك
+              أنجز المهام المتاحة ثم ارجع للكورس
+              {'\n'}خصمك يظهر قبل الدفع
             </Text>
             <Pressable
               accessibilityRole="button"

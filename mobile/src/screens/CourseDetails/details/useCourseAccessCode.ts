@@ -106,7 +106,7 @@ export function useCourseAccessCode({
         });
       }
       setGrantActivated(
-        result.accessType === 'scholarship' && !result.alreadyEnrolled,
+        ['scholarship', 'course_code'].includes(result.accessType || ''),
       );
       setCode('');
       showSuccess();

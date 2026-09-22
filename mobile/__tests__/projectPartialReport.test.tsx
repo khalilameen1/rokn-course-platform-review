@@ -9,6 +9,11 @@ import {
 } from 'react-native';
 import type {CourseProject} from '../src/components/VideoPlayer/types';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
+import FullTrackUpgradeSheet from '../src/components/FullTrackUpgradeSheet';
+jest.mock(
+  '../src/components/FullTrackUpgradeSheet',
+  () => 'FullTrackUpgradeSheet',
+);
 
 const mockController = jest.fn();
 jest.mock('@react-native-clipboard/clipboard', () => ({
@@ -206,6 +211,84 @@ const renderTransition = (
 };
 
 describe('project lifecycle presentation', () => {
+  it('keeps a long report and continuation independent from the optional upgrade sheet', () => {
+    const refresh = jest.fn();
+    const onContinue = jest.fn();
+    const longReport = 'ملاحظات المشروع كاملة دون اختصار\n'.repeat(80);
+    mockController.mockReturnValue(
+      controllerFor({
+        journeyState: 'passed',
+        canContinue: true,
+        reportViewState: 'ready',
+        feedbackLevel: 'report',
+        feedbackThread: {
+          id: 'thread-7',
+          feedbackLevel: 'report',
+          canReply: false,
+          status: 'ready',
+          remainingMessages: 0,
+          messages: [
+            {
+              id: 'report',
+              role: 'assistant',
+              status: 'completed',
+              text: longReport,
+            },
+          ],
+        },
+      }),
+    );
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      act(() => {
+        renderer = TestRenderer.create(
+          <ProjectTransition
+            active
+            courseId="7"
+            courseTitle="تصميم"
+            project={project}
+            moduleTitle="تطبيق"
+            width={320}
+            height={640}
+            onSubmit={jest.fn()}
+            onContinue={onContinue}
+            onEntitlementChanged={refresh}
+          />,
+        );
+      });
+      expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(
+        0,
+      );
+      const reportBody = renderer.root
+        .findAllByType(Text)
+        .find(
+          node => cleanUnicodeText(node.props.children) === longReport.trim(),
+        )!;
+      expect(reportBody).toBeDefined();
+      expect(reportBody.props.numberOfLines).toBeUndefined();
+      act(() =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'هل لديك سؤال؟'})
+          .props.onPress(),
+      );
+      const upgrade = renderer.root.findByType(FullTrackUpgradeSheet);
+      expect(upgrade.props.requiredFeature).toBe('project_discussion');
+      expect(upgrade.props.courseId).toBe('7');
+      expect(upgrade.props.onUpgraded).toBe(refresh);
+      act(() => upgrade.props.onClose());
+      act(() =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'أكمل الكورس'})
+          .props.onPress(),
+      );
+      expect(onContinue).toHaveBeenCalledTimes(1);
+      expect(
+        mockController.mock.results.at(-1)?.value.sendFeedback,
+      ).not.toHaveBeenCalled();
+    } finally {
+      if (renderer) act(() => renderer.unmount());
+    }
+  });
   // Structural guard only: the renderer does not measure native IME geometry.
   // Field/CTA visibility must also be verified on the native keyboard surface.
   it.each(['android', 'ios'] as const)(

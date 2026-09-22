@@ -1,7 +1,8 @@
 import {useNavigation, useRoute} from '@react-navigation/native';
 import type {RootNavigation, RootRoute} from '../../navigation/types';
 import React, {useEffect, useRef, useState} from 'react';
-import {Image, Modal, Pressable, ScrollView, Text, View} from 'react-native';
+import {Modal, Pressable, ScrollView, Text, View} from 'react-native';
+import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {SettingsIcon, ShareProfileIcon} from '../../assets/SVG';
 import TabBar from '../../components/TabBar';
 import {Container, Content} from '../../components/containers/Containers';
@@ -267,6 +268,9 @@ export default function Profile() {
               )}
               <Gallery
                 key={`portfolio:${identityKey}`}
+                onSubscriptions={hasSubscription =>
+                  navigation.navigate(hasSubscription ? 'MyCorner' : 'Home')
+                }
                 onSharePortfolio={
                   canSharePortfolio ? sharePortfolio : undefined
                 }

@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
-import {Image, Text, View} from 'react-native';
+import {Text, View} from 'react-native';
+import {RasterImage as Image} from '../../../components/ui/RasterImage';
 import {certificateStyles as styles} from './styles';
 
 type CertificateArtifactPreviewProps = {

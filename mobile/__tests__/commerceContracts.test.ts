@@ -348,11 +348,16 @@ describe('commerce API contracts', () => {
     expect(packageRail).toContain('formatArabicDisplayText(item.label)');
     expect(packageRail).toContain('horizontal');
     expect(packageRail).toContain('snapToInterval={cardWidth + Spacing.sm}');
-    expect(walletView).toContain('cardWidth={packageCardWidth}');
+    expect(walletView).not.toContain('WalletPackageRail');
+    expect(walletView).toContain('RewardsTaskList');
     expect(walletView).not.toContain('packageColumns');
-    expect(coin).toContain(
-      "require('../../assets/images/coins/rokn-coin-minted.png')",
-    );
+    expect(coin).toContain('asset="coin"');
+    expect(
+      fs.readFileSync(
+        path.resolve(__dirname, '../src/components/ui/AppArtwork.tsx'),
+        'utf8',
+      ),
+    ).toContain("require('../../assets/images/coins/rokn-coin-minted.png')");
     expect(coin).not.toContain('#FFF1A9');
     expect(packageRail).not.toContain('<RoknCoin');
     expect(packageRail.match(/<CoinAmount/g)).toHaveLength(1);

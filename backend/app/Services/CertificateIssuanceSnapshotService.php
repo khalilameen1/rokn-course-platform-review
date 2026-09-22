@@ -14,7 +14,7 @@ use App\Models\User;
 /** Captures editorial claims once, inside the user/course issuance transaction. */
 final readonly class CertificateIssuanceSnapshotService
 {
-    public const DESIGN_VERSION = 'editorial_v1';
+    public const DESIGN_VERSION = CertificateArtworkRenderer::VERSION;
 
     public function __construct(
         private CertificateTextTemplateService $templates,

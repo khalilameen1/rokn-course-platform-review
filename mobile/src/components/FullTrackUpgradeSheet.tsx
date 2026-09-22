@@ -18,6 +18,7 @@ import {
 } from '../constants/helpers';
 import {Palette, Type, textDirection} from '../constants/designSystem';
 import CourseSubscriptionSheet from './CourseSubscriptionSheet';
+import type {CourseCheckoutFeature} from '../services/api/courseCheckout';
 
 type Props = {
   visible: boolean;
@@ -27,6 +28,8 @@ type Props = {
   onClose: () => void;
   onUpgraded?: () => void | Promise<void>;
   embedded?: boolean;
+  requiredFeature?: CourseCheckoutFeature;
+  quotaExhausted?: boolean;
 };
 const rank: Record<string, number> = {basic: 0, guided: 1, mentor: 2};
 
@@ -37,12 +40,15 @@ export default function FullTrackUpgradeSheet({
   onClose,
   onUpgraded,
   embedded = false,
+  requiredFeature,
+  quotaExhausted = false,
 }: Props) {
   const [plans, setPlans] = useState<CourseAccessPlan[]>([]);
   const [selected, setSelected] = useState('');
   const [hasProjects, setHasProjects] = useState(false);
   const [courseRevision, setCourseRevision] = useState<number>();
   const [error, setError] = useState('');
+  const [unavailable, setUnavailable] = useState(false);
   const [reload, setReload] = useState(0);
   const generation = useRef(0);
   const callbacks = useRef({onClose, onUpgraded});
@@ -51,6 +57,7 @@ export default function FullTrackUpgradeSheet({
     const token = ++generation.current;
     setPlans([]);
     setError('');
+    setUnavailable(false);
     if (!visible) return;
     void (async () => {
       try {
@@ -62,17 +69,29 @@ export default function FullTrackUpgradeSheet({
         assertAccountSessionBoundary(boundary);
         if (token !== generation.current) return;
         if (upgrade.alreadyUpgraded) {
-          await callbacks.current.onUpgraded?.();
-          callbacks.current.onClose();
+          // Owning the highest tier does not replenish an exhausted allowance.
+          // Only a completed checkout may signal a successful upgrade.
+          setUnavailable(true);
           return;
         }
         const minimum = rank[upgrade.targetPlanCode || ''];
         const available = course.accessPlans.filter(
-          plan => minimum !== undefined && rank[plan.code] >= minimum,
+          plan =>
+            minimum !== undefined &&
+            rank[plan.code] >= minimum &&
+            (requiredFeature !== 'chat' ||
+              (plan.chatEnabled && plan.chatMessageLimit > 0)) &&
+            (requiredFeature !== 'project_discussion' ||
+              (plan.projectsEnabled !== false &&
+                plan.projectFollowupEnabled === true &&
+                (plan.projectFollowupMessageLimit || 0) > 0)),
         );
-        if (!available.length) throw new Error('UPGRADE_UNAVAILABLE');
+        if (!available.length) {
+          setUnavailable(true);
+          return;
+        }
         setPlans(available);
-        setSelected(upgrade.targetPlanCode || available[0].code);
+        setSelected(available[0].code);
         setHasProjects(course.projectCount > 0);
         setCourseRevision(course.publishedRevision);
       } catch {
@@ -82,7 +101,7 @@ export default function FullTrackUpgradeSheet({
     return () => {
       generation.current += 1;
     };
-  }, [courseId, reload, visible]);
+  }, [courseId, reload, requiredFeature, visible]);
   if (plans.length)
     return (
       <CourseSubscriptionSheet
@@ -100,12 +119,19 @@ export default function FullTrackUpgradeSheet({
         }}
         hasProjects={hasProjects}
         mode="upgrade"
+        requiredFeature={requiredFeature}
         embedded={embedded}
       />
     );
   const loading = (
     <View accessibilityViewIsModal={!embedded} style={styles.loading}>
-      {error ? (
+      {unavailable ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {quotaExhausted
+            ? 'استخدمت كل رسائلك\nلا يوجد اشتراك أعلى متاح لهذا الكورس'
+            : 'لا توجد ترقية متاحة بهذه الميزة لهذا الكورس'}
+        </Text>
+      ) : error ? (
         <>
           <Text accessibilityRole="alert" style={styles.error}>
             {error}

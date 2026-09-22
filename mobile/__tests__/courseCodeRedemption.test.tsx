@@ -113,7 +113,7 @@ describe('compact course subscription sheet', () => {
     mockBusy = false;
     mockPending = false;
   });
-  async function mount() {
+  async function mount(selectedPlan = plans[1], grantActivated = false) {
     const onSelectPlan = jest.fn();
     const onRedeem = jest.fn();
     const onCodeChange = jest.fn();
@@ -123,31 +123,20 @@ describe('compact course subscription sheet', () => {
         <CoursePurchaseDialog
           courseId="3"
           accessPlans={plans}
-          balance={100}
-          bottomInset={0}
-          busy={false}
           courseTitle="كورس الإنتاج"
           projectCount={3}
           courseCode="GRANT-42"
           courseCodeEnabled
-          dialogStep="plans"
-          grantActivated={false}
-          isTablet={false}
+          dialogStep={grantActivated ? 'success' : 'plans'}
+          grantActivated={grantActivated}
           notice=""
-          onBuyCoins={jest.fn()}
+          onSubscribed={jest.fn()}
           onClose={jest.fn()}
-          onConfirmPurchase={jest.fn()}
           onCourseCodeChange={onCodeChange}
           onRedeemCourseCode={onRedeem}
           onSelectPlan={onSelectPlan}
           onSuccessStart={jest.fn()}
-          packages={[]}
-          purchasePrice={500}
-          rewardContributionLimit={100}
-          rewardContributionPercent={20}
-          selectedPlan={plans[1]}
-          shortfall={400}
-          usableCurrentBalance={100}
+          selectedPlan={selectedPlan}
         />,
       );
     });
@@ -176,57 +165,81 @@ describe('compact course subscription sheet', () => {
     const tree = JSON.stringify(view.renderer.toJSON());
     expect(tree).toContain('اختر الاشتراك');
     for (const plan of plans) expect(tree).toContain(plan.name);
-    expect(tree).toContain('تدريب أعمق وتطوير مشروعك');
+    expect(tree).toContain(
+      'تنفيذ مشاريع عملية والحصول على تقييم لتحسين مستواك',
+    );
     expect(tree).toContain('٢٠ ج م');
-    expect(tree).toContain('تم خصم من عملات المكافأة');
-    expect(tree).toContain('مطلوب دفع');
+    expect(tree).toContain('حصلت على خصم');
+    expect(tree).toContain('المطلوب دفعه');
     expect(tree).not.toContain('من رصيدك المشترى');
     expect(tree).not.toContain('يتبقى رصيد مشترى');
     expect(tree).not.toContain('مكافآتك المتبقية محفوظة');
     expect(tree).not.toContain('تغطي المبلغ الناقص');
     expect(tree).not.toContain('تغيير الفئة');
     expect(tree).not.toContain('كود الوصول إلى الكورس');
-    await act(() =>
-      buttonWithText(view.renderer, 'شحن واشتراك').props.onPress(),
-    );
+    await act(() => buttonWithText(view.renderer, 'اشترك').props.onPress());
     expect(mockConfirm).toHaveBeenCalledTimes(1);
     await act(() => view.renderer.unmount());
   });
 
   it('shows only the educational access code behind one disclosure', async () => {
-    const view = await mount();
-    await act(() =>
-      buttonWithText(view.renderer, 'كود جامعة أو جهة تعليمية').props.onPress(),
-    );
+    const view = await mount(plans[0]);
+    await act(() => buttonWithText(view.renderer, 'كود منحة').props.onPress());
     const input = view.renderer.root.find(
-      node => node.props.accessibilityLabel === 'كود الوصول إلى الكورس',
+      node => node.props.accessibilityLabel === 'كود منحة',
     );
     expect(input.props.value).toBe('GRANT-42');
     await act(() => input.props.onChangeText('NEW-CODE'));
     const submit = view.renderer.root.find(
-      node => node.props.accessibilityLabel === 'تفعيل كود الوصول',
+      node => node.props.accessibilityLabel === 'تفعيل كود المنحة',
     );
     await act(() => submit.props.onPress());
     expect(view.onCodeChange).toHaveBeenCalledWith('NEW-CODE');
     expect(view.onRedeem).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(view.renderer.toJSON())).not.toContain('كود خصم الكورس');
+    expect(JSON.stringify(view.renderer.toJSON())).not.toContain(
+      'كود خصم الكورس',
+    );
     await act(() => view.renderer.unmount());
   });
 
-  it('discloses actual message limits only on request', async () => {
+  it('shows the selected plan limits directly without a details step', async () => {
     const view = await mount();
-    expect(JSON.stringify(view.renderer.toJSON())).not.toContain(
-      'حتى ٥٠ رسالة للأسئلة',
-    );
-    const disclosure = view.renderer.root.find(
+    const disclosure = view.renderer.root.findAll(
       node => node.props.accessibilityLabel === 'تفاصيل Plus',
     );
-    await act(() => disclosure.props.onPress());
+    expect(disclosure).toHaveLength(0);
     expect(JSON.stringify(view.renderer.toJSON())).toContain(
-      'حتى ٥٠ رسالة للأسئلة',
+      '٥٠ رسالة لمناقشة محتوى الكورس',
     );
     await act(() => view.renderer.unmount());
   });
+
+  it.each(plans)(
+    'offers grant entry only for Basic and consistent payment copy for $name',
+    async plan => {
+      const view = await mount(plan);
+      const grantButton = buttonWithText(view.renderer, 'كود منحة');
+      if (plan.code === 'basic') await act(() => grantButton.props.onPress());
+      else expect(grantButton).toBeUndefined();
+      const {TextInput} = require('react-native');
+      expect(view.renderer.root.findAllByType(TextInput)).toHaveLength(
+        plan.code === 'basic' ? 1 : 0,
+      );
+      const tree = JSON.stringify(view.renderer.toJSON());
+      expect(tree).toContain('حصلت على خصم');
+      expect(tree).toContain('المطلوب دفعه');
+      for (const retired of [
+        'معك كود',
+        'معاك كود',
+        'كود خصم',
+        'مكافآت مستخدمة',
+        'من رصيدك المشترى',
+      ]) {
+        expect(tree).not.toContain(retired);
+      }
+      await act(() => view.renderer.unmount());
+    },
+  );
 
   it('shows the actual recovered pending plan instead of the default Plus selection', async () => {
     mockPending = true;
@@ -241,6 +254,7 @@ describe('compact course subscription sheet', () => {
     expect(JSON.stringify(view.renderer.toJSON())).toContain(
       'إلغاء طلب الاشتراك',
     );
+    expect(buttonWithText(view.renderer, 'كود منحة')).toBeUndefined();
     await act(() => view.renderer.unmount());
   });
 
@@ -255,5 +269,46 @@ describe('compact course subscription sheet', () => {
     expect(radios).toHaveLength(3);
     radios.forEach(node => expect(node.props.disabled).toBe(true));
     await act(() => view.renderer.unmount());
+  });
+
+  it('shows grant success with watch-only terms once and no payment or upsell', async () => {
+    const view = await mount(plans[0], true);
+    const {Text} = require('react-native');
+    const copy = view.renderer.root
+      .findAllByType(Text)
+      .map(node => node.props.children);
+    expect(copy.filter(text => text === 'مشاهدة الكورس مجانًا')).toHaveLength(
+      1,
+    );
+    expect(copy).toContain('تم تفعيل المنحة');
+    expect(copy).toContain('بدون شهادة اجتياز للكورس');
+    expect(copy).not.toContain('المطلوب دفعه');
+    expect(copy).not.toContain('حصلت على خصم');
+    expect(copy).not.toContain('Plus');
+    expect(buttonWithText(view.renderer, 'ابدأ الكورس')).toBeDefined();
+    expect(buttonWithText(view.renderer, 'كود منحة')).toBeUndefined();
+    await act(() => view.renderer.unmount());
+  });
+
+  it('omits practical projects for a theory course', async () => {
+    const {
+      subscriptionPlanDetails,
+    } = require('../src/components/CourseSubscriptionSheet');
+    const details = subscriptionPlanDetails(plans[2], false).map(
+      (row: {text: string}) => row.text,
+    );
+    expect(details.some((text: string) => text.includes('مشاريع'))).toBe(false);
+    expect(details).toContain('شهادة بعد اجتياز الكورس');
+  });
+
+  it('does not advertise project discussion when the plan excludes projects', () => {
+    const {
+      subscriptionPlanDetails,
+    } = require('../src/components/CourseSubscriptionSheet');
+    const details = subscriptionPlanDetails(
+      {...plans[2], projectsEnabled: false},
+      true,
+    ).map((row: {text: string}) => row.text);
+    expect(details.some((text: string) => text.includes('مشاريع'))).toBe(false);
   });
 });

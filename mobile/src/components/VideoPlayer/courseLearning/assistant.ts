@@ -1,6 +1,10 @@
 import {publicRequest, type RoknRequestConfig} from '../../../constants/api';
 import {isProductFeatureEnabled} from '../../../services/productFeatures';
 import {
+  subscriptionMessages,
+  subscriptionMessageText,
+} from '../../../constants/subscriptionMessages';
+import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
 } from '../../../constants/helpers';
@@ -83,7 +87,13 @@ const mapCourseAssistantTurn = (
     (code === 'ai_consent_required'
       ? 'أكد اختيارك لمشاركة السؤال مع خدمة الذكاء الاصطناعي ثم أعد المحاولة'
       : blocked && code === 'chat_plan_limit_reached'
-      ? 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط'
+      ? subscriptionMessageText(subscriptionMessages.chatExhausted)
+      : code === 'chat_upgrade_required'
+      ? subscriptionMessageText(subscriptionMessages.chatUpgrade)
+      : code === 'course_access_required'
+      ? subscriptionMessageText(subscriptionMessages.chatSubscribe)
+      : code === 'chat_daily_limit_reached'
+      ? subscriptionMessageText(subscriptionMessages.chatDailyLimit)
       : cleanUnicodeText(
           valueAsString(data.message, valueAsString(data.reply)),
         )) || '';
@@ -382,7 +392,7 @@ export const askCourseAssistant = async ({
 }): Promise<CourseAssistantTurnResponse> => {
   if (!courseIncludesAssistant(course)) {
     return {
-      text: 'الاستفسارات غير مشمولة في فئتك',
+      text: subscriptionMessageText(subscriptionMessages.chatUpgrade),
       offline: true,
       blocked: true,
       code: 'chat_upgrade_required',
@@ -421,13 +431,16 @@ export const askCourseAssistant = async ({
     if (errorCode === 'ai_consent_required') {
       return {
         text: 'أكد اختيارك لمشاركة السؤال مع خدمة الذكاء الاصطناعي ثم أعد المحاولة',
-        offline: false, unavailable: true, turnStatus: 'failed',
-        code: errorCode, canRetry: true,
+        offline: false,
+        unavailable: true,
+        turnStatus: 'failed',
+        code: errorCode,
+        canRetry: true,
       };
     }
     if (errorCode === 'chat_upgrade_required') {
       return {
-        text: 'الاستفسارات غير مشمولة في المنحة\nيمكنك إضافتها بالترقية',
+        text: subscriptionMessageText(subscriptionMessages.chatUpgrade),
         offline: false,
         blocked: true,
         code: errorCode,
@@ -435,7 +448,7 @@ export const askCourseAssistant = async ({
     }
     if (errorCode === 'chat_plan_limit_reached') {
       return {
-        text: 'استخدمت مساحة الأسئلة في فئتك الحالية\nيمكنك زيادتها بدفع فرق الفئة فقط',
+        text: subscriptionMessageText(subscriptionMessages.chatExhausted),
         offline: false,
         blocked: true,
         code: errorCode,
@@ -453,7 +466,7 @@ export const askCourseAssistant = async ({
           errorCode === 'course_not_available'
             ? 'هذا الكورس غير متاح الآن'
             : errorCode === 'course_access_required'
-            ? 'افتح الكورس أولًا لإرسال سؤالك'
+            ? subscriptionMessageText(subscriptionMessages.chatSubscribe)
             : 'الاستفسارات غير متاحة في هذا الكورس',
         offline: false,
         blocked: true,
@@ -464,7 +477,7 @@ export const askCourseAssistant = async ({
     }
     if (errorCode === 'chat_daily_limit_reached') {
       return {
-        text: 'اكتملت أسئلة اليوم\nيمكنك المتابعة غدًا',
+        text: subscriptionMessageText(subscriptionMessages.chatDailyLimit),
         offline: false,
         unavailable: true,
         code: errorCode,

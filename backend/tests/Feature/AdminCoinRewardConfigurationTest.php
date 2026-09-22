@@ -18,6 +18,26 @@ final class AdminCoinRewardConfigurationTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_rewards_help_is_separate_from_legacy_copy_and_invalidates_the_projection(): void
+    {
+        $setting = Setting::query()->firstOrCreate([]);
+        $setting->forceFill(['how_to_use_coins_ar' => 'نص النسخة السابقة'])->save();
+        $user = \App\Models\User::query()->forceCreate(['name' => 'Rewards test', 'email' => 'rewards-help@example.test', 'role' => 'client', 'active' => true, 'wallet_coins' => 0, 'wallet_purchased_coins' => 0, 'wallet_reward_coins' => 0]);
+        $wallet = app(\App\Services\WalletQueryService::class);
+        $wallet->summary($user);
+        $this->controller()->updateSettings($this->settingsRequest($setting->fresh(), ['rewards_help_ar' => 'خصمك يظهر قبل الدفع']));
+        self::assertSame('خصمك يظهر قبل الدفع', $setting->fresh()->rewards_help_ar);
+        self::assertSame('نص النسخة السابقة', $setting->fresh()->how_to_use_coins_ar);
+        self::assertSame('خصمك يظهر قبل الدفع', $wallet->summary($user)['rewards']['help']);
+    }
+
+    public function test_rewards_help_rejects_long_copy(): void
+    {
+        $setting = Setting::query()->firstOrCreate([]);
+        $this->expectException(ValidationException::class);
+        $this->controller()->updateSettings($this->settingsRequest($setting, ['rewards_help_ar' => str_repeat('أ', 601)]));
+    }
+
     public function test_active_reward_cannot_save_a_positive_cap_smaller_than_one_payout(): void
     {
         $rule = $this->rule('course_completed', 200, 400);

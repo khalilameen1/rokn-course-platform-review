@@ -1,12 +1,6 @@
 import React, {ErrorInfo, ReactNode} from 'react';
-import {
-  Pressable,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import RNRestart from 'react-native-restart';
 import {
   Accessibility,
@@ -51,41 +45,46 @@ export default class AppErrorBoundary extends React.Component<Props, State> {
     }
 
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          bounces={false}
-          contentContainerStyle={styles.frame}
-          contentInsetAdjustmentBehavior="automatic"
-          showsVerticalScrollIndicator={false}>
-          <View accessibilityLiveRegion="assertive" style={styles.copy}>
-            <View style={styles.mark}>
-              <Text style={styles.markText}>ر</Text>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.safeArea}>
+          <ScrollView
+            bounces={false}
+            contentContainerStyle={styles.frame}
+            contentInsetAdjustmentBehavior="automatic"
+            showsVerticalScrollIndicator={false}>
+            <View accessibilityLiveRegion="assertive" style={styles.copy}>
+              <View style={styles.mark}>
+                <Text style={styles.markText}>ر</Text>
+              </View>
+              <Text accessibilityRole="header" style={styles.title}>
+                حدث توقف غير متوقع
+              </Text>
+              <Text style={styles.message}>
+                حاول المتابعة
+                {'\n'}أو أعد تشغيل ركن
+              </Text>
             </View>
-            <Text accessibilityRole="header" style={styles.title}>
-              حدث توقف غير متوقع
-            </Text>
-            <Text style={styles.message}>
-              حاول المتابعة
-              {'\n'}أو أعد تشغيل ركن
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={this.retry}
-            style={({pressed}) => [styles.primary, pressed && styles.pressed]}>
-            <Text style={styles.primaryText}>حاول المتابعة</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => RNRestart.Restart()}
-            style={({pressed}) => [
-              styles.secondary,
-              pressed && styles.pressed,
-            ]}>
-            <Text style={styles.secondaryText}>إعادة تشغيل التطبيق</Text>
-          </Pressable>
-        </ScrollView>
-      </SafeAreaView>
+            <Pressable
+              accessibilityRole="button"
+              onPress={this.retry}
+              style={({pressed}) => [
+                styles.primary,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.primaryText}>حاول المتابعة</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => RNRestart.Restart()}
+              style={({pressed}) => [
+                styles.secondary,
+                pressed && styles.pressed,
+              ]}>
+              <Text style={styles.secondaryText}>إعادة تشغيل التطبيق</Text>
+            </Pressable>
+          </ScrollView>
+        </SafeAreaView>
+      </SafeAreaProvider>
     );
   }
 }

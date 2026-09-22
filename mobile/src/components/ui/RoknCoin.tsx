@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Image,
   ImageStyle,
   StyleProp,
   StyleSheet,
@@ -12,6 +11,7 @@ import {
 import {Fonts} from '../../constants/styleConstants';
 import {formatArabicNumber} from '../../constants/arabicFormatting';
 import {Palette, rtlRowStyle} from '../../constants/designSystem';
+import {AppArtwork} from './AppArtwork';
 
 type Props = {
   size?: number;
@@ -23,8 +23,8 @@ const RoknCoin = React.memo(({size = 30, style}: Props) => (
     accessibilityElementsHidden
     importantForAccessibility="no-hide-descendants"
     style={[{width: size, height: size}, style]}>
-    <Image
-      source={require('../../assets/images/coins/rokn-coin-minted.png')}
+    <AppArtwork
+      asset="coin"
       style={{width: size, height: size}}
       resizeMode="contain"
       resizeMethod="resize"
@@ -60,10 +60,10 @@ export const RoknCoinStack = ({
   size?: number;
   style?: StyleProp<ImageStyle>;
 }) => (
-  <Image
+  <AppArtwork
     accessibilityElementsHidden
     importantForAccessibility="no-hide-descendants"
-    source={require('../../assets/images/coins/rokn-coin-stack-3d-alpha.png')}
+    asset="coin_stack"
     style={[{width: size, height: size, resizeMode: 'contain'}, style]}
   />
 );

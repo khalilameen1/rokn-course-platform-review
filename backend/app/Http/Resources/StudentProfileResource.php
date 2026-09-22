@@ -45,7 +45,7 @@ class StudentProfileResource extends JsonResource
         if ($this->includeLearningSnapshot) {
             $this->prepareProfileSnapshot();
         } elseif ($this->includeEarnedBadges) {
-            $this->resource->loadMissing('earnedLevels:id,name_ar,name_en,badge_image');
+            $this->resource->loadMissing('earnedLevels:id,name_ar,name_en,badge_image,order');
         }
         $attributes = $this->resource->getAttributes();
         $completedLessons = (int) ($attributes['profile_completed_sections_count'] ?? 0);
@@ -125,7 +125,7 @@ class StudentProfileResource extends JsonResource
 
         $user->loadMissing([
                 'interests:id,name_ar,name_en',
-                'earnedLevels:id,name_ar,name_en,badge_image',
+                'earnedLevels:id,name_ar,name_en,badge_image,order',
                 'enrollments.course',
             ]);
             $courses = $user->enrollments
@@ -206,6 +206,7 @@ class StudentProfileResource extends JsonResource
                     'name_ar' => $level->name_ar,
                     'name_en' => $level->name_en,
                     'badge_image' => $level->badge_image_url,
+                    'order' => (int) $level->order,
                     'course_id' => $level->pivot->course_id,
                     'course_name_ar' => $course?->name_ar,
                     'course_name_en' => $course?->name_en,

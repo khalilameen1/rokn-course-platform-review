@@ -8,18 +8,39 @@ const baseProps = {
   accessUnavailable: false,
   courseAccessRequired: false,
   courseChatUnavailable: false,
-  error: '',
-  loading: false,
-  onConfirm: jest.fn(),
-  onLoadQuote: jest.fn(),
+  onUpgrade: jest.fn(),
   onOpenCourseAccess: jest.fn(),
   planLimitReached: false,
-  quote: null,
-  scholarshipAccess: false,
 };
 
 describe('course enquiries entry gate', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it.each([false, true])(
+    'explains the upgrade before opening checkout when exhausted is %s',
+    async exhausted => {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(
+          <CourseChatGate {...baseProps} planLimitReached={exhausted} />,
+        );
+      });
+      const copy = renderer.root
+        .findAllByType(Text)
+        .map(node => node.props.children);
+      expect(copy).toContain(
+        exhausted ? 'استخدمت كل رسائلك' : 'اشتراكك لا يشمل الشات',
+      );
+      expect(baseProps.onUpgrade).not.toHaveBeenCalled();
+      await act(async () =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'ترقية الاشتراك'})
+          .props.onPress(),
+      );
+      expect(baseProps.onUpgrade).toHaveBeenCalledTimes(1);
+      await act(async () => renderer.unmount());
+    },
+  );
 
   it('returns a guest sample to course access without requesting an upgrade quote', async () => {
     let renderer!: TestRenderer.ReactTestRenderer;
@@ -30,13 +51,12 @@ describe('course enquiries entry gate', () => {
     });
 
     const action = renderer.root.findByProps({
-      accessibilityLabel: 'عرض فئات الكورس',
+      accessibilityLabel: 'عرض الاشتراكات',
     });
     await act(async () => action.props.onPress());
 
     expect(baseProps.onOpenCourseAccess).toHaveBeenCalledTimes(1);
-    expect(baseProps.onLoadQuote).not.toHaveBeenCalled();
-    expect(baseProps.onConfirm).not.toHaveBeenCalled();
+    expect(baseProps.onUpgrade).not.toHaveBeenCalled();
     await act(async () => renderer.unmount());
   });
 
@@ -52,13 +72,13 @@ describe('course enquiries entry gate', () => {
       .findAllByType(Text)
       .flatMap(node => node.props.children)
       .filter(value => typeof value === 'string');
-    expect(copy).toContain('الاستفسارات غير متاحة في هذا الكورس');
+    expect(copy).toContain('الشات غير متاح في هذا الكورس');
     expect(
       renderer.root.findAllByProps({
-        accessibilityLabel: 'عرض خيارات الاستفسارات',
+        accessibilityLabel: 'ترقية الاشتراك',
       }),
     ).toHaveLength(0);
-    expect(baseProps.onLoadQuote).not.toHaveBeenCalled();
+    expect(baseProps.onUpgrade).not.toHaveBeenCalled();
     await act(async () => renderer.unmount());
   });
 });

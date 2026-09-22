@@ -1,4 +1,5 @@
 import {publicRequest} from '../../constants/api';
+import {subscriptionMessages} from '../../constants/subscriptionMessages';
 import {
   accountScopedStorageKey,
   assertAccountSessionBoundary,
@@ -46,6 +47,34 @@ type PortfolioCacheState = {
   write: Promise<void>;
 };
 const portfolioCacheStates = new Map<string, PortfolioCacheState>();
+
+/** A fresh server decision, never an offline entitlement or a tier-name guess. */
+export const assertPortfolioUploadAccess = async (
+  boundary: AccountSessionBoundary,
+): Promise<void> => {
+  assertAccountSessionBoundary(boundary);
+  const data = payload<unknown>(
+    await publicRequest.get('portfolio/upload-access'),
+  );
+  assertAccountSessionBoundary(boundary);
+  if (!isApiRecord(data) || typeof data.can_upload !== 'boolean') {
+    throw new Error('PORTFOLIO_UPLOAD_ACCESS_CONTRACT_INVALID');
+  }
+  if (!data.can_upload) {
+    throw {
+      status: 403,
+      data: {
+        code: 'PORTFOLIO_CERTIFICATE_SUBSCRIPTION_REQUIRED',
+        has_subscription: data.has_subscription === true,
+        message:
+          data.has_subscription === true
+            ? subscriptionMessages.portfolioUpgrade.body
+            : subscriptionMessages.portfolioSubscribe.body,
+      },
+    };
+  }
+};
+
 const cacheState = (boundary: AccountSessionBoundary) => {
   let state = portfolioCacheStates.get(boundary.scope);
   if (!state) {
@@ -259,7 +288,8 @@ export const appendPortfolioMedia = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<PortfolioMedia> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  assertAccountSessionBoundary(boundary);
+  // Also covers durable queue replay before sending image bytes or resuming video.
+  await assertPortfolioUploadAccess(boundary);
   const type = String(file.type || '')
     .toLowerCase()
     .startsWith('video/')

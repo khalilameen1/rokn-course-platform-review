@@ -1,14 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {
-  Image,
-  ImageSourcePropType,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {RasterImage as Image} from '../../components/ui/RasterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {

@@ -2,16 +2,8 @@ import React from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../../../navigation/types';
 import {openGuestLogin} from '../../../navigation/journeyNavigation';
-import {
-  ActivityIndicator,
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../../components/ui/RasterImage';
 import Video from 'react-native-video';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';
@@ -31,6 +23,133 @@ import type {PortfolioGalleryController} from './usePortfolioGalleryController';
 import {galleryStyles as styles} from './galleryStyles';
 import {PortfolioProjectGrid} from './PortfolioProjectGrid';
 
+type DetailActionsController = Pick<
+  PortfolioGalleryController,
+  | 'addSelectedMedia'
+  | 'beginEdit'
+  | 'closeProject'
+  | 'confirmDeleteSelectedProject'
+  | 'finalizeSelectedProject'
+  | 'onSharePortfolio'
+  | 'saving'
+  | 'selectedAction'
+  | 'selectedMediaSlots'
+>;
+
+export const PortfolioDetailActions = ({
+  controller,
+  fontScale,
+}: {
+  controller: DetailActionsController;
+  fontScale: number;
+}) => {
+  const {
+    addSelectedMedia,
+    beginEdit,
+    closeProject,
+    confirmDeleteSelectedProject,
+    finalizeSelectedProject,
+    onSharePortfolio,
+    saving,
+    selectedAction,
+    selectedMediaSlots,
+  } = controller;
+  const primaryAction =
+    selectedAction === 'complete'
+      ? {label: 'إتمام المشروع', onPress: finalizeSelectedProject}
+      : selectedAction === 'share' && onSharePortfolio
+      ? {label: 'مشاركة البورتفوليو', onPress: onSharePortfolio}
+      : null;
+  const mediaDisabled = saving || selectedMediaSlots === 0;
+
+  return (
+    <View style={styles.detailActions}>
+      {primaryAction && (
+        <Pressable
+          accessibilityLabel={primaryAction.label}
+          accessibilityRole="button"
+          accessibilityState={{busy: saving, disabled: saving}}
+          disabled={saving}
+          onPress={() => void primaryAction.onPress()}
+          style={({pressed}) => [
+            styles.detailPrimaryAction,
+            saving && styles.detailActionDisabled,
+            pressed && styles.detailActionPressed,
+          ]}>
+          {saving ? (
+            <ActivityIndicator color={Palette.text} size="small" />
+          ) : (
+            <Text style={styles.detailPrimaryLabel}>{primaryAction.label}</Text>
+          )}
+        </Pressable>
+      )}
+      <View style={styles.detailSecondaryActions}>
+        <Pressable
+          accessibilityLabel="إضافة صور أو فيديو"
+          accessibilityRole="button"
+          accessibilityState={{busy: saving, disabled: mediaDisabled}}
+          disabled={mediaDisabled}
+          onPress={addSelectedMedia}
+          style={({pressed}) => [
+            styles.detailSecondaryAction,
+            fontScale >= 1.3 && styles.detailSecondaryActionStacked,
+            mediaDisabled && styles.detailActionDisabled,
+            pressed && styles.detailActionPressed,
+          ]}>
+          {saving ? (
+            <ActivityIndicator color={Palette.textMuted} size="small" />
+          ) : (
+            <Text style={styles.detailSecondaryLabel}>إضافة صور أو فيديو</Text>
+          )}
+        </Pressable>
+        <Pressable
+          accessibilityLabel="تعديل المشروع"
+          accessibilityRole="button"
+          accessibilityState={{disabled: saving}}
+          disabled={saving}
+          onPress={beginEdit}
+          style={({pressed}) => [
+            styles.detailSecondaryAction,
+            fontScale >= 1.3 && styles.detailSecondaryActionStacked,
+            saving && styles.detailActionDisabled,
+            pressed && styles.detailActionPressed,
+          ]}>
+          <Text style={styles.detailSecondaryLabel}>تعديل</Text>
+        </Pressable>
+      </View>
+      <View style={styles.detailUtilityActions}>
+        <Pressable
+          accessibilityLabel="حذف المشروع"
+          accessibilityRole="button"
+          accessibilityState={{busy: saving, disabled: saving}}
+          disabled={saving}
+          onPress={confirmDeleteSelectedProject}
+          style={({pressed}) => [
+            styles.detailUtilityAction,
+            saving && styles.detailActionDisabled,
+            pressed && styles.detailActionPressed,
+          ]}>
+          {saving ? (
+            <ActivityIndicator color={Palette.danger} size="small" />
+          ) : (
+            <Text style={styles.detailDeleteLabel}>حذف المشروع</Text>
+          )}
+        </Pressable>
+        <Pressable
+          accessibilityLabel="إغلاق تفاصيل المشروع"
+          accessibilityRole="button"
+          onPress={closeProject}
+          style={({pressed}) => [
+            styles.detailUtilityAction,
+            pressed && styles.detailActionPressed,
+          ]}>
+          <Text style={styles.detailCloseLabel}>إغلاق</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
 export const PortfolioGalleryView = ({
   controller,
 }: {
@@ -42,16 +161,13 @@ export const PortfolioGalleryView = ({
   const {fontScale, gridGap} = useResponsiveLayout();
   const {
     addProject,
-    addSelectedMedia,
     adding,
     appActive,
-    beginEdit,
     cancelEditing,
     chooseSourceProject,
     clearSelectedSourceProject,
     closeAddProject,
     closeProject,
-    confirmDeleteSelectedProject,
     detailLoading,
     draftCover,
     draftMediaAssets,
@@ -65,7 +181,6 @@ export const PortfolioGalleryView = ({
     editing,
     eligibleLoading,
     eligibleProjects,
-    finalizeSelectedProject,
     handleMediaDeliveryError,
     handleMediaDeliverySuccess,
     handleProjectCoverError,
@@ -75,7 +190,6 @@ export const PortfolioGalleryView = ({
     loadProjects,
     openAddProject,
     openProject,
-    onSharePortfolio,
     pickCover,
     pickingMedia,
     previewMedia,
@@ -86,8 +200,6 @@ export const PortfolioGalleryView = ({
     saving,
     selectPreviewMedia,
     selected,
-    selectedMediaSlots,
-    selectedAction,
     selectedSourceProject,
     serverSession,
     setEditSummary,
@@ -336,49 +448,10 @@ export const PortfolioGalleryView = ({
                         />
                       </>
                     ) : (
-                      <>
-                        <Button
-                          disable={saving || selectedMediaSlots === 0}
-                          loader={saving}
-                          onPress={addSelectedMedia}
-                          title="إضافة صور أو فيديو"
-                          useGradient={false}
-                        />
-                        {selectedAction === 'complete' ? (
-                          <Button
-                            disable={saving}
-                            onPress={finalizeSelectedProject}
-                            title="إتمام المشروع"
-                            useGradient={false}
-                          />
-                        ) : null}
-                        {selectedAction === 'share' && onSharePortfolio ? (
-                          <Button
-                            disable={saving}
-                            onPress={() => void onSharePortfolio()}
-                            title="مشاركة البورتفوليو"
-                            useGradient={false}
-                          />
-                        ) : null}
-                        <Button
-                          disable={saving}
-                          onPress={beginEdit}
-                          title="تعديل المشروع"
-                          useGradient={false}
-                        />
-                        <Button
-                          onPress={closeProject}
-                          title="إغلاق"
-                          useGradient={false}
-                        />
-                        <Button
-                          disable={saving}
-                          loader={saving}
-                          onPress={confirmDeleteSelectedProject}
-                          title="حذف المشروع"
-                          useGradient={false}
-                        />
-                      </>
+                      <PortfolioDetailActions
+                        controller={controller}
+                        fontScale={fontScale}
+                      />
                     )}
                   </View>
                 </>

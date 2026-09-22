@@ -329,7 +329,9 @@ describe('course journey contract', () => {
     expect(flow).toMatch(/useReducer\(\s*coursePurchaseFlowReducer/);
     expect(`${purchase}\n${entry}\n${checkout}`).not.toContain('setDialogStep');
     expect(purchase).toContain('usePurchaseEntry({');
-    expect(purchase).toContain('useCourseCheckout({');
+    expect(purchase).not.toContain('useCourseCheckout({');
+    expect(purchase).not.toContain('useCourseCoupon({');
+    expect(purchase).toContain('useCourseAccessCode({');
     expect(entry).toContain('const runPrimaryAction = useCallback(');
     expect(checkout).toContain('const confirm = useCallback(');
     expect(checkout).toContain('const buyCoins = useCallback(');
@@ -385,9 +387,8 @@ describe('course journey contract', () => {
     expect(overlay).toContain('!courseChatUnavailable');
     expect(chat).toContain('remoteEnabled: assistantEntitled');
     expect(conversation).toContain('if (!remoteEnabled) return;');
-    expect(overlay).toContain(
-      '(opened || becameGated || (visible && courseChanged))',
-    );
+    // Open/reopen behavior is exercised by courseChatKeyboard.test.tsx;
+    // do not bind the journey contract to the spelling of an effect condition.
     expect(overlay).not.toContain('upgradeAutoLoadCourseRef');
   });
 

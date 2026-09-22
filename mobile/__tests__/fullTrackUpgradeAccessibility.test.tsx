@@ -75,6 +75,108 @@ describe('upgrade sheet accessibility ownership', () => {
     renderer = undefined;
   });
 
+  it('selects only a plan with project discussion and reuses the existing upgrade checkout', async () => {
+    const mentor = {
+      ...plan,
+      code: 'mentor',
+      name: 'Pro',
+      projectFollowupEnabled: true,
+      projectFollowupMessageLimit: 20,
+    };
+    mockCourseDetails.mockResolvedValue({
+      ...course,
+      accessPlans: [plan, mentor],
+    });
+    const refreshed = jest.fn();
+    const close = jest.fn();
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <FullTrackUpgradeSheet
+          visible
+          courseId="7"
+          courseTitle="تصميم"
+          requiredFeature="project_discussion"
+          onClose={close}
+          onUpgraded={refreshed}
+        />,
+      );
+    });
+    const checkout = renderer!.root.findByType(CourseSubscriptionSheet);
+    expect(checkout.props.plans).toEqual([mentor]);
+    expect(checkout.props.selectedPlan).toEqual(mentor);
+    expect(checkout.props.mode).toBe('upgrade');
+    expect(checkout.props.courseRevision).toBe(9);
+    expect(refreshed).not.toHaveBeenCalled();
+    await act(async () => checkout.props.onCompleted());
+    expect(refreshed).toHaveBeenCalledTimes(1);
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([false, true])(
+    'filters chat upgrades by the actual chat capability when chatEnabled=%s',
+    async enabled => {
+      const guided = {...plan, chatEnabled: enabled, chatMessageLimit: 0};
+      const mentor = {...plan, code: 'mentor', name: 'Pro'};
+      mockCourseDetails.mockResolvedValue({
+        ...course,
+        accessPlans: [guided, mentor],
+      });
+      await act(async () => {
+        renderer = TestRenderer.create(
+          <FullTrackUpgradeSheet
+            visible
+            courseId="7"
+            courseTitle="تصميم"
+            requiredFeature="chat"
+            onClose={jest.fn()}
+          />,
+        );
+      });
+      const sheet = renderer!.root.findByType(CourseSubscriptionSheet);
+      expect(sheet.props.plans).toEqual([mentor]);
+      expect(sheet.props.selectedPlan).toEqual(mentor);
+      expect(sheet.props.requiredFeature).toBe('chat');
+    },
+  );
+
+  it.each([true, false])(
+    'keeps unavailable upgrades explicit without reporting success when alreadyUpgraded=%s',
+    async alreadyUpgraded => {
+      mockUpgradeQuote.mockResolvedValue({
+        alreadyUpgraded,
+        targetPlanCode: alreadyUpgraded ? null : 'guided',
+      });
+      mockCourseDetails.mockResolvedValue({
+        ...course,
+        accessPlans: [{...plan, chatEnabled: false}],
+      });
+      const close = jest.fn();
+      const refreshed = jest.fn();
+      await act(async () => {
+        renderer = TestRenderer.create(
+          <FullTrackUpgradeSheet
+            visible
+            courseId="7"
+            courseTitle="تصميم"
+            requiredFeature="chat"
+            quotaExhausted
+            onClose={close}
+            onUpgraded={refreshed}
+          />,
+        );
+      });
+      expect(
+        renderer!.root.findAllByType(CourseSubscriptionSheet),
+      ).toHaveLength(0);
+      expect(
+        renderer!.root.findByProps({accessibilityRole: 'alert'}).props.children,
+      ).toContain('لا يوجد اشتراك أعلى');
+      expect(refreshed).not.toHaveBeenCalled();
+      expect(close).not.toHaveBeenCalled();
+      expect(renderer!.root.findAllByType(ActivityIndicator)).toHaveLength(0);
+    },
+  );
+
   it.each([false, true])(
     'preserves modal focus ownership across loading, failure, retry and ready when embedded=%s',
     async embedded => {

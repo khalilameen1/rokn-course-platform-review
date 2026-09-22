@@ -11,6 +11,7 @@ type CourseRedemptionDto = {
   already_enrolled?: unknown;
   chat_available?: unknown;
   certificate_available?: unknown;
+  projects_available?: unknown;
   course?: {id?: unknown; name?: unknown};
 };
 
@@ -48,6 +49,7 @@ export const redeemCourseCode = async (
     learningAccess: valueAsBoolean(data.learning_access),
     alreadyEnrolled: valueAsBoolean(data.already_enrolled),
     chatAvailable: valueAsBoolean(data.chat_available),
+    projectsAvailable: valueAsBoolean(data.projects_available),
     certificateAvailable:
       data.certificate_available === undefined
         ? undefined

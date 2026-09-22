@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
+use App\Models\CourseCode;
 use App\Models\CourseEnrollment;
 use App\Models\CourseModule;
 use App\Models\CourseSection;
@@ -15,6 +16,8 @@ use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
+use App\Services\AdminCoursePreviewService;
+use App\Services\CertificateTextTemplateService;
 use App\Services\CourseChatAccessService;
 use App\Services\CourseCompletionService;
 use App\Services\CoursePresentationService;
@@ -22,6 +25,7 @@ use App\Services\CurriculumCompletionService;
 use App\Services\LearningDashboardService;
 use App\Services\StudentProgressSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
@@ -154,6 +158,35 @@ final class WatchOnlyCourseLearningTest extends TestCase
         self::assertSame(1, $completion->earnedRevision($this->enrollment->fresh()));
     }
 
+    public function test_grant_can_finish_lessons_but_cannot_submit_projects_or_earn_a_certificate(): void
+    {
+        $this->enrollment->order->forceFill([
+            'payment_method' => Order::PAYMENT_METHOD_COURSE_CODE,
+            'final_amount' => 0,
+        ])->save();
+        $this->enrollment->forceFill([
+            'access_plan_id' => null,
+            'access_plan_order_id' => null,
+            'access_plan_snapshot' => null,
+        ])->save();
+        $access = app(CourseChatAccessService::class);
+        self::assertTrue($access->hasLearningAccess($this->learner->id, $this->course->id));
+        self::assertNull($access->activeProjectEnrollmentFor($this->learner->id, $this->course->id));
+        self::assertFalse($access->hasCertificateAccess($this->learner->id, $this->course->id));
+        $completion = app(CourseCompletionService::class);
+        self::assertTrue($completion->canAccessSection($this->learner, $this->lastLesson));
+        self::assertFalse($completion->canAccessSection($this->learner, $this->projectSection));
+        self::assertSame('projects_not_included', $completion->complete(
+            $this->learner, $this->course->id, $this->projectSection->id
+        )['code']);
+        $this->completeLessons();
+        self::assertTrue(app(CoursePresentationService::class)->progressSummary(
+            $this->learner->id, $this->course->id
+        )['is_completed']);
+        self::assertSame(0, DB::table('project_submissions')->count());
+        self::assertSame(0, DB::table('certificates')->count());
+    }
+
     public function test_learning_dashboard_and_staff_summary_use_the_captured_watch_only_path(): void
     {
         $this->completeLessons();
@@ -167,6 +200,29 @@ final class WatchOnlyCourseLearningTest extends TestCase
         $staff = app(StudentProgressSummaryService::class)->latestForUsers(collect([$this->learner]));
         self::assertSame(2, $staff[$this->learner->id]['progress']['total_sections']);
         self::assertSame(100, $staff[$this->learner->id]['progress']['progress_percentage']);
+    }
+
+    public function test_dashboard_grant_preview_has_the_same_watch_only_rights_without_changing_enrollment(): void
+    {
+        $this->course->forceFill([
+            'certificate_text_template_key' => app(CertificateTextTemplateService::class)->keys()[0],
+        ])->save();
+        (new CourseCode())->forceFill([
+            'tenant_id' => 1, 'type' => 'course',
+            'course_id' => $this->course->id, 'code' => 'preview-grant-only',
+            'is_grant' => true, 'is_active' => true, 'max_uses' => 10, 'used_count' => 0,
+        ])->save();
+        $before = $this->enrollment->fresh()->getAttributes();
+        $preview = app(AdminCoursePreviewService::class)->prepare(
+            $this->course, $this->learner, 'grant', Request::create('/admin/courses/preview')
+        );
+        self::assertNull($preview['error']);
+        self::assertSame('grant', $preview['selectedPlan']['code']);
+        self::assertFalse($preview['selectedPlan']['chat_enabled']);
+        self::assertFalse($preview['selectedPlan']['projects_enabled']);
+        self::assertFalse($preview['selectedPlan']['certificate_enabled']);
+        self::assertFalse($preview['previewPayload']['projects_available']);
+        self::assertSame($before, $this->enrollment->fresh()->getAttributes());
     }
 
     private function completeLessons(): void

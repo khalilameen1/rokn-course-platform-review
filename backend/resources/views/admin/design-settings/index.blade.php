@@ -220,6 +220,43 @@
                     </div>
                 </div>
 
+                <div class="accordion-item-design">
+                    <div class="accordion-header-design">
+                        <button type="button" class="accordion-button-design" onclick="toggleAccordion(this, 'app-artwork')">
+                            <div class="icon-circle"><i class="fa fa-image"></i></div>
+                            <span>صور التطبيق</span>
+                            <i class="fa fa-chevron-down arrow-icon"></i>
+                        </button>
+                    </div>
+                    <div class="accordion-content-design" id="app-artwork">
+                        <div class="accordion-body-design">
+                            <p class="text-muted">العملات والشارات المستخدمة في التطبيق وتظهر الصور المعتمدة تلقائيًا حتى تختار بديلًا</p>
+                            <p class="text-muted">لتخصيص شارة لمستوى بعينه استخدم <a href="{{ route('admin.levels.index') }}">إدارة المستويات</a></p>
+                            @foreach(\App\Services\AppArtworkService::ASSETS as $key => $asset)
+                                @php($field = $key.'_image_file')
+                                <div class="form-group-design">
+                                    <label class="form-label-design" for="{{ $field }}">{{ $asset['label'] }}</label>
+                                    <div class="image-upload-container">
+                                        <div class="upload-area">
+                                            <div class="file-input-custom">
+                                                <input id="{{ $field }}" type="file" name="{{ $field }}" accept="image/png,image/webp" data-max-size="4194304">
+                                                <div class="file-input-icon"><i class="fa fa-cloud-upload"></i></div>
+                                                <div class="file-input-text">اختيار صورة بديلة</div>
+                                                <div class="file-input-hint">PNG أو WebP بخلفية شفافة حتى 4 ميجابايت و4096 بكسل</div>
+                                            </div>
+                                            @error($field)<span class="text-danger design-error-message">{{ $message }}</span>@enderror
+                                        </div>
+                                        <div class="current-image-preview">
+                                            <label>الصورة الحالية</label>
+                                            <img src="{{ $artwork[$key] }}" alt="{{ $asset['label'] }}" style="width:128px;height:128px;object-fit:contain;background:#f0f1f3;border-radius:12px">
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Colors Section -->
                 <div class="accordion-item-design">
                     <div class="accordion-header-design">
@@ -603,7 +640,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const file = this.files[0];
 
             if (file && file.size > maxSize) {
-                alert('حجم الملف يجب أن يكون أقل من 1 ميجابايت');
+                alert('الحد الأقصى لحجم الصورة ' + (maxSize / 1048576).toLocaleString('ar-EG') + ' ميجابايت');
                 this.value = '';
                 return;
             }

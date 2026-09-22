@@ -93,6 +93,9 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
         self::assertSame($learning, $single['entitlement']['has_learning_access']);
         self::assertSame($chat, $single['entitlement']['chat_available']);
         self::assertSame($certificate, $single['entitlement']['certificate_available']);
+        if ($kind === 'scholarship') {
+            self::assertFalse($single['entitlement']['projects_available']);
+        }
         self::assertSame($learning ? $enrollment->id : null, $single['enrollment']?->id);
         self::assertSame($learning, $access->hasLearningAccess($this->user->id, $this->course->id));
         self::assertSame($chat, $access->hasChatAccess($this->user->id, $this->course->id));
@@ -101,7 +104,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
             $access->activeChatEnrollmentFor($this->user->id, $this->course->id)?->id
         );
         self::assertSame(
-            $learning ? $enrollment->id : null,
+            $learning && $kind !== 'scholarship' ? $enrollment->id : null,
             $access->activeProjectEnrollmentFor($this->user->id, $this->course->id)?->id
         );
         self::assertFalse($batch[999999]['has_learning_access']);
@@ -179,6 +182,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
         self::assertTrue($single['entitlement']['has_learning_access']);
         self::assertTrue($single['entitlement']['chat_available']);
         self::assertTrue($single['entitlement']['certificate_available']);
+        self::assertTrue($single['entitlement']['projects_available']);
     }
 
     public function test_captured_enrollment_survives_course_draft_state_for_committed_async_work(): void

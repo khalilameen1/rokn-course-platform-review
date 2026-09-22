@@ -2,7 +2,7 @@
 export default {
   Home: 'Home',
   'My Corner': 'My Corner',
-  Wallet: 'Wallet',
+  Wallet: 'Rewards',
   Me: 'Me',
   Notifications: 'Notifications',
   Search: 'Search',

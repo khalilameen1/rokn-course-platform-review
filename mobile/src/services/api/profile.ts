@@ -8,6 +8,7 @@ export {
 } from './accountProfile';
 export {
   appendPortfolioMedia,
+  assertPortfolioUploadAccess,
   createPortfolioItem,
   deletePortfolioItem,
   deletePortfolioMedia,

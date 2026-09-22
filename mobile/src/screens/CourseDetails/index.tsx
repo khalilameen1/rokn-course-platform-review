@@ -5,10 +5,10 @@ import {
   useRoute,
 } from '@react-navigation/native';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {Pressable, ScrollView, StatusBar, Text, View} from 'react-native';
+import {Pressable, ScrollView, Text, View} from 'react-native';
 import {useSelector} from 'react-redux';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {Palette, useResponsiveLayout} from '../../constants/designSystem';
+import {useResponsiveLayout} from '../../constants/designSystem';
 import {sessionIdentityKey} from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
@@ -179,7 +179,6 @@ export default function CourseDetails() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={Palette.canvas} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -278,10 +277,8 @@ export default function CourseDetails() {
 
       <CoursePurchaseDialog
         {...purchase.dialog}
-        bottomInset={insets.bottom}
         courseTitle={courseTitle}
         projectCount={course.value?.projectCount ?? 0}
-        isTablet={layout.isTablet}
         notice={notice}
         onSuccessStart={() => {
           purchase.closeSuccess();

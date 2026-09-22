@@ -38,7 +38,7 @@ final class StudentProgressSummaryService
                     ->orWhere('expires_at', '>', now());
             })
             ->when($courseId !== null, fn ($query) => $query->where('course_id', $courseId))
-            ->with('course')
+            ->with(['course', 'order'])
             ->orderByDesc('enrolled_at')
             ->orderByDesc('id')
             ->get()

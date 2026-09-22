@@ -183,7 +183,7 @@ final class CertificateController extends Controller
                 'status' => 402,
                 'success' => false,
                 'code' => 'certificate_upgrade_required',
-                'message' => "المنحة تشمل الكورس والمشروعات\nالشهادة متاحة في الفئات المدفوعة",
+                'message' => 'الشهادة غير متاحة ضمن اشتراكك الحالي',
                 'data' => [
                     'learning_access' => true,
                     'certificate_available' => false,

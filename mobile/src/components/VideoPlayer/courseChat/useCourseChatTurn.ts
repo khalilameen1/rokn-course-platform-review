@@ -1,5 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {MutableRefObject} from 'react';
+import {Alert} from 'react-native';
+import {subscriptionMessages} from '../../../constants/subscriptionMessages';
 
 import {
   askCourseAssistant,
@@ -360,6 +362,10 @@ export const useCourseChatTurn = ({
         const {foregroundWaitExpired} = polling;
         if (!ownsTurn()) return;
         if (response.blocked) recordServerBlock(response.code);
+        if (response.code === 'chat_daily_limit_reached') {
+          const message = subscriptionMessages.chatDailyLimit;
+          Alert.alert(message.title, message.body, [{text: message.action}]);
+        }
         const {acceptedPending} = classifyCourseChatResponse(
           response,
           foregroundWaitExpired,

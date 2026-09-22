@@ -2,13 +2,16 @@
 
 Source: the production monorepo, not the older Desktop checkout.
 Target metadata: 1.0.57, Android 58, iOS 49.
-Status: **Store preparation remains in progress; no submission for store review**.
+Status: **Google Play setup is complete and production release 58 is staged for
+review; the automated pre-submission checks passed and the ten changes have not
+yet been sent**.
 The latest Android AAB was built from clean source
 `6d718e28f265148df6d12c3fda1c05fce44ce390` as `58 (1.0.57)`.
 Its SHA-256 is `4cc831137db744f06f9678a267e0d3619dfeac697c9ac8cc009dec917e38fe89`
 and API base is `https://rokn.app/api/v1/`. Google accepted the bundle and the
 Console confirmed `58 (1.0.57)` available to internal testers on September 14
-at 00:01 Cairo time. Physical-device verification is partial as recorded below.
+at 00:01 Cairo time. Candidate behavior is verified on the owner's phone and on
+the Play-enabled emulator with the final reviewer account as recorded below.
 
 The preceding Android AAB was built successfully from clean source `903a13b` and
 contains the reviewed portfolio UI changes. Google processed and accepted its
@@ -20,8 +23,35 @@ The matching backend is now deployed as Laravel Cloud deployment `204`, source
 deployment `202` / `3c72607`; deployment `203` applied the Google billing secret
 and deployment `204` applied the two RTDN verification values. Neither changes
 the AAB source pin. Authenticated Google Play test delivery was verified on
-production and package 4's Google channel is enabled; a native purchase is still
-unverified.
+production and package 4's Google channel is enabled. Native licensed-test
+purchases and subsequent mentor-plan enrollments were verified for both the owner
+and the final reviewer account below.
+
+## September 14 submission request checkpoint
+
+The owner requested store review after completing a course purchase on release
+58. Read-only production command 188 at 21:18:53 UTC on September 13 (00:18:53
+Cairo on September 14) confirmed Google purchase 1 / order 17 for user 6:
+product `rokn.coins.900`, environment `test`, status `credited`, order approved
+and financially settled, verified at 21:08:40 and finalized at 21:08:41 UTC.
+There is no reversal or finalization retry. Settlement is `test_purchase`, not
+cash revenue. Course order 18 then created active enrollment 8 in course 10,
+mentor plan 27 with chat enabled, 50 messages and certificate eligibility.
+This supersedes older purchase-pending notes; it does not verify refund/recovery
+or all other account screens. Historical reviewer user 13 remains unenrolled,
+but the replacement final reviewer is user 14 and is fully provisioned below.
+
+The three remaining Play setup areas were completed and saved. Target audience is
+18+ only and Google-known minors are blocked, matching the live privacy policy
+and the current AI-provider eligibility boundary. Data safety is complete with
+the account-deletion URL and no unsupported separate data-deletion claim. The
+store listing is now `Rokn: كورسات هتكملها`, with rewritten Arabic copy, the
+generated feature graphic disclosed as AI-generated, and four authentic
+1080x1920 screenshots captured from release 58. Production is staged for Egypt,
+where the active coin product is priced, and reuses the already tested AAB
+`58 (1.0.57)`. Google marks that release ready and its automated pre-submission
+checks completed without a reported problem. The ten changes await only the
+final review request.
 
 ## Android 58 account-page loading fix
 
@@ -138,66 +168,44 @@ September 12 baseline checks for the older artifact:
 These are code checks, not evidence of a successful real store purchase or a
 signed iOS archive. Full native device/store review flows remain unverified.
 
-## Release blockers
+## Remaining release work
 
-1. Install the released internal build and verify its actual login and learning
-   flows. Google app record `4974910218344866175` exists as `ركن Rokn` / `com.rokn`.
-   Track `4700165170808444276` now offers `57 (1.0.56)` to the approved testers,
-   with ReTrace and native symbols attached. This is not public-review approval.
-2. Finish native billing configuration and purchase testing. The earlier Android
-   Publisher denial no longer reproduces: command `172` at 12:23:52 UTC on
-   September 13 returned `oauth_ok=true` and `app_purchase_read_ok=true`, using
-   the same credential and permission scope without another permission change.
-   This establishes purchase-read access, not a successful purchase. Product
-   `rokn.coins.900` is active and bound to package 4; its Google channel was
-   enabled in command `175` after product readback and authenticated RTDN test
-   delivery in command `173`. The earlier denial's cause is unresolved, not a
-   proven wrong key or propagation delay. Cloud billing, topic, subscription,
-   push identity and Play topic configuration now exist. Other Google packages
-   and Apple products are not configured.
-3. Exercise the deployed verified-test fulfillment and Google finalization
-   implementation. Actual native store configuration and purchases have not
-   been verified; successful deployment is not purchase evidence.
-4. Verify the deployed pre-publication portfolio review with its owner-facing
-   status UI. Existing shared works also require review.
-   Confirm the old release has drained, then wait the media URL lifetime before
-   the first administrator approval, as detailed in the rollout document.
-5. Configure Apple lifecycle keys, app identity and signing, then produce and
-   inspect an actual signed archive on the pinned macOS build environment
-6. Complete strict launch-readiness verification and exercise account deletion,
-   purchase recovery, AI consent and public-content reporting against the intended
-   production configuration. Migrations, command `165` schema-only preflight and
-   command `166` queue/scheduler/finalization status checks have passed.
-7. Preserve the saved Firebase app-signing fingerprints and the now-live Android
-   domain association containing the direct and app-signing certificates. Complete store
-   metadata, privacy disclosures and reusable reviewer access, and exercise
-   internal-track purchases and native-device flows before requesting review.
-   Rebuild if further mobile changes are required; the artifact below covers
-   only its recorded source commit.
-8. Align actual eligibility and policy with the owner's explicit **12+** audience,
-   superseding the earlier 18+ proposal. Gemini must not be treated as eligible
-   for this audience. Resolve OpenRouter's downstream age terms and an approved
-   substitute route before changing the live service. No model/age-gate change
-   or Play age selection has been made; IARC's final content rating is separate.
+1. Send the staged ten changes for review and record the resulting status. The
+   automated pre-submission checks have completed without a reported problem.
+2. Keep the reviewer account, production backend and course media available
+   throughout review. Do not delete or repurpose the verified account.
+3. After submission, monitor for Play policy questions or rejection details and
+   respond against the exact release 58 configuration.
+4. Refund/recovery, cancellation retry and disposable-account deletion remain
+   useful post-submission regression coverage; they are not presented as
+   completed acceptance evidence.
+5. Apple remains a separate release stream: organization membership, lifecycle
+   keys, app identity, signing and a signed iOS archive are still unverified.
 
 ## Current Android artifact
 
 Android artifact: `mobile/artifacts/Rokn-play.aab`
 
-- Source commit: `903a13b18938a992b177adef0905f2a2b9a06dc9`, clean throughout build
-- Built at: `2026-09-12T23:25:28.2049631Z` (September 13 in Cairo)
-- Size: 67,356,236 bytes
-- SHA-256: `a62b8915efd9a5fa9ff837e6c10944c3cdca6cbecb4d4f6a92680cb366dabf5b`
+- Source commit: `6d718e28f265148df6d12c3fda1c05fce44ce390`, clean throughout build
+- Built at: `2026-09-13T20:56:44.9995657Z` (September 13/14 in Cairo)
+- Version: `1.0.57` / `58`, minimum API 24, target API 36
+- Size: 67,356,226 bytes
+- SHA-256: `4cc831137db744f06f9678a267e0d3619dfeac697c9ac8cc009dec917e38fe89`
 - Upload-certificate SHA-256:
   `0f0cde1dc533559f6f97c0d2df4e474be764b13ad071def14c19dc1a7812586e`
-- Build sidecar: `com.rokn`, version `1.0.56` / `57`, minimum API 24,
-  target API 36, channel `play`, profile `production`
+- Build sidecar: `com.rokn`, channel `play`, profile `production`, public
+  distribution eligible, clean source
 - API origin recorded by the build: `https://rokn.app/api/v1/`
-- Portable build tools: Node 24.19.0, npm 10.9.3, JDK 17.0.20
 - Separate Play app-signing SHA-256 observed and approved in the console:
   `5a49ea3dba91df63f27e60fa87998737efb67657fa102ecb162bd1d63e232d9e`
 
-The release build completed successfully and generated the sidecar above.
+Google accepted this artifact for internal testing and the production release
+draft reuses the same processed bundle. The release review screen shows
+`58 (1.0.57)`, minimum API 24, target API 36 and status ready for release.
+
+### Previous Android 57 verification (historical)
+
+The preceding release build completed successfully and generated its sidecar.
 Independent inspection of this exact `903a13b` AAB then confirmed:
 
 - The SHA-256 and byte size remained unchanged throughout inspection.
@@ -380,26 +388,24 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   established; no broader permission change, purchase or refund was performed.
   Package 4's Google channel remained `false` at this checkpoint; command `175`
   below records its later enablement after the access and RTDN checks.
-- The existing Pixel_9a emulator booted with Play Store present. Its installed
-  Rokn is still versionCode 36, installer null. No Play-installed 57 login,
-  purchase, consumption, refund or repeated-purchase test has occurred.
+- The Pixel_9a emulator was later updated to signed release 58. After the final
+  reviewer account accepted the internal-test invitation and the app restarted,
+  Play Billing resolved the package despite the ADB-installed build reporting no
+  installer package. A licensed test purchase and course enrollment then succeeded.
+  Refund, cancellation/pending and repeated-purchase cases remain unverified.
 - Follow-up command `172`, completed at `2026-09-13T12:23:52Z`, reran the same
   bounded, read-only OAuth and voided-purchases probe. It returned
   `oauth_ok=true` and `app_purchase_read_ok=true`. This supersedes the unresolved
   access result of commands 170/171; it does not establish why the earlier
   denial occurred. No credential rotation, broader permission, purchase, refund
   or Google package enablement was performed for this check.
-- The dedicated review Google account was created and registered as a student
-  through the installed app's normal OAuth flow. App profile and web recharge
-  then showed the same identity and 35-coin balance. This is account provisioning
-  on version 36, not candidate-57 verification or full review access. See
-  [review access](REVIEW_ACCESS.md). Following specific owner confirmation, the
-  existing `Rokn internal QA` list was updated from two to three accounts without
-  removing its original members. Both internal testing and license testing use
-  that selected list; License Testing readback showed three members and unchanged
-  `RESPOND_NORMALLY`. The review account accepted the internal invitation and
-  Play confirmed tester membership. Its test listing is accessible, but says
-  the account has no devices; signing into Play on the emulator is still required.
+- The first dedicated review Google account was created and registered as user 13,
+  then replaced because its password was not reusable. The final account is user
+  14. `Rokn internal QA` now contains four identities without removing any prior
+  member and remains selected for both internal and license testing. User 14
+  accepted the invitation, signed into the Play-enabled emulator and completed
+  the release-58 billing and mentor-course verification described below. See
+  [review access](REVIEW_ACCESS.md).
 - At the earlier billing checkpoint, Google Cloud showed no linked billing account. The free-trial
   signup is open for the Rokn account with Egypt selected, optional marketing
   unchecked, and an advertised $300 / 90-day offer with no automatic charges.
@@ -502,8 +508,9 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   advertising ID, government, financial features and health. IARC terms were
   accepted with the support email and category Other apps. Its draft currently
   records no rating-relevant bundled content and yes to user-content sharing;
-  the remaining exact questions/authorization and final rating are not completed.
-  Reusable reviewer access is still missing.
+  the remaining exact questions/authorization and final rating were not completed
+  at that checkpoint. Reusable reviewer access was also missing then; both the
+  rating and reviewer-access history are superseded by the later sections below.
 - The owner subsequently specified **12+**, replacing the earlier 18+ proposal,
   and authorized changing Gemini through OpenRouter if required. This has not
   been entered in the blocked Target audience form and is not a final IARC rating.
@@ -580,14 +587,15 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   Google requested no additional financial documentation for this selection.
   At that checkpoint App content showed four remaining declarations. The later
   content-rating save below reduced the count to three. No public review submission.
-- Rechecked the Google Play App access page. No access declaration is saved;
-  the page explicitly requires the reviewer to access paid features without
-  purchasing. Existing social QA account alone does not prove this requirement.
+- An earlier recheck found no saved Google Play App access declaration and required
+  paid access for reviewers. This historical blocker was cleared on September 14
+  by saving the final reusable login and its verified mentor entitlement.
 - Generated and inspected a new campaign feature graphic using the built-in
   image generator and the existing course artwork. Preserved source and
   1024x500 opaque PNG export under `mobile/store/assets/play-feature-generated-v2*`.
-  Prompt/provenance and export script are beside it. This is not a screenshot,
-  was not uploaded, and does not close the candidate screenshot requirement.
+  Prompt/provenance and export script are beside it. It was uploaded to the Play
+  listing and classified there as AI-generated; authentic screenshots are kept
+  separate.
 
 ### September 13 follow-up: content declarations and reviewer provisioning
 
@@ -605,7 +613,7 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   Sharing exclusions rely on the actual user-initiated/explicit-consent and
   processor flows, not a claim that OpenRouter never retains data. Production
   provider data collection remains allowed and ZDR remains false. The final
-  submission is blocked by the unfinished Target audience declaration.
+  declaration was later completed after the 18+ target audience was saved.
 - Production command 179 confirmed reviewer user 13 and published course 3's
   mentor plan 12, with 50 messages and normal project/chat budgets. Attempts
   180-182 to provision a complimentary full-plan enrollment all rolled back:
@@ -613,11 +621,38 @@ was lifted only after the exact-commit CI result and the owner's authorization.
   floor, and the third's zero-floor snapshot was rejected by plan validation.
   No runtime constraint was removed and no paid credits or receipts were faked.
   Read-only command 183 confirmed zero matching enrollments and zero generated
-  review codes after these attempts. The account still lacks paid-feature access.
-- Next access route is an actual licensed-test purchase from candidate 57 via
-  Google Play, then normal course purchase and entitlement verification. This
-  does not by itself establish reusable cross-location reviewer login. Candidate
-  installation, purchase, screenshots and the native walkthrough remain pending.
+  review codes after these attempts. Historical user 13 still lacks paid-feature
+  access and is not the final reviewer identity.
+- At that checkpoint the next planned route was a licensed-test purchase followed
+  by normal course purchase and entitlement verification. The replacement user 14
+  completed that route on release 58 as recorded below. Four candidate
+  store-listing screenshots were later captured from this exact release.
+
+### September 14 completion: final Android reviewer access
+
+- Created the replacement Google reviewer identity and registered it through the
+  normal ROKN Google OAuth flow as user 14. No OTP or two-step challenge appeared
+  during the verified login. Credentials are not stored in this repository.
+- Added the identity to the existing `Rokn internal QA` list, now four members,
+  which is selected for internal testing and license testing. The identity accepted
+  the internal-test invitation for track `4700165170808444276`.
+- After invitation acceptance and an app restart, release 58 resolved
+  `rokn.coins.900` at EGP 11.11. Google displayed its always-approves test card and
+  stated that the order was a test with no charge. The purchase succeeded and the
+  app credited 900 coins, bringing the balance to 935.
+- The reviewer then bought **أساسيات الرسم والتحريك في Blender** course 3,
+  mentor plan 12, through the normal 900-coin app checkout. Balance became 35.
+  The first lesson, mentor Ask panel and My Corner Continue entry were verified.
+- Saved `Google Play reviewer account` in Play Console App access with the final
+  username/password, English sign-in and navigation instructions, and full access
+  to paid/premium content selected. The change is saved in Publishing overview.
+  It was deliberately not sent for public review in this step.
+- The remaining Play setup was subsequently completed: 18+ audience with known
+  minors blocked, final Data safety answers, rewritten Arabic listing, the
+  disclosed generated feature graphic, and four authentic release-58 screenshots.
+- A production release using the same processed AAB was staged for a full rollout
+  in Egypt. Google marks it ready and the automated checks completed without a
+  reported problem; the combined changes are waiting for the final review request.
 
 Apple's official sign-in page is open only. Organization membership, Team ID,
 App Store Connect record and signed iOS archive are not verified.

@@ -2,7 +2,8 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import React from 'react';
-import {Image, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
+import {RasterImage as Image} from '../components/ui/RasterImage';
 
 import {navigationRef} from './RootNavigationHelper';
 
@@ -63,6 +64,7 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
       screenOptions={{
         animation: reducedMotion ? 'none' : 'default',
         headerShown: false,
+        statusBarStyle: 'light',
       }}
       initialRouteName="Home">
       <Stack.Screen

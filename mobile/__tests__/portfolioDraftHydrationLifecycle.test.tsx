@@ -43,6 +43,7 @@ jest.mock('../src/hooks/useReducedMotion', () => ({
   useReducedMotion: () => true,
 }));
 jest.mock('../src/services/roknApi', () => ({
+  assertPortfolioUploadAccess: async () => undefined,
   getEligibleProjects: async () => [],
   createPortfolioItem: (...args: unknown[]) => mockCreate(...args),
 }));

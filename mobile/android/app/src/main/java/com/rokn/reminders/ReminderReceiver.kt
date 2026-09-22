@@ -16,10 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
 import com.rokn.MainActivity
 import com.rokn.R
-import java.io.ByteArrayOutputStream
-import java.net.HttpURLConnection
-import java.net.URL
-import kotlin.math.max
+import com.rokn.media.NotificationArtworkLoader
 
 class ReminderReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
@@ -38,10 +35,10 @@ class ReminderReceiver : BroadcastReceiver() {
       return
     }
 
-    // Rich course art is fetched only for the notification and never written
-    // to the learner's storage. The plain notification remains the fallback.
+    // The managed image pipeline owns decoding/cache. Finish the broadcast
+    // on image success, failure or deadline, with a plain-text fallback.
     val pendingResult = goAsync()
-    Thread {
+    NotificationArtworkLoader.load(context, imageUrl) { picture ->
       try {
         show(
           context,
@@ -51,13 +48,13 @@ class ReminderReceiver : BroadcastReceiver() {
           courseId,
           link,
           kind,
-          downloadBitmap(imageUrl),
+          picture,
           actionLabel,
         )
       } finally {
         pendingResult.finish()
       }
-    }.start()
+    }
   }
 
   companion object {
@@ -74,8 +71,6 @@ class ReminderReceiver : BroadcastReceiver() {
     private const val CHANNEL_LEARNING = "rokn-learning"
     private const val CHANNEL_OFFERS = "rokn-offers"
     private const val CHANNEL_UPDATES = "rokn-updates"
-    private const val MAX_IMAGE_BYTES = 5 * 1024 * 1024
-    private const val MAX_IMAGE_EDGE = 1600
 
     fun show(
       context: Context,
@@ -170,7 +165,7 @@ class ReminderReceiver : BroadcastReceiver() {
         show(context, id, title, body, courseId, link, kind, null, actionLabel)
         return
       }
-      Thread {
+      NotificationArtworkLoader.load(context, imageUrl) { picture ->
         show(
           context,
           id,
@@ -179,10 +174,10 @@ class ReminderReceiver : BroadcastReceiver() {
           courseId,
           link,
           kind,
-          downloadBitmap(imageUrl),
+          picture,
           actionLabel,
         )
-      }.start()
+      }
     }
 
     private fun channelFor(kind: String) = when {
@@ -263,44 +258,5 @@ class ReminderReceiver : BroadcastReceiver() {
       return builder.build()
     }
 
-    private fun downloadBitmap(rawUrl: String): Bitmap? {
-      if (!rawUrl.startsWith("https://", ignoreCase = true)) return null
-      val connection = (URL(rawUrl).openConnection() as? HttpURLConnection) ?: return null
-      return try {
-        connection.connectTimeout = 4_000
-        connection.readTimeout = 6_000
-        connection.instanceFollowRedirects = false
-        connection.connect()
-        if (connection.responseCode !in 200..299) return null
-        if (connection.contentLengthLong > MAX_IMAGE_BYTES) return null
-        val bytes = connection.inputStream.use { input ->
-          val output = ByteArrayOutputStream()
-          val buffer = ByteArray(16 * 1024)
-          var total = 0
-          while (true) {
-            val read = input.read(buffer)
-            if (read <= 0) break
-            total += read
-            if (total > MAX_IMAGE_BYTES) return null
-            output.write(buffer, 0, read)
-          }
-          output.toByteArray()
-        }
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
-        var sample = 1
-        while (max(bounds.outWidth, bounds.outHeight) / sample > MAX_IMAGE_EDGE) sample *= 2
-        BitmapFactory.decodeByteArray(
-          bytes,
-          0,
-          bytes.size,
-          BitmapFactory.Options().apply { inSampleSize = sample },
-        )
-      } catch (_: Throwable) {
-        null
-      } finally {
-        connection.disconnect()
-      }
-    }
   }
 }

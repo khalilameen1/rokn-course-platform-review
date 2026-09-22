@@ -21,6 +21,7 @@ final class CourseCheckoutController extends Controller
             'course_id' => ['required', 'integer', 'exists:courses,id'],
             'access_plan_code' => ['required', Rule::in(['basic', 'guided', 'mentor'])],
             'mode' => ['sometimes', Rule::in(['purchase', 'upgrade'])],
+            'required_feature' => ['sometimes', Rule::in(['chat', 'project_discussion'])],
             'channel' => ['required', Rule::in(['google', 'apple', 'direct'])],
             'coupon_code' => ['nullable', 'string', 'min:3', 'max:50'],
             'package_id' => ['nullable', 'integer', 'min:1'],

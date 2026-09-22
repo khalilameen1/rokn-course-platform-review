@@ -40,10 +40,10 @@ final class CoinTaskPresentationTest extends TestCase
     public static function socialTitles(): array
     {
         return [
-            ['follow_instagram', 'افتح حساب ركن على Instagram', 'Open our Instagram account', 'تابعنا على Instagram', 'Follow us on Instagram'],
-            ['follow_tiktok', 'زر صفحة ركن على TikTok', 'Visit our TikTok page', 'تابعنا على TikTok', 'Follow us on TikTok'],
-            ['follow_facebook', 'تصفح حساب Facebook', 'Browse our Facebook account', 'تابعنا على Facebook', 'Follow us on Facebook'],
-            ['follow_youtube', 'افتح YouTube وارجع لاستلام العملات', 'Open YouTube then return and claim', 'تابعنا على YouTube', 'Follow us on YouTube'],
+            ['follow_instagram', 'افتح حساب ركن على Instagram', 'Open our Instagram account', 'تابعنا على إنستجرام', 'Follow us on Instagram'],
+            ['follow_tiktok', 'زر صفحة ركن على TikTok', 'Visit our TikTok page', 'تابعنا على تيك توك', 'Follow us on TikTok'],
+            ['follow_facebook', 'تصفح حساب Facebook', 'Browse our Facebook account', 'تابعنا على فيسبوك', 'Follow us on Facebook'],
+            ['follow_youtube', 'افتح YouTube وارجع لاستلام العملات', 'Open YouTube then return and claim', 'اشترك في قناتنا على يوتيوب', 'Subscribe to our YouTube channel'],
             ['link_whatsapp', 'افتح حساب واتساب', 'Open WhatsApp', 'اربط واتسابك بركن', 'Link WhatsApp to Rokn'],
         ];
     }

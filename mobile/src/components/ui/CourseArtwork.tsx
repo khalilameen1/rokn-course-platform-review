@@ -1,12 +1,6 @@
 import React, {useEffect, useState} from 'react';
-import {
-  Image,
-  type ImageSourcePropType,
-  type ImageStyle,
-  StyleSheet,
-  type StyleProp,
-  View,
-} from 'react-native';
+import {type ImageSourcePropType, type ImageStyle, StyleSheet, type StyleProp, View} from 'react-native';
+import {RasterImage as Image} from './RasterImage';
 import {SvgUri} from 'react-native-svg';
 
 const sourceUri = (source?: ImageSourcePropType) =>

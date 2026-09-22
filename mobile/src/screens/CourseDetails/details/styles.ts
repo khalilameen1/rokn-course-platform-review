@@ -11,6 +11,45 @@ import {
 import {Fonts} from '../../../constants/styleConstants';
 
 const styles = StyleSheet.create({
+  description: {position: 'relative', width: '100%'},
+  descriptionMeasure: {
+    position: 'absolute',
+    width: '100%',
+    height: 0,
+    overflow: 'hidden',
+    opacity: 0,
+  },
+  descriptionToggle: {
+    ...rtlRowStyle,
+    minHeight: 48,
+    alignSelf: 'flex-start',
+    alignItems: 'center',
+    gap: 8,
+  },
+  descriptionToggleText: {
+    ...Type.body,
+    ...textDirection,
+    color: Palette.primary,
+  },
+  instructorDisclosure: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Palette.lineSoft,
+    marginTop: 16,
+  },
+  instructorToggle: {
+    ...rtlRowStyle,
+    minHeight: 56,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  instructorToggleTitle: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    color: Palette.text,
+    flex: 1,
+    flexShrink: 1,
+  },
   screen: {flex: 1, backgroundColor: Palette.canvas},
   scroll: {flex: 1},
   scrollContent: {paddingBottom: 28},
@@ -233,9 +272,6 @@ const styles = StyleSheet.create({
   },
   tabTextActive: {color: Palette.text},
   aboutWrap: {paddingBottom: 16},
-  aboutGrid: {gap: 28},
-  aboutGridTablet: {...rtlRowStyle, alignItems: 'flex-start', gap: 32},
-  aboutMain: {flexGrow: 1, flexShrink: 1, minWidth: 0},
   sectionEyebrow: {
     ...Type.caption,
     ...textDirection,
@@ -286,11 +322,8 @@ const styles = StyleSheet.create({
     ...rtlRowStyle,
     alignItems: 'flex-start',
     gap: 14,
-    paddingTop: 22,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Palette.lineSoft,
+    paddingTop: 8,
   },
-  instructorCardTablet: {width: '36%', flexShrink: 0},
   instructorImage: {
     width: 56,
     height: 64,

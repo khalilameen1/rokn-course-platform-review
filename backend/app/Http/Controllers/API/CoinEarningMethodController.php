@@ -29,7 +29,19 @@ final class CoinEarningMethodController extends Controller
     {
         // Registration credit is granted automatically during verified social
         // login. It must never appear as a second, manually claimable task.
-        $methods = CoinEarningMethod::learnerTask()
+        $user = auth('api')->user();
+        $methods = CoinEarningMethod::query()
+            ->where(function ($query) use ($user): void {
+                $query->where(fn ($available) => $available->learnerTask());
+                if ($user) {
+                    $query->orWhere(function ($completed) use ($user): void {
+                        $completed->whereNotIn('action_key', CoinEarningMethod::AUTOMATIC_ACTION_KEYS)
+                            ->where('coins_amount', '>', 0)
+                            ->whereHas('userEarnings', fn ($earnings) => $earnings->where('user_id', $user->id));
+                    });
+                }
+            })
+            ->withExists(['userEarnings as completed_by_learner' => fn ($earnings) => $earnings->where('user_id', $user?->id ?? 0)])
             ->withCount('userEarnings')
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -38,7 +50,7 @@ final class CoinEarningMethodController extends Controller
                 $hasCapacity = $method->total_claim_limit === null
                     || (int) $method->user_earnings_count < (int) $method->total_claim_limit;
 
-                return $method->hasUsableDestination() && $hasCapacity;
+                return $method->completed_by_learner || ($method->hasUsableDestination() && $hasCapacity);
             })
             ->values();
         $setting = Setting::first() ?? new Setting();

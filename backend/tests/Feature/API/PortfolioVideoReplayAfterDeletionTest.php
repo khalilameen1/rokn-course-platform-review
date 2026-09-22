@@ -34,6 +34,12 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
         $user = new User(['name' => 'Learner', 'email' => 'video-replay@example.test', 'password' => 'unused']);
         $user->forceFill(['role' => 'student', 'active' => true])->save();
         $this->actingAs($user, 'api');
+        $course = \App\Models\Course::query()->forceCreate([
+            'tenant_id' => 1, 'name_ar' => 'كورس بشهادة', 'price' => 100,
+        ]);
+        \App\Models\CourseEnrollment::query()->forceCreate([
+            'user_id' => $user->id, 'course_id' => $course->id, 'is_active' => true,
+        ]);
         $this->item = PortfolioItem::query()->create([
             'user_id' => $user->id,
             'title' => 'مشروع الفيديو',

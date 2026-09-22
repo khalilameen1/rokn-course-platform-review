@@ -1,17 +1,7 @@
 import * as AppleAuthentication from 'expo-apple-authentication';
 import React from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  type ImageSourcePropType,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import {ActivityIndicator, type ImageSourcePropType, Platform, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions} from 'react-native';
+import {RasterImage as Image} from '../ui/RasterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Svg, {Path} from 'react-native-svg';
 import {

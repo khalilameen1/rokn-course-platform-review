@@ -1,118 +1,87 @@
 import React from 'react';
 import {useNavigation} from '@react-navigation/native';
-import type {RootNavigation} from '../../navigation/types';
-import {openGuestLogin} from '../../navigation/journeyNavigation';
-import {formatRoknRelativeDate} from '../../utils/dateTime';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   RefreshControl,
-  ScrollView,
   Text,
   View,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import type {RootNavigation} from '../../navigation/types';
+import {openGuestLogin} from '../../navigation/journeyNavigation';
 import TabBar from '../../components/TabBar';
 import {Container, Content} from '../../components/containers/Containers';
-import {
-  PremiumCard,
-  ResponsiveFrame,
-  SectionHeading,
-  StatusView,
-} from '../../components/ui/PremiumUI';
+import {ResponsiveFrame, StatusView} from '../../components/ui/PremiumUI';
 import HeaderWithBack from '../../components/view/HeaderWithBack';
+import {AccordionArrowDown, SettingsHistoryIcon} from '../../assets/SVG';
 import {
   Palette,
   Spacing,
   useResponsiveLayout,
 } from '../../constants/designSystem';
-import RoknCoin, {CoinAmount} from '../../components/ui/RoknCoin';
-import TaskBrandIcon from '../../components/ui/TaskBrandIcon';
-import {CAN_START_COIN_CHECKOUT} from '../../constants/distribution';
-import {
-  formatArabicDisplayText,
-  formatArabicNumber,
-  toArabicDigits,
-} from '../../constants/arabicFormatting';
-import {useReducedMotion} from '../../hooks/useReducedMotion';
+import {formatArabicNumber} from '../../constants/arabicFormatting';
+import {RoknCoinStack} from '../../components/ui/RoknCoin';
 import type {WalletController} from './useWalletController';
 import {walletStyles as styles} from './walletStyles';
-import {WalletPackageRail} from './WalletPackageRail';
+import {RewardsTaskList} from './RewardsTaskList';
+import {RewardsDetailsSheet} from './RewardsDetailsSheet';
 
 export const WalletView = ({controller}: {controller: WalletController}) => {
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
-  const reducedMotion = useReducedMotion();
-  const {contentWidth, fontScale, gutter, isTablet, width} =
-    useResponsiveLayout();
-  const packageCardWidth = Math.floor(
-    Math.min(
-      280,
-      contentWidth - gutter * 2,
-      Math.max(
-        176 * Math.max(1, fontScale / 1.3),
-        contentWidth * (isTablet ? 0.3 : 0.56),
-      ),
-    ),
-  );
-  const stackTaskActions = width < 360 || fontScale >= 1.3;
+  const {width, fontScale} = useResponsiveLayout();
+  const stacked = width < 360 || fontScale >= 1.3;
   const {
-    checkoutLoading,
-    displayedBalance,
-    displayedCoinRules,
-    displayedPackages,
-    displayedPaidBalance,
-    displayedRewardBalance,
-    displayedRewardContributionCap,
-    displayedSpendableBalance,
-    displayedTasks,
-    displayedTransactions,
-    handleTask,
-    manualRefreshing,
     ownerReady,
-    packagesStatus,
-    refreshWallet,
-    refreshWalletManually,
     serverSession,
-    setWalletModal,
-    startCheckout,
-    taskActionLabel,
-    taskLoadingIds,
-    tasksStatus,
-    usingRemoteWallet,
-    walletModal,
+    displayedBalance,
+    displayedRewardBalance,
+    manualRefreshing,
+    refreshWalletManually,
+    refreshWallet,
     walletStatus,
+    setWalletModal,
   } = controller;
-  if (!ownerReady) {
+  const header = <HeaderWithBack hasArrow={false} title="مكافآتي" />;
+  if (!ownerReady || serverSession === null) {
     return (
       <Container noPadding>
         <Content noPadding>
           <ResponsiveFrame>
-            <HeaderWithBack hasArrow={false} title="المحفظة" />
-            <PremiumCard style={styles.unavailableCard}>
-              <ActivityIndicator color={Palette.primary} />
-              <Text style={styles.remoteNote}>جارٍ فتح محفظتك</Text>
-            </PremiumCard>
+            {header}
+            {walletStatus === 'error' ? (
+              <StatusView
+                state="error"
+                title="تعذّر تحميل مكافآتك"
+                description="تحقق من الاتصال ثم حاول مرة أخرى"
+                actionLabel="إعادة المحاولة"
+                onAction={() => void refreshWallet()}
+              />
+            ) : (
+              <>
+                <ActivityIndicator color={Palette.primary} />
+                <Text style={styles.remoteNote}>جارٍ تحميل مكافآتك</Text>
+              </>
+            )}
           </ResponsiveFrame>
         </Content>
         <TabBar />
       </Container>
     );
   }
-
   if (serverSession === false) {
     return (
       <Container noPadding>
         <Content noPadding>
           <ResponsiveFrame>
-            <HeaderWithBack hasArrow={false} title="المحفظة" />
+            {header}
             <StatusView
               actionLabel="تسجيل الدخول"
-              description="سجّل الدخول لعرض رصيدك ومكافآتك من أي جهاز"
+              description="سجّل الدخول لعرض رصيدك والمهام المتاحة"
               onAction={() => openGuestLogin(navigation, {name: 'Wallet'})}
               state="empty"
-              title="رصيدك مرتبط بحسابك"
+              title="مكافآتك في حسابك"
             />
           </ResponsiveFrame>
         </Content>
@@ -120,7 +89,6 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
       </Container>
     );
   }
-
   return (
     <Container noPadding>
       <Content
@@ -134,388 +102,68 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
         }
         paddingBottom={Math.max(Spacing.xl, insets.bottom + Spacing.md)}>
         <ResponsiveFrame>
-          <HeaderWithBack hasArrow={false} title="المحفظة" />
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceCaption}>إجمالي رصيدك</Text>
+          <View style={styles.rewardsHeader}>
+            <Text accessibilityRole="header" style={styles.rewardsTitle}>
+              مكافآتي
+            </Text>
             <Pressable
-              accessibilityHint="يعرض العملات المدفوعة وعملات المكافآت"
-              accessibilityLabel="تفاصيل رصيد العملات"
               accessibilityRole="button"
-              accessibilityValue={{
-                text:
-                  displayedBalance === null
-                    ? 'الرصيد غير متاح'
-                    : `${formatArabicNumber(displayedBalance)} من عملات ركن`,
-              }}
-              disabled={displayedBalance === null}
-              onPress={() => setWalletModal('breakdown')}
-              style={({pressed}) => [
-                styles.balanceButton,
-                pressed && styles.pressed,
-              ]}>
-              <View
-                style={[
-                  styles.balanceRow,
-                  stackTaskActions && styles.balanceRowStacked,
-                ]}>
-                <Text
-                  style={[
-                    styles.balance,
-                    stackTaskActions && styles.balanceFullWidth,
-                  ]}>
-                  {displayedBalance === null
-                    ? '—'
-                    : formatArabicNumber(displayedBalance)}
-                </Text>
-                <RoknCoin size={28} />
-              </View>
-              <Text style={styles.balanceDetails}>تفاصيل الرصيد</Text>
+              accessibilityLabel="سجل المكافآت"
+              onPress={() => setWalletModal('transactions')}
+              style={styles.historyButton}>
+              <SettingsHistoryIcon
+                width={23}
+                height={23}
+                stroke={Palette.textMuted}
+              />
             </Pressable>
-            {displayedBalance === null && walletStatus === 'loading' && (
-              <Text style={styles.balanceHint}>جارٍ تحديث الرصيد</Text>
-            )}
-            {walletStatus === 'error' && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void refreshWallet()}
-                style={styles.inlineRetry}>
-                <Text style={styles.apiError}>تعذّر تحديث الرصيد</Text>
-                <Text style={styles.retryLabel}>إعادة المحاولة</Text>
-              </Pressable>
-            )}
-            <View style={styles.balanceLinks}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setWalletModal('transactions')}
-                style={({pressed}) => [
-                  styles.rulesLink,
-                  pressed && styles.pressed,
-                ]}>
-                <Text style={styles.rulesLinkLabel}>آخر العمليات</Text>
-              </Pressable>
+          </View>
+          <View
+            style={[styles.rewardsHero, stacked && styles.rewardsHeroStacked]}>
+            <View style={styles.rewardsBalanceCopy}>
+              <Text style={styles.balanceCaption}>رصيدك</Text>
+              <Text
+                accessibilityLabel="رصيد المكافآت"
+                accessibilityLiveRegion="polite"
+                style={styles.rewardsBalance}>
+                {displayedBalance === null
+                  ? '—'
+                  : formatArabicNumber(displayedRewardBalance)}
+              </Text>
               <Pressable
                 accessibilityRole="button"
                 onPress={() => setWalletModal('rules')}
                 style={({pressed}) => [
-                  styles.rulesLink,
+                  styles.disclosure,
                   pressed && styles.pressed,
                 ]}>
-                <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد؟</Text>
+                <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد</Text>
+                <AccordionArrowDown width={14} height={14} />
               </Pressable>
             </View>
+            <RoknCoinStack
+              size={stacked ? 132 : 162}
+              style={styles.rewardsArt}
+            />
           </View>
-
-          {CAN_START_COIN_CHECKOUT && (
-            <SectionHeading style={styles.sectionHeading} title="شحن الرصيد" />
+          {displayedBalance === null && walletStatus === 'loading' && (
+            <Text style={styles.balanceHint}>جارٍ تحديث الرصيد</Text>
           )}
-        </ResponsiveFrame>
-        {CAN_START_COIN_CHECKOUT && (
-          <WalletPackageRail
-            cardWidth={packageCardWidth}
-            checkoutLoading={checkoutLoading}
-            gutter={gutter}
-            onCheckout={startCheckout}
-            onRetry={() => void refreshWallet()}
-            packages={displayedPackages}
-            status={packagesStatus}
-            usingRemoteWallet={usingRemoteWallet}
-          />
-        )}
-
-        <ResponsiveFrame>
-          {!!displayedPackages.length && packagesStatus === 'error' && (
+          {walletStatus === 'error' && (
             <Pressable
               accessibilityRole="button"
               onPress={() => void refreshWallet()}
               style={styles.inlineRetry}>
-              <Text style={styles.apiError}>تعذّر تحديث الباقات</Text>
+              <Text style={styles.apiError}>تعذّر تحديث الرصيد</Text>
               <Text style={styles.retryLabel}>إعادة المحاولة</Text>
             </Pressable>
           )}
-          <SectionHeading style={styles.sectionHeading} title="مكافآت متاحة" />
-          <View style={styles.tasksCard}>
-            {displayedTasks.length ? (
-              <>
-                {displayedTasks.map((task, index, allTasks) => {
-                  const taskLoading = taskLoadingIds.includes(task.id);
-                  const taskActionDisabled =
-                    tasksStatus !== 'ready' ||
-                    task.status === 'claimed' ||
-                    taskLoading;
-                  return (
-                    <View key={task.id}>
-                      <View
-                        style={[
-                          styles.taskRow,
-                          stackTaskActions && styles.taskRowStacked,
-                        ]}>
-                        <View style={styles.taskMain}>
-                          <View style={styles.taskIcon}>
-                            <TaskBrandIcon value={task.actionKey} />
-                          </View>
-                          <View style={styles.taskCopy}>
-                            <View style={styles.taskTitleRow}>
-                              <Text style={styles.taskTitle}>
-                                {formatArabicDisplayText(task.title)}
-                              </Text>
-                              <View style={styles.taskReward}>
-                                <Text style={styles.rewardPlus}>+</Text>
-                                <CoinAmount size={15} value={task.reward} />
-                              </View>
-                            </View>
-                            {!!task.description && (
-                              <Text style={styles.taskDescription}>
-                                {formatArabicDisplayText(task.description)}
-                              </Text>
-                            )}
-                          </View>
-                        </View>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityState={{
-                            busy: taskLoading,
-                            disabled: taskActionDisabled,
-                          }}
-                          disabled={taskActionDisabled}
-                          onPress={() => handleTask(task)}
-                          style={({pressed}) => [
-                            styles.taskAction,
-                            stackTaskActions && styles.taskActionStacked,
-                            taskActionDisabled && styles.taskActionDone,
-                            pressed && styles.pressed,
-                          ]}>
-                          {taskLoading ? (
-                            <ActivityIndicator
-                              color={Palette.text}
-                              size="small"
-                            />
-                          ) : (
-                            <Text
-                              style={[
-                                styles.taskActionLabel,
-                                task.status === 'claimed' &&
-                                  styles.taskActionLabelDone,
-                              ]}>
-                              {taskActionLabel(task)}
-                            </Text>
-                          )}
-                        </Pressable>
-                      </View>
-                      {index < allTasks.length - 1 && (
-                        <View style={styles.divider} />
-                      )}
-                    </View>
-                  );
-                })}
-                {tasksStatus === 'error' && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => void refreshWallet()}
-                    style={styles.inlineRetry}>
-                    <Text style={styles.apiError}>تعذّر تحديث المهام</Text>
-                    <Text style={styles.retryLabel}>إعادة المحاولة</Text>
-                  </Pressable>
-                )}
-              </>
-            ) : (
-              <>
-                <Text style={styles.remoteNote}>
-                  {tasksStatus === 'loading' || tasksStatus === 'idle'
-                    ? 'جارٍ تحديث المهام المتاحة'
-                    : tasksStatus === 'error'
-                    ? 'تعذّر تحميل المهام'
-                    : 'أنهيت كل المهام المتاحة حاليًا'}
-                </Text>
-                {tasksStatus === 'error' && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => void refreshWallet()}
-                    style={styles.retryButton}>
-                    <Text style={styles.retryLabel}>إعادة المحاولة</Text>
-                  </Pressable>
-                )}
-              </>
-            )}
-          </View>
+          <RewardsTaskList controller={controller} stacked={stacked} />
         </ResponsiveFrame>
       </Content>
       <TabBar />
-      <Modal
-        animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={() => setWalletModal(null)}
-        statusBarTranslucent
-        transparent
-        visible={walletModal !== null}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="إغلاق"
-          onPress={() => setWalletModal(null)}
-          style={styles.breakdownOverlay}>
-          <Pressable
-            accessible={false}
-            accessibilityViewIsModal
-            onPress={event => event.stopPropagation()}
-            style={[
-              styles.breakdownSheet,
-              {
-                paddingBottom: Math.max(Spacing.xl, insets.bottom + Spacing.md),
-                paddingLeft: Math.max(Spacing.xl, insets.left + Spacing.md),
-                paddingRight: Math.max(Spacing.xl, insets.right + Spacing.md),
-              },
-            ]}>
-            <View style={styles.breakdownHandle} />
-            <ScrollView
-              bounces={false}
-              contentContainerStyle={styles.breakdownContent}
-              showsVerticalScrollIndicator={false}
-              style={styles.breakdownScroll}>
-              {walletModal === 'transactions' ? (
-                <>
-                  <Text style={styles.rulesTitle}>آخر العمليات</Text>
-                  {displayedTransactions.length ? (
-                    displayedTransactions.map((item, index) => (
-                      <View key={item.id}>
-                        <View style={styles.transactionRow}>
-                          <View style={styles.transactionCopy}>
-                            <Text style={styles.transactionTitle}>
-                              {formatArabicDisplayText(item.title)}
-                            </Text>
-                            <Text style={styles.transactionDate}>
-                              {toArabicDigits(
-                                formatRoknRelativeDate(item.createdAt),
-                              )}
-                            </Text>
-                          </View>
-                          <Text
-                            style={[
-                              styles.transactionValue,
-                              item.amount > 0 && styles.positive,
-                            ]}>
-                            {item.amount > 0 ? '+' : '−'}
-                            {formatArabicNumber(Math.abs(item.amount))}
-                          </Text>
-                        </View>
-                        {index < displayedTransactions.length - 1 && (
-                          <View style={styles.divider} />
-                        )}
-                      </View>
-                    ))
-                  ) : (
-                    <Text style={styles.remoteNote}>
-                      {walletStatus === 'loading' || walletStatus === 'idle'
-                        ? 'جارٍ تحميل العمليات'
-                        : walletStatus === 'error'
-                        ? 'تعذّر تحميل العمليات'
-                        : 'لا توجد عمليات بعد'}
-                    </Text>
-                  )}
-                  {walletStatus === 'error' && (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => void refreshWallet()}
-                      style={styles.retryButton}>
-                      <Text style={styles.retryLabel}>إعادة المحاولة</Text>
-                    </Pressable>
-                  )}
-                </>
-              ) : walletModal === 'rules' ? (
-                <>
-                  <Text style={styles.rulesTitle}>كيف يعمل الرصيد؟</Text>
-                  <Text style={styles.rulesIntro}>
-                    اشحن عملات ركن أو اكسبها من المهام
-                    {'\n'}ثم استخدمها لفتح الكورسات
-                  </Text>
-                  <View style={styles.rulesList}>
-                    {displayedCoinRules.length ? (
-                      displayedCoinRules.map((rule, index) => (
-                        <View key={rule} style={styles.ruleRow}>
-                          <View style={styles.ruleNumber}>
-                            <Text style={styles.ruleNumberLabel}>
-                              {formatArabicNumber(index + 1)}
-                            </Text>
-                          </View>
-                          <Text style={styles.ruleText}>
-                            {formatArabicDisplayText(rule)}
-                          </Text>
-                        </View>
-                      ))
-                    ) : (
-                      <Text style={styles.ruleText}>
-                        تعذّر تحميل قواعد الرصيد الآن
-                      </Text>
-                    )}
-                  </View>
-                </>
-              ) : (
-                <>
-                  <View
-                    style={[
-                      styles.breakdownHero,
-                      stackTaskActions && styles.balanceRowStacked,
-                    ]}>
-                    <RoknCoin size={58} style={styles.coinSpacing} />
-                    <View
-                      style={[
-                        styles.breakdownHeroCopy,
-                        stackTaskActions && styles.breakdownHeroCopyStacked,
-                      ]}>
-                      <Text style={styles.breakdownCaption}>إجمالي الرصيد</Text>
-                      <Text style={styles.breakdownTotal}>
-                        {formatArabicNumber(displayedBalance ?? 0)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.bucketRow}>
-                    <View style={[styles.bucketDot, styles.paidDot]} />
-                    <View style={styles.bucketCopy}>
-                      <Text style={styles.bucketTitle}>رصيد مدفوع</Text>
-                      <Text style={styles.bucketHint}>من عمليات الشحن</Text>
-                    </View>
-                    <CoinAmount size={16} value={displayedPaidBalance} />
-                  </View>
-                  <View style={styles.bucketDivider} />
-                  <View style={styles.bucketRow}>
-                    <View style={[styles.bucketDot, styles.rewardDot]} />
-                    <View style={styles.bucketCopy}>
-                      <Text style={styles.bucketTitle}>رصيد مكافآت</Text>
-                      <Text style={styles.bucketHint}>ترحيب ومهام</Text>
-                    </View>
-                    <CoinAmount size={16} value={displayedRewardBalance} />
-                  </View>
-                  <View style={styles.bucketDivider} />
-                  <View style={styles.bucketRow}>
-                    <View style={[styles.bucketDot, styles.spendableDot]} />
-                    <View style={styles.bucketCopy}>
-                      <Text style={styles.bucketTitle}>المتاح لكورس واحد</Text>
-                      <Text style={styles.bucketHint}>
-                        بعد تطبيق حد المكافآت
-                      </Text>
-                    </View>
-                    <CoinAmount size={16} value={displayedSpendableBalance} />
-                  </View>
-                  <Text style={styles.bucketPolicy}>
-                    عند فتح كورس نستخدم المكافآت أولًا بحد أقصى{' '}
-                    {formatArabicNumber(displayedRewardContributionCap)} ثم
-                    الرصيد المدفوع
-                  </Text>
-                </>
-              )}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setWalletModal(null)}
-                style={({pressed}) => [
-                  styles.breakdownClose,
-                  pressed && styles.pressed,
-                ]}>
-                <Text style={styles.breakdownCloseLabel}>تم</Text>
-              </Pressable>
-            </ScrollView>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <RewardsDetailsSheet controller={controller} stacked={stacked} />
     </Container>
   );
 };
-
 export default WalletView;

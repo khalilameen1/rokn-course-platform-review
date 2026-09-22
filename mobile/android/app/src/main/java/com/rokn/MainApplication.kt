@@ -18,7 +18,6 @@ import com.rokn.diagnostics.RoknDiagnosticsPackage
 import com.rokn.diagnostics.RoknDiagnosticsStore
 import com.rokn.media.RoknMediaInspectorPackage
 import com.rokn.reminders.RoknReminderPackage
-import com.rokn.orientation.RoknOrientationPackage
 import com.rokn.notifications.RoknPushTokenPackage
 import com.rokn.session.RoknSecureSessionPackage
 
@@ -36,7 +35,6 @@ class MainApplication : Application(), ReactApplication {
           add(RoknDiagnosticsPackage())
           add(RoknMediaInspectorPackage())
           add(RoknReminderPackage())
-          add(RoknOrientationPackage())
           add(RoknPushTokenPackage())
           add(RoknSecureSessionPackage())
         },

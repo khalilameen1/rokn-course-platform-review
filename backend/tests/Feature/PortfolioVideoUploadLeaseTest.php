@@ -70,7 +70,14 @@ final class PortfolioVideoUploadLeaseTest extends TestCase
             'authorization_expires_in_seconds' => 1800,
         ]);
 
-        $result = (new PortfolioVideoUploadService($bunny))->renew($user, $item->id, $claim);
+        $course = \App\Models\Course::query()->forceCreate([
+            'tenant_id' => 1, 'name_ar' => 'كورس بشهادة', 'price' => 100,
+        ]);
+        \App\Models\CourseEnrollment::query()->forceCreate([
+            'user_id' => $user->id, 'course_id' => $course->id, 'is_active' => true,
+        ]);
+        $this->app->instance(BunnyService::class, $bunny);
+        $result = app(PortfolioVideoUploadService::class)->renew($user, $item->id, $claim);
         $renewed = PortfolioVideoUpload::query()->findOrFail($session->id);
         $candidate = BunnyVideoCleanupCandidate::query()->where('video_guid', $guid)->firstOrFail();
         $renewedClaim = json_decode(Crypt::decryptString($result['claim']), true, 16, JSON_THROW_ON_ERROR);
@@ -129,7 +136,8 @@ final class PortfolioVideoUploadLeaseTest extends TestCase
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('verifyDirectUpload')->once()->with($guid, 1024)->andReturnTrue();
 
-        (new PortfolioVideoUploadService($bunny))->attach($user, $item->id, $claim, null);
+        $this->app->instance(BunnyService::class, $bunny);
+        app(PortfolioVideoUploadService::class)->attach($user, $item->id, $claim, null);
 
         self::assertFalse((bool) $item->fresh()->is_public);
         self::assertSame(1, $item->mediaFiles()->count());

@@ -154,6 +154,11 @@ final class StoredFileReferenceService
                 ['design_settings', 'logo_url'],
                 ['design_settings', 'icon_url'],
                 ['design_settings', 'home_background_url'],
+                ['design_settings', 'coin_image_url'],
+                ['design_settings', 'coin_stack_image_url'],
+                ['design_settings', 'badge_junior_image_url'],
+                ['design_settings', 'badge_mid_image_url'],
+                ['design_settings', 'badge_senior_image_url'],
             ] as [$table, $column]) {
                 if ($this->exists($table, $column, $publicUrl)) {
                     return true;

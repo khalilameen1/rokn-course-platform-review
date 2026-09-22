@@ -32,20 +32,14 @@ function setup(overrides: Partial<EntryParams> = {}) {
   const setNotice = jest.fn();
   const params: EntryParams = {
     accessPlans: plans,
-    busy: false,
-    couponBusy: false,
     courseId: '52',
     dialogStep: null,
-    effectivePurchasePrice: 700,
-    effectiveSpendableBalance: 0,
     identityKey: 'learner-a',
     navigation: {setParams: consume} as unknown as EntryParams['navigation'],
     owned: false,
     pageReady: true,
     primaryAction: {kind: 'disabled', label: 'جارٍ تجهيز الشراء'},
-    purchaseCouponCode: '',
     purchasePrice: 700,
-    purchaseRestoreStatus: 'idle',
     remoteSession: true,
     routeParams: {courseId: '52', openPurchase: true},
     selectedPlanCode: 'mentor',
@@ -57,12 +51,15 @@ function setup(overrides: Partial<EntryParams> = {}) {
     ...overrides,
   };
   const Harness = ({ready}: {ready: boolean}) => {
-    usePurchaseEntry(ready ? {
-      ...params,
-      primaryAction: {kind: 'choose_plan', label: 'اختر الاشتراك'},
-      effectiveSpendableBalance: 900,
-      spendableBalance: 900,
-    } : params);
+    usePurchaseEntry(
+      ready
+        ? {
+            ...params,
+            primaryAction: {kind: 'choose_plan', label: 'اختر الاشتراك'},
+            spendableBalance: 900,
+          }
+        : params,
+    );
     return null;
   };
   return {consume, openForTerms, setNotice, Harness};

@@ -304,6 +304,13 @@ export const MyCornerIcon = (props?: SvgProps) => (
     />
   </Svg>
 );
+export const RewardsIcon = (props?: SvgProps) => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" {...props}>
+    <Path d="M4 11v9h16v-9M3 7h18v4H3V7ZM12 7v13M12 7H8a2.5 2.5 0 1 1 2.5-2.5L12 7Zm0 0h4a2.5 2.5 0 1 0-2.5-2.5L12 7Z"
+      stroke={props?.stroke || 'white'} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
 export const MyWalletIcon = (props?: SvgProps) => (
   <Svg width={23} height={18} viewBox="0 0 23 18" fill="none" {...props}>
     <Path

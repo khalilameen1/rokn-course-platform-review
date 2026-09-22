@@ -13,6 +13,7 @@ import {usePortfolioOwnerBoundary} from './usePortfolioOwnerBoundary';
 import {usePortfolioProjectDetails} from './usePortfolioProjectDetails';
 
 export type GalleryProps = {
+  onSubscriptions?: (hasSubscription: boolean) => void;
   onSharePortfolio?: () => void | Promise<void>;
   onShareablePortfolioChange?: (available: boolean) => void;
 };
@@ -22,6 +23,7 @@ export type GalleryProps = {
  * mutations and post-upload publication each own their own state machine.
  */
 export const usePortfolioGalleryController = ({
+  onSubscriptions,
   onSharePortfolio,
   onShareablePortfolioChange,
 }: GalleryProps = {}) => {
@@ -47,6 +49,7 @@ export const usePortfolioGalleryController = ({
     mountedRef,
   });
   const details = usePortfolioProjectDetails({
+    onSubscriptions,
     cancelLibraryLoad: library.cancelLoad,
     captureBoundary,
     isCreateBusy,
@@ -55,6 +58,7 @@ export const usePortfolioGalleryController = ({
     setMutationBlocked: setDetailMutationBlocked,
   });
   const create = usePortfolioCreateFlow({
+    onSubscriptions,
     appActive,
     busyRef: createBusyRef,
     cancelLibraryLoad: library.cancelLoad,

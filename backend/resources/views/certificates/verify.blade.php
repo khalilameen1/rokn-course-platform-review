@@ -36,7 +36,7 @@
             <div class="row"><dt>الكورس</dt><dd class="course">{{ $verification['course_name'] }}</dd></div>
             <div class="row"><dt>الإنجاز</dt><dd>
                 {{ $verification['achievement'] }}
-                @if(($verification['design_version'] ?? null) === 'editorial_v1')
+                @if(in_array($verification['design_version'] ?? null, \App\Services\CertificateArtworkRenderer::SUPPORTED_VERSIONS, true))
                     {{ $verification['course_name'] }}
                     @if(trim((string) ($verification['completion_text'] ?? '')) !== '')
                         <br>{{ $verification['completion_text'] }}

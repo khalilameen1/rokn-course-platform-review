@@ -58,6 +58,8 @@ export const useProjectFeedback = ({
   const sendFlightRef = useRef<symbol | null>(null);
   const pickerFlightRef = useRef<symbol | null>(null);
   const hydratedThreadRef = useRef<string | null>(null);
+  const accessKey = `${feedbackLevel}:${replyEnabled}`;
+  const hydratedAccessRef = useRef(accessKey);
   const pollJitterRef = useRef(0.82 + Math.random() * 0.3);
   const draftSnapshotRef = useRef({
     text: '',
@@ -155,8 +157,9 @@ export const useProjectFeedback = ({
       !active ||
       !appIsActive ||
       !threadId ||
-      (thread?.messages.length || 0) > 0 ||
-      hydratedThreadRef.current === threadId ||
+      (((thread?.messages.length || 0) > 0 ||
+        hydratedThreadRef.current === threadId) &&
+        hydratedAccessRef.current === accessKey) ||
       !['ready', 'failed'].includes(reportStatus)
     ) {
       return;
@@ -178,6 +181,7 @@ export const useProjectFeedback = ({
         if (!ownsThread()) return;
         if (next) {
           hydratedThreadRef.current = threadId;
+          hydratedAccessRef.current = accessKey;
           setThread(next);
           setError('');
           setHydrating(false);
@@ -199,6 +203,7 @@ export const useProjectFeedback = ({
       if (timer) clearTimeout(timer);
     };
   }, [
+    accessKey,
     active,
     appIsActive,
     projectId,

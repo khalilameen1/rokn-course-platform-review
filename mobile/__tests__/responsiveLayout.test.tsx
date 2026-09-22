@@ -77,6 +77,40 @@ const viewports = [
 ];
 
 describe('responsive layout from native dimensions', () => {
+  it('reflows the mounted screen through rotation, split-screen and unfolding', () => {
+    let layout!: ReturnType<typeof useResponsiveLayout>;
+    const Probe = () => {
+      layout = useResponsiveLayout();
+      return null;
+    };
+    let renderer!: TestRenderer.ReactTestRenderer;
+    act(() => {
+      renderer = TestRenderer.create(<Probe />);
+    });
+    for (const [width, height] of [
+      [800, 1280],
+      [1280, 800],
+      [280, 800],
+      [800, 360],
+      [800, 1280],
+    ]) {
+      mockDimensions = {width, height, scale: 2, fontScale: 1.3};
+      act(() => renderer.update(<Probe />));
+      expect(layout.width).toBe(width);
+      expect(layout.height).toBe(height);
+      expect(layout.gridCardWidth).toBeGreaterThan(0);
+      expect(
+        layout.gridColumns * layout.gridCardWidth +
+          (layout.gridColumns - 1) * layout.gridGap +
+          layout.gutter * 2,
+      ).toBeCloseTo(layout.contentWidth);
+      expect(layout.contentWidth).toBeLessThanOrEqual(width);
+      expect(layout.railCardWidth).toBeLessThanOrEqual(
+        layout.contentWidth - layout.gutter * 2,
+      );
+    }
+    act(() => renderer.unmount());
+  });
   it('recognizes the Android 1.3 value observed on device without mutating it', () => {
     const reportedFontScale = 1.2999999523162842;
     const layout = readLayout({

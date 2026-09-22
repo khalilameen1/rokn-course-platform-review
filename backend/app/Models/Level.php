@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\PublicDiskUrl;
+use App\Services\AppArtworkService;
 use App\Traits\HasPhoto;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -59,6 +60,13 @@ class Level extends Model
                 return $this->badge_image;
             }
             if (str_starts_with(ltrim($this->badge_image, '/'), 'assets/')) {
+                if (in_array(ltrim($this->badge_image, '/'), [
+                    'assets/img/badges/junior.png',
+                    'assets/img/badges/mid-level.png',
+                    'assets/img/badges/senior.png',
+                ], true)) {
+                    return app(AppArtworkService::class)->levelDefault((int) $this->order);
+                }
                 return asset(ltrim($this->badge_image, '/'));
             }
             return PublicDiskUrl::from((string) $this->badge_image);
@@ -69,10 +77,6 @@ class Level extends Model
             return $this->image;
         }
 
-        $fallback = $this->order <= 1
-            ? 'junior.png'
-            : ($this->order === 2 ? 'mid-level.png' : 'senior.png');
-
-        return asset('assets/img/badges/' . $fallback);
+        return app(AppArtworkService::class)->levelDefault((int) $this->order);
     }
 }

@@ -1,17 +1,15 @@
 import React from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Text} from 'react-native';
+import {StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {WalletView} from '../src/screens/wallet/WalletView';
 import {WalletPackageRail} from '../src/screens/wallet/WalletPackageRail';
-import {walletStyles} from '../src/screens/wallet/walletStyles';
-import type {WalletController} from '../src/screens/wallet/useWalletController';
+import {RoknCoinStack, CoinAmount} from '../src/components/ui/RoknCoin';
 import TaskBrandIcon from '../src/components/ui/TaskBrandIcon';
-import {CoinAmount} from '../src/components/ui/RoknCoin';
-import {Accessibility, Palette, Spacing} from '../src/constants/designSystem';
-import {
-  formatArabicDisplayText,
-  formatArabicNumber,
-} from '../src/constants/arabicFormatting';
+import {walletStyles} from '../src/screens/wallet/walletStyles';
+import {learnerRewardTasks} from '../src/screens/wallet/rewardsPresentation';
+import type {WalletController} from '../src/screens/wallet/useWalletController';
+import {formatArabicNumber} from '../src/constants/arabicFormatting';
+import {Accessibility} from '../src/constants/designSystem';
 
 let mockDimensions = {width: 390, height: 844, scale: 2, fontScale: 1};
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -22,61 +20,34 @@ jest.mock('@react-navigation/native', () => ({useNavigation: () => ({})}));
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));
-jest.mock('../src/navigation/journeyNavigation', () => ({
-  openGuestLogin: jest.fn(),
-}));
-jest.mock('../src/hooks/useReducedMotion', () => ({
-  useReducedMotion: () => true,
-}));
-jest.mock('../src/constants/distribution', () => ({
-  CAN_START_COIN_CHECKOUT: true,
-}));
 jest.mock('../src/components/TabBar', () => () => null);
 jest.mock('../src/components/view/HeaderWithBack', () => () => null);
 jest.mock('../src/components/ui/TaskBrandIcon', () => () => null);
+jest.mock('../src/hooks/useReducedMotion', () => ({
+  useReducedMotion: () => true,
+}));
 jest.mock('../src/components/containers/Containers', () => {
   const {View} = require('react-native');
   return {Container: View, Content: View};
 });
 jest.mock('../src/components/ui/PremiumUI', () => {
-  const {Text: MockText, View} = require('react-native');
-  return {
-    PremiumCard: View,
-    ResponsiveFrame: View,
-    SectionHeading: ({title}: {title: string}) => <MockText>{title}</MockText>,
-    StatusView: () => null,
-  };
+  const {View} = require('react-native');
+  return {ResponsiveFrame: View, StatusView: () => null};
 });
-
-const packages = [
-  {id: '1', coins: 150, price: 75, label: 'باقة البداية'},
-  {
-    id: '2',
-    coins: 1000,
-    price: 400,
-    label: 'باقة التعلّم',
-    displayPrice: '٤٠٠ ج.م.',
-  },
-  {id: '3', coins: 2500, price: 900, label: 'باقة أكبر'},
-];
 
 const makeController = (
   overrides: Partial<WalletController> = {},
 ): WalletController => ({
-  checkoutLoading: null,
   displayedBalance: 1250,
-  displayedCoinRules: [],
-  displayedPackages: packages,
   displayedPaidBalance: 1000,
   displayedRewardBalance: 250,
-  displayedRewardContributionCap: 100,
-  displayedSpendableBalance: 1100,
+  displayedCoinRules: ['قيمة الخصم تظهر قبل الدفع'],
   displayedTasks: [
     {
-      id: 'youtube',
+      id: 'production-1',
       serverId: '1',
       title: 'تابع ركن على يوتيوب',
-      description: 'شاهد دروسنا الجديدة',
+      description: 'شرح طويل لا يظهر في الصفحة',
       reward: 50,
       actionKey: 'follow_youtube',
       status: 'available',
@@ -87,13 +58,11 @@ const makeController = (
   handleTask: jest.fn(),
   manualRefreshing: false,
   ownerReady: true,
-  packagesStatus: 'ready',
   refreshWallet: jest.fn(),
   refreshWalletManually: jest.fn(),
   serverSession: true,
   setWalletModal: jest.fn(),
-  startCheckout: jest.fn(),
-  taskActionLabel: () => 'تابع',
+  taskActionLabel: () => 'اشتراك',
   taskLoadingIds: [],
   tasksStatus: 'ready',
   usingRemoteWallet: true,
@@ -102,7 +71,7 @@ const makeController = (
   ...overrides,
 });
 
-describe('wallet presentation', () => {
+describe('rewards presentation', () => {
   let renderer: TestRenderer.ReactTestRenderer;
   const render = async (controller = makeController()) => {
     await act(async () => {
@@ -110,192 +79,108 @@ describe('wallet presentation', () => {
     });
     return renderer.root;
   };
-  const packageButtons = () =>
-    renderer.root
-      .findAll(node => typeof node.props.style === 'function')
-      .filter(node => node.props.accessibilityLabel?.includes('مقابل'));
+  const texts = () =>
+    renderer.root.findAllByType(Text).map(node => node.props.children);
   const taskButton = () =>
     renderer.root
       .findAll(node => typeof node.props.style === 'function')
-      .find(node =>
-        node.findAllByType(Text).some(text => text.props.children === 'تابع'),
-      )!;
-
+      .find(node => node.props.accessibilityLabel?.startsWith('اشتراك '))!;
   afterEach(async () => {
     await act(async () => renderer?.unmount());
     mockDimensions = {width: 390, height: 844, scale: 2, fontScale: 1};
   });
-
   it.each([
     [320, 1],
-    [320, 1.3],
-    [360, 1.3],
+    [320, 2],
     [390, 1],
     [430, 1.3],
+    [800, 2],
   ])(
-    'leaves a substantial next-package peek at %idp / font scale %s',
+    'shows earned balance, artwork and no top-up catalogue at %idp / font scale %s',
     async (width, fontScale) => {
       mockDimensions = {...mockDimensions, width, fontScale};
       const root = await render();
-      const rail = root.findByType(WalletPackageRail);
-      const {cardWidth, gutter} = rail.props;
-      expect(cardWidth).toBeGreaterThanOrEqual(width * 0.52);
-      expect(cardWidth).toBeLessThanOrEqual(width * 0.58);
-      expect(width - gutter * 2 - cardWidth - Spacing.sm).toBeGreaterThan(70);
-      expect(cardWidth - walletStyles.packageCard.padding * 2).toBeGreaterThan(
-        140,
-      );
-      expect(packageButtons()).toHaveLength(3);
-      const scroll = rail.findByType(ScrollView);
-      expect(scroll.props.horizontal).toBe(true);
-      expect(scroll.props.snapToInterval).toBe(cardWidth + Spacing.sm);
+      expect(root.findAllByType(WalletPackageRail)).toHaveLength(0);
+      expect(root.findAllByType(RoknCoinStack)).toHaveLength(1);
+      expect(texts()).toContain('اكسب عملات');
+      expect(texts()).toContain(formatArabicNumber(250));
+      expect(texts()).not.toContain(formatArabicNumber(1250));
+      expect(texts()).not.toContain('شحن الرصيد');
+      const balance = root
+        .findAllByType(Text)
+        .find(node => node.props.accessibilityLabel === 'رصيد المكافآت')!;
+      expect(balance.props.numberOfLines).toBeUndefined();
+      expect(balance.props.allowFontScaling).not.toBe(false);
     },
   );
-
-  it('keeps the price, coin amount and visible checkout action on each compact card', async () => {
-    const controller = makeController();
-    await render(controller);
-    expect(packageButtons()).toHaveLength(packages.length);
-    for (const [index, button] of packageButtons().entries()) {
-      expect(button.findByType(CoinAmount).props.value).toBe(
-        packages[index].coins,
-      );
-      const price =
-        packages[index].displayPrice ||
-        `${formatArabicNumber(packages[index].price)} جنيه`;
-      const texts = button.findAllByType(Text);
-      expect(
-        texts.some(
-          text =>
-            text.props.children ===
-            formatArabicDisplayText(packages[index].label),
-        ),
-      ).toBe(true);
-      expect(texts.some(text => text.props.children === price)).toBe(true);
-      expect(texts.some(text => text.props.children === 'اختيار الباقة')).toBe(
-        true,
-      );
-    }
-    expect(walletStyles.packageAction.backgroundColor).toBe(Palette.action);
-    expect(walletStyles.packageAction.minHeight).toBeGreaterThanOrEqual(
-      Accessibility.minTouchTarget,
-    );
-    expect(walletStyles.packageActionLabel.flexShrink).toBe(1);
-    await act(async () => packageButtons()[1].props.onPress());
-    expect(controller.startCheckout).toHaveBeenCalledWith(packages[1]);
-    expect(controller.startCheckout).toHaveBeenCalledTimes(1);
-  });
-
-  it('preserves the checkout busy guard and disables stale packages', async () => {
-    await render(makeController({checkoutLoading: '2'}));
-    expect(packageButtons()).toHaveLength(packages.length);
-    expect(packageButtons().every(button => button.props.disabled)).toBe(true);
-    expect(packageButtons()[1].props.accessibilityState).toEqual({
-      busy: true,
-      disabled: true,
-    });
-    expect(packageButtons()[1].findAllByType(ActivityIndicator)).toHaveLength(
-      1,
-    );
-    await act(async () => {
-      renderer.update(
-        <WalletView controller={makeController({packagesStatus: 'error'})} />,
-      );
-    });
-    expect(packageButtons().every(button => button.props.disabled)).toBe(true);
-    expect(
-      packageButtons()[0]
-        .findAllByType(Text)
-        .some(text => text.props.children === 'حدّث الباقات أولًا'),
-    ).toBe(true);
-  });
-
-  it('restores task identity and a visible action without moving rewards away from their title', async () => {
+  it('keeps the task title, brand and reward without a description paragraph', async () => {
     const controller = makeController();
     const root = await render(controller);
-    expect(root.findByType(TaskBrandIcon).props.value).toBe('follow_youtube');
-    const title = root
-      .findAllByType(Text)
-      .find(text => text.props.children === 'تابع ركن على يوتيوب')!;
-    expect(title.parent!.findByType(CoinAmount).props.value).toBe(50);
-    expect(walletStyles.taskTitleRow.flexWrap).toBe('wrap');
-    const actionStyle = StyleSheet.flatten(
-      taskButton().props.style({pressed: false}),
-    );
-    expect(actionStyle.backgroundColor).toBe(Palette.primarySoft);
-    expect(actionStyle.borderWidth).toBe(1);
-    expect(actionStyle.minHeight).toBeGreaterThanOrEqual(
-      Accessibility.minTouchTarget,
-    );
+    expect(texts()).toContain('اشترك في قناتنا على يوتيوب');
+    expect(texts()).not.toContain(controller.displayedTasks[0].description);
+    expect(root.findByType(TaskBrandIcon).props).toEqual({
+      value: 'follow_youtube',
+      plain: true,
+    });
+    expect(root.findByType(CoinAmount).props.value).toBe(50);
+    expect(
+      StyleSheet.flatten(taskButton().props.style({pressed: false})).minHeight,
+    ).toBeGreaterThanOrEqual(Accessibility.minTouchTarget);
     await act(async () => taskButton().props.onPress());
     expect(controller.handleTask).toHaveBeenCalledWith(
       controller.displayedTasks[0],
     );
   });
-
-  it('gives task text its own row on a narrow phone with enlarged text', async () => {
-    mockDimensions = {...mockDimensions, width: 320, fontScale: 1.3};
-    await render();
-    const actionStyle = StyleSheet.flatten(
-      taskButton().props.style({pressed: false}),
-    );
-    expect(actionStyle.maxWidth).toBe('100%');
-    expect(actionStyle.alignSelf).toBe('flex-end');
-    expect(actionStyle.marginStart).toBe(0);
-    expect(walletStyles.taskCopy.minWidth).toBe(0);
-    expect(walletStyles.taskTitle.flexShrink).toBe(1);
+  it('disables task mutations when the task snapshot is stale', async () => {
+    await render(makeController({tasksStatus: 'error'}));
+    expect(taskButton().props.disabled).toBe(true);
   });
-
-  it('keeps the balance readable and accessible with a compact header', async () => {
+  it('places completed tasks behind a disclosure and never exposes welcome as a claim', async () => {
     const controller = makeController();
-    const root = await render(controller);
-    const balance = root
-      .findAll(node => typeof node.props.style === 'function')
-      .find(node => node.props.accessibilityLabel === 'تفاصيل رصيد العملات')!;
-    expect(balance.props.accessibilityValue.text).toContain(
-      formatArabicNumber(1250),
-    );
-    expect(walletStyles.balance.fontSize).toBeGreaterThanOrEqual(40);
-    expect(walletStyles.balance.fontSize).toBeLessThanOrEqual(46);
-    expect(walletStyles.balance.lineHeight).toBeLessThanOrEqual(60);
-    expect(walletStyles.balanceCard.paddingBottom).toBeLessThanOrEqual(
-      Spacing.xs,
-    );
-    await act(async () => balance.props.onPress());
-    expect(controller.setWalletModal).toHaveBeenCalledWith('breakdown');
+    const completed = {
+      ...controller.displayedTasks[0],
+      status: 'claimed' as const,
+    };
+    const tasks = learnerRewardTasks([
+      completed,
+      {...completed, actionKey: 'register'},
+      {...completed, actionKey: 'welcome_bonus'},
+    ]);
+    expect(tasks).toEqual([completed]);
+    const root = await render({...controller, displayedTasks: tasks});
+    expect(texts()).not.toContain('تم الاستلام');
+    const toggle = root.findAll(
+      node =>
+        node.props.accessibilityState?.expanded === false &&
+        typeof node.props.onPress === 'function',
+    )[0];
+    await act(async () => toggle.props.onPress());
+    expect(texts()).toContain('تم الاستلام');
+    expect(root.findAllByType(CoinAmount)).toHaveLength(0);
   });
-
-  it.each([
-    [320, 1],
-    [320, 2],
-    [800, 2],
-  ])(
-    'lets the complete balance wrap without shrinking at %idp / font scale %s',
-    async (width, fontScale) => {
-      mockDimensions = {...mockDimensions, width, fontScale};
-      const amount = 123456789;
-      const root = await render(
-        makeController({displayedBalance: amount, walletModal: 'breakdown'}),
-      );
-      const totals = root
-        .findAllByType(Text)
-        .filter(text => text.props.children === formatArabicNumber(amount));
-      expect(totals).toHaveLength(2);
-      for (const total of totals) {
-        expect(total.props.numberOfLines).toBeUndefined();
-        expect(total.props.adjustsFontSizeToFit).toBeUndefined();
-        expect(total.props.maxFontSizeMultiplier).toBeUndefined();
-        expect(total.props.allowFontScaling).not.toBe(false);
-      }
-      expect(StyleSheet.flatten(totals[0].props.style).width).toBe('100%');
-      expect(
-        StyleSheet.flatten(totals[0].parent!.props.style).flexDirection,
-      ).toBe('column');
-      expect(StyleSheet.flatten(totals[1].parent!.props.style).width).toBe(
-        '100%',
-      );
-      expect(walletStyles.balanceRow.flexWrap).toBe('wrap');
-      expect(walletStyles.balance.maxWidth).toBe('100%');
-    },
-  );
+  it('has matching disclosure styling and safe touch targets', async () => {
+    await render();
+    expect(walletStyles.disclosure.minHeight).toBeGreaterThanOrEqual(
+      Accessibility.minTouchTarget,
+    );
+    expect(walletStyles.disclosure).not.toHaveProperty('backgroundColor');
+    const button = renderer.root
+      .findAll(node => typeof node.props.style === 'function')
+      .find(node =>
+        node
+          .findAllByType(Text)
+          .some(text => text.props.children === 'كيف يعمل الرصيد'),
+      )!;
+    expect(
+      StyleSheet.flatten(button.props.style({pressed: false})),
+    ).toMatchObject(walletStyles.disclosure);
+  });
+  it('does not invent a zero balance while loading or after a failure', async () => {
+    await render(
+      makeController({displayedBalance: null, walletStatus: 'error'}),
+    );
+    expect(texts()).toContain('—');
+    expect(texts()).toContain('تعذّر تحديث الرصيد');
+    expect(texts()).not.toContain(formatArabicNumber(0));
+  });
 });

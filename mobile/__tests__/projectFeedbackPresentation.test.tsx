@@ -79,10 +79,13 @@ const button = (renderer: TestRenderer.ReactTestRenderer, label: string) =>
 
 describe('project feedback report and conversation presentation', () => {
   let renderer: TestRenderer.ReactTestRenderer;
-  const render = (value: Props) =>
+  const render = (value: Props, openDiscussion = true) => {
     act(() => {
       renderer = TestRenderer.create(<ProjectFeedbackPanel {...value} />);
     });
+    if (openDiscussion)
+      act(() => button(renderer, 'هل لديك سؤال؟').props.onPress());
+  };
   afterEach(() => {
     if (renderer) act(() => renderer.unmount());
     jest.restoreAllMocks();
@@ -96,7 +99,7 @@ describe('project feedback report and conversation presentation', () => {
     expect(rendered).toContain('تقرير المشروع');
     expect(rendered).toContain(reportText);
     expect(rendered.indexOf(reportText)).toBeLessThan(
-      rendered.indexOf('استفسارات عن التقرير'),
+      rendered.indexOf('مناقشة المشروع'),
     );
     expect(rendered).not.toContain('متصل الآن');
     const body = renderer.root
@@ -205,22 +208,27 @@ describe('project feedback report and conversation presentation', () => {
     expect(renderer.root.findAllByType(CopyButton)).toHaveLength(0);
   });
 
-  it('keeps report-only inquiry explanatory and never mounts an inactive composer', () => {
-    const base = props({canReply: false, feedbackLevel: 'report'});
+  it('opens the existing upgrade flow only on request for a report-only subscription', () => {
+    const upgrade = jest.fn();
+    const base = props({
+      canReply: false,
+      feedbackLevel: 'report',
+      onRequestDiscussionUpgrade: upgrade,
+    });
     base.thread = {...base.thread, feedbackLevel: 'report', canReply: false};
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    render(base);
+    render(base, false);
     expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
-    expect(texts(renderer)).toContain(
+    expect(texts(renderer)).not.toContain(
       'فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة',
     );
-    const gate = button(renderer, 'اعرف فئة الرد على التقرير');
+    expect(upgrade).not.toHaveBeenCalled();
+    const gate = button(renderer, 'هل لديك سؤال؟');
     expect(gate.props.disabled).not.toBe(true);
     act(() => gate.props.onPress());
-    expect(alert).toHaveBeenCalledWith(
-      'الرد غير مشمول',
-      'الردود متاحة في فئة المتابعة',
-    );
+    expect(upgrade).toHaveBeenCalledTimes(1);
+    expect(alert).not.toHaveBeenCalled();
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
     expect(base.onSend).not.toHaveBeenCalled();
   });
 
@@ -343,11 +351,17 @@ describe('project feedback report and conversation presentation', () => {
     base.thread = {...base.thread, messages: [report, failed]};
     render(base);
     await act(async () => button(renderer, `فتح ${file.name}`).props.onPress());
-    expect(renderer.root.findAllByType(Text).every(node => node.props.allowFontScaling !== false)).toBe(true);
+    expect(
+      renderer.root
+        .findAllByType(Text)
+        .every(node => node.props.allowFontScaling !== false),
+    ).toBe(true);
     for (const label of [`إزالة ${file.name}`, 'إضافة مرفق']) {
       const action = button(renderer, label);
       expect(action.findAllByType(Text)).toHaveLength(0);
-      expect(action.findAllByProps({accessibilityElementsHidden: true}).length).toBeGreaterThan(0);
+      expect(
+        action.findAllByProps({accessibilityElementsHidden: true}).length,
+      ).toBeGreaterThan(0);
     }
     expect(mockOpenAttachment).toHaveBeenCalledWith({
       projectId: '7',
@@ -401,6 +415,42 @@ describe('project feedback report and conversation presentation', () => {
       ),
     );
     expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
-    expect(texts(renderer)).toContain('اكتملت رسائل الفئة');
+    expect(texts(renderer)).toContain('استخدمت كل رسائل مناقشة المشاريع');
+  });
+
+  it('keeps discussion opt-in and preserves its draft and history when collapsed', () => {
+    const base = props({
+      draft: 'سؤالي',
+      normalizedDraft: 'سؤالي',
+      attachments: [file],
+    });
+    base.thread.messages = [
+      report,
+      {id: 'old', role: 'user', status: 'completed', text: 'سؤال سابق'},
+    ];
+    render(base, false);
+    expect(texts(renderer)).toContain(reportText);
+    expect(texts(renderer)).not.toContain('سؤال سابق');
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
+    act(() => button(renderer, 'هل لديك سؤال؟').props.onPress());
+    expect(texts(renderer)).toContain('سؤال سابق');
+    expect(renderer.root.findByType(TextInput).props.value).toBe('سؤالي');
+    act(() => button(renderer, 'إغلاق المناقشة').props.onPress());
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
+    act(() => button(renderer, 'هل لديك سؤال؟').props.onPress());
+    expect(renderer.root.findByType(TextInput).props.value).toBe('سؤالي');
+    expect(button(renderer, `إزالة ${file.name}`)).toBeDefined();
+    expect(base.onChangeDraft).not.toHaveBeenCalled();
+    expect(base.onSend).not.toHaveBeenCalled();
+    act(() =>
+      renderer.update(
+        <ProjectFeedbackPanel
+          {...base}
+          projectId="8"
+          thread={{...base.thread, id: 'other'}}
+        />,
+      ),
+    );
+    expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
   });
 });

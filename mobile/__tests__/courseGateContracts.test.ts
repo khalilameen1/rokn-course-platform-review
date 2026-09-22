@@ -79,14 +79,15 @@ describe('course gate contracts', () => {
     const dialogs = source(
       'src/screens/CourseDetails/details/PurchaseDialogs.tsx',
     );
-    const dialogSteps = source(
-      'src/screens/CourseDetails/details/PurchaseDialogSteps.tsx',
+    const codeEntry = source(
+      'src/screens/CourseDetails/details/CourseCodeEntry.tsx',
     );
     expect(dialogs).not.toContain('CourseCodeRedemptionDialog');
     expect(dialogs).toContain('<CourseSubscriptionSheet');
     expect(dialogs).not.toContain("dialogStep === 'topup'");
-    expect(dialogSteps).toContain('export const CourseCodeEntry');
-    expect(dialogSteps).toContain('<CourseCodeEntry');
+    expect(codeEntry).toContain('export function CourseCodeEntry');
+    expect(dialogs).toContain('<CourseCodeEntry');
+    expect(dialogs).not.toContain('CouponEntry');
   });
 
   it('keeps project report and conversation tiers distinct in the UI', () => {
@@ -108,12 +109,10 @@ describe('course gate contracts', () => {
 
     expect(feedback).toContain("feedbackLevel === 'enhanced'");
     expect(feedbackPanel).toContain("feedbackLevel === 'report'");
-    expect(feedbackPanel).toContain(
-      'فئتك تشمل التقرير فقط والردود متاحة في فئة المتابعة',
-    );
-    expect(feedbackPanel).toContain('اعرف فئة الرد على التقرير');
-    expect(feedbackPanel).toContain('الرد على التقرير');
-    expect(feedbackPanel).toContain('الردود متاحة في فئة المتابعة');
+    expect(feedbackPanel).toContain('هل لديك سؤال؟');
+    expect(feedbackPanel).toContain('onRequestDiscussionUpgrade');
+    expect(feedbackPanel).not.toContain('فئتك تشمل التقرير فقط');
+    expect(transition).toContain('requiredFeature="project_discussion"');
     expect(feedback).toContain('!canReply ||');
     expect(submission).toContain(
       'if (outcome.accepted && !outcome.preserveDraft)',

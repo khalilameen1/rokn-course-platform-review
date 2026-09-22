@@ -527,6 +527,7 @@ export const useReelsController = () => {
   );
 
   const renderItem = useReelsFeedRenderer({
+    refreshCourseEntitlements,
     bottomInset: insets.bottom,
     changePlaybackSpeed,
     changeQuality,

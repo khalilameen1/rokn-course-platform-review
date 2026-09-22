@@ -1,15 +1,7 @@
 import React, {useEffect, useRef} from 'react';
 import type {RefObject} from 'react';
-import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Animated, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
+import {RasterImage as Image} from '../../ui/RasterImage';
 import Svg, {Path} from 'react-native-svg';
 import {Palette} from '../../../constants/designSystem';
 import {useReducedMotion} from '../../../hooks/useReducedMotion';

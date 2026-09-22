@@ -2,7 +2,8 @@ import {useCallback, useEffect, useState} from 'react';
 import {useSelector} from 'react-redux';
 import {sessionIdentityKey} from '../../constants/helpers';
 import type {RootState} from '../../store/store';
-import {useWalletCheckout} from './useWalletCheckout';
+import {learnerRewardTasks} from './rewardsPresentation';
+import {DEFAULT_REWARDS_HELP} from '../../services/api/rewardWalletMapper';
 import {useWalletData} from './useWalletData';
 import {useWalletTasks} from './useWalletTasks';
 
@@ -14,9 +15,9 @@ export const useWalletController = () => {
   >(null);
   const showCoinRules = useCallback(() => setWalletModal('rules'), []);
   useEffect(() => setWalletModal(null), [identityKey]);
-  const data = useWalletData(identityKey);
+  // Rewards never load the store catalogue or initiate a top-up.
+  const data = useWalletData(identityKey, false);
   const tasks = useWalletTasks(data, showCoinRules);
-  const checkout = useWalletCheckout(data);
   const usingRemoteWallet = data.serverSession === true;
 
   const displayedBalance = usingRemoteWallet
@@ -28,30 +29,21 @@ export const useWalletController = () => {
   const displayedRewardBalance = usingRemoteWallet
     ? data.wallet?.rewardBalance ?? 0
     : 0;
-  const displayedRewardContributionCap = usingRemoteWallet
-    ? data.wallet?.rewardContributionCap ?? 0
-    : 0;
-  const displayedSpendableBalance = usingRemoteWallet
-    ? data.wallet?.spendableBalance ?? displayedBalance ?? 0
-    : 0;
 
   return {
-    checkoutLoading: checkout.checkoutLoading,
     displayedBalance,
-    displayedCoinRules: usingRemoteWallet ? data.wallet?.coinRules ?? [] : [],
-    displayedPackages: usingRemoteWallet
-      ? data.packages.slice().sort((left, right) => left.coins - right.coins)
+    displayedCoinRules: usingRemoteWallet
+      ? data.wallet?.rewardRules ?? DEFAULT_REWARDS_HELP
       : [],
     displayedPaidBalance,
     displayedRewardBalance,
-    displayedRewardContributionCap,
-    displayedSpendableBalance,
-    displayedTasks: usingRemoteWallet ? data.tasks : [],
+    displayedTasks: usingRemoteWallet ? learnerRewardTasks(data.tasks) : [],
     displayedTransactions: usingRemoteWallet
-      ? (data.wallet?.transactions ?? []).map(item => ({
+      ? (data.wallet?.rewardTransactions ?? []).map(item => ({
           id: item.id,
           title: item.label,
           amount: item.amount,
+          automatic: item.category === 'welcome_bonus',
           createdAt: item.occurred_at
             ? new Date(item.occurred_at).getTime()
             : 0,
@@ -60,12 +52,10 @@ export const useWalletController = () => {
     handleTask: tasks.handleTask,
     manualRefreshing: data.manualRefreshing,
     ownerReady: data.ownerReady,
-    packagesStatus: data.packagesStatus,
     refreshWallet: data.refresh,
     refreshWalletManually: data.refreshManually,
     serverSession: data.serverSession,
     setWalletModal,
-    startCheckout: checkout.startCheckout,
     taskActionLabel: tasks.taskActionLabel,
     taskLoadingIds: tasks.loadingIds,
     tasksStatus: data.tasksStatus,

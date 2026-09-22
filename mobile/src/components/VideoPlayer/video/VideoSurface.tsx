@@ -1,5 +1,6 @@
 import React from 'react';
-import {Image, Platform, StyleSheet, View} from 'react-native';
+import {Platform, StyleSheet, View} from 'react-native';
+import {RasterImage as Image} from '../../ui/RasterImage';
 import Video, {
   BufferingStrategyType,
   ViewType,

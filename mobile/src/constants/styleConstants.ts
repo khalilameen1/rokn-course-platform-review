@@ -1,18 +1,5 @@
-import {
-  Dimensions,
-  NativeModules,
-  Platform,
-  StatusBar,
-  StyleSheet,
-} from 'react-native';
+import {Dimensions, Platform, StyleSheet} from 'react-native';
 import {BrandColors} from './brandTokens';
-const {width, height} = Dimensions.get('window');
-const statusBarHeight =
-  Platform.OS === 'android'
-    ? StatusBar.currentHeight ?? 0
-    : Number(NativeModules.StatusBarManager?.HEIGHT) || 0;
-export const phoneHeight = height;
-export const phoneWidth = width;
 export const Colors = {
   white: '#ffffff',
   mainColor: BrandColors.primary,
@@ -50,19 +37,6 @@ export const Fonts = {
 
 export enum Images {}
 
-export const ScreenOptions = {
-  // StatusBarManager is not guaranteed to be exported by every Android/new-
-  // architecture shell. Keep module evaluation safe; consumers can still use
-  // the platform value when it is available.
-  StatusBarHeight: statusBarHeight,
-  HalfScreen: width / 2 - 15,
-  CURRENT_RESOLUTION: Math.sqrt(height * height + width * width),
-  DesignResolution: {
-    width: 375,
-    height: 812,
-  },
-} as const;
-
 export const createPerfectPixel = (designSize = {width: 375, height: 812}) => {
   if (
     !designSize ||
@@ -78,6 +52,7 @@ export const createPerfectPixel = (designSize = {width: 375, height: 812}) => {
   // Scaling from the screen diagonal made controls almost twice their intended
   // size on tablets. Scale from the shortest side and clamp the result so type,
   // icons and touch targets remain deliberate on phones, foldables and tablets.
+  const {width, height} = Dimensions.get('window');
   const shortestSide = Math.min(width, height);
   const baseSide = Math.min(designSize.width, designSize.height);
   const scale = Math.min(1.16, Math.max(0.9, shortestSide / baseSide));
@@ -85,7 +60,7 @@ export const createPerfectPixel = (designSize = {width: 375, height: 812}) => {
 };
 
 export const PixelPerfect = (pixel: number) => {
-  const Perfect = createPerfectPixel(ScreenOptions.DesignResolution);
+  const Perfect = createPerfectPixel();
   return Perfect(pixel);
 };
 export const ColorWithOpacity = (
@@ -105,44 +80,6 @@ export const ColorWithOpacity = (
   }
   return `rgba(${color.r},${color.g},${color.b},${opacity})`;
 };
-export function isIphoneX() {
-  const dimen = Dimensions.get('window');
-  return (
-    Platform.OS === 'ios' &&
-    !Platform.isPad &&
-    !Platform.isTV &&
-    (dimen.height === 780 ||
-      dimen.width === 780 ||
-      dimen.height === 812 ||
-      dimen.width === 812 ||
-      dimen.height === 844 ||
-      dimen.width === 844 ||
-      dimen.height === 896 ||
-      dimen.width === 896 ||
-      dimen.height === 926 ||
-      dimen.width === 926)
-  );
-}
-
-export function ifIphoneX<T>(iphoneXStyle: T, regularStyle: T): T {
-  if (isIphoneX()) {
-    return iphoneXStyle;
-  }
-  return regularStyle;
-}
-
-export function getStatusBarHeight(safe: boolean) {
-  return Platform.select({
-    ios: ifIphoneX(safe ? 44 : 30, 20),
-    android: StatusBar.currentHeight ?? 0,
-    default: 0,
-  });
-}
-
-export function getBottomSpace() {
-  return isIphoneX() ? 34 : 0;
-}
-
 export function checkIndexIsEven(n: number) {
   return n % 2 === 0;
 }

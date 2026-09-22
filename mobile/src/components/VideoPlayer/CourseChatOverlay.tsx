@@ -82,6 +82,7 @@ const CourseChatOverlay = ({
   const reducedMotion = useReducedMotion();
   const {height: windowHeight, fontScale} = useWindowDimensions();
   const [viewportHeight, setViewportHeight] = useState(windowHeight);
+  const [choosingUpgrade, setChoosingUpgrade] = useState(false);
   const sheetLayout = courseChatSheetLayout(
     Dimensions.get('screen').height,
     viewportHeight,
@@ -99,16 +100,13 @@ const CourseChatOverlay = ({
     assistantIncluded,
     attachments,
     chatAccessUnavailable,
-    confirmUpgrade,
     input,
     hydrated,
     hydrationError,
     retryHydration,
-    loadUpgradeQuote,
     messages,
     planLimitReached,
     retry,
-    scholarshipAccess,
     scrollRef,
     send,
     isSendInFlight,
@@ -116,9 +114,6 @@ const CourseChatOverlay = ({
     stop,
     setInput,
     setAttachments,
-    upgradeError,
-    upgradeLoading,
-    upgradeQuote,
   } = useCourseChat({
     visible,
     course,
@@ -169,27 +164,15 @@ const CourseChatOverlay = ({
     previousVisibleRef.current = visible;
     previousAssistantIncludedRef.current = assistantIncluded;
 
-    // A quote contains a point-in-time wallet balance. Re-opening after the
-    // Wallet must refresh it even when the old quote is still rendered;
-    // otherwise its old deficit sends the learner back to Wallet forever.
-    if (
-      (opened || becameGated || (visible && courseChanged)) &&
-      !assistantIncluded &&
-      !courseAccessRequired &&
-      !courseChatUnavailable &&
-      !chatAccessUnavailable &&
-      !upgradeLoading
-    ) {
-      void loadUpgradeQuote();
-    }
+    // The existing checkout loads a fresh quote after choosing to upgrade.
+    if (opened || becameGated || courseChanged || !visible)
+      setChoosingUpgrade(false);
   }, [
     assistantIncluded,
     chatAccessUnavailable,
     courseAccessRequired,
     courseChatUnavailable,
     course.id,
-    loadUpgradeQuote,
-    upgradeLoading,
     visible,
   ]);
 
@@ -305,10 +288,13 @@ const CourseChatOverlay = ({
               </View>
 
               {!assistantIncluded &&
+              choosingUpgrade &&
               !chatAccessUnavailable &&
               !courseAccessRequired &&
               !courseChatUnavailable ? (
                 <FullTrackUpgradeSheet
+                  requiredFeature="chat"
+                  quotaExhausted={planLimitReached}
                   visible={visible}
                   courseId={String(course.id)}
                   courseTitle={course.title}
@@ -321,17 +307,12 @@ const CourseChatOverlay = ({
                   accessUnavailable={chatAccessUnavailable}
                   courseAccessRequired={courseAccessRequired}
                   courseChatUnavailable={courseChatUnavailable}
-                  error={upgradeError}
-                  loading={upgradeLoading}
-                  onConfirm={() => void confirmUpgrade()}
-                  onLoadQuote={() => void loadUpgradeQuote()}
+                  onUpgrade={() => setChoosingUpgrade(true)}
                   onOpenCourseAccess={() => {
                     onClose();
                     onOpenCourseAccess();
                   }}
                   planLimitReached={planLimitReached}
-                  quote={upgradeQuote}
-                  scholarshipAccess={scholarshipAccess}
                 />
               ) : !hydrated ? (
                 <StatusView

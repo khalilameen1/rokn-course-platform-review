@@ -359,10 +359,10 @@ class CourseCode extends Model
                     $grant ? 'تم تفعيل منحتك' : 'الكورس أصبح لك',
                     $grant ? 'Your grant is active' : 'Course access active',
                     $grant
-                        ? "الكورس ومشروعاته متاحة لك\nابدأ عندما يناسبك"
+                        ? "مشاهدة الكورس مجانًا\nابدأ عندما يناسبك"
                         : $course->name_ar . "\nابدأ أو أكمل من مكانك",
                     $grant
-                        ? 'The complete course and projects are ready whenever you are.'
+                        ? 'Watch the complete course for free whenever you are ready.'
                         : 'You can start ' . $course->name_en . ' and resume at any time.',
                     '/course/' . $course->id,
                     'App\Models\Course',

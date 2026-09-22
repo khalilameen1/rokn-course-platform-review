@@ -41,7 +41,8 @@ export const walletTaskActionLabel = (
   if (task.status === 'started') return 'استلام';
   if (isCoinGuideTask(task)) return 'اعرف أكثر';
   if (isWhatsAppTask(task)) return 'اربط';
-  if (isSocialTask(task)) return 'تابع';
+  if (task.actionKey.toLowerCase().includes('youtube')) return 'اشتراك';
+  if (isSocialTask(task)) return 'متابعة';
   return 'ابدأ';
 };
 
@@ -200,7 +201,7 @@ export const useWalletTasks = (
         void refreshAfterCurrent();
         Alert.alert(
           'تعذّر تأكيد المكافأة',
-          learnerErrorMessage(error, 'حدّث المحفظة قبل المحاولة مرة أخرى'),
+          learnerErrorMessage(error, 'حدّث رصيدك قبل المحاولة مرة أخرى'),
         );
       }
     },
