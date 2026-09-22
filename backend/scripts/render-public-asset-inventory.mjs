@@ -8,6 +8,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const inventoryPath = resolve(root, 'resources/legal/frontend/public-asset-inventory.json');
 const thirdParty = new Map(thirdPartyFamilies.flatMap(family => family.artifacts.map(path => [path, family.id])));
 const generated = new Set(['public/THIRD_PARTY_NOTICES.frontend.md', 'public/mix-manifest.json']);
+const approvedAppArtwork = new Set([
+    'public/assets/app-artwork/v1/README.md',
+    'public/assets/app-artwork/v1/coin-stack.png',
+    'public/assets/app-artwork/v1/coin.png',
+    'public/assets/app-artwork/v1/junior.png',
+    'public/assets/app-artwork/v1/mid-level.png',
+    'public/assets/app-artwork/v1/senior.png',
+]);
 const deployment = new Set([
     'public/.htaccess', 'public/index.php', 'public/public/.gitignore',
     'public/robots.txt', 'public/web.config',
@@ -26,6 +34,7 @@ function repoPath(path) {
 
 function classification(path) {
     if (thirdParty.has(path)) return { classification: 'third_party', family: thirdParty.get(path) };
+    if (approvedAppArtwork.has(path)) return { classification: 'first_party' };
     if (generated.has(path)) return { classification: 'generated' };
     if (deployment.has(path)) return { classification: 'deployment' };
     if (['public/css/web-wallet.css', 'public/js/web-wallet.js', 'public/js/landing.js'].includes(path)) {

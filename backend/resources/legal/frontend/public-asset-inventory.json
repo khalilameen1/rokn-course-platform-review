@@ -425,6 +425,36 @@
       "family": "datatables-i18n"
     },
     {
+      "path": "public/assets/app-artwork/v1/coin-stack.png",
+      "sha256": "4086d486aaa48f8f2946dd018c5db719a79d7b0bee63ef5d9acc8a5540f6d8bf",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/assets/app-artwork/v1/coin.png",
+      "sha256": "615080274eefd18b55a5828ee8c2ecc39c4bed67cd8d72b9588e193dd61bcf15",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/assets/app-artwork/v1/junior.png",
+      "sha256": "e288e7d7d944542fa401f16e73eb796fa0fd53a63899f1174ef34affe6228168",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/assets/app-artwork/v1/mid-level.png",
+      "sha256": "23f351261edf1a7ef044fb10a9f7e1f9b66ce85461978a30f39cfabfb1e524db",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/assets/app-artwork/v1/README.md",
+      "sha256": "04b5d3a95511604e6d90cc67634e50cbd2eaadaac40389a5a90da1ef7905cb72",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/assets/app-artwork/v1/senior.png",
+      "sha256": "fddf27eec4b7406c259152495bf62108240fbbc1fbbd8faa2f86d87a05949240",
+      "classification": "first_party"
+    },
+    {
       "path": "public/assets/img/badges/junior.png",
       "sha256": "1932ce42dae5b03d55dc6f334f3efd0f4765932235788b754290869d09d7f980",
       "classification": "first_party"
