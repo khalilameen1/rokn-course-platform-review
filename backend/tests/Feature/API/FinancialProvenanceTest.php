@@ -38,7 +38,6 @@ final class FinancialProvenanceTest extends ApiTestCase
         });
         Schema::table('orders', function (Blueprint $table): void {
             $table->unsignedInteger('package_coins')->nullable();
-            $table->unsignedBigInteger('parent_order_id')->nullable();
         });
         Schema::create('packages', function (Blueprint $table): void {
             $table->id();
