@@ -628,6 +628,38 @@ final class FinancialProvenanceTest extends ApiTestCase
         ));
     }
 
+    public function test_backfill_repairs_a_proven_allocation_backlink_without_changing_wallets(): void
+    {
+        $this->paidPackage(500);
+        [$order] = $this->courseSpend(200);
+        $debitId = $order->wallet_transaction_id;
+        $order->forceFill(['wallet_transaction_id' => null, 'notes' => 'Wallet course purchase'])->save();
+        $walletBefore = $this->user->fresh()->only(['wallet_coins', 'wallet_purchased_coins', 'wallet_reward_coins']);
+        $ledgerCount = WalletTransaction::count();
+        $allocationCount = DB::table('wallet_debit_allocations')->count();
+
+        self::assertSame(Command::FAILURE, Artisan::call('finance:backfill-provenance'));
+        self::assertNull($order->fresh()->wallet_transaction_id);
+        self::assertSame(Command::SUCCESS, Artisan::call('finance:backfill-provenance', ['--apply' => true]));
+        self::assertSame((int) $debitId, (int) $order->fresh()->wallet_transaction_id);
+        self::assertSame(Command::SUCCESS, Artisan::call('finance:backfill-provenance', ['--apply' => true]));
+        self::assertSame($walletBefore, $this->user->fresh()->only(array_keys($walletBefore)));
+        self::assertSame($ledgerCount, WalletTransaction::count());
+        self::assertSame($allocationCount, DB::table('wallet_debit_allocations')->count());
+    }
+
+    public function test_backfill_refuses_an_incomplete_allocation_as_backlink_evidence(): void
+    {
+        $this->paidPackage(500);
+        [$order] = $this->courseSpend(200);
+        $debitId = $order->wallet_transaction_id;
+        $order->forceFill(['wallet_transaction_id' => null, 'notes' => 'Wallet course purchase'])->save();
+        DB::table('wallet_debit_allocations')->where('wallet_transaction_id', $debitId)->update(['amount' => 199]);
+        self::assertSame(Command::FAILURE, Artisan::call('finance:backfill-provenance', ['--apply' => true]));
+        self::assertNull($order->fresh()->wallet_transaction_id);
+        self::assertSame(300, (int) $this->user->fresh()->wallet_purchased_coins);
+    }
+
     private function createProvenanceSchema(): void
     {
         Schema::create('wallet_credit_lots', function (Blueprint $table): void {

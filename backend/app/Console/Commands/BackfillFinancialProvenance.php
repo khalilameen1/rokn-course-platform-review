@@ -221,6 +221,26 @@ final class BackfillFinancialProvenance extends Command
             ->where('reward_coins', $debit->reward_amount)
             ->whereNull('wallet_transaction_id');
 
+        // Older purchases may have a generic note but already carry a full,
+        // immutable allocation. Repair the missing backlink from that evidence,
+        // not from a timestamp or a guessed same-price purchase.
+        $allocations = WalletDebitAllocation::query()
+            ->where('wallet_transaction_id', $debit->id)
+            ->get(['course_order_id', 'amount']);
+        if ($allocations->isNotEmpty()) {
+            $orderIds = $allocations->pluck('course_order_id')->unique();
+            if ($orderIds->count() !== 1 || !$orderIds->first()
+                || (int) $allocations->sum('amount') !== (int) $debit->paid_amount
+                || Order::query()->where('wallet_transaction_id', $debit->id)->exists()
+                || WalletDebitAllocation::query()
+                    ->where('course_order_id', $orderIds->first())
+                    ->where('wallet_transaction_id', '<>', $debit->id)->exists()) {
+                return null;
+            }
+
+            return $query->whereKey($orderIds->first())->first();
+        }
+
         if ($debit->category === 'course_purchase') {
             $query->where('notes', 'Idempotency: ' . $debit->idempotency_key);
         } else {

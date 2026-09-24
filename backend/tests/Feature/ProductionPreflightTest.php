@@ -544,6 +544,73 @@ class ProductionPreflightTest extends TestCase
         }
     }
 
+    public function test_deleted_demo_course_does_not_require_erasing_its_history(): void
+    {
+        Schema::create('courses', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name_en');
+            $table->softDeletes();
+        });
+        try {
+            DB::table('courses')->insert(['name_en' => 'Rokn 30-Reel Demo Course', 'deleted_at' => now()]);
+            $audit = new \ReflectionMethod(ProductionPreflight::class, 'developmentFixtureFailures');
+            self::assertSame([], $audit->invoke(app(ProductionPreflight::class)));
+            DB::table('courses')->update(['deleted_at' => null]);
+            self::assertStringContainsString('demo course', implode(' ', $audit->invoke(app(ProductionPreflight::class))));
+        } finally {
+            Schema::dropIfExists('courses');
+        }
+    }
+
+    public function test_thumbnail_audit_accepts_recorded_archives_and_drafts_but_not_unrelated_lessons(): void
+    {
+        Schema::create('lessons', function (Blueprint $table): void {
+            $table->id();
+            $table->string('thumbnail_path');
+        });
+        Schema::create('course_authoring_revisions', function (Blueprint $table): void {
+            $table->id();
+            $table->string('status');
+            $table->unsignedInteger('published_authoring_version')->nullable();
+        });
+        Schema::create('course_authoring_revision_entities', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('course_authoring_revision_id');
+            $table->string('entity_type');
+            $table->unsignedBigInteger('source_entity_id');
+            $table->unsignedBigInteger('revision_entity_id');
+            $table->unsignedBigInteger('learner_root_entity_id')->nullable();
+            $table->boolean('carries_learner_state')->default(false);
+        });
+        try {
+            $path = 'lessons/thumbnails/retained.jpg';
+            foreach ([1, 2, 3, 4] as $id) DB::table('lessons')->insert(['id' => $id, 'thumbnail_path' => $path]);
+            foreach ([1, 2, 3] as $id) {
+                DB::table('course_authoring_revisions')->insert([
+                    'id' => $id, 'status' => $id === 3 ? 'draft' : 'archived',
+                    'published_authoring_version' => $id === 3 ? null : $id,
+                ]);
+                DB::table('course_authoring_revision_entities')->insert([
+                    'course_authoring_revision_id' => $id, 'entity_type' => \App\Models\Lesson::class,
+                    'source_entity_id' => $id, 'revision_entity_id' => $id + 1,
+                    'learner_root_entity_id' => $id === 3 ? null : 1,
+                    'carries_learner_state' => $id !== 3,
+                ]);
+            }
+            $audit = new \ReflectionMethod(ProductionPreflight::class, 'duplicateLessonThumbnailCount');
+            self::assertSame(0, $audit->invoke(app(ProductionPreflight::class), [$path]));
+            DB::table('lessons')->insert(['id' => 5, 'thumbnail_path' => $path]);
+            self::assertSame(1, $audit->invoke(app(ProductionPreflight::class), [$path]));
+            DB::table('lessons')->where('id', 5)->update(['thumbnail_path' => 'lessons/thumbnails/unique.jpg']);
+            DB::table('course_authoring_revision_entities')->where('source_entity_id', 1)->update(['carries_learner_state' => false]);
+            self::assertSame(1, $audit->invoke(app(ProductionPreflight::class), [$path]));
+        } finally {
+            Schema::dropIfExists('course_authoring_revision_entities');
+            Schema::dropIfExists('course_authoring_revisions');
+            Schema::dropIfExists('lessons');
+        }
+    }
+
     public function test_preflight_does_not_treat_external_attachment_as_unmigrated_storage(): void
     {
         Schema::create('course_pdfs', function (Blueprint $table): void {

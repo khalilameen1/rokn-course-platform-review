@@ -1018,6 +1018,7 @@ class ProductionPreflight extends Command
             if (Schema::hasTable('courses') && Schema::hasColumn('courses', 'name_en')) {
                 $markers['demo course'] = DB::table('courses')
                     ->where('name_en', 'Rokn 30-Reel Demo Course')
+                    ->when(Schema::hasColumn('courses', 'deleted_at'), fn ($query) => $query->whereNull('deleted_at'))
                     ->exists();
             }
             if (Schema::hasTable('packages') && Schema::hasColumn('packages', 'name_en')) {
@@ -1116,8 +1117,10 @@ class ProductionPreflight extends Command
                     ->where($asset['column'], '<>', '')
                     ->groupBy($asset['column'])
                     ->havingRaw('COUNT(*) > 1')
-                    ->get()
-                    ->count();
+                    ->pluck($asset['column']);
+                $duplicates = $asset['table'] === 'lessons'
+                    ? $this->duplicateLessonThumbnailCount($duplicates->all())
+                    : $duplicates->count();
                 if ($duplicates > 0) {
                     $failures[] = "{$duplicates} duplicate Bunny {$asset['label']} object key(s) remain. Re-upload each affected record with a unique key before release.";
                 }
@@ -1127,6 +1130,46 @@ class ProductionPreflight extends Command
         }
 
         return $failures;
+    }
+
+    /**
+     * Drafts and published archives intentionally retain their source artwork.
+     * The cleanup worker checks all references before deleting a stored object.
+     * Collapse only recorded lesson lineage, never unrelated lessons/courses.
+     *
+     * @param list<string> $paths
+     */
+    private function duplicateLessonThumbnailCount(array $paths): int
+    {
+        if ($paths === []) return 0;
+        if (!Schema::hasTable('course_authoring_revisions')
+            || !Schema::hasColumns('course_authoring_revision_entities', [
+                'entity_type', 'course_authoring_revision_id', 'source_entity_id',
+                'revision_entity_id', 'learner_root_entity_id', 'carries_learner_state',
+            ])) {
+            return count($paths);
+        }
+
+        $lessons = DB::table('lessons')->whereIn('thumbnail_path', $paths)
+            ->get(['id', 'thumbnail_path']);
+        $draftSources = DB::table('course_authoring_revision_entities as entities')
+            ->join('course_authoring_revisions as revisions', 'revisions.id', '=', 'entities.course_authoring_revision_id')
+            ->where('entities.entity_type', \App\Models\Lesson::class)
+            ->where('revisions.status', \App\Models\CourseAuthoringRevision::DRAFT)
+            ->whereIn('entities.revision_entity_id', $lessons->pluck('id'))
+            ->pluck('entities.source_entity_id', 'entities.revision_entity_id');
+        $currentIds = app(\App\Services\CourseStagedAuthoringService::class)
+            ->currentLearnerEntityMap(
+                \App\Models\Lesson::class,
+                $lessons->pluck('id')->merge($draftSources->values())
+            );
+
+        return $lessons->groupBy('thumbnail_path')->filter(
+            static fn ($group): bool => $group->map(static function ($lesson) use ($draftSources, $currentIds): int {
+                $source = (int) $draftSources->get($lesson->id, $lesson->id);
+                return $currentIds[$source] ?? $source;
+            })->unique()->count() > 1
+        )->count();
     }
 
     /** @return list<string> */
