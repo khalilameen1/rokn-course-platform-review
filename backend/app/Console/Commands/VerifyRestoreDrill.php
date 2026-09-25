@@ -276,6 +276,12 @@ final class VerifyRestoreDrill extends Command
                     ->whereNull('o.deleted_at')
                     ->where('o.status', 'approved')
                     ->where('o.financial_status', 'settled')
+                    // Course fulfillment requires a bill. Coin-package
+                    // fulfillment is recorded by its order/provider receipt;
+                    // validate a package bill only when one actually exists.
+                    ->where(function ($query): void {
+                        $query->whereNotNull('o.course_id')->orWhereNotNull('b.id');
+                    })
                     ->where(function ($query): void {
                         $query->whereNull('b.id')->orWhere('b.payment_status', '<>', 'paid');
                     })->count();
