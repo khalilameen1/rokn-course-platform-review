@@ -7,23 +7,22 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\AdminAuthoringCreateIntentService;
-use App\Support\AdminEditorVersion;
+use App\Services\AdminModeratorAuthoringService;
+use App\Support\ModeratorEditorVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 final class ModeratorController extends Controller
 {
+    public function __construct(private readonly AdminModeratorAuthoringService $authoring)
+    {
+    }
+
     public function index(): View
     {
-        $moderators = User::query()
-            ->where('role', 'moderator')
-            ->latest('id')
-            ->paginate(25);
+        $moderators = User::query()->where('role', 'moderator')->latest('id')->paginate(25);
 
         return view('admin.moderators.index', compact('moderators'));
     }
@@ -33,32 +32,13 @@ final class ModeratorController extends Controller
         return view('admin.moderators.create');
     }
 
-    public function store(
-        Request $request,
-        AdminAuthoringCreateIntentService $createIntents
-    ): RedirectResponse
+    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
     {
-        $data = $this->validated($request);
-        DB::transaction(function () use ($request, $data, $createIntents): void {
-            $moderator = new User();
-            $moderator->forceFill([
-                'name_ar' => trim((string) $data['name_ar']),
-                'name_en' => filled($data['name_en'] ?? null) ? trim((string) $data['name_en']) : null,
-                'email' => strtolower(trim((string) $data['email'])),
-                'phone' => filled($data['phone'] ?? null) ? trim((string) $data['phone']) : null,
-                'password' => Hash::make((string) $data['password']),
-                'role' => 'moderator',
-                'active' => $request->boolean('active'),
-                'email_verified_at' => now(),
-            ])->save();
+        $this->authoring->create($this->validated($request), function (User $moderator) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
-                $request,
-                route('admin.moderators.index'),
-                302,
-                User::class,
-                $moderator->id
+                $request, route('admin.moderators.index'), 302, User::class, $moderator->id
             );
-        }, 3);
+        });
 
         return redirect()->route('admin.moderators.index')
             ->with('success', 'تم إنشاء حساب مسؤول المحتوى. سيُطلب منه إعداد التحقق بخطوتين عند الدخول.');
@@ -67,7 +47,7 @@ final class ModeratorController extends Controller
     public function edit(User $moderator): View
     {
         $this->assertModerator($moderator);
-        $editorVersion = $this->editorVersion($moderator);
+        $editorVersion = ModeratorEditorVersion::for($moderator);
 
         return view('admin.moderators.edit', compact('moderator', 'editorVersion'));
     }
@@ -76,37 +56,9 @@ final class ModeratorController extends Controller
     {
         $this->assertModerator($moderator);
         $data = $this->validated($request, $moderator);
-        DB::transaction(function () use ($request, $moderator, $data): void {
-            $locked = User::query()->whereKey($moderator->id)->where('role', 'moderator')
-                ->lockForUpdate()->firstOrFail();
-            if (!hash_equals($this->editorVersion($locked), (string) $data['editor_version'])) {
-                throw ValidationException::withMessages([
-                    'editor_version' => ["تغيّرت بيانات مسؤول المحتوى منذ فتح الصفحة\nأعد تحميلها قبل الحفظ"],
-                ]);
-            }
+        $this->authoring->update((int) $moderator->id, $data, (string) $data['editor_version']);
 
-            $updates = [
-                'name_ar' => trim((string) $data['name_ar']),
-                'name_en' => filled($data['name_en'] ?? null) ? trim((string) $data['name_en']) : null,
-                'phone' => filled($data['phone'] ?? null) ? trim((string) $data['phone']) : null,
-                'active' => $request->boolean('active'),
-                'profile_revision' => (int) $locked->profile_revision + 1,
-            ];
-            if (array_key_exists('email', $data)) {
-                $email = strtolower(trim((string) $data['email']));
-                $updates['email'] = $email;
-                if (!hash_equals(strtolower(trim((string) $locked->email)), $email)) {
-                    $updates['email_verified_at'] = null;
-                }
-            }
-            if (filled($data['password'] ?? null)) {
-                $updates['password'] = Hash::make((string) $data['password']);
-            }
-            $locked->forceFill($updates)->save();
-        }, 3);
-
-        return redirect()->route('admin.moderators.index')
-            ->with('success', 'تم تحديث حساب مسؤول المحتوى.');
+        return redirect()->route('admin.moderators.index')->with('success', 'تم تحديث حساب مسؤول المحتوى.');
     }
 
     /** @return array<string, mixed> */
@@ -135,14 +87,6 @@ final class ModeratorController extends Controller
             'active' => ['nullable', 'boolean'],
             'authoring_request_id' => [$moderator ? 'nullable' : 'required', 'uuid'],
             'editor_version' => [$moderator ? 'required' : 'nullable', 'string', 'size:64'],
-        ]);
-    }
-
-    private function editorVersion(User $moderator): string
-    {
-        return AdminEditorVersion::for($moderator, [
-            'name_ar', 'name_en', 'email', 'phone', 'password', 'active',
-            'profile_revision', 'email_verified_at',
         ]);
     }
 

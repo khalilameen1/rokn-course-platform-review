@@ -1,6 +1,5 @@
 import {
   fetchProducts,
-  finishTransaction,
   getAvailablePurchases,
   initConnection,
   purchaseErrorListener,
@@ -17,44 +16,30 @@ import {
   IS_PLAY_DISTRIBUTION,
 } from '../constants/distribution';
 import type {CoinPackage} from './api/coinPackageMapper';
-import {firstBoolean, isApiRecord, payload} from './api/common';
+import {payload} from './api/common';
 import {reportClientError} from './operationalTelemetry';
 import {errorCode} from '../utils/errorPayload';
 import {
   clearNativeCourseCheckout,
-  readNativeCourseCheckout,
   rememberNativeCourseCheckout,
-  validCourseCheckoutId,
 } from './nativeCourseCheckoutBinding';
+import type {CoinCheckoutResult} from './coinCheckoutTypes';
+import {emitNativeStoreCreditOnce} from './nativeStoreCredits';
+import {
+  nativePurchaseKey,
+  verifyAndFinishNativePurchase,
+} from './nativeStoreReceipt';
 
 type StoreBillingContext = {
   google_obfuscated_account_id?: unknown;
   apple_app_account_token?: unknown;
 };
 
-type StoreVerificationResult = {
-  checkout?: unknown;
-  coins_added?: unknown;
-  credited?: unknown;
-  financial_status?: unknown;
-  finalize_transaction?: unknown;
-  store_finalized?: unknown;
-  already_processed?: unknown;
-};
-
-export type NativeCoinCheckoutResult = {
-  success: boolean;
-  pending: boolean;
-  cancelled: boolean;
-  coinsAdded: number;
-  orderRef?: string;
-};
-
 type ActivePurchase = {
   productId: string;
   accountScope: string;
   accountBinding: string;
-  resolve: (value: NativeCoinCheckoutResult) => void;
+  resolve: (value: CoinCheckoutResult) => void;
   reject: (reason?: unknown) => void;
   timer: ReturnType<typeof setTimeout>;
 };
@@ -67,49 +52,10 @@ type StoreBillingOwner = {
 let connectionPromise: Promise<void> | null = null;
 let listenersReady = false;
 const activePurchases = new Map<string, ActivePurchase>();
-const processing = new Map<
-  string,
-  {accountScope: string; promise: Promise<NativeCoinCheckoutResult>}
->();
 const reconciliationFlights = new Map<
   string,
   Promise<{pending: boolean; pendingProductIds: string[]; reconciled: number}>
 >();
-const emittedCredits = new Set<string>();
-const MAX_EMITTED_CREDIT_KEYS = 128;
-const creditListeners = new Set<(result: NativeCoinCheckoutResult) => void>();
-
-const emitCredit = (result: NativeCoinCheckoutResult) => {
-  if (result.success) creditListeners.forEach(listener => listener(result));
-};
-
-const emitPurchaseCredit = (
-  purchase: Purchase,
-  result: NativeCoinCheckoutResult,
-  accountScope: string,
-) => {
-  const key = purchaseKey(purchase);
-  if (!result.success || emittedCredits.has(key)) return;
-  void accountScopedStorageKey('@rokn/native-store-reconciliation/v1').then(
-    currentScope => {
-      if (currentScope !== accountScope || emittedCredits.has(key)) return;
-      emittedCredits.add(key);
-      while (emittedCredits.size > MAX_EMITTED_CREDIT_KEYS) {
-        const oldest = emittedCredits.values().next().value;
-        if (typeof oldest !== 'string') break;
-        emittedCredits.delete(oldest);
-      }
-      emitCredit(result);
-    },
-  );
-};
-
-const provider = () => {
-  if (IS_PLAY_DISTRIBUTION) return 'google' as const;
-  if (IS_APP_STORE_DISTRIBUTION) return 'apple' as const;
-  throw new Error('NATIVE_STORE_UNAVAILABLE_FOR_DISTRIBUTION');
-};
-
 const normalizedBinding = (value: unknown) =>
   String(value || '')
     .trim()
@@ -133,10 +79,10 @@ const purchaseBinding = (purchase: Purchase) =>
 
 const currentStoreBillingOwner =
   async (): Promise<StoreBillingOwner | null> => {
-    const accountScope = await accountScopedStorageKey(
-      '@rokn/native-store-reconciliation/v1',
-    );
     try {
+      const accountScope = await accountScopedStorageKey(
+        '@rokn/native-store-reconciliation/v1',
+      );
       const context = payload<StoreBillingContext>(
         await publicRequest.get('store-billing/context'),
       );
@@ -177,18 +123,6 @@ const packageProductId = (coinPackage: CoinPackage) =>
     ? coinPackage.storeProductIds?.apple
     : undefined;
 
-const purchaseTransactionId = (purchase: Purchase) =>
-  'transactionId' in purchase && purchase.transactionId
-    ? String(purchase.transactionId)
-    : undefined;
-
-const purchaseKey = (purchase: Purchase) =>
-  String(
-    purchase.purchaseToken ||
-      purchaseTransactionId(purchase) ||
-      `${purchase.store}:${purchase.productId}:${purchase.id}`,
-  );
-
 const cancelledError = (error: {code?: unknown}) => {
   const code = String(error.code || '')
     .trim()
@@ -211,7 +145,7 @@ const pendingError = (error: {code?: unknown}) =>
       .toLowerCase(),
   );
 
-const pendingResult = (): NativeCoinCheckoutResult => ({
+const pendingResult = (): CoinCheckoutResult => ({
   success: false,
   pending: true,
   cancelled: false,
@@ -230,115 +164,19 @@ const settleActive = (
   action(current);
 };
 
-const verifyAndFinish = async (
-  purchase: Purchase,
-  accountScope: string,
-): Promise<NativeCoinCheckoutResult> => {
-  if (purchase.purchaseState === 'pending') {
-    return {
-      success: false,
-      pending: true,
-      cancelled: false,
-      coinsAdded: 0,
-      orderRef: purchaseTransactionId(purchase),
-    };
-  }
-  if (purchase.purchaseState !== 'purchased') {
-    throw new Error('STORE_PURCHASE_NOT_COMPLETED');
-  }
-  const purchaseToken = String(purchase.purchaseToken || '').trim();
-  if (!purchaseToken) throw new Error('STORE_PURCHASE_TOKEN_MISSING');
-
-  const key = purchaseKey(purchase);
-  const existing = processing.get(key);
-  if (existing) {
-    if (existing.accountScope !== accountScope) {
-      throw new Error('STORE_PURCHASE_ACCOUNT_CHANGED');
-    }
-    return existing.promise;
-  }
-
-  const operation: Promise<NativeCoinCheckoutResult> = (async () => {
-    const currentScope = await accountScopedStorageKey(
-      '@rokn/native-store-reconciliation/v1',
-    );
-    if (currentScope !== accountScope) {
-      throw new Error('STORE_PURCHASE_ACCOUNT_CHANGED');
-    }
-    const receiptCheckoutId =
-      'obfuscatedProfileIdAndroid' in purchase
-        ? String(purchase.obfuscatedProfileIdAndroid || '').trim()
-        : '';
-    const courseCheckoutId = validCourseCheckoutId(receiptCheckoutId)
-      ? receiptCheckoutId
-      : await readNativeCourseCheckout(purchase.productId);
-    const response = await publicRequest.post('store-purchases/verify', {
-      provider: provider(),
-      product_id: purchase.productId,
-      purchase_token: purchaseToken,
-      transaction_id: purchaseTransactionId(purchase),
-      ...(courseCheckoutId ? {checkout_id: courseCheckoutId} : {}),
-    });
-    const verified = payload<StoreVerificationResult>(response);
-    if (firstBoolean(verified.finalize_transaction) !== true) {
-      throw new Error('STORE_SERVER_DID_NOT_AUTHORIZE_FINALIZATION');
-    }
-    const coinsAdded = Number(verified.coins_added);
-    const credited =
-      firstBoolean(verified.credited) ??
-      (Number.isSafeInteger(coinsAdded) && coinsAdded > 0);
-    if (
-      !Number.isSafeInteger(coinsAdded) ||
-      coinsAdded < 0 ||
-      (credited && coinsAdded <= 0)
-    ) {
-      throw new Error('STORE_VERIFICATION_CONTRACT_INVALID');
-    }
-
-    // Consumables are finalized only after the backend has atomically recorded
-    // and credited them. A network/server failure leaves the transaction in the
-    // store queue, so it is recovered without asking the learner to pay again.
-    // Google may already have consumed the receipt on the backend. Asking the
-    // bridge to consume it again can report ITEM_NOT_OWNED after a valid credit.
-    // Apple still requires the device to finish its StoreKit transaction.
-    if (
-      !(IS_PLAY_DISTRIBUTION && firstBoolean(verified.store_finalized) === true)
-    ) {
-      await finishTransaction({purchase, isConsumable: true});
-    }
-    if (
-      courseCheckoutId &&
-      isApiRecord(verified.checkout) &&
-      verified.checkout.id === courseCheckoutId &&
-      ['completed', 'cancelled', 'expired', 'reconfirm_required'].includes(
-        String(verified.checkout.status),
-      )
-    ) {
-      await clearNativeCourseCheckout(purchase.productId, courseCheckoutId);
-    }
-
-    return {
-      success: credited,
-      pending: false,
-      cancelled: !credited,
-      coinsAdded: credited ? coinsAdded : 0,
-      orderRef: purchaseTransactionId(purchase),
-    };
-  })();
-  processing.set(key, {accountScope, promise: operation});
-  try {
-    return await operation;
-  } finally {
-    if (processing.get(key)?.promise === operation) processing.delete(key);
-  }
-};
-
 const handlePurchaseUpdate = async (purchase: Purchase) => {
   const owner = await currentStoreBillingOwner();
   if (!owner || !purchaseBelongsTo(purchase, owner)) return;
   try {
-    const result = await verifyAndFinish(purchase, owner.accountScope);
-    emitPurchaseCredit(purchase, result, owner.accountScope);
+    const result = await verifyAndFinishNativePurchase(
+      purchase,
+      owner.accountScope,
+    );
+    void emitNativeStoreCreditOnce(
+      nativePurchaseKey(purchase),
+      result,
+      owner.accountScope,
+    );
     settleActive(purchase.productId, owner.accountScope, active =>
       active.resolve(result),
     );
@@ -458,8 +296,15 @@ const reconcileOutstandingPurchases = async (
       if (purchase.purchaseState !== 'purchased') continue;
 
       try {
-        const result = await verifyAndFinish(purchase, owner.accountScope);
-        emitPurchaseCredit(purchase, result, owner.accountScope);
+        const result = await verifyAndFinishNativePurchase(
+          purchase,
+          owner.accountScope,
+        );
+        void emitNativeStoreCreditOnce(
+          nativePurchaseKey(purchase),
+          result,
+          owner.accountScope,
+        );
         settleActive(purchase.productId, owner.accountScope, active =>
           active.resolve(result),
         );
@@ -548,7 +393,7 @@ export const hydrateNativeStorePackages = async (
 export const purchaseNativeCoinPackage = async (
   coinPackage: CoinPackage,
   options: {courseCheckoutId?: string} = {},
-): Promise<NativeCoinCheckoutResult> => {
+): Promise<CoinCheckoutResult> => {
   const productId = packageProductId(coinPackage);
   if (!productId) throw new Error('STORE_PRODUCT_NOT_CONFIGURED');
 
@@ -572,9 +417,9 @@ export const purchaseNativeCoinPackage = async (
     await rememberNativeCourseCheckout(productId, options.courseCheckoutId);
   }
 
-  let resolvePurchase!: (value: NativeCoinCheckoutResult) => void;
+  let resolvePurchase!: (value: CoinCheckoutResult) => void;
   let rejectPurchase!: (reason?: unknown) => void;
-  const outcome = new Promise<NativeCoinCheckoutResult>((resolve, reject) => {
+  const outcome = new Promise<CoinCheckoutResult>((resolve, reject) => {
     resolvePurchase = resolve;
     rejectPurchase = reject;
   });
@@ -641,15 +486,6 @@ export const purchaseNativeCoinPackage = async (
   if (result.cancelled && options.courseCheckoutId)
     await clearNativeCourseCheckout(productId, options.courseCheckoutId);
   return result;
-};
-
-export const subscribeNativeStoreCredits = (
-  listener: (result: NativeCoinCheckoutResult) => void,
-) => {
-  creditListeners.add(listener);
-  return () => {
-    creditListeners.delete(listener);
-  };
 };
 
 export const nativeStoreChannel = DISTRIBUTION_CHANNEL;

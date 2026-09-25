@@ -207,7 +207,12 @@ describe('first-launch experience', () => {
       'src/screens/settings/useSettingsPreferences.ts',
     );
 
-    expect(settings).toContain('settingsScopeWriteTails');
+    expect(settings).toContain(
+      'serializeSettingsWrites = createKeyedAsyncQueue()',
+    );
+    expect(settings).toContain(
+      'serializeSettingsWrites(boundary.scope, write)',
+    );
     expect(settings).toContain('withSettingsScopeWrite');
     expect(settings).toContain('preferenceRevisionRef');
     expect(settings).toContain("isUnchanged('VIDEO_QUALITY')");

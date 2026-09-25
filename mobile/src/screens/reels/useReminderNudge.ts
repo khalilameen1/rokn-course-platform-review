@@ -13,7 +13,7 @@ import {
   setSmartRemindersEnabled,
 } from '../../services/smartReminders';
 import {hasSession, updateNotificationStatus} from '../../services/roknApi';
-import {registerPushDeviceIfEligible} from '../../services/pushNotifications';
+import {registerPushDeviceIfEligible} from '../../services/pushDeviceRegistration';
 
 export const useReminderNudge = ({
   courseId,

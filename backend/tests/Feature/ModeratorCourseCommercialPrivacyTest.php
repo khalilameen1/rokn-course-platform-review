@@ -198,7 +198,7 @@ final class ModeratorCourseCommercialPrivacyTest extends TestCase
             'is_catalog_visible' => false,
             'authoring_version' => 3,
         ])->save();
-        app(CourseAccessPlanService::class)->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         $guided = $course->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         $guided->forceFill([
             'ai_budget_usd' => '7.123456',

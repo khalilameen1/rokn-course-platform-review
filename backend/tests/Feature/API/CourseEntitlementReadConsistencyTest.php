@@ -16,7 +16,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\FinancialProvenanceService;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -85,7 +85,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
             ]);
         }
 
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         $single = $access->resolveEntitlement($this->user->id, $this->course->id);
         $batch = $access->entitlementsFor($this->user->id, [$this->course->id, 999999]);
 
@@ -113,7 +113,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
     public function test_one_course_does_not_repeat_financial_reads_for_each_access_question(): void
     {
         $this->enrollment('paid');
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
 
         DB::enableQueryLog();
         try {
@@ -138,7 +138,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
 
         self::assertGreaterThan($this->course->id + 1, $otherCourse->id);
 
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         $batch = $access->entitlementsFor($this->user->id, [
             $this->course->id,
             $otherCourse->id,
@@ -173,7 +173,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
             'access_plan_snapshot' => $upgradeOrder->access_plan_snapshot,
         ])->save();
 
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         $single = $access->resolveEntitlement($this->user->id, $this->course->id);
         $batch = $access->entitlementsFor($this->user->id, [$this->course->id]);
 
@@ -190,7 +190,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
         $enrollment = $this->enrollment('paid');
         $this->course->forceFill(['is_coming_soon' => true])->save();
 
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         self::assertFalse($access->hasLearningAccess($this->user->id, $this->course->id));
         self::assertFalse($access->hasCertificateAccess($this->user->id, $this->course->id));
         self::assertTrue($access->enrollmentHasCertificateAccess($enrollment));
@@ -215,7 +215,7 @@ final class CourseEntitlementReadConsistencyTest extends TestCase
             ], JSON_THROW_ON_ERROR),
         ]);
 
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         $single = $access->resolveEntitlement($this->user->id, $this->course->id);
         $batch = $access->entitlementsFor($this->user->id, [$this->course->id]);
 

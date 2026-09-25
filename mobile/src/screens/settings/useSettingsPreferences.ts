@@ -33,7 +33,7 @@ import {
 import {
   registerPushDeviceIfEligible,
   unregisterPushDevice,
-} from '../../services/pushNotifications';
+} from '../../services/pushDeviceRegistration';
 import type {SettingsChoice} from '../../components/settings/SettingsChoiceModal';
 import {
   MARKETING_NOTIFICATIONS_KEY,
@@ -41,28 +41,14 @@ import {
   usePrivacyPreferenceSync,
 } from './usePrivacyPreferenceSync';
 import {PENDING_WATCH_HISTORY_CLEAR_KEY} from './settingsData';
+import {createKeyedAsyncQueue} from '../../utils/keyedAsyncQueue';
 
-const settingsScopeWriteTails = new Map<string, Promise<unknown>>();
+const serializeSettingsWrites = createKeyedAsyncQueue();
 
 const withSettingsScopeWrite = <T>(
   boundary: Awaited<ReturnType<typeof captureAccountSessionBoundary>>,
   write: () => Promise<T>,
-) => {
-  const previous =
-    settingsScopeWriteTails.get(boundary.scope) ?? Promise.resolve();
-  const result = previous.then(write, write);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  settingsScopeWriteTails.set(boundary.scope, tail);
-  void tail.finally(() => {
-    if (settingsScopeWriteTails.get(boundary.scope) === tail) {
-      settingsScopeWriteTails.delete(boundary.scope);
-    }
-  });
-  return result;
-};
+) => serializeSettingsWrites(boundary.scope, write);
 
 const normalizeStoredQuality = (value: unknown) => {
   const candidate = typeof value === 'string' ? value : '';

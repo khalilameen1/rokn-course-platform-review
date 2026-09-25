@@ -5,8 +5,7 @@ namespace App\Models;
 use App\Support\PublicDiskUrl;
 use Illuminate\Database\Eloquent\Model;
 use App\Services\StoredFileDeletionService;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Services\CourseCatalogueRevisionService;
 
 class Photo extends Model
 {
@@ -68,18 +67,6 @@ class Photo extends Model
         if (!$affectsCatalogue) {
             return;
         }
-        $increment = static function (): void {
-            try {
-                Cache::add(
-                    'courses:catalog-revision',
-                    max(1, (int) floor(microtime(true) * 1000)),
-                    now()->addYears(10)
-                );
-                Cache::increment('courses:catalog-revision');
-            } catch (\Throwable) {
-                // Image persistence must not depend on the cache service.
-            }
-        };
-        DB::transactionLevel() > 0 ? DB::afterCommit($increment) : $increment();
+        app(CourseCatalogueRevisionService::class)->invalidateAfterCommit();
     }
 }

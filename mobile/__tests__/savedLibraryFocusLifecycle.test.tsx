@@ -139,6 +139,27 @@ const folderPage = (folderId: string, pageNumber = 1, hasMore = false) => ({
 });
 
 describe('saved library focus lifecycle', () => {
+  it('clears the folder editor when the account changes without remounting the screen', async () => {
+    const view = await mountLibrary();
+    try {
+      act(() => {
+        view.current.toggleCreateFolder();
+        view.current.setNewFolderName('مسودة للحساب السابق');
+      });
+      expect(view.current.showCreateFolder).toBe(true);
+      mockUser = {id: 2, api_token: 'other-token'};
+      await act(async () => {
+        view.renderer.update(<view.Harness />);
+        await flush();
+      });
+      expect(view.current.newFolderName).toBe('');
+      expect(view.current.showCreateFolder).toBe(false);
+      expect(mockCreateSavedFolderOption).not.toHaveBeenCalled();
+    } finally {
+      act(() => view.renderer.unmount());
+    }
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockUser = {id: 1, api_token: 'token'};

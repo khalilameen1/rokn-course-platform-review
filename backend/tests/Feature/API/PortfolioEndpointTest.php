@@ -7,6 +7,8 @@ namespace Tests\Feature\API;
 use App\Models\BunnyVideoCleanupCandidate;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\BunnyMediaRegistry;
 use App\Support\RoknPublicUrl;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -95,7 +97,11 @@ class PortfolioEndpointTest extends ApiTestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->andReturn([
             'state' => 'ok',
             'details' => [
@@ -105,8 +111,8 @@ class PortfolioEndpointTest extends ApiTestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldNotReceive('getSignedEmbedUrl');
-        $bunny->shouldNotReceive('getSignedPlayUrl');
+        $delivery->shouldNotReceive('videoEmbed');
+        $delivery->shouldNotReceive('videoPlayback');
         $this->app->instance(BunnyService::class, $bunny);
 
         $this->actingAs($this->user, 'api')
@@ -130,8 +136,12 @@ class PortfolioEndpointTest extends ApiTestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
-        $bunny->shouldReceive('generateBunnySignedUrl')
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
+        $delivery->shouldReceive('storageUrl')
             ->twice()
             ->with('portfolio/ready-image.webp', 300)
             ->andReturn('https://cdn.example.test/ready-image');
@@ -157,10 +167,14 @@ class PortfolioEndpointTest extends ApiTestCase
     public function test_appending_new_media_unpublishes_the_previous_share(): void
     {
         DB::table('portfolio_items')->where('id', 1)->update(['is_public' => true]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('uploadFileToStorage')->once()->andReturn('portfolio/new-image.webp');
-        $bunny->shouldReceive('consumeStorageCleanupCandidate')->once()->with('portfolio/new-image.webp');
-        $bunny->shouldReceive('generateBunnySignedUrl')
+        $mediaRegistry->shouldReceive('consumeStorageCleanupCandidate')->once()->with('portfolio/new-image.webp');
+        $delivery->shouldReceive('storageUrl')
             ->once()
             ->with('portfolio/new-image.webp', 300)
             ->andReturn('https://cdn.example.test/new-image');
@@ -231,9 +245,13 @@ class PortfolioEndpointTest extends ApiTestCase
     {
         $itemCountBefore = DB::table('portfolio_items')->count();
         $mediaCountBefore = DB::table('portfolio_media')->count();
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldNotReceive('uploadFileToStorage');
-        $bunny->shouldNotReceive('uploadVerifiedVideo');
+        $bunny->shouldNotReceive('createVideo');
         $this->app->instance(BunnyService::class, $bunny);
 
         $response = $this->actingAs($this->user, 'api')->post('/api/v1/portfolio', [
@@ -265,8 +283,12 @@ class PortfolioEndpointTest extends ApiTestCase
 
     public function test_video_cannot_bypass_the_resumable_direct_upload_contract(): void
     {
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
-        $bunny->shouldNotReceive('uploadVerifiedVideo');
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
+        $bunny->shouldNotReceive('createVideo');
         $bunny->shouldNotReceive('uploadFileToStorage');
         $this->app->instance(BunnyService::class, $bunny);
 
@@ -283,7 +305,11 @@ class PortfolioEndpointTest extends ApiTestCase
 
     public function test_failed_image_append_leaves_no_media_row(): void
     {
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('uploadFileToStorage')
             ->once()
             ->with(
@@ -320,8 +346,12 @@ class PortfolioEndpointTest extends ApiTestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
-        $bunny->shouldReceive('queueVideoCleanup')
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
+        $mediaRegistry->shouldReceive('queueVideoCleanup')
             ->once()
             ->with('remote-guid', null, 'portfolio_media_deleted', 1, false)
             ->andReturn(new BunnyVideoCleanupCandidate(['video_guid' => 'remote-guid']));
@@ -350,8 +380,12 @@ class PortfolioEndpointTest extends ApiTestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
-        $bunny->shouldReceive('generateBunnySignedUrl')
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
+        $delivery->shouldReceive('storageUrl')
             ->once()
             ->with('portfolio/private-object.jpg', 300)
             ->andReturn('https://cdn.example/signed-image');
@@ -408,15 +442,19 @@ class PortfolioEndpointTest extends ApiTestCase
             'updated_at' => now(),
         ]);
 
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
-        $bunny->shouldReceive('generateBunnySignedUrl')
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
+        $delivery->shouldReceive('storageUrl')
             ->once()
             ->with('portfolio/public-work.webp', 300)
             ->andReturn('https://cdn.example.test/public-work');
         $this->app->instance(BunnyService::class, $bunny);
 
         $owner = $this->user->fresh();
-        $snapshot = app(\App\Services\PortfolioModerationService::class)->snapshot($owner);
+        $snapshot = app(\App\Services\PortfolioReviewReadService::class)->snapshot($owner);
         $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
         $deliveryUrl = RoknPublicUrl::portfolioMedia($slug, $mediaPublicId).'?'.http_build_query([
             'revision' => $snapshot['revision'], 'snapshot' => $snapshot['hash'],

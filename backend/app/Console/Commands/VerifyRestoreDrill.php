@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Services\RecoveryEvidenceService;
 use Illuminate\Console\Command;
 use Illuminate\Database\ConnectionInterface;
@@ -30,7 +31,7 @@ final class VerifyRestoreDrill extends Command
 
     protected $description = 'Restore an exact verified backup into a disposable database and prove schema, key, ledger and media integrity';
 
-    public function handle(RecoveryEvidenceService $evidence, BunnyService $bunny): int
+    public function handle(RecoveryEvidenceService $evidence, BunnyService $bunny, BunnyDeliveryService $delivery): int
     {
         $startedAt = microtime(true);
         $dump = (string) $this->option('dump');
@@ -130,6 +131,7 @@ final class VerifyRestoreDrill extends Command
                 $restored,
                 $schema,
                 $bunny,
+                $delivery,
                 $sampleLimit
             );
 
@@ -334,6 +336,7 @@ final class VerifyRestoreDrill extends Command
         ConnectionInterface $connection,
         Builder $schema,
         BunnyService $bunny,
+        BunnyDeliveryService $delivery,
         int $limit
     ): array
     {
@@ -390,7 +393,7 @@ final class VerifyRestoreDrill extends Command
             foreach ($connection->table($table)->whereNotNull($column)->where($column, '<>', '')
                 ->orderBy('id')->limit($limit)->pluck($column) as $path) {
                 $sampled++;
-                if (!$this->bunnyObjectExists($bunny, (string) $path)) $missing++;
+                if (!$this->bunnyObjectExists($delivery, (string) $path)) $missing++;
             }
         }
 
@@ -405,9 +408,9 @@ final class VerifyRestoreDrill extends Command
         return [$sampled, $missing];
     }
 
-    private function bunnyObjectExists(BunnyService $bunny, string $path): bool
+    private function bunnyObjectExists(BunnyDeliveryService $delivery, string $path): bool
     {
-        $url = $bunny->generateBunnySignedUrl($path, 300);
+        $url = $delivery->storageUrl($path, 300);
         if (!is_string($url) || $url === '') return false;
 
         try {

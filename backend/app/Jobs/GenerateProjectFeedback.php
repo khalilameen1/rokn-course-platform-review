@@ -12,13 +12,15 @@ use App\Models\Course;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiPromptPolicy;
 use App\Services\AiStreamCheckpointService;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\OpenRouterService;
+use App\Services\OpenRouterRequestPolicy;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectSubmissionFileRetentionService;
@@ -64,10 +66,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
     }
 
     public function handle(
-        CourseChatAccessService $access,
+        CourseEntitlementService $access,
         CourseAccessPlanService $plans,
         AiEntitlementBudgetService $budget,
+        AiUsageSettlementService $settlements,
         OpenRouterService $openRouter,
+        OpenRouterRequestPolicy $requestPolicy,
         ProjectFeedbackThreadService $threads,
         AiInputAttachmentService $attachments,
         PaidAiCallExecutionService $paidCalls,
@@ -262,7 +266,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 ]], $inputParts),
             ]];
             if (!$hasKnownReport) {
-                $model = $openRouter->configuredModel('project_model');
+                $model = $requestPolicy->configuredModel('project_model');
                 $estimated = $maxTokens
                     + (int) ceil((strlen($requirements) + strlen($text)) / 4)
                     + $attachments->estimatedInputTokens($ownedAttachments);
@@ -293,12 +297,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 }
                 $landed = $paidCalls->landedResult($reservation->fresh());
                 if ($landed !== null) {
-                    $settlement = $budget->settleForActiveUser(
+                    $settlement = $settlements->settleForActiveUser(
                         $reservation,
                         $landed,
                         (int) $submission->user_id
                     );
-                    if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
+                    if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) return;
                     $result = $landed;
                     if ($ownedAttachments->isNotEmpty()) {
                         $attachments->markProcessed(
@@ -336,7 +340,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                             $callState === PaidAiCallExecutionService::STALE_STARTED
                             && $paidCalls->providerWasStarted($fresh)
                         ) {
-                            $paidCalls->settleUnknown($budget, $fresh, [
+                            $settlements->settleUnknown($fresh, [
                                 'project_id' => (int) $submission->project_id,
                                 'submission_id' => (string) $submission->public_id,
                                 'prompt_version' => $promptVersion,
@@ -397,12 +401,12 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                     );
                     if ($landingState !== PaidAiCallExecutionService::LANDED) return;
                     $result = $paidCalls->landedResult($reservation->fresh()) ?? $result;
-                    $settlement = $budget->settleForActiveUser(
+                    $settlement = $settlements->settleForActiveUser(
                         $reservation,
                         $result,
                         (int) $submission->user_id
                     );
-                    if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
+                    if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) return;
                     if ($ownedAttachments->isNotEmpty()) {
                         $attachments->markProcessed(
                             $ownedAttachments,
@@ -464,7 +468,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 throw $exception;
             }
             if ($exception->outcomeUnknown && $reservation) {
-                $paidCalls->settleUnknown($budget, $reservation, [
+                $settlements->settleUnknown($reservation, [
                     'project_id' => (int) $submission->project_id,
                     'submission_id' => (string) $submission->public_id,
                     'prompt_version' => $promptVersion,
@@ -519,7 +523,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 throw $exception;
             }
             if ($paidCalls->providerWasStarted($reservation?->fresh())) {
-                $paidCalls->settleUnknown($budget, $reservation, [
+                $settlements->settleUnknown($reservation, [
                     'project_id' => (int) $submission->project_id,
                     'submission_id' => (string) $submission->public_id,
                     'prompt_version' => $promptVersion,
@@ -609,7 +613,7 @@ final class GenerateProjectFeedback implements ShouldQueue, ShouldBeUnique
                 return;
             }
             if ($calls->providerWasStarted($event)) {
-                $calls->settleUnknown(app(AiEntitlementBudgetService::class), $event, [
+                app(AiUsageSettlementService::class)->settleUnknown($event, [
                     'submission_id' => (string) $submission?->public_id,
                 ]);
             } else {

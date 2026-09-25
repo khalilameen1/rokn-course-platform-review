@@ -55,7 +55,7 @@ jest.mock('../src/services/roknApi', () => ({
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   WATCH_HISTORY_ENABLED_KEY: 'watch-history',
 }));
-jest.mock('../src/services/pushNotifications', () => ({
+jest.mock('../src/services/pushDeviceRegistration', () => ({
   unregisterPushDevice: async () => undefined,
   registerPushDeviceIfEligible: async () => true,
 }));

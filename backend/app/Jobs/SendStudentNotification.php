@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Support\NotificationAudience;
 use App\Models\User;
 use App\Models\NotificationCampaign;
 use App\Models\NotificationCampaignRecipient;
@@ -23,11 +24,6 @@ use App\Support\DurableJobDispatch;
 class SendStudentNotification implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public const AUDIENCE_ALL = 'all';
-    public const AUDIENCE_ENROLLED = 'enrolled';
-    public const AUDIENCE_NOT_ENROLLED = 'not_enrolled';
-    public const MAX_EXPLICIT_USER_IDS = 500;
 
     protected string $deliveryKey;
 
@@ -113,7 +109,7 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
                 $query->whereNotIn('id', $excludeUserIds);
             }
 
-            if ($courseId !== null && $audience === self::AUDIENCE_ENROLLED) {
+            if ($courseId !== null && $audience === NotificationAudience::ENROLLED) {
                 $query->whereHas('enrollments', function ($enrollments) use ($courseId): void {
                     $enrollments
                         ->where('course_id', $courseId)
@@ -122,7 +118,7 @@ class SendStudentNotification implements ShouldQueue, ShouldBeUnique
                             $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
                         });
                 });
-            } elseif ($courseId !== null && $audience === self::AUDIENCE_NOT_ENROLLED) {
+            } elseif ($courseId !== null && $audience === NotificationAudience::NOT_ENROLLED) {
                 $query->whereDoesntHave('enrollments', function ($enrollments) use ($courseId): void {
                     $enrollments
                         ->where('course_id', $courseId)

@@ -23,10 +23,12 @@ use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\ProjectSubmissionService;
+use App\Services\ProjectSubmissionEvaluationScheduler;
+use App\Services\ProjectSubmissionReviewService;
 use App\Services\AiConsentService;
-use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\AiInputAttachmentService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseChatTurnService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\WalletService;
@@ -531,7 +533,7 @@ final class BackendHardeningTest extends TestCase
         // Authoring state controls discovery and new admissions. It must not
         // erase an active paid contract captured by an accepted submission.
         $course->forceFill(['is_coming_soon' => true])->save();
-        $access = app(\App\Services\CourseChatAccessService::class);
+        $access = app(\App\Services\CourseEntitlementService::class);
 
         self::assertNull($access->activeEnrollmentFor($user->id, $course->id));
         self::assertSame(
@@ -618,7 +620,7 @@ final class BackendHardeningTest extends TestCase
         );
         $submission->forceFill(['auto_pass_at' => now()->subSecond()])->save();
 
-        $submission = $service->finalizeIfDue($submission->fresh());
+        $submission = app(ProjectSubmissionEvaluationScheduler::class)->dispatchIfDue($submission->fresh());
 
         self::assertSame(ProjectSubmission::STATUS_PENDING, $submission->review_status);
         self::assertNull($submission->review_source);
@@ -632,7 +634,7 @@ final class BackendHardeningTest extends TestCase
             'project_id' => $project->id,
         ]);
 
-        $submission = $service->reviewByStaff(
+        $submission = app(ProjectSubmissionReviewService::class)->reviewByStaff(
             $submission,
             $admin,
             true,
@@ -698,7 +700,7 @@ final class BackendHardeningTest extends TestCase
         self::assertSame($admin->id, $submission->reviewed_by);
 
         $this->expectException(ValidationException::class);
-        $service->reviewByStaff($submission, $admin, true, 'محاولة تغيير القرار');
+        app(ProjectSubmissionReviewService::class)->reviewByStaff($submission, $admin, true, 'محاولة تغيير القرار');
     }
 
     public function test_project_review_service_rejects_non_staff_reviewer(): void
@@ -724,7 +726,7 @@ final class BackendHardeningTest extends TestCase
         );
 
         try {
-            $service->reviewByStaff($submission, $student, true);
+            app(ProjectSubmissionReviewService::class)->reviewByStaff($submission, $student, true);
             self::fail('A client was allowed to review a project submission.');
         } catch (AuthorizationException $exception) {
             self::assertSame(ProjectSubmission::STATUS_PENDING, $submission->fresh()->review_status);
@@ -733,8 +735,7 @@ final class BackendHardeningTest extends TestCase
 
     public function test_project_effort_guard_rejects_empty_documents_without_grading_real_work(): void
     {
-        $service = app(ProjectSubmissionService::class);
-        $detect = new \ReflectionMethod(ProjectSubmissionService::class, 'detectEffort');
+        $guard = app(\App\Services\ProjectSubmissionEffortGuard::class);
 
         $emptyText = UploadedFile::fake()->createWithContent(
             'empty.txt',
@@ -742,7 +743,7 @@ final class BackendHardeningTest extends TestCase
         );
         self::assertSame(
             ProjectSubmission::EFFORT_INVALID,
-            $detect->invoke($service, null, [$emptyText])
+            $guard->assess(null, [$emptyText])
         );
 
         $brokenPdf = UploadedFile::fake()->createWithContent(
@@ -751,7 +752,7 @@ final class BackendHardeningTest extends TestCase
         );
         self::assertSame(
             ProjectSubmission::EFFORT_INVALID,
-            $detect->invoke($service, null, [$brokenPdf])
+            $guard->assess(null, [$brokenPdf])
         );
 
         $writer = new \Mpdf\Mpdf(['tempDir' => sys_get_temp_dir()]);
@@ -772,7 +773,7 @@ final class BackendHardeningTest extends TestCase
         self::assertSame(1, $reader->SetSourceFile($compactValidPdf->getRealPath()));
         self::assertSame(
             ProjectSubmission::EFFORT_VALID,
-            $detect->invoke($service, null, [$compactValidPdf])
+            $guard->assess(null, [$compactValidPdf])
         );
 
         $realNote = UploadedFile::fake()->createWithContent(
@@ -781,7 +782,7 @@ final class BackendHardeningTest extends TestCase
         );
         self::assertSame(
             ProjectSubmission::EFFORT_VALID,
-            $detect->invoke($service, null, [$realNote])
+            $guard->assess(null, [$realNote])
         );
     }
 
@@ -1201,7 +1202,7 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $access = app(CourseChatAccessService::class)->entitlementFor($user->id, $course->id);
+        $access = app(CourseEntitlementService::class)->entitlementFor($user->id, $course->id);
         self::assertSame('scholarship', $access['access_type']);
         self::assertFalse($access['chat_available']);
 
@@ -1221,13 +1222,13 @@ final class BackendHardeningTest extends TestCase
             'access_plan_snapshot' => json_encode($plan['snapshot'], JSON_THROW_ON_ERROR),
         ]);
 
-        $paidAccess = app(CourseChatAccessService::class)->entitlementFor($user->id, $course->id);
+        $paidAccess = app(CourseEntitlementService::class)->entitlementFor($user->id, $course->id);
         self::assertSame('paid', $paidAccess['access_type']);
         self::assertTrue($paidAccess['chat_available']);
         self::assertSame(25, $paidAccess['chat_message_limit']);
 
         $course->update(['ai_chat_enabled' => false]);
-        $disabledAccess = app(CourseChatAccessService::class)->entitlementFor($user->id, $course->id);
+        $disabledAccess = app(CourseEntitlementService::class)->entitlementFor($user->id, $course->id);
         self::assertSame('paid', $disabledAccess['access_type']);
         // Legacy per-course switches cannot rewrite an immutable purchased
         // tier. Variable-cost provenance and the plan receipt are authoritative.
@@ -1245,7 +1246,7 @@ final class BackendHardeningTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $freeAccess = app(CourseChatAccessService::class)->entitlementFor($freeUser->id, $freeCourse->id);
+        $freeAccess = app(CourseEntitlementService::class)->entitlementFor($freeUser->id, $freeCourse->id);
         self::assertSame('free', $freeAccess['access_type']);
         self::assertFalse($freeAccess['chat_available']);
         self::assertSame(0, $freeAccess['chat_message_limit']);
@@ -1260,7 +1261,7 @@ final class BackendHardeningTest extends TestCase
             ->firstOrFail();
         $originalPrice = (int) $plan->price_coins;
 
-        app(\App\Services\CourseAccessPlanService::class)->syncGlobalAiPolicy([
+        app(\App\Services\CoursePlanAuthoringService::class)->syncGlobalAiPolicy([
             'guided' => [
                 'chat_enabled' => false,
                 'chat_message_limit' => 0,
@@ -1821,8 +1822,7 @@ final class BackendHardeningTest extends TestCase
             ],
         ]);
 
-        app(PaidAiCallExecutionService::class)->settleUnknown(
-            app(AiEntitlementBudgetService::class),
+        app(AiUsageSettlementService::class)->settleUnknown(
             $event,
             ['course_id' => $course->id],
             'stream_disconnected_after_provider_start'
@@ -1986,7 +1986,7 @@ final class BackendHardeningTest extends TestCase
             'reservation_expires_at' => now()->addMinute(),
         ]);
         $paidCalls = app(PaidAiCallExecutionService::class);
-        $budget = app(AiEntitlementBudgetService::class);
+        $settlements = app(AiUsageSettlementService::class);
         $result = [
             'message' => 'The paid answer is ready.',
             'provider_request_id' => 'generation-cancel-race',
@@ -2005,8 +2005,8 @@ final class BackendHardeningTest extends TestCase
                 $event, 'cancel-race-worker', $user->id, $result
             ));
         if ($settled) {
-            self::assertSame(AiEntitlementBudgetService::SETTLEMENT_ACCEPTED,
-                $budget->settleForActiveUser($event, $result, $user->id));
+            self::assertSame(AiUsageSettlementService::SETTLEMENT_ACCEPTED,
+                $settlements->settleForActiveUser($event, $result, $user->id));
         }
         $usageBefore = DB::table('ai_entitlement_usages')->where('enrollment_id', $enrollmentId)->first();
 
@@ -2145,8 +2145,8 @@ final class BackendHardeningTest extends TestCase
         );
         self::assertSame('reserved', $event->fresh()->status);
         self::assertSame(
-            AiEntitlementBudgetService::SETTLEMENT_TERMINAL_CONFLICT,
-            app(AiEntitlementBudgetService::class)->settleForActiveUser(
+            AiUsageSettlementService::SETTLEMENT_TERMINAL_CONFLICT,
+            app(AiUsageSettlementService::class)->settleForActiveUser(
                 $event,
                 ['message' => 'must not settle'],
                 (int) $other->id
@@ -2344,8 +2344,9 @@ final class BackendHardeningTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        self::assertTrue($second->hasReachedInstitutionalGrantLimit($user->id));
-        self::assertFalse($second->canBeUsedByUser($user->id));
+        $eligibility = app(\App\Services\CourseCodeEligibilityService::class);
+        self::assertTrue($eligibility->hasReachedGrantLimit($second, $user));
+        self::assertNotNull($eligibility->rejectionFor($second, $user));
     }
 
     public function test_ai_upload_staging_is_bounded_before_more_bytes_are_written(): void

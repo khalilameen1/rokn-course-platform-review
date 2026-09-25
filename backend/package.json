@@ -27,6 +27,7 @@
         "inventory:public-assets:candidate": "node scripts/render-public-asset-inventory.mjs",
         "verify:public-assets": "node scripts/verify-public-assets.mjs",
         "test:public-assets": "node --test scripts/tests/public-asset-policy.test.mjs",
+        "test:admin-upload": "node --test scripts/tests/bunny-upload-modules.test.mjs",
         "verify:frontend-build": "node scripts/verify-frontend-build.mjs"
     },
     "devDependencies": {

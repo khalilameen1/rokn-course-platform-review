@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Support\StudentNotificationIntent;
+
+use App\Support\NotificationAudience;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Jobs\SendStudentNotification;
 use App\Models\NotificationCampaign;
@@ -76,17 +79,19 @@ final class AdminNotificationParityTest extends ApiTestCase
             ->andThrow(new \RuntimeException('queue unavailable'));
         $this->app->instance(Dispatcher::class, $dispatcher);
 
-        $notification = DB::transaction(fn () => StudentNotificationService::notifyUser(
+        $notification = DB::transaction(fn () => app(StudentNotificationService::class)->notifyUser(
             $this->user,
-            'course_enrolled',
-            'الكورس جاهز',
-            'Course ready',
-            'ابدأ الآن',
-            'Start now',
-            null,
-            null,
-            null,
-            'queue-outage-durable-inbox'
+            new StudentNotificationIntent(
+                notificationType: 'course_enrolled',
+                titleAr: 'الكورس جاهز',
+                titleEn: 'Course ready',
+                messageAr: 'ابدأ الآن',
+                messageEn: 'Start now',
+                link: null,
+                notifiableType: null,
+                notifiableId: null,
+                deliveryKey: 'queue-outage-durable-inbox'
+            )
         ));
 
         self::assertNotNull($notification);
@@ -122,7 +127,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         ]);
         $request->setUserResolver(fn () => $this->user);
 
-        $response = app(NotificationsController::class)->store($request);
+        $response = app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
 
         self::assertSame(302, $response->getStatusCode());
         self::assertTrue(session()->has('success'));
@@ -154,7 +159,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         ]);
         $request->setUserResolver(fn () => $this->user);
 
-        app(NotificationsController::class)->store($request);
+        app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
 
         $this->assertDatabaseHas('notification_campaigns', [
             'title_ar' => 'عنوان عربي',
@@ -182,7 +187,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         $request->setUserResolver(fn () => $this->user);
 
         $this->expectException(\Illuminate\Validation\ValidationException::class);
-        app(NotificationsController::class)->store($request);
+        app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
     }
 
     public function test_failed_campaign_can_be_retried_once_without_changing_its_delivery_key(): void
@@ -191,7 +196,7 @@ final class AdminNotificationParityTest extends ApiTestCase
         $campaign = NotificationCampaign::query()->create([
             'delivery_key' => 'failed-campaign-1',
             'notification_type' => 'admin_broadcast',
-            'audience' => SendStudentNotification::AUDIENCE_ALL,
+            'audience' => NotificationAudience::ALL,
             'user_ids' => [],
             'exclude_user_ids' => [],
             'title_ar' => 'عنوان',

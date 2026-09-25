@@ -13,9 +13,9 @@ use App\Models\FinancialEntitlementHold;
 use App\Models\Order;
 use App\Models\WalletCreditLot;
 use App\Models\WalletTransaction;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\FinancialProvenanceService;
-use App\Services\KashierPaymentService;
+use App\Services\KashierOrderSettlementService;
 use App\Services\OrderLifecycleService;
 use App\Services\WalletService;
 use Illuminate\Console\Command;
@@ -141,7 +141,7 @@ final class FinancialProvenanceTest extends ApiTestCase
         $order = $this->paidPackage(500, true, [
             'transaction_id' => 'TXN-REFUND-LIFECYCLE',
         ]);
-        $payments = app(KashierPaymentService::class);
+        $payments = app(KashierOrderSettlementService::class);
 
         $payments->recordFinancialReversal(
             $order,
@@ -235,7 +235,7 @@ final class FinancialProvenanceTest extends ApiTestCase
         self::assertTrue((bool) $enrollment->fresh()->is_active);
         self::assertSame('active', $certificate->fresh()->status);
 
-        $access = app(CourseChatAccessService::class)->entitlementFor(
+        $access = app(CourseEntitlementService::class)->entitlementFor(
             (int) $this->user->id,
             $this->courseId
         );

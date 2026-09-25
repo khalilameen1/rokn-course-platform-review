@@ -4,7 +4,8 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Resources\Json\JsonResource;
 use App\Support\RoknLocale;
-use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\LessonMediaDeliveryService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseSectionSequenceService;
 use App\Support\RoknPublicUrl;
@@ -261,13 +262,13 @@ class BaseCourseResource extends JsonResource
                     ? (int) ceil($durationSeconds / 60)
                     : max(0, (int) ($section->sectionable->duration_minutes ?? 0));
                 $content['duration_seconds'] = $durationSeconds ?: null;
-                $bunnyService = app(BunnyService::class);
+                $delivery = app(BunnyDeliveryService::class);
                 $content['thumbnail_url'] = $section->sectionable->thumbnail_path
-                    ? $bunnyService->generateBunnySignedUrl($section->sectionable->thumbnail_path)
+                    ? $delivery->storageUrl($section->sectionable->thumbnail_path)
                     : null;
                 if ((bool) $section->sectionable->is_opened && $section->sectionable->hasReadyMediaState()) {
                     // Get video data with signed URL for Bunny videos
-                    $videoData = $bunnyService->getVideoDataForLesson($section->sectionable);
+                    $videoData = app(LessonMediaDeliveryService::class)->forLesson($section->sectionable);
 
                     $content['video_source_type'] = $videoData['video_source_type'];
                     $content['video_link'] = $videoData['video_link'];

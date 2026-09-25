@@ -14,7 +14,9 @@ final readonly class KashierNotificationFlowService
 {
     public function __construct(
         private KashierService $kashier,
-        private KashierPaymentService $payments,
+        private KashierOrderSettlementService $settlements,
+        private KashierGatewayEvidenceService $evidence,
+        private KashierProviderOrderService $providerOrders,
         private PaymentApiResponseService $responses,
         private KashierCallbackSignatureService $signatures
     ) {
@@ -31,7 +33,7 @@ final readonly class KashierNotificationFlowService
             'transaction_id' => $transactionId,
         ] = $this->notification($request);
 
-        if (!$this->payments->isValidOrderReference($orderRef)) {
+        if (!$this->providerOrders->isValidReference($orderRef)) {
             Log::warning('Kashier callback rejected: missing or invalid order reference');
 
             return view('payment.result', [
@@ -49,7 +51,7 @@ final readonly class KashierNotificationFlowService
         ]);
 
         if (
-            !$this->payments->isCaptureNotificationStatus($paymentStatus)
+            !$this->evidence->isCaptureStatus($paymentStatus)
             && !$hasSignatureCandidate
         ) {
             return $this->handleUnsignedCallbackFailure(
@@ -114,7 +116,7 @@ final readonly class KashierNotificationFlowService
             'transaction_id' => $transactionId,
         ] = $this->notification($request);
 
-        if (!$this->payments->isValidOrderReference($orderRef)) {
+        if (!$this->providerOrders->isValidReference($orderRef)) {
             Log::warning('Kashier webhook rejected: missing or invalid order reference');
 
             return $this->responses->make(
@@ -134,7 +136,7 @@ final readonly class KashierNotificationFlowService
         ]);
 
         if (
-            !$this->payments->isCaptureNotificationStatus($paymentStatus)
+            !$this->evidence->isCaptureStatus($paymentStatus)
             && !$hasSignatureCandidate
         ) {
             Log::warning('Kashier webhook: unsigned failure notification', [
@@ -207,16 +209,16 @@ final readonly class KashierNotificationFlowService
         }
 
         if ($paymentStatus === 'SERVERERROR' && $order && $order->status === Order::STATUS_PENDING) {
-            $apiResponse = $this->payments->verifyOrderViaApi($orderRef);
-            if ($this->payments->isOrderCaptured($apiResponse)) {
+            $apiResponse = $this->providerOrders->fetch($orderRef);
+            if ($this->evidence->isCaptured($apiResponse)) {
                 try {
-                    $transactionId = $this->payments->extractTransactionId($apiResponse) ?? $transactionId;
-                    $order = $this->payments->fulfillOrder($order, $transactionId, array_merge($params, [
+                    $transactionId = $this->evidence->transactionId($apiResponse) ?? $transactionId;
+                    $order = $this->settlements->fulfillOrder($order, $transactionId, array_merge($params, [
                         'verified_via' => 'kashier_api',
                         'kashier_api_response' => $apiResponse,
                     ]));
 
-                    if ($this->payments->transactionIdConflicts($order, $transactionId)) {
+                    if ($this->evidence->transactionIdConflicts($order, $transactionId)) {
                         return view('payment.result', [
                             'success' => false,
                             'order_ref' => $orderRef,
@@ -243,7 +245,7 @@ final readonly class KashierNotificationFlowService
                         'order_ref' => $orderRef,
                         'transaction_id' => $transactionId,
                         'package' => $order->package,
-                        'coins_credited' => $this->payments->coinAmount($order),
+                        'coins_credited' => $order->packageCoinAmount(),
                         'message' => 'تم الدفع بنجاح',
                     ]);
                 } catch (\Exception $exception) {
@@ -307,8 +309,8 @@ final readonly class KashierNotificationFlowService
         array $params,
         string $source
     ): array {
-        if ($reversalType = $this->payments->financialReversalType($paymentStatus)) {
-            $this->payments->recordFinancialReversal(
+        if ($reversalType = $this->evidence->reversalType($paymentStatus)) {
+            $this->settlements->recordFinancialReversal(
                 $order,
                 $reversalType,
                 $paymentStatus,
@@ -319,8 +321,8 @@ final readonly class KashierNotificationFlowService
             return $this->notificationResult('reversal', $order->fresh(['user', 'package']), $orderRef, $transactionId);
         }
 
-        $isCapture = $this->payments->isCaptureNotificationStatus($paymentStatus);
-        if ($isCapture && $this->payments->flagApprovedTransactionConflict($order, $transactionId, $params)) {
+        $isCapture = $this->evidence->isCaptureStatus($paymentStatus);
+        if ($isCapture && $this->settlements->flagApprovedTransactionConflict($order, $transactionId, $params)) {
             return $this->notificationResult('conflict', $order->fresh(['user', 'package']), $orderRef, $transactionId);
         }
 
@@ -334,11 +336,11 @@ final readonly class KashierNotificationFlowService
         }
 
         if (!$isCapture) {
-            if (!$this->payments->isProviderFailureStatus($paymentStatus)) {
+            if (!$this->evidence->isFailureStatus($paymentStatus)) {
                 return $this->notificationResult('pending', $order, $orderRef, $transactionId);
             }
 
-            $order = $this->payments->cancelPendingOrder($order, $params);
+            $order = $this->settlements->cancelPendingOrder($order, $params);
             if ($order->isFinanciallyEffective()) {
                 return $this->notificationResult('settled', $order, $orderRef, $order->transaction_id);
             }
@@ -353,16 +355,16 @@ final readonly class KashierNotificationFlowService
             return $this->notificationResult('failed', $order, $orderRef, $transactionId);
         }
 
-        [$transactionId, $captureEvidence] = $this->payments->captureEvidenceWithTransactionId(
+        [$transactionId, $captureEvidence] = $this->providerOrders->captureEvidence(
             $orderRef,
             $transactionId,
             $params
         );
 
         try {
-            $order = $this->payments->fulfillOrder($order, $transactionId, $captureEvidence);
+            $order = $this->settlements->fulfillOrder($order, $transactionId, $captureEvidence);
 
-            if ($this->payments->transactionIdConflicts($order, $transactionId)) {
+            if ($this->evidence->transactionIdConflicts($order, $transactionId)) {
                 return $this->notificationResult('conflict', $order, $orderRef, $transactionId);
             }
             if (!$order->isFinanciallyEffective()) {
@@ -375,7 +377,7 @@ final readonly class KashierNotificationFlowService
                 'transaction_id' => $transactionId,
                 'user_id' => $order->user_id,
                 'package_id' => $order->package_id,
-                'coins_credited' => $this->payments->coinAmount($order),
+                'coins_credited' => $order->packageCoinAmount(),
                 'wallet_total' => $order->user->wallet_coins,
             ]);
 
@@ -422,7 +424,7 @@ final readonly class KashierNotificationFlowService
                 'success' => true,
                 'transaction_id' => $result['transaction_id'],
                 'package' => $order->package,
-                'coins_credited' => $this->payments->coinAmount($order),
+                'coins_credited' => $order->packageCoinAmount(),
                 'message' => 'تم الدفع بنجاح',
             ]),
             'settled' => view('payment.result', $base + [
@@ -522,7 +524,7 @@ final readonly class KashierNotificationFlowService
                     'response.status',
                 ]) ?? 'UNKNOWN'
             ))),
-            'transaction_id' => $this->payments->normalizeTransactionId(
+            'transaction_id' => $this->evidence->normalizeTransactionId(
                 $this->firstScalar($params, [
                     'transactionId',
                     'transaction_id',

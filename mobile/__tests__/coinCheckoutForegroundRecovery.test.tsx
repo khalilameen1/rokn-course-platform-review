@@ -35,12 +35,16 @@ jest.mock('../src/services/coinCheckoutHttp', () => ({}));
 jest.mock('../src/services/coinCheckoutProvider', () => ({}));
 jest.mock('../src/services/productFeatures', () => ({}));
 jest.mock('../src/navigation/checkoutReturn', () => ({}));
-jest.mock('../src/services/pushNotifications', () => ({
+jest.mock('../src/services/notificationPresentation', () => ({
   prepareNotificationChannels: async () => undefined,
+}));
+jest.mock('../src/services/pushDeviceRegistration', () => ({
   reconcilePushRegistration: async () => undefined,
+  subscribeToPushTokenRefresh: () => () => undefined,
+}));
+jest.mock('../src/services/pushNotificationNavigation', () => ({
   flushPendingNotificationNavigation: async () => undefined,
   subscribeToPushResponses: () => () => undefined,
-  subscribeToPushTokenRefresh: () => () => undefined,
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   retryPendingPlaybackPositions: async () => undefined,

@@ -11,7 +11,7 @@ use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\StudentSectionProgress;
 use App\Models\User;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -70,7 +70,7 @@ final class NestedCourseRetirementTest extends TestCase
             ->where('course_section_id', $nestedSection->id)->first());
         self::assertNotNull(CourseSection::withTrashed()->findOrFail($nestedSection->id)->deleted_at);
 
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         self::assertTrue($access->hasLearningAccess((int) $directStudent->id, (int) $child->id));
         self::assertFalse($access->hasLearningAccess((int) $parentStudent->id, (int) $child->id));
         self::assertFalse($access->enrollmentGrantsCourse($parentEnrollment, (int) $child->id));

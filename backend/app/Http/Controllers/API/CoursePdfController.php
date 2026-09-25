@@ -10,7 +10,7 @@ use App\Models\CoursePdf;
 use App\Models\User;
 use App\Services\CourseAttachmentService;
 use App\Services\CourseModuleAccessService;
-use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use App\Support\ResumableDownloadResponse;
 use App\Support\CourseAttachmentExternalUrl;
 use Illuminate\Http\JsonResponse;
@@ -22,7 +22,7 @@ final class CoursePdfController extends Controller
     public function __construct(
         private CourseModuleAccessService $access,
         private CourseAttachmentService $attachments,
-        private CourseStagedAuthoringService $revisions
+        private CourseRevisionResolver $revisions
     ) {}
 
     /** Get all active PDFs for an actively enrolled user. */

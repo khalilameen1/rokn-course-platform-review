@@ -7,24 +7,21 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\CourseCode;
-use App\Models\User;
-use Illuminate\Http\Request;
 
 final readonly class AdminCoursePreviewService
 {
     public function __construct(
         private CourseReadService $courseReads,
-        private CoursePresentationService $presentation,
         private CourseAccessPlanService $plans,
         private CertificateTextTemplateService $certificateTemplates,
-        private CourseStagedAuthoringService $stagedAuthoring
+        private CourseRevisionResolver $revisionResolver
     ) {
     }
 
     /** @return array<string, mixed> */
-    public function prepare(Course $course, User $actor, ?string $requestedPlan, Request $request): array
+    public function prepare(Course $course, ?string $requestedPlan): array
     {
-        $course = $this->stagedAuthoring->activeDraftFor($course) ?: $course;
+        $course = $this->revisionResolver->activeDraftFor($course) ?: $course;
         $previewCourse = $this->courseReads->detailedCourseForAdminPreview((int) $course->id);
         $planOptions = $this->plans->publicPlans($previewCourse)
             ->map(fn ($plan): array => $this->plans->publicPayload($plan))
@@ -55,7 +52,7 @@ final readonly class AdminCoursePreviewService
             return ['error' => 'اختر صياغة شهادة صالحة قبل معاينة تجربة الطالب.'];
         }
 
-        $publishedCourse = $this->stagedAuthoring->canonicalFor($previewCourse);
+        $publishedCourse = $this->revisionResolver->canonicalFor($previewCourse);
         $publishedDeviceCourseId = $publishedCourse->isPublishedForLearning()
             ? (int) $publishedCourse->id
             : null;
@@ -63,18 +60,10 @@ final readonly class AdminCoursePreviewService
         return [
             'error' => null,
             'previewCourse' => $previewCourse,
-            'previewPayload' => $this->presentation
-                ->dashboardPreview(
-                    $previewCourse,
-                    $actor,
-                    $selectedPlan,
-                    $selectedPlan['code'] === 'grant' ? 'scholarship' : 'paid'
-                )
-                ->resolve($request),
             'planOptions' => $planOptions,
             'selectedPlan' => $selectedPlan,
             'certificateTextTemplate' => $certificateTextTemplate,
-            // The payload above deliberately renders the working draft. The
+            // The selected course deliberately represents the working draft. The
             // device deep link must keep pointing at the immutable learner
             // revision, not at the hidden draft row produced by middleware.
             'publishedDeviceCourseId' => $publishedDeviceCourseId,

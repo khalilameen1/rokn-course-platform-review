@@ -79,6 +79,20 @@ const button = (renderer: TestRenderer.ReactTestRenderer, label: string) =>
 
 describe('project feedback report and conversation presentation', () => {
   let renderer: TestRenderer.ReactTestRenderer;
+  it('shows a save failure with a retry action without disabling the composer', () => {
+    const retrySave = jest.fn();
+    render(
+      props({
+        draftSaveError: true,
+        onRetryDraftSave: retrySave,
+        draft: 'سؤالي',
+      }),
+    );
+    expect(texts(renderer)).toContain('تعذّر حفظ مسودة الرسالة على جهازك');
+    act(() => button(renderer, 'إعادة حفظ مسودة الرسالة').props.onPress());
+    expect(retrySave).toHaveBeenCalledTimes(1);
+    expect(renderer.root.findByType(TextInput).props.value).toBe('سؤالي');
+  });
   const render = (value: Props, openDiscussion = true) => {
     act(() => {
       renderer = TestRenderer.create(<ProjectFeedbackPanel {...value} />);

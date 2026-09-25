@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Exceptions\AiProviderUnavailableException;
 use App\Services\OpenRouterService;
+use App\Services\OpenRouterRequestPolicy;
 use App\Services\OpenRouterEventStream;
 use App\Services\OpenRouterCurlFactory;
 use GuzzleHttp\Handler\CurlFactory;
@@ -14,12 +15,12 @@ use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Symfony\Component\Process\Process;
+use Tests\Support\LocalHttpServer;
 use Tests\TestCase;
 
 final class OpenRouterTransportTest extends TestCase
 {
-    private ?Process $server = null;
+    private ?LocalHttpServer $server = null;
 
     public static function geminiReasoningPayloads(): array
     {
@@ -55,9 +56,10 @@ final class OpenRouterTransportTest extends TestCase
             'usage' => ['prompt_tokens' => 1000, 'completion_tokens' => 800, 'total_tokens' => 1800, 'cost' => .00375],
         ])]);
         $provider = app(OpenRouterService::class);
-        self::assertSame('google/gemini-3.8-flash', $provider->configuredModel());
-        self::assertSame('anthropic/claude-sonnet-5', $provider->configuredModel('project_model'));
-        $result = $provider->chat($provider->configuredModel(), [['role' => 'user', 'content' => 'اشرح المثال']], .35, 800);
+        $policy = app(OpenRouterRequestPolicy::class);
+        self::assertSame('google/gemini-3.8-flash', $policy->configuredModel());
+        self::assertSame('anthropic/claude-sonnet-5', $policy->configuredModel('project_model'));
+        $result = $provider->chat($policy->configuredModel(), [['role' => 'user', 'content' => 'اشرح المثال']], .35, 800);
         self::assertSame('المثال محتاج تعديل ترتيب التنفيذ', $result['message']);
         self::assertSame(.00375, $result['usage']['cost']);
         Http::assertSent(function ($request) use ($expectedEffort): bool {
@@ -140,7 +142,7 @@ final class OpenRouterTransportTest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->server?->stop(0);
+        $this->server?->stop();
         parent::tearDown();
     }
 
@@ -173,7 +175,7 @@ final class OpenRouterTransportTest extends TestCase
         self::assertSame('First small fragment', $partials[0]['text']);
         self::assertLessThan($elapsed - .2, $partials[0]['seconds']);
         self::assertLessThan(3.0, $elapsed, 'DONE must not wait for the socket to close.');
-        self::assertSame(1, substr_count($this->server->getOutput(), 'REQUEST'));
+        self::assertSame(1, substr_count($this->server->process->getOutput(), 'REQUEST'));
     }
 
     public static function deadlineScenarios(): array
@@ -213,7 +215,7 @@ final class OpenRouterTransportTest extends TestCase
         if ($hasPartial) {
             self::assertLessThan($scenario === 'headers_then_silence' ? 3.0 : 1.0, $firstPartialAt);
         }
-        self::assertSame(1, substr_count($this->server->getOutput(), 'REQUEST'));
+        self::assertSame(1, substr_count($this->server->process->getOutput(), 'REQUEST'));
         Log::shouldHaveReceived('warning')
             ->once()
             ->withArgs(static function (string $message, array $context) use ($hasPartial): bool {
@@ -349,7 +351,7 @@ final class OpenRouterTransportTest extends TestCase
         self::assertLessThan(2.0, (hrtime(true) - $started) / 1e9);
         self::assertSame($unknown ? ['First small fragment'] : [], $partials);
         self::assertSame(0, $landings);
-        self::assertSame(1, substr_count($this->server->getOutput(), 'REQUEST'));
+        self::assertSame(1, substr_count($this->server->process->getOutput(), 'REQUEST'));
     }
 
     public function test_json_detection_does_not_treat_answer_text_or_incomplete_data_as_rejection(): void
@@ -406,21 +408,14 @@ final class OpenRouterTransportTest extends TestCase
             self::assertSame(307, $exception->providerStatus);
             self::assertFalse($exception->outcomeUnknown);
         }
-        self::assertSame(1, substr_count($this->server->getOutput(), 'REQUEST'));
+        self::assertSame(1, substr_count($this->server->process->getOutput(), 'REQUEST'));
     }
 
     private function startServer(string $scenario): void
     {
         self::assertTrue(extension_loaded('curl'), 'The production streaming transport requires ext-curl.');
-        $this->server = new Process([PHP_BINARY, '-n', base_path('tests/Fixtures/openrouter_sse_server.php'), $scenario]);
-        $this->server->setTimeout(12);
-        $this->server->start();
-        $ready = $this->server->waitUntil(static fn (string $type, string $output): bool =>
-            $type === Process::OUT && str_contains($output, "\n")
-        );
-        self::assertTrue($ready, $this->server->getErrorOutput());
-        $address = trim($this->server->getOutput());
-        self::assertMatchesRegularExpression('/^127\.0\.0\.1:\d+$/', $address);
+        $this->server = new LocalHttpServer(base_path('tests/Fixtures/openrouter_sse_server.php'), [$scenario]);
+        $address = $this->server->address();
         config([
             'openrouter.api_key' => 'local-only-not-a-real-key',
             'openrouter.endpoint' => 'http://'.$address,

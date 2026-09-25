@@ -8,6 +8,7 @@ use App\Models\Grade;
 use App\Models\Setting;
 use App\Models\DesignSetting;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminContentInventoryReadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -139,10 +140,10 @@ class GradeController extends Controller
      * @param  \App\Models\Grade  $grade
      * @return \Illuminate\Http\Response
      */
-    public function courses(Grade $grade)
+    public function courses(Grade $grade, AdminContentInventoryReadService $inventory)
     {
         $canViewEnrollmentCounts = strtolower(trim((string) auth()->user()?->role)) === 'admin';
-        $coursesQuery = $grade->courses()
+        $coursesQuery = $inventory->courses()->where('grade_id', $grade->id)
             ->with('classifications')
             ->orderByDesc('updated_at')
             ->orderByDesc('id');

@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 final readonly class LatestWatchResumeService
 {
-    public function __construct(private CourseStagedAuthoringService $revisions) {}
+    public function __construct(private CourseRevisionResolver $revisions) {}
 
     /**
      * Return one newest resume row per course in the database, rather than

@@ -11,6 +11,17 @@ final class CourseAuthoringRevision extends Model
     public const DRAFT = 'draft';
     public const ARCHIVED = 'archived';
 
+    public const CLASSIFICATION_SNAPSHOT = 'authoring:classification';
+    public const CLASSIFICATION_SNAPSHOT_MARKER = 'authoring:classification-snapshot';
+    public const HERO_SELECTION_MARKER = 'authoring:hero-selection';
+    public const PATH_SNAPSHOT = 'authoring:path-snapshot';
+
+    /** Exactly one working copy can own this slot for a canonical course. */
+    public static function draftSlot(int $courseId): string
+    {
+        return 'course-draft:'.$courseId;
+    }
+
     protected $fillable = [
         'canonical_course_id', 'revision_course_id', 'base_authoring_version',
         'published_authoring_version', 'status', 'active_slot', 'clone_key',

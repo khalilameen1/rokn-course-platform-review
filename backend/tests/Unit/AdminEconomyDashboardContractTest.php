@@ -33,7 +33,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
     public function test_course_plan_business_validation_has_one_runtime_owner(): void
     {
         $request = $this->source('app/Http/Requests/Admin/CourseRequest.php');
-        $plans = $this->source('app/Services/CourseAccessPlanService.php');
+        $plans = $this->source('app/Services/CoursePlanAuthoringService.php');
 
         self::assertStringNotContainsString('function withValidator', $request);
         self::assertStringContainsString('function syncAdminPlans', $plans);
@@ -63,7 +63,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
     public function test_only_packages_with_an_executable_channel_reach_the_student(): void
     {
         $model = $this->source('app/Models/Package.php');
-        $admin = $this->source('app/Http/Controllers/Admin/PackageController.php');
+        $admin = $this->source('app/Services/AdminPackageAuthoringService.php');
         $api = $this->source('app/Http/Controllers/API/PackageController.php');
         $purchase = $this->source('app/Http/Controllers/API/CoursePurchaseController.php');
         $upgrade = $this->source('app/Http/Controllers/API/CourseChatUpgradeController.php');
@@ -82,10 +82,12 @@ final class AdminEconomyDashboardContractTest extends TestCase
     public function test_a_broken_task_can_be_disabled_and_preview_uses_the_public_contract(): void
     {
         $controller = $this->source('app/Http/Controllers/Admin/CoinEarningMethodController.php');
+        $authoring = $this->source('app/Services/AdminRewardAuthoringService.php');
         $model = $this->source('app/Models/CoinEarningMethod.php');
         $list = $this->source('resources/views/admin/coin_earning_methods/index.blade.php');
 
-        self::assertStringContainsString('if (!$method->is_active)', $controller);
+        self::assertStringContainsString('if (!$method->is_active)', $authoring);
+        self::assertStringContainsString('$this->authoring->updateMethod(', $controller);
         self::assertStringContainsString('PublicAppSettingsService::class', $model);
         self::assertStringContainsString('$method->learnerTitleAr()', $list);
         self::assertStringContainsString('$method->resolvedActionUrl()', $list);

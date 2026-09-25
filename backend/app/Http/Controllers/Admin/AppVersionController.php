@@ -7,14 +7,16 @@ use Illuminate\Http\Request;
 use App\Models\AppVersion;
 use App\Services\AppReleasePolicyService;
 use App\Services\AdminAuthoringCreateIntentService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
-use App\Support\AdminEditorVersion;
+use App\Support\AppVersionEditorVersion;
+use App\Services\AppReleaseAuthoringService;
 
 class AppVersionController extends Controller
 {
-    public function __construct(private readonly AppReleasePolicyService $releasePolicy)
+    public function __construct(
+        private readonly AppReleasePolicyService $releasePolicy,
+        private readonly AppReleaseAuthoringService $authoring
+    )
     {
     }
 
@@ -28,7 +30,7 @@ class AppVersionController extends Controller
         $versions = AppVersion::orderBy('id', 'desc')->paginate(10);
         $releaseReadiness = $this->releasePolicy->launchReadiness();
         $editorVersions = $versions->getCollection()->mapWithKeys(
-            fn (AppVersion $version): array => [$version->id => $this->editorVersion($version)]
+            fn (AppVersion $version): array => [$version->id => AppVersionEditorVersion::for($version)]
         );
 
         return view('admin.app-versions.index', compact('versions', 'releaseReadiness', 'editorVersions'));
@@ -72,8 +74,7 @@ class AppVersionController extends Controller
     {
         $data = $this->validatedPayload($request);
 
-        DB::transaction(function () use ($request, $data, $createIntents): void {
-            $version = AppVersion::create($data);
+        $this->authoring->create($data, function (AppVersion $version) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request,
                 route('admin.app-versions.index'),
@@ -81,7 +82,7 @@ class AppVersionController extends Controller
                 AppVersion::class,
                 $version->id
             );
-        }, 3);
+        });
 
         return redirect()->route('admin.app-versions.index')->with('success', 'تم إضافة الإصدار بنجاح');
     }
@@ -114,7 +115,7 @@ class AppVersionController extends Controller
                 'هذا سجل قديم بلا قناة محددة ويمكن إيقافه فقط. أنشئ إصدارًا جديدًا للقناة الصحيحة.'
             );
         }
-        $editorVersion = $this->editorVersion($version);
+        $editorVersion = AppVersionEditorVersion::for($version);
         return view('admin.app-versions.edit', compact('version', 'editorVersion'));
     }
 
@@ -133,11 +134,7 @@ class AppVersionController extends Controller
         ])['editor_version'];
         $data = $this->validatedPayload($request, $version);
 
-        DB::transaction(function () use ($version, $data, $editorVersion): void {
-            $locked = AppVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
-            $this->assertCurrentVersion($locked, $editorVersion);
-            $locked->update($data);
-        }, 3);
+        $this->authoring->update((int) $version->id, $data, $editorVersion);
 
         return redirect()->route('admin.app-versions.index')->with('success', 'تم تحديث الإصدار بنجاح');
     }
@@ -154,13 +151,7 @@ class AppVersionController extends Controller
         $editorVersion = (string) $request->validate([
             'editor_version' => 'required|string|size:64',
         ])['editor_version'];
-        $blocked = DB::transaction(function () use ($version, $editorVersion): bool {
-            $locked = AppVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
-            $this->assertCurrentVersion($locked, $editorVersion);
-            if ($locked->is_active) return true;
-            $locked->delete();
-            return false;
-        }, 3);
+        $blocked = !$this->authoring->delete((int) $version->id, $editorVersion);
         if ($blocked) {
             return redirect()->back()->with(
                 'error',
@@ -184,14 +175,7 @@ class AppVersionController extends Controller
             'editor_version' => 'required|string|size:64',
         ])['editor_version'];
 
-        $blocked = DB::transaction(function () use ($version, $editorVersion): bool {
-            $locked = AppVersion::query()->whereKey($version->id)->lockForUpdate()->firstOrFail();
-            $this->assertCurrentVersion($locked, $editorVersion);
-            if (!$locked->is_active && !$this->isActivatable($locked)) return true;
-            $locked->is_active = !$locked->is_active;
-            $locked->save();
-            return false;
-        }, 3);
+        $blocked = !$this->authoring->toggleActive((int) $version->id, $editorVersion);
         if ($blocked) {
             return redirect()->back()->with(
                 'error',
@@ -200,24 +184,6 @@ class AppVersionController extends Controller
         }
 
         return redirect()->back()->with('success', 'تم تغيير الحالة بنجاح');
-    }
-
-    private function assertCurrentVersion(AppVersion $version, string $editorVersion): void
-    {
-        if (!hash_equals($this->editorVersion($version), $editorVersion)) {
-            throw ValidationException::withMessages([
-                'editor_version' => "تغيّر إصدار التطبيق منذ فتح الصفحة\nأعد تحميلها قبل المتابعة",
-            ]);
-        }
-    }
-
-    private function editorVersion(AppVersion $version): string
-    {
-        return AdminEditorVersion::for($version, [
-            'platform', 'distribution_channel', 'version_name', 'version_code',
-            'build_number', 'is_force_update', 'is_active', 'update_message_ar',
-            'update_message_en', 'download_url', 'release_notes_ar', 'release_notes_en',
-        ]);
     }
 
     /**
@@ -291,66 +257,6 @@ class AppVersionController extends Controller
         $data['version_code'] = $platform === 'android' ? (int) $data['version_code'] : null;
         $data['build_number'] = $platform === 'ios' ? (int) $data['build_number'] : null;
 
-        if ($existing) {
-            $immutableChanged = $existing->platform !== $data['platform']
-                || $existing->distribution_channel !== $data['distribution_channel']
-                || $existing->version_name !== $data['version_name']
-                || (int) $existing->version_code !== (int) $data['version_code']
-                || (int) $existing->build_number !== (int) $data['build_number'];
-            if ($immutableChanged) {
-                throw ValidationException::withMessages([
-                    'version_name' => 'هوية الإصدار والقناة والرقم الداخلي لا تتغير بعد إنشائه. أنشئ إصدارًا جديدًا.',
-                ]);
-            }
-        } else {
-            $identifierColumn = $platform === 'android' ? 'version_code' : 'build_number';
-            $candidate = (int) $data[$identifierColumn];
-            $channelMaximum = (int) AppVersion::query()
-                ->where('platform', $platform)
-                ->where('distribution_channel', $channel)
-                ->max($identifierColumn);
-            $platformMaximum = (int) AppVersion::query()
-                ->where('platform', $platform)
-                ->max($identifierColumn);
-            $sameBuildVersionNames = AppVersion::query()
-                ->where('platform', $platform)
-                ->where($identifierColumn, $candidate)
-                ->pluck('version_name')
-                ->map(fn ($name): string => (string) $name)
-                ->unique();
-            if (
-                $sameBuildVersionNames->isNotEmpty()
-                && !$sameBuildVersionNames->contains($data['version_name'])
-            ) {
-                throw ValidationException::withMessages([
-                    'version_name' => 'نفس رقم البناء يجب أن يحمل نفس اسم الإصدار في كل قنوات التوزيع.',
-                ]);
-            }
-            // Play and direct may publish the same Android build identity, but
-            // neither channel may introduce a lower build than users could
-            // already have installed from the other one.
-            if (
-                ($channelMaximum > 0 && $candidate <= $channelMaximum)
-                || ($platformMaximum > 0 && $candidate < $platformMaximum)
-            ) {
-                $minimum = max($channelMaximum + 1, $platformMaximum);
-                throw ValidationException::withMessages([
-                    $identifierColumn => "استخدم رقمًا لا يقل عن {$minimum}. الرجوع إلى رقم أقدم يمنع التحديث فوق النسخة المثبتة.",
-                ]);
-            }
-        }
-
         return $data;
-    }
-
-    private function isActivatable(AppVersion $version): bool
-    {
-        $channel = (string) $version->distribution_channel;
-        $hasIdentifier = $version->platform === 'android'
-            ? in_array($channel, ['play', 'direct'], true) && (int) $version->version_code > 0
-            : $channel === 'appstore' && (int) $version->build_number > 0;
-
-        return $hasIdentifier
-            && $this->releasePolicy->isAllowedDownloadUrl($channel, $version->download_url);
     }
 }

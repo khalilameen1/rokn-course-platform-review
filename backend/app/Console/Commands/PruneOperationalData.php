@@ -7,7 +7,7 @@ namespace App\Console\Commands;
 use App\Models\PortfolioItem;
 use App\Models\AiInputAttachment;
 use App\Models\User;
-use App\Services\BunnyService;
+use App\Services\BunnyMediaRegistry;
 use App\Services\ProjectSubmissionFileRetentionService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Console\Command;
@@ -21,7 +21,7 @@ final class PruneOperationalData extends Command
     protected $signature = 'data:prune-operational {--limit=5000 : Maximum rows per table per run}';
     protected $description = 'Bound privacy-sensitive and high-volume operational tables without touching financial ledgers.';
 
-    public function handle(BunnyService $bunny, ProjectSubmissionFileRetentionService $submissionFiles): int
+    public function handle(BunnyMediaRegistry $mediaRegistry, ProjectSubmissionFileRetentionService $submissionFiles): int
     {
         $limit = max(100, min(20000, (int) $this->option('limit')));
         $counts = [];
@@ -123,7 +123,7 @@ final class PruneOperationalData extends Command
         }
         $counts['orphan_ai_inputs'] = $this->pruneAiInputs($limit);
         $counts['project_submission_files'] = $submissionFiles->purgeExpiredTerminalFailures($limit);
-        $counts['portfolio_drafts'] = $this->prunePortfolioDrafts($limit, $bunny);
+        $counts['portfolio_drafts'] = $this->prunePortfolioDrafts($limit, $mediaRegistry);
         $counts['certificate_lease_artifacts'] = $this->pruneCertificateLeaseArtifacts($limit);
         $counts['admin_audit_logs'] = $this->deleteByIds(
             'admin_audit_logs',
@@ -278,7 +278,7 @@ final class PruneOperationalData extends Command
         return $deleted;
     }
 
-    private function prunePortfolioDrafts(int $limit, BunnyService $bunny): int
+    private function prunePortfolioDrafts(int $limit, BunnyMediaRegistry $mediaRegistry): int
     {
         if (
             !Schema::hasTable('portfolio_items')
@@ -300,7 +300,7 @@ final class PruneOperationalData extends Command
             ->pluck('id');
         $deleted = 0;
         foreach ($ids as $id) {
-            $deleted += DB::transaction(function () use ($id, $bunny): int {
+            $deleted += DB::transaction(function () use ($id, $mediaRegistry): int {
                 $observed = PortfolioItem::query()->find($id);
                 if (!$observed) return 0;
                 $user = User::query()->whereKey($observed->user_id)->lockForUpdate()->first();
@@ -320,7 +320,7 @@ final class PruneOperationalData extends Command
                 $item->forceFill(['deletion_started_at' => now()])->save();
                 foreach ($item->mediaFiles()->lockForUpdate()->get() as $media) {
                     if ($media->file_type === 'video' && $media->file_path) {
-                        $candidate = $bunny->queueVideoCleanup(
+                        $candidate = $mediaRegistry->queueVideoCleanup(
                             $media->file_path,
                             null,
                             'portfolio_draft_abandoned',
@@ -331,7 +331,7 @@ final class PruneOperationalData extends Command
                             throw new \RuntimeException('Unable to persist draft video cleanup.');
                         }
                     } elseif ($media->file_type === 'image' && $media->file_path) {
-                        if (!$bunny->queueStorageCleanup(
+                        if (!$mediaRegistry->queueStorageCleanup(
                             $media->file_path,
                             'portfolio_draft_abandoned'
                         )) {

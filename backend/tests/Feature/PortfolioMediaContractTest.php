@@ -6,6 +6,7 @@ namespace Tests\Feature;
 
 use App\Http\Resources\PortfolioMediaResource;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use Illuminate\Support\Facades\Cache;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -21,6 +22,8 @@ final class PortfolioMediaContractTest extends TestCase
 
     public function test_portfolio_video_uses_the_shared_bunny_playability_contract(): void
     {
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->andReturn([
             'state' => 'ok',
@@ -31,11 +34,11 @@ final class PortfolioMediaContractTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('getSignedEmbedUrl')->once()->andReturn([
+        $delivery->shouldReceive('videoEmbed')->once()->andReturn([
             'url' => 'https://video.example.test/embed/ready',
             'expires_at' => '2026-09-02T12:05:00+00:00',
         ]);
-        $bunny->shouldReceive('getSignedPlayUrl')->once()->andReturn([
+        $delivery->shouldReceive('videoPlayback')->once()->andReturn([
             'url' => 'https://video.example.test/play/ready.m3u8',
             'expires_at' => '2026-09-02T12:05:00+00:00',
         ]);
@@ -52,6 +55,8 @@ final class PortfolioMediaContractTest extends TestCase
     #[DataProvider('unfinishedVideoStatuses')]
     public function test_get_video_status_does_not_use_webhook_event_meanings(int $status, string $expected): void
     {
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->andReturn([
             'state' => 'ok',
@@ -62,8 +67,8 @@ final class PortfolioMediaContractTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldNotReceive('getSignedEmbedUrl');
-        $bunny->shouldNotReceive('getSignedPlayUrl');
+        $delivery->shouldNotReceive('videoEmbed');
+        $delivery->shouldNotReceive('videoPlayback');
         $this->app->instance(BunnyService::class, $bunny);
 
         $payload = (new PortfolioMediaResource($this->media(82, 'uploading-guid')))->resolve();
@@ -87,13 +92,15 @@ final class PortfolioMediaContractTest extends TestCase
 
     public function test_provider_confirmed_missing_portfolio_video_is_not_left_processing_forever(): void
     {
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->andReturn([
             'state' => 'not_found',
             'details' => null,
             'http_status' => 404,
         ]);
-        $bunny->shouldNotReceive('getSignedEmbedUrl');
+        $delivery->shouldNotReceive('videoEmbed');
         $this->app->instance(BunnyService::class, $bunny);
 
         $payload = (new PortfolioMediaResource($this->media(83, 'missing-guid')))->resolve();

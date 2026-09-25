@@ -9,7 +9,8 @@ use App\Models\Package;
 use App\Models\PaymentReconciliationCheckpoint;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
-use App\Services\KashierPaymentService;
+use App\Services\KashierOrderSettlementService;
+use App\Services\KashierGatewayEvidenceService;
 use App\Services\KashierReconciliationService;
 use App\Services\StudentNotificationService;
 use Illuminate\Console\Command;
@@ -44,7 +45,7 @@ final class KashierReconciliationTest extends TestCase
 
         self::assertSame(
             'TX-ACTUAL-PAYMENT',
-            app(KashierPaymentService::class)->extractTransactionId($response)
+            app(KashierGatewayEvidenceService::class)->transactionId($response)
         );
     }
 
@@ -165,7 +166,7 @@ final class KashierReconciliationTest extends TestCase
     public function test_provider_history_expiry_does_not_quarantine_a_settled_order(): void
     {
         $order = $this->pendingOrder('PKG-RECON-SETTLED-NOT-FOUND');
-        app(KashierPaymentService::class)->fulfillOrder(
+        app(KashierOrderSettlementService::class)->fulfillOrder(
             $order,
             'TXN-RECON-SETTLED-NOT-FOUND',
             $this->providerPayload($order, 'CAPTURED', 'TXN-RECON-SETTLED-NOT-FOUND')

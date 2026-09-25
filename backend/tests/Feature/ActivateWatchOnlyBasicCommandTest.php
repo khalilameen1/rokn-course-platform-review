@@ -156,7 +156,7 @@ final class ActivateWatchOnlyBasicCommandTest extends TestCase
             'course_id' => $course->id, 'module_id' => $module->id, 'title_ar' => 'مقطع', 'section_type' => 'lesson',
             'sectionable_type' => Lesson::class, 'sectionable_id' => $lesson->id, 'order' => 1,
         ]);
-        app(CourseAccessPlanService::class)->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         $course->accessPlans()->where('code', 'basic')->update([
             'projects_enabled' => true, 'certificate_enabled' => true,
             'minimum_paid_coins' => 100,

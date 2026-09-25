@@ -13,7 +13,7 @@ final class CertificateQrDestinationService
     public function __construct(
         private readonly CertificateTextTemplateService $templates,
         private readonly PortfolioShareIdentityService $portfolioShares,
-        private readonly PortfolioModerationService $moderation
+        private readonly PortfolioReviewReadService $reviews
     ) {
     }
 
@@ -71,7 +71,7 @@ final class CertificateQrDestinationService
             && $user->portfolio_sharing_suspended_at === null
             && $user->portfolio_sharing_status === 'approved'
             && $this->portfolioShares->isValidUnlistedSlug($slug)) {
-            $snapshot = $this->moderation->snapshot($user);
+            $snapshot = $this->reviews->snapshot($user);
             if ($snapshot['items']->isNotEmpty()
                 && hash_equals((string) $user->portfolio_approved_hash, $snapshot['hash'])) {
                 return [

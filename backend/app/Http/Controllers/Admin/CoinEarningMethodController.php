@@ -4,20 +4,23 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CoinEarningMethod;
-use App\Models\Setting;
 use App\Models\RewardRule;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminEconomyReadService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use App\Services\SocialAuthProviderRegistry;
 use App\Support\BusinessClock;
-use App\Support\AdminSingletonLock;
+use App\Services\AdminRewardAuthoringService;
+use App\Support\RewardConfigurationVersion;
 
 class CoinEarningMethodController extends Controller
 {
+    public function __construct(private readonly AdminRewardAuthoringService $authoring)
+    {
+    }
+
     public function index(AdminEconomyReadService $economy)
     {
         $data = $economy->rewards();
@@ -26,12 +29,12 @@ class CoinEarningMethodController extends Controller
         $rewardRules = $data['rewardRules'];
         $rewardEvents = $data['rewardEvents'];
         $socialProviderLabels = $data['socialProviderLabels'];
-        $settingsEditorVersion = $this->settingsEditorVersion($setting);
+        $settingsEditorVersion = RewardConfigurationVersion::settings($setting);
         $rewardRuleEditorVersions = $rewardRules->mapWithKeys(
-            fn (RewardRule $rule): array => [$rule->id => $this->rewardRuleEditorVersion($rule)]
+            fn (RewardRule $rule): array => [$rule->id => RewardConfigurationVersion::rule($rule)]
         );
         $methodEditorVersions = $methods->getCollection()->mapWithKeys(
-            fn (CoinEarningMethod $method): array => [$method->id => $this->methodEditorVersion($method)]
+            fn (CoinEarningMethod $method): array => [$method->id => RewardConfigurationVersion::method($method)]
         );
         return view('admin.coin_earning_methods.index', compact(
             'methods', 'setting', 'rewardRules', 'rewardEvents', 'socialProviderLabels',
@@ -65,55 +68,8 @@ class CoinEarningMethodController extends Controller
 
         $editorVersion = (string) $validated['editor_version'];
         unset($validated['editor_version']);
-        DB::transaction(function () use ($validated, $editorVersion): void {
-            AdminSingletonLock::acquire('settings');
-            $setting = Setting::query()->lockForUpdate()->first();
-            if (!$setting) {
-                if (!hash_equals($this->settingsEditorVersion(null), $editorVersion)) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => "تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                    ]);
-                }
-                $setting = Setting::query()->create([]);
-            } elseif (!hash_equals($this->settingsEditorVersion($setting), $editorVersion)) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت قواعد العملات منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                ]);
-            }
-            $proposed = clone $setting;
-            $proposed->forceFill($validated);
-            $activeRules = RewardRule::query()->active()->orderBy('id')->lockForUpdate()->get();
-            $activeMethods = CoinEarningMethod::query()
-                ->where('is_active', true)
-                ->where(function ($query): void {
-                    $query->whereNull('action_key')->orWhere('action_key', '!=', 'register');
-                })
-                ->orderBy('id')
-                ->lockForUpdate()
-                ->get();
-            $this->ensureRewardsFitProposedBalanceCap($proposed, $activeRules, $activeMethods);
-            if (array_key_exists('max_course_promotion_percent', $validated)
-                && (int) $validated['max_course_promotion_percent'] !== (int) $setting->max_course_promotion_percent) {
-                $economics = app(\App\Services\CoursePlanEconomicsService::class);
-                \App\Models\CourseAccessPlan::query()->where('is_active', true)->orderBy('id')
-                    ->chunkById(200, function ($plans) use ($economics, $validated): void {
-                        foreach ($plans as $plan) {
-                            try {
-                                $economics->assertCommercialFloor(
-                                    $plan->getAttributes(), $plan->code, (int) $validated['max_course_promotion_percent']
-                                );
-                            } catch (ValidationException $exception) {
-                                throw ValidationException::withMessages([
-                                    'max_course_promotion_percent' => [
-                                        "راجع تسعير الكورس {$plan->course_id} قبل زيادة الخصم أو تغيير حدّه",
-                                    ],
-                                ]);
-                            }
-                        }
-                    });
-            }
-            $setting->update($validated);
-        }, 3);
+        $this->authoring->updateSettings($validated, $editorVersion);
+
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم تحديث قواعد ومكافآت العملات بنجاح');
     }
@@ -126,10 +82,7 @@ class CoinEarningMethodController extends Controller
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents)
     {
         $payload = $this->methodPayload($request);
-        DB::transaction(function () use ($request, $payload, $createIntents): void {
-            AdminSingletonLock::acquire('settings');
-            $this->ensureExecutableCoinMethod($payload, $this->lockedSettings());
-            $method = CoinEarningMethod::create($payload);
+        $this->authoring->createMethod($payload, function (CoinEarningMethod $method) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request,
                 route('admin.coin-earning-methods.index'),
@@ -137,15 +90,14 @@ class CoinEarningMethodController extends Controller
                 CoinEarningMethod::class,
                 $method->id
             );
-        }, 3);
-
+        });
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم إضافة طريقة ربح العملات بنجاح');
     }
 
     public function edit(CoinEarningMethod $coinEarningMethod)
     {
-        $editorVersion = $this->methodEditorVersion($coinEarningMethod);
+        $editorVersion = RewardConfigurationVersion::method($coinEarningMethod);
         return view('admin.coin_earning_methods.edit', compact('coinEarningMethod', 'editorVersion'));
     }
 
@@ -153,27 +105,7 @@ class CoinEarningMethodController extends Controller
     {
         $payload = $this->methodPayload($request, $coinEarningMethod);
         $editorVersion = (string) $request->input('editor_version');
-        try {
-            DB::transaction(function () use ($coinEarningMethod, $payload, $editorVersion): void {
-                AdminSingletonLock::acquire('settings');
-                $settings = $this->lockedSettings();
-                $locked = CoinEarningMethod::query()
-                    ->whereKey($coinEarningMethod->id)
-                    ->lockForUpdate()
-                    ->firstOrFail();
-                if (!hash_equals($this->methodEditorVersion($locked), $editorVersion)) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => "تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                    ]);
-                }
-                $this->ensureExecutableCoinMethod($payload, $settings);
-                $locked->update($payload);
-            }, 3);
-        } catch (\DomainException $exception) {
-            throw ValidationException::withMessages([
-                'coin_earning_method' => [$exception->getMessage()],
-            ]);
-        }
+        $this->authoring->updateMethod($coinEarningMethod, $payload, $editorVersion);
 
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم تحديث طريقة ربح العملات بنجاح');
@@ -182,19 +114,7 @@ class CoinEarningMethodController extends Controller
     public function destroy(Request $request, CoinEarningMethod $coinEarningMethod)
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
-        DB::transaction(function () use ($coinEarningMethod, $validated): void {
-            $locked = CoinEarningMethod::query()
-                ->whereKey($coinEarningMethod->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-            if (!hash_equals($this->methodEditorVersion($locked), (string) $validated['editor_version'])) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت المهمة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
-                ]);
-            }
-            $locked->delete();
-        }, 3);
-
+        $this->authoring->deleteMethod($coinEarningMethod, (string) $validated['editor_version']);
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم حذف طريقة ربح العملات بنجاح');
     }
@@ -205,11 +125,7 @@ class CoinEarningMethodController extends Controller
     )
     {
         $payload = $this->rewardRulePayload($request);
-        DB::transaction(function () use ($request, $payload, $createIntents): void {
-            AdminSingletonLock::acquire('settings');
-            $settings = $this->lockedSettings();
-            $this->ensureExecutableRewardRule($payload, $settings);
-            $rule = RewardRule::create($payload);
+        $this->authoring->createRule($payload, function (RewardRule $rule) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request,
                 route('admin.coin-earning-methods.index'),
@@ -217,33 +133,16 @@ class CoinEarningMethodController extends Controller
                 RewardRule::class,
                 $rule->id
             );
-        }, 3);
-
+        });
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تمت إضافة قاعدة المكافأة وربطها بالحدث.');
     }
 
     public function updateRewardRule(Request $request, RewardRule $rewardRule)
     {
-        $request->validate(['editor_version' => 'required|string|size:64']);
+        $version = $request->validate(['editor_version' => 'required|string|size:64']);
         $payload = $this->rewardRulePayload($request, $rewardRule);
-        DB::transaction(function () use ($request, $rewardRule, $payload): void {
-            AdminSingletonLock::acquire('settings');
-            $settings = $this->lockedSettings();
-            $locked = RewardRule::query()->whereKey($rewardRule->id)
-                ->lockForUpdate()->firstOrFail();
-            if (!hash_equals(
-                $this->rewardRuleEditorVersion($locked),
-                (string) $request->input('editor_version')
-            )) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                ]);
-            }
-            $this->ensureExecutableRewardRule($payload, $settings);
-            $locked->update($payload);
-        }, 3);
-
+        $this->authoring->updateRule($rewardRule, $payload, (string) $version['editor_version']);
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم تحديث قاعدة المكافأة.');
     }
@@ -251,41 +150,9 @@ class CoinEarningMethodController extends Controller
     public function destroyRewardRule(Request $request, RewardRule $rewardRule)
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
-        DB::transaction(function () use ($rewardRule, $validated): void {
-            $locked = RewardRule::query()->whereKey($rewardRule->id)
-                ->lockForUpdate()->firstOrFail();
-            if (!hash_equals(
-                $this->rewardRuleEditorVersion($locked),
-                (string) $validated['editor_version']
-            )) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت قاعدة المكافأة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
-                ]);
-            }
-            $locked->delete();
-        }, 3);
-
+        $this->authoring->deleteRule($rewardRule, (string) $validated['editor_version']);
         return redirect()->route('admin.coin-earning-methods.index')
             ->with('success', 'تم حذف القاعدة وإيقاف مكافأتها فورًا.');
-    }
-
-    private function ensureUsableDestination(array $payload, ?CoinEarningMethod $existing = null): void
-    {
-        $method = $existing ? clone $existing : new CoinEarningMethod();
-        $method->forceFill($payload);
-        // A broken or retired destination must never prevent an administrator
-        // from stopping the task. Destination readiness matters only while the
-        // task is exposed to learners.
-        if (!$method->is_active) {
-            return;
-        }
-        if (!$method->hasUsableDestination()) {
-            throw ValidationException::withMessages([
-                'action_url' => [
-                    'أضف رابط HTTPS موثوقًا أو أضف رابط الحساب المطابق من إعدادات التطبيق',
-                ],
-            ]);
-        }
     }
 
     /** @return array<string, mixed> */
@@ -335,8 +202,6 @@ class CoinEarningMethodController extends Controller
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
         $validated['is_active'] = $request->boolean('is_active');
         $validated['is_repeatable'] = false;
-
-        $this->ensureUsableDestination($validated, $existing);
 
         return $validated;
     }
@@ -402,190 +267,5 @@ class CoinEarningMethodController extends Controller
         }
 
         return $validated;
-    }
-
-    /** @param array<string, mixed> $payload */
-    private function ensureExecutableRewardRule(array $payload, ?Setting $settings): void
-    {
-        if (!(bool) ($payload['is_active'] ?? false)) return;
-
-        $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
-        if ($amount === 0) return;
-
-        $event = (string) ($payload['event_key'] ?? '');
-        $rollingCap = array_key_exists('rolling_30_day_cap', $payload)
-            && $payload['rolling_30_day_cap'] !== null
-                ? max(0, (int) $payload['rolling_30_day_cap'])
-                : null;
-        $dailyCap = array_key_exists('daily_cap', $payload) && $payload['daily_cap'] !== null
-            ? max(0, (int) $payload['daily_cap'])
-            : null;
-
-        // A zero cap is an explicit kill switch. Positive caps, however, must
-        // be large enough to fund one indivisible configured reward.
-        $this->ensurePositiveCapFundsAmount(
-            $amount,
-            $rollingCap,
-            'rolling_30_day_cap',
-            'الحد لا يكفي لمنح المكافأة مرة واحدة.'
-        );
-        if ($event === 'study_session') {
-            $this->ensurePositiveCapFundsAmount(
-                $amount,
-                $dailyCap,
-                'daily_cap',
-                'الحد اليومي لا يكفي لمنح مكافأة دراسة واحدة.'
-            );
-        }
-
-        $disabledByEventCap = $event === 'study_session'
-            ? $rollingCap === 0 || $dailyCap === 0
-            : $event !== 'welcome_bonus' && $rollingCap === 0;
-        if ($disabledByEventCap) return;
-
-        $promised = $amount;
-        if ($event === 'welcome_bonus') {
-            $promised += max(0, (int) ($settings?->recommended_provider_bonus_coins ?? 0));
-        }
-        $balanceCap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
-        $this->ensurePositiveCapFundsAmount(
-            $promised,
-            $balanceCap,
-            'coins_amount',
-            'المكافأة أكبر من أقصى رصيد مكافآت ولن يمكن صرفها.'
-        );
-    }
-
-    /** @param array<string, mixed> $payload */
-    private function ensureExecutableCoinMethod(array $payload, ?Setting $settings): void
-    {
-        if (!(bool) ($payload['is_active'] ?? false)) return;
-
-        $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
-        $balanceCap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
-        $this->ensurePositiveCapFundsAmount(
-            $amount,
-            $balanceCap,
-            'coins_amount',
-            'مكافأة المهمة أكبر من أقصى رصيد مكافآت ولن يمكن صرفها.'
-        );
-    }
-
-    private function lockedSettings(): ?Setting
-    {
-        return Setting::query()->lockForUpdate()->first();
-    }
-
-    private function ensurePositiveCapFundsAmount(
-        int $amount,
-        ?int $cap,
-        string $field,
-        string $message
-    ): void {
-        if ($cap !== null && $cap > 0 && $cap < $amount) {
-            throw ValidationException::withMessages([$field => [$message]]);
-        }
-    }
-
-    private function ensureRewardsFitProposedBalanceCap(
-        Setting $settings,
-        iterable $rules,
-        iterable $methods
-    ): void {
-        $balanceCap = max(0, (int) $settings->reward_balance_cap);
-        if ($balanceCap === 0) return;
-
-        foreach ($rules as $rule) {
-            $payload = $rule->toArray();
-            $amount = max(0, (int) ($payload['coins_amount'] ?? 0));
-            if ($amount === 0 || $this->rewardIsDisabledByEventCap($payload)) continue;
-
-            $promised = $amount + ((string) $rule->event_key === 'welcome_bonus'
-                ? max(0, (int) $settings->recommended_provider_bonus_coins)
-                : 0);
-            if ($promised <= $balanceCap) continue;
-
-            $field = (string) $rule->event_key === 'welcome_bonus' && $amount <= $balanceCap
-                ? 'recommended_provider_bonus_coins'
-                : 'reward_balance_cap';
-            throw ValidationException::withMessages([
-                $field => ['أقصى رصيد المكافآت لا يكفي لقاعدة «'.(string) $rule->title_ar.'».'],
-            ]);
-        }
-
-        foreach ($methods as $method) {
-            $amount = max(0, (int) $method->coins_amount);
-            if ($amount > $balanceCap) {
-                throw ValidationException::withMessages([
-                    'reward_balance_cap' => [
-                        'أقصى رصيد المكافآت لا يكفي لمهمة «'.(string) $method->title_ar.'».',
-                    ],
-                ]);
-            }
-        }
-    }
-
-    /** @param array<string, mixed> $payload */
-    private function rewardIsDisabledByEventCap(array $payload): bool
-    {
-        $event = (string) ($payload['event_key'] ?? '');
-        $rollingCap = $payload['rolling_30_day_cap'] ?? null;
-        $dailyCap = $payload['daily_cap'] ?? null;
-
-        return $event === 'study_session'
-            ? ($rollingCap !== null && (int) $rollingCap === 0)
-                || ($dailyCap !== null && (int) $dailyCap === 0)
-            : $event !== 'welcome_bonus' && $rollingCap !== null && (int) $rollingCap === 0;
-    }
-
-    private function settingsEditorVersion(?Setting $setting): string
-    {
-        return hash('sha256', json_encode([
-            (string) ($setting?->how_to_use_coins_ar ?? ''),
-            (string) ($setting?->how_to_use_coins_en ?? ''),
-            (string) ($setting?->rewards_help_ar ?? ''),
-            (string) ($setting?->rewards_help_en ?? ''),
-            (int) ($setting?->reward_balance_cap ?? 1200),
-            (int) ($setting?->max_reward_contribution_per_course ?? 1200),
-            (int) ($setting?->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)),
-            (string) ($setting?->recommended_social_provider ?? config('social_auth.recommended_provider')),
-            (int) ($setting?->recommended_provider_bonus_coins ?? 0),
-            (string) ($setting?->recommended_provider_badge_ar ?? ''),
-            (string) ($setting?->recommended_provider_badge_en ?? ''),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
-
-    private function methodEditorVersion(CoinEarningMethod $method): string
-    {
-        return hash('sha256', json_encode([
-            (string) $method->title_ar,
-            (string) $method->title_en,
-            (int) $method->coins_amount,
-            (string) $method->action_key,
-            (string) $method->campaign_key,
-            (string) $method->action_url,
-            (bool) $method->requires_external_visit,
-            (int) $method->verification_delay_seconds,
-            $method->starts_at?->toIso8601String(),
-            $method->ends_at?->toIso8601String(),
-            $method->total_claim_limit === null ? null : (int) $method->total_claim_limit,
-            (int) $method->sort_order,
-            (bool) $method->is_active,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
-
-    private function rewardRuleEditorVersion(RewardRule $rule): string
-    {
-        return hash('sha256', json_encode([
-            (string) $rule->event_key,
-            (string) $rule->title_ar,
-            (string) $rule->title_en,
-            (int) $rule->coins_amount,
-            (int) $rule->interval_count,
-            $rule->daily_cap === null ? null : (int) $rule->daily_cap,
-            $rule->rolling_30_day_cap === null ? null : (int) $rule->rolling_30_day_cap,
-            (bool) $rule->is_active,
-            (int) $rule->sort_order,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 }

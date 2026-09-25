@@ -50,6 +50,8 @@ type Props = {
   error: string;
   draftRestoreError?: boolean;
   onRetryDraftRestore?: () => void;
+  draftSaveError?: boolean;
+  onRetryDraftSave?: () => void;
   feedbackLevel?: 'pass_only' | 'report' | 'enhanced';
   normalizedDraft: string;
   pending: boolean;
@@ -203,6 +205,8 @@ const ProjectFeedbackPanel = ({
   error,
   draftRestoreError,
   onRetryDraftRestore,
+  draftSaveError,
+  onRetryDraftSave,
   feedbackLevel,
   normalizedDraft,
   pending,
@@ -412,6 +416,20 @@ const ProjectFeedbackPanel = ({
               </Pressable>
             </View>
           )}
+        </View>
+      )}
+      {draftSaveError && (
+        <View>
+          <Text accessibilityRole="alert" style={styles.error}>
+            تعذّر حفظ مسودة الرسالة على جهازك
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="إعادة حفظ مسودة الرسالة"
+            style={styles.retryAction}
+            onPress={onRetryDraftSave}>
+            <Text style={styles.retry}>إعادة الحفظ</Text>
+          </Pressable>
         </View>
       )}
       {!!error && (

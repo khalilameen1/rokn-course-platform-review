@@ -5,20 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Auth\AdminPermissionMatrix;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\DB;
-use App\Services\StoredFileDeletionService;
+use App\Services\AdminTeacherAuthoringService;
+use App\Support\TeacherEditorVersion;
 use App\Services\AdminAuthoringCreateIntentService;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
 
 class TeacherController extends Controller
 {
     public function __construct(
-        private readonly AdminPermissionMatrix $permissions
+        private readonly AdminPermissionMatrix $permissions,
+        private readonly AdminTeacherAuthoringService $authoring
     ) {
     }
 
@@ -100,54 +98,25 @@ class TeacherController extends Controller
             'authoring_request_id' => 'required|uuid',
         ]);
 
-        $requestId = (string) $request->input('authoring_request_id');
-        $imagePath = $request->hasFile('image')
-            ? app(StoredFileDeletionService::class)
-                ->storeTrackedUpload(
-                    $request->file('image'),
-                    'users',
-                    'public',
-                    60,
-                    'admin-teacher|'.strtolower($requestId).'|'.hash_file('sha256', $request->file('image')->getRealPath())
-                )
-            : null;
-        if ($request->hasFile('image') && (!is_string($imagePath) || $imagePath === '')) {
-            throw new \RuntimeException('Teacher image storage failed');
-        }
-        try {
-            DB::transaction(function () use ($request, $imagePath, $requestId, $createIntents, $manageCredentials): void {
-                $teacher = User::withTrashed()->where('authoring_request_id', $requestId)
-                    ->lockForUpdate()->first();
-                if (!$teacher) {
-                    $teacher = new User();
-                    $teacher->fill([
-                        'name_ar' => $request->string('name_ar')->trim(),
-                        'name_en' => $request->filled('name_en') ? $request->string('name_en')->trim() : null,
-                        'email' => $manageCredentials && $request->filled('email')
-                            ? strtolower($request->string('email')->trim())
-                            : null,
-                        'phone' => $manageCredentials && $request->filled('phone')
-                            ? (string) $request->string('phone')->trim()
-                            : null,
-                        'password' => $manageCredentials && $request->filled('password')
-                            ? Hash::make((string) $request->input('password'))
-                            : null,
-                        'job_title' => $request->input('job_title'),
-                        'bio_ar' => $request->input('bio_ar'),
-                        'bio_en' => $request->input('bio_en'),
-                        'authoring_request_id' => $requestId,
-                    ]);
-                    // Role is intentionally guarded against request mass
-                    // assignment. Persist it with the profile in one insert;
-                    // saving first violates the users.role NOT NULL contract.
-                    $teacher->forceFill([
-                        'role' => 'teacher',
-                        'active' => $request->boolean('active'),
-                    ])->save();
-                }
-                if ($imagePath) {
-                    $teacher->allPhotos()->firstOrCreate(['path' => $imagePath, 'type' => 'featured']);
-                }
+        $payload = [
+            'name_ar' => (string) $request->string('name_ar')->trim(),
+            'name_en' => $request->filled('name_en') ? (string) $request->string('name_en')->trim() : null,
+            'email' => $manageCredentials && $request->filled('email')
+                ? strtolower((string) $request->string('email')->trim()) : null,
+            'phone' => $manageCredentials && $request->filled('phone')
+                ? (string) $request->string('phone')->trim() : null,
+            'password' => $manageCredentials && $request->filled('password')
+                ? (string) $request->input('password') : null,
+            'job_title' => $request->input('job_title'),
+            'bio_ar' => $request->input('bio_ar'),
+            'bio_en' => $request->input('bio_en'),
+        ];
+        $this->authoring->create(
+            $payload,
+            $request->boolean('active'),
+            (string) $request->input('authoring_request_id'),
+            $request->file('image'),
+            function (User $teacher) use ($request, $createIntents): void {
                 $createIntents->completeRedirect(
                     $request,
                     route('admin.teachers.index'),
@@ -155,11 +124,8 @@ class TeacherController extends Controller
                     User::class,
                     $teacher->id
                 );
-            }, 3);
-        } catch (\Throwable $exception) {
-            if ($imagePath) app(StoredFileDeletionService::class)->deleteOrQueue('public', $imagePath);
-            throw $exception;
-        }
+            }
+        );
 
         return redirect()->route('admin.teachers.index')->with('success', 'تم إضافة المعلم بنجاح');
     }
@@ -205,6 +171,7 @@ class TeacherController extends Controller
         $teacher = User::query()->where('role', 'teacher')->with('photo')->findOrFail($id);
         return view('admin.teachers.edit', [
             'teacher' => $teacher,
+            'editorVersion' => TeacherEditorVersion::for($teacher),
             'canManageCredentials' => $this->canManageCredentials($request),
         ]);
     }
@@ -241,40 +208,16 @@ class TeacherController extends Controller
             $userData['phone'] = trim((string) $request->input('phone'));
         }
         if ($manageCredentials && $request->filled('password')) {
-            $userData['password'] = Hash::make($request->password);
+            $userData['password'] = (string) $request->input('password');
         }
 
-        $newImagePath = $request->hasFile('image')
-            ? app(StoredFileDeletionService::class)
-                ->storeTrackedUpload($request->file('image'), 'users')
-            : null;
-        if ($request->hasFile('image') && (!is_string($newImagePath) || $newImagePath === '')) {
-            throw new \RuntimeException('Teacher image storage failed');
-        }
-        try {
-            DB::transaction(function () use ($request, $teacher, $userData, $newImagePath): void {
-                $locked = User::query()->whereKey($teacher->id)->where('role', 'teacher')
-                    ->lockForUpdate()->firstOrFail();
-                if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => "عدّل شخص آخر بيانات المحاضر\nأعد تحميل الصفحة قبل الحفظ",
-                    ]);
-                }
-                if ($locked->active && !$request->boolean('active')) {
-                    $this->assertCanDeactivate($locked);
-                }
-                $locked->update($userData);
-                $locked->forceFill(['active' => $request->boolean('active')])->save();
-                if ($newImagePath) {
-                    $oldPhotos = $locked->allPhotos()->where('type', 'featured')->lockForUpdate()->get();
-                    $locked->allPhotos()->create(['path' => $newImagePath, 'type' => 'featured']);
-                    $oldPhotos->each->delete();
-                }
-            }, 3);
-        } catch (\Throwable $exception) {
-            if ($newImagePath) app(StoredFileDeletionService::class)->deleteOrQueue('public', $newImagePath);
-            throw $exception;
-        }
+        $this->authoring->update(
+            (int) $teacher->id,
+            $userData,
+            $request->boolean('active'),
+            (string) $request->input('editor_version'),
+            $request->file('image')
+        );
         return redirect()->route('admin.teachers.index')->with('success', 'تم تعديل بيانات المعلم بنجاح');
     }
 
@@ -286,13 +229,7 @@ class TeacherController extends Controller
      */
     public function destroy($id)
     {
-        $blocked = DB::transaction(function () use ($id): bool {
-            $teacher = User::query()->where('role', 'teacher')->whereKey($id)->lockForUpdate()->firstOrFail();
-            if ($teacher->teachingCourses()->exists()) return true;
-            $teacher->delete();
-            return false;
-        }, 3);
-        if ($blocked) {
+        if (!$this->authoring->delete((int) $id)) {
             return redirect()->route('admin.teachers.index')
                 ->with('error', 'انقل الكورسات إلى مدرب آخر قبل حذف هذا المدرب');
         }
@@ -309,58 +246,8 @@ class TeacherController extends Controller
     public function deactive(Request $request, $id)
     {
         $validated = $request->validate(['expected_active' => 'required|boolean']);
-        $teacher = DB::transaction(function () use ($id, $validated): User {
-            $teacher = User::query()->where('role', 'teacher')->whereKey($id)->lockForUpdate()->firstOrFail();
-            if ((bool) $teacher->active !== (bool) $validated['expected_active']) {
-                throw ValidationException::withMessages([
-                    'expected_active' => "تغيّرت حالة المحاضر بالفعل\nأعد تحميل الصفحة",
-                ]);
-            }
-            if ($teacher->active) $this->assertCanDeactivate($teacher);
-            $teacher->forceFill(['active' => !$teacher->active])->save();
-            return $teacher;
-        }, 3);
+        $teacher = $this->authoring->toggleActive((int) $id, (bool) $validated['expected_active']);
         return redirect()->back()->with('success', $teacher->active ? 'تم التفعيل بنجاح' : 'تم التعطيل بنجاح');
-    }
-
-    private function editorVersion(User $teacher): string
-    {
-        return hash('sha256', json_encode([
-            $teacher->name_ar, $teacher->name_en, $teacher->email, $teacher->phone,
-            $teacher->job_title, $teacher->bio_ar, $teacher->bio_en, (bool) $teacher->active,
-            $teacher->photo?->path,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
-
-    private function assertCanDeactivate(User $teacher): void
-    {
-        $publishedCourses = Course::query()
-            ->where('is_coming_soon', false)
-            ->where(function ($courses) use ($teacher): void {
-                $courses->where('teacher_id', $teacher->id)
-                    ->orWhereHas('teachers', fn ($teachers) => $teachers->whereKey($teacher->id));
-            })
-            ->orderBy('id')
-            ->lockForUpdate()
-            ->get();
-        foreach ($publishedCourses as $course) {
-            $hasOtherActiveTeacher = $course->teachers()
-                ->where('users.id', '<>', $teacher->id)
-                ->where('users.active', true)
-                ->exists();
-            if (!$hasOtherActiveTeacher && (int) $course->teacher_id !== (int) $teacher->id) {
-                $hasOtherActiveTeacher = User::query()
-                    ->whereKey($course->teacher_id)
-                    ->whereIn('role', ['teacher', 'admin'])
-                    ->where('active', true)
-                    ->exists();
-            }
-            if (!$hasOtherActiveTeacher) {
-                throw ValidationException::withMessages([
-                    'active' => "اربط الكورس «{$course->name_ar}» بمحاضر نشط آخر قبل تعطيل هذا المحاضر",
-                ]);
-            }
-        }
     }
 
     private function canManageCredentials(Request $request): bool

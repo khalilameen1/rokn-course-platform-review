@@ -28,6 +28,7 @@ final readonly class PortfolioVideoUploadService
 
     public function __construct(
         private BunnyService $bunny,
+        private BunnyMediaRegistry $mediaRegistry,
         private PortfolioUploadAccessService $uploadAccess,
     ) {}
 
@@ -192,7 +193,7 @@ final readonly class PortfolioVideoUploadService
                     if ($advanced !== 1) {
                         throw new RuntimeException('Upload allocation was superseded.');
                     }
-                    $candidate = $this->bunny->queueVideoCleanup(
+                    $candidate = $this->mediaRegistry->queueVideoCleanup(
                         $videoGuid, null, 'portfolio_direct_upload_pending', 24, false
                     );
                     if (!$candidate) {
@@ -443,7 +444,7 @@ final readonly class PortfolioVideoUploadService
 
     private function queueAbandoned(string $guid, int $userId, string $reason): void
     {
-        $candidate = $this->bunny->queueVideoCleanup($guid, null, $reason, 1, false);
+        $candidate = $this->mediaRegistry->queueVideoCleanup($guid, null, $reason, 1, false);
         if (!$candidate) throw new RuntimeException('Cleanup allocation failed.');
         $candidate->forceFill(['requires_review' => false, 'reviewed_at' => now(), 'reviewed_by' => $userId])->save();
     }

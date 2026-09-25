@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Course;
-use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\StudentSectionProgress;
@@ -18,10 +17,10 @@ final readonly class CourseCompletionService
         private CoursePresentationService $coursePresentation,
         private LearningEvidenceService $learningEvidence,
         private CourseModuleAccessService $courseAccess,
-        private InternalSignalService $internalSignals,
+        private LearningAchievementSignalService $achievementSignals,
         private CourseRevisionLearnerReadService $revisionReads,
-        private CourseStagedAuthoringService $revisions,
-        private CourseAccessPlanService $plans
+        private CourseRevisionResolver $revisions,
+        private CourseSectionAccessService $sectionAccess
     ) {
     }
 
@@ -74,7 +73,7 @@ final readonly class CourseCompletionService
         if (!$this->courseAccess->hasCourseAccess($user, $course)) {
             return $this->failure(403, 'You are not authorized to access this course');
         }
-        if ($section->getSectionType() === 'project' && !$this->projectsIncluded($user, $course)) {
+        if ($section->getSectionType() === 'project' && !$this->sectionAccess->projectsEnabledForUser((int) $user->id, $courseId)) {
             return $this->failure(403, 'Projects are not included in this subscription', 'projects_not_included');
         }
 
@@ -132,19 +131,7 @@ final readonly class CourseCompletionService
             }
         }
 
-        $courseSections = CourseSection::query()
-            ->where('course_id', $courseId)
-            ->orderBy('order')
-            ->get();
-        $completedSectionIds = $this->revisionReads->completedSectionIds(
-            (int) $user->id,
-            $courseSections->pluck('id')
-        );
-        $sectionState = $this->coursePresentation->sectionLockStatus(
-            $courseSections,
-            $completedSectionIds,
-            (int) $user->id
-        )->firstWhere('section_id', $section->id);
+        $sectionState = $this->sectionAccess->sequenceState($user, $section);
 
         if (($sectionState['is_locked'] ?? true) === true) {
             return $this->failure(
@@ -220,7 +207,7 @@ final readonly class CourseCompletionService
     {
         $progress = $this->coursePresentation->progressSummary($userId, $courseId);
         if ($progress['is_completed']) {
-            $this->internalSignals->record(
+            $this->achievementSignals->record(
                 'course.completed',
                 "user:{$userId}:course:{$courseId}",
                 ['user_id' => $userId, 'course_id' => $courseId],
@@ -230,61 +217,6 @@ final readonly class CourseCompletionService
         }
 
         return $progress;
-    }
-
-    public function canAccessSection(User $user, CourseSection $section): bool
-    {
-        return (bool) $this->sectionAccessState($user, $section)['can_access'];
-    }
-
-    /** @return array{can_access:bool,is_locked:bool,lock_reason:?string} */
-    public function sectionAccessState(User $user, CourseSection $section): array
-    {
-        $course = $section->relationLoaded('course')
-            ? $section->course
-            : Course::find($section->course_id);
-        if (!$course || !$this->courseAccess->hasCourseAccess($user, $course)) {
-            return [
-                'can_access' => false,
-                'is_locked' => true,
-                'lock_reason' => 'course_purchase_required',
-            ];
-        }
-        if ($section->getSectionType() === 'project' && !$this->projectsIncluded($user, $course)) {
-            return ['can_access' => false, 'is_locked' => true, 'lock_reason' => 'projects_not_included'];
-        }
-
-        $sections = CourseSection::query()
-            ->where('course_id', $section->course_id)
-            ->get();
-        $completedSectionIds = $this->revisionReads->completedSectionIds(
-            (int) $user->id,
-            $sections->pluck('id')
-        );
-
-        $state = $this->coursePresentation->sectionLockStatus(
-            $sections,
-            $completedSectionIds,
-            (int) $user->id
-        )->firstWhere('section_id', $section->id);
-
-        return [
-            'can_access' => (bool) ($state['can_access'] ?? false),
-            'is_locked' => (bool) ($state['is_locked'] ?? true),
-            'lock_reason' => isset($state['lock_reason'])
-                ? (string) $state['lock_reason']
-                : null,
-        ];
-    }
-
-    private function projectsIncluded(User $user, Course $course): bool
-    {
-        $enrollment = CourseEnrollment::query()->where('user_id', $user->id)
-            ->where('course_id', $course->id)->first();
-
-        // Course access has already been verified. Legacy module access keeps
-        // its historical project path; explicit enrollment contracts govern new sales.
-        return !$enrollment || $this->plans->projectsEnabledForEnrollment($enrollment);
     }
 
     /** @return array<string, mixed> */

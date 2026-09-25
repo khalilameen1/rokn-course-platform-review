@@ -19,11 +19,11 @@ use RuntimeException;
 final class PlaybackManifestService
 {
     public function __construct(
-        private BunnyService $bunny,
-        private CourseCompletionService $completion,
+        private BunnyDeliveryService $delivery,
+        private CourseSectionAccessService $sectionAccess,
         private PlaybackCapabilityService $capabilities,
-        private CourseStagedAuthoringService $stagedAuthoring,
-        private CourseChatAccessService $courseAccess
+        private CourseRevisionResolver $revisionResolver,
+        private CourseEntitlementService $courseAccess
     ) {
     }
 
@@ -34,10 +34,10 @@ final class PlaybackManifestService
         $section = $lesson->courseSection;
         $course = $lesson->course;
         $graceRevision = $course && $course->is_coming_soon
-            ? $this->stagedAuthoring->activeArchiveForCourse($course)
+            ? $this->revisionResolver->activeArchiveForCourse($course)
             : null;
         $graceContext = $graceRevision
-            ? $this->stagedAuthoring->archivedPlaybackContinuation(
+            ? $this->revisionResolver->archivedPlaybackContinuation(
                 $user,
                 $lesson,
                 $clientContext['playback_session_id'] ?? null
@@ -81,7 +81,7 @@ final class PlaybackManifestService
             );
         }
         if (!$allowed) {
-            $accessState = $this->completion->sectionAccessState($user, $section);
+            $accessState = $this->sectionAccess->sectionAccessState($user, $section);
             $allowed = $accessState['can_access'];
         }
         if (!$allowed) {
@@ -115,7 +115,7 @@ final class PlaybackManifestService
         // Signing is stateless and remains outside the database transaction.
         // Superseded objects are retained for seven days, so a manifest issued
         // immediately before an authoring replacement stays valid for its TTL.
-        $source = $this->bunny->getVideo((string) $lesson->bunny_video_id);
+        $source = $this->delivery->videoPlayback((string) $lesson->bunny_video_id);
         if (!$source || empty($source['url'])) {
             throw new RuntimeException('A secure playback source could not be issued.');
         }
@@ -265,14 +265,14 @@ final class PlaybackManifestService
             : null;
         $poster = null;
         if (trim((string) $lesson->thumbnail_path) !== '') {
-            $poster = $this->bunny->generateBunnySignedUrl(
+            $poster = $this->delivery->storageUrl(
                 (string) $lesson->thumbnail_path,
                 max(600, (int) ($expiresInSeconds ?: 3600))
             );
         } else {
             $providerThumbnail = trim((string) data_get($state->manifest, 'thumbnail_file_name'));
             if ($providerThumbnail !== '') {
-                $poster = $this->bunny->getVideoThumbnail(
+                $poster = $this->delivery->videoThumbnail(
                     (string) $lesson->bunny_video_id,
                     $providerThumbnail
                 )['url'] ?? null;

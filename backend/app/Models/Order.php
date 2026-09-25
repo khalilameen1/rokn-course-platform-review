@@ -113,6 +113,12 @@ class Order extends Model
 
     public const KASHIER_CHECKOUT_TTL_MINUTES = 30;
 
+    /** The purchased snapshot, never the package's current catalogue terms. */
+    public function packageCoinAmount(): int
+    {
+        return max(0, (int) $this->package_coins);
+    }
+
     public function requiresProviderVerification(): bool
     {
         return $this->package_id !== null && in_array($this->payment_method, [

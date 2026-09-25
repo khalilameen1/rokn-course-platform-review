@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\Models\CourseEnrollment;
 use App\Models\CourseSection;
-use App\Models\StudentSectionProgress;
+use App\Support\SectionProgressSummary;
 use App\Models\User;
 use Illuminate\Support\Collection;
 
@@ -83,45 +83,14 @@ final class StudentProgressSummaryService
                 $sections,
                 $this->plans->projectsEnabledForEnrollment($enrollment)
             );
-            $sectionIdSet = $sections->pluck('id')->flip();
-            $progress = $progressByUser
-                ->get($user->id, collect())
-                ->filter(fn (StudentSectionProgress $row): bool => $sectionIdSet->has($row->course_section_id));
-            $completedIds = $progress
-                ->where('is_completed', true)
-                ->pluck('course_section_id')
-                ->map(fn ($id): int => (int) $id)
-                ->unique()
-                ->flip();
-            $sectionsByType = [];
-            $completedByType = [];
-            foreach ($sections as $section) {
-                $type = $section->getSectionType();
-                $sectionsByType[$type] = ($sectionsByType[$type] ?? 0) + 1;
-                $completedByType[$type] = ($completedByType[$type] ?? 0)
-                    + ($completedIds->has((int) $section->id) ? 1 : 0);
-            }
-            $total = $sections->count();
-            $completed = $completedIds->count();
-
             return [$user->id => [
                 'user' => $user,
                 'has_enrollment' => true,
                 'course' => $enrollment->course,
                 'enrolled_at' => $enrollment->enrolled_at,
-                'progress' => [
-                    'total_sections' => $total,
-                    'completed_sections' => $completed,
-                    'progress_percentage' => $total > 0
-                        ? min(100, (int) round(($completed / $total) * 100))
-                        : 0,
-                    'sections_by_type' => $sectionsByType,
-                    'completed_by_type' => $completedByType,
-                    'last_activity' => $progress
-                        ->map(fn (StudentSectionProgress $row) => $row->completed_at ?? $row->updated_at)
-                        ->filter()
-                        ->max(),
-                ],
+                'progress' => SectionProgressSummary::for(
+                    $sections, $progressByUser->get($user->id, collect())
+                ),
             ]];
         });
     }

@@ -1,4 +1,5 @@
 import type {ProjectStatus, SelectedProjectFile} from '../types';
+import {learnerDraftStorage} from '../../../services/learnerDraftStorage';
 
 export type PendingProjectSubmission = {
   projectId: string;
@@ -31,7 +32,8 @@ export type ProjectSubmissionRetryOutcome = SubmissionSyncResult & {
   projectId: string;
 };
 
-export const PROJECT_SUBMISSION_PREFIX = '@rokn/project-submission/v2';
+export const PROJECT_SUBMISSION_PREFIX =
+  learnerDraftStorage.projectSubmission.namespace;
 
 export const PUBLIC_SUBMISSION_ID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

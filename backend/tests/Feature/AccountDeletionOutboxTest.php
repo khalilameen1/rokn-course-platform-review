@@ -5,17 +5,24 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\DeleteAccountFile;
+use App\Jobs\CleanupDeletedAccountPortfolioMedia;
 use App\Exceptions\SocialProviderUnavailableException;
 use App\Models\AccountFileDeletion;
 use App\Models\User;
 use App\Models\SocialAccount;
 use App\Services\AccountDeletionService;
+use App\Services\AccountAiDataErasureService;
+use App\Services\AccountPortfolioErasureService;
+use App\Services\BunnyService;
 use App\Services\StoredFileReferenceService;
+use Illuminate\Contracts\Bus\Dispatcher;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Mockery;
 use Tests\TestCase;
 
 final class AccountDeletionOutboxTest extends TestCase
@@ -80,6 +87,8 @@ final class AccountDeletionOutboxTest extends TestCase
 
     protected function tearDown(): void
     {
+        Schema::dropIfExists('portfolio_media');
+        Schema::dropIfExists('portfolio_items');
         Schema::dropIfExists('deleted_social_reward_tombstones');
         Schema::dropIfExists('social_accounts');
         Schema::dropIfExists('social_identity_guards');
@@ -186,10 +195,13 @@ final class AccountDeletionOutboxTest extends TestCase
     public function test_local_rollback_after_apple_revocation_can_repeat_the_idempotent_revoke(): void
     {
         Queue::fake();
+        Storage::fake('public');
+        Storage::disk('public')->put('profiles/rollback.jpg', 'private bytes');
         $this->configureAppleTestKey();
         $user = User::query()->create([
             'name' => 'Rollback Learner', 'email' => 'rollback@example.test',
             'password' => bcrypt('password'), 'active' => true, 'gender' => 'other',
+            'profile_image' => 'profiles/rollback.jpg',
         ]);
         $account = SocialAccount::query()->create([
             'user_id' => $user->id, 'provider' => 'apple', 'provider_user_id' => 'rollback-user',
@@ -211,9 +223,166 @@ final class AccountDeletionOutboxTest extends TestCase
         }
         self::assertNotNull($account->fresh());
         self::assertNull($user->fresh()->deleted_at);
+        self::assertSame('profiles/rollback.jpg', $user->fresh()->profile_image);
+        self::assertSame(0, AccountFileDeletion::query()->count());
+        Storage::disk('public')->assertExists('profiles/rollback.jpg');
+        Queue::assertNothingPushed();
         app(AccountDeletionService::class)->delete($user);
         self::assertNotNull(User::withTrashed()->findOrFail($user->id)->deleted_at);
+        self::assertSame('profiles/rollback.jpg', AccountFileDeletion::query()->sole()->path);
+        Queue::assertPushed(DeleteAccountFile::class, 1);
         Http::assertSentCount(2);
+    }
+
+    public function test_data_erasure_owners_reject_calls_outside_the_account_transaction(): void
+    {
+        foreach ([AccountAiDataErasureService::class, AccountPortfolioErasureService::class] as $service) {
+            try {
+                app($service)->eraseWithinDeletion(7);
+                self::fail('Account data erasure must be transactional.');
+            } catch (\LogicException $error) {
+                self::assertStringContainsString('account-deletion transaction', $error->getMessage());
+            }
+        }
+        self::assertSame(0, DB::transactionLevel());
+    }
+
+    public function test_account_erases_portfolio_content_but_keeps_private_remote_references_until_cleanup(): void
+    {
+        Queue::fake();
+        [$user, $itemId, $mediaId, $emptyItemId, $otherItemId] = $this->portfolioFixture();
+        $result = app(AccountDeletionService::class)->delete($user);
+        self::assertTrue($result['remote_portfolio_cleanup_pending']);
+        self::assertFalse($result['local_cleanup_pending']);
+        self::assertFalse(DB::table('portfolio_items')->where('id', $emptyItemId)->exists());
+        $item = DB::table('portfolio_items')->find($itemId);
+        foreach (['title', 'description', 'slug', 'role', 'tools', 'external_url'] as $field) {
+            self::assertNull($item->$field);
+        }
+        self::assertFalse((bool) $item->is_public);
+        self::assertFalse((bool) $item->is_featured);
+        $media = DB::table('portfolio_media')->find($mediaId);
+        self::assertNull($media->caption);
+        self::assertSame('portfolio/private.jpg', $media->file_path);
+        self::assertSame('Other learner', DB::table('portfolio_items')->where('id', $otherItemId)->value('title'));
+        Queue::assertPushed(CleanupDeletedAccountPortfolioMedia::class, 1);
+    }
+
+    public function test_portfolio_erasure_and_its_callback_roll_back_with_account_identity(): void
+    {
+        Queue::fake();
+        [$user, $itemId, $mediaId, $emptyItemId] = $this->portfolioFixture();
+        $failOnce = true;
+        User::saving(static function (User $saving) use (&$failOnce): void {
+            if ($failOnce && $saving->name === 'حساب محذوف') {
+                $failOnce = false;
+                throw new \RuntimeException('identity write failed');
+            }
+        });
+        try {
+            app(AccountDeletionService::class)->delete($user);
+            self::fail('The simulated identity failure must roll back portfolio erasure.');
+        } catch (\RuntimeException $error) {
+            self::assertSame('identity write failed', $error->getMessage());
+        }
+        self::assertSame('Private work', DB::table('portfolio_items')->where('id', $itemId)->value('title'));
+        self::assertSame('Private caption', DB::table('portfolio_media')->where('id', $mediaId)->value('caption'));
+        self::assertTrue(DB::table('portfolio_items')->where('id', $emptyItemId)->exists());
+        self::assertNull($user->fresh()->deleted_at);
+        Queue::assertNothingPushed();
+        app(AccountDeletionService::class)->delete($user);
+        Queue::assertPushed(CleanupDeletedAccountPortfolioMedia::class, 1);
+    }
+
+    public function test_portfolio_queue_failure_preserves_private_recovery_rows_for_the_scheduler(): void
+    {
+        Queue::fake();
+        [$user, $itemId, $mediaId] = $this->portfolioFixture();
+        $original = app(Dispatcher::class);
+        $failed = Mockery::mock(Dispatcher::class);
+        $failed->shouldReceive('dispatch')->once()->andThrow(new \RuntimeException('broker unavailable'));
+        $this->app->instance(Dispatcher::class, $failed);
+        $result = app(AccountDeletionService::class)->delete($user);
+        self::assertTrue($result['remote_portfolio_cleanup_pending']);
+        self::assertNotNull(User::withTrashed()->findOrFail($user->id)->deleted_at);
+        self::assertFalse((bool) DB::table('portfolio_items')->where('id', $itemId)->value('is_public'));
+        self::assertSame('portfolio/private.jpg', DB::table('portfolio_media')->where('id', $mediaId)->value('file_path'));
+        $this->app->instance(Dispatcher::class, $original);
+        $this->artisan('privacy:cleanup-portfolio-media')->assertExitCode(0);
+        Queue::assertPushed(CleanupDeletedAccountPortfolioMedia::class,
+            fn ($job) => $job->uniqueId() === 'deleted-account-portfolio:'.$user->id);
+    }
+
+    public function test_failed_remote_cleanup_can_retry_without_losing_the_original_file_reference(): void
+    {
+        Queue::fake();
+        [$user, $itemId, $mediaId] = $this->portfolioFixture();
+        app(AccountDeletionService::class)->delete($user);
+        $bunny = Mockery::mock(BunnyService::class);
+        $bunny->shouldReceive('deleteFileFromStorage')->twice()->with('portfolio/private.jpg')->andReturn(false, true);
+        $job = new CleanupDeletedAccountPortfolioMedia($user->id);
+        try {
+            $job->handle($bunny, app(StoredFileReferenceService::class));
+            self::fail('Remote failure must preserve retryable references.');
+        } catch (\RuntimeException $error) {
+            self::assertSame('Bunny portfolio media cleanup is temporarily unavailable.', $error->getMessage());
+        }
+        self::assertTrue(DB::table('portfolio_items')->where('id', $itemId)->exists());
+        self::assertSame('portfolio/private.jpg', DB::table('portfolio_media')->where('id', $mediaId)->value('file_path'));
+        $job->handle($bunny, app(StoredFileReferenceService::class));
+        self::assertFalse(DB::table('portfolio_media')->where('id', $mediaId)->exists());
+        self::assertFalse(DB::table('portfolio_items')->where('id', $itemId)->exists());
+        // Replayed delivery is harmless after the last reference was removed.
+        $job->handle($bunny, app(StoredFileReferenceService::class));
+    }
+
+    public function test_empty_portfolio_is_removed_without_scheduling_remote_work(): void
+    {
+        Queue::fake();
+        [$user, $itemId, $mediaId, $emptyItemId] = $this->portfolioFixture();
+        DB::table('portfolio_media')->where('id', $mediaId)->delete();
+        $result = app(AccountDeletionService::class)->delete($user);
+        self::assertFalse($result['remote_portfolio_cleanup_pending']);
+        self::assertSame(0, DB::table('portfolio_items')->whereIn('id', [$itemId, $emptyItemId])->count());
+        Queue::assertNothingPushed();
+    }
+
+    /** @return array{User, int, int, int, int} */
+    private function portfolioFixture(): array
+    {
+        Schema::create('portfolio_items', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('user_id');
+            foreach (['title', 'description', 'slug', 'role', 'tools', 'external_url'] as $field) {
+                $table->text($field)->nullable();
+            }
+            $table->boolean('is_public')->default(false);
+            $table->boolean('is_featured')->default(false);
+            $table->timestamps();
+        });
+        Schema::create('portfolio_media', function (Blueprint $table): void {
+            $table->id();
+            $table->foreignId('portfolio_item_id')->constrained()->cascadeOnDelete();
+            $table->string('file_path');
+            $table->string('file_type');
+            $table->string('thumbnail_path')->nullable();
+            $table->text('caption')->nullable();
+            $table->timestamps();
+        });
+        $user = User::query()->create(['name' => 'Portfolio learner', 'email' => 'portfolio@example.test',
+            'password' => bcrypt('password'), 'active' => true, 'gender' => 'other']);
+        $itemId = DB::table('portfolio_items')->insertGetId([
+            'user_id' => $user->id, 'title' => 'Private work', 'description' => 'Private description',
+            'slug' => 'private-work', 'role' => 'Designer', 'tools' => '["design"]',
+            'external_url' => 'https://example.test/private', 'is_public' => true, 'is_featured' => true,
+        ]);
+        $mediaId = DB::table('portfolio_media')->insertGetId([
+            'portfolio_item_id' => $itemId, 'file_path' => 'portfolio/private.jpg',
+            'file_type' => 'image', 'caption' => 'Private caption',
+        ]);
+        $emptyItemId = DB::table('portfolio_items')->insertGetId(['user_id' => $user->id, 'title' => 'Empty work']);
+        $otherItemId = DB::table('portfolio_items')->insertGetId(['user_id' => $user->id + 1, 'title' => 'Other learner']);
+        return [$user, $itemId, $mediaId, $emptyItemId, $otherItemId];
     }
 
     private function configureAppleTestKey(): void

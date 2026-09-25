@@ -9,7 +9,7 @@ use App\Models\Certificate;
 use App\Models\Course;
 use App\Services\CertificateArtworkRenderer;
 use App\Services\CertificateIssuanceSnapshotService;
-use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use App\Support\UnicodeText;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -19,14 +19,14 @@ final class CourseCertificatePreviewController extends Controller
     public function __invoke(
         Request $request,
         Course $course,
-        CourseStagedAuthoringService $authoring,
+        CourseRevisionResolver $revisions,
         CertificateIssuanceSnapshotService $snapshots,
         CertificateArtworkRenderer $renderer
     ): Response {
         $request->validate(['image' => ['sometimes', 'boolean']]);
 
         // A GET can read an existing draft, never create one or issue a credential.
-        $previewCourse = $authoring->activeDraftFor($course) ?: $course;
+        $previewCourse = $revisions->activeDraftFor($course) ?: $course;
         $snapshot = $snapshots->forPreview($previewCourse);
         $courseName = UnicodeText::limit(UnicodeText::clean($previewCourse->name_ar, false), 255);
         $hasPassageProjects = $snapshot['certificate_completion_text'] !== '';

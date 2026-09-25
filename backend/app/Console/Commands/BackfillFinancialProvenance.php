@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\WalletDebitAllocation;
 use App\Models\WalletTransaction;
 use App\Services\FinancialProvenanceService;
+use App\Support\FinancialProvenanceSchema;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -24,7 +25,7 @@ final class BackfillFinancialProvenance extends Command
 
     public function handle(FinancialProvenanceService $provenance): int
     {
-        if (!$provenance->schemaAvailable()) {
+        if (!FinancialProvenanceSchema::available()) {
             $this->error('Financial provenance tables are missing. Run migrations first.');
             return self::FAILURE;
         }

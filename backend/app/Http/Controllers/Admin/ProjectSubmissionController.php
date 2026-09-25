@@ -10,7 +10,7 @@ use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\AdminProjectSubmissionReviewReadService;
 use App\Services\ProjectAttachmentDownloadService;
-use App\Services\ProjectSubmissionService;
+use App\Services\ProjectSubmissionReviewService;
 use App\Support\DownloadFilename;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -96,13 +96,13 @@ final class ProjectSubmissionController extends Controller
     public function pass(
         Request $request,
         ProjectSubmission $projectSubmission,
-        ProjectSubmissionService $submissionService
+        ProjectSubmissionReviewService $reviews
     ): RedirectResponse {
         $data = $request->validate([
             'feedback' => 'nullable|string|max:2000',
         ]);
 
-        $submissionService->reviewByStaff(
+        $reviews->reviewByStaff(
             $projectSubmission,
             $this->reviewer($request),
             true,
@@ -117,13 +117,13 @@ final class ProjectSubmissionController extends Controller
     public function reject(
         Request $request,
         ProjectSubmission $projectSubmission,
-        ProjectSubmissionService $submissionService
+        ProjectSubmissionReviewService $reviews
     ): RedirectResponse {
         $data = $request->validate([
             'feedback' => 'required|string|min:3|max:2000',
         ]);
 
-        $submissionService->reviewByStaff(
+        $reviews->reviewByStaff(
             $projectSubmission,
             $this->reviewer($request),
             false,

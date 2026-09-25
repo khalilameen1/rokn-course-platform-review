@@ -205,6 +205,9 @@ jobs:
       - name: Test public asset and CDN policy regressions
         run: npm run test:public-assets
 
+      - name: Test dashboard upload recovery modules
+        run: npm run test:admin-upload
+
       - name: Verify complete frontend legal notices
         run: npm run notices:frontend:check
 

@@ -9,8 +9,10 @@ use Throwable;
 
 final class PortfolioMediaReadinessService
 {
-    public function __construct(private BunnyService $bunny)
-    {
+    public function __construct(
+        private BunnyService $bunny,
+        private BunnyDeliveryService $delivery
+    ) {
     }
 
     /**
@@ -37,7 +39,7 @@ final class PortfolioMediaReadinessService
 
         try {
             if ($media->file_type === 'image' && $media->file_path) {
-                $signedUrl = $this->bunny->generateBunnySignedUrl(
+                $signedUrl = $this->delivery->storageUrl(
                     (string) $media->file_path,
                     300
                 );
@@ -92,8 +94,8 @@ final class PortfolioMediaReadinessService
                 return $result;
             }
 
-            $embed = $this->bunny->getSignedEmbedUrl((string) $media->file_path, 300);
-            $playback = $this->bunny->getSignedPlayUrl((string) $media->file_path, 300);
+            $embed = $this->delivery->videoEmbed((string) $media->file_path, 300);
+            $playback = $this->delivery->videoPlayback((string) $media->file_path, 300);
             $result['video_url'] = $embed['url'] ?? null;
             $result['playback_url'] = $playback['url'] ?? null;
             $result['url_expires_at'] = $playback['expires_at']

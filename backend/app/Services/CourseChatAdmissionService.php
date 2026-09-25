@@ -17,7 +17,8 @@ final class CourseChatAdmissionService
         private CourseChatTurnService $turns,
         private AiInputAttachmentService $attachments,
         private PaidAiCallExecutionService $paidCalls,
-        private AiEntitlementBudgetService $budget
+        private AiEntitlementBudgetService $budget,
+        private readonly AiUsageSettlementService $settlements,
     ) {
     }
 
@@ -153,7 +154,7 @@ final class CourseChatAdmissionService
             return new CourseChatAdmissionResult('streaming', $turn, $claimed);
         }
         if ($providerState === PaidAiCallExecutionService::STALE_STARTED) {
-            $this->paidCalls->settleUnknown($this->budget, $prior, $requestContext);
+            $this->settlements->settleUnknown($prior, $requestContext);
             $this->turns->fail($turn, 'chat_provider_outcome_unknown');
         } else {
             $this->budget->release($prior, 'expired_course_chat_request');

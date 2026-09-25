@@ -7,8 +7,6 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
-use App\Models\WalletDebitAllocation;
-use App\Models\AiUsageEvent;
 use App\Support\ReportPeriod;
 use Illuminate\Support\Collection;
 
@@ -17,7 +15,10 @@ final class CourseCommercialReportService
 {
     public function __construct(
         private readonly CourseCostReportService $costs,
-        private readonly CourseFinancialLedgerReportService $ledger
+        private readonly CourseFinancialLedgerReportService $ledger,
+        private readonly CourseCashAttributionService $cash,
+        private readonly CommercialLearnerSummaryService $summaries,
+        private readonly CoursePlanHistoryReportService $plans
     ) {
     }
 
@@ -43,13 +44,13 @@ final class CourseCommercialReportService
         $previousPlans = $previous['plan_breakdown'] ?? collect();
         foreach ($previousPlans as $code => $priorPlan) {
             if (!$report['plan_breakdown']->has($code)) {
-                $emptyMetrics = $this->emptyPlanMetrics();
+                $emptyMetrics = $this->plans->emptyMetrics();
                 foreach ($emptyMetrics as $metric => $_value) {
                     if ($report['plan_breakdown']->contains(fn (array $plan): bool =>
                         array_key_exists($metric, $plan['period_metrics']) && $plan['period_metrics'][$metric] === null
                     )) $emptyMetrics[$metric] = null;
                 }
-                $report['plan_breakdown']->put($code, $this->groupSummary(collect()) + [
+                $report['plan_breakdown']->put($code, $this->summaries->forRows(collect()) + [
                     'plan_code' => $code, 'plan_name' => $priorPlan['plan_name'],
                     'period_metrics' => $emptyMetrics,
                     'historical_attribution_complete' => !in_array(null, $emptyMetrics, true),
@@ -59,7 +60,7 @@ final class CourseCommercialReportService
         $report['plan_breakdown'] = $report['plan_breakdown']->map(function (array $plan, string $code) use ($previousPlans, $previousPeriod): array {
             $prior = $previousPlans->get($code);
             if ($prior === null && $previousPeriod !== null) {
-                $metrics = $this->emptyPlanMetrics();
+                $metrics = $this->plans->emptyMetrics();
                 foreach ($metrics as $metric => $_value) {
                     if ($previousPlans->contains(fn (array $previousPlan): bool =>
                         array_key_exists($metric, $previousPlan['period_metrics']) && $previousPlan['period_metrics'][$metric] === null
@@ -87,7 +88,7 @@ final class CourseCommercialReportService
             ->orderBy('id');
         $orders = $period->apply($orders, 'approved_at')->get();
 
-        $allocationsByOrder = $this->allocationsFor($orders);
+        $allocationsByOrder = $this->cash->allocationsFor($orders);
         $coinAllocationsByOrder = $this->ledger->allocationsForOrders($orders);
         $ordersByUser = $orders->groupBy(fn (Order $order): int => (int) $order->user_id);
         $costReport = $this->costs->forCourse(
@@ -103,7 +104,7 @@ final class CourseCommercialReportService
         ): array {
             /** @var Collection<int, Order> $learnerOrders */
             $learnerOrders = $ordersByUser->get((int) $enrollment->user_id, collect());
-            $cash = $this->cashForOrders(
+            $cash = $this->cash->forOrders(
                 $learnerOrders,
                 $allocationsByOrder,
                 $coinAllocationsByOrder
@@ -233,7 +234,7 @@ final class CourseCommercialReportService
                         2
                     )
                     : null;
-            $row += $this->unitEconomics(
+            $row += $this->summaries->unitEconomics(
                 $row['cash_net_complete'] ? (float) $row['cash_net_known_egp'] : null,
                 $row['service_cost_actual_egp'],
                 $row['contribution_margin_egp']
@@ -261,7 +262,7 @@ final class CourseCommercialReportService
         // individual students, so the course collector owns this total.
         $serviceCostComplete = (bool) ($costReport['service_cost_complete'] ?? $costReport['complete']);
         $serviceCost = $serviceCostComplete ? $costReport['service_cost_actual_egp'] : null;
-        $unitEconomics = $this->unitEconomics(
+        $unitEconomics = $this->summaries->unitEconomics(
             $cashNetComplete ? $knownNet : null,
             $serviceCost,
             $cashNetComplete && $serviceCostComplete
@@ -344,8 +345,8 @@ final class CourseCommercialReportService
                 : null,
             'cost_warnings' => $costReport['unallocated_pools'],
             'service_breakdown' => $costReport['service_breakdown'],
-            'plan_breakdown' => $this->historicalPlanMetrics($course, $period, $orders, $allocationsByOrder, $coinAllocationsByOrder, $rows->groupBy('plan_code')->map(
-                fn (Collection $planRows, string $planCode): array => $this->groupSummary($planRows) + [
+            'plan_breakdown' => $this->plans->forPeriod($course, $period, $orders, $allocationsByOrder, $coinAllocationsByOrder, $rows->groupBy('plan_code')->map(
+                fn (Collection $planRows, string $planCode): array => $this->summaries->forRows($planRows) + [
                     'plan_code' => $planCode,
                     'plan_name' => (string) ($planRows->first()['plan_name'] ?? 'إتاحة قديمة'),
                 ]
@@ -380,16 +381,9 @@ final class CourseCommercialReportService
         return $result;
     }
 
-    private function emptyPlanMetrics(): array
-    {
-        return ['students' => 0, 'paid_coins' => 0, 'reward_coins' => 0,
-            'cash_gross_egp' => 0.0, 'cash_net_egp' => 0.0,
-            'ai_requests' => 0, 'ai_tokens' => 0, 'ai_cost_usd' => 0.0];
-    }
-
     private function planComparisons(array $current, ?array $previous, bool $hasPrevious): array
     {
-        $prior = $previous['period_metrics'] ?? $this->emptyPlanMetrics();
+        $prior = $previous['period_metrics'] ?? $this->plans->emptyMetrics();
         $comparisons = [];
         foreach ($current['period_metrics'] as $metric => $value) {
             $comparisons[$metric] = ReportPeriod::compare($value, $hasPrevious ? ($prior[$metric] ?? null) : null);
@@ -398,479 +392,5 @@ final class CourseCommercialReportService
         return $comparisons;
     }
 
-    /** Purchase attribution uses the immutable contract, never a learner's current tier. */
-    private function historicalPlanMetrics(Course $course, ReportPeriod $period, Collection $orders, Collection $allocations, Collection $coinAllocations, Collection $plans): Collection
-    {
-        $groups = $orders->groupBy(fn (Order $order): string =>
-            trim((string) data_get($order->access_plan_snapshot, 'code')) ?: 'unattributed'
-        );
-        foreach ($groups as $code => $planOrders) {
-            if (!$plans->has($code)) {
-                $plans->put($code, $this->groupSummary(collect()) + [
-                    'plan_code' => $code,
-                    'plan_name' => $code === 'unattributed' ? 'فئة تاريخية غير موثقة'
-                        : (string) data_get($planOrders->last()->access_plan_snapshot, 'name_ar', $code),
-                ]);
-            }
-        }
-        $ai = $this->historicalAiByPlan($course, $period);
-        if (!$ai['complete'] && !$plans->has('unattributed')) {
-            $plans->put('unattributed', $this->groupSummary(collect()) + [
-                'plan_code' => 'unattributed', 'plan_name' => 'فئة تاريخية غير موثقة',
-            ]);
-        }
-        foreach (array_keys($ai['plans']) as $code) {
-            if (!$plans->has($code)) {
-                $plans->put($code, $this->groupSummary(collect()) + [
-                    'plan_code' => $code, 'plan_name' => $code,
-                ]);
-            }
-        }
-        $unattributedPurchases = $groups->has('unattributed');
 
-        return $plans->map(function (array $plan, string $code) use ($groups, $allocations, $coinAllocations, $ai, $unattributedPurchases): array {
-            $planOrders = $groups->get($code, collect());
-            $cash = $this->cashForOrders($planOrders, $allocations, $coinAllocations);
-            $metrics = $this->emptyPlanMetrics();
-            $metrics['students'] = $planOrders->pluck('user_id')->unique()->count();
-            foreach (['paid_coins', 'reward_coins'] as $metric) {
-                $metrics[$metric] = (int) $planOrders->sum(fn (Order $order): int =>
-                    (int) data_get($coinAllocations->get((int) $order->id), $metric, 0)
-                );
-            }
-            $metrics['cash_gross_egp'] = $cash['cash_gross_complete'] ? $cash['cash_gross_egp'] : null;
-            $metrics['cash_net_egp'] = $cash['cash_net_complete'] ? $cash['cash_net_known_egp'] : null;
-            if (!$planOrders->every(fn (Order $order): bool => (bool) data_get($coinAllocations->get((int) $order->id), 'complete', false))) {
-                foreach (['paid_coins', 'reward_coins', 'cash_gross_egp', 'cash_net_egp'] as $metric) $metrics[$metric] = null;
-            }
-            foreach (['ai_requests', 'ai_tokens', 'ai_cost_usd'] as $metric) {
-                $metrics[$metric] = $ai['complete']
-                    ? (isset($ai['plans'][$code]) ? $ai['plans'][$code][$metric] : 0)
-                    : null;
-            }
-            if ($unattributedPurchases) {
-                // Missing legacy contracts could belong to any tier: expose the
-                // known rows, but do not turn absence of evidence into growth.
-                foreach (['students', 'paid_coins', 'reward_coins', 'cash_gross_egp', 'cash_net_egp'] as $metric) {
-                    $metrics[$metric] = null;
-                }
-            }
-            $plan['period_metrics'] = $metrics;
-            $plan['historical_attribution_complete'] = !$unattributedPurchases && $ai['complete'];
-
-            return $plan;
-        });
-    }
-
-    /** Resolve usage against an already accepted contract at the event time. */
-    private function historicalAiByPlan(Course $course, ReportPeriod $period): array
-    {
-        $contracts = Order::withTrashed()->where('course_id', $course->id)
-            ->whereNotNull('approved_at')->whereNotNull('access_plan_snapshot')
-            ->orderByDesc('approved_at')->orderByDesc('id')
-            ->get(['user_id', 'access_plan_id', 'access_plan_snapshot', 'approved_at'])
-            ->groupBy('user_id');
-        $query = AiUsageEvent::query()->where('course_id', $course->id);
-        $period->apply($query, 'created_at');
-        $plans = [];
-        $complete = true;
-        foreach ($query->cursor() as $event) {
-            $source = data_get($event->metadata, 'cost_usage_source');
-            $providerCost = $source === 'provider' && $event->cost_usd !== null
-                && (float) $event->cost_usd >= 0;
-            $cached = $source === 'cache_zero_cost' && $event->cost_usd !== null
-                && (float) $event->cost_usd === 0.0;
-            if ($event->status !== 'completed' && !$providerCost) {
-                continue;
-            }
-            $contract = $contracts->get($event->user_id, collect())->first(fn (Order $order): bool =>
-                $event->access_plan_id !== null
-                && (int) $order->access_plan_id === (int) $event->access_plan_id
-                && $order->approved_at <= $event->created_at
-            );
-            $code = trim((string) data_get($contract?->access_plan_snapshot, 'code'));
-            if ($code === '') {
-                $complete = false;
-                continue;
-            }
-            $plans[$code] ??= ['ai_requests' => 0, 'ai_tokens' => 0, 'ai_cost_usd' => 0.0];
-            if ($event->status === 'completed') {
-                if (!in_array(data_get($event->metadata, 'entitlement_delivered', true), [false, 0, 'false', '0'], true)) {
-                    $plans[$code]['ai_requests']++;
-                }
-                $plans[$code]['ai_tokens'] += (int) $event->total_tokens;
-            }
-            if ($providerCost) {
-                if ($plans[$code]['ai_cost_usd'] !== null) {
-                    $plans[$code]['ai_cost_usd'] = round($plans[$code]['ai_cost_usd'] + (float) $event->cost_usd, 6);
-                }
-            } elseif (!$cached) {
-                $plans[$code]['ai_cost_usd'] = null;
-            }
-        }
-
-        return compact('plans', 'complete');
-    }
-
-    /** @param Collection<int, array<string, mixed>> $rows @return array<string, mixed> */
-    public function groupSummary(Collection $rows): array
-    {
-        $enrollments = $rows->count();
-        $students = $rows->map(function (array $row): int {
-            return (int) ($row['enrollment']?->user_id ?? $row['user']?->id ?? 0);
-        })->filter()->unique()->count();
-        $netComplete = $rows->every(fn (array $row): bool => (bool) $row['cash_net_complete']);
-        $costComplete = $rows->every(fn (array $row): bool => (bool) $row['service_cost_complete']);
-        $estimatedComplete = $rows->every(
-            fn (array $row): bool => $row['service_cost_with_estimates_egp'] !== null
-        );
-        $net = $netComplete ? round((float) $rows->sum('cash_net_known_egp'), 2) : null;
-        $cost = $costComplete ? round((float) $rows->sum('service_cost_actual_egp'), 2) : null;
-        $margin = $net !== null && $cost !== null ? round($net - $cost, 2) : null;
-        $aiRequests = (int) $rows->sum('ai_requests');
-        $aiFailedRequests = (int) $rows->sum('ai_failed_requests');
-        $aiUnansweredRequests = (int) $rows->sum('ai_unanswered_requests');
-        $aiEstimatedRequests = (int) $rows->sum('ai_estimated_requests');
-        $aiMeasurementAvailable = $rows->every(
-            fn (array $row): bool => (bool) ($row['ai_measurement_available'] ?? true)
-        );
-        $aiAttempts = $aiRequests + $aiFailedRequests + $aiUnansweredRequests;
-        $actualCostByService = collect(CourseCostReportService::serviceLabels())
-            ->mapWithKeys(function (string $_label, string $serviceKey) use ($rows): array {
-                $complete = $rows->every(fn (array $row): bool =>
-                    ($row['actual_cost_by_service_egp'][$serviceKey] ?? null) !== null
-                );
-
-                return [$serviceKey => $complete
-                    ? round((float) $rows->sum(fn (array $row): float =>
-                        (float) $row['actual_cost_by_service_egp'][$serviceKey]
-                    ), 4)
-                    : null];
-            })->all();
-        $estimatedCostByService = collect(CourseCostReportService::serviceLabels())
-            ->mapWithKeys(function (string $_label, string $serviceKey) use ($rows): array {
-                $complete = $rows->every(fn (array $row): bool =>
-                    ($row['cost_with_estimates_by_service_egp'][$serviceKey] ?? null) !== null
-                );
-
-                return [$serviceKey => $complete
-                    ? round((float) $rows->sum(fn (array $row): float =>
-                        (float) $row['cost_with_estimates_by_service_egp'][$serviceKey]
-                    ), 4)
-                    : null];
-            })->all();
-
-        return [
-            'students' => $students,
-            'active_students' => $rows->where('is_active', true)
-                ->map(fn (array $row): int => (int) ($row['enrollment']?->user_id ?? 0))
-                ->filter()
-                ->unique()
-                ->count(),
-            'enrollments' => $enrollments,
-            'coin_allocation_complete' => $rows->every(
-                fn (array $row): bool => (bool) ($row['coin_allocation_complete'] ?? false)
-            ),
-            'coins' => (int) $rows->sum('total_coins'),
-            'discount_coins' => (int) $rows->sum('discount_coins'),
-            'gross_egp' => round((float) $rows->sum('cash_gross_egp'), 2),
-            'net_egp' => $net,
-            'ai_requests' => $aiRequests,
-            'ai_failed_requests' => $aiFailedRequests,
-            'ai_unanswered_requests' => $aiUnansweredRequests,
-            'ai_estimated_requests' => $aiEstimatedRequests,
-            'ai_cost_complete' => $aiMeasurementAvailable && $aiEstimatedRequests === 0,
-            'ai_failure_rate_percentage' => $aiAttempts > 0
-                ? round((($aiFailedRequests + $aiUnansweredRequests) / $aiAttempts) * 100, 2)
-                : null,
-            'ai_tokens' => (int) $rows->sum('ai_tokens'),
-            'ai_measurement_available' => $aiMeasurementAvailable,
-            'ai_cost_usd' => $aiMeasurementAvailable
-                ? round((float) $rows->sum('ai_cost_usd'), 6)
-                : null,
-            'playback_minutes' => round((float) $rows->sum('playback_minutes'), 2),
-            'playback_gb_estimated' => round((float) $rows->sum('playback_gb_estimated'), 4),
-            'service_cost_egp' => $cost,
-            'service_breakdown_actual_egp' => $actualCostByService,
-            'margin_egp' => $margin,
-            'estimated_cost_egp' => $estimatedComplete
-                ? round((float) $rows->sum('service_cost_with_estimates_egp'), 2)
-                : null,
-            'service_breakdown_with_estimates_egp' => $estimatedCostByService,
-            'estimated_margin_egp' => $netComplete && $estimatedComplete
-                ? round((float) $rows->sum('estimated_contribution_margin_egp'), 2)
-                : null,
-            'average_net_per_student_egp' => $students > 0 && $net !== null
-                ? round($net / $students, 2)
-                : null,
-            'average_cost_per_student_egp' => $students > 0 && $cost !== null
-                ? round($cost / $students, 2)
-                : null,
-            'average_net_per_enrollment_egp' => $enrollments > 0 && $net !== null
-                ? round($net / $enrollments, 2)
-                : null,
-            'average_cost_per_enrollment_egp' => $enrollments > 0 && $cost !== null
-                ? round($cost / $enrollments, 2)
-                : null,
-        ] + $this->unitEconomics($net, $cost, $margin);
-    }
-
-    /** @return array<string, float|null> */
-    private function unitEconomics(?float $net, ?float $cost, ?float $margin): array
-    {
-        return [
-            'cost_to_net_revenue_percentage' => $net !== null && $net > 0 && $cost !== null
-                ? round(($cost / $net) * 100, 2)
-                : null,
-            'contribution_margin_percentage' => $net !== null && $net > 0 && $margin !== null
-                ? round(($margin / $net) * 100, 2)
-                : null,
-        ];
-    }
-
-    /** @param Collection<int, Order> $orders */
-    private function allocationsFor(Collection $orders): Collection
-    {
-        if ($orders->isEmpty()) {
-            return collect();
-        }
-
-        return WalletDebitAllocation::query()
-            ->whereIn('course_order_id', $orders->modelKeys())
-            ->with('creditLot.sourceOrder')
-            ->get()
-            ->groupBy('course_order_id');
-    }
-
-    /**
-     * @param Collection<int, Order> $orders
-     * @param Collection<int, Collection<int, WalletDebitAllocation>> $allocationsByOrder
-     * @param Collection<int, array{total_coins:int,paid_coins:int,reward_coins:int,complete:bool}> $coinAllocationsByOrder
-     * @return array<string, mixed>
-     */
-    private function cashForOrders(
-        Collection $orders,
-        Collection $allocationsByOrder,
-        Collection $coinAllocationsByOrder
-    ): array {
-        $gross = 0.0;
-        $estimatedGross = 0.0;
-        $netKnown = 0.0;
-        $pendingGross = 0.0;
-        $allocatedCoins = 0;
-        $reconciliationMissing = false;
-        $foreignCurrencyAmounts = [];
-        $channels = [];
-
-        foreach ($orders as $order) {
-            $coinAllocation = $coinAllocationsByOrder->get((int) $order->id, [
-                'paid_coins' => 0,
-                'complete' => false,
-            ]);
-            if (!(bool) $coinAllocation['complete']) {
-                $reconciliationMissing = true;
-            }
-            $orderAllocatedCoins = 0;
-            foreach ($allocationsByOrder->get($order->id, collect()) as $allocation) {
-                $lot = $allocation->creditLot;
-                $source = $lot?->sourceOrder;
-                $coins = max(0, (int) $allocation->amount);
-                $lotCoins = max(0, (int) $lot?->original_amount);
-                if ($coins === 0 || $lotCoins === 0) {
-                    continue;
-                }
-
-                if (
-                    !$source
-                    && (string) data_get($lot?->metadata, 'provenance_type')
-                        === 'course_service_compensation'
-                ) {
-                    $orderAllocatedCoins += $coins;
-                    $allocatedCoins += $coins;
-                    $channels['service_compensation'] ??= [
-                        'method' => 'service_compensation',
-                        'label' => 'تعويض خدمة بلا تحصيل جديد',
-                        'paid_coins' => 0,
-                        'gross_egp' => 0.0,
-                        'estimated_gross_egp' => 0.0,
-                        'gross_complete' => true,
-                        'net_known_egp' => 0.0,
-                        'pending_settlement_egp' => 0.0,
-                        'net_complete' => true,
-                        'foreign_currency_amounts' => [],
-                    ];
-                    $channels['service_compensation']['paid_coins'] += $coins;
-                    continue;
-                }
-                if (!$source) {
-                    continue;
-                }
-
-                $orderAllocatedCoins += $coins;
-                $allocatedCoins += $coins;
-                if ($source->financial_status !== Order::FINANCIAL_SETTLED) {
-                    $channels['unreconciled'] ??= $this->unreconciledCashChannel();
-                    $channels['unreconciled']['paid_coins'] += $coins;
-                    $reconciliationMissing = true;
-                    continue;
-                }
-
-                if ($source->gateway_settlement_status === 'test_purchase') {
-                    $testChannel = (string) $source->payment_method . '_test';
-                    $channels[$testChannel] ??= [
-                        'method' => $testChannel,
-                        'label' => match ($source->payment_method) {
-                            Order::PAYMENT_METHOD_KASHIER => 'Kashier — اختبار بلا دخل',
-                            Order::PAYMENT_METHOD_GOOGLE_PLAY => 'Google Play — اختبار بلا دخل',
-                            Order::PAYMENT_METHOD_APP_STORE => 'App Store — اختبار بلا دخل',
-                            default => 'عملية اختبار بلا دخل',
-                        },
-                        'paid_coins' => 0,
-                        'gross_egp' => 0.0,
-                        'estimated_gross_egp' => 0.0,
-                        'gross_complete' => true,
-                        'net_known_egp' => 0.0,
-                        'pending_settlement_egp' => 0.0,
-                        'net_complete' => true,
-                        'foreign_currency_amounts' => [],
-                    ];
-                    $channels[$testChannel]['paid_coins'] += $coins;
-                    continue;
-                }
-
-                $ratio = min(1, $coins / $lotCoins);
-                $sourceGross = (float) ($source->gateway_gross_amount ?? $source->final_amount ?? 0);
-                $sourceGrossKnown = $source->gateway_gross_amount !== null
-                    && $source->gateway_settlement_status !== 'catalog_estimate';
-                $attributedGross = $sourceGross * $ratio;
-                $method = (string) $source->payment_method;
-                $sourceCurrency = strtoupper((string) (
-                    $source->gateway_currency
-                    ?: (in_array($method, [
-                        Order::PAYMENT_METHOD_GOOGLE_PLAY,
-                        Order::PAYMENT_METHOD_APP_STORE,
-                    ], true) ? 'PENDING' : 'EGP')
-                ));
-                $channels[$method] ??= [
-                    'method' => $method,
-                    'label' => match ($method) {
-                        Order::PAYMENT_METHOD_KASHIER => 'Kashier',
-                        Order::PAYMENT_METHOD_GOOGLE_PLAY => 'Google Play',
-                        Order::PAYMENT_METHOD_APP_STORE => 'App Store',
-                        default => $method,
-                    },
-                    'paid_coins' => 0,
-                    'gross_egp' => 0.0,
-                    'estimated_gross_egp' => 0.0,
-                    'gross_complete' => true,
-                    'net_known_egp' => 0.0,
-                    'pending_settlement_egp' => 0.0,
-                    'net_complete' => true,
-                    'foreign_currency_amounts' => [],
-                ];
-                $channels[$method]['paid_coins'] += $coins;
-                if ($sourceCurrency === 'PENDING') {
-                    // Store catalogue prices are not cash evidence. Until the
-                    // provider supplies the settlement currency, do not turn a
-                    // local package price into apparent EGP course revenue.
-                    $channels[$method]['gross_complete'] = false;
-                    $channels[$method]['net_complete'] = false;
-                    $reconciliationMissing = true;
-                    continue;
-                }
-                if ($sourceCurrency !== 'EGP') {
-                    $foreignCurrencyAmounts[$sourceCurrency] =
-                        ($foreignCurrencyAmounts[$sourceCurrency] ?? 0.0) + $attributedGross;
-                    $channels[$method]['foreign_currency_amounts'][$sourceCurrency] =
-                        ($channels[$method]['foreign_currency_amounts'][$sourceCurrency] ?? 0.0)
-                        + $attributedGross;
-                    $channels[$method]['net_complete'] = false;
-                    $channels[$method]['gross_complete'] = false;
-                    $reconciliationMissing = true;
-                    continue;
-                }
-                if ($sourceGrossKnown) {
-                    $gross += $attributedGross;
-                    $channels[$method]['gross_egp'] += $attributedGross;
-                } else {
-                    $estimatedGross += $attributedGross;
-                    $channels[$method]['estimated_gross_egp'] += $attributedGross;
-                    $channels[$method]['gross_complete'] = false;
-                }
-
-                if ($source->gateway_net_amount !== null) {
-                    $attributedNet = (float) $source->gateway_net_amount * $ratio;
-                    $netKnown += $attributedNet;
-                    $channels[$method]['net_known_egp'] += $attributedNet;
-                } elseif ($source->gateway_fee_amount !== null) {
-                    $attributedNet = max(0, $sourceGross - (float) $source->gateway_fee_amount) * $ratio;
-                    $netKnown += $attributedNet;
-                    $channels[$method]['net_known_egp'] += $attributedNet;
-                } else {
-                    $pendingGross += $attributedGross;
-                    $channels[$method]['pending_settlement_egp'] += $attributedGross;
-                    $channels[$method]['net_complete'] = false;
-                }
-            }
-
-            $missingPaidCoins = max(
-                0,
-                (int) $coinAllocation['paid_coins'] - $orderAllocatedCoins
-            );
-            if ($missingPaidCoins > 0) {
-                $channels['unreconciled'] ??= $this->unreconciledCashChannel();
-                $channels['unreconciled']['paid_coins'] += $missingPaidCoins;
-                $reconciliationMissing = true;
-            }
-        }
-
-        return [
-            'cash_gross_egp' => round($gross, 2),
-            'cash_estimated_gross_egp' => round($estimatedGross, 2),
-            'cash_gross_complete' => collect($channels)->every(
-                fn (array $channel): bool => (bool) $channel['gross_complete']
-            ),
-            'cash_net_known_egp' => round($netKnown, 2),
-            'cash_pending_settlement_egp' => round($pendingGross, 2),
-            'cash_net_complete' => $pendingGross < 0.005 && !$reconciliationMissing,
-            'allocated_paid_coins' => $allocatedCoins,
-            'cash_foreign_currency_amounts' => collect($foreignCurrencyAmounts)
-                ->map(fn (float $amount): float => round($amount, 2))
-                ->all(),
-            'cash_channels' => collect($channels)->map(function (array $channel): array {
-                $channel['gross_egp'] = round((float) $channel['gross_egp'], 2);
-                $channel['estimated_gross_egp'] = round(
-                    (float) $channel['estimated_gross_egp'],
-                    2
-                );
-                $channel['net_known_egp'] = round((float) $channel['net_known_egp'], 2);
-                $channel['pending_settlement_egp'] = round(
-                    (float) $channel['pending_settlement_egp'],
-                    2
-                );
-                $channel['foreign_currency_amounts'] = collect(
-                    $channel['foreign_currency_amounts']
-                )->map(fn (float $amount): float => round($amount, 2))->all();
-
-                return $channel;
-            })->all(),
-        ];
-    }
-
-    /** @return array<string, int|float|bool|string|array> */
-    private function unreconciledCashChannel(): array
-    {
-        return [
-            'method' => 'unreconciled',
-            'label' => 'مصدر شحن غير مُسوّى',
-            'paid_coins' => 0,
-            'gross_egp' => 0.0,
-            'estimated_gross_egp' => 0.0,
-            'gross_complete' => false,
-            'net_known_egp' => 0.0,
-            'pending_settlement_egp' => 0.0,
-            'net_complete' => false,
-            'foreign_currency_amounts' => [],
-        ];
-    }
 }

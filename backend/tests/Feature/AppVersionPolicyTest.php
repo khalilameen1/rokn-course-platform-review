@@ -17,6 +17,11 @@ class AppVersionPolicyTest extends TestCase
         parent::setUp();
         $this->withoutMiddleware();
 
+        Schema::create('admin_singleton_locks', function (Blueprint $table): void {
+            $table->string('lock_key')->primary();
+            $table->timestamps();
+        });
+
         Schema::create('app_versions', function (Blueprint $table): void {
             $table->id();
             $table->string('platform');
@@ -38,6 +43,7 @@ class AppVersionPolicyTest extends TestCase
     protected function tearDown(): void
     {
         Schema::dropIfExists('app_versions');
+        Schema::dropIfExists('admin_singleton_locks');
         parent::tearDown();
     }
 

@@ -18,7 +18,16 @@ describe('production daily surfaces', () => {
     const saved = source('src/screens/Profile/saved/useSavedLibrary.ts');
     expect(saved).toContain('captureAccountSessionBoundary()');
     expect(saved).toContain('assertAccountSessionBoundary(boundary)');
-    expect(saved).toContain('dataOwnerRef.current !== identityKey');
+    const savedRead = source(
+      'src/screens/Profile/saved/useSavedLibraryRead.ts',
+    );
+    expect(savedRead).toContain('captureAccountSessionBoundary()');
+    expect(savedRead).toContain('assertAccountSessionBoundary(boundary)');
+    expect(savedRead).toContain('dataOwnerRef.current !== identityKey');
+    expect(saved).toContain(
+      'useSavedLibraryRead(identityKey, snapshot, restoreMutationActivity)',
+    );
+    expect(saved).toContain('!operation.isCurrent()');
   });
 
   it('keeps chat and checkout on server-owned production paths', () => {

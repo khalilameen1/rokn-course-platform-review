@@ -8,6 +8,8 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\BunnyMediaRegistry;
 use App\Services\CourseAccessPlanService;
 use App\Services\PortfolioUploadAccessService;
 use Illuminate\Http\UploadedFile;
@@ -86,10 +88,14 @@ final class PortfolioUploadAccessTest extends ApiTestCase
         $this->actingAs($this->user, 'api');
         $this->getJson('/api/v1/portfolio/upload-access')->assertOk()->assertJsonPath('data.can_upload', true);
         $this->postJson('/api/v1/portfolio', ['title' => 'عمل مستقل'])->assertOk();
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('uploadFileToStorage')->once()->andReturn('portfolio/work.jpg');
-        $bunny->shouldReceive('consumeStorageCleanupCandidate')->once()->with('portfolio/work.jpg');
-        $bunny->shouldReceive('generateBunnySignedUrl')->andReturn('https://media.example.test/work.jpg');
+        $mediaRegistry->shouldReceive('consumeStorageCleanupCandidate')->once()->with('portfolio/work.jpg');
+        $delivery->shouldReceive('storageUrl')->andReturn('https://media.example.test/work.jpg');
         $this->app->instance(BunnyService::class, $bunny);
         $this->post('/api/v1/portfolio/1/media', [
             'file' => UploadedFile::fake()->image('work.jpg', 100, 100)->size(2),

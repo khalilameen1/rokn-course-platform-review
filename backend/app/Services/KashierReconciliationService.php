@@ -17,7 +17,9 @@ final readonly class KashierReconciliationService
     private const PROVIDER = 'kashier';
 
     public function __construct(
-        private KashierPaymentService $payments,
+        private KashierOrderSettlementService $settlements,
+        private KashierGatewayEvidenceService $evidence,
+        private KashierProviderOrderService $providerOrders,
         private OrderLifecycleService $orders
     ) {
     }
@@ -124,15 +126,15 @@ final readonly class KashierReconciliationService
     /** @return 'consistent'|'fulfilled'|'reversed'|'findings'|'unavailable' */
     private function reconcileOrder(Order $order): string
     {
-        $response = $this->payments->verifyOrderViaApi((string) $order->order_ref);
+        $response = $this->providerOrders->fetch((string) $order->order_ref);
         if ($response === null) {
             $this->recordFinding($order, 'provider_unavailable', null, null, []);
 
             return 'unavailable';
         }
 
-        $providerStatus = $this->payments->providerOrderStatus($response);
-        $transactionId = $this->payments->extractTransactionId($response);
+        $providerStatus = $this->evidence->status($response);
+        $transactionId = $this->evidence->transactionId($response);
         $evidence = $this->safeEvidence($response, $providerStatus, $transactionId);
         if ($providerStatus === null) {
             $this->recordFinding(
@@ -146,9 +148,9 @@ final readonly class KashierReconciliationService
             return 'findings';
         }
 
-        if ($this->payments->isOrderCaptured($response)) {
+        if ($this->evidence->isCaptured($response)) {
             try {
-                $this->payments->assertGatewayPaymentMatchesOrder($order, $response);
+                $this->evidence->assertMatches($order, $response);
             } catch (Throwable $exception) {
                 $this->markForReview($order, 'captured_evidence_mismatch');
                 $this->recordFinding(
@@ -162,8 +164,8 @@ final readonly class KashierReconciliationService
                 return 'findings';
             }
 
-            if ($this->payments->transactionIdConflicts($order, $transactionId)) {
-                $this->payments->flagApprovedTransactionConflict($order, $transactionId, $response);
+            if ($this->evidence->transactionIdConflicts($order, $transactionId)) {
+                $this->settlements->flagApprovedTransactionConflict($order, $transactionId, $response);
                 $this->recordFinding(
                     $order,
                     'captured_transaction_conflict',
@@ -175,7 +177,7 @@ final readonly class KashierReconciliationService
                 return 'findings';
             }
 
-            $reconciled = $this->payments->fulfillOrder(
+            $reconciled = $this->settlements->fulfillOrder(
                 $order,
                 $transactionId,
                 [
@@ -221,7 +223,7 @@ final readonly class KashierReconciliationService
             // may be closed; otherwise a periodic scan would cancel a fresh
             // link and allow two payable attempts for the same tap.
             if ($order->isCheckoutExpired()) {
-                $this->payments->cancelPendingOrder($order, $evidence);
+                $this->settlements->cancelPendingOrder($order, $evidence);
             }
             $this->resolveOpenFindings($order->fresh());
 
@@ -249,9 +251,9 @@ final readonly class KashierReconciliationService
             return 'findings';
         }
 
-        $reversalType = $this->payments->financialReversalType($providerStatus);
+        $reversalType = $this->evidence->reversalType($providerStatus);
         if ($reversalType !== null) {
-            $this->payments->recordFinancialReversal(
+            $this->settlements->recordFinancialReversal(
                 $order,
                 $reversalType,
                 $providerStatus,
@@ -279,9 +281,9 @@ final readonly class KashierReconciliationService
             return 'reversed';
         }
 
-        if ($providerStatus !== 'NOT_FOUND' && $this->payments->isProviderFailureStatus($providerStatus)) {
+        if ($providerStatus !== 'NOT_FOUND' && $this->evidence->isFailureStatus($providerStatus)) {
             if ($order->status === Order::STATUS_PENDING) {
-                $reconciled = $this->payments->cancelPendingOrder($order, $evidence);
+                $reconciled = $this->settlements->cancelPendingOrder($order, $evidence);
                 if ($reconciled->financial_status === Order::FINANCIAL_REVIEW_REQUIRED) {
                     $this->recordFinding(
                         $reconciled,
@@ -315,7 +317,7 @@ final readonly class KashierReconciliationService
             return 'findings';
         }
 
-        if ($this->payments->isProviderPendingStatus($providerStatus)
+        if ($this->evidence->isPendingStatus($providerStatus)
             && $order->status === Order::STATUS_PENDING) {
             if ($order->financial_status === Order::FINANCIAL_REVIEW_REQUIRED) {
                 $this->recordFinding(
@@ -385,7 +387,7 @@ final readonly class KashierReconciliationService
                 'data.currency',
                 'currency',
             ]),
-            'reversal_events' => $this->payments->extractFinancialReversalEvents($response),
+            'reversal_events' => $this->evidence->reversalEvents($response),
         ];
     }
 

@@ -11,7 +11,7 @@ use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
-use ReflectionMethod;
+use App\Support\RewardConfigurationVersion;
 use Tests\TestCase;
 
 final class AdminCoinRewardConfigurationTest extends TestCase
@@ -278,7 +278,7 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'rolling_30_day_cap' => $rule->rolling_30_day_cap,
             'sort_order' => $rule->sort_order,
             'is_active' => $rule->is_active ? '1' : '0',
-            'editor_version' => $this->version('rewardRuleEditorVersion', $rule),
+            'editor_version' => RewardConfigurationVersion::rule($rule),
         ], $overrides));
     }
 
@@ -294,7 +294,7 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'recommended_provider_bonus_coins' => $setting->recommended_provider_bonus_coins ?? 0,
             'recommended_provider_badge_ar' => $setting->recommended_provider_badge_ar,
             'recommended_provider_badge_en' => $setting->recommended_provider_badge_en,
-            'editor_version' => $this->version('settingsEditorVersion', $setting),
+            'editor_version' => RewardConfigurationVersion::settings($setting),
         ], $overrides));
     }
 
@@ -315,15 +315,8 @@ final class AdminCoinRewardConfigurationTest extends TestCase
             'total_claim_limit' => $method->total_claim_limit,
             'sort_order' => $method->sort_order,
             'is_active' => $method->is_active ? '1' : '0',
-            'editor_version' => $this->version('methodEditorVersion', $method),
+            'editor_version' => RewardConfigurationVersion::method($method),
         ], $overrides));
     }
 
-    private function version(string $methodName, object $model): string
-    {
-        $method = new ReflectionMethod($this->controller(), $methodName);
-        $method->setAccessible(true);
-
-        return (string) $method->invoke($this->controller(), $model);
-    }
 }

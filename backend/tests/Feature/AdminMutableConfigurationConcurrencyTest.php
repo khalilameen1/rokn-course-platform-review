@@ -8,7 +8,6 @@ use App\Http\Controllers\Admin\CoinEarningMethodController;
 use App\Http\Controllers\Admin\AdminNotificationsController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\CourseCodeController;
-use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Requests\Admin\AdminNotificationRequest;
 use App\Models\AdminNotification;
 use App\Models\RewardRule;
@@ -26,6 +25,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route as RouteFacade;
 use Illuminate\Validation\ValidationException;
 use ReflectionMethod;
+use App\Support\RewardConfigurationVersion;
 use Tests\TestCase;
 
 final class AdminMutableConfigurationConcurrencyTest extends TestCase
@@ -182,7 +182,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'sort_order' => 10,
         ]);
         $controller = app(CoinEarningMethodController::class);
-        $staleVersion = $this->editorVersion($controller, $rule);
+        $staleVersion = RewardConfigurationVersion::rule($rule);
 
         $rule->update(['coins_amount' => 180, 'title_ar' => 'إكمال الكورس']);
 
@@ -201,7 +201,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         self::assertSame('إكمال الكورس', $rule->title_ar);
 
         $controller->updateRewardRule(
-            $this->updateRequest($this->editorVersion($controller, $rule), 220),
+            $this->updateRequest(RewardConfigurationVersion::rule($rule), 220),
             $rule
         );
 
@@ -219,7 +219,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'sort_order' => 10,
         ]);
         $controller = app(CoinEarningMethodController::class);
-        $staleVersion = $this->editorVersion($controller, $rule);
+        $staleVersion = RewardConfigurationVersion::rule($rule);
         $rule->update(['coins_amount' => 30]);
 
         try {
@@ -255,9 +255,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'cooldown_hours' => 0,
         ]);
         $controller = app(AdminNotificationsController::class);
-        $version = new ReflectionMethod($controller, 'editorVersion');
-        $version->setAccessible(true);
-        $staleVersion = (string) $version->invoke($controller, $notification);
+        $staleVersion = \App\Support\NotificationTemplateEditorVersion::for($notification);
 
         $notification->update([
             'title_ar' => 'أنجزت الكورس',
@@ -314,9 +312,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'apple_enabled' => false,
         ]);
         $controller = app(PackageController::class);
-        $version = new ReflectionMethod($controller, 'editorVersion');
-        $version->setAccessible(true);
-        $staleVersion = (string) $version->invoke($controller, $package);
+        $staleVersion = \App\Support\PackageEditorVersion::for($package);
 
         $package->update(['price' => 150]);
 
@@ -350,9 +346,7 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'is_active' => true,
         ]);
         $controller = app(CourseCodeController::class);
-        $version = new ReflectionMethod($controller, 'editorVersion');
-        $version->setAccessible(true);
-        $staleVersion = (string) $version->invoke($controller, $code);
+        $staleVersion = \App\Support\CourseCodeEditorVersion::for($code);
         DB::table('course_codes')->where('id', $code->id)->update(['name' => 'دفعة الجامعة الجديدة']);
 
         try {
@@ -379,18 +373,15 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
             'expiry_date' => now()->addMonth(),
             'active' => true,
         ]);
-        $controller = app(\App\Http\Controllers\Admin\CouponController::class);
-        $version = new ReflectionMethod($controller, 'editorVersion');
-        $version->setAccessible(true);
-        $before = (string) $version->invoke($controller, $coupon);
+        $before = \App\Support\CouponEditorVersion::for($coupon);
 
         $coupon->allPhotos()->create(['path' => 'coupons/new.webp', 'type' => 'featured']);
         $coupon->unsetRelation('photo');
-        $after = (string) $version->invoke($controller, $coupon);
+        $after = \App\Support\CouponEditorVersion::for($coupon);
 
         self::assertNotSame($before, $after);
         $source = (string) file_get_contents(
-            dirname(__DIR__, 2).'/app/Http/Controllers/Admin/CouponController.php'
+            dirname(__DIR__, 2).'/app/Services/AdminCouponAuthoringService.php'
         );
         self::assertStringContainsString('storeTrackedUpload(', $source);
         self::assertStringContainsString("->lockForUpdate()->get()", $source);
@@ -399,9 +390,6 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
 
     public function test_bunny_secret_ciphertext_participates_in_settings_revision(): void
     {
-        $controller = app(SettingsController::class);
-        $version = new ReflectionMethod($controller, 'settingsEditorVersion');
-        $version->setAccessible(true);
         $design = new DesignSetting();
         $first = new Setting();
         $first->setRawAttributes(['bunny_api_key_secret' => 'cipher-one'], true);
@@ -409,8 +397,8 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         $second->setRawAttributes(['bunny_api_key_secret' => 'cipher-two'], true);
 
         self::assertNotSame(
-            $version->invoke($controller, $first, $design),
-            $version->invoke($controller, $second, $design)
+            \App\Support\AppSettingsEditorVersion::for($first, $design),
+            \App\Support\AppSettingsEditorVersion::for($second, $design)
         );
     }
 
@@ -440,13 +428,4 @@ final class AdminMutableConfigurationConcurrencyTest extends TestCase
         ]);
     }
 
-    private function editorVersion(
-        CoinEarningMethodController $controller,
-        RewardRule $rule
-    ): string {
-        $method = new ReflectionMethod($controller, 'rewardRuleEditorVersion');
-        $method->setAccessible(true);
-
-        return (string) $method->invoke($controller, $rule);
-    }
 }

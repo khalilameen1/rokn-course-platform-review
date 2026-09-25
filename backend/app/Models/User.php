@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Support\PublicDiskUrl;
-use App\Support\RoknPublicUrl;
 use App\Services\PortfolioModerationService;
+use App\Services\PortfolioReviewReadService;
 
 use App\Models\UserNote;
 use App\Models\Classification;
@@ -27,7 +27,7 @@ class User extends Authenticatable
     {
         static::updated(function (User $user): void {
             if (($user->portfolio_slug || $user->getRawOriginal('portfolio_slug'))
-                && $user->wasChanged(PortfolioModerationService::PROFILE_FIELDS)) {
+                && $user->wasChanged(PortfolioReviewReadService::PROFILE_FIELDS)) {
                 PortfolioModerationService::invalidate((int) $user->id);
                 // Only copy review metadata: refreshing the whole model here
                 // would erase change tracking used by other model listeners.
@@ -185,12 +185,7 @@ class User extends Authenticatable
      */
     public function getProfileDeeplinkAttribute(): ?string
     {
-        if (!$this->exists || blank($this->portfolio_slug)
-            || app(PortfolioModerationService::class)->ownerState($this)['sharing_status'] !== 'approved') {
-            return null;
-        }
-
-        return RoknPublicUrl::portfolio((string) $this->portfolio_slug);
+        return app(PortfolioReviewReadService::class)->publicUrlFor($this);
     }
 
     /**
@@ -314,15 +309,19 @@ class User extends Authenticatable
      */
     public function getLessonProgressStatisticsAttribute()
     {
-        $totalProgress = $this->sectionProgress();
-        $completedProgress = $totalProgress->completed()->get();
+        // Keep this legacy serialization scoped to this user's progress rows.
+        // Filtering the shared builder to completed rows also narrowed the
+        // denominator. Aggregate both counts together without loading history.
+        $counts = $this->sectionProgress()->toBase()
+            ->selectRaw('COUNT(*) AS accessed_count, COALESCE(SUM(CASE WHEN is_completed = 1 THEN 1 ELSE 0 END), 0) AS completed_count')
+            ->first();
+        $accessed = (int) $counts->accessed_count;
+        $completed = (int) $counts->completed_count;
 
         return [
-            'total_lessons_accessed' => $totalProgress->count(),
-            'completed_lessons' => $completedProgress->count(),
-            'completion_rate' => $totalProgress->count() > 0
-                ? round(($completedProgress->count() / $totalProgress->count()) * 100, 2)
-                : 0
+            'total_lessons_accessed' => $accessed,
+            'completed_lessons' => $completed,
+            'completion_rate' => $accessed > 0 ? round(($completed / $accessed) * 100, 2) : 0,
         ];
     }
 

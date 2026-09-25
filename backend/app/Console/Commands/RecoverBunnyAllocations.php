@@ -8,6 +8,7 @@ use App\Models\BunnyDirectUpload;
 use App\Models\BunnyVideoAllocationIntent;
 use App\Models\PortfolioVideoUpload;
 use App\Services\BunnyService;
+use App\Services\BunnyMediaRegistry;
 use Illuminate\Console\Command;
 
 final class RecoverBunnyAllocations extends Command
@@ -15,7 +16,7 @@ final class RecoverBunnyAllocations extends Command
     protected $signature = 'bunny:recover-allocations {--limit=100}';
     protected $description = 'Reconcile provider allocations interrupted before their GUID was persisted';
 
-    public function handle(BunnyService $bunny): int
+    public function handle(BunnyService $bunny, BunnyMediaRegistry $mediaRegistry): int
     {
         $limit = max(1, min(500, (int) $this->option('limit')));
         BunnyVideoAllocationIntent::query()
@@ -23,9 +24,10 @@ final class RecoverBunnyAllocations extends Command
             ->whereNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (BunnyVideoAllocationIntent $intent) use ($bunny): void {
+            ->each(function (BunnyVideoAllocationIntent $intent) use ($bunny, $mediaRegistry): void {
                 $this->recover(
                     $bunny,
+                    $mediaRegistry,
                     '[rokn-upload:' . strtolower((string) $intent->marker) . ']',
                     function (string $guid) use ($intent): void {
                         $intent->forceFill([
@@ -40,8 +42,8 @@ final class RecoverBunnyAllocations extends Command
             ->whereNotNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (BunnyVideoAllocationIntent $intent) use ($bunny): void {
-                $candidate = $bunny->queueVideoCleanup(
+            ->each(function (BunnyVideoAllocationIntent $intent) use ($bunny, $mediaRegistry): void {
+                $candidate = $mediaRegistry->queueVideoCleanup(
                     (string) $intent->video_guid,
                     null,
                     'interrupted_verified_upload_allocation',
@@ -57,9 +59,10 @@ final class RecoverBunnyAllocations extends Command
             ->whereNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (BunnyDirectUpload $upload) use ($bunny): void {
+            ->each(function (BunnyDirectUpload $upload) use ($bunny, $mediaRegistry): void {
                 $this->recover(
                     $bunny,
+                    $mediaRegistry,
                     '[rokn:' . strtolower((string) $upload->idempotency_key) . ']',
                     function (string $guid) use ($upload): void {
                         $upload->forceFill([
@@ -75,8 +78,8 @@ final class RecoverBunnyAllocations extends Command
             ->whereNotNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (BunnyDirectUpload $upload) use ($bunny): void {
-                $candidate = $bunny->queueVideoCleanup(
+            ->each(function (BunnyDirectUpload $upload) use ($bunny, $mediaRegistry): void {
+                $candidate = $mediaRegistry->queueVideoCleanup(
                     (string) $upload->video_guid,
                     null,
                     'interrupted_direct_upload_allocation',
@@ -92,9 +95,10 @@ final class RecoverBunnyAllocations extends Command
             ->whereNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (PortfolioVideoUpload $upload) use ($bunny): void {
+            ->each(function (PortfolioVideoUpload $upload) use ($bunny, $mediaRegistry): void {
                 $this->recover(
                     $bunny,
+                    $mediaRegistry,
                     '[rokn-portfolio:' . strtolower((string) $upload->idempotency_key) . ']',
                     function (string $guid) use ($upload): void {
                         $upload->forceFill([
@@ -110,8 +114,8 @@ final class RecoverBunnyAllocations extends Command
             ->whereNotNull('video_guid')
             ->where('updated_at', '<=', now()->subMinutes(5))
             ->orderBy('id')->limit($limit)->get()
-            ->each(function (PortfolioVideoUpload $upload) use ($bunny): void {
-                $candidate = $bunny->queueVideoCleanup(
+            ->each(function (PortfolioVideoUpload $upload) use ($bunny, $mediaRegistry): void {
+                $candidate = $mediaRegistry->queueVideoCleanup(
                     (string) $upload->video_guid,
                     null,
                     'interrupted_portfolio_upload_allocation',
@@ -129,10 +133,10 @@ final class RecoverBunnyAllocations extends Command
         return self::SUCCESS;
     }
 
-    private function recover(BunnyService $bunny, string $marker, callable $commit): void
+    private function recover(BunnyService $bunny, BunnyMediaRegistry $mediaRegistry, string $marker, callable $commit): void
     {
         foreach ($bunny->findVideoGuidsByTitleMarker($marker) as $guid) {
-            $candidate = $bunny->queueVideoCleanup(
+            $candidate = $mediaRegistry->queueVideoCleanup(
                 $guid,
                 null,
                 'interrupted_allocation',

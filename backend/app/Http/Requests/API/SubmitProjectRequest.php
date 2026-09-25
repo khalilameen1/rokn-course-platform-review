@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\API;
 
-use App\Services\ProjectSubmissionOrchestrator;
+use App\Services\ProjectSubmissionFilePolicy;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class SubmitProjectRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     protected function prepareForValidation(): void
     {
@@ -18,24 +21,29 @@ final class SubmitProjectRequest extends FormRequest
         }
     }
 
-    public function rules(): array
+    public function rules(ProjectSubmissionFilePolicy $files): array
     {
-        $file = ['file','min:1','max:'.ProjectSubmissionOrchestrator::maximumFileKilobytes(),
-            'mimetypes:'.implode(',', [...(array)config('projects.allowed_mime_types',[]),'application/zip','application/x-zip-compressed','application/octet-stream'])];
+        $file = [
+            'file',
+            'min:1',
+            'max:'.ProjectSubmissionFilePolicy::maximumFileKilobytes(),
+            'mimetypes:'.implode(',', $files->requestMimeTypes()),
+        ];
+
         return [
-            'submission_text'=>'nullable|string|max:20000',
-            'submission_file'=>['nullable',...$file],
-            'submission_files'=>'nullable|array|max:5',
-            'submission_files.*'=>$file,
-            'client_submission_id'=>'nullable|string|max:100',
-            'metadata'=>'nullable|array',
+            'submission_text' => 'nullable|string|max:20000',
+            'submission_file' => ['nullable', ...$file],
+            'submission_files' => 'nullable|array|max:5',
+            'submission_files.*' => $file,
+            'client_submission_id' => 'nullable|string|max:100',
+            'metadata' => 'nullable|array',
         ];
     }
 
     public function messages(): array
     {
         $message = 'اختر ملفًا بحجم '
-            .ProjectSubmissionOrchestrator::maximumFileMegabytesLabel()
+            .ProjectSubmissionFilePolicy::maximumFileMegabytesLabel()
             .' ميجابايت أو أقل';
 
         return [

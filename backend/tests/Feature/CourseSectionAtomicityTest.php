@@ -12,7 +12,9 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Project;
 use App\Services\CourseSectionContentService;
-use App\Services\CourseSectionInput;
+use App\Http\Requests\Admin\CourseSectionInput;
+use App\Data\CourseSectionEdit;
+use App\Services\CourseSectionMediaStage;
 use App\Services\CourseSectionOrderingService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
@@ -297,24 +299,18 @@ final class CourseSectionAtomicityTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ]);
-        $request = Request::create('/dashboard/courses/1/sections/1', 'PUT', [
-            'section_type' => 'lesson',
-            'title_ar' => 'المقطع بعد التعديل',
-            'title_en' => 'Updated lesson',
-            'lesson_description_ar' => 'وصف',
-            'lesson_description_en' => 'Caption',
-            'lesson_duration_minutes' => 3,
-        ]);
+        $edit = new CourseSectionEdit(
+            type: 'lesson', moduleId: (int) $module->id,
+            expectedVersion: 1,
+            titleAr: 'المقطع بعد التعديل', titleEn: 'Updated lesson',
+            lessonChanges: ['description_ar' => 'وصف', 'description_en' => 'Caption', 'duration_minutes' => 3]
+        );
 
         $updated = app(CourseSectionContentService::class)->update(
-            $request,
+            $edit,
             $course,
             $section,
-            1,
-            'new-generation',
-            'lessons/new.webp',
-            'old-generation',
-            'lessons/old.webp'
+            new CourseSectionMediaStage('new-generation', 'lessons/new.webp', $lesson, true, true)
         );
 
         self::assertSame($lesson->id, $updated->id);
@@ -360,21 +356,17 @@ final class CourseSectionAtomicityTest extends TestCase
             'sectionable_id' => $lesson->id,
             'order' => 1,
         ]);
-        $request = Request::create('/dashboard/courses/1/sections/1', 'PATCH', [
-            'section_type' => 'lesson',
-            'title_ar' => 'عنوان محدث فقط',
-            'title_en' => 'Title only',
-        ]);
+        $edit = new CourseSectionEdit(
+            type: 'lesson', moduleId: (int) $module->id,
+            expectedVersion: 1,
+            titleAr: 'عنوان محدث فقط', titleEn: 'Title only'
+        );
 
         app(CourseSectionContentService::class)->update(
-            $request,
+            $edit,
             $course,
             $section,
-            1,
-            null,
-            null,
-            'same-generation',
-            'lessons/same.webp'
+            new CourseSectionMediaStage(null, null, $lesson, false, false)
         );
 
         $lesson->refresh();

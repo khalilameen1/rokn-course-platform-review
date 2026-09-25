@@ -11,6 +11,7 @@ use App\Models\Course;
 use App\Models\User;
 use App\Services\BunnyDirectUploadService;
 use App\Services\BunnyService;
+use App\Services\BunnyMediaRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -29,10 +30,12 @@ final class BunnyDirectUploadLeaseTest extends TestCase
         $this->allocation($admin, $course, $key, now());
 
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldNotReceive('createVideo');
 
         $this->expectException(ValidationException::class);
-        (new BunnyDirectUploadService($bunny))->issue(
+        (new BunnyDirectUploadService($bunny, $mediaRegistry))->issue(
             $course,
             $admin,
             'الدرس الأول',
@@ -53,6 +56,8 @@ final class BunnyDirectUploadLeaseTest extends TestCase
         $originalUpdatedAt = $session->updated_at?->toISOString();
 
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldNotReceive('createVideo');
         $this->app->instance(BunnyService::class, $bunny);
         $this->withoutMiddleware(RequireAdminMfa::class);
@@ -88,6 +93,8 @@ final class BunnyDirectUploadLeaseTest extends TestCase
 
         Crypt::shouldReceive('encryptString')->once()->andReturn('signed-claim');
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('findVideoGuidsByTitleMarker')
             ->once()
             ->with('[rokn:' . $key . ']')
@@ -96,7 +103,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             'guid' => $guid,
             'title' => 'الدرس الأول',
         ]);
-        $bunny->shouldReceive('queueVideoCleanup')->once()->andReturnUsing(
+        $mediaRegistry->shouldReceive('queueVideoCleanup')->once()->andReturnUsing(
             function (string $videoId) use ($guid): BunnyVideoCleanupCandidate {
                 self::assertSame($guid, $videoId);
                 self::assertSame(
@@ -119,7 +126,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
             'videoLibraryId' => 123,
         ]);
 
-        $result = (new BunnyDirectUploadService($bunny))->issue(
+        $result = (new BunnyDirectUploadService($bunny, $mediaRegistry))->issue(
             $course,
             $admin,
             'الدرس الأول',
@@ -150,7 +157,9 @@ final class BunnyDirectUploadLeaseTest extends TestCase
         ]);
 
         $bunny = Mockery::mock(BunnyService::class);
-        $bunny->shouldReceive('queueVideoCleanup')
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
+        $mediaRegistry->shouldReceive('queueVideoCleanup')
             ->once()
             ->with($oldGuid, null, 'direct_upload_stale_allocation', 1)
             ->andReturnUsing(fn (): BunnyVideoCleanupCandidate => BunnyVideoCleanupCandidate::query()->create([
@@ -162,7 +171,7 @@ final class BunnyDirectUploadLeaseTest extends TestCase
         $bunny->shouldReceive('createVideo')->once()->andReturnNull();
 
         try {
-            (new BunnyDirectUploadService($bunny))->issue(
+            (new BunnyDirectUploadService($bunny, $mediaRegistry))->issue(
                 $course,
                 $admin,
                 'الدرس الأول',
@@ -221,13 +230,15 @@ final class BunnyDirectUploadLeaseTest extends TestCase
         ], JSON_THROW_ON_ERROR));
 
         $bunny = Mockery::mock(BunnyService::class);
+        $mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $mediaRegistry);
         $bunny->shouldReceive('directUploadAuthorization')->once()->with($guid)->andReturn([
             'headers' => ['VideoId' => $guid],
             'authorization_expires_at' => now()->addMinutes(30)->toIso8601String(),
             'authorization_expires_in_seconds' => 1800,
         ]);
 
-        $result = (new BunnyDirectUploadService($bunny))->authorization($course, $admin, $claim);
+        $result = (new BunnyDirectUploadService($bunny, $mediaRegistry))->authorization($course, $admin, $claim);
         $renewed = BunnyDirectUpload::query()->findOrFail($session->id);
         $candidate = BunnyVideoCleanupCandidate::query()->where('video_guid', $guid)->firstOrFail();
         $renewedClaim = json_decode(Crypt::decryptString($result['claim']), true, 16, JSON_THROW_ON_ERROR);

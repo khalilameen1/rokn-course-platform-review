@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Support\UnicodeText;
+use App\Support\UploadBudget;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
@@ -15,10 +16,10 @@ final class ProjectSubmissionOrchestrator
 {
     public function __construct(
         private ProjectSubmissionService $submissions,
-        private CourseCompletionService $courseCompletion,
-        private CourseChatAccessService $courseAccess,
+        private CourseSectionAccessService $sectionAccess,
+        private CourseEntitlementService $courseAccess,
         private CourseAccessPlanService $accessPlans,
-        private AiInputAttachmentService $attachments
+        private ProjectSubmissionFilePolicy $files
     ) {
     }
 
@@ -33,8 +34,10 @@ final class ProjectSubmissionOrchestrator
         ?string $text,
         array $files,
         ?string $idempotencyKey,
-        array $metadata
+        array $metadata,
+        ?UploadBudget $uploadBudget = null
     ): array {
+        $uploadBudget ??= UploadBudget::start((float) config('projects.submission_request_budget_seconds', 16));
         $idempotencyKey = trim((string) $idempotencyKey);
         $replayed = $this->submissions->replayCommittedSubmission(
             $user,
@@ -49,7 +52,7 @@ final class ProjectSubmissionOrchestrator
 
         $learnerText = UnicodeText::clean((string) $text);
         $hasText = $learnerText !== '';
-        $maximumFiles = max(1, min(5, (int) ($project->submission_max_files ?: 3)));
+        $maximumFiles = ProjectSubmissionFilePolicy::maximumFiles($project);
         if ($hasText && !(bool) $project->submission_text_enabled) {
             return $this->invalid('submission_text', 'هذا المشروع يحتاج ملفًا من الأنواع المحددة');
         }
@@ -60,17 +63,15 @@ final class ProjectSubmissionOrchestrator
             return $this->invalid('submission_files', 'أضف نصًا أو ملفًا واحدًا على الأقل');
         }
 
-        $allowedMimeTypes = $this->allowedMimeTypes($project);
-        $maximumFileBytes = self::maximumFileBytes();
+        $maximumFileBytes = ProjectSubmissionFilePolicy::maximumFileBytes();
         foreach ($files as $file) {
             if ((int) $file->getSize() > $maximumFileBytes) {
                 return $this->invalid(
                     'submission_files',
-                    'اختر ملفات بحجم '.self::maximumFileMegabytesLabel().' ميجابايت أو أقل'
+                    'اختر ملفات بحجم '.ProjectSubmissionFilePolicy::maximumFileMegabytesLabel().' ميجابايت أو أقل'
                 );
             }
-            $canonicalMime = $this->attachments->canonicalMime($file);
-            if ($canonicalMime === null || !in_array($canonicalMime, $allowedMimeTypes, true)) {
+            if (!$this->files->acceptsType($project, $file)) {
                 return $this->invalid('submission_files', 'أحد الملفات بصيغة غير متاحة لهذا المشروع');
             }
         }
@@ -79,7 +80,7 @@ final class ProjectSubmissionOrchestrator
         if (!$courseId || !$project->section || !$this->courseAccess->hasLearningAccess((int) $user->id, $courseId)) {
             return ['state' => 'forbidden'];
         }
-        if (!$this->courseCompletion->canAccessSection($user, $project->section)) {
+        if (!$this->sectionAccess->canAccessSection($user, $project->section)) {
             return ['state' => 'prerequisites'];
         }
 
@@ -104,41 +105,10 @@ final class ProjectSubmissionOrchestrator
                 $text,
                 $files,
                 $idempotencyKey ?: (string) Str::uuid(),
-                $metadata
+                $metadata,
+                $uploadBudget
             ),
         ];
-    }
-
-    /** @return list<string> */
-    public function allowedMimeTypes(Project $project): array
-    {
-        if ($project->submission_allowed_mime_types === null) {
-            return $this->attachments->allowedMimeTypes();
-        }
-        $configured = array_values(array_intersect(
-            array_map('strtolower', (array) $project->submission_allowed_mime_types),
-            $this->attachments->allowedMimeTypes()
-        ));
-
-        return $configured;
-    }
-
-    public static function maximumFileBytes(): int
-    {
-        return max(1024, min(
-            max(1, (int) config('projects.maximum_file_kilobytes', 25600)) * 1024,
-            max(1024, (int) config('openrouter.attachment_provider_max_bytes', 8388608))
-        ));
-    }
-
-    public static function maximumFileKilobytes(): int
-    {
-        return max(1, (int) floor(self::maximumFileBytes() / 1024));
-    }
-
-    public static function maximumFileMegabytesLabel(): string
-    {
-        return rtrim(rtrim(number_format(self::maximumFileBytes() / 1048576, 2, '.', ''), '0'), '.');
     }
 
     /** @return array{state:string, field:string, message:string} */

@@ -19,7 +19,7 @@ final class ProjectReportRetryService
 {
     public function __construct(
         private CourseAccessPlanService $accessPlans,
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private PaidAiCallExecutionService $paidCalls
     ) {
     }

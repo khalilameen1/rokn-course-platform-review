@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\URL;
 final class CourseModuleAccessService
 {
     public function __construct(
-        private CourseChatAccessService $courseAccess
+        private CourseEntitlementService $courseAccess
     )
     {
     }

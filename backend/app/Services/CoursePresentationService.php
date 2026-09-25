@@ -21,7 +21,8 @@ final readonly class CoursePresentationService
         private CertificateEligibilityService $certificateEligibility,
         private CourseRevisionLearnerReadService $revisionReads,
         private LatestWatchResumeService $latestResume,
-        private CourseAccessPlanService $plans
+        private CourseAccessPlanService $plans,
+        private CourseSectionAccessService $sectionAccess
     )
     {
     }
@@ -221,72 +222,12 @@ final readonly class CoursePresentationService
                 'access_type' => $accessType,
             ],
             'progress' => $summary,
-            'sections' => $this->sectionLockStatus(
+            'sections' => $this->sectionAccess->sectionLockStatus(
                 $learningSections,
                 $completedSectionIds,
                 $userId
             ),
         ];
-    }
-
-    public function sectionLockStatus(
-        Collection $sections,
-        Collection $completedSectionIds,
-        ?int $userId = null,
-        ?bool $projectsEnabled = null
-    ): Collection {
-        $projectsEnabled ??= $this->projectsEnabledForUser($userId, (int) $sections->first()?->course_id);
-        $orderedSections = $this->sectionSequence->learning($sections, $projectsEnabled);
-
-        $projectIds = $orderedSections
-            ->filter(fn ($section): bool => $section->getSectionType() === 'project')
-            ->pluck('sectionable_id')
-            ->filter();
-        $passedProjectIds = $userId && $projectIds->isNotEmpty()
-            ? $this->revisionReads->passedProjectIds($userId, $projectIds)
-            : collect();
-        $hasUnpassedProjectGate = false;
-
-        return $orderedSections->map(function ($section) use (
-            &$hasUnpassedProjectGate,
-            $completedSectionIds,
-            $passedProjectIds,
-            $userId
-        ): array {
-            $isProject = $section->getSectionType() === 'project';
-            $projectPassed = $isProject
-                && $userId
-                && $passedProjectIds->contains($section->sectionable_id);
-            // Review status is authoritative for a project. The derived
-            // progress row can lag a committed review and must never open or
-            // close a crossing gate by itself.
-            $isCompleted = $isProject && $userId
-                ? $projectPassed
-                : $completedSectionIds->contains($section->id);
-            $isLocked = false;
-            $lockReason = null;
-
-            if ($userId && $hasUnpassedProjectGate) {
-                $isLocked = true;
-                $lockReason = 'module_project_not_passed';
-            }
-
-            if ($userId && $isProject && !$projectPassed) {
-                $hasUnpassedProjectGate = true;
-            }
-
-            return [
-                'section_id' => $section->id,
-                'title' => $section->title_ar ?? $section->title,
-                'type' => $section->getSectionType(),
-                'order' => $section->order,
-                'module_id' => $section->module_id,
-                'is_completed' => $isCompleted,
-                'is_locked' => $isLocked,
-                'lock_reason' => $lockReason,
-                'can_access' => !$isLocked,
-            ];
-        });
     }
 
     /** @return array<string,mixed> */
@@ -299,7 +240,7 @@ final readonly class CoursePresentationService
         ])->findOrFail($courseId);
         $learningSections = $this->sectionSequence->learning(
             $this->sectionSequence->fromModules($course->modules),
-            $this->projectsEnabledForUser($userId, $courseId)
+            $this->sectionAccess->projectsEnabledForUser($userId, $courseId)
         );
         $completedSectionIds = $this->revisionReads->completedSectionIds(
             $userId,
@@ -309,17 +250,5 @@ final readonly class CoursePresentationService
             $learningSections,
             $completedSectionIds
         );
-    }
-
-    private function projectsEnabledForUser(?int $userId, int $courseId): bool
-    {
-        if (!$userId || !$courseId) return true;
-
-        $enrollment = CourseEnrollment::query()
-            ->where('user_id', $userId)->where('course_id', $courseId)->first();
-
-        // Public/legacy callers retain the full curriculum. Access itself is
-        // enforced separately; only an explicit captured watch-only plan skips projects.
-        return !$enrollment || $this->plans->projectsEnabledForEnrollment($enrollment);
     }
 }

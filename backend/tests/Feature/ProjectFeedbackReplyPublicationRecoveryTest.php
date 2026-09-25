@@ -19,6 +19,7 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\AiConsentService;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectFeedbackThreadService;
@@ -69,7 +70,7 @@ final class ProjectFeedbackReplyPublicationRecoveryTest extends TestCase
             'provider_request_id' => 'reply-publication'];
         $calls->beginForActiveUser($event, $execution, $submission->user_id);
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $result);
-        $budget->settle($event, $result);
+        app(AiUsageSettlementService::class)->settle($event, $result);
         $usage = AiEntitlementUsage::query()->where('enrollment_id', $enrollment->id)
             ->where('feature', 'project_followup')->sole();
         $settledUsage = $usage->getAttributes();

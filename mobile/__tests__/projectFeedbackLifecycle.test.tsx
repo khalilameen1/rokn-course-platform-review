@@ -407,6 +407,44 @@ describe('project inquiry lost acknowledgement', () => {
     },
   );
 
+  it('does not clear an edited question when an older uncertain request appears in a later transcript', async () => {
+    await mount();
+    jest
+      .mocked(sendProjectFeedbackMessage)
+      .mockRejectedValueOnce(new Error('timeout'));
+    mockLoadThread.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => current.send());
+    act(() => current.changeDraft('سؤال جديد لم أرسله'));
+    await act(async () =>
+      renderer!.update(<Harness seedThread={accepted('completed')} />),
+    );
+    expect(current.draft).toBe('سؤال جديد لم أرسله');
+    expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
+    expect(sendProjectFeedbackMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send a paid request when its durable identity could not be saved', async () => {
+    await mount();
+    jest
+      .mocked(saveProjectFeedbackDraft)
+      .mockRejectedValueOnce(new Error('storage full'));
+    await act(async () => current.send());
+    expect(current.draftSaveError).toBe(true);
+    expect(current.draft).toBe('هل التنفيذ مناسب');
+    expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+    await act(async () => current.retryDraftSave());
+    expect(current.draftSaveError).toBe(false);
+    jest.mocked(sendProjectFeedbackMessage).mockResolvedValueOnce(accepted());
+    await act(async () => current.send());
+    expect(sendProjectFeedbackMessage).toHaveBeenCalledWith(
+      'thread-7',
+      'هل التنفيذ مناسب',
+      'request-7',
+      [],
+    );
+    expect(current.draft).toBe('');
+  });
+
   it.each([400, 403, 409, 422, 429])(
     'does not turn definitive HTTP %s rejection into accepted recovery',
     async status => {

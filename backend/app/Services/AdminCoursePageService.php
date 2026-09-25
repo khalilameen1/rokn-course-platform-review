@@ -22,12 +22,13 @@ final readonly class AdminCoursePageService
     public function __construct(
         private ArabicSearchNormalizer $searchNormalizer,
         private CourseAccessPlanService $accessPlans,
+        private CoursePlanAuthoringService $planAuthoring,
         private CourseCommercialReportService $commercialReports,
         private CourseDurationService $durations,
         private CourseFinancialLedgerReportService $financialLedger,
         private CourseLearningHealthService $learningHealth,
         private CoursePublishingService $publishing,
-        private CourseStagedAuthoringService $stagedAuthoring,
+        private CourseRevisionResolver $revisionResolver,
         private AdminCourseReportService $reports,
         private CertificateTextTemplateService $certificateTemplates,
         private AdminCourseOutlinePresenter $outline,
@@ -122,7 +123,7 @@ final readonly class AdminCoursePageService
         // A canonical URL remains a stable bookmark, but once a moderator has
         // saved a working revision the studio must resume it rather than show
         // the older learner copy and make the new edits appear lost.
-        $course = $this->stagedAuthoring->activeDraftFor($course) ?: $course;
+        $course = $this->revisionResolver->activeDraftFor($course) ?: $course;
         $course->load([
             'classifications',
             'teachers.photo',
@@ -138,7 +139,7 @@ final readonly class AdminCoursePageService
             ->flatMap(fn ($module) => $module->sections)
             ->values();
         $course->setRelation('sections', $sections);
-        $reportCourse = $this->stagedAuthoring->canonicalFor($course);
+        $reportCourse = $this->revisionResolver->canonicalFor($course);
         $reportCourse->loadCount('ratings')->loadAvg('ratings', 'rating');
         $catalogRatingSummary = [
             'count' => (int) $reportCourse->ratings_count,
@@ -150,8 +151,8 @@ final readonly class AdminCoursePageService
             $reportCourse->loadCount('activeEnrollments');
         }
         $this->durations->attach($course);
-        $managedDraft = $this->stagedAuthoring->isManagedDraft($course);
-        $editorPlans = $this->accessPlans->plansForEditor($course);
+        $managedDraft = $this->revisionResolver->isManagedDraft($course);
+        $editorPlans = $this->planAuthoring->plansForEditor($course);
         $course->setRelation('accessPlans', $editorPlans);
 
         $period ??= ReportPeriod::fromKey();
@@ -174,7 +175,7 @@ final readonly class AdminCoursePageService
                 ? (bool) $reportCourse->is_catalog_visible
                 : (bool) $course->is_catalog_visible,
             'mainCourseDefault' => $managedDraft
-                ? ($this->stagedAuthoring->explicitHeroSelection($course)
+                ? ($this->revisionResolver->explicitHeroSelection($course)
                     ?? (bool) $reportCourse->is_main_course)
                 : (bool) $course->is_main_course,
             'hasPublishedRevision' => (int) ($reportCourse->last_published_authoring_version ?? 0) > 0

@@ -128,9 +128,9 @@ export const useWalletCheckout = (data: WalletCheckoutData) => {
     if (!CAN_START_NATIVE_CHECKOUT) return undefined;
     let active = true;
     let unsubscribe: () => void = () => undefined;
-    void import('../../services/nativeStoreBilling').then(storeBilling => {
+    void import('../../services/nativeStoreCredits').then(storeCredits => {
       if (!active) return;
-      unsubscribe = storeBilling.subscribeNativeStoreCredits(() => {
+      unsubscribe = storeCredits.subscribeNativeStoreCredits(() => {
         void handleRecoveredCredit();
       });
     });

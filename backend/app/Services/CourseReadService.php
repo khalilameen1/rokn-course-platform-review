@@ -15,7 +15,7 @@ final readonly class CourseReadService
 {
     public function __construct(
         private CourseDurationService $duration,
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private CourseCatalogueQueryService $catalogue
     ) {}
 

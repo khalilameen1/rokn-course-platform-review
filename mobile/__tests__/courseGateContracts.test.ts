@@ -117,7 +117,11 @@ describe('course gate contracts', () => {
     expect(submission).toContain(
       'if (outcome.accepted && !outcome.preserveDraft)',
     );
-    expect(submission).toContain('setDraftReady(false)');
+    expect(
+      source(
+        'src/components/VideoPlayer/projectTransition/useProjectDraftEditor.ts',
+      ),
+    ).toContain('setReady(false)');
     expect(submission).toContain('submissionAllowed: boolean');
     expect(submission).not.toContain('canSubmit ?? project.canSubmit');
     expect(transition).not.toContain('project.submissionAttachments');
@@ -130,10 +134,16 @@ describe('course gate contracts', () => {
       "canSubmit: outcome.submissionStatus === 'needs_changes'",
     );
     expect(feedback).not.toContain('replyEnabled !== false');
-    expect(feedback).toContain(
+    const feedbackThread = source(
+      'src/components/VideoPlayer/projectTransition/useProjectFeedbackThread.ts',
+    );
+    expect(feedback).toContain('useProjectFeedbackThread');
+    expect(feedbackThread).toContain(
       'loadProjectFeedbackThread(projectId, threadId)',
     );
-    expect(feedback).toContain('projectFeedbackThreadIsPending');
+    expect(feedbackThread).toContain('projectFeedbackThreadIsPending');
+    expect(feedbackThread).not.toContain('saveProjectFeedbackDraft');
+    expect(feedbackThread).not.toContain('sendProjectFeedbackMessage');
 
     const projectReview = source('src/screens/reels/useProjectReview.ts');
     expect(projectReview).toContain('refreshProjectState(outcome.projectId)');
@@ -200,10 +210,17 @@ describe('course gate contracts', () => {
     // outcomes. This source contract also keeps their destructive cleanup
     // inside the ownership guard rather than merely checking a flag exists.
     expect(acceptedCleanup).toBeDefined();
-    expect(acceptedCleanup).toContain('setSelectedFiles([])');
-    expect(acceptedCleanup).toContain("setNote('')");
     expect(acceptedCleanup).toContain(
-      'clearProjectSubmissionDraft(id, files, boundary)',
+      'draftSession.consume(outcome.submissionStatus, files)',
+    );
+    const editor = source(
+      'src/components/VideoPlayer/projectTransition/useProjectDraftEditor.ts',
+    );
+    expect(editor).toContain('setFiles([])');
+    expect(editor).toContain("setNote('')");
+    expect(submission.match(/draftSession\.consume\(/g)).toHaveLength(1);
+    expect(editor).toMatch(
+      /clearProjectSubmissionDraft\(\s*projectId,\s*submittedFiles,\s*boundary,/,
     );
     expect(outbox).toMatch(
       /recovered\.result\.submissionStatus === 'passed'[\s\S]*?outcomeFromSync\(recovered\.result, previous, operation\)[\s\S]*?preserveDraft: true/,

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Support\StudentNotificationIntent;
+
 use App\Models\CourseEnrollment;
 use App\Models\User;
 use App\Services\StudentNotificationService;
@@ -19,7 +21,7 @@ final class SendLearningNudges extends Command
 
     protected $description = 'Send one opt-in learning reminder to inactive enrolled students';
 
-    public function handle(): int
+    public function handle(StudentNotificationService $notifications): int
     {
         $clock = BusinessClock::utcNow();
         $template = app(EngagementMessageService::class)->publicMessage('learning_nudge');
@@ -99,18 +101,20 @@ final class SendLearningNudges extends Command
 
             $courseName = (string) ($course->name_ar ?: $course->name_en ?: 'كورس ركن');
             try {
-                $notification = StudentNotificationService::notifyUser(
+                $notification = $notifications->notifyUser(
                     $student,
-                    'learning_nudge',
-                    'أكمل من مكانك',
-                    'Continue learning',
-                    "{$courseName}\nمقطع واحد يكفي للعودة",
-                    "Continue {$courseName}",
-                    '/course/' . $course->id . '/watch',
-                    $course::class,
-                    (int) $course->id,
-                    'learning-nudge:' . $student->id . ':' . $course->id . ':' . $deliveryWindow,
-                    ['course' => $courseName]
+                    new StudentNotificationIntent(
+                        notificationType: 'learning_nudge',
+                        titleAr: 'أكمل من مكانك',
+                        titleEn: 'Continue learning',
+                        messageAr: "{$courseName}\nمقطع واحد يكفي للعودة",
+                        messageEn: "Continue {$courseName}",
+                        link: '/course/' . $course->id . '/watch',
+                        notifiableType: $course::class,
+                        notifiableId: (int) $course->id,
+                        deliveryKey: 'learning-nudge:' . $student->id . ':' . $course->id . ':' . $deliveryWindow,
+                        templateVariables: ['course' => $courseName]
+                    )
                 );
                 if (!$notification) {
                     continue;

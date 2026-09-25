@@ -17,10 +17,8 @@ import {
   cancelLearningReminders,
   setSmartRemindersEnabled,
 } from '../../services/smartReminders';
-import {
-  clearCurrentPushDeviceRegistration,
-  getCurrentPushDeviceToken,
-} from '../../services/pushNotifications';
+import {clearAccountPushState} from '../../services/pushAccountCleanup';
+import {getStoredPushDeviceToken} from '../../services/pushDeviceState';
 import {clearCurrentAccountLearningFiles} from '../../components/VideoPlayer/courseLearningApi';
 import {
   accountDeletionCredential,
@@ -193,7 +191,7 @@ export const useAccountSettingsActions = ({
             let serverSessionRevoked = false;
             if (sessionToken) {
               try {
-                const deviceToken = await getCurrentPushDeviceToken(boundary);
+                const deviceToken = await getStoredPushDeviceToken(boundary);
                 await revokeCurrentDeviceSession(deviceToken, {
                   preservePersistedSessionOnUnauthorized: true,
                   session: {epoch: boundary.epoch, token: sessionToken},
@@ -204,7 +202,7 @@ export const useAccountSettingsActions = ({
               }
             }
             const pushInvalidationDurable =
-              await clearCurrentPushDeviceRegistration(boundary)
+              await clearAccountPushState(boundary)
                 .then(() => true)
                 .catch(() => false);
             assertAccountSessionBoundary(boundary);
@@ -300,7 +298,7 @@ export const useAccountSettingsActions = ({
       );
       // The server deletion is final, but local logout still needs a durable
       // storage commit before this device can report that it has signed out.
-      await clearCurrentPushDeviceRegistration(deletionBoundary).catch(
+      await clearAccountPushState(deletionBoundary).catch(
         () => undefined,
       );
       await completeLocalLogout(deletedSessionToken, accountScope);

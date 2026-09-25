@@ -4,36 +4,47 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Http\Requests\Admin\CourseRequest;
+use App\Data\CourseAuthoringEdit;
 use App\Models\Course;
 use App\Models\Photo;
+use Closure;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final readonly class AdminCourseAuthoringService
 {
     public function __construct(
-        private CourseAccessPlanService $accessPlans,
-        private AdminAuthoringCreateIntentService $createIntents,
+        private CoursePlanAuthoringService $planAuthoring,
+        private CoursePlanAttachmentGrantService $attachmentGrants,
         private CourseAuthoringConcurrencyService $authoring,
         private CourseHeroSelectionService $heroSelection,
+        private CoursePathSelectionService $pathSelection,
         private CoursePublishingService $publishing,
         private CourseStagedAuthoringService $stagedAuthoring,
-        private StoredFileDeletionService $files
+        private CourseRevisionResolver $revisions,
+        private StoredFileDeletionService $files,
+        private StoredFileUploadService $uploads
     ) {
     }
 
-    /** @return array{status:string, course:?Course} */
-    public function create(CourseRequest $request): array
+    /**
+     * @param Closure(Course):void $completeIntent
+     * @return array{status:string, course:?Course}
+     */
+    public function create(CourseAuthoringEdit $edit, Closure $completeIntent): array
     {
-        $requestId = (string) $request->validated('authoring_request_id');
+        $requestId = $edit->requestId;
+        if (!$requestId) {
+            throw new \InvalidArgumentException('Course creation requires a stable request identity.');
+        }
         $existing = Course::query()->where('authoring_request_id', $requestId)->first();
         if ($existing) {
-            $this->completeExistingIntent($request, $existing);
+            $this->completeExistingIntent($existing, $completeIntent);
             return ['status' => 'existing', 'course' => $existing];
         }
 
-        $data = array_merge($this->courseData($request), [
+        $data = array_merge($edit->attributes, [
             'authoring_request_id' => $requestId,
             'is_coming_soon' => true,
             'is_catalog_visible' => false,
@@ -49,28 +60,22 @@ final readonly class AdminCourseAuthoringService
         $imagePath = null;
 
         try {
-            $imagePath = $this->storeImage($request);
-            $course = DB::transaction(function () use ($data, $request, $imagePath): Course {
+            $imagePath = $this->storeImage($edit->image);
+            $course = DB::transaction(function () use ($data, $edit, $imagePath, $completeIntent): Course {
                 $course = Course::create($data);
-                $this->accessPlans->createDefaults($course);
-                if ($request->has('access_plans')) {
-                    $this->accessPlans->syncAdminPlans(
+                $this->planAuthoring->createDefaults($course);
+                if ($edit->planOffers !== null) {
+                    $this->planAuthoring->syncAdminPlans(
                         $course,
-                        (array) $request->validated('access_plans', [])
+                        $edit->planOffers
                     );
                 }
-                $course->classifications()->sync($request->input('classification_ids', []));
-                $course->teachers()->sync($request->input('teacher_ids', []));
+                $course->classifications()->sync($edit->classificationIds ?? []);
+                $course->teachers()->sync($edit->teacherIds ?? []);
                 if ($imagePath) {
                     $course->allPhotos()->create(['path' => $imagePath, 'type' => 'featured']);
                 }
-                $this->createIntents->completeRedirect(
-                    $request,
-                    route('admin.courses.show', $course),
-                    302,
-                    Course::class,
-                    $course->id
-                );
+                $completeIntent($course);
 
                 return $course;
             }, 3);
@@ -95,20 +100,19 @@ final readonly class AdminCourseAuthoringService
 
     /** @return array{status:string, course:Course, issues?:array} */
     public function update(
-        CourseRequest $request,
+        CourseAuthoringEdit $edit,
         Course $course,
         bool $administrator,
         bool $canCurateHome
     ): array
     {
-        $validated = $request->validated();
         $wasDraft = (bool) $course->is_coming_soon;
-        $publishingRequested = $request->input('publishing_intent') === 'publish';
-        $catalogVisibilitySubmitted = array_key_exists('is_catalog_visible', $validated);
+        $publishingRequested = $edit->publishingRequested;
+        $catalogVisibilitySubmitted = $edit->catalogVisible !== null;
         $catalogVisible = $catalogVisibilitySubmitted
-            ? $request->boolean('is_catalog_visible')
+            ? $edit->catalogVisible
             : (bool) $course->is_catalog_visible;
-        $data = $this->courseData($request);
+        $data = $edit->attributes;
         if (!$wasDraft && $publishingRequested) {
             $data['is_catalog_visible'] = $catalogVisible;
         }
@@ -123,10 +127,10 @@ final readonly class AdminCourseAuthoringService
         $oldPhotos = collect();
         $liveIssues = [];
         $ownedVersion = null;
-        $managedDraft = $this->stagedAuthoring->isManagedDraft($course);
-        $canonical = $this->stagedAuthoring->canonicalFor($course);
+        $managedDraft = $this->revisions->isManagedDraft($course);
+        $canonical = $this->revisions->canonicalFor($course);
         $explicitHero = $managedDraft
-            ? $this->stagedAuthoring->explicitHeroSelection($course)
+            ? $this->revisions->explicitHeroSelection($course)
             : null;
         $preservedHero = $managedDraft
             // A fresh clone clears its implementation flag. Once the editor
@@ -134,20 +138,19 @@ final readonly class AdminCourseAuthoringService
             // intent across every later partial save.
             ? ($explicitHero ?? (bool) $canonical->is_main_course)
             : (!(bool) $course->is_coming_soon && (bool) $course->is_main_course);
-        $heroRequested = $canCurateHome && $request->has('is_main_course')
-            ? $request->boolean('is_main_course')
+        $heroRequested = $canCurateHome && $edit->mainCourse !== null
+            ? $edit->mainCourse
             : $preservedHero;
 
         try {
-            $imagePath = $this->storeImage($request);
+            $imagePath = $this->storeImage($edit->image);
             if ($imagePath) {
                 $oldPhotos = $course->allPhotos()->where('type', 'featured')->get(['photos.id', 'photos.path']);
             }
             DB::transaction(function () use (
                 $course,
                 $data,
-                $request,
-                $validated,
+                $edit,
                 $administrator,
                 $imagePath,
                 $oldPhotos,
@@ -159,38 +162,40 @@ final readonly class AdminCourseAuthoringService
                 &$liveIssues,
                 &$ownedVersion
             ): void {
-                $locked = $this->authoring->lock($request, $course);
+                $locked = $this->authoring->lockExpected($course, (int) $edit->expectedVersion);
+                $previousPathId = $locked->path_id === null ? null : (int) $locked->path_id;
                 $locked->update($data);
+                if ($managedDraft && array_key_exists('path_id', $data)) {
+                    $this->pathSelection->recordReviewedSelection($locked, $previousPathId);
+                }
                 if ($wasDraft) {
                     $locked->updateQuietly(['is_main_course' => $heroRequested]);
-                    if ($managedDraft && $canCurateHome && $request->has('is_main_course')) {
+                    if ($managedDraft && $canCurateHome && $edit->mainCourse !== null) {
                         $this->stagedAuthoring->confirmHeroSelection($locked);
                     }
                 }
-                if ($request->has('access_plans')) {
-                    $this->accessPlans->syncAdminPlans(
+                if ($edit->planOffers !== null) {
+                    $this->planAuthoring->syncAdminPlans(
                         $locked,
-                        (array) $request->validated('access_plans', [])
+                        $edit->planOffers
                     );
                 }
                 if (!$managedDraft && $administrator && (
-                    $request->boolean('grant_chat_attachments_to_current_enrollments')
-                    || $request->boolean('grant_project_followup_attachments_to_current_enrollments')
+                    $edit->grantChatAttachments
+                    || $edit->grantProjectAttachments
                 )) {
-                    $this->accessPlans->grantAttachmentsToCurrentEnrollments(
+                    $this->attachmentGrants->grantAttachmentsToCurrentEnrollments(
                         $locked,
-                        $request->boolean('grant_chat_attachments_to_current_enrollments'),
-                        $request->boolean('grant_project_followup_attachments_to_current_enrollments')
+                        $edit->grantChatAttachments,
+                        $edit->grantProjectAttachments
                     );
                 }
-                if (array_key_exists('classification_ids', $validated)
-                    || $request->boolean('classification_ids_present')) {
-                    $locked->classifications()->sync((array) $request->input('classification_ids', []));
+                if ($edit->classificationIds !== null) {
+                    $locked->classifications()->sync($edit->classificationIds);
                     $this->stagedAuthoring->confirmClassificationSelection($locked);
                 }
-                if (array_key_exists('teacher_ids', $validated)
-                    || $request->boolean('teacher_ids_present')) {
-                    $locked->teachers()->sync((array) $request->input('teacher_ids', []));
+                if ($edit->teacherIds !== null) {
+                    $locked->teachers()->sync($edit->teacherIds);
                 }
                 if ($imagePath) {
                     $locked->allPhotos()->create(['path' => $imagePath, 'type' => 'featured']);
@@ -229,8 +234,8 @@ final readonly class AdminCourseAuthoringService
                     $course,
                     (int) $ownedVersion,
                     $catalogVisible,
-                    $administrator && $request->boolean('grant_chat_attachments_to_current_enrollments'),
-                    $administrator && $request->boolean('grant_project_followup_attachments_to_current_enrollments')
+                    $administrator && $edit->grantChatAttachments,
+                    $administrator && $edit->grantProjectAttachments
                 );
                 $course = $published['course'];
                 $ownedVersion = (int) $published['published_revision'];
@@ -311,13 +316,12 @@ final readonly class AdminCourseAuthoringService
                     'published_at' => now(),
                 ])->save();
                 if ($previousVersion > 0 && $publishedVersion > $previousVersion) {
-                    NotificationService::notifyCourseUpdate(
-                        $locked->fresh(),
-                        'published_changes',
-                        'course-published:'.$locked->id.':v'.$publishedVersion
+                    CourseContentNotificationService::notifyCourseUpdate(
+                        course: $locked->fresh(),
+                        deliveryKey: 'course-published:'.$locked->id.':v'.$publishedVersion
                     );
                 } elseif ($previousVersion === 0 && $catalogVisible) {
-                    NotificationService::notifyNewCourse(
+                    CourseContentNotificationService::notifyNewCourse(
                         $locked->fresh(),
                         'course-published:'.$locked->id.':v'.$publishedVersion.':new'
                     );
@@ -367,54 +371,25 @@ final readonly class AdminCourseAuthoringService
         return ['status' => 'catalog_published', 'course' => $course, 'version' => $version];
     }
 
-    private function completeExistingIntent(CourseRequest $request, Course $course): void
+    /** @param Closure(Course):void $completeIntent */
+    private function completeExistingIntent(Course $course, Closure $completeIntent): void
     {
-        DB::transaction(function () use ($request, $course): void {
-            Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
-            $this->createIntents->completeRedirect(
-                $request,
-                route('admin.courses.show', $course),
-                302,
-                Course::class,
-                $course->id
-            );
+        DB::transaction(function () use ($course, $completeIntent): void {
+            $locked = Course::query()->whereKey($course->id)->lockForUpdate()->firstOrFail();
+            $completeIntent($locked);
         }, 3);
     }
 
-    private function storeImage(CourseRequest $request): ?string
+    private function storeImage(?UploadedFile $image): ?string
     {
-        if (!$request->hasFile('image')) {
+        if (!$image) {
             return null;
         }
-        $path = $this->files->storeTrackedUpload($request->file('image'), 'courses');
+        $path = $this->uploads->storeTrackedUpload($image, 'courses');
         if (!is_string($path) || trim($path) === '') {
             throw new \RuntimeException('Course image storage failed');
         }
 
         return $path;
-    }
-
-    /** @return array<string, mixed> */
-    private function courseData(CourseRequest $request): array
-    {
-        return collect($request->validated())->except([
-            'image',
-            'classification_ids',
-            'classification_ids_present',
-            'teacher_ids',
-            'teacher_ids_present',
-            'access_plans',
-            'authoring_version',
-            'authoring_request_id',
-            'grant_chat_attachments_to_current_enrollments',
-            'grant_project_followup_attachments_to_current_enrollments',
-            'is_main_course',
-            // Publication state and the compatibility price mirror are owned
-            // by the publishing and access-plan services, never a general save.
-            'is_coming_soon',
-            'is_catalog_visible',
-            'price',
-            'publishing_intent',
-        ])->all();
     }
 }

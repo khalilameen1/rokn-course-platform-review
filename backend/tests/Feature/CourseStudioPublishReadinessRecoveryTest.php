@@ -169,7 +169,7 @@ final class CourseStudioPublishReadinessRecoveryTest extends TestCase
         $canonical->classifications()->attach($classification->id);
         Storage::disk('public')->put('courses/ready-cover.jpg', 'cover bytes');
         $canonical->allPhotos()->create(['path' => 'courses/ready-cover.jpg', 'type' => 'featured']);
-        app(CourseAccessPlanService::class)->createDefaults($canonical);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
         $module = $canonical->modules()->create(['title_ar' => 'الوحدة', 'order' => 1]);
         $guid = '33333333-3333-4333-8333-333333333333';
         $lesson = Lesson::query()->create([

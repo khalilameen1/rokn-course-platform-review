@@ -13,7 +13,7 @@ use App\Models\User;
 final readonly class CourseRatingEligibilityService
 {
     public function __construct(
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private CourseRevisionLearnerReadService $revisionReads
     )
     {

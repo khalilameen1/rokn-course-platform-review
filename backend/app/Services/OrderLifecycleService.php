@@ -237,7 +237,7 @@ final readonly class OrderLifecycleService
             $locked->loadMissing('package');
             $wasFulfilled = $locked->status === Order::STATUS_APPROVED;
             $atRisk = $locked->package_id
-                ? max(0, (int) $locked->package_coins)
+                ? $locked->packageCoinAmount()
                 : max(0, (int) $locked->total_coins);
             $result = !$wasFulfilled
                 ? ['recovered' => 0, 'unrecovered' => 0, 'holds' => 0]
@@ -581,7 +581,7 @@ final readonly class OrderLifecycleService
     private function fulfillPackage(Order $order): void
     {
         $order->loadMissing(['package', 'user']);
-        $coins = max(0, (int) $order->package_coins);
+        $coins = $order->packageCoinAmount();
         $verifiedTest = $order->gateway_settlement_status === 'test_purchase'
             && (float) $order->amount === 0.0
             && (float) $order->final_amount === 0.0

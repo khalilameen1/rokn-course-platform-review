@@ -18,15 +18,19 @@ use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\AdminCoursePreviewService;
 use App\Services\CertificateTextTemplateService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseCompletionService;
+use App\Services\CourseSectionAccessService;
 use App\Services\CoursePresentationService;
 use App\Services\CurriculumCompletionService;
 use App\Services\LearningDashboardService;
+use App\Services\LearningAchievementSignalService;
 use App\Services\StudentProgressSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 final class WatchOnlyCourseLearningTest extends TestCase
@@ -96,13 +100,14 @@ final class WatchOnlyCourseLearningTest extends TestCase
 
     public function test_watch_only_path_skips_projects_without_fabricating_project_completion(): void
     {
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         self::assertTrue($access->hasLearningAccess($this->learner->id, $this->course->id));
         self::assertNull($access->activeProjectEnrollmentFor($this->learner->id, $this->course->id));
         self::assertFalse($access->hasCertificateAccess($this->learner->id, $this->course->id));
         $completion = app(CourseCompletionService::class);
-        self::assertTrue($completion->canAccessSection($this->learner, $this->lastLesson));
-        self::assertFalse($completion->canAccessSection($this->learner, $this->projectSection));
+        $sections = app(CourseSectionAccessService::class);
+        self::assertTrue($sections->canAccessSection($this->learner, $this->lastLesson));
+        self::assertFalse($sections->canAccessSection($this->learner, $this->projectSection));
         $denied = $completion->complete($this->learner, $this->course->id, $this->projectSection->id);
         self::assertSame(403, $denied['status']);
         self::assertSame('projects_not_included', $denied['code']);
@@ -119,11 +124,15 @@ final class WatchOnlyCourseLearningTest extends TestCase
 
     public function test_watch_only_completion_does_not_become_a_practical_certificate_on_upgrade(): void
     {
+        $this->travelTo(now()->startOfSecond());
         $this->completeLessons();
         $completion = app(CurriculumCompletionService::class);
         self::assertSame(1, $completion->markCompleted($this->learner->id, $this->course->id));
         self::assertFalse($this->enrollment->fresh()->completed_with_projects);
         self::assertNull($completion->earnedRevision($this->enrollment->fresh()));
+
+        $watchOnlyCompletedAt = $this->enrollment->fresh()->curriculum_completed_at;
+        $this->travel(1)->days();
 
         $this->plan->forceFill(['projects_enabled' => true, 'certificate_enabled' => true])->save();
         // Editing an offer cannot change the already purchased Basic contract.
@@ -136,7 +145,7 @@ final class WatchOnlyCourseLearningTest extends TestCase
 
         self::assertNull($completion->markCompleted($this->learner->id, $this->course->id));
         self::assertNull($completion->earnedRevision($this->enrollment->fresh()));
-        self::assertFalse(app(CourseCompletionService::class)->canAccessSection($this->learner, $this->lastLesson));
+        self::assertFalse(app(CourseSectionAccessService::class)->canAccessSection($this->learner, $this->lastLesson));
         self::assertSame(3, app(CoursePresentationService::class)->progressSummary($this->learner->id, $this->course->id)['total_sections']);
         self::assertSame(0, DB::table('certificates')->count());
 
@@ -156,6 +165,34 @@ final class WatchOnlyCourseLearningTest extends TestCase
         self::assertSame(1, $completion->markCompleted($this->learner->id, $this->course->id));
         self::assertTrue($this->enrollment->fresh()->completed_with_projects);
         self::assertSame(1, $completion->earnedRevision($this->enrollment->fresh()));
+        self::assertTrue($this->enrollment->fresh()->curriculum_completed_at->greaterThan($watchOnlyCompletedAt));
+    }
+
+    public function test_earned_completion_cannot_be_rewritten_or_downgraded(): void
+    {
+        $this->enrollment->forceFill([
+            'completed_curriculum_revision' => 1,
+            'curriculum_completed_at' => now()->subDay(),
+            'completed_with_projects' => true,
+        ])->save();
+        $original = $this->enrollment->fresh();
+
+        foreach ([
+            ['completed_curriculum_revision' => 2],
+            ['curriculum_completed_at' => now()],
+            ['completed_with_projects' => false],
+        ] as $mutation) {
+            try {
+                $this->enrollment->fresh()->forceFill($mutation)->save();
+                self::fail('An earned completion was changed.');
+            } catch (\LogicException $exception) {
+                self::assertSame('Earned curriculum completion is immutable.', $exception->getMessage());
+            }
+        }
+        $unchanged = $this->enrollment->fresh();
+        self::assertSame(1, $unchanged->completed_curriculum_revision);
+        self::assertTrue($unchanged->completed_with_projects);
+        self::assertTrue($unchanged->curriculum_completed_at->equalTo($original->curriculum_completed_at));
     }
 
     public function test_grant_can_finish_lessons_but_cannot_submit_projects_or_earn_a_certificate(): void
@@ -169,13 +206,14 @@ final class WatchOnlyCourseLearningTest extends TestCase
             'access_plan_order_id' => null,
             'access_plan_snapshot' => null,
         ])->save();
-        $access = app(CourseChatAccessService::class);
+        $access = app(CourseEntitlementService::class);
         self::assertTrue($access->hasLearningAccess($this->learner->id, $this->course->id));
         self::assertNull($access->activeProjectEnrollmentFor($this->learner->id, $this->course->id));
         self::assertFalse($access->hasCertificateAccess($this->learner->id, $this->course->id));
         $completion = app(CourseCompletionService::class);
-        self::assertTrue($completion->canAccessSection($this->learner, $this->lastLesson));
-        self::assertFalse($completion->canAccessSection($this->learner, $this->projectSection));
+        $sections = app(CourseSectionAccessService::class);
+        self::assertTrue($sections->canAccessSection($this->learner, $this->lastLesson));
+        self::assertFalse($sections->canAccessSection($this->learner, $this->projectSection));
         self::assertSame('projects_not_included', $completion->complete(
             $this->learner, $this->course->id, $this->projectSection->id
         )['code']);
@@ -214,15 +252,86 @@ final class WatchOnlyCourseLearningTest extends TestCase
         ])->save();
         $before = $this->enrollment->fresh()->getAttributes();
         $preview = app(AdminCoursePreviewService::class)->prepare(
-            $this->course, $this->learner, 'grant', Request::create('/admin/courses/preview')
+            $this->course, 'grant'
         );
         self::assertNull($preview['error']);
         self::assertSame('grant', $preview['selectedPlan']['code']);
         self::assertFalse($preview['selectedPlan']['chat_enabled']);
         self::assertFalse($preview['selectedPlan']['projects_enabled']);
         self::assertFalse($preview['selectedPlan']['certificate_enabled']);
-        self::assertFalse($preview['previewPayload']['projects_available']);
+        $payload = app(CoursePresentationService::class)->dashboardPreview(
+            $preview['previewCourse'], $this->learner, $preview['selectedPlan'], 'scholarship'
+        )->resolve(Request::create('/admin/courses/preview'));
+        self::assertFalse($payload['projects_available']);
         self::assertSame($before, $this->enrollment->fresh()->getAttributes());
+    }
+
+    public function test_section_access_reads_do_not_resolve_completion_or_presentation_writers_or_modify_learning_state(): void
+    {
+        Http::preventStrayRequests();
+        foreach ([CourseCompletionService::class, CoursePresentationService::class, LearningAchievementSignalService::class] as $otherOwner) {
+            app()->bind($otherOwner, static function (): never {
+                throw new \LogicException('A section access read must not resolve completion or presentation.');
+            });
+        }
+        $before = $this->enrollment->fresh()->getAttributes();
+        DB::enableQueryLog();
+        DB::flushQueryLog();
+        try {
+            $sections = app(CourseSectionAccessService::class);
+            self::assertTrue($sections->canAccessSection($this->learner, $this->lastLesson));
+            self::assertSame([
+                'can_access' => false, 'is_locked' => true, 'lock_reason' => 'projects_not_included',
+            ], $sections->sectionAccessState($this->learner, $this->projectSection));
+            $map = $sections->sectionLockStatus($this->course->sections()->get(), collect(), (int) $this->learner->id);
+            self::assertCount(2, $map);
+            self::assertFalse($map->contains('section_id', $this->projectSection->id));
+            self::assertTrue($map->every(fn (array $state): bool => $state['can_access'] && !$state['is_completed']));
+            self::assertSame([], array_values(array_filter(
+                DB::getQueryLog(),
+                static fn (array $query): bool => (bool) preg_match('/^\s*(insert|update|delete|replace)\b/i', $query['query'])
+            )));
+        } finally {
+            DB::disableQueryLog();
+        }
+        self::assertSame($before, $this->enrollment->fresh()->getAttributes());
+        $this->assertDatabaseCount('student_section_progress', 0);
+        $this->assertDatabaseCount('project_submissions', 0);
+        $this->assertDatabaseCount('certificates', 0);
+        Http::assertNothingSent();
+    }
+
+    #[TestWith(['inactive_user'])]
+    #[TestWith(['no_enrollment'])]
+    #[TestWith(['inactive_enrollment'])]
+    #[TestWith(['expired_enrollment'])]
+    #[TestWith(['unpublished_course'])]
+    public function test_section_reader_preserves_course_access_denial_before_sequence_checks(string $scenario): void
+    {
+        match ($scenario) {
+            'inactive_user' => $this->learner->forceFill(['active' => false])->save(),
+            'no_enrollment' => $this->enrollment->delete(),
+            'inactive_enrollment' => $this->enrollment->forceFill(['is_active' => false])->save(),
+            'expired_enrollment' => $this->enrollment->forceFill(['expires_at' => now()->subDay()])->save(),
+            'unpublished_course' => $this->course->forceFill(['is_coming_soon' => true])->save(),
+        };
+        self::assertSame([
+            'can_access' => false, 'is_locked' => true, 'lock_reason' => 'course_purchase_required',
+        ], app(CourseSectionAccessService::class)->sectionAccessState($this->learner, $this->lastLesson));
+        $this->assertDatabaseCount('student_section_progress', 0);
+    }
+
+    public function test_section_reader_fails_closed_for_a_section_outside_the_current_learning_map(): void
+    {
+        $missing = new CourseSection();
+        $missing->forceFill([
+            'id' => 999999, 'course_id' => $this->course->id,
+            'section_type' => 'lesson', 'sectionable_type' => Lesson::class,
+        ]);
+        self::assertSame([
+            'can_access' => false, 'is_locked' => true, 'lock_reason' => null,
+        ], app(CourseSectionAccessService::class)->sectionAccessState($this->learner, $missing));
+        $this->assertDatabaseCount('student_section_progress', 0);
     }
 
     private function completeLessons(): void

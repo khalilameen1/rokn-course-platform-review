@@ -17,7 +17,10 @@ use Illuminate\Support\Facades\DB;
 
 final class PortfolioProfileController extends Controller
 {
-    public function __construct(private PortfolioShareIdentityService $portfolioShares)
+    public function __construct(
+        private PortfolioShareIdentityService $portfolioShares,
+        private PortfolioModerationService $moderation
+    )
     {
     }
 
@@ -101,7 +104,7 @@ final class PortfolioProfileController extends Controller
     private function profilePayload(User $user): array
     {
         $slug = $this->portfolioShares->ensure($user);
-        $sharing = app(PortfolioModerationService::class)->ownerState($user);
+        $sharing = $this->moderation->reconcileOwnerState($user);
 
         return [
             'slug' => $slug,

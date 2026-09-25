@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Models\Course;
-use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAttachmentGrantService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,10 +33,10 @@ final class GrantCourseAttachmentsToEnrollments implements ShouldQueue, ShouldBe
         return implode(':', [$this->courseId, $this->publishedRevision, (int) $this->chat, (int) $this->project]);
     }
 
-    public function handle(CourseAccessPlanService $plans): void
+    public function handle(CoursePlanAttachmentGrantService $grants): void
     {
         $course = Course::query()->find($this->courseId);
         if (!$course || (int) $course->last_published_authoring_version < $this->publishedRevision) return;
-        $plans->grantAttachmentsToCurrentEnrollments($course, $this->chat, $this->project);
+        $grants->grantAttachmentsToCurrentEnrollments($course, $this->chat, $this->project);
     }
 }

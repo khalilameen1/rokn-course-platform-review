@@ -12,6 +12,66 @@ use Tests\TestCase;
 
 final class OpenRouterCostAccountingTest extends TestCase
 {
+    public function test_failed_durable_landing_does_not_issue_a_second_paid_request(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake(['openrouter.test/*' => Http::response([
+            'id' => 'landing-failure',
+            'choices' => [['message' => ['content' => 'Accounted answer']]],
+            'usage' => ['cost' => .002],
+        ])]);
+        $landings = [];
+        $failure = new \RuntimeException('Durable storage is temporarily unavailable.');
+
+        try {
+            app(OpenRouterService::class)->chat(
+                'test/model', [['role' => 'user', 'content' => 'Question']], .2, 100,
+                landImmediately: static function (array $result) use (&$landings, $failure): void {
+                    $landings[] = $result;
+                    throw $failure;
+                }
+            );
+            self::fail('A failed landing must propagate to the durable recovery owner.');
+        } catch (\RuntimeException $exception) {
+            self::assertSame($failure, $exception);
+        }
+
+        self::assertCount(1, $landings);
+        self::assertSame('Accounted answer', $landings[0]['message']);
+        self::assertSame(.002, $landings[0]['usage']['cost']);
+        self::assertTrue($landings[0]['usage']['cost_reported']);
+        Http::assertSentCount(1);
+    }
+
+    public function test_configuration_failures_and_open_circuit_never_send_or_land_a_request(): void
+    {
+        Http::preventStrayRequests();
+        Http::fake(static fn () => throw new \LogicException('No generation should be sent.'));
+        $cases = [
+            ['', ['test/model'], false, 'not_configured'],
+            ['test-key', [], false, 'model_not_allowed'],
+            ['test-key', ['test/model'], true, 'configuration_circuit_open'],
+        ];
+        foreach ($cases as [$key, $allowed, $open, $code]) {
+            config(['openrouter.api_key' => $key, 'openrouter.allowed_models' => $allowed]);
+            Cache::forget(OpenRouterService::CIRCUIT_KEY);
+            if ($open) {
+                Cache::put(OpenRouterService::CIRCUIT_KEY, ['reason' => 'test'], 60);
+            }
+            try {
+                app(OpenRouterService::class)->chat(
+                    'test/model', [], .2, 100,
+                    landImmediately: static fn () => throw new \LogicException('No result to land.')
+                );
+                self::fail('Configuration failure must stop before generation.');
+            } catch (AiProviderUnavailableException $exception) {
+                self::assertSame($code, $exception->providerCode);
+                self::assertFalse($exception->outcomeUnknown);
+            }
+        }
+        Http::assertNothingSent();
+    }
+
     public function test_provider_error_pages_and_tool_only_envelopes_are_not_delivered_as_answers(): void
     {
         $bodies = [

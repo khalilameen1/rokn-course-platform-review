@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\AiConsentService;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectSubmissionPresenter;
@@ -306,7 +307,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
         $providerResult = ['message' => 'تقرير محفوظ عن تصميم الشعار',
             'usage' => ['total_tokens' => 100, 'cost' => .01, 'cost_reported' => true], 'provider_request_id' => 'retired-report'];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $providerResult);
-        if ($settled) $budget->settle($event, $providerResult);
+        if ($settled) app(AiUsageSettlementService::class)->settle($event, $providerResult);
         $submission->forceFill(['submission_metadata' => ['ai_feedback' => [
             'status' => 'unavailable', 'reason' => 'worker_failed',
             'request_id' => $submission->public_id, 'retry_count' => 0,
@@ -437,7 +438,7 @@ final class MissingProjectReportRecoveryTest extends TestCase
         $result = ['message' => 'هذا تقرير فعلي محفوظ عن المحاولة', 'usage' => ['total_tokens' => 100, 'cost' => .01],
             'provider_request_id' => 'report-known'];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $result);
-        if ($settled) $budget->settle($event, $result);
+        if ($settled) app(AiUsageSettlementService::class)->settle($event, $result);
 
         app()->call([new GenerateProjectFeedback($submission->id), 'handle']);
 

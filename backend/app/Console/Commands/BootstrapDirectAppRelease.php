@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Models\AppVersion;
+use App\Services\AppReleaseAuthoringService;
 use App\Services\AppReleasePolicyService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Schema;
 use Throwable;
 
@@ -21,7 +21,7 @@ final class BootstrapDirectAppRelease extends Command
 
     protected $description = 'Create the first direct Android release without weakening dashboard release rules';
 
-    public function handle(AppReleasePolicyService $releasePolicy): int
+    public function handle(AppReleasePolicyService $releasePolicy, AppReleaseAuthoringService $authoring): int
     {
         if (config('app.env') !== 'production') {
             $this->error('This bootstrap command is restricted to APP_ENV=production.');
@@ -68,72 +68,16 @@ final class BootstrapDirectAppRelease extends Command
         }
 
         try {
-            return DB::transaction(function () use ($versionName, $versionCode, $downloadUrl): int {
-                $existing = AppVersion::query()
-                    ->where('platform', 'android')
-                    ->where('distribution_channel', AppReleasePolicyService::CHANNEL_DIRECT)
-                    ->where('version_code', $versionCode)
-                    ->lockForUpdate()
-                    ->first();
-                if ($existing) {
-                    if (
-                        $existing->version_name === $versionName
-                        && $existing->download_url === $downloadUrl
-                        && $existing->is_active
-                    ) {
-                        $this->info("Direct release {$versionName} ({$versionCode}) is already active.");
+            $created = $authoring->bootstrapDirect($versionName, $versionCode, $downloadUrl);
+            $this->info($created
+                ? "Direct release {$versionName} ({$versionCode}) is active."
+                : "Direct release {$versionName} ({$versionCode}) is already active.");
 
-                        return self::SUCCESS;
-                    }
+            return self::SUCCESS;
+        } catch (ValidationException $exception) {
+            $this->error((string) collect($exception->errors())->flatten()->first());
 
-                    $this->error('That direct versionCode already exists with different or inactive release facts; review it in the dashboard.');
-
-                    return self::FAILURE;
-                }
-
-                $channelMaximum = (int) AppVersion::query()
-                    ->where('platform', 'android')
-                    ->where('distribution_channel', AppReleasePolicyService::CHANNEL_DIRECT)
-                    ->lockForUpdate()
-                    ->max('version_code');
-                $platformMaximum = (int) AppVersion::query()
-                    ->where('platform', 'android')
-                    ->lockForUpdate()
-                    ->max('version_code');
-                if (($channelMaximum > 0 && $versionCode <= $channelMaximum) || $versionCode < $platformMaximum) {
-                    $this->error('The versionCode would move the direct channel or Android platform backwards.');
-
-                    return self::FAILURE;
-                }
-
-                $otherNames = AppVersion::query()
-                    ->where('platform', 'android')
-                    ->where('version_code', $versionCode)
-                    ->lockForUpdate()
-                    ->pluck('version_name')
-                    ->map(static fn ($name): string => (string) $name)
-                    ->unique();
-                if ($otherNames->isNotEmpty() && !$otherNames->contains($versionName)) {
-                    $this->error('The same Android versionCode already has a different version name.');
-
-                    return self::FAILURE;
-                }
-
-                AppVersion::query()->create([
-                    'platform' => 'android',
-                    'distribution_channel' => AppReleasePolicyService::CHANNEL_DIRECT,
-                    'version_name' => $versionName,
-                    'version_code' => $versionCode,
-                    'build_number' => null,
-                    'is_force_update' => false,
-                    'is_active' => true,
-                    'download_url' => $downloadUrl,
-                ]);
-
-                $this->info("Direct release {$versionName} ({$versionCode}) is active.");
-
-                return self::SUCCESS;
-            }, 3);
+            return self::FAILURE;
         } catch (Throwable $exception) {
             report($exception);
             $this->error('The direct release was not created; no existing release was changed.');

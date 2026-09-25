@@ -10,12 +10,15 @@ use App\Http\Requests\Admin\CourseRequest;
 use App\Models\Course;
 use App\Models\User;
 use App\Services\AdminCourseAuthoringService;
+use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCourseEditorStatePresenter;
 use App\Services\AdminCourseLifecycleService;
 use App\Services\AdminCoursePageService;
 use App\Services\AdminCoursePreviewService;
 use App\Services\AdminCourseReportService;
 use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
+use App\Services\CoursePresentationService;
 use App\Support\ReportPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -42,9 +45,23 @@ final class CourseController extends Controller
         return view('admin.courses.create');
     }
 
-    public function store(CourseRequest $request, AdminCourseAuthoringService $authoring)
-    {
-        $result = $authoring->create($request);
+    public function store(
+        CourseRequest $request,
+        AdminCourseAuthoringService $authoring,
+        AdminAuthoringCreateIntentService $createIntents
+    ) {
+        $result = $authoring->create(
+            $request->authoringEdit(),
+            static function (Course $course) use ($request, $createIntents): void {
+                $createIntents->completeRedirect(
+                    $request,
+                    route('admin.courses.show', $course),
+                    302,
+                    Course::class,
+                    $course->id
+                );
+            }
+        );
         if ($result['status'] === 'failed') {
             return redirect()->back()
                 ->withInput()
@@ -94,14 +111,21 @@ final class CourseController extends Controller
     public function studentPreview(
         Request $request,
         Course $course,
-        AdminCoursePreviewService $preview
+        AdminCoursePreviewService $preview,
+        CoursePresentationService $presentation
     ) {
         $validated = $request->validate(['plan' => 'nullable|string|max:32']);
         /** @var User $actor */
         $actor = $request->user();
-        $data = $preview->prepare($course, $actor, $validated['plan'] ?? null, $request);
+        $data = $preview->prepare($course, $validated['plan'] ?? null);
         abort_if($data['error'] !== null, 422, $data['error']);
         unset($data['error']);
+        $data['previewPayload'] = $presentation->dashboardPreview(
+            $data['previewCourse'],
+            $actor,
+            $data['selectedPlan'],
+            $data['selectedPlan']['code'] === 'grant' ? 'scholarship' : 'paid'
+        )->resolve($request);
 
         return response()
             ->view('admin.courses.student-preview', $data)
@@ -111,9 +135,10 @@ final class CourseController extends Controller
     public function startDraft(
         Request $request,
         Course $course,
-        CourseStagedAuthoringService $stagedAuthoring
+        CourseStagedAuthoringService $stagedAuthoring,
+        CourseRevisionResolver $revisions
     ): Response {
-        $canonical = $stagedAuthoring->canonicalFor($course);
+        $canonical = $revisions->canonicalFor($course);
         $draft = $stagedAuthoring->draftFor($canonical);
         $payload = [
             'success' => true,
@@ -165,7 +190,7 @@ final class CourseController extends Controller
         AdminCourseEditorStatePresenter $editorState
     ) {
         $result = $authoring->update(
-            $request,
+            $request->authoringEdit(),
             $course,
             $this->isAdministrator(),
             $this->canCurateHome()

@@ -16,6 +16,8 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseLeaderboardService;
+use App\Services\AdminStudentProgressReadService;
+use App\Services\StudentProgressSummaryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -113,6 +115,45 @@ final class WatchOnlyStaffProgressTest extends TestCase
         self::assertSame(3, $statistics['active_enrollments']);
         self::assertEquals(77.78, $statistics['average_progress']);
         self::assertSame([2, 2, 2], array_column($statistics['top_students'], 'completed_count'));
+    }
+
+    public function test_staff_read_owner_is_independent_of_http_and_keeps_all_projections_consistent(): void
+    {
+        $this->app->bind(StudentProgressController::class, static function (): never {
+            throw new \LogicException('Progress reads must not resolve a controller.');
+        });
+        $read = app(AdminStudentProgressReadService::class);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        try {
+            $detail = $read->workspace((int) $this->watcher->id)['coursesProgress']->first()['progress'];
+            $comparison = $read->compare([$this->watcher->id, $this->practical->id], (int) $this->course->id);
+            $listing = $read->listing(['course_id' => $this->course->id], ['course_id' => $this->course->id]);
+            $latest = app(StudentProgressSummaryService::class)->latestForUsers(collect([$this->watcher]))->get($this->watcher->id)['progress'];
+            unset($detail['projects_enabled']);
+            self::assertEquals($latest, $detail);
+            self::assertEquals($latest, $comparison->first()['progress']);
+            self::assertSame(3, $listing['users']->total());
+            self::assertEquals(77.78, $read->statistics()['average_progress']);
+            foreach (DB::getQueryLog() as $query) {
+                self::assertDoesNotMatchRegularExpression('/^\s*(insert|update|delete|replace|alter|create|drop)\b/i', $query['query']);
+            }
+        } finally {
+            DB::disableQueryLog();
+        }
+    }
+
+    public function test_read_owner_preserves_empty_enrollment_and_comparison_contracts(): void
+    {
+        $outsider = $this->student('not-enrolled');
+        $read = app(AdminStudentProgressReadService::class);
+        self::assertSame(0, $read->workspace((int) $outsider->id)['totalEnrollments']);
+        $progress = $read->compare([$outsider->id, $this->watcher->id], (int) $this->course->id)->first()['progress'];
+        self::assertSame(0, $progress['total_sections']);
+        self::assertSame(0, $progress['last_activity']);
+        $listing = $read->listing(['search' => 'not-enrolled'], []);
+        self::assertFalse($listing['usersWithProgress']->sole()['has_enrollment']);
+        self::assertNull($listing['usersWithProgress']->sole()['progress']);
     }
 
     public function test_leaderboard_progress_preserves_legacy_projects_and_watch_only_completion(): void

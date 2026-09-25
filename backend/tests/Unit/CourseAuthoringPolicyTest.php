@@ -99,7 +99,7 @@ final class CourseAuthoringPolicyTest extends TestCase
             dirname(__DIR__, 2).'/resources/views/admin/courses/partials/show/inline-authoring.blade.php'
         );
         $input = file_get_contents(
-            dirname(__DIR__, 2).'/app/Services/CourseSectionInput.php'
+            dirname(__DIR__, 2).'/app/Http/Requests/Admin/CourseSectionInput.php'
         );
         $content = file_get_contents(
             dirname(__DIR__, 2).'/app/Services/CourseSectionContentService.php'

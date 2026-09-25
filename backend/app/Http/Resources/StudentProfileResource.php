@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Str;
 
@@ -223,7 +223,7 @@ class StudentProfileResource extends JsonResource
      */
     protected function getAuthorizedCourses()
     {
-        $courseAccess = app(CourseChatAccessService::class);
+        $courseAccess = app(CourseEntitlementService::class);
         $enrollments = $this->relationLoaded('enrollments')
             ? $this->enrollments
             : $this->enrollments()

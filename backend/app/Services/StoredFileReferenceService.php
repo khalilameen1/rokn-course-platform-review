@@ -142,13 +142,18 @@ final class StoredFileReferenceService
                 ['photos', 'path'],
                 ['users', 'profile_image'],
                 ['courses', 'image'],
+                ['levels', 'badge_image'],
             ] as [$table, $column]) {
                 if ($this->exists($table, $column, $path)) {
                     return true;
                 }
             }
             $publicUrl = PublicDiskUrl::from($path);
+            if ($this->exists('levels', 'badge_image', '/'.$path)) {
+                return true;
+            }
             foreach ([
+                ['levels', 'badge_image'],
                 ['notification_campaigns', 'image_url'],
                 ['student_notifications', 'image_url'],
                 ['design_settings', 'logo_url'],

@@ -24,10 +24,13 @@ final class ProjectSubmissionEvaluationService
     public function __construct(
         private readonly AiInputAttachmentService $attachments,
         private readonly AiEntitlementBudgetService $budget,
+        private readonly AiUsageSettlementService $settlements,
         private readonly PaidAiCallExecutionService $calls,
         private readonly OpenRouterService $provider,
-        private readonly ProjectSubmissionService $submissions,
-        private readonly CourseChatAccessService $access
+        private readonly OpenRouterRequestPolicy $requestPolicy,
+        private readonly ProjectSubmissionEvaluationScheduler $evaluations,
+        private readonly ProjectSubmissionReviewService $reviews,
+        private readonly CourseEntitlementService $access
     ) {}
 
     public function evaluate(int $submissionId, string $executionId): void
@@ -49,7 +52,7 @@ final class ProjectSubmissionEvaluationService
             }
             if ($event && $this->calls->providerWasStarted($event)) {
                 if ($this->calls->startedState($event) === PaidAiCallExecutionService::LIVE) return;
-                $this->calls->settleUnknown($this->budget, $event, [], 'review_worker_interrupted');
+                $this->settlements->settleUnknown($event, [], 'review_worker_interrupted');
                 $this->unavailable($submission, $executionId, 'provider_outcome_unknown', false);
                 return;
             }
@@ -65,7 +68,7 @@ final class ProjectSubmissionEvaluationService
                 $this->unavailable($submission, $executionId, 'review_access_unavailable', false);
                 return;
             }
-            $model = $this->provider->configuredModel('project_model');
+            $model = $this->requestPolicy->configuredModel('project_model');
             $requirements = UnicodeText::clean((string) data_get($snapshot, 'project.requirements_text'));
             $text = UnicodeText::clean((string) $submission->submission_text);
             $maximumCharacters = max(1, (int) config('projects.evaluation_max_input_characters', 60000));
@@ -133,7 +136,7 @@ final class ProjectSubmissionEvaluationService
             $event = $event?->fresh();
             if ($this->calls->landedResult($event)) throw $exception;
             if ($event && $exception->outcomeUnknown) {
-                $this->calls->settleUnknown($this->budget, $event, [], 'review_provider_outcome_unknown');
+                $this->settlements->settleUnknown($event, [], 'review_provider_outcome_unknown');
             } else {
                 if ($event && $exception->retrySafe) $this->calls->markRetrySafe($event, $executionId);
                 $this->budget->release($event, 'review_provider_unavailable');
@@ -149,7 +152,7 @@ final class ProjectSubmissionEvaluationService
                 throw $exception;
             }
             $started = $this->calls->providerWasStarted($event);
-            if ($started) $this->calls->settleUnknown($this->budget, $event, [], 'review_worker_interrupted');
+            if ($started) $this->settlements->settleUnknown($event, [], 'review_worker_interrupted');
             else $this->budget->release($event, 'review_input_unavailable');
             $this->unavailable($submission, $executionId,
                 $started ? 'provider_outcome_unknown' : 'review_input_unavailable', !$started);
@@ -205,7 +208,7 @@ final class ProjectSubmissionEvaluationService
             $locked->forceFill(['submission_metadata' => $metadata, 'auto_pass_at' => now()])->save();
             return $locked;
         }, 3);
-        return $this->submissions->finalizeIfDue($retry);
+        return $this->evaluations->dispatchIfDue($retry);
     }
 
     public function fail(int $submissionId, string $executionId): void
@@ -220,7 +223,7 @@ final class ProjectSubmissionEvaluationService
             return;
         }
         $started = $this->calls->providerWasStarted($event);
-        if ($started) $this->calls->settleUnknown($this->budget, $event, [], 'review_worker_interrupted');
+        if ($started) $this->settlements->settleUnknown($event, [], 'review_worker_interrupted');
         else $this->budget->release($event, 'review_worker_interrupted');
         $this->unavailable($submission, $executionId, $started ? 'provider_outcome_unknown' : 'review_worker_interrupted', !$started);
     }
@@ -250,15 +253,15 @@ final class ProjectSubmissionEvaluationService
     {
         $decoded = $this->decision((string) ($result['message'] ?? ''));
         $result['entitlement_delivered'] = $decoded !== null;
-        $outcome = $this->budget->settleForActiveUser($event, $result, (int) $submission->user_id);
-        if (!AiEntitlementBudgetService::settlementAllowsDelivery($outcome)) return;
+        $outcome = $this->settlements->settleForActiveUser($event, $result, (int) $submission->user_id);
+        if (!AiUsageSettlementService::settlementAllowsDelivery($outcome)) return;
         if ($decoded === null) {
             $this->unavailable($submission,
                 (string) data_get($submission->submission_metadata, 'evaluation.worker_execution_id'),
                 'review_result_unavailable', false);
             return;
         }
-        $this->submissions->applyEvaluationOutcome($submission, (string) $event->request_id,
+        $this->reviews->applyEvaluationOutcome($submission, (string) $event->request_id,
             $decoded['decision'] === 'relevant_effort', $decoded['reason']);
         $this->calls->markPresented($event);
     }

@@ -9,51 +9,26 @@ use App\Models\NotificationCampaign;
 use App\Models\StudentNotification;
 use App\Support\DurableJobDispatch;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use App\Support\NotificationCampaignIntent;
 
 final class NotificationCampaignService
 {
-    /** @param array<int> $userIds @param array<int> $excludeUserIds */
-    public function queue(
-        string $notificationType,
-        array $userIds,
-        ?string $notifiableType,
-        ?int $notifiableId,
-        string $titleAr,
-        string $titleEn,
-        string $messageAr,
-        string $messageEn,
-        ?string $link,
-        array $excludeUserIds,
-        string $deliveryKey,
-        ?int $courseId,
-        string $audience,
-        ?string $imageUrl = null,
-        ?string $actionLabelAr = null,
-        ?string $actionLabelEn = null,
-        ?\DateTimeInterface $scheduledAt = null,
-        ?int $authoredBy = null
-    ): bool {
-        $userIds = $this->normalizeUserIds($userIds);
-        $excludeUserIds = $this->normalizeUserIds($excludeUserIds);
-        $this->validateAudienceSelector($userIds, $excludeUserIds, $courseId, $audience);
-        $deliveryKey = trim($deliveryKey);
-        if ($deliveryKey === '') {
-            $deliveryKey = (string) Str::uuid();
-        } elseif (strlen($deliveryKey) > 64) {
-            $deliveryKey = hash('sha256', $deliveryKey);
-        }
+    public function __construct(private readonly StudentNotificationPresentationService $presentation)
+    {
+    }
 
-        $hasExplicitImage = trim((string) $imageUrl) !== '';
-        $presentation = app(StudentNotificationPresentationService::class)->for(
+    public function queue(NotificationCampaignIntent $intent): bool
+    {
+        $deliveryKey = $intent->deliveryKey;
+        $presentation = $this->presentation->for(
             new StudentNotification([
-                'notification_type' => $notificationType,
-                'notifiable_type' => $notifiableType,
-                'notifiable_id' => $notifiableId,
-                'link' => $link,
-                'image_url' => $imageUrl,
-                'action_label_ar' => $actionLabelAr,
-                'action_label_en' => $actionLabelEn,
+                'notification_type' => $intent->notificationType,
+                'notifiable_type' => $intent->notifiableType,
+                'notifiable_id' => $intent->notifiableId,
+                'link' => $intent->link,
+                'image_url' => $intent->imageUrl,
+                'action_label_ar' => $intent->actionLabelAr,
+                'action_label_en' => $intent->actionLabelEn,
             ])
         );
         $link = $presentation['link'];
@@ -61,26 +36,26 @@ final class NotificationCampaignService
         $actionLabelAr = $presentation['action_label_ar'];
         $actionLabelEn = $presentation['action_label_en'];
 
-        $requestedAt = $scheduledAt
-            ? \Illuminate\Support\Carbon::instance($scheduledAt)->utc()
+        $requestedAt = $intent->scheduledAt
+            ? \Illuminate\Support\Carbon::instance($intent->scheduledAt)->utc()
             : now();
-        $allowedAt = NotificationDeliveryPolicy::nextAllowedAt($notificationType, $requestedAt);
+        $allowedAt = NotificationDeliveryPolicy::nextAllowedAt($intent->notificationType, $requestedAt);
         $scheduledAt = $allowedAt->isAfter(now()->addSeconds(30)) ? $allowedAt : null;
         $isScheduled = $scheduledAt
             && $scheduledAt->isAfter(now()->addSeconds(30));
         $campaignValues = [
-            'notification_type' => $notificationType,
-            'audience' => $audience,
-            'course_id' => $courseId,
-            'notifiable_type' => $notifiableType,
-            'notifiable_id' => $notifiableId,
-            'user_ids' => array_values($userIds),
-            'exclude_user_ids' => array_values($excludeUserIds),
-            'authored_by' => $authoredBy && $authoredBy > 0 ? $authoredBy : null,
-            'title_ar' => $titleAr,
-            'title_en' => $titleEn,
-            'message_ar' => $messageAr,
-            'message_en' => $messageEn,
+            'notification_type' => $intent->notificationType,
+            'audience' => $intent->audience->selector,
+            'course_id' => $intent->audience->courseId,
+            'notifiable_type' => $intent->notifiableType,
+            'notifiable_id' => $intent->notifiableId,
+            'user_ids' => array_values($intent->audience->userIds),
+            'exclude_user_ids' => array_values($intent->audience->excludeUserIds),
+            'authored_by' => $intent->authoredBy,
+            'title_ar' => $intent->titleAr,
+            'title_en' => $intent->titleEn,
+            'message_ar' => $intent->messageAr,
+            'message_en' => $intent->messageEn,
             'action_label_ar' => $actionLabelAr,
             'action_label_en' => $actionLabelEn,
             'link' => $link,
@@ -97,7 +72,7 @@ final class NotificationCampaignService
         );
 
         if (!$campaign->wasRecentlyCreated) {
-            if (!$this->sameImmutablePayload($campaign, $campaignValues, $hasExplicitImage)) {
+            if (!$this->sameImmutablePayload($campaign, $campaignValues, $intent)) {
                 throw new \DomainException('notification_delivery_key_payload_mismatch');
             }
             return false;
@@ -181,49 +156,11 @@ final class NotificationCampaignService
         return new SendStudentNotification((string) $campaign->delivery_key);
     }
 
-    /** @param array<int,mixed> $ids @return array<int> */
-    private function normalizeUserIds(array $ids): array
-    {
-        $ids = array_values(array_filter(array_unique(array_map('intval', $ids)),
-            static fn (int $id): bool => $id > 0));
-        sort($ids, SORT_NUMERIC);
-
-        return $ids;
-    }
-
-    /** @param array<int> $userIds @param array<int> $excludeUserIds */
-    private function validateAudienceSelector(
-        array $userIds,
-        array $excludeUserIds,
-        ?int $courseId,
-        string $audience
-    ): void {
-        if (!in_array($audience, [
-            SendStudentNotification::AUDIENCE_ALL,
-            SendStudentNotification::AUDIENCE_ENROLLED,
-            SendStudentNotification::AUDIENCE_NOT_ENROLLED,
-        ], true)) {
-            throw new \InvalidArgumentException('Unsupported notification audience selector.');
-        }
-        if ($courseId !== null && $courseId <= 0) {
-            throw new \InvalidArgumentException('Course selector must contain a positive course ID.');
-        }
-        if ($audience !== SendStudentNotification::AUDIENCE_ALL && $courseId === null) {
-            throw new \InvalidArgumentException('Course ID is required for a course notification audience.');
-        }
-        if (count($userIds) > SendStudentNotification::MAX_EXPLICIT_USER_IDS) {
-            throw new \InvalidArgumentException('Explicit notification audience exceeds the safe broadcast limit.');
-        }
-        if (count($excludeUserIds) > SendStudentNotification::MAX_EXPLICIT_USER_IDS) {
-            throw new \InvalidArgumentException('Explicit notification exclusions exceed the safe broadcast limit.');
-        }
-    }
-
     /** @param array<string,mixed> $expected */
     private function sameImmutablePayload(
         NotificationCampaign $campaign,
         array $expected,
-        bool $hasExplicitImage
+        NotificationCampaignIntent $intent
     ): bool
     {
         foreach ([
@@ -242,7 +179,7 @@ final class NotificationCampaignService
         if ((int) ($campaign->authored_by ?? 0) !== (int) ($expected['authored_by'] ?? 0)) {
             return false;
         }
-        if ($hasExplicitImage
+        if ($intent->hasExplicitImage()
             && (string) ($campaign->image_url ?? '') !== (string) ($expected['image_url'] ?? '')) {
             return false;
         }
@@ -252,9 +189,9 @@ final class NotificationCampaignService
         // of the same delivery key look like a different campaign. The first
         // committed snapshot remains authoritative.
 
-        return $this->normalizeUserIds((array) ($campaign->user_ids ?? []))
-                === $this->normalizeUserIds((array) ($expected['user_ids'] ?? []))
-            && $this->normalizeUserIds((array) ($campaign->exclude_user_ids ?? []))
-                === $this->normalizeUserIds((array) ($expected['exclude_user_ids'] ?? []));
+        return $intent->audience->matchesRecipients(
+            (array) ($campaign->user_ids ?? []),
+            (array) ($campaign->exclude_user_ids ?? [])
+        );
     }
 }

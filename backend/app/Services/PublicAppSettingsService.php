@@ -7,7 +7,7 @@ namespace App\Services;
 use App\Models\DesignSetting;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Support\AfterCommitCacheInvalidation;
 use App\Support\RoknLocale;
 use Throwable;
 
@@ -153,17 +153,7 @@ final class PublicAppSettingsService
             $english = Cache::forget(self::CACHE_KEY_PREFIX.'en');
             return $arabic || $english;
         };
-        try {
-            if (DB::transactionLevel() > 0) {
-                DB::afterCommit($forget);
-                return;
-            }
-            $forget();
-        } catch (Throwable $exception) {
-            // Cache invalidation must never turn a successful settings write
-            // into a failed dashboard action. The entry also has a short TTL.
-            report($exception);
-        }
+        AfterCommitCacheInvalidation::run($forget, static fn (Throwable $exception) => report($exception));
     }
 
     public function socialUrl(string $channel, mixed $value): ?string

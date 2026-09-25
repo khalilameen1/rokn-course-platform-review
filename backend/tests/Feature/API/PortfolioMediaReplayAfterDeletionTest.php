@@ -7,12 +7,16 @@ namespace Tests\Feature\API;
 use App\Models\PortfolioDeletedUpload;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\BunnyMediaRegistry;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Mockery;
 
 final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
 {
+    private \Mockery\MockInterface $mediaRegistry;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -106,7 +110,7 @@ final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
         $bunny = $this->fakeBunny();
         $file = UploadedFile::fake()->image('work.jpg', 10, 10)->size(2);
         $mediaId = $this->append($file)->assertOk()->json('data.id');
-        $bunny->shouldReceive('queueStorageCleanup')->once()->andReturnFalse();
+        $this->mediaRegistry->shouldReceive('queueStorageCleanup')->once()->andReturnFalse();
         $this->deleteJson('/api/v1/portfolio/1/media/'.$mediaId)->assertStatus(500);
 
         self::assertSame(0, DB::table('portfolio_deleted_uploads')->count());
@@ -142,11 +146,11 @@ final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
 
             return 'portfolio/late-upload.jpg';
         });
-        $bunny->shouldReceive('queueStorageCleanup')->once()
+        $this->mediaRegistry->shouldReceive('queueStorageCleanup')->once()
             ->with('portfolio/late-upload.jpg', 'portfolio_rollback', 5)->andReturnTrue();
         $this->append($file)->assertStatus(422)->assertJsonPath('code', 'media_deleted');
         self::assertSame(0, DB::table('portfolio_media')->count());
-        $bunny->shouldNotHaveReceived('consumeStorageCleanupCandidate');
+        $this->mediaRegistry->shouldNotHaveReceived('consumeStorageCleanupCandidate');
     }
 
     private function append(
@@ -165,11 +169,15 @@ final class PortfolioMediaReplayAfterDeletionTest extends ApiTestCase
     private function fakeBunny(): \Mockery\MockInterface
     {
         $this->actingAs($this->user, 'api');
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
+        $this->mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $this->mediaRegistry);
         $bunny->shouldReceive('uploadFileToStorage')->andReturn('portfolio/accepted-image.jpg')->byDefault();
-        $bunny->shouldReceive('consumeStorageCleanupCandidate')->andReturnNull();
-        $bunny->shouldReceive('generateBunnySignedUrl')->andReturn('https://cdn.example.test/accepted-image.jpg');
-        $bunny->shouldReceive('queueStorageCleanup')->andReturnTrue()->byDefault();
+        $this->mediaRegistry->shouldReceive('consumeStorageCleanupCandidate')->andReturnNull();
+        $delivery->shouldReceive('storageUrl')->andReturn('https://cdn.example.test/accepted-image.jpg');
+        $this->mediaRegistry->shouldReceive('queueStorageCleanup')->andReturnTrue()->byDefault();
         $this->app->instance(BunnyService::class, $bunny);
 
         return $bunny;

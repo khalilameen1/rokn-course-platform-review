@@ -11,11 +11,15 @@ const blade = await readFile(resolve(
     backendRoot,
     'resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php',
 ), 'utf8');
-const uploadScript = blade
+const uploadModules = await Promise.all(['records', 'transfer', 'form'].map(module => readFile(
+    resolve(backendRoot, `public/admin/assets/js/course-studio-bunny-upload-${module}.js`), 'utf8',
+)));
+const uploadBootstrap = blade.slice(blade.lastIndexOf('<script>'))
     .replace(/^<script>\s*/, '')
     .replace(/\s*<\/script>\s*$/, '')
     .replace('@json((string) auth()->id())', JSON.stringify('admin-1'))
     .replace("@json($errors->has('bunny_video_claim_terminal'))", 'false');
+const uploadScript = uploadModules.join('\n') + '\n' + uploadBootstrap;
 
 const fixture = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"></head><body>
 <form id="sectionForm" data-course-id="3" data-section-id="" data-bunny-upload-init="/init" data-bunny-upload-renew="/renew">
@@ -235,6 +239,39 @@ try {
         await existing.context.close();
     }
 
+    const committed = await openScenario('normal');
+    await committed.page.locator('#save').click();
+    await committed.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
+    await committed.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
+    assert.equal(await committed.page.evaluate(() => window.RoknCourseVideoUpload.resetAfterCommit()), true);
+    assert.equal(await committed.page.locator('#bunny_video_claim').inputValue(), '');
+    assert.equal(await committed.page.locator('#bunny_video').isEnabled(), true);
+    assert.equal(await committed.page.evaluate(() => Object.keys(localStorage).length), 0);
+    assert.equal(await committed.page.evaluate(() => window.RoknCourseVideoUpload.setSectionContext('existing', false)), true);
+    assert.equal(await committed.page.locator('#bunny_video').getAttribute('required'), null);
+    await committed.page.locator('#save').click();
+    assert.equal(await committed.page.evaluate(() => window.__submissionCount), 2);
+    assert.equal(committed.calls.post, 1, 'a later unchanged section must not inherit the previous upload');
+    assert.equal(await committed.page.evaluate(() => window.RoknCourseVideoUpload.setSectionContext(null, true)), true);
+    assert.notEqual(await committed.page.locator('#bunny_video').getAttribute('required'), null);
+    await committed.context.close();
+
+    const originalTab = await openScenario('cancel-head');
+    await originalTab.page.locator('#save').click();
+    await originalTab.page.waitForFunction(() => document.getElementById('bunny_video_claim').value !== '');
+    await originalTab.page.locator('#bunny_upload_cancel').click();
+    originalTab.releasePendingHead();
+    await originalTab.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
+    const inheritedTabId = await originalTab.page.evaluate(() => sessionStorage.getItem('rokn:bunny-upload-tab:admin-1'));
+    const duplicateTab = await originalTab.context.newPage();
+    await duplicateTab.addInitScript(tabId => sessionStorage.setItem('rokn:bunny-upload-tab:admin-1', tabId), inheritedTabId);
+    await duplicateTab.goto(`http://127.0.0.1:${server.address().port}/`);
+    await duplicateTab.waitForFunction(tabId => sessionStorage.getItem('rokn:bunny-upload-tab:admin-1') !== tabId, inheritedTabId);
+    await selectScenarioFile(duplicateTab, 'cancel-head');
+    assert.equal(await duplicateTab.locator('#bunny_video_claim').inputValue(), '', 'a duplicated tab must not adopt the first tab upload');
+    assert.equal(await duplicateTab.locator('#bunny_upload_status').textContent(), '');
+    await originalTab.context.close();
+
     const lostAllocationResponse = await openScenario('normal', 'mutation-once');
     await lostAllocationResponse.page.locator('#save').click();
     await lostAllocationResponse.page.waitForFunction(() => window.__submittedClaim === 'same-signed-claim');
@@ -312,7 +349,11 @@ try {
     const headDeadline = Date.now() + 3000;
     while (pending.calls.head < 1 && Date.now() < headDeadline) await new Promise(done => setTimeout(done, 10));
     assert.equal(pending.calls.head, 1, 'the resumable HEAD request must start');
-    await pending.page.locator('#bunny_upload_cancel').click();
+    await pending.page.evaluate(() => {
+        document.getElementById('bunny_upload_cancel').click();
+        // Same event turn: the aborted request has not settled yet.
+        document.getElementById('bunny_upload_retry').click();
+    });
     pending.releasePendingHead();
     await pending.page.waitForTimeout(100);
     assert.equal(pending.calls.patch, 0, 'cancelled HEAD must not continue into video bytes');
@@ -342,7 +383,7 @@ try {
     assert.equal(chunkBackoff.calls.patch, 2);
     await chunkBackoff.context.close();
 
-    console.log('PASS Bunny allocation continuation, transport recovery, claim reuse, and cancellation');
+    console.log('PASS Bunny allocation continuation, transport recovery, claim reuse, cancellation, form reset, and duplicated-tab isolation');
 } finally {
     await browser?.close();
     await new Promise(done => server.close(done));

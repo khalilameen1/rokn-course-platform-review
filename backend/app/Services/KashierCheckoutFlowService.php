@@ -17,7 +17,10 @@ final readonly class KashierCheckoutFlowService
 {
     public function __construct(
         private KashierService $kashier,
-        private KashierPaymentService $payments,
+        private KashierOrderSettlementService $settlements,
+        private KashierGatewayEvidenceService $evidence,
+        private KashierProviderOrderService $providerOrders,
+        private KashierCheckoutOrderService $checkoutOrders,
         private PaymentApiResponseService $responses,
         private KashierConfigurationService $configuration
     ) {
@@ -118,7 +121,7 @@ final readonly class KashierCheckoutFlowService
         $orderRef = null;
         try {
             $checkout = DB::transaction(function () use ($user, $package, $clientRequestKey, $validated): array {
-                $checkout = $this->payments->beginCheckout(
+                $checkout = $this->checkoutOrders->beginCheckout(
                     $user,
                     $package,
                     $clientRequestKey,
@@ -224,7 +227,7 @@ final readonly class KashierCheckoutFlowService
                             'amount' => (float) $pendingOrder->final_amount,
                             'package' => [
                                 'id' => (int) $pendingOrder->package_id,
-                                'coins' => $this->payments->coinAmount($pendingOrder),
+                                'coins' => $pendingOrder->packageCoinAmount(),
                             ],
                         ],
                         409,
@@ -284,7 +287,7 @@ final readonly class KashierCheckoutFlowService
             // configuration/network error from becoming a phantom pending
             // checkout that blocks every later attempt.
             try {
-                $order = $this->payments->cancelPendingOrder($order, [
+                $order = $this->settlements->cancelPendingOrder($order, [
                     'verified_via' => 'hpp_url_generation_failed',
                     'failure_class' => $exception::class,
                 ]);
@@ -318,7 +321,7 @@ final readonly class KashierCheckoutFlowService
                 'id' => $package->id,
                 'name_ar' => $package->name_ar,
                 'name_en' => $package->name_en,
-                'coins' => $this->payments->coinAmount($order),
+                'coins' => $order->packageCoinAmount(),
             ],
         ]);
     }
@@ -376,7 +379,7 @@ final readonly class KashierCheckoutFlowService
                 'id' => $order->package->id,
                 'name_ar' => $order->package->name_ar,
                 'name_en' => $order->package->name_en,
-                'coins' => $this->payments->coinAmount($order),
+                'coins' => $order->packageCoinAmount(),
             ] : null,
             'approved_at' => $order->approved_at,
         ]);
@@ -407,7 +410,7 @@ final readonly class KashierCheckoutFlowService
                 'status' => (string) $order->status,
                 'financial_status' => (string) $order->financial_status,
                 'coins_added' => $order->isFinanciallyEffective()
-                    ? $this->payments->coinAmount($order)
+                    ? $order->packageCoinAmount()
                     : 0,
             ]);
         }
@@ -415,30 +418,30 @@ final readonly class KashierCheckoutFlowService
         // Closing a browser surface is not payment evidence. Ask Kashier
         // before releasing the local intent so a capture racing with the
         // learner's back gesture is never lost or turned into a second debit.
-        $provider = $this->payments->verifyOrderViaApi((string) $order->order_ref);
+        $provider = $this->providerOrders->fetch((string) $order->order_ref);
         $runtimeState = null;
-        if ($this->payments->isOrderCaptured($provider)) {
-            $order = $this->payments->fulfillOrder(
+        if ($this->evidence->isCaptured($provider)) {
+            $order = $this->settlements->fulfillOrder(
                 $order,
-                $this->payments->extractTransactionId($provider),
+                $this->evidence->transactionId($provider),
                 [
                     'verified_via' => 'kashier_api_checkout_abandon',
                     'kashier_api_response' => $provider,
                 ]
             );
         } elseif ($provider !== null) {
-            $providerStatus = $this->payments->providerOrderStatus($provider);
-            if ($reversalType = $this->payments->financialReversalType((string) $providerStatus)) {
-                $this->payments->recordFinancialReversal(
+            $providerStatus = $this->evidence->status($provider);
+            if ($reversalType = $this->evidence->reversalType((string) $providerStatus)) {
+                $this->settlements->recordFinancialReversal(
                     $order,
                     $reversalType,
                     (string) $providerStatus,
-                    $this->payments->extractTransactionId($provider),
+                    $this->evidence->transactionId($provider),
                     $provider
                 );
                 $order = $order->fresh(['package']);
-            } elseif (!$this->payments->providerStatusMayCaptureWithoutLearner($providerStatus)) {
-                $order = $this->payments->cancelPendingOrder($order, [
+            } elseif (!$this->evidence->mayCaptureWithoutLearner($providerStatus)) {
+                $order = $this->settlements->cancelPendingOrder($order, [
                     'verified_via' => 'kashier_api_checkout_abandon',
                     'provider_status' => $providerStatus,
                     'kashier_api_response' => $provider,
@@ -461,7 +464,7 @@ final readonly class KashierCheckoutFlowService
             'checkout_state' => $this->checkoutState($order),
             'financial_status' => (string) $order->financial_status,
             'coins_added' => $order->isFinanciallyEffective()
-                ? $this->payments->coinAmount($order)
+                ? $order->packageCoinAmount()
                 : 0,
         ]);
     }
@@ -471,12 +474,12 @@ final readonly class KashierCheckoutFlowService
         ?int $replacementPackageId = null
     ): Order
     {
-        $apiResponse = $this->payments->verifyOrderViaApi((string) $order->order_ref);
-        if ($this->payments->isOrderCaptured($apiResponse)) {
+        $apiResponse = $this->providerOrders->fetch((string) $order->order_ref);
+        if ($this->evidence->isCaptured($apiResponse)) {
             try {
-                return $this->payments->fulfillOrder(
+                return $this->settlements->fulfillOrder(
                     $order,
-                    $this->payments->extractTransactionId($apiResponse),
+                    $this->evidence->transactionId($apiResponse),
                     [
                         'verified_via' => 'kashier_api_status_poll',
                         'kashier_api_response' => $apiResponse,
@@ -495,13 +498,13 @@ final readonly class KashierCheckoutFlowService
             }
         }
 
-        $providerStatus = $this->payments->providerOrderStatus($apiResponse);
-        if ($reversalType = $this->payments->financialReversalType((string) $providerStatus)) {
-            $this->payments->recordFinancialReversal(
+        $providerStatus = $this->evidence->status($apiResponse);
+        if ($reversalType = $this->evidence->reversalType((string) $providerStatus)) {
+            $this->settlements->recordFinancialReversal(
                 $order,
                 $reversalType,
                 (string) $providerStatus,
-                $this->payments->extractTransactionId($apiResponse),
+                $this->evidence->transactionId($apiResponse),
                 $apiResponse ?? []
             );
 
@@ -513,7 +516,7 @@ final readonly class KashierCheckoutFlowService
             // lease into a permanent account-wide checkout lock. A later
             // authenticated capture can still settle this cancelled row
             // exactly once through fulfillOrder().
-            return $this->payments->cancelPendingOrder($order, [
+            return $this->settlements->cancelPendingOrder($order, [
                 'verified_via' => 'local_checkout_expiry',
                 'provider_lookup' => 'unavailable',
             ]);
@@ -522,7 +525,7 @@ final readonly class KashierCheckoutFlowService
             // A new idempotency key is a new learner intent. Once Kashier
             // proves the older reference does not exist, that local row must
             // not block a fresh attempt even when both target one package.
-            return $this->payments->cancelPendingOrder($order, [
+            return $this->settlements->cancelPendingOrder($order, [
                 'verified_via' => 'kashier_api_checkout_replacement',
                 'provider_status' => $providerStatus,
                 'replaced_by_package_id' => $replacementPackageId,
@@ -538,23 +541,23 @@ final readonly class KashierCheckoutFlowService
             // attempt. Expiry or an explicit abandon remains authoritative.
             return $this->withCheckoutState($order->fresh(['package']), 'checkout_opened');
         }
-        if ($this->payments->isProviderFailureStatus($providerStatus)) {
-            return $this->payments->cancelPendingOrder($order, $apiResponse);
+        if ($this->evidence->isFailureStatus($providerStatus)) {
+            return $this->settlements->cancelPendingOrder($order, $apiResponse);
         }
 
         if (
             $order->isCheckoutExpired()
-            && !$this->payments->providerStatusMayCaptureWithoutLearner($providerStatus)
+            && !$this->evidence->mayCaptureWithoutLearner($providerStatus)
         ) {
             // Local expiry only releases an old intent after Kashier proves it
             // is not authorized/processing. This keeps a stale PENDING link
             // from blocking a retry without opening two chargeable attempts.
-            return $this->payments->cancelPendingOrder($order, $apiResponse);
+            return $this->settlements->cancelPendingOrder($order, $apiResponse);
         }
 
         return $this->withCheckoutState(
             $order->fresh(['package']),
-            $this->payments->providerStatusMayCaptureWithoutLearner($providerStatus)
+            $this->evidence->mayCaptureWithoutLearner($providerStatus)
                 ? 'pending_provider'
                 : 'checkout_opened'
         );
@@ -588,7 +591,7 @@ final readonly class KashierCheckoutFlowService
                 'amount' => $order->final_amount,
                 'package' => [
                     'id' => (int) $order->package_id,
-                    'coins' => $this->payments->coinAmount($order),
+                    'coins' => $order->packageCoinAmount(),
                 ],
             ],
             409,
@@ -606,12 +609,12 @@ final readonly class KashierCheckoutFlowService
             'checkout_state' => 'paid',
             'financial_status' => (string) $order->financial_status,
             'transaction_id' => $order->transaction_id,
-            'coins_added' => $this->payments->coinAmount($order),
+            'coins_added' => $order->packageCoinAmount(),
             'package' => $order->package ? [
                 'id' => (int) $order->package->id,
                 'name_ar' => (string) $order->package->name_ar,
                 'name_en' => (string) $order->package->name_en,
-                'coins' => $this->payments->coinAmount($order),
+                'coins' => $order->packageCoinAmount(),
             ] : null,
         ]);
     }

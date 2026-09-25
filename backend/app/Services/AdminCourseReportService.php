@@ -17,14 +17,14 @@ final readonly class AdminCourseReportService
     public function __construct(
         private CourseCommercialReportService $commercialReports,
         private CourseFinancialLedgerReportService $financialLedger,
-        private CourseStagedAuthoringService $stagedAuthoring
+        private CourseRevisionResolver $revisionResolver
     ) {
     }
 
     /** @return array{course:Course, headings:list<string>, rows:list<list<mixed>>} */
     public function csv(Course $course, ?ReportPeriod $period = null): array
     {
-        $course = $this->stagedAuthoring->canonicalFor($course);
+        $course = $this->revisionResolver->canonicalFor($course);
         $report = $this->commercialReports->forCourse($course, $period);
         $services = CourseCostReportService::serviceLabels();
 
@@ -89,7 +89,7 @@ final readonly class AdminCourseReportService
 
     public function accessPlanStats(Course $course, ?ReportPeriod $period = null): Collection
     {
-        $course = $this->stagedAuthoring->canonicalFor($course);
+        $course = $this->revisionResolver->canonicalFor($course);
         $period ??= ReportPeriod::fromKey('all');
         $salesOrders = Order::query()
             ->where('course_id', $course->id)

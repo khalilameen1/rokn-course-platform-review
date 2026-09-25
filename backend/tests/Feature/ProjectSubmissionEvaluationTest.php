@@ -19,12 +19,14 @@ use App\Models\Order;
 use App\Models\WalletTransaction;
 use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectSubmissionEvaluationService;
 use App\Services\ProjectSubmissionOrchestrator;
 use App\Services\ProjectSubmissionPresenter;
 use App\Services\ProjectSubmissionService;
+use App\Services\ProjectSubmissionEvaluationScheduler;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -97,7 +99,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
     {
         [$submission] = $this->submit();
         $submission->forceFill(['auto_pass_at' => now()->subSecond()])->save();
-        $result = app(ProjectSubmissionService::class)->finalizeIfDue($submission);
+        $result = app(ProjectSubmissionEvaluationScheduler::class)->dispatchIfDue($submission);
         self::assertSame('pending', $result->review_status);
         self::assertNull($result->review_source);
         self::assertNull($result->score);
@@ -160,7 +162,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
             'usage' => ['prompt_tokens' => 2082, 'completion_tokens' => 111, 'total_tokens' => 2193, 'cost' => .005274],
             'entitlement_delivered' => false];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $user->id, $result);
-        $budget->settle($event, $result);
+        app(AiUsageSettlementService::class)->settle($event, $result);
         $metadata = $submission->submission_metadata;
         $metadata['evaluation'] = array_merge($metadata['evaluation'], [
             'status' => 'unavailable', 'reason' => 'review_result_unavailable', 'retry_safe' => false,
@@ -226,7 +228,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         $result = ['message' => json_encode(['decision' => 'relevant_effort', 'reason' => 'محاولة مناسبة']),
             'usage' => ['total_tokens' => 50, 'cost' => .01], 'provider_request_id' => 'landed-review'];
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $result);
-        if ($settled) $budget->settle($event, $result);
+        if ($settled) app(AiUsageSettlementService::class)->settle($event, $result);
         app()->call([new EvaluateProjectSubmission($submission->id), 'handle']);
         self::assertSame('passed', $submission->fresh()->review_status);
         self::assertSame('completed', $event->fresh()->status);
@@ -302,7 +304,7 @@ final class ProjectSubmissionEvaluationTest extends TestCase
         [$submission] = $this->submit();
         $submission->forceFill(['review_status' => 'passed', 'review_source' => 'graceful_fallback',
             'feedback' => 'قبول سابق', 'reviewed_at' => now(), 'auto_pass_at' => now()->subDay()])->save();
-        $result = app(ProjectSubmissionService::class)->finalizeIfDue($submission);
+        $result = app(ProjectSubmissionEvaluationScheduler::class)->dispatchIfDue($submission);
         app()->call([new EvaluateProjectSubmission($submission->id), 'handle']);
         self::assertSame('passed', $result->review_status);
         self::assertSame('graceful_fallback', $result->review_source);

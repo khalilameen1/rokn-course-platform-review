@@ -412,6 +412,44 @@ final class AdminDailyPagesRuntimeTest extends TestCase
         self::assertSame('هدية التسجيل', $this->inputValue($xpath, 'reward-rule-'.$storedRule->id, 'title_ar'));
     }
 
+    public function test_reward_task_create_receipt_replays_without_creating_another_task(): void
+    {
+        $this->assertRewardCreateReplay('admin.coin-earning-methods.store', \App\Models\CoinEarningMethod::class, [
+            'title_ar' => 'مهمة اختبار', 'title_en' => 'Test task', 'coins_amount' => 10,
+            'action_key' => 'internal_receipt_task', 'requires_external_visit' => '0', 'is_active' => '1',
+        ]);
+    }
+
+    public function test_reward_rule_create_receipt_replays_before_duplicate_event_validation(): void
+    {
+        RewardRule::query()->where('event_key', 'course_completed')->delete();
+        $this->assertRewardCreateReplay('admin.reward-rules.store', RewardRule::class, [
+            'event_key' => 'course_completed', 'title_ar' => 'إنهاء كورس', 'title_en' => 'Course completion',
+            'coins_amount' => 10, 'rolling_30_day_cap' => 100, 'is_active' => '1',
+        ]);
+    }
+
+    /** @param class-string<\Illuminate\Database\Eloquent\Model> $modelClass */
+    private function assertRewardCreateReplay(string $routeName, string $modelClass, array $payload): void
+    {
+        $admin = $this->dashboardUser('admin');
+        $this->withoutMiddleware(RequireAdminMfa::class);
+        $intentId = (string) \Illuminate\Support\Str::uuid();
+        $payload['authoring_request_id'] = $intentId;
+        $before = $modelClass::query()->count();
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            $this->actingAs($admin, 'web')->post(route($routeName), $payload)
+                ->assertRedirect(route('admin.coin-earning-methods.index'))
+                ->assertSessionHasNoErrors();
+            self::assertSame($before + 1, $modelClass::query()->count());
+        }
+        $receipt = \Illuminate\Support\Facades\DB::table('admin_authoring_create_intents')
+            ->where('actor_id', $admin->id)->where('route_name', $routeName)->where('intent_id', $intentId)->sole();
+        self::assertSame('completed', $receipt->status);
+        self::assertSame($modelClass, $receipt->resource_type);
+        self::assertTrue($modelClass::query()->whereKey($receipt->resource_id)->exists());
+    }
+
     private function dashboardUser(string $role): User
     {
         $user = new User();

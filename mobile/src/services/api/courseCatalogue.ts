@@ -13,7 +13,7 @@ import {
   cacheCatalogueResult,
   getCatalogueGeneration,
   readCatalogueCache,
-} from './courseCache';
+} from './courseCatalogueCache';
 import {
   mapCatalogueCoursesPayload,
   type PublishedCoursesPage,

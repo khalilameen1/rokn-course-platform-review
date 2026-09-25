@@ -10,6 +10,9 @@ use App\Models\Course;
 use App\Models\CourseModule;
 use App\Models\Lesson;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\BunnyConfiguration;
+use App\Services\BunnyMediaRegistry;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -30,6 +33,8 @@ final class BunnyVideoStatusContractTest extends TestCase
         Http::preventStrayRequests();
         $lesson = $this->lesson();
         $guid = (string) $lesson->bunny_video_id;
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->twice()->with($guid)->andReturn([
             'state' => 'ok',
@@ -44,11 +49,15 @@ final class BunnyVideoStatusContractTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+        $delivery->shouldReceive('videoPlayback')->once()->with($guid)->andReturn([
             'url' => 'https://media.example.test/playlist.m3u8',
         ]);
         $health = new MediaHealthService($bunny);
-        $result = (new MediaReconciliationService($bunny, $health))
+        $result = (new MediaReconciliationService(
+            $bunny,
+            $health,
+            $delivery
+        ))
             ->reconcileLesson($lesson, false, false);
 
         self::assertSame($expected, $result['playback_status']);
@@ -143,7 +152,10 @@ final class BunnyVideoStatusContractTest extends TestCase
     {
         config(['bunny.library_id' => '123']);
         $guid = 'a3cc17a0-4b61-4e59-a4dc-947eabf36791';
-        $bunny = Mockery::mock(BunnyService::class)->makePartial();
+        $bunny = Mockery::mock(BunnyService::class, [
+            app(BunnyConfiguration::class),
+            app(BunnyMediaRegistry::class),
+        ])->makePartial();
         $bunny->shouldReceive('getRemoteVideoDetails')->once()->with($guid)->andReturn([
             'guid' => $guid,
             'videoLibraryId' => 123,
@@ -158,7 +170,10 @@ final class BunnyVideoStatusContractTest extends TestCase
     {
         config(['bunny.library_id' => '123']);
         $guid = 'a3cc17a0-4b61-4e59-a4dc-947eabf36791';
-        $bunny = Mockery::mock(BunnyService::class)->makePartial();
+        $bunny = Mockery::mock(BunnyService::class, [
+            app(BunnyConfiguration::class),
+            app(BunnyMediaRegistry::class),
+        ])->makePartial();
         $bunny->shouldReceive('getRemoteVideoDetails')->times(4)->with($guid)->andReturn([
             'guid' => $guid,
             'videoLibraryId' => 123,

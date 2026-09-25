@@ -7,6 +7,8 @@ namespace Tests\Unit;
 use App\Models\FeedbackReport;
 use App\Models\SupportCaseMessage;
 use App\Services\SupportCaseService;
+use App\Services\SupportCaseAccessService;
+use App\Services\SupportCaseReadService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -89,7 +91,7 @@ final class SupportCaseServiceTest extends TestCase
 
     public function test_guest_token_is_digest_only_and_wrong_token_is_non_enumerable(): void
     {
-        $service = app(SupportCaseService::class);
+        $service = app(SupportCaseAccessService::class);
         $credential = $service->createGuestCredential((string) Str::uuid());
         $report = $this->report($credential['hash']);
         $this->assertNotSame($credential['token'], $report->guest_access_hash);
@@ -119,7 +121,7 @@ final class SupportCaseServiceTest extends TestCase
             'visibility' => SupportCaseMessage::VISIBILITY_INTERNAL,
             'body' => 'معلومة داخلية لا يراها الطالب',
         ]);
-        $payload = $service->customerPayload($report->fresh());
+        $payload = app(SupportCaseReadService::class)->customerPayload($report->fresh());
         self::assertCount(1, $payload['messages']);
         self::assertSame('تفاصيل المشكلة كاملة', $payload['messages'][0]['text']);
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Support\NotificationAudience;
 use App\Models\StudentNotification;
 use App\Models\NotificationCampaign;
 use App\Models\NotificationCampaignRecipient;
@@ -118,7 +119,7 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
                     }
                 );
             }
-            if ($campaign->course_id && $campaign->audience === SendStudentNotification::AUDIENCE_ENROLLED) {
+            if ($campaign->course_id && $campaign->audience === NotificationAudience::ENROLLED) {
                 $userQuery->whereHas('enrollments', function ($enrollments) use ($campaign): void {
                     $enrollments
                         ->where('course_id', (int) $campaign->course_id)
@@ -127,7 +128,7 @@ final class DeliverStudentNotificationChunk implements ShouldQueue, ShouldBeUniq
                             $expiry->whereNull('expires_at')->orWhere('expires_at', '>', now());
                         });
                 });
-            } elseif ($campaign->course_id && $campaign->audience === SendStudentNotification::AUDIENCE_NOT_ENROLLED) {
+            } elseif ($campaign->course_id && $campaign->audience === NotificationAudience::NOT_ENROLLED) {
                 $userQuery->whereDoesntHave('enrollments', function ($enrollments) use ($campaign): void {
                     $enrollments
                         ->where('course_id', (int) $campaign->course_id)

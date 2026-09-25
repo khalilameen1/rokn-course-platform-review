@@ -47,9 +47,15 @@ final class ProjectSubmissionFileRetentionContractTest extends TestCase
         $deletion = file_get_contents(
             dirname(__DIR__, 2).'/app/Services/AccountDeletionService.php'
         );
+        $content = file_get_contents(
+            dirname(__DIR__, 2).'/app/Services/AccountUploadedContentErasureService.php'
+        );
 
         self::assertIsString($deletion);
-        self::assertStringContainsString("data_get(\$submission->submission_metadata, 'files', [])", $deletion);
-        self::assertStringContainsString("\$file['storage_disk']", $deletion);
+        self::assertIsString($content);
+        self::assertStringContainsString('eraseLearningFilesWithinDeletion($locked)', $deletion);
+        self::assertStringContainsString('queueReleasedFiles($storedFiles, $userId)', $deletion);
+        self::assertStringContainsString("data_get(\$submission->submission_metadata, 'files', [])", $content);
+        self::assertStringContainsString("\$file['storage_disk']", $content);
     }
 }

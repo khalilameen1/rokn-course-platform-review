@@ -12,7 +12,7 @@ use App\Models\Project;
 
 final readonly class AdminCourseOutlinePresenter
 {
-    public function __construct(private BunnyService $bunny)
+    public function __construct(private BunnyDeliveryService $delivery)
     {
     }
 
@@ -107,7 +107,7 @@ final readonly class AdminCourseOutlinePresenter
             'has_thumbnail' => $thumbnailPath !== '',
             'thumbnail_url' => $thumbnailPath === ''
                 ? null
-                : $this->bunny->generateBunnySignedUrl($thumbnailPath),
+                : $this->delivery->storageUrl($thumbnailPath),
             'project_requirements_ar' => $project?->requirements_text_ar,
             'project_requirements_en' => $project?->requirements_text_en,
             'project_submission_types' => $this->projectSubmissionTypes($project),

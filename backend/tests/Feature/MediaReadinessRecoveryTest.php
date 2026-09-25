@@ -11,6 +11,7 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Bus\UniqueLock;
@@ -52,6 +53,8 @@ final class MediaReadinessRecoveryTest extends TestCase
             'bunny_video_id' => $guid,
         ]);
 
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
             'state' => 'ok',
@@ -65,7 +68,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+        $delivery->shouldReceive('videoPlayback')->once()->with($guid)->andReturn([
             'url' => 'https://media.example/playlist.m3u8',
         ]);
         Http::fake([
@@ -76,7 +79,8 @@ final class MediaReadinessRecoveryTest extends TestCase
         ]);
         $reconciliation = new MediaReconciliationService(
             $bunny,
-            new MediaHealthService($bunny)
+            new MediaHealthService($bunny),
+            $delivery
         );
         $this->app->instance(MediaReconciliationService::class, $reconciliation);
         $this->withoutMiddleware(RequireAdminMfa::class);
@@ -112,6 +116,8 @@ final class MediaReadinessRecoveryTest extends TestCase
             'bunny_video_id' => $guid,
         ]);
 
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
             'state' => 'ok',
@@ -125,7 +131,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+        $delivery->shouldReceive('videoPlayback')->once()->with($guid)->andReturn([
             'url' => 'https://media.example/playlist.m3u8',
         ]);
         Http::fake([
@@ -136,7 +142,8 @@ final class MediaReadinessRecoveryTest extends TestCase
 
         $job->handle(new MediaReconciliationService(
             $bunny,
-            new MediaHealthService($bunny)
+            new MediaHealthService($bunny),
+            $delivery
         ));
 
         $job->assertReleased(15);
@@ -148,6 +155,8 @@ final class MediaReadinessRecoveryTest extends TestCase
             collect($state->integrity_issues)->pluck('code')->all()
         );
 
+        $readyDelivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $readyDelivery);
         $readyBunny = Mockery::mock(BunnyService::class);
         $readyBunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
             'state' => 'ok',
@@ -161,7 +170,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $readyBunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+        $readyDelivery->shouldReceive('videoPlayback')->once()->with($guid)->andReturn([
             'url' => 'https://media.example/ready-playlist.m3u8',
         ]);
         Http::fake([
@@ -175,7 +184,8 @@ final class MediaReadinessRecoveryTest extends TestCase
 
         $retry->handle(new MediaReconciliationService(
             $readyBunny,
-            new MediaHealthService($readyBunny)
+            new MediaHealthService($readyBunny),
+            $readyDelivery
         ));
 
         $retry->assertNotReleased();
@@ -380,6 +390,8 @@ final class MediaReadinessRecoveryTest extends TestCase
         self::assertSame((int) $lesson->id, $job->lessonId);
         self::assertSame($guid, $job->expectedVideoGuid);
 
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
             'state' => 'ok',
@@ -393,7 +405,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+        $delivery->shouldReceive('videoPlayback')->once()->with($guid)->andReturn([
             'url' => 'https://media.example/late-playlist.m3u8',
         ]);
         Http::fake([
@@ -404,7 +416,8 @@ final class MediaReadinessRecoveryTest extends TestCase
         ]);
         $job->withFakeQueueInteractions()->handle(new MediaReconciliationService(
             $bunny,
-            new MediaHealthService($bunny)
+            new MediaHealthService($bunny),
+            $delivery
         ));
 
         $job->assertNotReleased();
@@ -603,6 +616,8 @@ final class MediaReadinessRecoveryTest extends TestCase
             'bunny_video_id' => $guid,
         ]);
 
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
             'state' => 'ok',
@@ -616,7 +631,7 @@ final class MediaReadinessRecoveryTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('getVideo')->once()->with($guid)->andReturn([
+        $delivery->shouldReceive('videoPlayback')->once()->with($guid)->andReturn([
             'url' => 'https://media.example/playlist.m3u8',
         ]);
         Http::fake([
@@ -625,7 +640,8 @@ final class MediaReadinessRecoveryTest extends TestCase
 
         $result = (new MediaReconciliationService(
             $bunny,
-            new MediaHealthService($bunny)
+            new MediaHealthService($bunny),
+            $delivery
         ))->reconcileLesson($lesson, true, true);
 
         return [$result, $lesson];

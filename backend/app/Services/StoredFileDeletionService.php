@@ -7,56 +7,126 @@ namespace App\Services;
 use App\Jobs\DeleteAccountFile;
 use App\Models\AccountFileDeletion;
 use App\Support\DurableJobDispatch;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Http\UploadedFile;
-use League\Flysystem\UnableToRetrieveMetadata;
-use League\Flysystem\UnableToWriteFile;
-use Illuminate\Support\Str;
-use RuntimeException;
+use LogicException;
 use Throwable;
 
+/** One durable cleanup ledger; never uploads or deletes physical bytes. */
 final class StoredFileDeletionService
 {
-    public const REQUEST_UPLOAD_DEADLINE_ATTRIBUTE = 'rokn.storage_upload_deadline';
-
     public function __construct(private readonly StoredFileReferenceService $references)
     {
     }
 
     public function deleteOrQueue(string $disk, string $path): void
     {
-        $disk = trim($disk);
-        $path = ltrim(trim($path), '/');
-        if ($disk === '' || $path === '' || filter_var($path, FILTER_VALIDATE_URL)) {
-            return;
-        }
-        if ($this->references->isReferenced($disk, $path)) {
+        [$disk, $path] = $this->normalize($disk, $path);
+        if (!$this->valid($disk, $path) || $this->references->isReferenced($disk, $path)) {
             return;
         }
 
-        // Remote deletion never belongs to an authoring HTTP request. The
-        // durable row is the source of truth and the media worker performs
-        // the reference check again immediately before deleting the bytes.
-        $row = AccountFileDeletion::query()->updateOrCreate(
+        $row = $this->record($disk, $path, now());
+        $this->dispatchAfterCommit($row);
+    }
+
+    /**
+     * Admit cleanup while the caller's transaction removes the references.
+     * An upfront reference check here would lose files still referenced until
+     * anonymization commits. The worker rechecks immediately before deletion.
+     *
+     * @param list<array{disk:string,path:string}> $files
+     * @return list<int>
+     */
+    public function queueReleasedFiles(array $files, ?int $userId = null): array
+    {
+        if (DB::transactionLevel() === 0) {
+            throw new LogicException('Released file cleanup must share the reference-removal transaction.');
+        }
+
+        $ids = [];
+        $seen = [];
+        foreach ($files as $file) {
+            [$disk, $path] = $this->normalize($file['disk'], $file['path']);
+            if (!$this->valid($disk, $path)) {
+                continue;
+            }
+            $key = $disk . ':' . hash('sha256', $path);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $row = $this->record($disk, $path, now(), $userId);
+            $ids[] = (int) $row->id;
+            $this->dispatchAfterCommit($row);
+        }
+
+        return $ids;
+    }
+
+    /** Commit cleanup before a byte write that will be referenced later. */
+    public function trackPotentialOrphan(string $disk, string $path, int $delayMinutes = 60): bool
+    {
+        if (DB::transactionLevel() > 0) {
+            throw new LogicException('Potential-orphan ledger must commit before storage bytes are written.');
+        }
+        [$disk, $path] = $this->normalize($disk, $path);
+        if (!$this->valid($disk, $path)) {
+            throw new \InvalidArgumentException('Tracked storage path is invalid.');
+        }
+
+        $row = $this->record($disk, $path, now()->addMinutes(max(5, $delayMinutes)));
+        $this->dispatchAfterCommit($row);
+
+        // Domain admission, not this ledger, decides whether the same target
+        // can be resumed. Fresh byte writes need no remote metadata probe.
+        return !$row->wasRecentlyCreated;
+    }
+
+    /** @return array{string,string} */
+    private function normalize(string $disk, string $path): array
+    {
+        return [trim($disk), ltrim(trim($path), '/')];
+    }
+
+    private function valid(string $disk, string $path): bool
+    {
+        return $disk !== '' && $path !== '' && !filter_var($path, FILTER_VALIDATE_URL);
+    }
+
+    private function record(
+        string $disk,
+        string $path,
+        CarbonInterface $availableAt,
+        ?int $userId = null
+    ): AccountFileDeletion {
+        return AccountFileDeletion::query()->updateOrCreate(
             ['disk' => $disk, 'path_hash' => hash('sha256', $path)],
             [
-                'user_id' => null,
+                'user_id' => $userId,
                 'path' => $path,
                 'status' => AccountFileDeletion::STATUS_PENDING,
                 'attempts' => 0,
-                'available_at' => now(),
+                'available_at' => $availableAt,
                 'completed_at' => null,
                 'last_error' => null,
             ]
         );
+    }
+
+    private function dispatchAfterCommit(AccountFileDeletion $row): void
+    {
         $dispatch = static function () use ($row): void {
             try {
-                DurableJobDispatch::now(new DeleteAccountFile((int) $row->id));
+                $job = new DeleteAccountFile((int) $row->id);
+                if ($row->available_at?->isFuture()) {
+                    $job->delay($row->available_at);
+                }
+                DurableJobDispatch::now($job);
             } catch (Throwable $exception) {
-                // The row is the durable outbox. The scheduler will dispatch
-                // it once the queue connection is healthy again.
+                // Queue failure cannot undo committed deletion intent. The
+                // existing scheduler recovers this same durable row.
                 Log::warning('Stored-file cleanup remains pending after dispatch failure.', [
                     'deletion_id' => $row->id,
                     'exception' => $exception::class,
@@ -64,188 +134,5 @@ final class StoredFileDeletionService
             }
         };
         DB::transactionLevel() > 0 ? DB::afterCommit($dispatch) : $dispatch();
-    }
-
-    /**
-     * Stage a fresh physical attempt before the owning domain row commits.
-     * A worker death after storage succeeds but before the owning row commits
-     * is then recovered by the same reference-aware deletion ledger.
-     */
-    public function storeTrackedUpload(
-        UploadedFile $file,
-        string $directory,
-        string $disk = 'public',
-        int $orphanDelayMinutes = 60,
-        ?string $operationIdentity = null
-    ): string {
-        $this->assertRequestUploadBudget($directory);
-        $path = $this->trackedUploadDestination($file, $directory, $disk, $operationIdentity);
-        if ($operationIdentity !== null) {
-            // Preserve the logical filename for domain replay checks, but
-            // never reuse an orphan path a prior cleanup may already own.
-            $path = dirname($path) . '/' . Str::uuid() . '/' . basename($path);
-        }
-        $this->trackPotentialOrphan(
-            $disk,
-            $path,
-            $orphanDelayMinutes
-        );
-        $this->writeTrackedUpload(
-            $file,
-            $path,
-            $disk,
-            false
-        );
-        return $path;
-    }
-
-    /** Resolve the stable destination before a caller reserves ownership in its database. */
-    public function trackedUploadDestination(
-        UploadedFile $file,
-        string $directory,
-        string $disk = 'public',
-        ?string $operationIdentity = null
-    ): string {
-        $directory = trim($directory, '/');
-        $disk = trim($disk);
-        if ($directory === '' || $disk === '') {
-            throw new \InvalidArgumentException('Tracked upload destination is invalid.');
-        }
-        $extension = strtolower((string) ($file->guessExtension() ?: $file->extension()));
-        if (!preg_match('/^[a-z0-9]{1,10}$/', $extension)) {
-            $extension = 'bin';
-        }
-        // A stable operation identity turns a lost HTTP response into a resume,
-        // rather than a second object. The content hash belongs in the caller's
-        // identity so two files in one request can never share a destination.
-        $filename = $operationIdentity === null
-            ? (string) Str::uuid() . '.' . $extension
-            : hash('sha256', $operationIdentity) . '.' . $extension;
-        return $directory . '/' . $filename;
-    }
-
-    /** Write bytes only after the orphan ledger and any domain reservation exist. */
-    public function writeTrackedUpload(
-        UploadedFile $file,
-        string $path,
-        string $disk = 'public',
-        bool $resumeExisting = true
-    ): void
-    {
-        $path = ltrim(trim($path), '/');
-        $disk = trim($disk);
-        $directory = trim((string) dirname($path), './\\');
-        $filename = basename($path);
-        if ($path === '' || $disk === '' || $directory === '' || $filename === '') {
-            throw new \InvalidArgumentException('Tracked upload destination is invalid.');
-        }
-        $storage = Storage::disk($disk);
-        $expectedSize = (int) $file->getSize();
-        $deadline = $this->requestUploadDeadline();
-        if ($resumeExisting && $deadline === null) {
-            try {
-                // fileSize is one metadata request. exists()+size() issues two
-                // sequential remote calls on S3 before a retry can resume.
-                if ((int) $storage->size($path) === $expectedSize) {
-                    return;
-                }
-            } catch (UnableToRetrieveMetadata) {
-                // The earlier attempt did not finish writing this object.
-                // Reusing the deterministic path makes the following write safe.
-            }
-        }
-        $options = ['disk' => $disk];
-        if ($deadline !== null) {
-            $remainingSeconds = $this->assertRequestUploadBudget($path);
-            $operationTimeout = max(1.0, min(6.0, $remainingSeconds - 2.0));
-            $options += [
-                // Project files are capped at 25 MB. Keeping them below this
-                // threshold makes the bounded upload one HTTP operation rather
-                // than an unbounded sequence of multipart requests.
-                'mup_threshold' => 64 * 1024 * 1024,
-                'before_upload' => static function ($command) use ($operationTimeout): void {
-                    $command['@retries'] = 0;
-                    $http = is_array($command['@http'] ?? null) ? $command['@http'] : [];
-                    $command['@http'] = array_replace($http, [
-                        'connect_timeout' => min(2.0, $operationTimeout),
-                        'timeout' => $operationTimeout,
-                    ]);
-                },
-            ];
-        }
-        $stored = $file->storeAs($directory, $filename, $options);
-        if (!is_string($stored) || ltrim($stored, '/') !== $path) {
-            throw new RuntimeException('Tracked file storage failed.');
-        }
-    }
-
-    /** Persist cleanup before a byte write that will be referenced later. */
-    public function trackPotentialOrphan(
-        string $disk,
-        string $path,
-        int $delayMinutes = 60
-    ): bool {
-        if (DB::transactionLevel() > 0) {
-            throw new \LogicException('Potential-orphan ledger must commit before storage bytes are written.');
-        }
-        $disk = trim($disk);
-        $path = ltrim(trim($path), '/');
-        if ($disk === '' || $path === '' || filter_var($path, FILTER_VALIDATE_URL)) {
-            throw new \InvalidArgumentException('Tracked storage path is invalid.');
-        }
-        $row = AccountFileDeletion::query()->updateOrCreate(
-            ['disk' => $disk, 'path_hash' => hash('sha256', $path)],
-            [
-                'user_id' => null,
-                'path' => $path,
-                'status' => AccountFileDeletion::STATUS_PENDING,
-                'attempts' => 0,
-                'available_at' => now()->addMinutes(max(5, $delayMinutes)),
-                'completed_at' => null,
-                'last_error' => null,
-            ]
-        );
-        try {
-            DurableJobDispatch::now(
-                (new DeleteAccountFile((int) $row->id))->delay($row->available_at)
-            );
-        } catch (Throwable $exception) {
-            Log::warning('Potential orphan remains in the durable cleanup ledger.', [
-                'deletion_id' => $row->id,
-                'exception' => $exception::class,
-            ]);
-        }
-
-        // A deterministic caller only needs a remote metadata probe when a
-        // prior request reserved this exact object. Fresh uploads can write
-        // immediately instead of spending part of the HTTP deadline on HEAD.
-        return !$row->wasRecentlyCreated;
-    }
-
-    private function requestUploadDeadline(): ?float
-    {
-        if (!app()->bound('request')) {
-            return null;
-        }
-        $deadline = request()->attributes->get(self::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE);
-
-        return is_numeric($deadline) ? (float) $deadline : null;
-    }
-
-    private function assertRequestUploadBudget(string $path): float
-    {
-        $deadline = $this->requestUploadDeadline();
-        if ($deadline === null) {
-            return INF;
-        }
-        $remaining = $deadline - microtime(true);
-        if ($remaining <= 2.0) {
-            throw UnableToWriteFile::atLocation(
-                trim($path, '/'),
-                'The shared upload request budget was exhausted.'
-            );
-        }
-
-        return $remaining;
     }
 }

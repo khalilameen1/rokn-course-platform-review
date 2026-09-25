@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\CourseAccessPlanService;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -64,7 +65,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     {
         $canonical = $this->publishedCourse();
         $plans = app(CourseAccessPlanService::class);
-        $plans->createDefaults($canonical);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
         $liveIds = $canonical->accessPlans()->pluck('id', 'code')->all();
         $guided = $canonical->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         [$order, $enrollment, $event] = $this->purchasedPlan($canonical, $guided);
@@ -110,7 +111,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     public function test_publish_handles_sort_permutations_at_unsigned_smallint_boundary(): void
     {
         $canonical = $this->publishedCourse();
-        app(CourseAccessPlanService::class)->createDefaults($canonical);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
         foreach ($canonical->accessPlans()->orderBy('sort_order')->get() as $position => $plan) {
             $plan->update(['sort_order' => 65533 + $position]);
         }
@@ -138,7 +139,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
         $canonical = $this->publishedCourse();
         $service = $this->serviceWithPassingAudit();
         $draft = $service->draftFor($canonical);
-        app(CourseAccessPlanService::class)->createDefaults($draft);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($draft);
         $draftIds = $draft->accessPlans()->pluck('id', 'code')->all();
         $expectedPlans = $this->offerRows($draft);
 
@@ -154,14 +155,14 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     public function test_failure_after_plan_publication_rolls_back_both_offers_and_ledger(): void
     {
         $canonical = $this->publishedCourse();
-        app(CourseAccessPlanService::class)->createDefaults($canonical);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($canonical);
         $guided = $canonical->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         $this->purchasedPlan($canonical, $guided);
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->once()->ordered()->andReturn(['ready' => true, 'issues' => []]);
         $publishing->shouldReceive('audit')->once()->ordered()->andThrow(new \RuntimeException('notification preparation unavailable'));
         $this->app->instance(CoursePublishingService::class, $publishing);
-        $service = new CourseStagedAuthoringService($publishing);
+        $service = $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
         $draft = $service->draftFor($canonical);
         $draft->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail()->update(['name_ar' => 'تعديل غير منشور']);
         $plansBefore = DB::table('course_access_plans')->orderBy('id')->get()->toJson();
@@ -178,7 +179,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
         self::assertSame($plansBefore, DB::table('course_access_plans')->orderBy('id')->get()->toJson());
         self::assertSame($coursesBefore, DB::table('courses')->orderBy('id')->get()->toJson());
         self::assertSame($ledgerBefore, $this->ledgerRows());
-        self::assertTrue($service->isManagedDraft($draft));
+        self::assertTrue(app(CourseRevisionResolver::class)->isManagedDraft($draft));
     }
 
     private function publishedCourse(): Course
@@ -200,7 +201,7 @@ final class CourseStagedAccessPlanIdentityTest extends TestCase
     {
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->andReturn(['ready' => true, 'issues' => []]);
-        return new CourseStagedAuthoringService($publishing);
+        return $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
     }
 
     /** @return array{Order,CourseEnrollment,AiUsageEvent} */

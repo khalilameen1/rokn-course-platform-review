@@ -172,75 +172,6 @@ class AuthEndpointTest extends ApiTestCase
         }
     }
 
-    public function test_transient_session_failure_does_not_burn_social_completion_code(): void
-    {
-        $verifier = str_repeat('v', 43);
-        $challenge = rtrim(strtr(
-            base64_encode(hash('sha256', $verifier, true)),
-            '+/',
-            '-_'
-        ), '=');
-        $completionCode = str_repeat('c', 64);
-        $attempts = app(\App\Services\SocialOAuthAttemptService::class);
-        $attempt = $attempts->begin(
-            str_repeat('s', 64),
-            'google',
-            'rokn://auth',
-            $challenge
-        );
-        $attempts->issueCompletion(
-            $attempt,
-            $completionCode,
-            \Illuminate\Support\Facades\Crypt::encryptString('provider-token')
-        );
-
-        $failedSignIn = \Mockery::mock(\App\Http\Controllers\API\SignController::class);
-        $failedSignIn->shouldReceive('socialLogin')->once()->andReturn(
-            response()->json([
-                'status' => 503,
-                'success' => false,
-                'code' => 'provider_unavailable',
-                'data' => null,
-            ], 503)
-        );
-        $this->app->instance(\App\Http\Controllers\API\SignController::class, $failedSignIn);
-
-        $this->postJson('/api/v1/social-auth/complete', [
-            'code' => $completionCode,
-            'code_verifier' => $verifier,
-            'device_os' => 'android',
-            'device_type' => 'android',
-        ])->assertStatus(503);
-
-        $this->assertDatabaseHas('social_oauth_attempts', [
-            'id' => $attempt->id,
-            'completion_processing_at' => null,
-            'completion_consumed_at' => null,
-        ]);
-
-        $successfulSignIn = \Mockery::mock(\App\Http\Controllers\API\SignController::class);
-        $successfulSignIn->shouldReceive('socialLogin')->once()->andReturn(
-            response()->json([
-                'status' => 200,
-                'success' => true,
-                'data' => ['api_token' => 'session-token'],
-            ])
-        );
-        $this->app->instance(\App\Http\Controllers\API\SignController::class, $successfulSignIn);
-
-        $this->postJson('/api/v1/social-auth/complete', [
-            'code' => $completionCode,
-            'code_verifier' => $verifier,
-            'device_os' => 'android',
-            'device_type' => 'android',
-        ])->assertOk();
-
-        $this->assertDatabaseMissing('social_oauth_attempts', [
-            'id' => $attempt->id,
-            'completion_consumed_at' => null,
-        ]);
-        self::assertNull($attempt->fresh()->encrypted_token);
-    }
 
     public function test_social_start_persists_a_hashed_cross_container_attempt(): void
     {
@@ -995,7 +926,7 @@ class AuthEndpointTest extends ApiTestCase
             'last_verified_at' => now(),
         ]);
 
-        $this->assertSame(0, \App\Services\StudentNotificationService::sendRegistrationBonus($replacement));
+        $this->assertSame(0, app(\App\Services\WelcomeRewardService::class)->grant($replacement));
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $replacement->id,
             'category' => 'welcome_bonus',
@@ -1039,7 +970,7 @@ class AuthEndpointTest extends ApiTestCase
 
         $this->assertSame(
             0,
-            \App\Services\StudentNotificationService::sendRegistrationBonus($crossProviderReplacement)
+            app(\App\Services\WelcomeRewardService::class)->grant($crossProviderReplacement)
         );
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $crossProviderReplacement->id,

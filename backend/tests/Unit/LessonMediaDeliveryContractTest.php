@@ -22,9 +22,13 @@ final class LessonMediaDeliveryContractTest extends TestCase
 
     public function test_lessons_have_one_secure_stream_delivery_source(): void
     {
-        $bunny = $this->source('app/Services/BunnyService.php');
+        $bunny = $this->source('app/Services/BunnyDeliveryService.php')
+            . $this->source('app/Services/LessonMediaDeliveryService.php');
         $manifest = $this->source('app/Services/PlaybackManifestService.php');
 
+        self::assertStringContainsString('BunnyDeliveryService $delivery', $manifest);
+        self::assertStringContainsString('->videoPlayback(', $manifest);
+        self::assertStringContainsString('->videoPlayback(', $bunny);
         self::assertStringNotContainsString('getFallbackVideo', $bunny);
         self::assertStringNotContainsString('BUNNY_FALLBACK_CDN_HOSTNAME', $this->source('config/bunny.php'));
         self::assertStringNotContainsString('vz-{$this->getLibraryId()}.b-cdn.net', $bunny);
@@ -35,12 +39,12 @@ final class LessonMediaDeliveryContractTest extends TestCase
 
     public function test_playback_preserves_purchase_and_project_lock_reasons(): void
     {
-        $completion = $this->source('app/Services/CourseCompletionService.php');
+        $access = $this->source('app/Services/CourseSectionAccessService.php');
         $manifest = $this->source('app/Services/PlaybackManifestService.php');
         $controller = $this->source('app/Http/Controllers/API/PlaybackController.php');
 
-        self::assertStringContainsString('function sectionAccessState(', $completion);
-        self::assertStringContainsString("'course_purchase_required'", $completion);
+        self::assertStringContainsString('function sectionAccessState(', $access);
+        self::assertStringContainsString("'course_purchase_required'", $access);
         self::assertStringContainsString('->sectionAccessState($user, $section)', $manifest);
         self::assertStringContainsString("\$allowed = \$accessState['can_access']", $manifest);
         self::assertStringContainsString("\$accessState['lock_reason'] ?? 'lesson_locked'", $manifest);

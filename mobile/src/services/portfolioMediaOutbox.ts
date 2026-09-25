@@ -14,6 +14,7 @@ import {
 } from './learnerDraftFiles';
 import {readJsonOrQuarantine} from './recoverableJsonStorage';
 import {settleWithin} from '../utils/settleWithin';
+import {learnerDraftStorage} from './learnerDraftStorage';
 
 export type PortfolioMediaOutboxEntry = {
   projectId: string;
@@ -23,7 +24,7 @@ export type PortfolioMediaOutboxEntry = {
   storageKey?: string;
 };
 
-const STORAGE_KEY = '@rokn/portfolio-media-outbox/v1';
+const STORAGE_KEY = learnerDraftStorage.portfolioMedia.namespace;
 const REFERENCE_OWNER = 'portfolio-media-outbox';
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_ENTRIES = 96;

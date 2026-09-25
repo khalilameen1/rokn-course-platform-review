@@ -22,25 +22,10 @@ final class OpenRouterService
 {
     public const CIRCUIT_KEY = 'openrouter:circuit-open';
 
-    public function configuredModel(string $preferredKey = 'default_model'): string
-    {
-        $allowed = array_values(array_filter((array) config('openrouter.allowed_models', [])));
-        $candidates = array_values(array_unique(array_filter([
-            trim((string) config("openrouter.{$preferredKey}")),
-            trim((string) config('openrouter.default_model')),
-            ...array_map('trim', (array) config('openrouter.fallback_models', [])),
-        ])));
-        foreach ($candidates as $candidate) {
-            if (in_array($candidate, $allowed, true)) {
-                return $candidate;
-            }
-        }
-
-        throw new AiProviderUnavailableException(
-            false,
-            'No configured AI model is permitted by the production allowlist.',
-            providerCode: 'model_not_allowed'
-        );
+    public function __construct(
+        private readonly OpenRouterRequestPolicy $requests,
+        private readonly OpenRouterResponseDecoder $responses
+    ) {
     }
 
     public function chat(
@@ -62,14 +47,10 @@ final class OpenRouterService
             );
         }
 
-        $allowed = array_values(array_filter(config('openrouter.allowed_models', [])));
-        if ($allowed === [] || !in_array($model, $allowed, true)) {
-            throw new AiProviderUnavailableException(
-                false,
-                'AI model is not in the production allowlist.',
-                providerCode: 'model_not_allowed'
-            );
-        }
+        $payload = $this->requests->payload(
+            $model, $messages, $temperature, $maxTokens,
+            $requestIdentity, $allowWebSearch, $onPartial !== null
+        );
 
         if ($this->circuitIsOpen()) {
             throw new AiProviderUnavailableException(
@@ -84,119 +65,6 @@ final class OpenRouterService
                 'AI generation requires the cURL extension.',
                 providerCode: 'transport_not_configured'
             );
-        }
-
-        $reasoningEffort = $this->reasoningEffort($model);
-        $disableSonnetReasoning = $reasoningEffort === 'none' && $this->isSonnetFive($model);
-        $models = array_values(array_unique(array_filter([
-            $model,
-            ...array_values(array_filter(
-                (array) config('openrouter.fallback_models', []),
-                static fn (mixed $fallback): bool => is_string($fallback)
-                    && in_array($fallback, $allowed, true)
-            )),
-        ])));
-        if ($reasoningEffort === 'none') {
-            // A model fallback receives the same request body as the primary.
-            // Do not advertise a fallback whose reasoning contract rejects
-            // the explicit no-reasoning mode used by the real-time chat.
-            $models = array_values(array_filter(
-                $models,
-                fn (string $candidate): bool => $this->supportsNoReasoning($candidate)
-                    || ($disableSonnetReasoning && $this->isSonnetFive($candidate))
-            ));
-        }
-        $payload = [
-            'messages' => $messages,
-            // Use OpenRouter's shared output ceiling so strict parameter
-            // routing retains the configured provider fallbacks.
-            'max_tokens' => max(
-                80,
-                min((int) config('openrouter.max_tokens', 800), $maxTokens)
-            ),
-            'provider' => [
-                'require_parameters' => true,
-                'data_collection' => in_array(
-                    config('openrouter.provider_data_collection'),
-                    ['allow', 'deny'],
-                    true
-                ) ? config('openrouter.provider_data_collection') : 'allow',
-                'sort' => in_array(
-                    config('openrouter.provider_sort'),
-                    ['latency', 'throughput', 'price'],
-                    true
-                ) ? config('openrouter.provider_sort') : 'latency',
-            ],
-        ];
-        if ((bool) config('openrouter.provider_zdr', false)) {
-            $payload['provider']['zdr'] = true;
-        }
-        if (count($models) > 1) {
-            // OpenRouter owns failover inside one billable request. Retrying a
-            // second model from our queue after an uncertain response could
-            // charge twice and deliver two different answers.
-            $payload['models'] = $models;
-        } else {
-            $payload['model'] = $model;
-        }
-        if ($disableSonnetReasoning) {
-            // Sonnet 5 advertises optional thinking, but no `none` effort.
-            // Omission enables its high default; disable it explicitly.
-            $payload['reasoning'] = ['enabled' => false, 'exclude' => true];
-        } elseif ($reasoningEffort !== null) {
-            $payload['reasoning'] = [
-                'effort' => $reasoningEffort,
-                'exclude' => true,
-            ];
-        }
-        // GPT-5 and Sonnet 5 do not advertise temperature support. Sending it
-        // anyway can make an otherwise healthy provider reject the request
-        // before generation starts. Keep sampling control for models that
-        // support it instead of weakening every model to the same payload.
-        if (collect($models)->every(fn (string $candidate): bool =>
-            $this->supportsTemperature($candidate)
-        )) {
-            $payload['temperature'] = max(0, min(1.2, $temperature));
-        }
-        if (trim((string) $requestIdentity) !== '') {
-            // The stable external-user value is part of the request body, so
-            // an identical recovery attempt cannot accidentally address a
-            // different logical learner request.
-            $payload['user'] = substr(
-                hash('sha256', trim((string) $requestIdentity)),
-                0,
-                64
-            );
-        }
-        if ($this->containsPdf($messages)) {
-            $payload['plugins'] = [[
-                'id' => 'file-parser',
-                'pdf' => ['engine' => (string) config('openrouter.pdf_parser_engine', 'cloudflare-ai')],
-            ]];
-        }
-        if ($allowWebSearch && (bool) config('openrouter.web_search_enabled', true)) {
-            // The model decides whether current information is required. A
-            // bounded server tool avoids paying for a search on ordinary
-            // teaching questions while keeping time-sensitive answers honest.
-            $payload['tools'] = [[
-                'type' => 'openrouter:web_search',
-                'parameters' => [
-                    'engine' => 'auto',
-                    'max_results' => max(1, min(
-                        5,
-                        (int) config('openrouter.web_search_max_results', 3)
-                    )),
-                    'max_total_results' => max(1, min(
-                        8,
-                        (int) config('openrouter.web_search_max_total_results', 5)
-                    )),
-                    'search_context_size' => 'low',
-                ],
-            ]];
-        }
-        if ($onPartial !== null) {
-            $payload['stream'] = true;
-            $payload['stream_options'] = ['include_usage' => true];
         }
 
         $eventStream = $onPartial !== null ? new OpenRouterEventStream($onPartial, $model) : null;
@@ -334,88 +202,12 @@ final class OpenRouterService
         } else {
             $body = $response->json();
         }
-        $content = $this->learnerVisibleContent(
-            data_get($body, 'choices.0.message.content')
+        $result = $this->responses->decode(
+            $body, $model,
+            $response->header('X-Generation-Id'),
+            $response->header('X-OpenRouter-Cache-Status')
         );
-        if ($content === '') {
-            Log::warning('OpenRouter returned no learner-visible answer.', [
-                'provider_request_id' => data_get($body, 'id'),
-                'model' => data_get($body, 'model', $model),
-                'finish_reason' => data_get($body, 'choices.0.finish_reason'),
-                'native_finish_reason' => data_get($body, 'choices.0.native_finish_reason'),
-                'completion_tokens' => max(
-                    0,
-                    (int) data_get($body, 'usage.completion_tokens', 0)
-                ),
-                'reasoning_returned' => filled(
-                    data_get($body, 'choices.0.message.reasoning')
-                ) || filled(data_get($body, 'choices.0.message.reasoning_details')),
-            ]);
-            throw new AiProviderUnavailableException(
-                false,
-                'AI provider returned an empty response.',
-                outcomeUnknown: true
-            );
-        }
-        // Provider failures belong to the HTTP/error envelope. Technical terms
-        // and code inside message.content can be exactly what the lesson teaches.
-        $content = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $content));
-        if ($content === '' || mb_strlen($content) > 12000) {
-            throw new AiProviderUnavailableException(
-                false,
-                'AI provider returned an unusable response.',
-                outcomeUnknown: true
-            );
-        }
-
         $this->recordSuccess();
-
-        $providerCost = data_get($body, 'usage.cost');
-        $annotations = data_get($body, 'choices.0.message.annotations');
-        $annotations = is_array($annotations) ? array_values($annotations) : [];
-
-        $result = [
-            'message' => $content,
-            'provider_request_id' => data_get($body, 'id')
-                ?: $response->header('X-Generation-Id'),
-            // OpenRouter includes normalized token and cost accounting in the
-            // response. Persist the real amount; never infer margin from a
-            // model name that can change price later.
-            'usage' => [
-                'prompt_tokens' => max(0, (int) data_get($body, 'usage.prompt_tokens', 0)),
-                'completion_tokens' => max(0, (int) data_get($body, 'usage.completion_tokens', 0)),
-                'total_tokens' => max(0, (int) data_get($body, 'usage.total_tokens', 0)),
-                'cost' => is_numeric($providerCost) ? max(0, (float) $providerCost) : 0,
-                // Zero is a valid provider-reported cost (for example a free
-                // model). Keep it distinct from an omitted usage cost.
-                'cost_reported' => is_numeric($providerCost),
-            ],
-            // URL citations belong to the generated answer rather than to an
-            // uploaded learner file. Keeping them separate prevents web-search
-            // metadata from being written onto attachment records.
-            'response_annotations' => array_values(array_filter(
-                $annotations,
-                static fn (mixed $annotation): bool => is_array($annotation)
-                    && strtolower((string) ($annotation['type'] ?? '')) === 'url_citation'
-            )),
-            'file_annotations' => array_values(array_filter(
-                $annotations,
-                static fn (mixed $annotation): bool => !is_array($annotation)
-                    || strtolower((string) ($annotation['type'] ?? '')) !== 'url_citation'
-            )),
-            'provider_transport' => [
-                'generation_id' => substr(
-                    (string) ($response->header('X-Generation-Id') ?: data_get($body, 'id', '')),
-                    0,
-                    255
-                ),
-                'response_cache_status' => substr(
-                    (string) $response->header('X-OpenRouter-Cache-Status'),
-                    0,
-                    16
-                ),
-            ],
-        ];
 
         // Land at the provider boundary before returning through formatting,
         // settlement and learner-facing layers. The caller repeats the same
@@ -426,7 +218,6 @@ final class OpenRouterService
 
         return $result;
     }
-
 
     private function generationHandler(?OpenRouterEventStream $stream): callable
     {
@@ -526,137 +317,6 @@ final class OpenRouterService
             'visible_chars' => max(0, (int) $stream['visible_chars']),
             'generation_id' => $stream['generation_id'],
         ]);
-    }
-
-    private function containsPdf(array $messages): bool
-    {
-        foreach ($messages as $message) {
-            $content = is_array($message) ? ($message['content'] ?? null) : null;
-            if (!is_array($content)) continue;
-            foreach ($content as $part) {
-                if (!is_array($part) || ($part['type'] ?? null) !== 'file') continue;
-                if (str_starts_with((string) data_get($part, 'file.file_data'), 'data:application/pdf;')) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private function learnerVisibleContent(mixed $content): string
-    {
-        if (is_string($content)) {
-            return trim($content);
-        }
-        if (!is_array($content)) {
-            return '';
-        }
-
-        $lines = [];
-        foreach ($content as $part) {
-            if (is_string($part) && trim($part) !== '') {
-                $lines[] = trim($part);
-                continue;
-            }
-            if (!is_array($part)) {
-                continue;
-            }
-
-            $type = strtolower(trim((string) ($part['type'] ?? '')));
-            if ($type !== '' && !in_array($type, ['text', 'output_text'], true)) {
-                continue;
-            }
-            if (is_string($part['text'] ?? null) && trim($part['text']) !== '') {
-                $lines[] = trim($part['text']);
-            }
-        }
-
-        return implode("\n", $lines);
-    }
-
-    private function reasoningEffort(string $model): ?string
-    {
-        $effort = strtolower(trim((string) config('openrouter.reasoning_effort', 'none')));
-        $effort = in_array(
-            $effort,
-            ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
-            true
-        ) ? $effort : 'none';
-
-        if ($this->isGeminiThreeEightFlash($model)) {
-            // Gemini 3.8 requires thinking and accepts only these three levels.
-            // Keep the legacy no-thinking chat setting on its lowest latency level.
-            return match ($effort) {
-                'medium' => 'medium',
-                'high', 'xhigh', 'max' => 'high',
-                default => 'low',
-            };
-        }
-
-        if ($this->isSonnetFive($model)) {
-            return $effort === 'minimal' ? 'low' : $effort;
-        }
-
-        // GPT-5.6 enables medium reasoning by default. That can consume half
-        // a short learner-answer budget before any visible text is produced.
-        // Its current production variants support disabling reasoning, which
-        // keeps first-token latency and billed output predictable.
-        if (
-            $effort === 'none'
-            && preg_match(
-                '/^openai\/gpt-5\.6-(?:luna|terra|sol)(?:-pro)?(?:-\d{8})?$/',
-                strtolower(trim($model))
-            )
-        ) {
-            return 'none';
-        }
-
-        // The original GPT-5 family requires reasoning and advertises
-        // minimal/low/medium/high only. OpenRouter may map an unsupported
-        // "none" to a larger default effort, consuming the small course-chat
-        // completion budget before any learner-visible text is produced.
-        if (
-            $effort === 'none'
-            && preg_match(
-                '/^openai\/gpt-5(?:-(?:mini|nano|pro))?(?:-\d{4}-\d{2}-\d{2})?$/',
-                strtolower(trim($model))
-            )
-        ) {
-            return 'minimal';
-        }
-
-        // `none` is an OpenRouter reasoning control, not a universal model
-        // parameter. Omitting it lets ordinary chat models remain eligible
-        // when strict parameter support is enabled.
-        return $effort === 'none' ? null : $effort;
-    }
-
-    private function supportsNoReasoning(string $model): bool
-    {
-        return preg_match(
-            '/^openai\/gpt-5\.6-(?:luna|terra|sol)(?:-pro)?(?:-\d{8})?$/',
-            strtolower(trim($model))
-        ) === 1;
-    }
-
-    private function isSonnetFive(string $model): bool
-    {
-        return strtolower(trim($model)) === 'anthropic/claude-sonnet-5';
-    }
-
-    private function supportsTemperature(string $model): bool
-    {
-        $normalized = strtolower(trim($model));
-
-        return !str_starts_with($normalized, 'openai/gpt-5')
-            && !$this->isSonnetFive($normalized)
-            && !$this->isGeminiThreeEightFlash($normalized)
-            && !preg_match('/^openai\/(?:o1|o3|o4)(?:-|$)/', $normalized);
-    }
-
-    private function isGeminiThreeEightFlash(string $model): bool
-    {
-        return strtolower(trim($model)) === 'google/gemini-3.8-flash';
     }
 
     private function circuitIsOpen(): bool

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Data\CourseAuthoringEdit;
 use App\Services\CertificateTextTemplateService;
 use App\Support\UnicodeText;
 use Illuminate\Foundation\Http\FormRequest;
@@ -152,6 +153,11 @@ class CourseRequest extends FormRequest
             'access_plans.*.certificate_enabled' => 'nullable|boolean',
             'access_plans.*.delivery_cost_usd' => 'nullable|numeric|min:0|max:999999.999999',
         ];
+    }
+
+    public function authoringEdit(): CourseAuthoringEdit
+    {
+        return CourseAuthoringEdit::fromValidated($this->validated());
     }
 
 }

@@ -4,74 +4,55 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Data\CourseSectionEdit;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 use UnexpectedValueException;
 
+/** Persists validated content intent inside the caller's section transaction. */
 final readonly class CourseSectionContentService
 {
-    public function __construct(
-        private CourseSectionTypeChangeGuard $typeChangeGuard
-    ) {
+    public function __construct(private CourseSectionTypeChangeGuard $typeChangeGuard)
+    {
     }
 
-    public function create(
-        Request $request,
-        Course $course,
-        int $order,
-        ?string $videoGuid,
-        ?string $thumbnailPath
-    ): Model {
-        return match ((string) $request->input('section_type')) {
-            'lesson' => $this->createLesson(
-                $request,
-                $course,
-                $order,
-                $videoGuid,
-                $thumbnailPath
-            ),
-            'project' => Project::query()->create($this->projectData($request)),
+    public function create(CourseSectionEdit $edit, Course $course, CourseSectionMediaStage $media): Model
+    {
+        return match ($edit->type) {
+            'lesson' => $this->saveLesson($edit, $course, null, $media),
+            'project' => Project::query()->create($this->projectData($edit)),
             default => throw new UnexpectedValueException('Unsupported course section type.'),
         };
     }
 
     public function update(
-        Request $request,
+        CourseSectionEdit $edit,
         Course $course,
         CourseSection $section,
-        int $order,
-        ?string $newVideoGuid,
-        ?string $newThumbnailPath,
-        ?string $existingVideoGuid,
-        ?string $existingThumbnailPath
+        CourseSectionMediaStage $media
     ): Model {
-        $newType = (string) $request->input('section_type');
         $oldType = $section->getSectionType();
         $content = $section->sectionable;
 
-        if ($oldType !== $newType && $content) {
+        if ($oldType !== $edit->type && $content) {
             $this->typeChangeGuard->assertAllowed($section, $content);
             $content->delete();
             $content = null;
         }
 
-        return match ($newType) {
-            'lesson' => $this->updateLesson(
-                $request,
+        return match ($edit->type) {
+            'lesson' => $this->saveLesson(
+                $edit,
                 $course,
-                $order,
                 $oldType === 'lesson' && $content instanceof Lesson ? $content : null,
-                $newVideoGuid ?: $existingVideoGuid,
-                $newThumbnailPath ?: $existingThumbnailPath,
-                $newVideoGuid !== null
+                $media
             ),
-            'project' => $this->updateProject(
-                $request,
+            'project' => $this->saveProject(
+                $edit,
                 $oldType === 'project' && $content instanceof Project ? $content : null
             ),
             default => throw new UnexpectedValueException('Unsupported course section type.'),
@@ -87,47 +68,34 @@ final readonly class CourseSectionContentService
         };
     }
 
-    private function createLesson(
-        Request $request,
+    private function saveLesson(
+        CourseSectionEdit $edit,
         Course $course,
-        int $order,
-        ?string $videoGuid,
-        ?string $thumbnailPath
-    ): Lesson {
-        $lesson = Lesson::query()->create(
-            $this->lessonData($request, $course, $order, $videoGuid, $thumbnailPath)
-        );
-        LessonMediaState::query()->create([
-            'lesson_id' => $lesson->id,
-        ] + LessonMediaState::resetForGeneration((string) $videoGuid));
-
-        return $lesson;
-    }
-
-    private function updateLesson(
-        Request $request,
-        Course $course,
-        int $order,
         ?Lesson $lesson,
-        ?string $videoGuid,
-        ?string $thumbnailPath,
-        bool $videoChanged
+        CourseSectionMediaStage $media
     ): Lesson {
-        $data = $this->lessonData(
-            $request,
-            $course,
-            $order,
-            $videoGuid,
-            $thumbnailPath,
-            $lesson
-        );
+        $videoGuid = $media->videoGuid ?: $media->previousVideoGuid();
+        $thumbnailPath = $media->thumbnailPath ?: $media->previousThumbnailPath();
+        $changes = $lesson ? $edit->lessonChanges : array_replace([
+            'description_ar' => '', 'description_en' => '',
+            'duration_minutes' => null, 'is_opened' => false,
+        ], $edit->lessonChanges);
+        $data = array_merge($changes, [
+            'title_ar' => $edit->titleAr,
+            'title_en' => $edit->titleEn,
+            'video_link' => null,
+            'video_source_type' => 'bunny',
+            'bunny_video_id' => $videoGuid,
+            'thumbnail_path' => $thumbnailPath,
+            'list_id' => $course->id,
+        ]);
         if ($lesson) {
             $lesson->update($data);
         } else {
             $lesson = Lesson::query()->create($data);
         }
 
-        if ($videoChanged || !$lesson->mediaState()->exists()) {
+        if ($media->videoChanged || !$lesson->mediaState()->exists()) {
             LessonMediaState::query()->updateOrCreate(
                 ['lesson_id' => $lesson->id],
                 LessonMediaState::resetForGeneration((string) $videoGuid)
@@ -137,44 +105,9 @@ final readonly class CourseSectionContentService
         return $lesson;
     }
 
-    /** @return array<string, mixed> */
-    private function lessonData(
-        Request $request,
-        Course $course,
-        int $order,
-        ?string $videoGuid,
-        ?string $thumbnailPath,
-        ?Lesson $existing = null
-    ): array {
-        $data = [
-            'title_ar' => $request->input('title_ar'),
-            'title_en' => $request->input('title_en'),
-            'video_link' => null,
-            'video_source_type' => 'bunny',
-            'bunny_video_id' => $videoGuid,
-            'thumbnail_path' => $thumbnailPath,
-            'list_id' => $course->id,
-        ];
-
-        foreach ([
-            'lesson_description_ar' => ['description_ar', ''],
-            'lesson_description_en' => ['description_en', ''],
-            'lesson_duration_minutes' => ['duration_minutes', null],
-        ] as $input => [$attribute, $createDefault]) {
-            if (!$existing || $request->exists($input)) {
-                $data[$attribute] = $request->input($input, $createDefault);
-            }
-        }
-        if (!$existing || $request->exists('is_opened')) {
-            $data['is_opened'] = $request->boolean('is_opened');
-        }
-
-        return $data;
-    }
-
-    private function updateProject(Request $request, ?Project $project): Project
+    private function saveProject(CourseSectionEdit $edit, ?Project $project): Project
     {
-        $data = $this->projectData($request, $project);
+        $data = $this->projectData($edit, $project);
         if ($project) {
             $project->update($data);
             return $project;
@@ -183,11 +116,19 @@ final readonly class CourseSectionContentService
         return Project::query()->create($data);
     }
 
-    /** @return array<string, mixed> */
-    private function projectData(Request $request, ?Project $existing = null): array
+    /** @return array<string,mixed> */
+    private function projectData(CourseSectionEdit $edit, ?Project $existing = null): array
     {
+        $data = $existing ? $edit->projectChanges : array_replace([
+            'requirements_text_ar' => null, 'requirements_text_en' => null,
+            'is_graduation_project' => false,
+        ], $edit->projectChanges);
+        if ($existing && $edit->projectSubmissionTypes === null) {
+            return $data;
+        }
+
         $submissionTypes = (array) config('projects.submission_types', []);
-        $selectedTypes = collect((array) $request->input('project_submission_types', []))
+        $selectedTypes = collect($edit->projectSubmissionTypes ?? [])
             ->map(static fn ($type): string => trim((string) $type))
             ->filter()
             ->unique()
@@ -202,25 +143,9 @@ final readonly class CourseSectionContentService
             ->values()
             ->all();
 
-        $data = [];
-        foreach ([
-            'project_requirements_ar' => 'requirements_text_ar',
-            'project_requirements_en' => 'requirements_text_en',
-        ] as $input => $attribute) {
-            if (!$existing || $request->exists($input)) {
-                $data[$attribute] = $request->input($input);
-            }
-        }
-        if (!$existing || $request->exists('is_graduation_project')) {
-            $data['is_graduation_project'] = $request->boolean('is_graduation_project');
-        }
-        if (!$existing || $request->exists('project_submission_types')) {
-            $data += [
-                'submission_text_enabled' => $selectedTypes->contains('text'),
-                'submission_allowed_mime_types' => $allowedMimeTypes,
-            ];
-        }
-
-        return $data;
+        return $data + [
+            'submission_text_enabled' => $selectedTypes->contains('text'),
+            'submission_allowed_mime_types' => $allowedMimeTypes,
+        ];
     }
 }

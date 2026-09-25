@@ -82,10 +82,15 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
     }
 
     #[DataProvider('photoPathFormats')]
-    public function test_photo_committed_before_receipt_failure_is_reused_by_same_intent(bool $legacyPath): void
+    public function test_legacy_photo_committed_before_receipt_is_reused_by_same_intent(bool $legacyPath): void
     {
         $payload = $this->payload('coupons');
         $fixture = $this->image();
+        // Simulate an interrupted create from the former checkpoint workflow.
+        // New creates commit the owner/photo/receipt atomically instead.
+        $legacyOwner = Coupon::query()->create($payload);
+        $legacyOwner->storeImage($fixture, 'coupons', 'featured',
+            'admin-coupon|'.$payload['authoring_request_id'].'|'.hash_file('sha256', $fixture->getRealPath()));
         DB::statement("CREATE TRIGGER reject_upload_receipt BEFORE UPDATE ON admin_authoring_create_intents
             WHEN NEW.status = 'completed' BEGIN SELECT RAISE(ABORT, 'receipt write unavailable'); END");
         try {
@@ -107,6 +112,32 @@ final class TrackedAuthoringUploadRetryTest extends TestCase
         $this->postImage('coupons', $payload, $fixture)->assertRedirect(route('admin.coupons.index'));
         self::assertSame($path, $owner->fresh()->allPhotos()->sole()->path);
         self::assertSame(1, AccountFileDeletion::query()->count());
+        $this->assertAcceptedReplay('coupons', $payload, $fixture, $path);
+    }
+
+    public function test_new_coupon_receipt_failure_rolls_back_its_owner_and_photo_then_retries_safely(): void
+    {
+        $payload = $this->payload('coupons');
+        $fixture = $this->image();
+        DB::statement("CREATE TRIGGER reject_coupon_receipt BEFORE UPDATE ON admin_authoring_create_intents
+            WHEN NEW.status = 'completed' BEGIN SELECT RAISE(ABORT, 'receipt write unavailable'); END");
+        try {
+            $this->postImage('coupons', $payload, $fixture)->assertStatus(500);
+        } finally {
+            DB::statement('DROP TRIGGER reject_coupon_receipt');
+        }
+        self::assertSame(0, Coupon::withTrashed()->count());
+        self::assertSame(0, DB::table('photos')->count());
+        $receipt = DB::table('admin_authoring_create_intents')->sole();
+        self::assertSame('failed', $receipt->status);
+        self::assertNull($receipt->resource_id);
+        $orphan = AccountFileDeletion::query()->sole();
+        (new DeleteAccountFile((int) $orphan->id))->handle(app(StoredFileReferenceService::class));
+        Storage::disk('public')->assertMissing($orphan->path);
+
+        $this->postImage('coupons', $payload, $fixture)->assertRedirect(route('admin.coupons.index'));
+        $path = $this->owner('coupons', $payload['authoring_request_id'])->allPhotos()->sole()->path;
+        self::assertNotSame($orphan->path, $path);
         $this->assertAcceptedReplay('coupons', $payload, $fixture, $path);
     }
 

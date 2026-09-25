@@ -4,145 +4,55 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Admin;
 
-use App\Support\PublicDiskUrl;
 use App\Http\Controllers\Controller;
 use App\Models\DesignSetting;
+use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminDesignSettingsAuthoringService;
+use App\Services\AppArtworkService;
+use App\Support\DesignSettingsEditorVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\View\View;
-use App\Services\PublicAppSettingsService;
-use App\Services\AppArtworkService;
-use App\Services\StoredFileDeletionService;
-use App\Services\AdminAuthoringCreateIntentService;
 use Illuminate\Validation\ValidationException;
-use App\Support\AdminSingletonLock;
+use Illuminate\View\View;
 
 final class DesignSettingController extends Controller
 {
+    public function __construct(private readonly AdminDesignSettingsAuthoringService $authoring)
+    {
+    }
+
     public function index(): View
     {
         $settings = DesignSetting::getDefaultSettings();
+
         return view('admin.design-settings.index', [
             'settings' => $settings,
-            'editorVersion' => $this->editorVersion($settings),
+            'editorVersion' => DesignSettingsEditorVersion::for($settings),
             'artwork' => app(AppArtworkService::class)->urls($settings),
         ]);
     }
 
-    /**
-     * The dashboard owns one design-settings record. The same endpoint creates
-     * it on first use and updates it afterwards, so there is no second editor
-     * with a competing contract.
-     */
-    public function store(
-        Request $request,
-        PublicAppSettingsService $publicSettings,
-        StoredFileDeletionService $storedFiles,
-        AdminAuthoringCreateIntentService $createIntents
-    ): RedirectResponse
+    public function store(Request $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
     {
         $validated = $request->validate($this->rules());
-        $submittedEditorVersion = (string) $validated['editor_version'];
-        if (!empty($validated['how_platform_works_video_link'])) {
-            $validated['how_platform_works_video_link'] = $publicSettings->embedVideoUrl(
-                $validated['how_platform_works_video_link']
-            );
-            if ($validated['how_platform_works_video_link'] === null) {
-                throw ValidationException::withMessages([
-                    'how_platform_works_video_link' => ['استخدم رابط فيديو من YouTube أو Vimeo'],
-                ]);
-            }
-        }
-        if ($request->boolean('show_how_platform_works') && empty($validated['how_platform_works_video_link'])) {
-            throw ValidationException::withMessages([
-                'how_platform_works_video_link' => ['أضف رابط الفيديو قبل إظهار هذا القسم'],
-            ]);
-        }
-        $artworkInputs = array_map(fn (string $key): string => $key.'_image_file', array_keys(AppArtworkService::ASSETS));
-        $data = collect($validated)->except(array_merge([
-            'logo_file',
-            'icon_file',
-            'home_background_file',
-            'editor_version',
-            'authoring_request_id',
-        ], $artworkInputs))->all();
-        $data['show_how_platform_works'] = $request->boolean('show_how_platform_works');
-
-        $settings = DesignSetting::query()->first();
-        $newFiles = [];
-        $oldFiles = [];
-
         try {
-            $uploads = [
-                'logo_file' => ['logo_url', 'design-settings/logos'],
-                'icon_file' => ['icon_url', 'design-settings/icons'],
-                'home_background_file' => ['home_background_url', 'design-settings/home-backgrounds'],
-            ];
-            foreach (array_keys(AppArtworkService::ASSETS) as $key) {
-                $uploads[$key.'_image_file'] = [$key.'_image_url', 'design-settings/artwork'];
-            }
-            foreach ($uploads as $input => [$attribute, $directory]) {
-                if (!$request->hasFile($input)) {
-                    continue;
+            $this->authoring->save(
+                $validated, $request->allFiles(), (string) $validated['editor_version'],
+                function (DesignSetting $settings) use ($request, $createIntents): void {
+                    $createIntents->completeRedirect(
+                        $request, route('admin.design-settings.index'), 302, DesignSetting::class, $settings->id
+                    );
                 }
-
-                $path = $storedFiles->storeTrackedUpload($request->file($input), $directory);
-
-                $newFiles[] = $path;
-                $data[$attribute] = PublicDiskUrl::from($path);
-                if ($settings?->{$attribute}) {
-                    $oldFiles[] = $this->publicPathFromUrl((string) $settings->{$attribute});
-                }
-            }
-
-            DB::transaction(function () use (
-                &$settings,
-                $data,
-                $submittedEditorVersion,
-                $request,
-                $createIntents
-            ): void {
-                AdminSingletonLock::acquire('design_settings');
-                $locked = DesignSetting::query()->lockForUpdate()->first();
-                $current = $locked ?: DesignSetting::getDefaultSettings();
-                if (!hash_equals($this->editorVersion($current), $submittedEditorVersion)) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => ["عدّل شخص آخر إعدادات التصميم\nأعد تحميل الصفحة قبل الحفظ"],
-                    ]);
-                }
-                if ($locked) {
-                    $locked->update($data);
-                    $settings = $locked;
-                } else {
-                    $settings = DesignSetting::create($data);
-                }
-                $createIntents->completeRedirect(
-                    $request,
-                    route('admin.design-settings.index'),
-                    302,
-                    DesignSetting::class,
-                    $settings->id
-                );
-            });
+            );
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (\Throwable $exception) {
-            foreach ($newFiles as $path) {
-                $storedFiles->deleteOrQueue('public', $path);
-            }
-            if ($exception instanceof ValidationException) {
-                throw $exception;
-            }
             report($exception);
 
             return back()->withInput()->with('error', 'تعذر حفظ الإعدادات الآن');
         }
 
-        foreach (array_filter($oldFiles) as $path) {
-            $storedFiles->deleteOrQueue('public', $path);
-        }
-
-        return redirect()->route('admin.design-settings.index')
-            ->with('success', 'تم حفظ إعدادات التصميم');
+        return redirect()->route('admin.design-settings.index')->with('success', 'تم حفظ إعدادات التصميم');
     }
 
     /** @return array<string, string|array<int, string>> */
@@ -175,18 +85,5 @@ final class DesignSettingController extends Controller
             $rules[$key.'_image_file'] = ['nullable', 'image', 'mimes:png,webp', 'max:4096', 'dimensions:max_width=4096,max_height=4096'];
         }
         return $rules;
-    }
-
-    private function publicPathFromUrl(string $url): ?string
-    {
-        return PublicDiskUrl::pathFrom($url);
-    }
-
-    private function editorVersion(DesignSetting $settings): string
-    {
-        // Content identity also detects two saves within the same second.
-        $attributes = $settings->getAttributes();
-        ksort($attributes);
-        return hash('sha256', json_encode($attributes, JSON_THROW_ON_ERROR));
     }
 }

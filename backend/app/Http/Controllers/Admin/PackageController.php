@@ -7,14 +7,18 @@ use App\Models\Package;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminEconomyReadService;
 use App\Services\AdminPaymentOperationsReadService;
+use App\Services\AdminPackageAuthoringService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\AdminEditorVersion;
+use App\Support\PackageEditorVersion;
 
 class PackageController extends Controller
 {
+    public function __construct(private readonly AdminPackageAuthoringService $authoring)
+    {
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -24,7 +28,7 @@ class PackageController extends Controller
     {
         $packages = $economy->packages();
         $editorVersions = $packages->getCollection()->mapWithKeys(fn (Package $package): array => [
-            $package->id => $this->editorVersion($package),
+            $package->id => PackageEditorVersion::for($package),
         ]);
         return view('admin.packages.index', compact('packages', 'editorVersions'));
     }
@@ -49,8 +53,7 @@ class PackageController extends Controller
     {
         $validated = $this->validated($request);
 
-        DB::transaction(function () use ($request, $validated, $createIntents): void {
-            $package = Package::create($validated);
+        $this->authoring->create($validated, function (Package $package) use ($request, $createIntents): void {
             $createIntents->completeRedirect(
                 $request,
                 route('admin.packages.index'),
@@ -58,7 +61,7 @@ class PackageController extends Controller
                 Package::class,
                 $package->id
             );
-        }, 3);
+        });
 
         return redirect()->route('admin.packages.index')->with('success', 'تم إضافة الباقة بنجاح');
     }
@@ -98,14 +101,6 @@ class PackageController extends Controller
         unset($validated['authoring_request_id']);
         $validated['sort_order'] = (int) ($validated['sort_order'] ?? 100);
 
-        $candidate = $package ? clone $package : new Package();
-        $candidate->forceFill($validated);
-        if ($candidate->is_active && !$candidate->hasPurchasableChannel()) {
-            throw ValidationException::withMessages([
-                'channels' => ['فعّل كاشير أو اربط منتجًا مفعّلًا في أحد المتجرين قبل إظهار الباقة'],
-            ]);
-        }
-
         return $validated;
     }
 
@@ -132,7 +127,7 @@ class PackageController extends Controller
      */
     public function edit(Package $package)
     {
-        $editorVersion = $this->editorVersion($package);
+        $editorVersion = PackageEditorVersion::for($package);
         return view('admin.packages.edit', compact('package', 'editorVersion'));
     }
 
@@ -150,15 +145,7 @@ class PackageController extends Controller
         $validated = $this->validated($request, $package);
 
         try {
-            DB::transaction(function () use ($package, $validated, $editorVersion): void {
-                $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
-                if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => "تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                    ]);
-                }
-                $locked->update($validated);
-            }, 3);
+            $this->authoring->update((int) $package->id, $validated, $editorVersion);
         } catch (\DomainException $exception) {
             throw ValidationException::withMessages([
                 'package' => [$exception->getMessage()],
@@ -177,21 +164,7 @@ class PackageController extends Controller
     public function destroy(Request $request, Package $package)
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
-        $blocked = DB::transaction(function () use ($package, $validated): bool {
-            $locked = Package::query()->whereKey($package->id)->lockForUpdate()->firstOrFail();
-            if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت الباقة منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
-                ]);
-            }
-            if ($locked->orders()->exists() || $locked->storePurchases()->exists()
-                || filled($locked->google_product_id) || filled($locked->apple_product_id)) {
-                return true;
-            }
-            $locked->delete();
-            return false;
-        }, 3);
-        if ($blocked) {
+        if (!$this->authoring->deleteIfUnused((int) $package->id, (string) $validated['editor_version'])) {
             return redirect()->back()->with(
                 'error',
                 'لا يمكن حذف باقة دخلت دورة بيع. عطّل قنواتها مع الاحتفاظ بالسجل المالي.'
@@ -200,12 +173,4 @@ class PackageController extends Controller
         return redirect()->route('admin.packages.index')->with('success', 'تم حذف الباقة بنجاح');
     }
 
-    private function editorVersion(Package $package): string
-    {
-        return AdminEditorVersion::for($package, [
-            'name_ar', 'name_en', 'price', 'coins', 'is_active', 'direct_enabled',
-            'sort_order',
-            'google_product_id', 'apple_product_id', 'google_enabled', 'apple_enabled',
-        ]);
-    }
 }

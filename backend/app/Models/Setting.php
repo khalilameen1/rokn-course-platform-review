@@ -7,7 +7,7 @@ use App\Support\RoknLocale;
 use Illuminate\Database\Eloquent\Model;
 use App\Services\PublicAppSettingsService;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Support\AfterCommitCacheInvalidation;
 use Throwable;
 class Setting extends Model
 {
@@ -145,18 +145,7 @@ class Setting extends Model
             }
         };
 
-        try {
-            if (DB::transactionLevel() > 0) {
-                DB::afterCommit($forget);
-                return;
-            }
-
-            $forget();
-        } catch (Throwable $exception) {
-            // A cache outage must not roll back a valid settings change, but
-            // unlike a silent stale value it remains visible operationally.
-            report($exception);
-        }
+        AfterCommitCacheInvalidation::run($forget, static fn (Throwable $exception) => report($exception));
     }
 
     /**

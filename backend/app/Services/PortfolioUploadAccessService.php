@@ -16,8 +16,8 @@ final readonly class PortfolioUploadAccessService
     public const UPGRADE_MESSAGE = 'قم بترقية اشتراكك إلى اشتراك يشمل شهادة';
 
     public function __construct(
-        private CourseChatAccessService $courseAccess,
-        private FinancialProvenanceService $provenance,
+        private CourseEntitlementService $courseAccess,
+        private FinancialEntitlementHoldReadService $holds,
     ) {}
 
     public function allows(User $user): bool
@@ -35,7 +35,7 @@ final readonly class PortfolioUploadAccessService
             ->get()->filter(fn (CourseEnrollment $enrollment): bool =>
                 (!$enrollment->order_id || $enrollment->order?->isFinanciallyEffective())
                 && (!$enrollment->access_plan_order_id || $enrollment->accessPlanOrder?->isFinanciallyEffective())
-                && !$this->provenance->enrollmentHasActiveHold($enrollment, ['course', 'plan'])
+                && !$this->holds->enrollmentHasActiveHold($enrollment, ['course', 'plan'])
             );
         $allowed = $enrollments->contains(fn (CourseEnrollment $enrollment): bool =>
             $this->courseAccess->enrollmentHasCertificateAccess($enrollment)

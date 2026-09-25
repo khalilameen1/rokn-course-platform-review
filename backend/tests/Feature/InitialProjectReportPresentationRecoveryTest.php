@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\WalletTransaction;
 use App\Services\AiConsentService;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\PaidAiCallExecutionService;
 use App\Services\ProjectFeedbackThreadService;
@@ -79,7 +80,7 @@ final class InitialProjectReportPresentationRecoveryTest extends TestCase
             'provider_request_id' => 'presentation-recovery'];
         $calls->beginForActiveUser($event, $execution, $submission->user_id);
         $calls->landSuccessfulResultForActiveUser($event, $execution, $submission->user_id, $result);
-        $budget->settle($event, $result);
+        app(AiUsageSettlementService::class)->settle($event, $result);
         // Reproduce a worker stopping after its ready marker but before its
         // separate thread/message transaction. Inputs are already unavailable.
         $submission->forceFill([

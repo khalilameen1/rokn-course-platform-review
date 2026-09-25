@@ -30,7 +30,7 @@ final readonly class BunnyDirectUploadService
         'video/webm',
     ];
 
-    public function __construct(private BunnyService $bunny)
+    public function __construct(private BunnyService $bunny, private BunnyMediaRegistry $mediaRegistry)
     {
     }
 
@@ -187,7 +187,7 @@ final readonly class BunnyDirectUploadService
                     throw $this->terminalOperation("انتهت محاولة تجهيز الرفع\nحاول مرة أخرى");
                 }
                 $session->refresh();
-                $candidate = $this->bunny->queueVideoCleanup(
+                $candidate = $this->mediaRegistry->queueVideoCleanup(
                     $videoId,
                     $section?->sectionable instanceof Lesson ? $section->sectionable : null,
                     'direct_upload_pending',
@@ -234,7 +234,7 @@ final readonly class BunnyDirectUploadService
                     ->where('allocation_token', $allocationToken)
                     ->update(['status' => 'failed', 'allocation_token' => null, 'updated_at' => now()]);
                 if ($videoId && $this->validGuid($videoId)) {
-                    $failedCandidate = $this->bunny->queueVideoCleanup(
+                    $failedCandidate = $this->mediaRegistry->queueVideoCleanup(
                         $videoId,
                         null,
                         'direct_upload_allocation_failed',
@@ -270,7 +270,7 @@ final readonly class BunnyDirectUploadService
 
     private function queueAbandonedAllocation(string $videoId, User $admin, string $reason): void
     {
-        $candidate = $this->bunny->queueVideoCleanup($videoId, null, $reason, 1);
+        $candidate = $this->mediaRegistry->queueVideoCleanup($videoId, null, $reason, 1);
         if (!$candidate) {
             throw new RuntimeException('تعذر تسجيل الفيديو غير المكتمل بأمان');
         }

@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use Closure;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -15,7 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 final class ResolveCourseAuthoringDraft
 {
-    public function __construct(private readonly CourseStagedAuthoringService $authoring) {}
+    public function __construct(
+        private readonly CourseStagedAuthoringService $authoring,
+        private readonly CourseRevisionResolver $revisions
+    ) {}
 
     public function handle(Request $request, Closure $next)
     {
@@ -37,7 +41,7 @@ final class ResolveCourseAuthoringDraft
                     ],
                 ])->status(409);
             }
-            $canonical = $this->authoring->canonicalFor($course);
+            $canonical = $this->revisions->canonicalFor($course);
             $draft = $this->authoring->draftFor($canonical);
             $revision = CourseAuthoringRevision::query()
                 ->where('canonical_course_id', $canonical->id)
@@ -55,7 +59,7 @@ final class ResolveCourseAuthoringDraft
                         ->exists();
                     if ($alreadyInDraft) continue;
 
-                    $currentId = $this->authoring->currentEntityId($parameter::class, $parameterId)
+                    $currentId = $this->revisions->currentEntityId($parameter::class, $parameterId)
                         ?? $parameterId;
                     $mappedId = DB::table('course_authoring_revision_entities')
                         ->where('course_authoring_revision_id', $revision->id)

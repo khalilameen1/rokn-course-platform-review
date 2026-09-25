@@ -6,7 +6,9 @@ const source = (relativePath: string) =>
 
 describe('profile recovery contracts', () => {
   it('does not turn a saved-folder request failure into an authoritative empty list', () => {
-    const savedLibrary = source('src/screens/Profile/saved/useSavedLibrary.ts');
+    const savedLibrary = source(
+      'src/screens/Profile/saved/useSavedLibraryRead.ts',
+    );
 
     expect(savedLibrary).not.toContain(
       'getSavedFolderOptions().catch(() => [])',

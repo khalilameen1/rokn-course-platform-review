@@ -534,7 +534,7 @@ final class ProductParityContractsTest extends TestCase
             'classification_id' => $classificationId,
             'course_id' => $course->id,
         ]);
-        app(\App\Services\CourseAccessPlanService::class)->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
 
         return $course;
     }

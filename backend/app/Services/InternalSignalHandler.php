@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\StudentNotificationIntent;
+
 use App\Events\CourseCompleted;
 use App\Jobs\SendAiUsageThresholdAlert;
 use App\Jobs\SendFinancialAnomalyAlert;
@@ -24,10 +26,11 @@ final readonly class InternalSignalHandler
         private AwardCourseCompletionReward $rewards,
         private LearningRewardService $learningRewards,
         private AiPlatformUsageMonitor $aiUsage,
-        private CourseAccessPlanService $accessPlans,
+        private CoursePlanAttachmentGrantService $attachmentGrants,
         private InternalSignalService $internalSignals,
         private CurriculumCompletionService $curriculumCompletion,
-        private CourseStagedAuthoringService $stagedAuthoring
+        private CourseRevisionResolver $revisionResolver,
+        private readonly StudentNotificationService $notifications
     ) {
     }
 
@@ -161,7 +164,7 @@ final readonly class InternalSignalHandler
             return;
         }
 
-        $this->accessPlans->grantAttachmentsToCurrentEnrollments(
+        $this->attachmentGrants->grantAttachmentsToCurrentEnrollments(
             $course,
             (bool) ($payload['chat'] ?? false),
             (bool) ($payload['project'] ?? false)
@@ -202,7 +205,7 @@ final readonly class InternalSignalHandler
             return;
         }
 
-        $projectId = $this->stagedAuthoring->currentEntityId(
+        $projectId = $this->revisionResolver->currentEntityId(
             Project::class,
             $historicalProjectId
         ) ?? $historicalProjectId;
@@ -218,24 +221,26 @@ final readonly class InternalSignalHandler
         $passed = $status === ProjectSubmission::STATUS_PASSED;
         if (!$passed && $status !== ProjectSubmission::STATUS_NEEDS_RESUBMISSION) return;
 
-        StudentNotificationService::notifyUser(
+        $this->notifications->notifyUser(
             $user,
-            StudentNotificationService::TYPE_PROJECT_UPDATE,
-            $passed ? 'تم اعتماد مشروعك' : 'مشروعك يحتاج تعديلًا',
-            $passed ? 'Your project was approved' : 'Your project needs changes',
-            $passed ? (string) $course->title : 'راجع الملاحظات وأرسل المشروع من جديد',
-            $passed ? (string) ($course->name_en ?: $course->title) : 'Review the feedback and submit your project again.',
-            $section
-                ? RoknAppLink::project((int) $course->id, $projectId)
-                : RoknAppLink::course((int) $course->id),
-            Course::class,
-            (int) $course->id,
-            'project-review:' . $submission->public_id . ':' . $status,
-            [
-                'course' => (string) $course->title,
-                'project' => (string) ($section?->title ?: 'مشروع العبور'),
-            ],
-            $course->image
+            new StudentNotificationIntent(
+                notificationType: StudentNotificationService::TYPE_PROJECT_UPDATE,
+                titleAr: $passed ? 'تم اعتماد مشروعك' : 'مشروعك يحتاج تعديلًا',
+                titleEn: $passed ? 'Your project was approved' : 'Your project needs changes',
+                messageAr: $passed ? (string) $course->title : 'راجع الملاحظات وأرسل المشروع من جديد',
+                messageEn: $passed ? (string) ($course->name_en ?: $course->title) : 'Review the feedback and submit your project again.',
+                link: $section
+                    ? RoknAppLink::project((int) $course->id, $projectId)
+                    : RoknAppLink::course((int) $course->id),
+                notifiableType: Course::class,
+                notifiableId: (int) $course->id,
+                deliveryKey: 'project-review:' . $submission->public_id . ':' . $status,
+                templateVariables: [
+                    'course' => (string) $course->title,
+                    'project' => (string) ($section?->title ?: 'مشروع العبور'),
+                ],
+                imageUrl: $course->image
+            )
         );
     }
 

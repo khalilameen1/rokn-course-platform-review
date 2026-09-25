@@ -7,9 +7,10 @@ import {
 } from '../../constants/helpers';
 import type {CoinPackage} from '../../services/api/coinPackageMapper';
 import type {CoinTask, WalletSnapshot} from '../../services/roknApi';
+import {createKeyedAsyncQueue} from '../../utils/keyedAsyncQueue';
 
 const WALLET_CACHE_KEY = '@rokn/wallet-cache/v2';
-let walletCacheWriteTail: Promise<void> = Promise.resolve();
+const withWalletCacheWrite = createKeyedAsyncQueue();
 
 export type WalletCache = {
   version: 2;
@@ -118,9 +119,10 @@ const validCachedTasks = (value: unknown): value is CoinTask[] =>
   );
 
 export const readWalletCache = async (boundary: AccountSessionBoundary) => {
-  await walletCacheWriteTail.catch(() => undefined);
   assertAccountSessionBoundary(boundary);
   const key = await accountScopedStorageKey(WALLET_CACHE_KEY, boundary);
+  await withWalletCacheWrite.waitForPending(key);
+  assertAccountSessionBoundary(boundary);
   const cached = await getItem<Partial<WalletCache>>(key);
   assertAccountSessionBoundary(boundary);
   if (cached?.version !== 2) return null;
@@ -138,14 +140,11 @@ export const saveWalletCache = async (
   boundary: AccountSessionBoundary,
   cache: WalletCache,
 ) => {
-  const write = walletCacheWriteTail
-    .catch(() => undefined)
-    .then(async () => {
-      assertAccountSessionBoundary(boundary);
-      const key = await accountScopedStorageKey(WALLET_CACHE_KEY, boundary);
-      await saveItem(key, cache);
-      assertAccountSessionBoundary(boundary);
-    });
-  walletCacheWriteTail = write.catch(() => undefined);
-  return write;
+  assertAccountSessionBoundary(boundary);
+  const key = await accountScopedStorageKey(WALLET_CACHE_KEY, boundary);
+  return withWalletCacheWrite(key, async () => {
+    assertAccountSessionBoundary(boundary);
+    await saveItem(key, cache);
+    assertAccountSessionBoundary(boundary);
+  });
 };

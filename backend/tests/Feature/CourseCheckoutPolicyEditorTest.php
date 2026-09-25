@@ -25,7 +25,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     {
         $course = $this->course();
         $plans = app(CourseAccessPlanService::class);
-        $plans->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         $basic = $course->accessPlans()->where('code', 'basic')->firstOrFail();
         $snapshot = $plans->snapshot($basic);
 
@@ -42,7 +42,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     {
         $course = $this->course();
         $plans = app(CourseAccessPlanService::class);
-        $plans->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         $basic = $course->accessPlans()->where('code', 'basic')->firstOrFail();
         $basic->update(['projects_enabled' => true, 'certificate_enabled' => true]);
         $legacy = $plans->snapshot($basic);
@@ -51,7 +51,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
         $enrollment = new CourseEnrollment();
         $enrollment->forceFill(['access_plan_id' => $basic->id, 'access_plan_snapshot' => $legacy]);
 
-        $plans->syncAdminPlans($course, $this->input($course));
+        app(\App\Services\CoursePlanAuthoringService::class)->syncAdminPlans($course, $this->input($course));
 
         self::assertFalse($basic->fresh()->projects_enabled);
         self::assertFalse($basic->fresh()->certificate_enabled);
@@ -126,7 +126,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     {
         $course = $this->course();
         $service = app(CourseAccessPlanService::class);
-        $service->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         config(['course_plans.enforce_commercial_floor' => true]);
         try {
             $service->selectedPlan($course, 'basic');
@@ -163,7 +163,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     public function test_editor_renders_explicit_legacy_offer_notice_and_unknown_cost_state(): void
     {
         $course = $this->course();
-        app(CourseAccessPlanService::class)->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         $course->accessPlans()->where('code', 'basic')->update([
             'projects_enabled' => true, 'certificate_enabled' => true,
         ]);
@@ -196,7 +196,7 @@ final class CourseCheckoutPolicyEditorTest extends TestCase
     public function test_policy_migration_can_resume_partial_ddl_without_resetting_existing_values(): void
     {
         $course = $this->course();
-        app(CourseAccessPlanService::class)->createDefaults($course);
+        app(\App\Services\CoursePlanAuthoringService::class)->createDefaults($course);
         $basic = $course->accessPlans()->where('code', 'basic')->firstOrFail();
         $setting = Setting::firstOrCreate([]);
         $setting->update(['max_course_promotion_percent' => 15]);

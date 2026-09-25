@@ -10,11 +10,13 @@ final class AdminCourseSectionStateContractTest extends TestCase
 {
     public function test_bunny_resume_state_is_owned_expiring_and_terminal_errors_are_machine_readable(): void
     {
-        $view = $this->source('resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php');
+        $view = $this->uploadSources();
         $service = $this->source('app/Services/BunnyDirectUploadService.php');
         $controller = $this->source('app/Http/Controllers/Admin/CourseSectionVideoUploadController.php');
 
-        self::assertStringContainsString('const ownerId = @json((string) auth()->id());', $view);
+        $template = $this->source('resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php');
+        self::assertStringContainsString('ownerId: @json((string) auth()->id()),', $template);
+        self::assertStringContainsString("@foreach(['records', 'transfer', 'form']", $template);
         self::assertStringContainsString(
             'rokn:bunny-upload:${ownerId}:${courseId}:${sectionId()}:${tabId}:${fingerprintKey(file)}',
             $view
@@ -25,7 +27,7 @@ final class AdminCourseSectionStateContractTest extends TestCase
         self::assertStringContainsString("'bunny_upload_claim_unavailable'", $view);
         self::assertStringContainsString("'bunny_upload_operation_unavailable'", $view);
         self::assertStringContainsString('serverRejectedClaim', $view);
-        self::assertStringContainsString('const upload = async (file, restartCount = 0)', $view);
+        self::assertStringContainsString('const upload = async (file, title, restartCount = 0)', $view);
         self::assertStringContainsString('if (restartCount >= 1)', $view);
         self::assertStringNotContainsString("message || '').includes", $view);
 
@@ -70,10 +72,10 @@ final class AdminCourseSectionStateContractTest extends TestCase
 
     public function test_completed_bunny_upload_can_continue_into_the_intended_form_submission(): void
     {
-        $view = $this->source('resources/views/admin/course-sections/partials/bunny-direct-upload.blade.php');
+        $view = $this->uploadSources();
         $draft = $this->source('resources/views/admin/partials/course-authoring-draft.blade.php');
 
-        self::assertStringContainsString("await upload(currentFile);\n            throwIfStopped();\n            uploading = false;", $view);
+        self::assertMatchesRegularExpression('/await transfer\.upload\(currentFile, title\);\s+transfer\.assertActive\(\);\s+completedClaim = claim;/', $view);
         self::assertStringContainsString('if (!uploading || submittingAfterUpload) return;', $view);
         self::assertStringContainsString('if (!event.defaultPrevented) return;', $view);
         self::assertStringContainsString('submittingAfterUpload = false;', $view);
@@ -92,12 +94,14 @@ final class AdminCourseSectionStateContractTest extends TestCase
     {
         $modules = $this->source('app/Http/Controllers/Admin/CourseModuleController.php');
         $moduleActions = $this->source('app/Services/AdminCourseModuleApplicationService.php');
-        $sections = $this->source('app/Http/Controllers/Admin/CourseSectionController.php');
+        $sections = $this->source('app/Services/AdminCourseSectionApplicationService.php');
+        $sectionController = $this->source('app/Http/Controllers/Admin/CourseSectionController.php');
         $intents = $this->source('app/Services/AdminAuthoringCreateIntentService.php');
 
         self::assertStringContainsString("'module' => \$this->outline->module", $moduleActions);
         self::assertStringContainsString('return response()->json($payload);', $modules);
-        self::assertStringContainsString("'section' => \$sectionPayload", $sections);
+        self::assertStringContainsString('return response()->json($payload);', $sectionController);
+        self::assertStringContainsString("'section' => \$this->outline->section", $sections);
         self::assertStringContainsString('$this->outline->section($lockedCourse, $section)', $sections);
         self::assertStringContainsString("'section_ids' => \$deletedSectionIds", $moduleActions);
         self::assertStringContainsString("'deleted_module_id' => (int) \$module->id", $moduleActions);
@@ -171,7 +175,7 @@ final class AdminCourseSectionStateContractTest extends TestCase
     public function test_module_and_section_deletion_share_one_cleanup_owner(): void
     {
         $moduleActions = $this->source('app/Services/AdminCourseModuleApplicationService.php');
-        $sections = $this->source('app/Http/Controllers/Admin/CourseSectionController.php');
+        $sections = $this->source('app/Services/AdminCourseSectionApplicationService.php');
         $deletion = $this->source('app/Services/CourseAuthoringDeletionService.php');
         $projectFiles = $this->source('app/Services/ProjectSubmissionFileRetentionService.php');
 
@@ -195,6 +199,14 @@ final class AdminCourseSectionStateContractTest extends TestCase
             "'is_catalog_visible' => \$catalogVisible",
             $authoring
         );
+    }
+
+    private function uploadSources(): string
+    {
+        return implode("\n", array_map(
+            fn (string $module): string => $this->source('public/admin/assets/js/course-studio-bunny-upload-'.$module.'.js'),
+            ['records', 'transfer', 'form']
+        ));
     }
 
     private function source(string $path): string

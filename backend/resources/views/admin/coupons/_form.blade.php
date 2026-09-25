@@ -2,7 +2,10 @@
     <div class="col-md-2"><label for="course_id" class="form-control-label">نطاق الكود</label></div>
     <div class="col-md-10">
         <select class="form-control" id="course_id" name="course_id">
-            <option value="">كل الكورسات</option>
+            @if(isset($coupon) && $coupon->course_id !== null && !$courses->contains('id', $coupon->course_id))
+                <option value="{{ $coupon->course_id }}" @selected((string) old('course_id', $coupon->course_id) === (string) $coupon->course_id)>ارتباط قديم غير صالح — اختر الكورس الأصلي أو أوقف الكود</option>
+            @endif
+            <option value="" @selected((string) old('course_id', $coupon->course_id ?? '') === '')>كل الكورسات</option>
             @foreach($courses as $courseOption)
                 <option value="{{ $courseOption->id }}" @selected((string) old('course_id', $coupon->course_id ?? '') === (string) $courseOption->id)>{{ $courseOption->name_ar }}</option>
             @endforeach

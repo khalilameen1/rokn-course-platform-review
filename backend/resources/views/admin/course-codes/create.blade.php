@@ -81,7 +81,7 @@
                                     <div class="col-md-12">
                                         <div class="form-group">
                                             <label for="course_id"><i class="fa fa-graduation-cap"></i> اختر الدورة <span class="required-star">*</span></label>
-                                            <select name="course_id" id="course_id" class="form-control">
+                                            <select name="course_id" id="course_id" class="form-control" required>
                                                 <option value="">اختر الدورة</option>
                                                 @foreach($courses as $course)
                                                     <option value="{{ $course->id }}" {{ old('course_id') == $course->id ? 'selected' : '' }}>
@@ -90,45 +90,6 @@
                                                 @endforeach
                                             </select>
                                             @error('course_id')
-                                                <span class="text-danger"><small>{{ $message }}</small></span>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Lesson Selection -->
-                            <div class="selection-section" id="lesson-selection">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <label for="lesson_id"><i class="fa fa-book"></i> اختر الدرس <span class="required-star">*</span></label>
-                                            <select name="lesson_id" id="lesson_id" class="form-control">
-                                                <option value="">اختر الدرس</option>
-                                                @foreach($lessons as $lesson)
-                                                    <option value="{{ $lesson->id }}" {{ old('lesson_id') == $lesson->id ? 'selected' : '' }}>
-                                                        {{ $lesson->title }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            @error('lesson_id')
-                                                <span class="text-danger"><small>{{ $message }}</small></span>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Multiple Lessons Selection -->
-                            <div class="selection-section" id="multiple-lessons-selection">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <label><i class="fa fa-list"></i> اختر الدروس <span class="required-star">*</span></label>
-                                            <div id="lessons-container" class="mt-3">
-                                                <p class="text-muted">يرجى اختيار دورة أولاً لعرض الدروس المتاحة</p>
-                                            </div>
-                                            @error('lesson_ids')
                                                 <span class="text-danger"><small>{{ $message }}</small></span>
                                             @enderror
                                         </div>
@@ -205,150 +166,5 @@
         </div>
     </div>
 </div>
-@endsection
-
-@section('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-
-    // Ensure jQuery is available
-    if (typeof jQuery === 'undefined') {
-        return;
-    }
-
-    var $ = jQuery;
-
-    // Handle type change
-    $('#type').on('change', function() {
-        var type = $(this).val();
-
-        // Hide all selection divs
-        $('#course-selection, #lesson-selection, #multiple-lessons-selection').hide();
-
-        // Reset selections
-        $('#course_id, #lesson_id').val('');
-        $('#lessons-container').html('<p class="text-muted">يرجى اختيار دورة أولاً لعرض الدروس المتاحة</p>');
-
-        // Show relevant selection based on type
-        switch(type) {
-            case 'course':
-                $('#course-selection').show();
-                break;
-            case 'lesson':
-                $('#lesson-selection').show();
-                break;
-            case 'multiple_lessons':
-                $('#course-selection').show();
-                $('#multiple-lessons-selection').show();
-                break;
-        }
-    });
-
-    // Load lessons when course is selected for multiple lessons
-    $('#course_id').on('change', function() {
-        var courseId = $(this).val();
-
-        if ($('#type').val() === 'multiple_lessons') {
-            loadLessons();
-        }
-    });
-
-    // Load lessons via AJAX
-    function loadLessons() {
-        var courseId = $('#course_id').val();
-        if (!courseId) {
-            $('#lessons-container').html('<p class="text-muted">يرجى اختيار دورة أولاً لعرض الدروس المتاحة</p>');
-            return;
-        }
-
-        $('#lessons-container').html('<div class="text-center"><i class="fa fa-spinner fa-spin"></i> جاري تحميل الدروس...</div>');
-
-
-        $.ajax({
-            url: '{{ route("admin.course-codes.get-lessons") }}',
-            method: 'GET',
-            data: { course_id: courseId },
-            dataType: 'json',
-            success: function(response) {
-
-                if (response.length === 0) {
-                    $('#lessons-container').html('<p class="text-warning">لا توجد دروس متاحة لهذه الدورة</p>');
-                    return;
-                }
-
-                var html = '<div class="checkbox-grid">';
-                response.forEach(function(lesson) {
-                    html += '<div class="checkbox-item">';
-                    html += '<label for="lesson_' + lesson.id + '">';
-                    html += '<input type="checkbox" name="lesson_ids[]" value="' + lesson.id + '" id="lesson_' + lesson.id + '">';
-                    html += '<span>' + lesson.title + '</span>';
-                    html += '</label>';
-                    html += '</div>';
-                });
-                html += '</div>';
-                html += '<div class="mt-3">';
-                html += '<button type="button" class="btn btn-sm btn-primary-modern btn-modern" onclick="selectAllLessons()"><i class="fa fa-check-square-o"></i> تحديد الكل</button> ';
-                html += '<button type="button" class="btn btn-sm btn-secondary-modern btn-modern" onclick="deselectAllLessons()"><i class="fa fa-square-o"></i> إلغاء التحديد</button>';
-                html += '</div>';
-                $('#lessons-container').html(html);
-            },
-            error: function(xhr, status, error) {
-                $('#lessons-container').html('<p class="text-danger">حدث خطأ أثناء تحميل الدروس</p>');
-            }
-        });
-    }
-
-    // Form validation
-    $('#create-code-form').on('submit', function(e) {
-        var type = $('#type').val();
-        var isValid = true;
-
-
-        // Check required fields based on type
-        if (type === 'course') {
-            if (!$('#course_id').val()) {
-                alert('يرجى اختيار الدورة');
-                isValid = false;
-            }
-        } else if (type === 'lesson') {
-            if (!$('#lesson_id').val()) {
-                alert('يرجى اختيار الدرس');
-                isValid = false;
-            }
-        } else if (type === 'multiple_lessons') {
-            if (!$('#course_id').val()) {
-                alert('يرجى اختيار الدورة');
-                isValid = false;
-            } else if ($('input[name="lesson_ids[]"]:checked').length === 0) {
-                alert('يرجى اختيار درس واحد على الأقل');
-                isValid = false;
-            }
-        }
-
-        if (!isValid) {
-            e.preventDefault();
-        }
-    });
-
-    // Trigger type change on page load if there's a value
-    if ($('#type').val()) {
-        $('#type').trigger('change');
-    }
-
-});
-
-// Global functions for lesson selection
-function selectAllLessons() {
-    if (typeof jQuery !== 'undefined') {
-        jQuery('input[name="lesson_ids[]"]').prop('checked', true);
-    }
-}
-
-function deselectAllLessons() {
-    if (typeof jQuery !== 'undefined') {
-        jQuery('input[name="lesson_ids[]"]').prop('checked', false);
-    }
-}
-</script>
 @endsection
 

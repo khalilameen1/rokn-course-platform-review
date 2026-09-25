@@ -4,22 +4,25 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CourseCodeRequest;
-use App\Models\Course;
 use App\Models\CourseCode;
 use App\Models\DesignSetting;
-use App\Models\Lesson;
-use App\Services\ArabicPdfService;
+use App\Services\AdminCourseCodeReadService;
 use App\Services\AdminAuthoringCreateIntentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Services\AdminCourseCodeAuthoringService;
 use App\Support\BusinessClock;
-use App\Support\CsvCell;
-use App\Support\UnicodeText;
-use App\Support\AdminEditorVersion;
+use App\Support\CourseCodeEditorVersion;
 use Illuminate\Validation\ValidationException;
 
 class CourseCodeController extends Controller
 {
+    public function __construct(
+        private readonly AdminCourseCodeAuthoringService $authoring,
+        private readonly AdminCourseCodeReadService $reader
+    )
+    {
+    }
+
     /**
      * Get design settings for the views
      */
@@ -35,43 +38,17 @@ class CourseCodeController extends Controller
      */
     public function index(Request $request)
     {
-        $query = $this->filteredQuery($request, false);
-
-        // Efficiently update is_active status based on expiry and usage
-        // This only runs once per page load and uses a single query
-        /*
-        DB::statement("
-            UPDATE course_codes
-            SET is_active = CASE
-                WHEN expiry_date IS NOT NULL AND expiry_date < NOW() THEN 0
-                WHEN start_date IS NOT NULL AND start_date > NOW() THEN 0
-                WHEN used_count >= max_uses THEN 0
-                ELSE 1
-            END
-            WHERE (
-                (expiry_date IS NOT NULL AND expiry_date < NOW() AND is_active = 1) OR
-                (start_date IS NOT NULL AND start_date > NOW() AND is_active = 1) OR
-                (used_count >= max_uses AND is_active = 1) OR
-                (
-                    (expiry_date IS NULL OR expiry_date >= NOW()) AND
-                    (start_date IS NULL OR start_date <= NOW()) AND
-                    used_count < max_uses AND
-                    is_active = 0
-                )
-            )
-        ");
-        */
+        $query = $this->reader->query($this->filters($request));
 
         $courseCodes = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(10)->withQueryString();
-        $courses = Course::query()->orderBy('name_ar')->orderBy('id')->get();
-        $lessons = Lesson::query()->orderBy('title_ar')->orderBy('id')->get();
+        $courses = $this->reader->courseOptions();
         $designSettings = $this->getDesignSettings();
         $editorVersions = $courseCodes->getCollection()->mapWithKeys(
-            fn (CourseCode $code): array => [$code->id => $this->editorVersion($code)]
+            fn (CourseCode $code): array => [$code->id => CourseCodeEditorVersion::for($code)]
         );
 
         return view('admin.course-codes.index', compact(
-            'courseCodes', 'courses', 'lessons', 'designSettings', 'editorVersions'
+            'courseCodes', 'courses', 'designSettings', 'editorVersions'
         ));
     }
 
@@ -82,11 +59,10 @@ class CourseCodeController extends Controller
      */
     public function create()
     {
-        $courses = Course::all();
-        $lessons = Lesson::all();
+        $courses = $this->reader->courseOptions();
         $designSettings = $this->getDesignSettings();
 
-        return view('admin.course-codes.create', compact('courses', 'lessons', 'designSettings'));
+        return view('admin.course-codes.create', compact('courses', 'designSettings'));
     }
 
     /**
@@ -100,36 +76,27 @@ class CourseCodeController extends Controller
         try {
             $numberOfCodes = max(1, (int) $request->input('number_of_codes', 1));
 
-            DB::transaction(function () use ($request, $numberOfCodes, $createIntents): void {
-                $firstCodeId = null;
-                for ($i = 0; $i < $numberOfCodes; $i++) {
-                    $codeData = [
-                        'code' => CourseCode::generateUniqueCode(),
-                        'name' => $request->input('name'),
-                        'type' => $request->input('type'),
-                        'start_date' => BusinessClock::localInputToUtc($request->input('start_date')),
-                        'expiry_date' => BusinessClock::localInputToUtc($request->input('expiry_date')),
-                        'max_uses' => $request->input('max_uses'),
-                        'description' => $request->input('description'),
-                        'allowed_email_domains' => $this->emailDomains($request->input('allowed_email_domains')),
-                        'is_grant' => $request->boolean('is_grant'),
-                        // A code grants the course entitlement it names. Partial
-                        // lesson grants stay unavailable until scoped access
-                        // exists from dashboard to player.
-                        'course_id' => $request->integer('course_id'),
-                    ];
-
-                    $created = CourseCode::create($codeData);
-                    $firstCodeId ??= $created->id;
-                }
+            $payload = [
+                'name' => $request->input('name'),
+                'type' => $request->input('type'),
+                'start_date' => BusinessClock::localInputToUtc($request->input('start_date')),
+                'expiry_date' => BusinessClock::localInputToUtc($request->input('expiry_date')),
+                'max_uses' => $request->input('max_uses'),
+                'description' => $request->input('description'),
+                'allowed_email_domains' => $this->emailDomains($request->input('allowed_email_domains')),
+                'is_grant' => $request->boolean('is_grant'),
+                // Partial lesson grants require scoped access from dashboard to player.
+                'course_id' => $request->integer('course_id'),
+            ];
+            $this->authoring->createBatch($payload, $numberOfCodes, function (CourseCode $first) use ($request, $createIntents): void {
                 $createIntents->completeRedirect(
                     $request,
                     route('admin.course-codes.index'),
                     302,
                     CourseCode::class,
-                    $firstCodeId
+                    $first->id
                 );
-            }, 3);
+            });
 
             $message = $numberOfCodes > 1
                 ? "تم إنشاء {$numberOfCodes} أكواد بنجاح"
@@ -138,6 +105,8 @@ class CourseCodeController extends Controller
             return redirect()->route('admin.course-codes.index')
                 ->with('success', $message);
 
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\DomainException $e) {
             return back()->withInput()->with(
                 'error',
@@ -165,7 +134,7 @@ class CourseCodeController extends Controller
             ->paginate(50)
             ->withQueryString();
         $designSettings = $this->getDesignSettings();
-        $editorVersion = $this->editorVersion($courseCode);
+        $editorVersion = CourseCodeEditorVersion::for($courseCode);
 
         return view('admin.course-codes.show', compact(
             'courseCode', 'usageHistory', 'designSettings', 'editorVersion'
@@ -180,12 +149,11 @@ class CourseCodeController extends Controller
      */
     public function edit(CourseCode $courseCode)
     {
-        $courses = Course::all();
-        $lessons = Lesson::all();
+        $courses = $this->reader->courseOptions();
         $designSettings = $this->getDesignSettings();
-        $editorVersion = $this->editorVersion($courseCode);
+        $editorVersion = CourseCodeEditorVersion::for($courseCode);
 
-        return view('admin.course-codes.edit', compact('courseCode', 'courses', 'lessons', 'designSettings', 'editorVersion'));
+        return view('admin.course-codes.edit', compact('courseCode', 'courses', 'designSettings', 'editorVersion'));
     }
 
     /**
@@ -213,16 +181,7 @@ class CourseCodeController extends Controller
                 }
             }
 
-            DB::transaction(function () use ($courseCode, $data, $editorVersion): void {
-                $locked = CourseCode::query()->whereKey($courseCode->id)
-                    ->lockForUpdate()->firstOrFail();
-                if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => "تغيّر كود الجهة منذ فتح الصفحة\nأعد تحميله قبل الحفظ",
-                    ]);
-                }
-                $locked->update($data);
-            }, 3);
+            $this->authoring->update((int) $courseCode->id, $data, $editorVersion);
 
             return redirect()->route('admin.course-codes.index')
                 ->with('success', 'تم تحديث الكود بنجاح');
@@ -244,21 +203,10 @@ class CourseCodeController extends Controller
     public function destroy(Request $request, CourseCode $courseCode)
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
-        $deactivated = DB::transaction(function () use ($courseCode, $validated): bool {
-            $locked = CourseCode::query()->whereKey($courseCode->id)
-                ->lockForUpdate()->firstOrFail();
-            if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّر كود الجهة منذ فتح الصفحة\nأعد تحميله قبل الحذف",
-                ]);
-            }
-            if ($locked->usages()->exists() || $locked->orders()->exists()) {
-                $locked->forceFill(['is_active' => false])->save();
-                return true;
-            }
-            $locked->delete();
-            return false;
-        }, 3);
+        $deactivated = $this->authoring->delete(
+            (int) $courseCode->id,
+            (string) $validated['editor_version']
+        );
 
         if ($deactivated) {
             return redirect()->route('admin.course-codes.index')
@@ -279,15 +227,6 @@ class CourseCodeController extends Controller
             ->all();
 
         return $domains ?: null;
-    }
-
-    private function editorVersion(CourseCode $courseCode): string
-    {
-        return AdminEditorVersion::for($courseCode, [
-            'code', 'name', 'type', 'course_id', 'lesson_id', 'lesson_ids',
-            'start_date', 'expiry_date', 'max_uses', 'used_count', 'is_active',
-            'is_grant', 'description', 'allowed_email_domains',
-        ]);
     }
 
     /**
@@ -311,51 +250,12 @@ class CourseCodeController extends Controller
             $selectedCodes = $request->input('selected_codes');
 
             $versions = (array) $request->input('editor_versions', []);
-            $message = DB::transaction(function () use ($action, $selectedCodes, $versions): string {
-                $codes = CourseCode::query()->whereIn('id', $selectedCodes)
-                    ->orderBy('id')->lockForUpdate()->get();
-                if ($codes->count() !== count(array_unique(array_map('intval', $selectedCodes)))) {
-                    throw ValidationException::withMessages([
-                        'selected_codes' => "تغيّرت قائمة الأكواد\nأعد تحميل الصفحة قبل المتابعة",
-                    ]);
-                }
-                foreach ($codes as $code) {
-                    $submitted = (string) ($versions[$code->id] ?? '');
-                    if ($submitted === '' || !hash_equals($this->editorVersion($code), $submitted)) {
-                        throw ValidationException::withMessages([
-                            'editor_versions' => "تغيّر أحد الأكواد المحددة\nأعد تحميل الصفحة قبل المتابعة",
-                        ]);
-                    }
-                }
-
-                if ($action === 'delete') {
-                    $deleted = 0;
-                    $deactivated = 0;
-                    foreach ($codes as $code) {
-                        if ($code->usages()->exists() || $code->orders()->exists()) {
-                            $code->forceFill(['is_active' => false])->save();
-                            $deactivated++;
-                        } else {
-                            $code->delete();
-                            $deleted++;
-                        }
-                    }
-                    return "حُذف {$deleted} كود وأُوقف {$deactivated} كود مستخدم مع الاحتفاظ بسجله";
-                }
-
-                $changed = 0;
-                foreach ($codes as $code) {
-                    if ($action === 'activate' && $code->type !== 'course') continue;
-                    $target = $action === 'activate';
-                    if ((bool) $code->is_active !== $target) {
-                        $code->forceFill(['is_active' => $target])->save();
-                        $changed++;
-                    }
-                }
-                return $action === 'activate'
-                    ? "تم تفعيل {$changed} كود صالح"
-                    : 'تم إلغاء تفعيل الأكواد المحددة بنجاح';
-            }, 3);
+            $result = $this->authoring->bulk($action, $selectedCodes, $versions);
+            $message = match ($action) {
+                'delete' => "حُذف {$result['deleted']} كود وأُوقف {$result['deactivated']} كود مستخدم مع الاحتفاظ بسجله",
+                'activate' => "تم تفعيل {$result['changed']} كود صالح",
+                'deactivate' => 'تم إلغاء تفعيل الأكواد المحددة بنجاح',
+            };
 
             return redirect()->route('admin.course-codes.index')
                 ->with('success', $message);
@@ -383,9 +283,7 @@ class CourseCodeController extends Controller
         }
 
         try {
-            $lessons = Lesson::where('list_id', $courseId)
-                ->orderBy('priority')
-                ->get(['id', 'title']);
+            $lessons = $this->reader->lessonOptions((int) $courseId);
 
             return response()->json($lessons);
         } catch (\Exception $e) {
@@ -402,58 +300,20 @@ class CourseCodeController extends Controller
      */
     public function export(Request $request)
     {
-        $query = $this->filteredQuery($request, false);
-
+        $filters = $this->filters($request);
         $filename = 'course_codes_' . BusinessClock::now()->format('Y-m-d_H-i-s') . '.csv';
-
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
-
-        $callback = function() use ($query) {
+        $callback = function () use ($filters): void {
             $file = fopen('php://output', 'w');
-
-            // Add BOM for Arabic text
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-
-            // Headers
-            fputcsv($file, [
-                'الكود',
-                'الاسم',
-                'النوع',
-                'الدورة/الدرس',
-                'تاريخ البداية',
-                'تاريخ الانتهاء',
-                'الاستخدامات',
-                'الحد الأقصى',
-                'منحة مؤسسية',
-                'نطاقات البريد',
-                'الحالة',
-                'تاريخ الإنشاء'
-            ]);
-
-            // Stream bounded chunks from the database. A large institutional
-            // campaign must not exhaust the dashboard worker before the first
-            // CSV byte reaches the browser.
-            foreach ($query->reorder()->lazyByIdDesc(500) as $code) {
-                fputcsv($file, CsvCell::row([
-                    $code->code,
-                    $code->name,
-                    $this->getTypeName($code->type),
-                    $code->target_content_name,
-                    $code->start_date ? BusinessClock::format($code->start_date, 'Y-m-d') : '',
-                    $code->expiry_date ? BusinessClock::format($code->expiry_date, 'Y-m-d') : '',
-                    $code->used_count,
-                    $code->max_uses,
-                    $code->isInstitutionalGrant() ? 'نعم' : 'لا',
-                    implode(', ', $code->allowed_email_domains ?? []),
-                    $code->is_active ? 'مفعل' : 'معطل',
-                    BusinessClock::format($code->created_at, 'Y-m-d H:i:s')
-                ]));
+            try {
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+                foreach ($this->reader->csvRows($filters) as $row) fputcsv($file, $row);
+            } finally {
+                fclose($file);
             }
-
-            fclose($file);
         };
 
         return response()->stream($callback, 200, $headers);
@@ -465,58 +325,30 @@ class CourseCodeController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function exportToPdf(Request $request, ArabicPdfService $pdfService)
+    public function exportToPdf(Request $request)
     {
         try {
             set_time_limit(300);
 
-            $courseCodes = $this->filteredQuery($request, false)
-                ->orderByDesc('created_at')
-                ->orderByDesc('id')
-                ->limit(501)
-                ->get();
+            $courseCodes = $this->reader->pdfRows($this->filters($request));
 
             if ($courseCodes->isEmpty()) {
                 return back()->with('error', 'لا توجد أكواد للتصدير');
             }
-            if ($courseCodes->count() > 500) {
+            if ($courseCodes->count() > AdminCourseCodeReadService::PDF_LIMIT) {
                 return back()->with(
                     'error',
                     "نتيجة PDF أكبر من 500 كود\nضيّق البحث أو استخدم تصدير CSV للسجل الكامل"
                 );
             }
 
-            // Transform the data for PDF
-            $transformedCodes = collect();
-            foreach ($courseCodes as $code) {
-                // Get the target content name based on type
-                $targetContentName = 'غير محدد';
-                if ($code->type === 'course' && $code->course) {
-                    $targetContentName = $code->course->name_ar ?? 'غير محدد';
-                } elseif ($code->type === 'lesson' && $code->lesson) {
-                    $targetContentName = $code->lesson->name_ar ?? 'غير محدد';
-                } elseif ($code->type === 'multiple_lessons') {
-                    $targetContentName = 'دروس متعددة';
-                }
-
-                $transformedCodes->push((object) [
-                    'name' => $code->name ?? 'غير محدد',
-                    'target_content_name' => $targetContentName,
-                    'code' => $code->code ?? 'غير محدد',
-                    'type' => $code->type ?? 'course',
-                    'max_uses' => $code->max_uses ?? 0,
-                    'is_grant' => $code->isInstitutionalGrant(),
-                    'allowed_email_domains' => $code->allowed_email_domains ?? [],
-                ]);
-            }
-
             $designSettings = $this->getDesignSettings();
             
             $data = [
-                'course_codes' => $transformedCodes,
+                'course_codes' => $courseCodes,
                 'platform_name' => $designSettings->name_ar ?? 'منصة تعليمية',
                 'export_date' => BusinessClock::now()->format('Y-m-d H:i:s'),
-                'total_codes' => $transformedCodes->count()
+                'total_codes' => $courseCodes->count()
             ];
 
             // Generate PDF using LaravelPdf package (mPDF wrapper)
@@ -532,71 +364,27 @@ class CourseCodeController extends Controller
             // Force download the PDF
             return $pdf->download($filename);
 
-                  } catch (\Exception $e) {
-              report($e);
-              return back()->with('error', 'تعذر تصدير الأكواد الآن');
-          }
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Exception $e) {
+            report($e);
+            return back()->with('error', 'تعذر تصدير الأكواد الآن');
+        }
     }
 
-    private function filteredQuery(Request $request, bool $withUsages)
+    /** @return array<string, mixed> */
+    private function filters(Request $request): array
     {
-        $dates = $request->validate([
+        return $request->validate([
+            'code' => ['nullable', 'string'],
+            'name' => ['nullable', 'string'],
+            'type' => ['nullable', 'string'],
+            'course_id' => ['nullable', 'integer'],
+            'lesson_id' => ['nullable', 'integer'],
             'start_date' => ['nullable', 'date_format:Y-m-d'],
             'expiry_date' => ['nullable', 'date_format:Y-m-d'],
+            'status' => ['nullable', 'string'],
         ]);
-        $relations = ['course', 'lesson'];
-        if ($withUsages) {
-            $relations[] = 'usages';
-        }
-
-        return CourseCode::query()
-            ->with($relations)
-            ->when($request->filled('code'), fn ($query) =>
-                $query->where('code', 'like', '%' . UnicodeText::identifier($request->code) . '%')
-            )
-            ->when($request->filled('name'), fn ($query) =>
-                $query->where('name', 'like', '%' . UnicodeText::clean($request->name, false) . '%')
-            )
-            ->when($request->filled('type'), fn ($query) =>
-                $query->where('type', $request->type)
-            )
-            ->when($request->filled('course_id'), fn ($query) =>
-                $query->where('course_id', $request->course_id)
-            )
-            ->when($request->filled('lesson_id'), fn ($query) =>
-                $query->where('lesson_id', $request->lesson_id)
-            )
-            ->when($dates['start_date'] ?? null, function ($query, string $date) {
-                [$from, $to] = BusinessClock::localDayRangeUtc($date);
-                return $query->where('start_date', '>=', $from)->where('start_date', '<', $to);
-            })
-            ->when($dates['expiry_date'] ?? null, function ($query, string $date) {
-                [$from, $to] = BusinessClock::localDayRangeUtc($date);
-                return $query->where('expiry_date', '>=', $from)->where('expiry_date', '<', $to);
-            })
-            ->when($request->filled('status'), function ($query) use ($request) {
-                return match ((string) $request->status) {
-                    'active' => $query->where('is_active', true),
-                    'inactive' => $query->where('is_active', false),
-                    'expired' => $query->where('expiry_date', '<', now()),
-                    'not_yet_active' => $query->where('start_date', '>', now()),
-                    default => $query,
-                };
-            });
-    }
-
-    /**
-     * Get Arabic name for code type
-     */
-    private function getTypeName($type)
-    {
-        $types = [
-            'course' => 'دورة',
-            'lesson' => 'درس',
-            'multiple_lessons' => 'دروس متعددة'
-        ];
-
-        return $types[$type] ?? $type;
     }
 }
 

@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Support\AfterCommitCacheInvalidation;
 use Throwable;
 
 class Package extends Model
@@ -49,20 +49,10 @@ class Package extends Model
         });
 
         $invalidatePublicPackages = static function (): void {
-            $forget = static fn (): bool => Cache::forget('public-packages:v2');
-            try {
-                if (DB::transactionLevel() > 0) {
-                    DB::afterCommit($forget);
-                    return;
-                }
-
-                $forget();
-            } catch (Throwable $exception) {
-                // Package persistence is authoritative. Cache failure is
-                // observable but cannot turn a committed finance edit into a
-                // retry that creates a second package.
-                report($exception);
-            }
+            AfterCommitCacheInvalidation::run(
+                static fn (): bool => Cache::forget('public-packages:v2'),
+                static fn (Throwable $exception) => report($exception)
+            );
         };
         static::saved($invalidatePublicPackages);
         static::deleted($invalidatePublicPackages);

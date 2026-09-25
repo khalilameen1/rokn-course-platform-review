@@ -9,7 +9,8 @@ use App\Http\Middleware\WebsiteVisitorCount;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\User;
-use App\Services\KashierPaymentService;
+use App\Services\KashierOrderSettlementService;
+use App\Services\KashierProviderOrderService;
 use App\Services\KashierService;
 use App\Services\StudentNotificationService;
 use Illuminate\Database\Schema\Blueprint;
@@ -469,7 +470,7 @@ class KashierPaymentTest extends TestCase
         $this->mock(StudentNotificationService::class, function ($mock) {
             $mock->shouldReceive('notifyUser')->andReturn(null)->byDefault();
         });
-        // Also mock the static call path
+        // Keep unrelated queued side effects isolated from gateway assertions.
         \Illuminate\Support\Facades\Queue::fake();
     }
 
@@ -1149,7 +1150,7 @@ class KashierPaymentTest extends TestCase
             ->postJson('/api/v1/payment/initiate', $payload)
             ->assertOk();
         $order = Order::query()->where('order_ref', $first->json('order_ref'))->firstOrFail();
-        app(KashierPaymentService::class)->fulfillOrder($order, 'TXN-IDEMPOTENT-PAID', [
+        app(KashierOrderSettlementService::class)->fulfillOrder($order, 'TXN-IDEMPOTENT-PAID', [
             'merchantOrderId' => $order->order_ref,
             'paymentStatus' => 'SUCCESS',
             'transactionId' => 'TXN-IDEMPOTENT-PAID',
@@ -1607,7 +1608,7 @@ class KashierPaymentTest extends TestCase
     public function test_webhook_is_idempotent_for_already_approved_order(): void
     {
         $order = $this->createPendingOrder();
-        app(KashierPaymentService::class)->fulfillOrder($order, 'TXN-FIRST', [
+        app(KashierOrderSettlementService::class)->fulfillOrder($order, 'TXN-FIRST', [
             'merchantOrderId' => $this->orderRef,
             'paymentStatus' => 'SUCCESS',
             'transactionId' => 'TXN-FIRST',
@@ -1638,7 +1639,7 @@ class KashierPaymentTest extends TestCase
     public function test_settled_replay_without_transaction_id_keeps_the_original_settlement(): void
     {
         $order = $this->createPendingOrder('PKG-SETTLED-SPARSE-REPLAY');
-        $payments = app(KashierPaymentService::class);
+        $payments = app(KashierOrderSettlementService::class);
         $settled = $payments->fulfillOrder($order, 'TXN-ORIGINAL-SPARSE', [
             'merchantOrderId' => $order->order_ref,
             'paymentStatus' => 'SUCCESS',
@@ -1664,7 +1665,7 @@ class KashierPaymentTest extends TestCase
     {
         $order = $this->createPendingOrder('PKG-SANITIZED-EVIDENCE');
 
-        $settled = app(KashierPaymentService::class)->fulfillOrder(
+        $settled = app(KashierOrderSettlementService::class)->fulfillOrder(
             $order,
             'TX-SANITIZED-EVIDENCE',
             [
@@ -1719,7 +1720,7 @@ class KashierPaymentTest extends TestCase
         $order = $this->createPendingOrder();
         $staleCallbackCopy = Order::query()->findOrFail($order->id);
         $staleWebhookCopy = Order::query()->findOrFail($order->id);
-        $payments = app(KashierPaymentService::class);
+        $payments = app(KashierOrderSettlementService::class);
         $evidence = [
             'merchantOrderId' => $this->orderRef,
             'paymentStatus' => 'SUCCESS',
@@ -1907,8 +1908,8 @@ class KashierPaymentTest extends TestCase
     {
         Http::fake();
 
-        $result = app(KashierPaymentService::class)
-            ->verifyOrderViaApi('PKG-../../provider-path');
+        $result = app(KashierProviderOrderService::class)
+            ->fetch('PKG-../../provider-path');
 
         self::assertNull($result);
         Http::assertNothingSent();

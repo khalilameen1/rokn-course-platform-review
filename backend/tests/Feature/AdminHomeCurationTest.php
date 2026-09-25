@@ -235,7 +235,7 @@ final class AdminHomeCurationTest extends TestCase
         self::assertLessThan($syncDeleteIndex, $classificationLockIndex);
         self::assertStringContainsString(
             '->lockForUpdate()',
-            (string) file_get_contents(app_path('Http/Controllers/Admin/ClassificationController.php'))
+            (string) file_get_contents(app_path('Services/AdminClassificationAuthoringService.php'))
         );
         self::assertSame([$requested->id], $row->courses()->pluck('courses.id')->all());
     }

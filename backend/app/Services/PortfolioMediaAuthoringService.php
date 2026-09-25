@@ -29,6 +29,7 @@ final class PortfolioMediaAuthoringService
     public function __construct(
         private PortfolioVideoUploadService $videoUploads,
         private BunnyService $bunny,
+        private BunnyMediaRegistry $mediaRegistry,
         private PortfolioUploadAccessService $uploadAccess
     ) {
     }
@@ -275,13 +276,13 @@ final class PortfolioMediaAuthoringService
 
     private function cleanupImage(string $path): void
     {
-        if ($path !== '') $this->bunny->queueStorageCleanup($path, 'portfolio_rollback', 5);
+        if ($path !== '') $this->mediaRegistry->queueStorageCleanup($path, 'portfolio_rollback', 5);
     }
 
     private function consumeImage(string $path): void
     {
         if ($path === '') return;
-        $this->bunny->consumeStorageCleanupCandidate($path);
+        $this->mediaRegistry->consumeStorageCleanupCandidate($path);
     }
 
     /** @param array{sha256:string,size:int,mime:string,file_type:string} $fingerprint */

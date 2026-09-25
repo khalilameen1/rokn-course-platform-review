@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Support\StudentNotificationIntent;
+
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CoinEarningMethodResource;
 use App\Models\CoinEarningMethod;
@@ -21,7 +23,8 @@ use Illuminate\Support\Str;
 final class CoinEarningMethodController extends Controller
 {
     public function __construct(
-        private readonly AcquisitionRewardTombstoneService $tombstones
+        private readonly AcquisitionRewardTombstoneService $tombstones,
+        private readonly StudentNotificationService $notifications
     ) {
     }
 
@@ -339,21 +342,23 @@ final class CoinEarningMethodController extends Controller
                 // effect inside StudentNotificationService, but there is no
                 // crash window that can leave a credited task without its inbox
                 // notification forever.
-                StudentNotificationService::notifyUser(
+                $this->notifications->notifyUser(
                     $user->fresh(),
-                    StudentNotificationService::TYPE_COINS_CLAIMED,
-                    'وصلت مكافأتك',
-                    'Coins Claimed',
-                    'أضفنا ' . $transaction->amount . " عملة إلى محفظتك\nافتح المحفظة لمعرفة التفاصيل",
-                    $transaction->amount . ' coins have been added to your wallet',
-                    null,
-                    CoinEarningMethod::class,
-                    $lockedMethod->id,
-                    'coins-claimed:' . $user->id . ':' . $lockedMethod->id,
-                    [
-                        'coins' => (int) $transaction->amount,
-                        'task' => (string) ($lockedMethod->title_ar ?: $lockedMethod->title_en),
-                    ]
+                    new StudentNotificationIntent(
+                        notificationType: StudentNotificationService::TYPE_COINS_CLAIMED,
+                        titleAr: 'وصلت مكافأتك',
+                        titleEn: 'Coins Claimed',
+                        messageAr: 'أضفنا ' . $transaction->amount . " عملة إلى محفظتك\nافتح المحفظة لمعرفة التفاصيل",
+                        messageEn: $transaction->amount . ' coins have been added to your wallet',
+                        link: null,
+                        notifiableType: CoinEarningMethod::class,
+                        notifiableId: $lockedMethod->id,
+                        deliveryKey: 'coins-claimed:' . $user->id . ':' . $lockedMethod->id,
+                        templateVariables: [
+                            'coins' => (int) $transaction->amount,
+                            'task' => (string) ($lockedMethod->title_ar ?: $lockedMethod->title_en),
+                        ]
+                    )
                 );
 
                 return [

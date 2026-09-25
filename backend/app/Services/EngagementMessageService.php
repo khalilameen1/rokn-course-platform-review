@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\AdminNotification;
-use App\Models\RewardRule;
-use App\Models\Setting;
 use App\Support\RoknAppLink;
 
 final class EngagementMessageService
 {
+    public function __construct(private readonly WelcomeRewardOfferService $welcomeOffer)
+    {
+    }
+
     /** @return array<string, mixed>|null */
     public function publicMessage(string $systemKey, array $variables = []): ?array
     {
@@ -68,7 +70,7 @@ final class EngagementMessageService
     /** @return array<string,mixed> */
     private function serialize(AdminNotification $message, array $variables): array
     {
-        $coins = $variables['coins'] ?? $this->welcomeCoins();
+        $coins = $variables['coins'] ?? $this->welcomeOffer->amountForProvider();
         $variables['coins'] = max(0, (int) $coins);
 
         return [
@@ -90,15 +92,6 @@ final class EngagementMessageService
             'cooldown_hours' => (int) $message->cooldown_hours,
             'version' => optional($message->updated_at)->toIso8601String(),
         ];
-    }
-
-    private function welcomeCoins(): int
-    {
-        return RewardRule::configuredAmount(
-            'welcome_bonus',
-            (int) (Setting::query()->value('welcome_bonus_coins')
-                ?? config('social_auth.welcome_bonus_coins', 20))
-        );
     }
 
     private function render(string $value, array $variables, bool $arabic): string

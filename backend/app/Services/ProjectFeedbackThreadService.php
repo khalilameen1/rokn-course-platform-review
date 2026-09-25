@@ -28,7 +28,7 @@ final class ProjectFeedbackThreadService
     public function __construct(
         private CourseAccessPlanService $accessPlans,
         private AiInputAttachmentService $attachments,
-        private CourseChatAccessService $courseAccess
+        private CourseEntitlementService $courseAccess
     ) {
     }
 

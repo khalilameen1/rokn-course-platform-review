@@ -19,6 +19,45 @@ const file = {uri: `file://${filePath}`, size: 20, type: 'image/png'};
 const registryPath = `${directory}/.references.json`;
 const key = '@rokn/product-feedback-draft/v1:account-1';
 const conflictsKey = '@rokn/product-feedback-draft-conflicts/v1:account-1';
+const durableSources = [
+  ['support draft', key, {attachment: file}],
+  [
+    'support reply',
+    '@rokn/product-feedback-reply/v1:case-1:account-1',
+    {attachment: file},
+  ],
+  [
+    'support conflict',
+    conflictsKey,
+    [{raw: JSON.stringify({attachment: file})}],
+  ],
+  [
+    'portfolio editor',
+    '@rokn/portfolio-editor-draft/v1:account-1',
+    {cover: file, media: [file]},
+  ],
+  ['portfolio upload', '@rokn/portfolio-media-outbox/v1:account-1', [{file}]],
+  [
+    'project editor',
+    '@rokn/project-editor-draft/v1:account-1:project-1',
+    {files: [file]},
+  ],
+  [
+    'project discussion',
+    '@rokn/project-feedback-draft/v1:account-1:thread-1',
+    {attachment: file},
+  ],
+  [
+    'project submission',
+    '@rokn/project-submission/v2:account-1:project-1',
+    {selectedFiles: [file]},
+  ],
+  [
+    'course chat',
+    '@rokn/course-chat-history/v2:account-1:course-1:lesson-1',
+    [{attachment: file}],
+  ],
+] as const;
 const nativeFiles = new Map<string, string>();
 const getAllKeys = jest
   .mocked(AsyncStorage.getAllKeys)
@@ -153,6 +192,62 @@ it('reclaims a real orphan despite unrelated, scalar, and quarantined storage en
   await pick();
   expect(nativeFiles.has(filePath)).toBe(false);
   expect(JSON.parse(nativeFiles.get(registryPath)!)).toEqual({});
+});
+
+it('can cache an attachment while a valid native course purchase binding is stored', async () => {
+  await AsyncStorage.setItem(
+    '@rokn/native-course-checkout/v1/coins.600:account-1',
+    '11111111-1111-4111-8111-111111111111',
+  );
+  await AsyncStorage.setItem(key, JSON.stringify({attachment: file}));
+  await expect(pick()).resolves.toMatchObject({size: 20});
+  expect(nativeFiles.has(filePath)).toBe(true);
+  expect(AsyncStorage.multiGet).not.toHaveBeenCalledWith(
+    expect.arrayContaining([
+      '@rokn/native-course-checkout/v1/coins.600:account-1',
+    ]),
+  );
+});
+
+it.each(durableSources)(
+  'preserves files owned by %s without relying on a reference registry',
+  async (_name, storageKey, value) => {
+    await AsyncStorage.setItem(storageKey, JSON.stringify(value));
+    await pick();
+    expect(nativeFiles.has(filePath)).toBe(true);
+    expect(AsyncStorage.multiGet).toHaveBeenCalledWith(
+      expect.arrayContaining([storageKey]),
+    );
+  },
+);
+
+it.each(durableSources)(
+  'does not treat an unreadable %s as abandoned files',
+  async (_name, storageKey) => {
+    await AsyncStorage.setItem(storageKey, '{incomplete');
+    await expect(pick()).rejects.toThrow();
+    expect(nativeFiles.has(filePath)).toBe(true);
+    expect(RNFS.copyFile).not.toHaveBeenCalled();
+  },
+);
+
+it('does not parse unrelated storage or another account whose entity id matches this account', async () => {
+  nativeFiles.set(registryPath, oldRegistry);
+  await AsyncStorage.setItem(
+    '@rokn/product-feedback-receipts/v1:account-1',
+    '{not a draft',
+  );
+  await AsyncStorage.setItem(
+    '@rokn/project-editor-draft/v1:account-2:account-1',
+    '{other owner',
+  );
+  await AsyncStorage.setItem(
+    '@rokn/product-feedback-reply/v1:account-1:account-2',
+    '{other owner',
+  );
+  await pick();
+  expect(nativeFiles.has(filePath)).toBe(false);
+  expect(AsyncStorage.multiGet).not.toHaveBeenCalled();
 });
 
 it('accepts a listed key removed before the batch read as absent', async () => {

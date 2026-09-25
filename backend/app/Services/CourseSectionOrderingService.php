@@ -29,6 +29,11 @@ final class CourseSectionOrderingService
                 'module_id' => 'يجب أن يبقى كل مقطع أو مشروع داخل وحدة',
             ]);
         }
+        if (!$course->modules()->whereKey($moduleId)->exists()) {
+            throw ValidationException::withMessages([
+                'module_id' => 'الوحدة المختارة لم تعد متاحة في هذا الكورس',
+            ]);
+        }
 
         if ($previousModuleId && (int) $previousModuleId !== $moduleId) {
             $this->normalizeModule($course, (int) $previousModuleId);
@@ -67,6 +72,13 @@ final class CourseSectionOrderingService
      */
     public function apply(Course $course, array $requestedSections): void
     {
+        $requestedIds = collect($requestedSections)->pluck('id')->map(fn ($id): int => (int) $id)->values();
+        if ($requestedIds->unique()->count() !== $requestedIds->count()
+            || $course->sections()->whereKey($requestedIds)->count() !== $requestedIds->count()) {
+            throw ValidationException::withMessages([
+                'sections' => 'تغيّر محتوى الكورس أعد تحميله قبل تغيير الترتيب',
+            ]);
+        }
         $requestedModules = collect($requestedSections)
             ->filter(fn (array $section): bool => array_key_exists('module_id', $section))
             ->mapWithKeys(fn (array $section): array => [
@@ -74,6 +86,12 @@ final class CourseSectionOrderingService
                     ? null
                     : (int) $section['module_id'],
             ]);
+        $moduleIds = $requestedModules->values()->filter(fn ($id): bool => $id !== null)->unique();
+        if ($course->modules()->whereKey($moduleIds)->count() !== $moduleIds->count()) {
+            throw ValidationException::withMessages([
+                'sections' => 'اختر وحدات من نفس الكورس فقط',
+            ]);
+        }
 
         $learningSections = CourseSection::query()
             ->where('course_id', $course->id)
@@ -106,10 +124,6 @@ final class CourseSectionOrderingService
             ]);
         }
 
-        $requestedIds = collect($requestedSections)
-            ->pluck('id')
-            ->map(fn ($id): int => (int) $id)
-            ->values();
         $currentModules = $learningSections
             ->whereIn('id', $requestedIds)
             ->pluck('module_id');

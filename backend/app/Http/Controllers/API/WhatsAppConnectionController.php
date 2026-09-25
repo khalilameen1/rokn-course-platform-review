@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Support\StudentNotificationIntent;
+
 use App\Http\Controllers\Controller;
 use App\Jobs\SendWhatsAppMessage;
 use App\Support\DurableJobDispatch;
@@ -21,7 +23,8 @@ final class WhatsAppConnectionController extends Controller
 {
     public function __construct(
         private readonly ApiResponseService $responses,
-        private readonly WhatsAppLinkService $links
+        private readonly WhatsAppLinkService $links,
+        private readonly StudentNotificationService $notifications
     ) {
     }
 
@@ -110,18 +113,20 @@ final class WhatsAppConnectionController extends Controller
                     $method = $methodId
                         ? CoinEarningMethod::withTrashed()->find($methodId)
                         : null;
-                    StudentNotificationService::notifyUser(
+                    $this->notifications->notifyUser(
                         $result['user'],
-                        StudentNotificationService::TYPE_WHATSAPP_CONNECTED,
-                        'تم ربط واتساب',
-                        'WhatsApp Connected',
-                        'أضفنا ' . $result['earned_coins'] . " عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
-                        $result['earned_coins'] . ' Rokn coins were added to your wallet.',
-                        null,
-                        $method ? CoinEarningMethod::class : null,
-                        $method?->id,
-                        'whatsapp-linked:' . $result['user']->id,
-                        ['coins' => (int) $result['earned_coins']]
+                        new StudentNotificationIntent(
+                            notificationType: StudentNotificationService::TYPE_WHATSAPP_CONNECTED,
+                            titleAr: 'تم ربط واتساب',
+                            titleEn: 'WhatsApp Connected',
+                            messageAr: 'أضفنا ' . $result['earned_coins'] . " عملة ركن إلى رصيدك\nافتح المحفظة لمعرفة التفاصيل",
+                            messageEn: $result['earned_coins'] . ' Rokn coins were added to your wallet.',
+                            link: null,
+                            notifiableType: $method ? CoinEarningMethod::class : null,
+                            notifiableId: $method?->id,
+                            deliveryKey: 'whatsapp-linked:' . $result['user']->id,
+                            templateVariables: ['coins' => (int) $result['earned_coins']]
+                        )
                     );
                 }
 

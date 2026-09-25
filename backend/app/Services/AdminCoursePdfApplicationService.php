@@ -20,6 +20,7 @@ final class AdminCoursePdfApplicationService
         private readonly CourseAuthoringConcurrencyService $authoring,
         private readonly CourseMediaFilePolicy $filePolicy,
         private readonly StoredFileDeletionService $fileDeletion,
+        private readonly StoredFileUploadService $uploads,
         private readonly AdminCoursePdfPresenter $presenter
     ) {
     }
@@ -475,7 +476,7 @@ final class AdminCoursePdfApplicationService
         // even when a failed save is retried with the same request/version.
         $path = 'courses/'.$course->id.'/'.hash('sha256', $operationIdentity.'|'.Str::uuid()).'.'.$extension;
         $mightAlreadyBeStored = $this->fileDeletion->trackPotentialOrphan($disk, $path, 60);
-        $this->fileDeletion->writeTrackedUpload($file, $path, $disk, $mightAlreadyBeStored);
+        $this->uploads->writeTrackedUpload($file, $path, $disk, $mightAlreadyBeStored);
 
         return ['disk' => $disk, 'path' => $path];
     }

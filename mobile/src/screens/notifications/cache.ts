@@ -8,9 +8,10 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {serverNowMs} from '../../utils/serverClock';
+import {createKeyedAsyncQueue} from '../../utils/keyedAsyncQueue';
 
 const NOTIFICATIONS_CACHE_KEY = '@rokn/notifications-cache/v2';
-let notificationsCacheWriteTail: Promise<void> = Promise.resolve();
+const withNotificationsCacheWrite = createKeyedAsyncQueue();
 
 type NotificationsCache = {
   version: 2;
@@ -59,21 +60,14 @@ export const saveCachedNotifications = async (
   boundary: AccountSessionBoundary | null,
 ) => {
   if (!key || !boundary) return false;
-  const write = notificationsCacheWriteTail
-    .catch(() => undefined)
-    .then(async () => {
-      assertAccountSessionBoundary(boundary);
-      const saved = await saveItem(key, {
-        version: 2,
-        savedAt: serverNowMs(),
-        items: items.slice(0, 120),
-      } satisfies NotificationsCache);
-      assertAccountSessionBoundary(boundary);
-      return saved;
-    });
-  notificationsCacheWriteTail = write.then(
-    () => undefined,
-    () => undefined,
-  );
-  return write;
+  return withNotificationsCacheWrite(key, async () => {
+    assertAccountSessionBoundary(boundary);
+    const saved = await saveItem(key, {
+      version: 2,
+      savedAt: serverNowMs(),
+      items: items.slice(0, 120),
+    } satisfies NotificationsCache);
+    assertAccountSessionBoundary(boundary);
+    return saved;
+  });
 };

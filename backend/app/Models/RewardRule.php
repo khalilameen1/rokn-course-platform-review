@@ -7,7 +7,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use App\Support\AfterCommitCacheInvalidation;
 use Throwable;
 
 final class RewardRule extends Model
@@ -80,16 +80,7 @@ final class RewardRule extends Model
                 }
             };
 
-            try {
-                if (DB::transactionLevel() > 0) {
-                    DB::afterCommit($invalidate);
-                    return;
-                }
-
-                $invalidate();
-            } catch (Throwable $exception) {
-                report($exception);
-            }
+            AfterCommitCacheInvalidation::run($invalidate, static fn (Throwable $exception) => report($exception));
         };
         static::saved($forget);
         static::deleted($forget);

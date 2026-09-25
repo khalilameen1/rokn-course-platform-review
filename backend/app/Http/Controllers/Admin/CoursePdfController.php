@@ -15,7 +15,7 @@ use App\Support\CourseAttachmentExternalUrl;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCoursePdfApplicationService;
 use App\Services\AdminCoursePdfPresenter;
-use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -47,7 +47,7 @@ final class CoursePdfController extends Controller
         Request $request,
         Course $course,
         string $intent,
-        CourseStagedAuthoringService $authoring,
+        CourseRevisionResolver $revisions,
         AdminCoursePdfPresenter $presenter
     ): Response {
         $receipt = $this->createIntents->resourceReceipt(
@@ -59,7 +59,7 @@ final class CoursePdfController extends Controller
         );
         // Lookup retains the exact original claim scope. Resolve only an
         // existing working course; this read must never allocate a draft.
-        $editable = $authoring->activeDraftFor($course) ?? $course->fresh();
+        $editable = $revisions->activeDraftFor($course) ?? $course->fresh();
         $version = (int) $editable->authoring_version;
         if ($receipt['state'] !== 'completed') {
             return response()->json([

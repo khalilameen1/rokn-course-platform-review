@@ -3,13 +3,8 @@
 declare(strict_types=1);
 
 // Local HTTP transport fixture: no app boot, credentials or external requests.
-$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
-if ($server === false) {
-    fwrite(STDERR, $error);
-    exit(1);
-}
-fwrite(STDOUT, stream_socket_get_name($server, false).PHP_EOL);
-fflush(STDOUT);
+require __DIR__.'/local_http_server.php';
+$server = startLocalHttpFixture($argv[2]);
 
 for ($index = 0; $index < (int) $argv[1]; $index++) {
     $client = stream_socket_accept($server, 12);

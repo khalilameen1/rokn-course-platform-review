@@ -14,7 +14,7 @@ final readonly class CourseCheckoutQuoteService
     public function __construct(private WalletService $wallet, private CourseAccessPlanService $plans,
         private CoursePromotionPolicy $promotions, private CourseCouponService $coupons,
         private PackageChannelPricingService $pricing, private CoursePlanUpgradeAction $upgrades,
-        private CourseChatAccessService $access) {}
+        private CourseEntitlementService $access) {}
 
     public function calculate(User $user, array $input, bool $selectPackage = true): array
     {

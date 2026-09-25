@@ -15,10 +15,10 @@ import {
   COURSE_DETAILS_CACHE_KEY,
   cacheCourseDetails,
   readCourseDetailsCache,
-  invalidateCatalogueCache,
   removeCourseDetailsCache,
   touchCourseDetailsCache,
-} from './courseCache';
+} from './courseDetailsCache';
+import {invalidateCatalogueCache} from './courseCatalogueCache';
 import {mapCourseDetailsPayload, type CourseDetails} from './courseContracts';
 import {numericRouteId} from './courseFields';
 

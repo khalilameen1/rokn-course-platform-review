@@ -14,7 +14,7 @@
                     <form action="{{ route('admin.teachers.update', $teacher->id) }}" method="POST" enctype="multipart/form-data" class="form-horizontal" id="teacherForm">
                         @csrf
                         @method('PUT')
-                        <input type="hidden" name="editor_version" value="{{ hash('sha256', json_encode([$teacher->name_ar, $teacher->name_en, $teacher->email, $teacher->phone, $teacher->job_title, $teacher->bio_ar, $teacher->bio_en, (bool) $teacher->active, $teacher->photo?->path], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) }}">
+                        <input type="hidden" name="editor_version" value="{{ $editorVersion }}">
                         @include('admin.teachers._form', ['isEdit' => true])
                         
                         <div class="form-actions form-group">

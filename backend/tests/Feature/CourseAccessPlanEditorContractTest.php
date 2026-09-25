@@ -8,7 +8,7 @@ use App\Http\Controllers\Admin\CourseController;
 use App\Models\Course;
 use App\Models\CourseAccessPlan;
 use App\Models\User;
-use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanAuthoringService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\RedirectResponse;
 use Tests\TestCase;
@@ -31,7 +31,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
 
         self::assertSame(0, $course->accessPlans()->count());
 
-        $plans = app(CourseAccessPlanService::class)->plansForEditor($course);
+        $plans = app(CoursePlanAuthoringService::class)->plansForEditor($course);
 
         self::assertSame(CourseAccessPlan::CODES, $plans->pluck('code')->all());
         self::assertSame(1750, (int) $plans->firstWhere('code', CourseAccessPlan::BASIC)?->price_coins);
@@ -52,14 +52,14 @@ final class CourseAccessPlanEditorContractTest extends TestCase
             'is_catalog_visible' => false,
         ])->save();
 
-        app(CourseAccessPlanService::class)->createDefaults($course);
+        app(CoursePlanAuthoringService::class)->createDefaults($course);
         $guided = $course->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         $guided->forceFill([
             'name_ar' => 'فئة مخصصة',
             'price_coins' => 4321,
         ])->save();
 
-        $plans = app(CourseAccessPlanService::class)->plansForEditor($course);
+        $plans = app(CoursePlanAuthoringService::class)->plansForEditor($course);
         $returnedGuided = $plans->firstWhere('code', CourseAccessPlan::GUIDED);
 
         self::assertTrue((bool) $returnedGuided?->exists);
@@ -80,7 +80,7 @@ final class CourseAccessPlanEditorContractTest extends TestCase
             'is_catalog_visible' => false,
         ])->save();
 
-        $service = app(CourseAccessPlanService::class);
+        $service = app(CoursePlanAuthoringService::class);
         $service->createDefaults($course);
         $guided = $course->accessPlans()->where('code', CourseAccessPlan::GUIDED)->firstOrFail();
         $guided->forceFill([

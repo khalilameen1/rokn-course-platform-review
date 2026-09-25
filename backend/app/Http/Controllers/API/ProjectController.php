@@ -14,19 +14,20 @@ use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseChatAccessService;
-use App\Services\CourseCompletionService;
+use App\Services\CourseEntitlementService;
+use App\Services\CourseSectionAccessService;
 use App\Services\CourseRevisionLearnerReadService;
-use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use App\Services\ProjectAttachmentDownloadService;
 use App\Services\ProjectFeedbackThreadService;
 use App\Services\ProjectReportRetryService;
 use App\Services\ProjectSubmissionEvaluationService;
 use App\Services\ProjectSubmissionOrchestrator;
+use App\Services\ProjectSubmissionFilePolicy;
 use App\Services\ProjectSubmissionPresenter;
-use App\Services\ProjectSubmissionService;
-use App\Services\StoredFileDeletionService;
+use App\Services\ProjectSubmissionEvaluationScheduler;
 use App\Support\DownloadFilename;
+use App\Support\UploadBudget;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -38,18 +39,19 @@ use Symfony\Component\HttpFoundation\Response;
 final class ProjectController extends Controller
 {
     public function __construct(
-        private ProjectSubmissionService $submissionService,
+        private ProjectSubmissionEvaluationScheduler $evaluationScheduler,
         private ProjectSubmissionPresenter $submissions,
-        private CourseCompletionService $courseCompletion,
+        private CourseSectionAccessService $sectionAccess,
         private ProjectFeedbackThreadService $feedbackThreads,
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private CourseAccessPlanService $accessPlans,
-        private CourseStagedAuthoringService $stagedAuthoring,
+        private CourseRevisionResolver $revisionResolver,
         private CourseRevisionLearnerReadService $revisionReads,
         private ProjectAttachmentDownloadService $downloads,
         private ProjectReportRetryService $reportRetries,
         private ProjectSubmissionOrchestrator $submissionOrchestrator,
-        private ProjectSubmissionEvaluationService $evaluations
+        private ProjectSubmissionEvaluationService $evaluations,
+        private ProjectSubmissionFilePolicy $filePolicy
     ) {
     }
 
@@ -67,7 +69,7 @@ final class ProjectController extends Controller
             if (
                 !$courseId
                 || !$project->section
-                || !$this->courseCompletion->canAccessSection($user, $project->section)
+                || !$this->sectionAccess->canAccessSection($user, $project->section)
             ) {
                 return $this->error('هذا المشروع غير متاح لحسابك', 403);
             }
@@ -76,7 +78,7 @@ final class ProjectController extends Controller
                 ->projectSubmissions((int) $user->id, [(int) $project->id])
                 ->get((int) $project->id);
             if ($latestSubmission) {
-                $latestSubmission = $this->submissionService->finalizeIfDue($latestSubmission);
+                $latestSubmission = $this->evaluationScheduler->dispatchIfDue($latestSubmission);
             }
 
             $enrollment = $this->courseAccess->activeProjectEnrollmentFor((int) $user->id, $courseId);
@@ -94,7 +96,7 @@ final class ProjectController extends Controller
             $latestSubmissionPayload = $latestSubmission
                 ? $this->submissions->present($latestSubmission)
                 : null;
-            $submissionMimeTypes = $this->submissionOrchestrator->allowedMimeTypes($project);
+            $submissionMimeTypes = $this->filePolicy->allowedMimeTypes($project);
 
             return response()->json([
                 'status' => 200,
@@ -106,8 +108,8 @@ final class ProjectController extends Controller
                     // Prompt/model settings deliberately stay server-side.
                     'submission_text_enabled' => (bool) $project->submission_text_enabled,
                     'submission_files_enabled' => $submissionMimeTypes !== [],
-                    'submission_max_files' => max(1, min(5, (int) ($project->submission_max_files ?: 3))),
-                    'submission_max_file_bytes' => ProjectSubmissionOrchestrator::maximumFileBytes(),
+                    'submission_max_files' => ProjectSubmissionFilePolicy::maximumFiles($project),
+                    'submission_max_file_bytes' => ProjectSubmissionFilePolicy::maximumFileBytes(),
                     'submission_allowed_mime_types' => $submissionMimeTypes,
                     'is_graduation_project' => $project->is_graduation_project,
                     'project_feedback' => [
@@ -149,9 +151,8 @@ final class ProjectController extends Controller
      */
     public function submit(SubmitProjectRequest $request, $projectId): JsonResponse
     {
-        $request->attributes->set(
-            StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE,
-            microtime(true) + (float) config('projects.submission_request_budget_seconds', 16)
+        $uploadBudget = UploadBudget::start(
+            (float) config('projects.submission_request_budget_seconds', 16)
         );
         try {
             $user = auth('api')->user();
@@ -174,7 +175,8 @@ final class ProjectController extends Controller
                 $request->input('submission_text'),
                 $files,
                 (string) ($request->header('Idempotency-Key') ?: $request->input('client_submission_id')),
-                (array) $request->input('metadata', [])
+                (array) $request->input('metadata', []),
+                $uploadBudget
             );
             if ($result['state'] === 'invalid') {
                 return $this->projectValidationError($result['field'], $result['message']);
@@ -248,10 +250,6 @@ final class ProjectController extends Controller
             $this->rethrowExpectedRequestException($exception);
             report($exception);
             return $this->error('تعذّر إرسال المشروع', 500);
-        } finally {
-            $request->attributes->remove(
-                StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE
-            );
         }
     }
 
@@ -294,7 +292,7 @@ final class ProjectController extends Controller
             return $this->error('التسليم غير متاح', 404);
         }
 
-        $submission = $this->submissionService->finalizeIfDue($submission);
+        $submission = $this->evaluationScheduler->dispatchIfDue($submission);
 
         return response()->json([
             'status' => 200,
@@ -538,14 +536,14 @@ final class ProjectController extends Controller
     {
         $course = $project->section?->course;
         if (!$course || !$course->is_coming_soon) return null;
-        $revision = $this->stagedAuthoring->activeArchiveForCourse($course);
+        $revision = $this->revisionResolver->activeArchiveForCourse($course);
         if (!$revision) return null;
         return DB::transaction(function () use ($project, $revision, $submissionAdmissionClosed): JsonResponse {
             // Resolve mapping, ownership and version from one publication.
             // Otherwise a second publish can move the mapped project into an
             // archive during this read and falsely present it as deleted.
             $canonical = $revision->canonicalCourse()->sharedLock()->firstOrFail();
-            $currentProjectId = $this->stagedAuthoring->currentEntityId(Project::class, (int) $project->id);
+            $currentProjectId = $this->revisionResolver->currentEntityId(Project::class, (int) $project->id);
             $currentProject = $currentProjectId
                 ? Project::query()->with('section')->find($currentProjectId)
                 : null;

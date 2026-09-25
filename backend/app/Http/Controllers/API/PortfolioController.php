@@ -12,10 +12,10 @@ use App\Models\PortfolioItem;
 use App\Models\Project;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseRevisionLearnerReadService;
-use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use App\Services\PortfolioMediaMutationService;
 use App\Services\PortfolioUploadAccessService;
 use App\Services\SafeExternalUrl;
@@ -34,11 +34,11 @@ use Illuminate\Validation\ValidationException;
 final class PortfolioController extends Controller
 {
     public function __construct(
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private CourseAccessPlanService $accessPlans,
         private PortfolioMediaMutationService $mediaMutations,
         private CourseRevisionLearnerReadService $revisionReads,
-        private CourseStagedAuthoringService $stagedAuthoring,
+        private CourseRevisionResolver $revisionResolver,
         private PortfolioUploadAccessService $uploadAccess
     ) {
     }
@@ -127,7 +127,7 @@ final class PortfolioController extends Controller
         $usedProjectIds = $user->portfolioItems()
             ->whereNotNull('source_project_id')
             ->pluck('source_project_id');
-        $usedCurrentProjectIds = collect($this->stagedAuthoring->currentLearnerEntityMap(
+        $usedCurrentProjectIds = collect($this->revisionResolver->currentLearnerEntityMap(
             Project::class,
             $usedProjectIds
         ))->values()->unique()->values();
@@ -137,7 +137,7 @@ final class PortfolioController extends Controller
             ->where('review_status', ProjectSubmission::STATUS_PASSED)
             ->distinct()
             ->pluck('project_id');
-        $candidateProjectIds = collect($this->stagedAuthoring->currentLearnerEntityMap(
+        $candidateProjectIds = collect($this->revisionResolver->currentLearnerEntityMap(
             Project::class,
             $submissionProjectIds
         ))->values()->unique()->values();
@@ -633,12 +633,12 @@ final class PortfolioController extends Controller
     /** @return list<int> */
     private function logicalProjectIds(int $projectId): array
     {
-        $currentProjectId = $this->stagedAuthoring->currentLearnerEntityMap(
+        $currentProjectId = $this->revisionResolver->currentLearnerEntityMap(
             Project::class,
             [$projectId]
         )[$projectId] ?? $projectId;
 
-        return $this->stagedAuthoring->equivalentEntityIds(
+        return $this->revisionResolver->equivalentEntityIds(
             Project::class,
             (int) $currentProjectId
         );
@@ -646,7 +646,7 @@ final class PortfolioController extends Controller
 
     private function currentProjectId(int $projectId): int
     {
-        return (int) ($this->stagedAuthoring->currentLearnerEntityMap(
+        return (int) ($this->revisionResolver->currentLearnerEntityMap(
             Project::class,
             [$projectId]
         )[$projectId] ?? $projectId);

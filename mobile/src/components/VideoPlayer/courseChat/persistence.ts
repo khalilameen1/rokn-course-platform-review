@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {learnerDraftStorage} from '../../../services/learnerDraftStorage';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
@@ -12,7 +13,7 @@ import {
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
 import {courseChatTurnIsPolling, courseChatTurnIsUnresolved} from './policy';
 
-const COURSE_CHAT_HISTORY_PREFIX = '@rokn/course-chat-history/v2';
+const COURSE_CHAT_HISTORY_PREFIX = learnerDraftStorage.courseChat.namespace;
 const MAX_STORED_MESSAGES = 36;
 const writeFlights = new Map<string, Promise<void>>();
 let persistenceGeneration = 0;

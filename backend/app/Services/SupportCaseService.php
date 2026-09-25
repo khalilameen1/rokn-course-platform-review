@@ -4,48 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\FeedbackAttachment;
+use App\Support\StudentNotificationIntent;
+
 use App\Models\FeedbackReport;
 use App\Models\SupportCaseEvent;
 use App\Models\SupportCaseMessage;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image;
 
 final class SupportCaseService
 {
     public const CUSTOMER_STATUSES = ['new', 'reviewing', 'waiting_for_user', 'resolved', 'closed', 'dismissed'];
 
-    public function createGuestCredential(string $clientRequestId): array
+    public function __construct(
+        private readonly StudentNotificationService $notifications,
+        private readonly SupportCaseScreenshotService $screenshots,
+        private readonly SupportCaseAccessService $access
+    )
     {
-        $secret = (string) config('app.key');
-        abort_if($secret === '', 503, 'تعذّر فتح المتابعة الآن');
-        $bytes = hash_hmac('sha256', 'support-case|'.$clientRequestId, $secret, true);
-        $token = rtrim(strtr(base64_encode($bytes), '+/', '-_'), '=');
-        return ['token' => $token, 'hash' => hash('sha256', $token)];
-    }
-
-    public function authorizeViewer(FeedbackReport $report, ?User $user, ?string $accessToken): void
-    {
-        if ($user && (int) $report->user_id === (int) $user->id) {
-            return;
-        }
-        $digest = trim((string) $report->guest_access_hash);
-        $candidate = trim((string) $accessToken);
-        if ($digest !== '' && $candidate !== '' && hash_equals($digest, hash('sha256', $candidate))) {
-            return;
-        }
-        abort(404);
-    }
-
-    public function accessTokenFromRequest(\Illuminate\Http\Request $request): ?string
-    {
-        $token = trim((string) $request->header('X-Support-Access'));
-        return $token !== '' && strlen($token) <= 128 ? $token : null;
     }
 
     public function appendLearnerMessage(
@@ -58,7 +36,7 @@ final class SupportCaseService
         $body = trim($body);
         $fingerprint = hash('sha256', json_encode([
             'body' => $body,
-            'attachment' => $screenshot ? $this->uploadFingerprint($screenshot) : null,
+            'attachment' => $this->screenshots->fingerprint($screenshot),
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
         $existing = SupportCaseMessage::query()
@@ -71,7 +49,7 @@ final class SupportCaseService
         }
 
         $stagedAttachment = $screenshot
-            ? $this->stageSanitizedImage($report, $clientRequestId, $screenshot)
+            ? $this->screenshots->stage($report, $clientRequestId, $screenshot)
             : null;
 
         return DB::transaction(function () use (
@@ -109,7 +87,7 @@ final class SupportCaseService
                 ]);
 
                 if ($stagedAttachment) {
-                    $this->attachStagedImage($locked, $message, $stagedAttachment);
+                    $this->screenshots->attach($locked, $message, $stagedAttachment);
                 }
 
                 $updates = [
@@ -198,72 +176,81 @@ final class SupportCaseService
         return $message;
     }
 
-    public function customerPayload(FeedbackReport $report): array
+    /** @param array<string, mixed> $validated Validated staff state edit, including expected version. */
+    public function updateState(FeedbackReport $feedback, array $validated, ?int $actorId): void
     {
-        $report->load([
-            'course:id,name_ar,name_en',
-            'attachments' => fn ($query) => $query
-                ->whereNull('support_case_message_id')
-                ->where('scan_status', 'sanitized')
-                ->orderBy('id'),
-            'messages' => fn ($query) => $query
-            ->where('visibility', SupportCaseMessage::VISIBILITY_CUSTOMER)
-            ->with(['attachments' => fn ($attachments) => $attachments
-                ->where('scan_status', 'sanitized')
-                ->orderBy('id')])
-            ->orderBy('id'),
-        ]);
-
-        return [
-            'public_id' => $report->public_id,
-            'case_number' => strtoupper(substr((string) $report->public_id, -8)),
-            'category' => $report->category,
-            'status' => $this->customerStatus((string) $report->status),
-            'message' => $report->message,
-            'course' => $report->course ? ['id' => (int) $report->course->id, 'title' => $report->course->title] : null,
-            'created_at' => $report->created_at?->toIso8601String(),
-            'updated_at' => $report->updated_at?->toIso8601String(),
-            'attachments' => $report->attachments
-                ->map(fn (FeedbackAttachment $attachment): array => $this->customerAttachment(
-                    $report,
-                    $attachment
-                ))->values()->all(),
-            'messages' => $report->messages->map(fn (SupportCaseMessage $message): array => [
-                'public_id' => $message->public_id,
-                'author' => $message->author_type === SupportCaseMessage::AUTHOR_LEARNER ? 'learner' : 'support',
-                'text' => $message->body,
-                'has_attachment' => $message->attachments->isNotEmpty(),
-                'attachments' => $message->attachments
-                    ->map(fn (FeedbackAttachment $attachment): array => $this->customerAttachment(
-                        $report,
-                        $attachment
-                    ))->values()->all(),
-                'created_at' => $message->created_at?->toIso8601String(),
-            ])->values()->all(),
-        ];
+        DB::transaction(function () use ($feedback, $validated, $actorId): void {
+            if ($feedback->user_id) {
+                User::withTrashed()->whereKey($feedback->user_id)->lockForUpdate()->first();
+            }
+            $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($feedback->id);
+            $fromStatus = (string) $locked->status;
+            $closed = in_array($validated['status'], ['resolved', 'closed', 'dismissed'], true);
+            $desiredAssignedTo = isset($validated['assigned_to'])
+                ? (int) $validated['assigned_to']
+                : null;
+            $desiredResolutionKind = $closed
+                ? ($validated['resolution_kind'] ?? null)
+                : null;
+            if ((int) $locked->version !== (int) $validated['version']) {
+                // A browser may retry the same form after the first response was
+                // lost. Treat an already-applied desired state as success, while
+                // retaining optimistic locking for every genuinely stale edit.
+                $alreadyApplied = $fromStatus === $validated['status']
+                    && (string) $locked->priority === $validated['priority']
+                    && ($locked->assigned_to === null ? null : (int) $locked->assigned_to) === $desiredAssignedTo
+                    && ($locked->resolution_kind ?: null) === $desiredResolutionKind;
+                abort_unless($alreadyApplied, 409, "عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة");
+                return;
+            }
+            $statusChanged = $fromStatus !== $validated['status'];
+            $updates = [
+                'status' => $validated['status'],
+                'priority' => $validated['priority'],
+                'assigned_to' => $desiredAssignedTo,
+                'resolution_kind' => $desiredResolutionKind,
+                'resolved_at' => $validated['status'] === 'resolved' ? ($locked->resolved_at ?: now()) : null,
+                'closed_at' => in_array($validated['status'], ['closed', 'dismissed'], true)
+                    ? ($locked->closed_at ?: now()) : null,
+                'version' => (int) $locked->version + 1,
+            ];
+            if (!$locked->last_staff_message_at && $locked->priority !== $validated['priority']) {
+                $updates['first_response_due_at'] = $this->firstResponseDueAt($validated['priority']);
+            }
+            $locked->update($updates);
+            $this->event($locked, $actorId, 'updated', $fromStatus, $validated['status'], [
+                'assigned_to' => $updates['assigned_to'],
+                'priority' => $updates['priority'],
+                'resolution_kind' => $updates['resolution_kind'],
+            ]);
+            if ($statusChanged && in_array($validated['status'], ['waiting_for_user', 'resolved', 'closed'], true)) {
+                $this->notifyStatus(
+                    $locked,
+                    $validated['status'],
+                    'support-case:'.$locked->id.':status:'.$validated['status'].':v'.$updates['version']
+                );
+            }
+        }, 3);
     }
 
-    /** @return array{id:string,name:string,mime:string,size:int,width:?int,height:?int,url:string,expires_at:string} */
-    private function customerAttachment(
-        FeedbackReport $report,
-        FeedbackAttachment $attachment
-    ): array {
-        $expiresAt = now()->addMinutes(15);
-        return [
-            'id' => (string) $attachment->id,
-            'name' => 'support-' . strtoupper(substr((string) $report->public_id, -8))
-                . '-' . $attachment->id . '.jpg',
-            'mime' => (string) ($attachment->mime_type ?: 'image/jpeg'),
-            'size' => max(0, (int) $attachment->size_bytes),
-            'width' => $attachment->width ? (int) $attachment->width : null,
-            'height' => $attachment->height ? (int) $attachment->height : null,
-            'url' => URL::temporarySignedRoute(
-                'api.feedback.attachment',
-                $expiresAt,
-                ['publicId' => $report->public_id, 'attachment' => $attachment->id]
-            ),
-            'expires_at' => $expiresAt->toIso8601String(),
-        ];
+    public function claim(FeedbackReport $report, User $user, ?string $accessToken): FeedbackReport
+    {
+        return DB::transaction(function () use ($report, $user, $accessToken): FeedbackReport {
+            User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
+            $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($report->id);
+            $this->access->authorizeViewer($locked, $user, $accessToken);
+            abort_if($locked->user_id && (int) $locked->user_id !== (int) $user->id, 404);
+            if (!$locked->user_id) {
+                $locked->update([
+                    'user_id' => $user->id,
+                    'guest_access_hash' => null,
+                    'version' => (int) $locked->version + 1,
+                ]);
+                $this->event($locked, $user->id, 'claimed');
+            }
+
+            return $locked;
+        }, 3);
     }
 
     public function firstResponseDueAt(string $priority = 'normal'): \Carbon\CarbonInterface
@@ -281,18 +268,20 @@ final class SupportCaseService
             'waiting_for_user' => ['ينتظر الدعم ردك', 'أرسل التفاصيل المطلوبة في البلاغ '.strtoupper(substr((string) $report->public_id, -8))],
             default => ['تحديث على بلاغك', 'راجع آخر تحديث على البلاغ '.strtoupper(substr((string) $report->public_id, -8))],
         };
-        StudentNotificationService::notifyUser(
+        $this->notifications->notifyUser(
             $user,
-            StudentNotificationService::TYPE_SUPPORT_CASE_UPDATE,
-            $titleAr,
-            'Support case updated',
-            $messageAr,
-            'Your support case was updated',
-            'rokn://support/'.$report->public_id,
-            FeedbackReport::class,
-            (int) $report->id,
-            $deliveryKey,
-            ['case' => strtoupper(substr((string) $report->public_id, -8))]
+            new StudentNotificationIntent(
+                notificationType: StudentNotificationService::TYPE_SUPPORT_CASE_UPDATE,
+                titleAr: $titleAr,
+                titleEn: 'Support case updated',
+                messageAr: $messageAr,
+                messageEn: 'Your support case was updated',
+                link: 'rokn://support/'.$report->public_id,
+                notifiableType: FeedbackReport::class,
+                notifiableId: (int) $report->id,
+                deliveryKey: $deliveryKey,
+                templateVariables: ['case' => strtoupper(substr((string) $report->public_id, -8))]
+            )
         );
     }
 
@@ -314,102 +303,25 @@ final class SupportCaseService
         ]);
     }
 
-    /** @return array{path:string,mime_type:string,size_bytes:int,width:int,height:int,sha256:string} */
-    private function stageSanitizedImage(
-        FeedbackReport $report,
-        string $clientRequestId,
-        UploadedFile $upload
-    ): array {
-        try {
-            $image = Image::make($upload->getRealPath());
-        } catch (\Throwable) {
-            abort(422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
-        }
-        if (function_exists('exif_read_data')) $image->orientate();
-        $image->resize(2048, 2048, static function ($constraint): void {
-            $constraint->aspectRatio();
-            $constraint->upsize();
-        });
-        $encoded = (string) $image->encode('jpg', 86);
-        abort_if($encoded === '', 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
-        $sha = hash('sha256', $encoded);
-        $directory = ($report->created_at ?: now())->format('Y/m');
-        // Message receipts handle replay. Failed admission retries need new
-        // bytes that cannot be deleted by the previous attempt's orphan job.
-        $path = $directory.'/'.$report->public_id.'/'.hash(
-            'sha256',
-            'support-message|'.$report->public_id.'|'.strtolower($clientRequestId).'|'.$sha.'|'.Str::uuid()
-        ).'.jpg';
-        app(StoredFileDeletionService::class)
-            ->trackPotentialOrphan('feedback', $path, 60);
-        abort_unless(Storage::disk('feedback')->put($path, $encoded), 503, 'تعذّر حفظ الصورة الآن');
-
-        return [
-            'path' => $path,
-            'mime_type' => 'image/jpeg',
-            'size_bytes' => strlen($encoded),
-            'width' => $image->width(),
-            'height' => $image->height(),
-            'sha256' => $sha,
-        ];
-    }
-
-    /** @param array{path:string,mime_type:string,size_bytes:int,width:int,height:int,sha256:string} $staged */
-    private function attachStagedImage(
-        FeedbackReport $report,
-        SupportCaseMessage $message,
-        array $staged
-    ): FeedbackAttachment {
-        return $report->attachments()->firstOrCreate([
-            'support_case_message_id' => $message->id,
-            'path' => $staged['path'],
-        ], [
-            'disk' => 'feedback',
-            'mime_type' => $staged['mime_type'],
-            'size_bytes' => $staged['size_bytes'],
-            'width' => $staged['width'],
-            'height' => $staged['height'],
-            'sha256' => $staged['sha256'],
-            'scan_status' => 'sanitized',
-        ]);
-    }
-
-    private function uploadFingerprint(UploadedFile $file): array
-    {
-        $hash = hash_file('sha256', $file->getRealPath());
-        abort_unless($hash && $file->getSize() > 0, 422, "تعذّرت قراءة الصورة\nاختر صورة أخرى");
-        return ['sha256' => $hash, 'size' => (int) $file->getSize()];
-    }
-
     private function notifyCustomer(FeedbackReport $report, SupportCaseMessage $message): void
     {
         $user = $report->user;
         if (!$user) return;
-        StudentNotificationService::notifyUser(
+        $this->notifications->notifyUser(
             $user,
-            StudentNotificationService::TYPE_SUPPORT_CASE_UPDATE,
-            'رد فريق الدعم',
-            'Support replied',
-            'لديك رد جديد على البلاغ '.strtoupper(substr((string) $report->public_id, -8)),
-            'You have a new support reply',
-            'rokn://support/'.$report->public_id,
-            FeedbackReport::class,
-            (int) $report->id,
-            'support-case:'.$report->id.':message:'.$message->id,
-            ['case' => strtoupper(substr((string) $report->public_id, -8))]
+            new StudentNotificationIntent(
+                notificationType: StudentNotificationService::TYPE_SUPPORT_CASE_UPDATE,
+                titleAr: 'رد فريق الدعم',
+                titleEn: 'Support replied',
+                messageAr: 'لديك رد جديد على البلاغ '.strtoupper(substr((string) $report->public_id, -8)),
+                messageEn: 'You have a new support reply',
+                link: 'rokn://support/'.$report->public_id,
+                notifiableType: FeedbackReport::class,
+                notifiableId: (int) $report->id,
+                deliveryKey: 'support-case:'.$report->id.':message:'.$message->id,
+                templateVariables: ['case' => strtoupper(substr((string) $report->public_id, -8))]
+            )
         );
-    }
-
-    private function customerStatus(string $status): string
-    {
-        return match ($status) {
-            'new' => 'received',
-            'reviewing' => 'in_progress',
-            'waiting_for_user' => 'waiting_for_you',
-            'resolved' => 'resolved',
-            'closed', 'dismissed' => 'closed',
-            default => 'in_progress',
-        };
     }
 
     private function safeEventMetadata(array $metadata): array

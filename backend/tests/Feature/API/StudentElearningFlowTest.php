@@ -10,9 +10,10 @@ use App\Models\PlaybackSession;
 use App\Models\ProjectSubmission;
 use App\Models\InternalSignal;
 use App\Services\LearningEvidenceService;
-use App\Services\InternalSignalService;
+use App\Services\LearningAchievementSignalService;
 use App\Services\InternalSignalHandler;
-use App\Services\ProjectSubmissionService;
+use App\Services\ProjectSubmissionEvaluationScheduler;
+use App\Services\ProjectSubmissionReviewService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -54,10 +55,9 @@ class StudentElearningFlowTest extends ApiTestCase
             'auto_pass_at' => now()->subSecond(),
         ]);
 
-        $service = app(ProjectSubmissionService::class);
-        $pending = $service->finalizeIfDue($submission);
+        $pending = app(ProjectSubmissionEvaluationScheduler::class)->dispatchIfDue($submission);
         self::assertSame(ProjectSubmission::STATUS_PENDING, $pending->review_status);
-        $reviewed = $service->applyEvaluationOutcome(
+        $reviewed = app(ProjectSubmissionReviewService::class)->applyEvaluationOutcome(
             $pending,
             (string) data_get($pending->submission_metadata, 'evaluation.request_id'),
             true,
@@ -96,7 +96,7 @@ class StudentElearningFlowTest extends ApiTestCase
             'updated_at' => now(),
         ]);
 
-        $signal = app(InternalSignalService::class)->record(
+        $signal = app(LearningAchievementSignalService::class)->record(
             'course.completed',
             "user:{$this->user->id}:course:{$this->courseId}",
             ['user_id' => $this->user->id, 'course_id' => $this->courseId]
@@ -140,7 +140,7 @@ class StudentElearningFlowTest extends ApiTestCase
             'updated_at' => now(),
         ]);
 
-        $signals = app(InternalSignalService::class);
+        $signals = app(LearningAchievementSignalService::class);
         $first = $signals->record(
             'course.completed',
             "user:{$this->user->id}:course:{$this->courseId}",

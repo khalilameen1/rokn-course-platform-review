@@ -7,7 +7,6 @@ namespace App\Services;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Support\DatabaseCapabilities;
-use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -17,22 +16,6 @@ use Illuminate\Validation\ValidationException;
  */
 final class CourseAuthoringConcurrencyService
 {
-    public function lock(Request $request, Course $course): Course
-    {
-        $locked = $this->lockMutableCourse($course);
-        $submitted = $request->input('authoring_version');
-
-        if ($submitted === null || (int) $submitted !== (int) $locked->authoring_version) {
-            throw ValidationException::withMessages([
-                'authoring_version' => [
-                    "تغيّر الكورس منذ فتح هذه الصفحة\nأعد تحميلها ثم راجع التعديل قبل الحفظ",
-                ],
-            ])->status(409);
-        }
-
-        return $locked;
-    }
-
     public function advance(Course $course): int
     {
         $course->increment('authoring_version');

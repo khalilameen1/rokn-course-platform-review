@@ -20,8 +20,9 @@ use UnexpectedValueException;
 final class CourseChatTurnService
 {
     public function __construct(
-        private readonly CourseStagedAuthoringService $stagedAuthoring,
+        private readonly CourseRevisionResolver $revisionResolver,
         private readonly AiEntitlementBudgetService $entitlementBudget,
+        private readonly AiUsageSettlementService $settlements,
         private readonly PaidAiCallExecutionService $paidCalls,
         private readonly AiInputAttachmentService $attachments
     ) {}
@@ -343,12 +344,12 @@ final class CourseChatTurnService
             ->first();
         $landed = $this->paidCalls->landedResult($usage);
         if ($usage?->status === 'reserved' && $landed !== null) {
-            $outcome = $this->entitlementBudget->settleForActiveUser(
+            $outcome = $this->settlements->settleForActiveUser(
                 $usage,
                 $landed,
                 (int) $turn->user_id
             );
-            if (AiEntitlementBudgetService::settlementAllowsDelivery($outcome)) {
+            if (AiUsageSettlementService::settlementAllowsDelivery($outcome)) {
                 return $this->reconcileTerminalUsage($turn->fresh());
             }
         }
@@ -385,7 +386,7 @@ final class CourseChatTurnService
     ): CursorPaginator {
         $lessonAliases = $lessonId === null
             ? []
-            : $this->stagedAuthoring->equivalentEntityIds(Lesson::class, $lessonId);
+            : $this->revisionResolver->equivalentEntityIds(Lesson::class, $lessonId);
 
         return CourseChatTurn::query()
             ->where('user_id', $userId)
@@ -529,8 +530,7 @@ final class CourseChatTurnService
         if ($unknownUsageId) {
             $usage = AiUsageEvent::query()->find($unknownUsageId);
             if ($usage) {
-                $this->paidCalls->settleUnknown(
-                    $this->entitlementBudget,
+                $this->settlements->settleUnknown(
                     $usage,
                     is_array(data_get($usage->metadata, 'request_context'))
                         ? data_get($usage->metadata, 'request_context')

@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 final class PortfolioMediaMutationService
 {
     public function __construct(
-        private BunnyService $bunny,
+        private BunnyMediaRegistry $mediaRegistry,
         private PortfolioMediaReadinessService $readiness
     ) {
     }
@@ -133,13 +133,13 @@ final class PortfolioMediaMutationService
     private function queueCleanup($media, string $reason): void
     {
         if ($media->file_type === 'video' && $media->file_path) {
-            if (!$this->bunny->queueVideoCleanup($media->file_path, null, $reason, 1, false)) {
+            if (!$this->mediaRegistry->queueVideoCleanup($media->file_path, null, $reason, 1, false)) {
                 throw new \RuntimeException('Unable to persist portfolio video cleanup.');
             }
             return;
         }
         if ($media->file_type === 'image' && $media->file_path
-            && !$this->bunny->queueStorageCleanup($media->file_path, $reason)) {
+            && !$this->mediaRegistry->queueStorageCleanup($media->file_path, $reason)) {
             throw new \RuntimeException('Unable to persist portfolio image cleanup.');
         }
     }

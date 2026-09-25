@@ -8,11 +8,14 @@ use App\Http\Middleware\RequireAdminMfa;
 use App\Models\AdminAuditLog;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
+use App\Services\PaymentReconciliationReviewService;
 use App\Support\AdminEditorVersion;
+use App\Support\PaymentFindingEditorVersion;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 final class PaymentReconciliationDashboardTest extends TestCase
@@ -249,6 +252,82 @@ final class PaymentReconciliationDashboardTest extends TestCase
         $this->actingAs($moderator)
             ->get(route('admin.payment-reconciliation-findings.index'))
             ->assertForbidden();
+    }
+
+    public function test_shared_editor_version_preserves_the_existing_page_contract(): void
+    {
+        $finding = $this->finding('ORDER-VERSION', 'provider_unavailable')->fresh();
+        self::assertSame($this->findingEditorVersion($finding), PaymentFindingEditorVersion::for($finding));
+    }
+
+    public function test_review_service_owns_transitions_and_participates_in_the_callers_transaction(): void
+    {
+        $admin = $this->user('admin');
+        $finding = $this->finding('ORDER-OWNER', 'provider_unavailable')->fresh();
+        $version = PaymentFindingEditorVersion::for($finding);
+        $service = app(PaymentReconciliationReviewService::class);
+        DB::beginTransaction();
+        try {
+            $service->transition($finding->id, PaymentReconciliationFinding::STATE_RESOLVED,
+                '  راجعت دليل الدفع  ', $version, $admin->id);
+            self::assertSame('راجعت دليل الدفع', $finding->fresh()->resolution_note);
+            self::assertSame($admin->id, $finding->fresh()->resolved_by);
+            self::assertNotNull($finding->fresh()->resolved_at);
+        } finally {
+            DB::rollBack();
+        }
+        self::assertSame(PaymentReconciliationFinding::STATE_OPEN, $finding->fresh()->state);
+        self::assertNull($finding->fresh()->resolution_note);
+
+        $service->transition($finding->id, PaymentReconciliationFinding::STATE_IGNORED,
+            'اختلاف معروف', $version, $admin->id);
+        $service->transition($finding->id, PaymentReconciliationFinding::STATE_OPEN,
+            'ظهر دليل جديد', PaymentFindingEditorVersion::for($finding->fresh()), $admin->id);
+        $finding->refresh();
+        self::assertSame(PaymentReconciliationFinding::STATE_OPEN, $finding->state);
+        self::assertNull($finding->resolved_at);
+        self::assertNull($finding->resolved_by);
+        self::assertSame('ظهر دليل جديد', $finding->resolution_note);
+    }
+
+    public function test_new_evidence_invalidates_a_review_even_when_the_state_has_not_changed(): void
+    {
+        $admin = $this->user('admin');
+        $finding = $this->finding('ORDER-NEW-EVIDENCE', 'provider_unavailable')->fresh();
+        $version = PaymentFindingEditorVersion::for($finding);
+        $finding->update(['evidence' => ['provider_status' => 'paid'], 'attempts' => 3]);
+        $before = $finding->fresh()->getRawOriginal();
+
+        $this->actingAs($admin)->patch(route('admin.payment-reconciliation-findings.resolve', $finding), [
+            'note' => 'قرار على دليل قديم', 'editor_version' => $version,
+        ])->assertSessionHasErrors('finding');
+        self::assertSame($before, $finding->fresh()->getRawOriginal());
+    }
+
+    public function test_direct_review_rejects_blank_notes_and_closed_to_closed_transitions(): void
+    {
+        $admin = $this->user('admin');
+        $finding = $this->finding('ORDER-DIRECT-GUARDS', 'provider_unavailable')->fresh();
+        $service = app(PaymentReconciliationReviewService::class);
+        try {
+            $service->transition($finding->id, PaymentReconciliationFinding::STATE_RESOLVED,
+                '   ', PaymentFindingEditorVersion::for($finding), $admin->id);
+            self::fail('A review needs a meaningful note.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('note', $e->errors());
+        }
+        self::assertSame(PaymentReconciliationFinding::STATE_OPEN, $finding->fresh()->state);
+        $service->transition($finding->id, PaymentReconciliationFinding::STATE_RESOLVED,
+            'دليل كاف', PaymentFindingEditorVersion::for($finding), $admin->id);
+        $before = $finding->fresh()->getRawOriginal();
+        try {
+            $service->transition($finding->id, PaymentReconciliationFinding::STATE_IGNORED,
+                'تغيير القرار', PaymentFindingEditorVersion::for($finding->fresh()), $admin->id);
+            self::fail('Closed findings must first be reopened.');
+        } catch (ValidationException $e) {
+            self::assertArrayHasKey('finding', $e->errors());
+        }
+        self::assertSame($before, $finding->fresh()->getRawOriginal());
     }
 
     private function user(string $role): User

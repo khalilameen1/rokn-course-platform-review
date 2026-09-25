@@ -9,7 +9,7 @@ use App\Models\Setting;
 use App\Services\AppReleaseChannelService;
 use App\Services\PackageChannelPricingService;
 use App\Services\PublicAppSettingsService;
-use App\Services\StudentNotificationService;
+use App\Services\WelcomeRewardOfferService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -19,7 +19,8 @@ class LandingPageController extends Controller
         Request $request,
         PackageChannelPricingService $pricing,
         AppReleaseChannelService $releases,
-        PublicAppSettingsService $publicSettings
+        PublicAppSettingsService $publicSettings,
+        WelcomeRewardOfferService $welcomeOffer
     ): View
     {
         $locale = $request->query('lang');
@@ -40,7 +41,7 @@ class LandingPageController extends Controller
             $downloadChannels['direct'] = route('app-download.preview');
         }
         $directDiscountPercent = $pricing->directDiscountPercent();
-        $welcomeCoins = StudentNotificationService::registrationBonusOffer();
+        $welcomeCoins = $welcomeOffer->amountForProvider();
         $howPlatformWorksVideoUrl = $publicSettings->embedVideoUrl(
             $designSetting->how_platform_works_video_link
         );

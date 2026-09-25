@@ -175,18 +175,20 @@ const sessionOwnerKey = (value: unknown): string => {
 const clearPreviousAccountBeforeReplacement = async () => {
   const helpers = await import('../constants/helpers');
   const accountScope = await helpers.getCurrentAccountStorageScope();
-  const [reminders, push, deviceSessions, learning, chat] = await Promise.all([
-    import('./smartReminders'),
-    import('./pushNotifications'),
-    import('./deviceSessions'),
-    import('../components/VideoPlayer/courseLearningApi'),
-    import('../utils/fileCache'),
-  ]);
+  const [reminders, pushState, pushCleanup, deviceSessions, learning, chat] =
+    await Promise.all([
+      import('./smartReminders'),
+      import('./pushDeviceState'),
+      import('./pushAccountCleanup'),
+      import('./deviceSessions'),
+      import('../components/VideoPlayer/courseLearningApi'),
+      import('../utils/fileCache'),
+    ]);
 
   reminders.cancelLearningReminders();
   await reminders.setSmartRemindersEnabled(false).catch(() => undefined);
-  const previousPushToken = await push
-    .getCurrentPushDeviceToken()
+  const previousPushToken = await pushState
+    .getStoredPushDeviceToken()
     .catch(() => null);
   // A direct account switch is also a logout from this installation. Close
   // the old bearer while it is still the active secure session; otherwise a
@@ -199,7 +201,7 @@ const clearPreviousAccountBeforeReplacement = async () => {
       preservePersistedSessionOnUnauthorized: true,
     })
     .catch(() => undefined);
-  await push.clearCurrentPushDeviceRegistration();
+  await pushCleanup.clearAccountPushState();
   await learning.clearCurrentAccountLearningFiles(accountScope);
   await chat.clearTransientChatCache({accountBoundary: true});
   await helpers.clearAccountScopedStorage(accountScope, {
@@ -209,10 +211,10 @@ const clearPreviousAccountBeforeReplacement = async () => {
 
 const revokeReplacedBearerForSameAccount = async () => {
   const [push, deviceSessions] = await Promise.all([
-    import('./pushNotifications'),
+    import('./pushDeviceState'),
     import('./deviceSessions'),
   ]);
-  const pushToken = await push.getCurrentPushDeviceToken().catch(() => null);
+  const pushToken = await push.getStoredPushDeviceToken().catch(() => null);
   await deviceSessions
     .revokeCurrentDeviceSession(pushToken, {
       preservePersistedSessionOnUnauthorized: true,

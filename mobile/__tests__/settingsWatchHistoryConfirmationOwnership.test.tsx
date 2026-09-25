@@ -51,7 +51,7 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   clearLocalWatchHistory: (...args: unknown[]) => mockClearLocal(...args),
   WATCH_HISTORY_ENABLED_KEY: 'watch-history',
 }));
-jest.mock('../src/services/pushNotifications', () => ({}));
+jest.mock('../src/services/pushDeviceRegistration', () => ({}));
 jest.mock('../src/screens/settings/settingsData', () => ({
   PENDING_WATCH_HISTORY_CLEAR_KEY: 'pending-clear',
 }));

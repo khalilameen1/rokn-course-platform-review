@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\ArabicSearchNormalizer;
+use App\Services\CourseCatalogueRevisionService;
 use App\Services\SavedFolderConsistencyService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -22,7 +23,8 @@ final class FinalizeReleaseBackfills extends Command
 
     public function handle(
         SavedFolderConsistencyService $savedFolders,
-        ArabicSearchNormalizer $searchNormalizer
+        ArabicSearchNormalizer $searchNormalizer,
+        CourseCatalogueRevisionService $catalogueRevisions
     ): int
     {
         if (!(bool) $this->option('old-workers-drained')) {
@@ -79,12 +81,10 @@ final class FinalizeReleaseBackfills extends Command
                     // Search results are generation-keyed. The backfill writes
                     // with the query builder on purpose, so no Course model
                     // event can rotate that generation for us.
-                    Cache::add(
-                        'courses:catalog-revision',
-                        max(1, (int) floor(microtime(true) * 1000)),
-                        now()->addYears(10)
-                    );
-                    Cache::increment('courses:catalog-revision');
+                    $catalogueRevisions->invalidateAfterCommit(function (Throwable $cacheException): void {
+                        report($cacheException);
+                        $this->warn('Backfills completed; cache projections will refresh on their normal TTL.');
+                    });
                 }
             } catch (Throwable $cacheException) {
                 // The durable backfill is already complete. A Redis outage may

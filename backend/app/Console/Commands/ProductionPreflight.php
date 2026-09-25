@@ -1158,7 +1158,7 @@ class ProductionPreflight extends Command
             ->where('revisions.status', \App\Models\CourseAuthoringRevision::DRAFT)
             ->whereIn('entities.revision_entity_id', $lessons->pluck('id'))
             ->pluck('entities.source_entity_id', 'entities.revision_entity_id');
-        $currentIds = app(\App\Services\CourseStagedAuthoringService::class)
+        $currentIds = app(\App\Services\CourseRevisionResolver::class)
             ->currentLearnerEntityMap(
                 \App\Models\Lesson::class,
                 $lessons->pluck('id')->merge($draftSources->values())

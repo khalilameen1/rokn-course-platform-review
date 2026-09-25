@@ -11,11 +11,12 @@ use App\Models\CourseChatTurn;
 use App\Models\AiInputAttachment;
 use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiStreamCheckpointService;
 use App\Services\CourseChatTurnService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\OpenRouterService;
 use App\Services\PaidAiCallExecutionService;
 use Illuminate\Bus\Queueable;
@@ -79,8 +80,9 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
     public function handle(
         OpenRouterService $openRouter,
         AiEntitlementBudgetService $budget,
+        AiUsageSettlementService $settlements,
         CourseChatTurnService $turns,
-        CourseChatAccessService $courseAccess,
+        CourseEntitlementService $courseAccess,
         AiInputAttachmentService $attachments,
         PaidAiCallExecutionService $paidCalls,
         AiStreamCheckpointService $streamCheckpoints,
@@ -175,12 +177,12 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         }
         $landedResult = $paidCalls->landedResult($event);
         if ($event->status === 'reserved' && $landedResult !== null) {
-            $settlement = $budget->settleForActiveUser(
+            $settlement = $settlements->settleForActiveUser(
                 $event,
                 $landedResult,
                 (int) $turn->user_id
             );
-            if (AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) {
+            if (AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
                 $settled = $event->fresh();
                 $this->restoreAnnotations($attachments, $ownedAttachments, $settled);
                 $answer = trim((string) $landedResult['message']);
@@ -223,12 +225,12 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 && $fresh?->status === 'reserved'
                 && $landed !== null
             ) {
-                $settlement = $budget->settleForActiveUser(
+                $settlement = $settlements->settleForActiveUser(
                     $fresh,
                     $landed,
                     (int) $turn->user_id
                 );
-                if (AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) {
+                if (AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
                     $settled = $fresh->fresh();
                     $this->restoreAnnotations($attachments, $ownedAttachments, $settled);
                     $answer = trim((string) $landed['message']);
@@ -256,7 +258,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                     true
                 )
             ) {
-                $paidCalls->settleUnknown($budget, $fresh, $this->requestContext);
+                $settlements->settleUnknown($fresh, $this->requestContext);
                 $turns->fail($turn, 'chat_provider_outcome_unknown');
             }
             return;
@@ -297,10 +299,10 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             }
             $result = $paidCalls->landedResult($event->fresh())
                 ?? throw new \RuntimeException('Provider result landing was not durable.');
-            $settlement = $budget->settleForActiveUser(
+            $settlement = $settlements->settleForActiveUser(
                 $event, $result, (int) $turn->user_id
             );
-            if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) {
+            if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
                 return;
             }
             if ($ownedAttachments->isNotEmpty()) {
@@ -334,7 +336,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
             }
 
             if ($exception->outcomeUnknown) {
-                $paidCalls->settleUnknown($budget, $event, $this->requestContext);
+                $settlements->settleUnknown($event, $this->requestContext);
                 $turns->fail($turn, 'chat_provider_outcome_unknown');
                 return;
             }
@@ -359,7 +361,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 throw $exception;
             }
 
-            $paidCalls->settleUnknown($budget, $event, $this->requestContext);
+            $settlements->settleUnknown($event, $this->requestContext);
             $turns->fail($turn, 'chat_provider_outcome_unknown');
             report($exception);
         }
@@ -430,13 +432,13 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
         $landed = $paidCalls->landedResult($event);
         if ($event?->status === 'reserved' && $landed !== null && $turn) {
             try {
-                $budget = app(AiEntitlementBudgetService::class);
-                $outcome = $budget->settleForActiveUser(
+                $settlements = app(AiUsageSettlementService::class);
+                $outcome = $settlements->settleForActiveUser(
                     $event,
                     $landed,
                     (int) $turn->user_id
                 );
-                if (AiEntitlementBudgetService::settlementAllowsDelivery($outcome)) {
+                if (AiUsageSettlementService::settlementAllowsDelivery($outcome)) {
                     $attachmentService = app(AiInputAttachmentService::class);
                     $owned = $attachmentService->forOwner(
                         AiInputAttachment::OWNER_COURSE_CHAT_TURN,
@@ -465,8 +467,7 @@ final class GenerateCourseChatReply implements ShouldQueue, ShouldBeUnique
                 true
             )
         ) {
-            app(PaidAiCallExecutionService::class)->settleUnknown(
-                app(AiEntitlementBudgetService::class),
+            app(AiUsageSettlementService::class)->settleUnknown(
                 $event,
                 $this->requestContext
             );

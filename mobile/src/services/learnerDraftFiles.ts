@@ -1,6 +1,5 @@
 import {Platform} from 'react-native';
 import RNFS from 'react-native-fs';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   assertAccountSessionBoundary,
@@ -9,74 +8,32 @@ import {
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import {secureRandomUuid} from '../utils/secureRandom';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
+import {
+  CACHE_ROOT,
+  filePath,
+  safeExtension,
+  isManagedPath,
+  accountScopeFromPath,
+  type LearnerDraftFile,
+} from './learnerDraftFiles/paths';
+import {
+  REFERENCE_WRITE_GRACE_MS,
+  readReferenceRegistry,
+  writeReferenceRegistry,
+  durableDraftPaths,
+  reconcileReferenceRegistry,
+} from './learnerDraftFiles/referenceStore';
 
-export type LearnerDraftFile = {
-  uri: string;
-  type?: string;
-  fileName?: string;
-  size?: number;
-};
+export type {LearnerDraftFile} from './learnerDraftFiles/paths';
 
-const CACHE_ROOT = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts`;
 const MAX_ACCOUNT_CACHE_BYTES = 192 * 1024 * 1024;
 const MAX_CACHE_AGE_MS = 31 * 24 * 60 * 60 * 1000;
-const REFERENCE_WRITE_GRACE_MS = 5 * 60 * 1000;
-const accountFileOperations = new Map<string, Promise<void>>();
+const withAccountFileLock = createKeyedAsyncQueue();
 const provisionalDraftFiles = new Map<string, Map<string, number>>();
-type DraftReferenceRegistry = Record<
-  string,
-  {paths: string[]; updatedAt: number}
->;
-const filePath = (uri?: string) =>
-  String(uri || '')
-    .replace(/^file:\/\//, '')
-    .replace(/\\/g, '/');
-
-const safeExtension = (file: LearnerDraftFile) => {
-  const named = String(file.fileName || '').match(/\.([a-z0-9]{1,8})$/i)?.[1];
-  if (named) return named.toLowerCase();
-  return (
-    {
-      'image/jpeg': 'jpg',
-      'image/png': 'png',
-      'image/webp': 'webp',
-      'video/mp4': 'mp4',
-      'video/quicktime': 'mov',
-      'video/webm': 'webm',
-      'application/pdf': 'pdf',
-      'text/plain': 'txt',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        'docx',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation':
-        'pptx',
-    }[String(file.type || '').toLowerCase()] || 'bin'
-  );
-};
-
-const isManagedPath = (path: string) => {
-  const normalizedRoot = CACHE_ROOT.replace(/\\/g, '/').replace(/\/$/, '');
-  return (
-    path.startsWith(`${normalizedRoot}/`) &&
-    !path
-      .slice(normalizedRoot.length + 1)
-      .split('/')
-      .includes('..')
-  );
-};
-
 export const learnerDraftFileIsManaged = (
   file?: Pick<LearnerDraftFile, 'uri'> | null,
 ) => isManagedPath(filePath(file?.uri));
-
-const accountScopeFromPath = (path: string): string | undefined => {
-  if (!isManagedPath(path)) return undefined;
-  const normalizedRoot = CACHE_ROOT.replace(/\\/g, '/').replace(/\/$/, '');
-  const scope = path.slice(normalizedRoot.length + 1).split('/')[0];
-  return /^[a-z0-9_-]+$/i.test(scope) ? scope : undefined;
-};
-
-const registryPath = (accountScope: string) =>
-  `${CACHE_ROOT}/${accountScope}/.references.json`;
 
 const provisionalPathsFor = (accountScope: string): Set<string> => {
   const entries = provisionalDraftFiles.get(accountScope);
@@ -100,159 +57,6 @@ const releaseProvisionalPath = (accountScope: string, path: string) => {
   if (!entries) return;
   entries.delete(path);
   if (!entries.size) provisionalDraftFiles.delete(accountScope);
-};
-
-const readReferenceRegistry = async (
-  accountScope: string,
-): Promise<DraftReferenceRegistry> => {
-  const target = registryPath(accountScope);
-  for (const candidate of [target, `${target}.backup`]) {
-    // Only absence permits trying the rename backup. A stale backup cannot
-    // replace an unreadable current registry and erase its newer owners.
-    if (!(await RNFS.exists(candidate))) continue;
-    const raw = await RNFS.readFile(candidate, 'utf8');
-    const parsed = JSON.parse(raw) as DraftReferenceRegistry;
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-      throw new Error('LEARNER_FILE_REFERENCES_UNAVAILABLE');
-    return Object.fromEntries(
-      Object.entries(parsed).flatMap(([owner, value]) => {
-        if (
-          !value ||
-          !Array.isArray(value.paths) ||
-          value.paths.some(path => typeof path !== 'string') ||
-          !Number.isFinite(value.updatedAt)
-        )
-          throw new Error('LEARNER_FILE_REFERENCES_UNAVAILABLE');
-        const paths = value.paths
-          .map(filePath)
-          .filter(
-            path =>
-              isManagedPath(path) &&
-              accountScopeFromPath(path) === accountScope,
-          );
-        return paths.length
-          ? [[owner.slice(0, 180), {paths, updatedAt: Number(value.updatedAt)}]]
-          : [];
-      }),
-    );
-  }
-  return {};
-};
-
-const writeReferenceRegistry = async (
-  accountScope: string,
-  registry: DraftReferenceRegistry,
-) => {
-  const directory = `${CACHE_ROOT}/${accountScope}`;
-  await RNFS.mkdir(directory);
-  const target = registryPath(accountScope);
-  const temporary = `${target}.tmp`;
-  const backup = `${target}.backup`;
-  await RNFS.writeFile(temporary, JSON.stringify(registry), 'utf8');
-  if (await RNFS.exists(target)) {
-    await RNFS.unlink(backup).catch(() => undefined);
-    await RNFS.moveFile(target, backup);
-  }
-  try {
-    await RNFS.moveFile(temporary, target);
-    await RNFS.unlink(backup).catch(() => undefined);
-  } catch (error) {
-    if (!(await RNFS.exists(target)) && (await RNFS.exists(backup))) {
-      await RNFS.moveFile(backup, target).catch(() => undefined);
-    }
-    throw error;
-  }
-};
-
-const withAccountFileLock = async <T>(
-  accountScope: string,
-  operation: () => Promise<T>,
-): Promise<T> => {
-  const previous = accountFileOperations.get(accountScope) ?? Promise.resolve();
-  let release: () => void = () => undefined;
-  const current = new Promise<void>(resolve => {
-    release = resolve;
-  });
-  accountFileOperations.set(accountScope, current);
-  await previous.catch(() => undefined);
-  try {
-    return await operation();
-  } finally {
-    release();
-    if (accountFileOperations.get(accountScope) === current) {
-      accountFileOperations.delete(accountScope);
-    }
-  }
-};
-
-const managedPathsInValue = (value: unknown, found: Set<string>): void => {
-  if (typeof value === 'string') {
-    const path = filePath(value);
-    if (isManagedPath(path)) found.add(path);
-    return;
-  }
-  if (Array.isArray(value)) {
-    value.forEach(item => managedPathsInValue(item, found));
-    return;
-  }
-  if (value && typeof value === 'object') {
-    Object.values(value as Record<string, unknown>).forEach(item =>
-      managedPathsInValue(item, found),
-    );
-  }
-};
-
-const durableDraftPaths = async (
-  accountScope: string,
-): Promise<Set<string>> => {
-  const keys = (await AsyncStorage.getAllKeys()).filter(
-    key =>
-      (key.endsWith(`:${accountScope}`) || key.includes(`:${accountScope}:`)) &&
-      !key.endsWith(':corrupt'),
-  );
-  const values = new Map(keys.length ? await AsyncStorage.multiGet(keys) : []);
-  const paths = new Set<string>();
-  for (const key of keys) {
-    // A removed key is returned as null. A missing row is an incomplete read,
-    // not evidence that every file belonging to that outbox was abandoned.
-    if (!values.has(key))
-      throw new Error('LEARNER_FILE_REFERENCES_UNAVAILABLE');
-    const raw = values.get(key);
-    if (raw === null) continue;
-    const parsed: unknown = JSON.parse(raw!);
-    managedPathsInValue(parsed, paths);
-    if (
-      key.startsWith('@rokn/product-feedback-draft-conflicts/v1:') &&
-      Array.isArray(parsed)
-    ) {
-      // These are selectable drafts, unlike the retired :corrupt snapshots.
-      for (const entry of parsed) {
-        if (typeof entry?.raw === 'string')
-          managedPathsInValue(JSON.parse(entry.raw), paths);
-      }
-    }
-  }
-  return new Set(
-    [...paths].filter(path => accountScopeFromPath(path) === accountScope),
-  );
-};
-
-/** Recent registry entries guard commits; durable drafts keep their own files
- * even if they never used the registry. Only confirmed orphans lose ownership. */
-const reconcileReferenceRegistry = (
-  registry: DraftReferenceRegistry,
-  referencedByDurableState: Set<string>,
-): DraftReferenceRegistry => {
-  const now = Date.now();
-  const reconciled: DraftReferenceRegistry = {};
-  Object.entries(registry).forEach(([owner, value]) => {
-    const withinCommitGrace = now - value.updatedAt <= REFERENCE_WRITE_GRACE_MS;
-    const paths = value.paths.filter(
-      path => withinCommitGrace || referencedByDurableState.has(path),
-    );
-    if (paths.length) reconciled[owner] = {...value, paths};
-  });
-  return reconciled;
 };
 
 const trimAccountDraftFiles = async (

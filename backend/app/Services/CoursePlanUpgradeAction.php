@@ -10,7 +10,7 @@ use App\Models\CourseAccessPlan;
 use App\Models\CourseEnrollment;
 use App\Models\Order;
 use App\Models\User;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\FinancialProvenanceService;
 use App\Services\WalletService;
@@ -19,8 +19,9 @@ use Illuminate\Support\Str;
 
 final class CoursePlanUpgradeAction
 {
-    public function __construct(private readonly CourseChatAccessService $access,
+    public function __construct(private readonly CourseEntitlementService $access,
         private readonly WalletService $wallet, private readonly FinancialProvenanceService $provenance,
+        private readonly FinancialEntitlementHoldReadService $holds,
         private readonly CourseAccessPlanService $plans) {}
 
     public function execute(User $user, Course $course, string $requestedCode,
@@ -30,6 +31,7 @@ final class CoursePlanUpgradeAction
         $access = $this->access;
         $wallet = $this->wallet;
         $provenance = $this->provenance;
+        $holds = $this->holds;
         $plans = $this->plans;
         return DB::transaction(function () use (
                 $user,
@@ -37,6 +39,7 @@ final class CoursePlanUpgradeAction
                 $access,
                 $wallet,
                 $provenance,
+                $holds,
                 $plans,
                 $requestedCode,
                 $clientIdempotencyKey,
@@ -97,7 +100,7 @@ final class CoursePlanUpgradeAction
                         }
                         if (
                             !$replayedOrder->isFinanciallyEffective()
-                            || $provenance->enrollmentHasActiveHold(
+                            || $holds->enrollmentHasActiveHold(
                                 $enrollment,
                                 ['course', 'chat', 'plan']
                             )
@@ -183,7 +186,7 @@ final class CoursePlanUpgradeAction
                     }
                     if (
                         !$replayedOrder->isFinanciallyEffective()
-                        || $provenance->enrollmentHasActiveHold(
+                        || $holds->enrollmentHasActiveHold(
                             $enrollment,
                             ['course', 'chat', 'plan']
                         )

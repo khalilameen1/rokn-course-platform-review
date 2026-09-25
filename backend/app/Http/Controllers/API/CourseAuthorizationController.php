@@ -8,14 +8,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Bill;
 use App\Models\PaymentMethod;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class CourseAuthorizationController extends Controller
 {
     public function __construct(
-        private readonly CourseChatAccessService $courseAccess
+        private readonly CourseEntitlementService $courseAccess
     ) {
     }
 

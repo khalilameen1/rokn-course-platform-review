@@ -409,7 +409,7 @@ final class ProjectRevisionLineageTest extends TestCase
         // Video/cover readiness is independent of this HTTP lineage contract.
         $audit = Mockery::mock(CoursePublishingService::class);
         $audit->shouldReceive('audit')->once()->andReturn(['ready' => true, 'issues' => []]);
-        $revisions = new CourseStagedAuthoringService($audit);
+        $revisions = $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $audit]);
         $draft = $revisions->draftFor($course->fresh());
         $section = $draft->sections()->where('sectionable_type', Project::class)->firstOrFail();
         $project = $section->sectionable;

@@ -240,6 +240,6 @@ final class CourseStagedClassificationMergeTest extends TestCase
             'issues' => [],
         ]);
 
-        return new CourseStagedAuthoringService($publishing);
+        return $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
     }
 }

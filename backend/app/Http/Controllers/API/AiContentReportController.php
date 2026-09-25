@@ -11,6 +11,7 @@ use App\Models\ProjectFeedbackMessage;
 use App\Models\User;
 use App\Services\ApiResponseService;
 use App\Services\SupportCaseService;
+use App\Services\SupportCaseReadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +21,12 @@ use Illuminate\Validation\Rule;
 /** AI reports enter the existing staffed support queue, not a separate inbox. */
 final class AiContentReportController extends Controller
 {
-    public function store(Request $request, SupportCaseService $cases, ApiResponseService $responses): JsonResponse
+    public function store(
+        Request $request,
+        SupportCaseService $cases,
+        ApiResponseService $responses,
+        SupportCaseReadService $reads
+    ): JsonResponse
     {
         $data = $request->validate([
             'scope' => ['required', Rule::in(['course_chat', 'project_feedback'])],
@@ -77,7 +83,7 @@ final class AiContentReportController extends Controller
             $cases->appendLearnerMessage($report, $user, $body, $requestId);
             return $report;
         }, 3);
-        return $responses->success($cases->customerPayload($report), 'وصل بلاغك لفريق ركن')
+        return $responses->success($reads->customerPayload($report), 'وصل بلاغك لفريق ركن')
             ->header('Cache-Control', 'no-store');
     }
 }

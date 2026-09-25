@@ -5,16 +5,10 @@ import * as DocumentPicker from 'expo-document-picker';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
-  type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {removeLearnerDraftFile} from '../../../services/learnerDraftFiles';
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
-import {
-  cacheProjectFeedbackFile,
-  clearProjectFeedbackDraft,
-  loadProjectFeedbackDraft,
-  saveProjectFeedbackDraft,
-} from '../../../services/projectFeedbackDraft';
+import {cacheProjectFeedbackFile} from '../../../services/projectFeedbackDraft';
 import {errorStatus, learnerErrorMessage} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
@@ -23,13 +17,24 @@ import {
   sendProjectFeedbackMessage,
   uploadProjectFeedbackAttachment,
 } from '../courseLearningApi';
-import {projectFeedbackThreadIsPending} from '../projectFeedback/policy';
 import type {
   ChatAttachmentDraft,
   ProjectFeedbackMessage,
   ProjectFeedbackThread,
   ProjectReportStatus,
 } from '../types';
+
+import {useProjectFeedbackThread} from './useProjectFeedbackThread';
+import {useProjectFeedbackDraftEditor} from './useProjectFeedbackDraftEditor';
+
+const draftFingerprint = (text: string, files: ChatAttachmentDraft[]) =>
+  [
+    text,
+    ...files.map(
+      file =>
+        `${file.serverId || file.uploadId}:${file.name}:${file.size || 0}`,
+    ),
+  ].join('|');
 
 type FeedbackLevel = 'pass_only' | 'report' | 'enhanced';
 
@@ -54,51 +59,46 @@ export const useProjectFeedback = ({
   activeProjectIdRef.current = projectId;
   const activeThreadIdRef = useRef<string | null>(seedThread?.id || null);
   const generationRef = useRef(0);
-  const requestRef = useRef<{fingerprint: string; id: string} | null>(null);
   const sendFlightRef = useRef<symbol | null>(null);
   const pickerFlightRef = useRef<symbol | null>(null);
-  const hydratedThreadRef = useRef<string | null>(null);
-  const accessKey = `${feedbackLevel}:${replyEnabled}`;
-  const hydratedAccessRef = useRef(accessKey);
-  const pollJitterRef = useRef(0.82 + Math.random() * 0.3);
-  const draftSnapshotRef = useRef({
-    text: '',
-    attachments: [] as ChatAttachmentDraft[],
+  const {
+    thread,
+    setThread,
+    error,
+    setError,
+    hydrating: threadHydrating,
+    pending,
+  } = useProjectFeedbackThread({
+    projectId,
+    seedThread,
+    active,
+    appIsActive,
+    feedbackLevel,
+    replyEnabled,
+    reportStatus,
   });
-  const draftReadyRef = useRef(false);
-  const draftBoundaryRef = useRef<AccountSessionBoundary | null>(null);
-
-  const [threadState, setThreadState] = useState<{
-    projectId: string;
-    thread?: ProjectFeedbackThread;
-  }>(() => ({projectId, thread: seedThread}));
-  const thread =
-    threadState.projectId === projectId ? threadState.thread : seedThread;
-  const setThread = useCallback(
-    (next?: ProjectFeedbackThread) => setThreadState({projectId, thread: next}),
-    [projectId],
-  );
-  const [draft, setDraft] = useState('');
-  const [attachments, setAttachments] = useState<ChatAttachmentDraft[]>([]);
-  const [draftReady, setDraftReady] = useState(false);
-  const [draftRestoreError, setDraftRestoreError] = useState(false);
-  const [draftRestoreAttempt, setDraftRestoreAttempt] = useState(0);
-  const [hydrating, setHydrating] = useState(false);
+  const {
+    session: draftSession,
+    draft,
+    setDraft,
+    attachments,
+    setAttachments,
+    ready: draftReady,
+    saveError: draftSaveError,
+    restoreError: draftRestoreError,
+    retryRestore: retryDraftRestore,
+    retrySave: retryDraftSave,
+  } = useProjectFeedbackDraftEditor({
+    projectId,
+    threadId: thread?.id,
+    active,
+    appIsActive,
+  });
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState('');
 
   activeThreadIdRef.current = thread?.id || null;
-  draftSnapshotRef.current = {text: draft, attachments};
-  draftReadyRef.current = draftReady;
 
   const normalizedDraft = cleanUnicodeText(draft);
-  const threadHydrating =
-    hydrating ||
-    (['ready', 'failed'].includes(reportStatus) &&
-      Boolean(thread) &&
-      (thread?.messages.length || 0) === 0 &&
-      hydratedThreadRef.current !== thread?.id &&
-      !error);
   const canReply =
     draftReady &&
     !threadHydrating &&
@@ -106,45 +106,11 @@ export const useProjectFeedback = ({
     feedbackLevel === 'enhanced' &&
     replyEnabled &&
     thread?.canReply === true;
-  const pending = projectFeedbackThreadIsPending(thread?.messages || []);
-
-  useEffect(() => {
-    setThreadState(current => {
-      if (
-        seedThread?.transcriptIncluded === false &&
-        current.projectId === projectId &&
-        current.thread?.id === seedThread.id
-      ) {
-        // Course maps intentionally omit messages, quota and attachment limits.
-        // Keep the full read/send result, but apply the summary's real access
-        // verdict so a revoked permission cannot leave the composer enabled.
-        return {
-          projectId,
-          thread: {
-            ...current.thread,
-            canReply: seedThread.canReply,
-            feedbackLevel: seedThread.feedbackLevel,
-            status: seedThread.status,
-          },
-        };
-      }
-      return {projectId, thread: seedThread};
-    });
-  }, [projectId, seedThread]);
-
   useEffect(() => {
     generationRef.current += 1;
-    hydratedThreadRef.current = null;
-    requestRef.current = null;
     sendFlightRef.current = null;
     pickerFlightRef.current = null;
     setSending(false);
-    setHydrating(false);
-    setError('');
-    setDraft('');
-    setAttachments([]);
-    setDraftReady(false);
-    draftBoundaryRef.current = null;
     return () => {
       generationRef.current += 1;
       pickerFlightRef.current = null;
@@ -152,216 +118,8 @@ export const useProjectFeedback = ({
   }, [projectId, thread?.id]);
 
   useEffect(() => {
-    const threadId = thread?.id;
-    if (
-      !active ||
-      !appIsActive ||
-      !threadId ||
-      (((thread?.messages.length || 0) > 0 ||
-        hydratedThreadRef.current === threadId) &&
-        hydratedAccessRef.current === accessKey) ||
-      !['ready', 'failed'].includes(reportStatus)
-    ) {
-      return;
-    }
-    const generation = generationRef.current;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let attempts = 0;
-    setHydrating(true);
-    const ownsThread = () =>
-      !cancelled &&
-      generationRef.current === generation &&
-      activeProjectIdRef.current === projectId &&
-      activeThreadIdRef.current === threadId;
-    const load = async () => {
-      attempts += 1;
-      try {
-        const next = await loadProjectFeedbackThread(projectId, threadId);
-        if (!ownsThread()) return;
-        if (next) {
-          hydratedThreadRef.current = threadId;
-          hydratedAccessRef.current = accessKey;
-          setThread(next);
-          setError('');
-          setHydrating(false);
-          return;
-        }
-      } catch {}
-      if (!ownsThread()) return;
-      if (attempts < 3) {
-        timer = setTimeout(() => void load(), 1200 * attempts);
-        return;
-      }
-      hydratedThreadRef.current = null;
-      setHydrating(false);
-      setError('تعذّر تحميل التقرير\nحاول فتح المشروع مرة أخرى');
-    };
-    void load();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [
-    accessKey,
-    active,
-    appIsActive,
-    projectId,
-    reportStatus,
-    setThread,
-    thread?.id,
-    thread?.messages.length,
-  ]);
-
-  useEffect(() => {
-    const threadId = thread?.id;
-    if (
-      !active ||
-      !appIsActive ||
-      !threadId ||
-      !pending ||
-      reportStatus !== 'ready'
-    ) {
-      return;
-    }
-    const generation = generationRef.current;
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let attempts = 0;
-    const ownsThread = () =>
-      !cancelled &&
-      generationRef.current === generation &&
-      activeProjectIdRef.current === projectId &&
-      activeThreadIdRef.current === threadId;
-    const schedule = () => {
-      const delay = Math.min(10000, 1800 * Math.pow(1.35, attempts));
-      timer = setTimeout(
-        () => void refresh(),
-        Math.round(delay * pollJitterRef.current),
-      );
-    };
-    const refresh = async () => {
-      attempts += 1;
-      try {
-        const next = await loadProjectFeedbackThread(projectId, threadId);
-        if (!ownsThread()) return;
-        if (next) {
-          setThread(next);
-          setError('');
-          if (!projectFeedbackThreadIsPending(next.messages)) return;
-        }
-      } catch {}
-      if (!ownsThread()) return;
-      if (attempts < 30) {
-        schedule();
-      } else {
-        setError('تأخر الرد\nافتح المشروع مرة أخرى لتحديثه');
-      }
-    };
-    schedule();
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [
-    active,
-    appIsActive,
-    pending,
-    projectId,
-    reportStatus,
-    setThread,
-    thread?.id,
-  ]);
-
-  useEffect(() => {
-    const threadId = thread?.id;
-    if (!threadId) return;
-    const generation = generationRef.current;
-    const ownerBoundary = draftBoundaryRef.current;
-    let cancelled = false;
-    setDraftReady(false);
-    draftReadyRef.current = false;
-    setDraftRestoreError(false);
-    void captureAccountSessionBoundary()
-      .then(boundary => {
-        if (cancelled || generationRef.current !== generation) return null;
-        // Retry may renew the same account's epoch, but must not forget the
-        // failed attempt's owner and read another account's local message.
-        if (ownerBoundary && ownerBoundary.scope !== boundary.scope)
-          throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
-        assertAccountSessionBoundary(boundary);
-        draftBoundaryRef.current = boundary;
-        return loadProjectFeedbackDraft(threadId, boundary);
-      })
-      .then(saved => {
-        if (cancelled || generationRef.current !== generation) return;
-        const boundary = draftBoundaryRef.current;
-        if (!boundary) return;
-        assertAccountSessionBoundary(boundary);
-        if (saved) {
-          setDraft(saved.text);
-          setAttachments(saved.attachments);
-          if (saved.requestId && saved.fingerprint) {
-            requestRef.current = {
-              id: saved.requestId,
-              fingerprint: saved.fingerprint,
-            };
-          }
-        }
-        setDraftReady(true);
-      })
-      .catch(() => {
-        if (!cancelled && generationRef.current === generation)
-          setDraftRestoreError(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [draftRestoreAttempt, thread?.id]);
-
-  useEffect(
-    () => () => {
-      const threadId = thread?.id;
-      const boundary = draftBoundaryRef.current;
-      if (!threadId || !boundary || !draftReadyRef.current) return;
-      void saveProjectFeedbackDraft(
-        threadId,
-        {
-          ...draftSnapshotRef.current,
-          requestId: requestRef.current?.id,
-          fingerprint: requestRef.current?.fingerprint,
-          updatedAt: Date.now(),
-        },
-        boundary,
-      ).catch(() => undefined);
-    },
-    [thread?.id],
-  );
-
-  useEffect(() => {
-    const threadId = thread?.id;
-    const boundary = draftBoundaryRef.current;
-    if (!threadId || !boundary || !draftReady) return;
-    const timer = setTimeout(() => {
-      void saveProjectFeedbackDraft(
-        threadId,
-        {
-          text: draft,
-          attachments,
-          requestId: requestRef.current?.id,
-          fingerprint: requestRef.current?.fingerprint,
-          updatedAt: Date.now(),
-        },
-        boundary,
-      ).catch(() => undefined);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [attachments, draft, draftReady, thread?.id]);
-
-  useEffect(() => {
-    const threadId = thread?.id;
-    const requestId = requestRef.current?.id;
-    if (!threadId || !requestId || !draftReady) return;
+    const requestId = draftSession.snapshot.requestId;
+    if (!thread || !requestId || !draftReady) return;
     const serverOwnsRequest = thread.messages.some(
       message =>
         message.role === 'user' &&
@@ -369,33 +127,12 @@ export const useProjectFeedback = ({
         !['failed', 'cancelled'].includes(message.status),
     );
     if (!serverOwnsRequest) return;
-    const localFiles = attachments;
-    const boundary = draftBoundaryRef.current;
-    if (!boundary) return;
-    requestRef.current = null;
-    setDraft('');
-    setAttachments([]);
-    void clearProjectFeedbackDraft(threadId, localFiles, boundary).catch(
-      () => undefined,
-    );
-  }, [attachments, draftReady, thread]);
-
-  useEffect(() => {
-    const threadId = thread?.id;
-    const boundary = draftBoundaryRef.current;
-    if (appIsActive || !threadId || !boundary || !draftReady) return;
-    void saveProjectFeedbackDraft(
-      threadId,
-      {
-        text: draft,
-        attachments,
-        requestId: requestRef.current?.id,
-        fingerprint: requestRef.current?.fingerprint,
-        updatedAt: Date.now(),
-      },
-      boundary,
-    ).catch(() => undefined);
-  }, [appIsActive, attachments, draft, draftReady, thread?.id]);
+    try {
+      draftSession.consume(requestId, attachments);
+    } catch {
+      // An old account's receipt cannot mutate the current editor.
+    }
+  }, [attachments, draft, draftReady, draftSession, thread]);
 
   const send = useCallback(
     async ({
@@ -410,13 +147,7 @@ export const useProjectFeedback = ({
       files?: ChatAttachmentDraft[];
     } = {}) => {
       const value = cleanUnicodeText(text);
-      const fingerprint = [
-        value,
-        ...files.map(
-          file =>
-            `${file.serverId || file.uploadId}:${file.name}:${file.size || 0}`,
-        ),
-      ].join('|');
+      const fingerprint = draftFingerprint(value, files);
       if (
         !canReply ||
         (!value && files.length === 0) ||
@@ -438,15 +169,17 @@ export const useProjectFeedback = ({
       sendFlightRef.current = flight;
       setSending(true);
       setError('');
+      const savedRequest = draftSession.snapshot;
       const requestId =
         clientRequestId ||
-        (!forceNewRequest && requestRef.current?.fingerprint === fingerprint
-          ? requestRef.current.id
+        (!forceNewRequest &&
+        savedRequest.fingerprint === fingerprint &&
+        savedRequest.requestId
+          ? savedRequest.requestId
           : secureRandomUuid());
-      requestRef.current = {fingerprint, id: requestId};
       try {
         const boundary = await captureAccountSessionBoundary();
-        const draftBoundary = draftBoundaryRef.current;
+        const draftBoundary = draftSession.boundary;
         if (
           !draftBoundary ||
           draftBoundary.scope !== boundary.scope ||
@@ -467,30 +200,14 @@ export const useProjectFeedback = ({
         );
         assertAccountSessionBoundary(boundary);
         if (!ownsContext()) return;
-        const durableFingerprint = [
-          value,
-          ...uploaded.map(
-            file =>
-              `${file.serverId || file.uploadId}:${file.name}:${
-                file.size || 0
-              }`,
-          ),
-        ].join('|');
-        await saveProjectFeedbackDraft(
-          threadId,
-          {
-            text: value,
-            attachments: uploaded,
-            requestId,
-            fingerprint: durableFingerprint,
-            updatedAt: Date.now(),
-          },
-          boundary,
-        );
+        await draftSession.stage({
+          text: value,
+          attachments: uploaded,
+          requestId,
+          fingerprint: draftFingerprint(value, uploaded),
+        });
         assertAccountSessionBoundary(boundary);
         if (!ownsContext()) return;
-        setAttachments(uploaded);
-        requestRef.current = {id: requestId, fingerprint: durableFingerprint};
         let next: ProjectFeedbackThread;
         try {
           next = await sendProjectFeedbackMessage(
@@ -529,13 +246,8 @@ export const useProjectFeedback = ({
         }
         assertAccountSessionBoundary(boundary);
         if (!ownsContext()) return;
-        void clearProjectFeedbackDraft(threadId, uploaded, boundary).catch(
-          () => undefined,
-        );
+        draftSession.consume(requestId, uploaded);
         setThread(next);
-        setDraft('');
-        setAttachments([]);
-        requestRef.current = null;
       } catch (caught: unknown) {
         if (
           !ownsContext() ||
@@ -560,7 +272,17 @@ export const useProjectFeedback = ({
         }
       }
     },
-    [attachments, canReply, draft, projectId, sending, setThread, thread],
+    [
+      attachments,
+      canReply,
+      draft,
+      draftSession,
+      projectId,
+      sending,
+      setError,
+      setThread,
+      thread,
+    ],
   );
 
   const pickAttachments = useCallback(async () => {
@@ -585,7 +307,7 @@ export const useProjectFeedback = ({
     const additions: ChatAttachmentDraft[] = [];
     try {
       const boundary = await captureAccountSessionBoundary();
-      const draftBoundary = draftBoundaryRef.current;
+      const draftBoundary = draftSession.boundary;
       if (
         !draftBoundary ||
         draftBoundary.scope !== boundary.scope ||
@@ -661,7 +383,14 @@ export const useProjectFeedback = ({
     } finally {
       if (pickerFlightRef.current === flight) pickerFlightRef.current = null;
     }
-  }, [attachments.length, canReply, projectId, thread]);
+  }, [
+    attachments.length,
+    canReply,
+    draftSession,
+    projectId,
+    setAttachments,
+    thread,
+  ]);
 
   const retryMessage = useCallback(
     (message: ProjectFeedbackMessage) =>
@@ -673,32 +402,29 @@ export const useProjectFeedback = ({
     [send],
   );
 
-  const removeAttachment = useCallback((file: ChatAttachmentDraft) => {
-    if (!draftReadyRef.current || sendFlightRef.current) return;
-    setAttachments(current =>
-      current.filter(item => item.uploadId !== file.uploadId),
-    );
-    if (!file.serverId) void removeLearnerDraftFile(file);
-  }, []);
+  const removeAttachment = useCallback(
+    (file: ChatAttachmentDraft) => {
+      if (!draftSession.ready || sendFlightRef.current) return;
+      try {
+        draftSession.assertReady();
+      } catch {
+        return;
+      }
+      setAttachments(current =>
+        current.filter(item => item.uploadId !== file.uploadId),
+      );
+      if (!file.serverId) void removeLearnerDraftFile(file);
+    },
+    [draftSession, setAttachments],
+  );
 
-  const changeDraft = useCallback((value: string) => {
-    if (draftReadyRef.current && !sendFlightRef.current)
-      setDraft(truncateGraphemes(value, 2000));
-  }, []);
-
-  const restoreGeneration = generationRef.current;
-  const retryDraftRestore = () => {
-    if (
-      !draftRestoreError ||
-      !active ||
-      draftReadyRef.current ||
-      generationRef.current !== restoreGeneration ||
-      activeProjectIdRef.current !== projectId ||
-      activeThreadIdRef.current !== thread?.id
-    )
-      return;
-    setDraftRestoreAttempt(attempt => attempt + 1);
-  };
+  const changeDraft = useCallback(
+    (value: string) => {
+      if (draftSession.ready && !sendFlightRef.current)
+        setDraft(truncateGraphemes(value, 2000));
+    },
+    [draftSession, setDraft],
+  );
 
   return {
     attachments,
@@ -707,6 +433,8 @@ export const useProjectFeedback = ({
     draft,
     draftRestoreError,
     retryDraftRestore,
+    draftSaveError,
+    retryDraftSave,
     error,
     hydrating: threadHydrating,
     normalizedDraft,

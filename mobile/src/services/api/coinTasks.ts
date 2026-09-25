@@ -1,12 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {publicRequest} from '../../constants/api';
 import {
-  accountScopedStorageKey,
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
-import {settleWithin} from '../../utils/settleWithin';
 import {notifyWalletSettlement} from '../walletSettlement';
 import {
   firstBoolean,
@@ -18,75 +15,10 @@ import {
   requireNonNegativeNumber,
 } from './common';
 
-const COIN_TASK_ACTIONS_KEY = '@rokn/coin-task-actions/v1';
-let storageTail: Promise<void> = Promise.resolve();
 const isPositiveIntegerId = (value: string) =>
   /^\d+$/.test(value) &&
   Number.isSafeInteger(Number(value)) &&
   Number(value) > 0;
-
-const withStorageLock = <T>(operation: () => Promise<T>) => {
-  const result = storageTail.then(operation, operation);
-  storageTail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
-};
-
-const readActionUrls = async (
-  boundary?: AccountSessionBoundary,
-): Promise<Record<string, string>> => {
-  if (boundary) assertAccountSessionBoundary(boundary);
-  const key = await accountScopedStorageKey(COIN_TASK_ACTIONS_KEY, boundary);
-  const raw = await AsyncStorage.getItem(key);
-  if (boundary) assertAccountSessionBoundary(boundary);
-  if (!raw) return {};
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (!isApiRecord(parsed)) return {};
-    return Object.fromEntries(
-      Object.entries(parsed).flatMap(([taskId, value]) =>
-        isPositiveIntegerId(taskId) &&
-        typeof value === 'string' &&
-        value.length <= 4096
-          ? [[taskId, value]]
-          : [],
-      ),
-    );
-  } catch {
-    return {};
-  }
-};
-
-const rememberActionUrl = (
-  taskId: string,
-  url: string | undefined,
-  boundary: AccountSessionBoundary,
-) =>
-  withStorageLock(async () => {
-    if (!isPositiveIntegerId(taskId) || !url) return;
-    assertAccountSessionBoundary(boundary);
-    const key = await accountScopedStorageKey(COIN_TASK_ACTIONS_KEY, boundary);
-    const urls = await readActionUrls(boundary);
-    urls[taskId] = url;
-    assertAccountSessionBoundary(boundary);
-    await AsyncStorage.setItem(key, JSON.stringify(urls));
-    assertAccountSessionBoundary(boundary);
-  });
-
-const forgetActionUrl = (taskId: string, boundary: AccountSessionBoundary) =>
-  withStorageLock(async () => {
-    if (!isPositiveIntegerId(taskId)) return;
-    assertAccountSessionBoundary(boundary);
-    const key = await accountScopedStorageKey(COIN_TASK_ACTIONS_KEY, boundary);
-    const urls = await readActionUrls(boundary);
-    if (!(taskId in urls)) return;
-    delete urls[taskId];
-    assertAccountSessionBoundary(boundary);
-    await AsyncStorage.setItem(key, JSON.stringify(urls));
-    assertAccountSessionBoundary(boundary);
-  });
 
 type CoinTaskDto = {
   id?: unknown;
@@ -143,8 +75,6 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
     throw new Error('API_CONTRACT_INVALID_COIN_TASKS');
   }
   const items = resourceList<CoinTaskDto>(data);
-  const rememberedUrls = await settleWithin(readActionUrls(boundary), {});
-  assertAccountSessionBoundary(boundary);
   const seenTaskIds = new Set<string>();
   if (
     items.some(item => {
@@ -176,7 +106,9 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
     throw new Error('API_CONTRACT_INVALID_COIN_TASKS');
   }
 
-  const tasks = items.map<CoinTask>(item => {
+  // The server supplies the current destination. Display recovery belongs to
+  // the complete wallet snapshot, not a second independently reconciled URL map.
+  return items.map<CoinTask>(item => {
     const serverId = String(item.id ?? '').trim();
     const state = String(item.task_state || 'available');
     const actionKey = String(item.action_key).trim();
@@ -189,8 +121,6 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
       url:
         typeof item.action_url === 'string' && item.action_url.trim()
           ? item.action_url.trim()
-          : state === 'started'
-          ? rememberedUrls[serverId]
           : undefined,
       status:
         state === 'claimed'
@@ -205,15 +135,6 @@ export const getCoinTasks = async (): Promise<CoinTask[]> => {
         firstBoolean(item.requires_external_visit) ?? false,
     };
   });
-  const resumableIds = new Set(
-    tasks.filter(task => task.status === 'started').map(task => task.serverId),
-  );
-  Object.keys(rememberedUrls).forEach(taskId => {
-    if (!resumableIds.has(taskId)) {
-      void forgetActionUrl(taskId, boundary).catch(() => undefined);
-    }
-  });
-  return tasks;
 };
 
 export const startCoinTask = async (
@@ -263,15 +184,6 @@ export const startCoinTask = async (
     ) {
       throw new Error('API_CONTRACT_INVALID_COIN_TASK_START');
     }
-    // The server owns the attempt and its current destination. This cache is
-    // display recovery only; its raw write remains ordered after our wait ends.
-    await settleWithin(
-      status === 'claimed' || (status === 'ready_to_claim' && !url)
-        ? forgetActionUrl(task.serverId, boundary)
-        : rememberActionUrl(task.serverId, url, boundary),
-      undefined,
-    );
-    assertAccountSessionBoundary(boundary);
     return {status, url};
   })().finally(() => {
     if (startFlights.get(flightKey) === flight) startFlights.delete(flightKey);
@@ -315,7 +227,6 @@ export const claimCoinTask = async (
     // This shared claim can outlive its Wallet. A valid replay also confirms
     // the ledger after a lost acknowledgement without awarding coins again.
     notifyWalletSettlement(boundary);
-    await settleWithin(forgetActionUrl(task.serverId, boundary), undefined);
     assertAccountSessionBoundary(boundary);
     return result;
   })().finally(() => {

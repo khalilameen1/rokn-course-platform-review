@@ -8,6 +8,20 @@ use App\Models\Order;
 
 final readonly class KashierGatewayEvidenceService
 {
+    public function transactionIdConflicts(Order $order, ?string $transactionId): bool
+    {
+        return $transactionId !== null
+            && is_string($order->transaction_id)
+            && $order->transaction_id !== ''
+            && !hash_equals($order->transaction_id, $transactionId);
+    }
+
+    /** @param array<string, mixed>|null $response */
+    public function isCaptured(?array $response): bool
+    {
+        return $this->isCaptureStatus($this->status($response));
+    }
+
     public function normalizeTransactionId(mixed $value): ?string
     {
         if (!is_string($value)) {

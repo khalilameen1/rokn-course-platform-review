@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\StudentNotificationIntent;
+
 use App\Support\StorageWriteOptions;
 use App\Support\UnicodeText;
 
@@ -20,13 +22,14 @@ use Illuminate\Support\Str;
 class CertificateService
 {
     public function __construct(
-        private readonly FinancialProvenanceService $financialProvenance,
+        private readonly FinancialEntitlementHoldReadService $holds,
         private readonly CertificateEligibilityService $eligibility,
-        private readonly CourseStagedAuthoringService $stagedAuthoring,
+        private readonly CourseRevisionResolver $revisionResolver,
         private readonly CertificateIssuanceSnapshotService $snapshots,
         private readonly CertificateQrDestinationService $qrDestinations,
         private readonly CertificateArtworkRenderer $artwork,
-        private readonly LegacyCertificateArtworkRenderer $legacyArtwork
+        private readonly LegacyCertificateArtworkRenderer $legacyArtwork,
+        private readonly StudentNotificationService $notifications
     ) {
     }
 
@@ -56,7 +59,7 @@ class CertificateService
         if ($certificate) {
             if (
                 !$certificate->isActiveCredential()
-                || ($latestEnrollment && $this->financialProvenance
+                || ($latestEnrollment && $this->holds
                     ->enrollmentHasActiveHold($latestEnrollment, ['course']))
             ) {
                 return null;
@@ -268,18 +271,20 @@ class CertificateService
             $this->deleteCertificateArtifact($previousPath);
         }
 
-        StudentNotificationService::notifyUser(
+        $this->notifications->notifyUser(
             $user,
-            StudentNotificationService::TYPE_CERTIFICATE_READY,
-            'شهادتك جاهزة',
-            'Your certificate is ready',
-            'أكملت الكورس وأصبحت شهادتك جاهزة',
-            'You completed the course and your certificate is ready.',
-            'rokn://profile/certificates',
-            Course::class,
-            (int) $course->id,
-            'certificate-ready:' . $certificate->id,
-            ['course' => (string) ($course->name_ar ?: $course->name_en)]
+            new StudentNotificationIntent(
+                notificationType: StudentNotificationService::TYPE_CERTIFICATE_READY,
+                titleAr: 'شهادتك جاهزة',
+                titleEn: 'Your certificate is ready',
+                messageAr: 'أكملت الكورس وأصبحت شهادتك جاهزة',
+                messageEn: 'You completed the course and your certificate is ready.',
+                link: 'rokn://profile/certificates',
+                notifiableType: Course::class,
+                notifiableId: (int) $course->id,
+                deliveryKey: 'certificate-ready:' . $certificate->id,
+                templateVariables: ['course' => (string) ($course->name_ar ?: $course->name_en)]
+            )
         );
 
         return $certificate;
@@ -298,7 +303,7 @@ class CertificateService
             ->whereHas('section', fn ($sections) => $sections->where('course_id', $course->id))
             ->pluck('id');
         $equivalentProjectIds = $graduationProjectIds->flatMap(
-            fn ($projectId) => $this->stagedAuthoring->equivalentEntityIds(
+            fn ($projectId) => $this->revisionResolver->equivalentEntityIds(
                 Project::class,
                 (int) $projectId
             )

@@ -4,37 +4,21 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BunnyVideoCleanupCandidate;
-use App\Models\CourseSection;
 use App\Models\DesignSetting;
-use App\Models\Lesson;
 use App\Models\Setting;
-use App\Models\User;
 use App\Services\BunnyService;
-use App\Services\CourseAccessPlanService;
-use App\Services\DeviceLoginService;
-use App\Services\PublicAppSettingsService;
+use App\Services\AdminBunnyCleanupReviewService;
+use App\Services\AdminAppSettingsAuthoringService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Arr;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Support\AdminSingletonLock;
+use App\Support\AppSettingsEditorVersion;
 use App\Auth\AdminSessionIdentity;
 
 class SettingsController extends Controller
 {
-    private const VERIFIED_CLEANUP_REASONS = [
-        'publish_race_or_failure',
-        'superseded_video',
-        'unpublished_upload',
-        'section_create_rollback',
-        'section_update_rollback',
-        'section_type_changed',
-        'section_deleted',
-    ];
-
     /**
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
@@ -56,7 +40,7 @@ class SettingsController extends Controller
             $cleanupFilter = (string) $request->query('cleanup_filter', 'verified');
             $candidateQuery = BunnyVideoCleanupCandidate::query();
             if ($cleanupFilter === 'verified') {
-                $candidateQuery->whereIn('reason', self::VERIFIED_CLEANUP_REASONS);
+                $candidateQuery->whereIn('reason', AdminBunnyCleanupReviewService::VERIFIED_REASONS);
             } elseif ($cleanupFilter === 'failed') {
                 $candidateQuery->whereNotNull('last_error');
             }
@@ -66,7 +50,7 @@ class SettingsController extends Controller
         } else {
             $cleanupFilter = 'verified';
         }
-        $editorVersion = $this->settingsEditorVersion($settings, $designSettings);
+        $editorVersion = AppSettingsEditorVersion::for($settings, $designSettings);
 
         return view('admin.settings.index', compact(
             'settings',
@@ -80,71 +64,28 @@ class SettingsController extends Controller
 
     public function approveBunnyCleanup(
         Request $request,
-        BunnyVideoCleanupCandidate $candidate
+        BunnyVideoCleanupCandidate $candidate,
+        AdminBunnyCleanupReviewService $reviews
     ) {
-        abort_if($candidate->remote_deleted_at, 409, 'تم حذف هذا الفيديو بالفعل');
-
-        $activeReference = CourseSection::query()
-            ->join('lessons', function ($join): void {
-                $join->on('lessons.id', '=', 'course_sections.sectionable_id')
-                    ->where('course_sections.sectionable_type', '=', Lesson::class);
-            })
-            ->where('lessons.bunny_video_id', $candidate->video_guid)
-            ->exists();
-        if ($activeReference) {
+        if (!$reviews->approve((int) $candidate->id, (int) $request->user()->id)) {
             return redirect()->route('admin.settings')
                 ->with('error', 'لا يمكن اعتماد الحذف لأن الفيديو ما زال مستخدمًا في قسم منشور');
         }
-
-        $candidate->forceFill([
-            'reviewed_at' => now(),
-            'reviewed_by' => $request->user()->id,
-            'requires_review' => false,
-            'eligible_after' => $candidate->eligible_after->isFuture()
-                ? $candidate->eligible_after
-                : now(),
-            'last_error' => null,
-        ])->save();
 
         return redirect()->route('admin.settings')
             ->with('success', 'تم اعتماد الفيديو للتنظيف بعد انتهاء فترة الاحتفاظ');
     }
 
-    public function approveBunnyCleanupBatch(Request $request)
+    public function approveBunnyCleanupBatch(Request $request, AdminBunnyCleanupReviewService $reviews)
     {
         $validated = $request->validate([
             'cleanup_ids' => 'required|array|min:1|max:100',
             'cleanup_ids.*' => 'required|integer|distinct|exists:bunny_video_cleanup_candidates,id',
         ]);
 
-        $approved = 0;
-        $skippedActive = 0;
-        DB::transaction(function () use ($validated, $request, &$approved, &$skippedActive): void {
-            $candidates = BunnyVideoCleanupCandidate::query()
-                ->whereIn('id', $validated['cleanup_ids'])
-                ->whereNull('remote_deleted_at')
-                ->whereNull('reviewed_at')
-                ->lockForUpdate()
-                ->get();
-
-            foreach ($candidates as $candidate) {
-                if ($this->bunnyVideoHasActiveReference($candidate->video_guid)) {
-                    $skippedActive++;
-                    continue;
-                }
-
-                $candidate->forceFill([
-                    'reviewed_at' => now(),
-                    'reviewed_by' => $request->user()->id,
-                    'requires_review' => false,
-                    'eligible_after' => $candidate->eligible_after->isFuture()
-                        ? $candidate->eligible_after
-                        : now(),
-                    'last_error' => null,
-                ])->save();
-                $approved++;
-            }
-        });
+        $result = $reviews->approveBatch($validated['cleanup_ids'], (int) $request->user()->id);
+        $approved = $result['approved'];
+        $skippedActive = $result['skipped_active'];
 
         $message = "تم اعتماد {$approved} فيديو للتنظيف بعد فترة الاحتفاظ";
         if ($skippedActive > 0) {
@@ -155,25 +96,13 @@ class SettingsController extends Controller
             ->with($skippedActive > 0 ? 'warning' : 'success', $message);
     }
 
-    private function bunnyVideoHasActiveReference(string $videoGuid): bool
-    {
-        return CourseSection::query()
-            ->join('lessons', function ($join): void {
-                $join->on('lessons.id', '=', 'course_sections.sectionable_id')
-                    ->where('course_sections.sectionable_type', '=', Lesson::class);
-            })
-            ->where('lessons.bunny_video_id', $videoGuid)
-            ->exists();
-    }
-
     /**
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
     public function update(
         Request $request,
-        PublicAppSettingsService $publicSettings,
-        CourseAccessPlanService $accessPlans
+        AdminAppSettingsAuthoringService $authoring
     )
     {
         try {
@@ -221,161 +150,10 @@ class SettingsController extends Controller
             throw $exception;
         }
 
-        if (array_key_exists('ai_plan_policy', $validated)) {
-            $aiPlanPolicy = (array) $validated['ai_plan_policy'];
-            foreach (['basic', 'guided', 'mentor'] as $code) {
-                $tier = (array) $aiPlanPolicy[$code];
-                $chatEnabled = $code !== 'basic' && !empty($tier['chat_enabled']);
-                $chatLimit = max(0, (int) $tier['chat_message_limit']);
-                $feedback = (string) $tier['project_feedback_level'];
-                $followupLimit = max(0, (int) $tier['project_followup_message_limit']);
-                $tierCeiling = max(0, (int) config(
-                    "course_plans.ai_tiers.{$code}.chat_message_limit",
-                    0
-                ));
-
-                if ($chatEnabled && $chatLimit === 0) {
-                    throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.chat_message_limit" => 'حدد عدد الرسائل عند تشغيل الشات',
-                    ]);
-                }
-                if ($chatLimit > $tierCeiling) {
-                    throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.chat_message_limit" =>
-                            "الحد الأقصى لهذه الفئة {$tierCeiling} رسالة",
-                    ]);
-                }
-                if ($code === 'basic') {
-                    $feedback = 'pass_only';
-                } elseif ($code === 'guided' && $feedback === 'enhanced') {
-                    throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.project_feedback_level" => 'المتابعة المتبادلة مخصصة لفئة التعلّم بمتابعة',
-                    ]);
-                }
-                if ($feedback === 'enhanced' && $followupLimit === 0) {
-                    throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.project_followup_message_limit" => 'حدد عدد رسائل المتابعة لهذه الفئة',
-                    ]);
-                }
-                $followupCeiling = max(0, (int) config(
-                    "course_plans.ai_tiers.{$code}.project_followup_message_limit",
-                    0
-                ));
-                if ($followupLimit > $followupCeiling) {
-                    throw ValidationException::withMessages([
-                        "ai_plan_policy.{$code}.project_followup_message_limit" =>
-                            "الحد الأقصى لهذه الفئة {$followupCeiling} رسالة",
-                    ]);
-                }
-
-                $aiPlanPolicy[$code] = [
-                    'chat_enabled' => $chatEnabled,
-                    'chat_message_limit' => $chatEnabled ? $chatLimit : 0,
-                    'chat_attachments_enabled' => $chatEnabled
-                        && !empty($tier['chat_attachments_enabled']),
-                    'project_feedback_level' => $feedback,
-                    'project_followup_message_limit' => $feedback === 'enhanced'
-                        ? $followupLimit : 0,
-                ];
-            }
-            $validated['ai_plan_policy'] = $aiPlanPolicy;
-        }
-
-        $designFields = [
-            'facebook_url',
-            'youtube_url',
-            'instagram_url',
-            'tiktok_url',
-            'telegram_url',
-            'whatsapp_url',
-        ];
-        $designUpdates = Arr::only($validated, $designFields);
-        $validated = Arr::except($validated, $designFields);
-        $editorVersion = (string) $validated['editor_version'];
-        unset($validated['editor_version']);
-
-        foreach ($designUpdates as $field => $url) {
-            if ($url === null || trim((string) $url) === '') {
-                $designUpdates[$field] = null;
-                continue;
-            }
-            $channel = str_replace('_url', '', $field);
-            $normalized = $channel === 'whatsapp'
-                ? $publicSettings->whatsAppUrl($url)
-                : $publicSettings->socialUrl($channel, $url);
-            if ($normalized === null) {
-                throw ValidationException::withMessages([
-                    $field => [$channel === 'whatsapp'
-                        ? 'أدخل رقمًا دوليًا أو رابطًا صحيحًا يبدأ بـ https://wa.me/'
-                        : 'أدخل رابط الحساب الصحيح لهذه المنصة يبدأ بـ https'],
-                ]);
-            }
-            $designUpdates[$field] = $normalized;
-        }
-
-        $secretUpdates = [];
-        if (!empty($validated['bunny_api_key'])) {
-            $secretUpdates['bunny_api_key_secret'] = $validated['bunny_api_key'];
-        }
-        if (!empty($validated['bunny_storage_password'])) {
-            $secretUpdates['bunny_storage_password_secret'] = $validated['bunny_storage_password'];
-        }
-        if (!empty($validated['bunny_security_key'])) {
-            $secretUpdates['bunny_security_key_secret'] = $validated['bunny_security_key'];
-        }
-        unset($validated['bunny_api_key'], $validated['bunny_storage_password'], $validated['bunny_security_key']);
+        // Strip secrets from the request before any domain validation can fail,
+        // so redirect validation never flashes them back into the session.
         $this->forgetBunnySecretInputs($request);
-
-        if (!empty($validated['support_whatsapp_url'])) {
-            $normalizedWhatsAppUrl = $publicSettings->whatsAppUrl($validated['support_whatsapp_url']);
-            if ($normalizedWhatsAppUrl === null) {
-                throw ValidationException::withMessages([
-                    'support_whatsapp_url' => ['أدخل رقمًا دوليًا مثل +201001234567 أو رابطًا يبدأ بـ https://wa.me/.'],
-                ]);
-            }
-            $validated['support_whatsapp_url'] = $normalizedWhatsAppUrl;
-        }
-
-        DB::transaction(function () use (
-            $validated,
-            $secretUpdates,
-            $designUpdates,
-            $editorVersion,
-            $accessPlans
-        ): void {
-            AdminSingletonLock::acquire('settings', 'design_settings');
-            $settings = Setting::query()->lockForUpdate()->first();
-            $design = DesignSetting::query()->lockForUpdate()->first();
-            $settingsSnapshot = $settings ?? new Setting();
-            $designSnapshot = $design ?? DesignSetting::getDefaultSettings();
-            if (!hash_equals(
-                $this->settingsEditorVersion($settingsSnapshot, $designSnapshot),
-                $editorVersion
-            )) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت إعدادات التطبيق منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                ]);
-            }
-            $settings ??= Setting::query()->create([]);
-            $previousDevicePolicy = DeviceLoginService::normalizePolicy(
-                $settings->device_login_policy
-            );
-            $settings->update($validated + $secretUpdates);
-            $policy = (array) ($validated['ai_plan_policy'] ?? []);
-            if ($policy !== []) {
-                $accessPlans->syncGlobalAiPolicy($policy);
-            }
-            if (
-                array_key_exists('device_login_policy', $validated)
-                && $validated['device_login_policy'] === DeviceLoginService::POLICY_MULTIPLE
-                && $previousDevicePolicy !== DeviceLoginService::POLICY_MULTIPLE
-                && Schema::hasColumn('users', 'locked_device_id')
-            ) {
-                User::query()->whereNotNull('locked_device_id')->update(['locked_device_id' => null]);
-            }
-            $design ??= DesignSetting::getDefaultSettings();
-            $design->fill($designUpdates)->save();
-        });
+        $authoring->update($validated);
         return redirect()->route('admin.settings')->with('success', 'تم التحديث بنجاح');
     }
 
@@ -384,38 +162,6 @@ class SettingsController extends Controller
         foreach (['bunny_api_key', 'bunny_storage_password', 'bunny_security_key', 'api_key'] as $field) {
             $request->request->remove($field);
         }
-    }
-
-    private function settingsEditorVersion(
-        Setting $settings,
-        DesignSetting $design
-    ): string {
-        $secretRevision = hash('sha256', json_encode([
-            (string) $settings->getRawOriginal('bunny_api_key_secret'),
-            (string) $settings->getRawOriginal('bunny_storage_password_secret'),
-            (string) $settings->getRawOriginal('bunny_security_key_secret'),
-        ], JSON_UNESCAPED_SLASHES));
-        $settingValues = Arr::except($settings->getAttributes(), [
-            'bunny_api_key_secret',
-            'bunny_storage_password_secret',
-            'bunny_security_key_secret',
-            'bunny_api_key',
-            'bunny_storage_password',
-            'created_at',
-            'updated_at',
-        ]);
-        $settingValues['bunny_secrets_revision'] = $secretRevision;
-        $designValues = Arr::except($design->getAttributes(), [
-            'created_at',
-            'updated_at',
-        ]);
-        ksort($settingValues);
-        ksort($designValues);
-
-        return hash('sha256', json_encode(
-            [$settingValues, $designValues],
-            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
-        ));
     }
 
     public function adminData()

@@ -5,6 +5,7 @@ namespace App\Traits;
 use App\Support\PublicDiskUrl;
 use App\Models\Photo;
 use App\Services\StoredFileDeletionService;
+use App\Services\StoredFileUploadService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Intervention\Image\Facades\Image;
@@ -136,7 +137,7 @@ trait HasPhoto
     public function storeImage($file, $path, $type = 'featured', ?string $operationIdentity = null)
     {
         if ($operationIdentity !== null) {
-            $logicalPath = app(StoredFileDeletionService::class)->trackedUploadDestination(
+            $logicalPath = app(StoredFileUploadService::class)->trackedUploadDestination(
                 $file, $path, 'public', $operationIdentity
             );
             // A create receipt may fail after its Photo already committed.
@@ -194,7 +195,7 @@ trait HasPhoto
 
     private function storeTrackedImageBytes($file, string $directory, ?string $operationIdentity): string
     {
-        return app(StoredFileDeletionService::class)->storeTrackedUpload(
+        return app(StoredFileUploadService::class)->storeTrackedUpload(
             $file,
             $directory,
             'public',

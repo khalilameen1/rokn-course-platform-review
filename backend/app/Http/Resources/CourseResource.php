@@ -2,11 +2,12 @@
 
 namespace App\Http\Resources;
 
-use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\LessonMediaDeliveryService;
 use App\Models\CourseRating;
 use Illuminate\Support\Collection;
 use App\Services\CourseAttachmentService;
-use App\Services\CoursePresentationService;
+use App\Services\CourseSectionAccessService;
 use App\Services\CourseAccessPlanService;
 use App\Services\ProjectSubmissionPresenter;
 use App\Services\CourseRatingEligibilityService;
@@ -16,7 +17,8 @@ use App\Models\User;
 
 class CourseResource extends BaseCourseResource
 {
-    private ?BunnyService $bunnyService = null;
+    private ?BunnyDeliveryService $delivery = null;
+    private ?LessonMediaDeliveryService $lessonDelivery = null;
     private array $fullSectionContentCache = [];
     private array $sectionLockCache = [];
     private Collection $sectionAccessStates;
@@ -110,7 +112,7 @@ class CourseResource extends BaseCourseResource
                 ['aiInputAttachments', 'feedbackThread.enrollment']
             )
             : collect();
-        $this->sectionAccessStates = app(CoursePresentationService::class)
+        $this->sectionAccessStates = app(CourseSectionAccessService::class)
             ->sectionLockStatus(
                 $sections,
                 $completedSectionIds,
@@ -354,14 +356,14 @@ class CourseResource extends BaseCourseResource
         // Add type-specific full data (including sensitive data)
         switch ($section->getSectionType()) {
             case 'lesson':
-                $bunnyService = $this->bunnyService ??= app(BunnyService::class);
+                $delivery = $this->delivery ??= app(BunnyDeliveryService::class);
                 $isPreview = (bool) $section->sectionable->is_opened
                     && $section->sectionable->hasReadyMediaState();
                 // Paid media is issued only by the per-user playback manifest
                 // endpoint. Keeping it out of the broad course payload limits
                 // link reuse and makes session telemetry authoritative.
                 $videoData = $isPreview
-                    ? $bunnyService->getVideoDataForLesson($section->sectionable)
+                    ? ($this->lessonDelivery ??= app(LessonMediaDeliveryService::class))->forLesson($section->sectionable)
                     : [
                         'video_source_type' => 'bunny',
                         'video_link' => null,
@@ -379,22 +381,20 @@ class CourseResource extends BaseCourseResource
                     : max(0, (int) ($section->sectionable->duration_minutes ?? 0));
                 $content['duration_seconds'] = $durationSeconds ?: null;
                 $content['thumbnail_url'] = $section->sectionable->thumbnail_path
-                    ? $bunnyService->generateBunnySignedUrl($section->sectionable->thumbnail_path)
+                    ? $delivery->storageUrl($section->sectionable->thumbnail_path)
                     : null;
                 break;
 
                 case 'project':
                     $projectSubmissionMimeTypes = app(
-                        \App\Services\ProjectSubmissionOrchestrator::class
+                        \App\Services\ProjectSubmissionFilePolicy::class
                     )->allowedMimeTypes($section->sectionable);
                     $content['requirements_text'] = $section->sectionable->requirements_text ?? null;
                     $content['is_graduation_project'] = $section->sectionable->is_graduation_project ?? false;
                     $content['submission_text_enabled'] = (bool) $section->sectionable->submission_text_enabled;
                     $content['submission_files_enabled'] = $projectSubmissionMimeTypes !== [];
-                    $content['submission_max_files'] = max(1, min(5, (int) (
-                        $section->sectionable->submission_max_files ?: 3
-                    )));
-                    $content['submission_max_file_bytes'] = \App\Services\ProjectSubmissionOrchestrator::maximumFileBytes();
+                    $content['submission_max_files'] = \App\Services\ProjectSubmissionFilePolicy::maximumFiles($section->sectionable);
+                    $content['submission_max_file_bytes'] = \App\Services\ProjectSubmissionFilePolicy::maximumFileBytes();
                     $content['submission_allowed_mime_types'] = $projectSubmissionMimeTypes;
                     $submission = $this->projectSubmissions->get((int) $section->sectionable->id);
                     $submissionPayload = $submission

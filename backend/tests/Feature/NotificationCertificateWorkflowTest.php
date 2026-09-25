@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Support\NotificationAudience;
+use App\Support\NotificationCampaignIntent;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Jobs\DeliverStudentNotificationChunk;
 use App\Jobs\RecoverPendingCertificate;
@@ -19,7 +21,7 @@ use App\Models\User;
 use App\Services\CertificateService;
 use App\Services\CertificateEligibilityService;
 use App\Services\CoursePublishingService;
-use App\Services\NotificationService;
+use App\Services\CourseContentNotificationService;
 use App\Services\NotificationCampaignService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\Request;
@@ -121,7 +123,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         ]);
         Queue::fake([SendStudentNotification::class]);
 
-        NotificationService::notifyCourseUpdate($course);
+        CourseContentNotificationService::notifyCourseUpdate($course);
 
         $campaign = NotificationCampaign::query()
             ->where('course_id', $course->id)
@@ -129,7 +131,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
             ->firstOrFail();
         self::assertSame([], $campaign->user_ids);
         self::assertSame((int) $course->id, (int) $campaign->course_id);
-        self::assertSame(SendStudentNotification::AUDIENCE_ENROLLED, $campaign->audience);
+        self::assertSame(NotificationAudience::ENROLLED, $campaign->audience);
 
         $queued = collect(Queue::pushed(SendStudentNotification::class))
             ->contains(fn (SendStudentNotification $job): bool =>
@@ -169,11 +171,11 @@ final class NotificationCertificateWorkflowTest extends TestCase
         ]);
         $request->setUserResolver(static fn () => $admin);
 
-        app(NotificationsController::class)->store($request);
+        app()->call([app(NotificationsController::class), 'store'], ['request' => $request]);
 
         $campaign = NotificationCampaign::query()
             ->where('course_id', $course->id)
-            ->where('audience', SendStudentNotification::AUDIENCE_NOT_ENROLLED)
+            ->where('audience', NotificationAudience::NOT_ENROLLED)
             ->firstOrFail();
         self::assertSame([], $campaign->user_ids);
         self::assertSame([], $campaign->exclude_user_ids);
@@ -208,7 +210,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         Queue::fake([DeliverStudentNotificationChunk::class]);
         $this->notificationCampaign('course-selector:enrolled', [
             'notification_type' => 'course_update',
-            'audience' => SendStudentNotification::AUDIENCE_ENROLLED,
+            'audience' => NotificationAudience::ENROLLED,
             'course_id' => $course->id,
             'notifiable_type' => Course::class,
             'notifiable_id' => $course->id,
@@ -223,7 +225,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         Queue::fake([DeliverStudentNotificationChunk::class]);
         $this->notificationCampaign('course-selector:not-enrolled', [
             'notification_type' => 'course_promotion',
-            'audience' => SendStudentNotification::AUDIENCE_NOT_ENROLLED,
+            'audience' => NotificationAudience::NOT_ENROLLED,
             'course_id' => $course->id,
             'notifiable_type' => Course::class,
             'notifiable_id' => $course->id,
@@ -252,7 +254,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         Queue::fake([DeliverStudentNotificationChunk::class]);
         $this->notificationCampaign('course-selector:financial-hold', [
             'notification_type' => 'course_promotion',
-            'audience' => SendStudentNotification::AUDIENCE_NOT_ENROLLED,
+            'audience' => NotificationAudience::NOT_ENROLLED,
             'course_id' => $course->id,
             'notifiable_type' => Course::class,
             'notifiable_id' => $course->id,
@@ -289,21 +291,18 @@ final class NotificationCertificateWorkflowTest extends TestCase
         )->once();
 
         $this->expectException(\InvalidArgumentException::class);
-        app(NotificationCampaignService::class)->queue(
-            'account_notice',
-            range(1, SendStudentNotification::MAX_EXPLICIT_USER_IDS + 1),
-            null,
-            null,
-            'تنبيه',
-            'Notice',
-            'راجع حسابك',
-            'Review your account',
-            null,
-            [],
-            'account-notice:too-large',
-            null,
-            SendStudentNotification::AUDIENCE_ALL
-        );
+        app(NotificationCampaignService::class)->queue(new NotificationCampaignIntent(
+            notificationType: 'account_notice',
+            deliveryKey: 'account-notice:too-large',
+            audience: new NotificationAudience(
+                selector: NotificationAudience::ALL,
+                userIds: range(1, NotificationAudience::MAX_EXPLICIT_USER_IDS + 1)
+            ),
+            titleAr: 'تنبيه',
+            titleEn: 'Notice',
+            messageAr: 'راجع حسابك',
+            messageEn: 'Review your account'
+        ));
     }
 
     public function test_chunk_retry_creates_one_inbox_row_per_user_and_delivery_key(): void
@@ -346,7 +345,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         Queue::fake([SendUserPushNotification::class]);
         $campaign = $this->notificationCampaign('course-promotion:audience-drift', [
             'notification_type' => 'course_promotion',
-            'audience' => SendStudentNotification::AUDIENCE_NOT_ENROLLED,
+            'audience' => NotificationAudience::NOT_ENROLLED,
             'course_id' => $course->id,
             'notifiable_type' => Course::class,
             'notifiable_id' => $course->id,
@@ -1180,7 +1179,7 @@ final class NotificationCertificateWorkflowTest extends TestCase
         return NotificationCampaign::query()->create($overrides + [
             'delivery_key' => $deliveryKey,
             'notification_type' => 'admin_broadcast',
-            'audience' => SendStudentNotification::AUDIENCE_ALL,
+            'audience' => NotificationAudience::ALL,
             'user_ids' => [],
             'exclude_user_ids' => [],
             'title_ar' => 'عنوان',

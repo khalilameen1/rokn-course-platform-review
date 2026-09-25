@@ -97,18 +97,9 @@
                                         </td>
                                         <td>
                                             <div class="action-buttons-enhanced">
-                                                <form action="{{ route('admin.urgent-tasks.approve-order', $order->id) }}" method="POST">
-                                                    @csrf
-                                                    <button type="submit" class="action-btn-enhanced btn-success-center">
-                                                        <i class="fa fa-check"></i> قبول
-                                                    </button>
-                                                </form>
-                                                <form action="{{ route('admin.urgent-tasks.reject-order', $order->id) }}" method="POST">
-                                                    @csrf
-                                                    <button type="submit" class="action-btn-enhanced btn-danger-center">
-                                                        <i class="fa fa-times"></i> رفض
-                                                    </button>
-                                                </form>
+                                                <a href="{{ route('admin.orders.show', $order->id) }}" class="action-btn-enhanced btn-primary-center">
+                                                    <i class="fa fa-eye"></i> مراجعة الطلب
+                                                </a>
                                             </div>
                                         </td>
                                     </tr>
@@ -140,27 +131,6 @@
 @section('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Enhanced form submission with better UX
-    const actionForms = document.querySelectorAll('form[action*="approve-order"], form[action*="reject-order"]');
-    actionForms.forEach(form => {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            const button = this.querySelector('button[type="submit"]');
-            const originalText = button.innerHTML;
-            const action = this.action.includes('approve') ? 'قبول' : 'رفض';
-
-            if (confirm(`هل أنت متأكد من ${action} هذا الطلب؟`)) {
-                // Show loading state
-                button.innerHTML = '<i class="fa fa-spinner fa-spin"></i> جاري المعالجة...';
-                button.disabled = true;
-
-                // Submit form
-                this.submit();
-            }
-        });
-    });
-
     // Add smooth hover effects
     const rows = document.querySelectorAll('.modern-table-enhanced tbody tr');
     rows.forEach(row => {

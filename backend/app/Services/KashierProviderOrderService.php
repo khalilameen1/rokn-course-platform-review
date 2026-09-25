@@ -9,8 +9,37 @@ use Illuminate\Support\Facades\Log;
 
 final readonly class KashierProviderOrderService
 {
-    public function __construct(private KashierConfigurationService $configuration)
-    {
+    public function __construct(
+        private KashierConfigurationService $configuration,
+        private KashierGatewayEvidenceService $evidence,
+    ) {
+    }
+
+    /**
+     * @param array<string, mixed> $gatewayResponse
+     * @return array{0: ?string, 1: array<string, mixed>}
+     */
+    public function captureEvidence(
+        string $orderRef,
+        ?string $transactionId,
+        array $gatewayResponse
+    ): array {
+        if ($transactionId !== null) {
+            return [$transactionId, $gatewayResponse];
+        }
+
+        $apiResponse = $this->fetch($orderRef);
+        if (!$this->evidence->isCaptured($apiResponse)) {
+            return [null, $gatewayResponse];
+        }
+
+        return [
+            $this->evidence->transactionId($apiResponse),
+            array_merge($gatewayResponse, [
+                'verified_via' => 'kashier_api_missing_transaction_id',
+                'kashier_api_response' => $apiResponse,
+            ]),
+        ];
     }
 
     public function isValidReference(mixed $orderRef): bool

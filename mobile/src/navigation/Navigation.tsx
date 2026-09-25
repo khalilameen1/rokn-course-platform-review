@@ -27,7 +27,7 @@ import type {RootStackParamList} from './types';
 import {
   flushPendingNotificationNavigation,
   setNotificationNavigationReady,
-} from '../services/pushNotifications';
+} from '../services/pushNotificationNavigation';
 import {useReducedMotion} from '../hooks/useReducedMotion';
 import {
   flushLateInitialDestination,

@@ -23,6 +23,10 @@ const mockFirebaseOnTokenRefresh = jest.fn(
 );
 const mockOpenUrl = jest.fn(async (_url?: unknown) => true);
 let mockAccountScope = 'account-1';
+let mockSessionSnapshot: {ready: boolean; session: unknown} = {
+  ready: true,
+  session: {api_token: 'session-token'},
+};
 
 jest.mock('react-native', () => ({
   Platform: {OS: 'android'},
@@ -86,10 +90,7 @@ jest.mock('../src/constants/api', () => ({
 }));
 
 jest.mock('../src/services/secureSession', () => ({
-  peekSecureSession: () => ({
-    ready: true,
-    session: {api_token: 'session-token'},
-  }),
+  peekSecureSession: () => mockSessionSnapshot,
 }));
 
 jest.mock('../src/navigation/RootNavigationHelper', () => ({
@@ -103,15 +104,17 @@ jest.mock('../src/navigation/RootNavigationHelper', () => ({
   },
 }));
 
+import {clearAccountPushState} from '../src/services/pushAccountCleanup';
 import {
-  clearCurrentPushDeviceRegistration,
   flushPendingNotificationNavigation,
   openNotificationLink,
-  registerPushDeviceIfEligible,
   setNotificationNavigationReady,
   subscribeToPushResponses,
+} from '../src/services/pushNotificationNavigation';
+import {
+  registerPushDeviceIfEligible,
   unregisterPushDevice,
-} from '../src/services/pushNotifications';
+} from '../src/services/pushDeviceRegistration';
 import {
   invalidateLocalPushDeviceRegistration,
   PUSH_TOKEN_INVALIDATION_PENDING_KEY,
@@ -397,6 +400,7 @@ describe('notification tap navigation ownership', () => {
     jest.clearAllMocks();
     mockGet.mockReset();
     mockAccountScope = 'account-1';
+    mockSessionSnapshot = {ready: true, session: {api_token: 'session-token'}};
     mockGetItem.mockResolvedValue(null);
     mockSaveItem.mockResolvedValue(true);
     mockRemoveItem.mockResolvedValue(true);
@@ -454,7 +458,7 @@ describe('notification tap navigation ownership', () => {
   });
 
   it('retries a durable cold-start identity after its first read cannot open navigation', async () => {
-    await clearCurrentPushDeviceRegistration();
+    await clearAccountPushState();
     jest.clearAllMocks();
     mockGetItem.mockImplementation(async key =>
       key.includes('push-open-pending') ? '113' : null,
@@ -500,7 +504,7 @@ describe('notification tap navigation ownership', () => {
   });
 
   it('does not reclaim an old durable marker after logout while its storage read is pending', async () => {
-    await clearCurrentPushDeviceRegistration();
+    await clearAccountPushState();
     let finishRead!: (value: string) => void;
     mockGetItem.mockImplementation(async key => {
       if (!key.includes('push-open-pending')) return null;
@@ -512,7 +516,7 @@ describe('notification tap navigation ownership', () => {
     const oldRestore = flushPendingNotificationNavigation();
     await drain();
     expect(finishRead).toBeDefined();
-    await clearCurrentPushDeviceRegistration();
+    await clearAccountPushState();
     mockAccountScope = 'account-2';
     jest.clearAllMocks();
     finishRead('114');
@@ -540,7 +544,7 @@ describe('notification tap navigation ownership', () => {
   });
 
   it('discards a delayed native startup response after logout resets navigation ownership', async () => {
-    await clearCurrentPushDeviceRegistration();
+    await clearAccountPushState();
     const notifications = jest.requireMock('expo-notifications');
     let finishInitial!: (value: ReturnType<typeof response>) => void;
     notifications.getLastNotificationResponseAsync.mockImplementationOnce(
@@ -552,7 +556,7 @@ describe('notification tap navigation ownership', () => {
     mockGet.mockRejectedValueOnce({status: 404});
     const unsubscribe = subscribeToPushResponses();
     await drain();
-    await clearCurrentPushDeviceRegistration();
+    await clearAccountPushState();
     mockAccountScope = 'account-2';
     jest.clearAllMocks();
     finishInitial(response(115));
@@ -615,5 +619,182 @@ describe('notification tap navigation ownership', () => {
     expect(mockGet).not.toHaveBeenCalledWith('notifications/105');
     expect(mockNavigate).toHaveBeenCalledTimes(1);
     unsubscribe();
+  });
+
+  it('invalidates both owners immediately while old registration and inbox requests are in flight', async () => {
+    mockGetItem.mockImplementation(async key => {
+      if (key === 'USER_DATA') return {api_token: 'session-token'};
+      if (key.startsWith('PREF_NOTIFICATIONS')) return true;
+      return null;
+    });
+    let finishRegistration!: (value: {data: {}}) => void;
+    let finishInbox!: (value: ReturnType<typeof delivery>) => void;
+    let registrationStarted!: () => void;
+    let inboxStarted!: () => void;
+    const registrationReady = new Promise<void>(resolve => {
+      registrationStarted = resolve;
+    });
+    const inboxReady = new Promise<void>(resolve => {
+      inboxStarted = resolve;
+    });
+    mockPost.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishRegistration = resolve;
+          registrationStarted();
+        }),
+    );
+    mockGet.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishInbox = resolve;
+          inboxStarted();
+        }),
+    );
+    const registration = registerPushDeviceIfEligible();
+    const tap = openNotificationLink(response(201));
+    await Promise.all([registrationReady, inboxReady]);
+
+    const cleanup = clearAccountPushState();
+    finishInbox(delivery(201));
+    await expect(tap).resolves.toBe(false);
+    const notifications = jest.requireMock('expo-notifications');
+    expect(notifications.dismissAllNotificationsAsync).toHaveBeenCalledTimes(1);
+    expect(notifications.setBadgeCountAsync).toHaveBeenCalledWith(0);
+    expect(mockDeleteNativeToken).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    finishRegistration({data: {}});
+    await expect(registration).resolves.toBe(false);
+    await expect(cleanup).resolves.toBe(true);
+    expect(mockDeleteNativeToken).toHaveBeenCalledTimes(1);
+    expect(mockSaveItem).not.toHaveBeenCalledWith(
+      expect.stringContaining('push-device-token'),
+      expect.anything(),
+    );
+    expect(mockDelete).toHaveBeenCalledWith('user/device-token', {
+      data: {device_token: 'fcm-token'},
+      headers: {Authorization: 'Bearer session-token'},
+      skipPersistedSessionInvalidation: true,
+    });
+  });
+
+  it('clears private notification presentation even when token retirement cannot be made durable', async () => {
+    mockDeleteNativeToken.mockResolvedValueOnce(false);
+    mockSaveItem.mockResolvedValueOnce(false);
+    await expect(clearAccountPushState()).rejects.toThrow(
+      'PUSH_INVALIDATION_NOT_DURABLE',
+    );
+    const notifications = jest.requireMock('expo-notifications');
+    expect(
+      notifications.clearLastNotificationResponseAsync,
+    ).toHaveBeenCalledTimes(1);
+    expect(notifications.dismissAllNotificationsAsync).toHaveBeenCalledTimes(1);
+    expect(notifications.setBadgeCountAsync).toHaveBeenCalledWith(0);
+  });
+
+  it('does not let an expired account teardown touch the current account', async () => {
+    const helpers = jest.requireMock('../src/constants/helpers');
+    helpers.assertAccountSessionBoundary.mockImplementationOnce(() => {
+      throw new Error('ACCOUNT_CHANGED');
+    });
+    await expect(
+      clearAccountPushState({scope: 'account-previous', epoch: 1}),
+    ).rejects.toThrow('ACCOUNT_CHANGED');
+    expect(mockDeleteNativeToken).not.toHaveBeenCalled();
+    expect(mockRemoveItem).not.toHaveBeenCalled();
+    expect(
+      jest.requireMock('expo-notifications').dismissAllNotificationsAsync,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('keeps a cold-start tap pending while secure storage has not resolved the session', async () => {
+    await clearAccountPushState();
+    jest.clearAllMocks();
+    mockSessionSnapshot = {ready: false, session: null};
+    const notifications = jest.requireMock('expo-notifications');
+    notifications.getLastNotificationResponseAsync.mockResolvedValueOnce(
+      response(202),
+    );
+    const unsubscribe = subscribeToPushResponses();
+    await drain();
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(
+      notifications.clearLastNotificationResponseAsync,
+    ).not.toHaveBeenCalled();
+
+    mockSessionSnapshot = {ready: true, session: {api_token: 'session-token'}};
+    mockGet.mockResolvedValueOnce(delivery(202));
+    await expect(flushPendingNotificationNavigation()).resolves.toBe(true);
+    expect(mockNavigate).toHaveBeenCalledWith('CourseDetails', {
+      courseId: '202',
+    });
+    expect(
+      notifications.clearLastNotificationResponseAsync,
+    ).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('discards the pending remote tap when bootstrap confirms a guest', async () => {
+    await clearAccountPushState();
+    jest.clearAllMocks();
+    mockSessionSnapshot = {ready: false, session: null};
+    const notifications = jest.requireMock('expo-notifications');
+    notifications.getLastNotificationResponseAsync.mockResolvedValueOnce(
+      response(203),
+    );
+    const unsubscribe = subscribeToPushResponses();
+    await drain();
+    mockSessionSnapshot = {ready: true, session: null};
+    await expect(flushPendingNotificationNavigation()).resolves.toBe(true);
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(
+      notifications.clearLastNotificationResponseAsync,
+    ).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it('retires a durable tap only after an older marker write has finished', async () => {
+    await clearAccountPushState();
+    jest.clearAllMocks();
+    setNotificationNavigationReady(false);
+    let finishWrite!: (saved: boolean) => void;
+    let writeStarted!: () => void;
+    const started = new Promise<void>(resolve => {
+      writeStarted = resolve;
+    });
+    mockSaveItem.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishWrite = resolve;
+          writeStarted();
+        }),
+    );
+    const notifications = jest.requireMock('expo-notifications');
+    const unsubscribe = subscribeToPushResponses();
+    const listener =
+      notifications.addNotificationResponseReceivedListener.mock.calls.at(
+        -1,
+      )[0];
+    listener(response(204));
+    await started;
+    const cleanup = clearAccountPushState();
+    try {
+      await drain();
+      expect(mockRemoveItem).not.toHaveBeenCalledWith(
+        expect.stringContaining('push-open-pending'),
+      );
+    } finally {
+      finishWrite(true);
+      await cleanup;
+      unsubscribe();
+    }
+    expect(mockRemoveItem).toHaveBeenCalledWith(
+      expect.stringContaining('push-open-pending'),
+    );
+    expect(mockGet).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

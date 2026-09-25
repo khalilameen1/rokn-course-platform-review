@@ -20,7 +20,7 @@ final readonly class CertificateIssuanceSnapshotService
         private CertificateTextTemplateService $templates,
         private CertificateEligibilityService $eligibility,
         private CurriculumCompletionService $completion,
-        private CourseStagedAuthoringService $revisions,
+        private CourseRevisionResolver $revisions,
         private CertificateQrDestinationService $qrDestinations
     ) {
     }

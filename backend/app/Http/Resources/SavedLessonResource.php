@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Support\BusinessClock;
 use App\Support\PublicDiskUrl;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -25,7 +25,7 @@ class SavedLessonResource extends JsonResource
             : max(0, (int) $this->duration_minutes) * 60;
         $thumbnail = trim((string) $this->thumbnail_path);
         $image = $thumbnail !== '' && $this->hasReadyMediaState()
-            ? app(BunnyService::class)->generateBunnySignedUrl($thumbnail)
+            ? app(BunnyDeliveryService::class)->storageUrl($thumbnail)
             : null;
         $image ??= $this->publicLessonImage($this->image);
         $image ??= $this->course?->image ? (string) $this->course->image : null;

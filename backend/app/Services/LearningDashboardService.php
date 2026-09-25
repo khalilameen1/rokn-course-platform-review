@@ -21,11 +21,11 @@ final readonly class LearningDashboardService
     public function __construct(
         private CourseSectionSequenceService $sectionSequence,
         private LearningProgressStateService $progressState,
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private CertificateEligibilityService $certificateEligibility,
         private LatestWatchResumeService $latestResume,
         private CourseRevisionLearnerReadService $revisionReads,
-        private BunnyService $bunny
+        private BunnyDeliveryService $delivery
     ) {
     }
 
@@ -183,7 +183,7 @@ final readonly class LearningDashboardService
                 $watchActivity = $resumeLog->watched_at ?? $resumeLog->updated_at;
                 $thumbnailPath = trim((string) $resumeLog->lesson?->thumbnail_path);
                 $thumbnail = $thumbnailPath !== ''
-                    ? $this->bunny->generateBunnySignedUrl($thumbnailPath)
+                    ? $this->delivery->storageUrl($thumbnailPath)
                     : null;
                 $resume = [
                     'available' => true,

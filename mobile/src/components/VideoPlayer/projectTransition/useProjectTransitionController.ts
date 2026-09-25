@@ -76,6 +76,8 @@ export const useProjectTransitionController = ({
     feedbackError: feedback.error,
     feedbackDraftRestoreError: feedback.draftRestoreError,
     retryFeedbackDraftRestore: feedback.retryDraftRestore,
+    feedbackDraftSaveError: feedback.draftSaveError,
+    retryFeedbackDraftSave: feedback.retryDraftSave,
     feedbackLevel: resolution.contract.feedbackLevel,
     feedbackPending: feedback.pending,
     feedbackSending: feedback.sending,

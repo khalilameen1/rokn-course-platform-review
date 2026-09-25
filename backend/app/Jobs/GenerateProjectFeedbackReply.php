@@ -12,13 +12,15 @@ use App\Models\ProjectFeedbackMessage;
 use App\Models\ProjectFeedbackThread;
 use App\Models\User;
 use App\Services\AiEntitlementBudgetService;
+use App\Services\AiUsageSettlementService;
 use App\Services\AiFailurePolicy;
 use App\Services\AiInputAttachmentService;
 use App\Services\AiPromptPolicy;
 use App\Services\AiStreamCheckpointService;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\OpenRouterService;
+use App\Services\OpenRouterRequestPolicy;
 use App\Services\PaidAiCallExecutionService;
 use App\Support\ProjectSubmissionEvaluationSnapshot;
 use App\Support\UnicodeText;
@@ -65,9 +67,11 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
 
     public function handle(
         CourseAccessPlanService $plans,
-        CourseChatAccessService $courseAccess,
+        CourseEntitlementService $courseAccess,
         AiEntitlementBudgetService $budget,
+        AiUsageSettlementService $settlements,
         OpenRouterService $openRouter,
+        OpenRouterRequestPolicy $requestPolicy,
         PaidAiCallExecutionService $paidCalls,
         AiInputAttachmentService $attachments,
         AiStreamCheckpointService $streamCheckpoints,
@@ -129,10 +133,10 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             if ($event?->status === 'reserved') {
                 $landed = $paidCalls->landedResult($event);
                 if ($landed !== null) {
-                    $settlement = $budget->settleForActiveUser(
+                    $settlement = $settlements->settleForActiveUser(
                         $event, $landed, (int) $message->thread->user_id
                     );
-                    if (AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) {
+                    if (AiUsageSettlementService::settlementAllowsDelivery($settlement)) {
                         $settled = $event->fresh();
                         if ($this->complete(
                             (int) $message->id,
@@ -149,7 +153,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 $startedState = $paidCalls->startedState($event);
                 if ($startedState === PaidAiCallExecutionService::LIVE) return;
                 if ($startedState === PaidAiCallExecutionService::STALE_STARTED) {
-                    $paidCalls->settleUnknown($budget, $event, [
+                    $settlements->settleUnknown($event, [
                         'thread_id' => (int) $message->thread_id,
                     ]);
                     $this->markFailedWithReply(
@@ -307,7 +311,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
         $reservation = null;
         $providerResultKnown = false;
         try {
-            $model = $openRouter->configuredModel('project_model');
+            $model = $requestPolicy->configuredModel('project_model');
             $requestId = (string) $message->public_id;
             $reservation = $budget->reserve($enrollment, 'project_followup', $estimatedTokens, $model, $requestId);
             if (!$reservation) {
@@ -332,10 +336,10 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             }
             $landed = $paidCalls->landedResult($reservation?->fresh());
             if ($landed !== null) {
-                $settlement = $budget->settleForActiveUser(
+                $settlement = $settlements->settleForActiveUser(
                     $reservation, $landed, (int) $thread->user_id
                 );
-                if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
+                if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) return;
                 $settledEvent = $reservation->fresh();
                 if ($this->complete(
                     $message->id, $thread->id, $settledEvent,
@@ -363,7 +367,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 $fresh = $reservation->fresh();
                 if ($callState === PaidAiCallExecutionService::STALE_STARTED
                     && $paidCalls->providerWasStarted($fresh)) {
-                    $paidCalls->settleUnknown($budget, $fresh, [
+                    $settlements->settleUnknown($fresh, [
                         'project_id' => (int) $thread->project_id,
                         'thread_id' => (string) $thread->public_id,
                     ]);
@@ -417,10 +421,10 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
             );
             if ($landingState !== PaidAiCallExecutionService::LANDED) return;
             $result = $paidCalls->landedResult($reservation->fresh()) ?? $result;
-            $settlement = $budget->settleForActiveUser(
+            $settlement = $settlements->settleForActiveUser(
                 $reservation, $result, (int) $thread->user_id
             );
-            if (!AiEntitlementBudgetService::settlementAllowsDelivery($settlement)) return;
+            if (!AiUsageSettlementService::settlementAllowsDelivery($settlement)) return;
             if ($messageAttachments->isNotEmpty()) {
                 $attachments->markProcessed(
                     $messageAttachments,
@@ -449,7 +453,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 throw $exception;
             }
             if ($exception->outcomeUnknown && $reservation) {
-                $paidCalls->settleUnknown($budget, $reservation, [
+                $settlements->settleUnknown($reservation, [
                     'project_id' => (int) $thread->project_id,
                     'thread_id' => (string) $thread->public_id,
                 ]);
@@ -496,7 +500,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 throw $exception;
             }
             if ($paidCalls->providerWasStarted($reservation?->fresh())) {
-                $paidCalls->settleUnknown($budget, $reservation, [
+                $settlements->settleUnknown($reservation, [
                     'project_id' => (int) $thread->project_id,
                     'thread_id' => (string) $thread->public_id,
                 ]);
@@ -777,7 +781,7 @@ final class GenerateProjectFeedbackReply implements ShouldQueue, ShouldBeUniqueU
                 return;
             }
             if ($calls->providerWasStarted($event)) {
-                $calls->settleUnknown(app(AiEntitlementBudgetService::class), $event, [
+                app(AiUsageSettlementService::class)->settleUnknown($event, [
                     'thread_id' => (int) $message->thread_id,
                 ]);
             } else {

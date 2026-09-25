@@ -47,7 +47,28 @@ environment before editing the new help fields. It adds two nullable columns
 and does not mutate balances, packages, task receipts, or existing help copy.
 Do not run it on the reviewer server without renewed deployment authorization.
 
-## Verification
+## Task cache ownership follow-up
+
+`CoinEarningMethodResource` already supplies the current destination in the
+catalogue. `walletCache` owns the complete task snapshot (including URLs) for
+display recovery. The API adapter no longer maintains a second per-task URL map:
+reading the catalogue cannot erase a newer command's URL, and task start/claim
+does not wait for optional native storage. No cache is permission to award coins
+or a substitute for a fresh server-authorized start before opening a destination.
+Account-boundary checks and per-account/session start/claim single flights remain.
+
+The retired `@rokn/coin-task-actions/v1` map is ignored. It contains no financial
+ledger or recovery intent and needs no migration. Existing account-scoped cleanup
+removes it on logout/deletion; catalogue reads do not perform cleanup writes.
+The complete wallet cache format and backend response contract are unchanged.
+
+`coinTaskServerOwnership.test.tsx` replaces the retired URL-map storage tests.
+It checks storage-independent reads/start/claim, stale catalogue ordering,
+missing server destinations, account changes, and recovery from the existing
+wallet snapshot followed by server reauthorization. Wallet cache, foreground
+refresh, task-button retry and financial settlement tests remain separate.
+
+## Original verification
 
 - Application TypeScript and scoped ESLint pass.
 - Full Jest run: 281 suites and 2187 tests pass.

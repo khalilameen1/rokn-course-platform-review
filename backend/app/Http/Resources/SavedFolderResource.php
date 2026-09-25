@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Support\PublicDiskUrl;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,7 +35,7 @@ class SavedFolderResource extends JsonResource
         if ($firstLesson) {
             $thumbnailPath = trim((string) $firstLesson->thumbnail_path);
             if ($thumbnailPath !== '' && $firstLesson->hasReadyMediaState()) {
-                $signed = app(BunnyService::class)->generateBunnySignedUrl($thumbnailPath);
+                $signed = app(BunnyDeliveryService::class)->storageUrl($thumbnailPath);
                 if ($signed) {
                     return $signed;
                 }

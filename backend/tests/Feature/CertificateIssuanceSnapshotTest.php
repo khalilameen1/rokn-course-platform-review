@@ -21,7 +21,7 @@ use App\Models\User;
 use App\Services\CertificateIssuanceSnapshotService;
 use App\Services\CertificateQrDestinationService;
 use App\Services\CertificateTextTemplateService;
-use App\Services\PortfolioModerationService;
+use App\Services\PortfolioReviewReadService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -447,7 +447,7 @@ final class CertificateIssuanceSnapshotTest extends TestCase
     private function approve(User $user): void
     {
         $fresh = $user->fresh();
-        $snapshot = app(PortfolioModerationService::class)->snapshot($fresh);
+        $snapshot = app(PortfolioReviewReadService::class)->snapshot($fresh);
         $fresh->forceFill([
             'portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash'],
         ])->save();

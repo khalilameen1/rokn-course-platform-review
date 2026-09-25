@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
+use App\Support\StudentNotificationIntent;
+
 use App\Exceptions\FinancialProvenanceException;
 use App\Exceptions\InsufficientWalletBalanceException;
 use App\Http\Controllers\Controller;
@@ -15,7 +17,6 @@ use App\Models\CouponRedemption;
 use App\Models\Order;
 use App\Models\Package;
 use App\Models\Setting;
-use App\Services\AiEntitlementBudgetService;
 use App\Services\CourseAccessPlanService;
 use App\Services\CourseCouponService;
 use App\Services\FinancialAnomalyService;
@@ -30,7 +31,10 @@ use Illuminate\Validation\ValidationException;
 
 final class CoursePurchaseController extends Controller
 {
-    public function __construct(private readonly PackageChannelPricingService $packagePricing)
+    public function __construct(
+        private readonly PackageChannelPricingService $packagePricing,
+        private readonly StudentNotificationService $notifications
+    )
     {
     }
 
@@ -139,8 +143,7 @@ final class CoursePurchaseController extends Controller
         FinancialProvenanceService $provenance,
         FinancialAnomalyService $financialRisk,
         CourseAccessPlanService $planService,
-        CourseCouponService $coupons,
-        AiEntitlementBudgetService $aiBudget
+        CourseCouponService $coupons
     ): JsonResponse
     {
         $user = auth('api')->user();
@@ -308,18 +311,20 @@ final class CoursePurchaseController extends Controller
 
         if (!$result['already_enrolled']) {
             try {
-                StudentNotificationService::notifyUser(
+                $this->notifications->notifyUser(
                     $user->fresh(),
-                    StudentNotificationService::TYPE_COURSE_ENROLLED,
-                    'الكورس جاهز',
-                    'Course unlocked',
-                    $course->name_ar . "\nابدأ أول مقطع الآن",
-                    'You can now start: ' . $course->name_en,
-                    '/course/' . $course->id,
-                    Course::class,
-                    $course->id,
-                    'course-enrolled:order:' . ($result['order']?->id ?? $result['enrollment']->id),
-                    ['course' => (string) ($course->name_ar ?: $course->name_en)]
+                    new StudentNotificationIntent(
+                        notificationType: StudentNotificationService::TYPE_COURSE_ENROLLED,
+                        titleAr: 'الكورس جاهز',
+                        titleEn: 'Course unlocked',
+                        messageAr: $course->name_ar . "\nابدأ أول مقطع الآن",
+                        messageEn: 'You can now start: ' . $course->name_en,
+                        link: '/course/' . $course->id,
+                        notifiableType: Course::class,
+                        notifiableId: $course->id,
+                        deliveryKey: 'course-enrolled:order:' . ($result['order']?->id ?? $result['enrollment']->id),
+                        templateVariables: ['course' => (string) ($course->name_ar ?: $course->name_en)]
+                    )
                 );
             } catch (\Throwable $exception) {
                 // A push outage must never turn a completed purchase into an apparent failure.

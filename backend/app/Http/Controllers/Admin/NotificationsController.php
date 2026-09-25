@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Data\NotificationAuthoringInput;
+use App\Services\AdminAuthoringCreateIntentService;
 use App\Models\NotificationCampaign;
 use App\Services\AdminNotificationCampaignAuthoringService;
 use App\Services\AdminNotificationCampaignReadService;
@@ -41,9 +43,9 @@ final class NotificationsController extends Controller
 
     public function store(
         Request $request,
-        ?AdminNotificationCampaignAuthoringService $notifications = null
+        AdminNotificationCampaignAuthoringService $notifications,
+        AdminAuthoringCreateIntentService $createIntents
     ): RedirectResponse {
-        $notifications ??= app(AdminNotificationCampaignAuthoringService::class);
         $validated = $request->validate([
             'user_id' => ['nullable', 'integer', 'exists:users,id'],
             'title_ar' => ['required', 'string', 'max:80'],
@@ -69,7 +71,18 @@ final class NotificationsController extends Controller
             'send_at' => ['nullable', 'date_format:Y-m-d\\TH:i'],
         ]);
 
-        $campaign = $notifications->author($request, $validated);
+        $campaign = $notifications->author(
+            NotificationAuthoringInput::fromValidated((int) ($request->user()?->getAuthIdentifier() ?? 0), $validated),
+            static function (?NotificationCampaign $campaign) use ($request, $createIntents): void {
+                $createIntents->completeRedirect(
+                    $request,
+                    route('admin.notifications.index'),
+                    302,
+                    $campaign ? NotificationCampaign::class : null,
+                    $campaign?->id
+                );
+            }
+        );
 
         return redirect()->route('admin.notifications.index')->with(
             'success',

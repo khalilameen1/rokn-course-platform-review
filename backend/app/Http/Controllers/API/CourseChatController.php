@@ -16,7 +16,7 @@ use App\Models\CourseChatTurn;
 use App\Services\AiEntitlementBudgetService;
 use App\Services\AiInputAttachmentService;
 use App\Services\CourseAccessPlanService;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\AiFailurePolicy;
 use App\Services\CourseChatPromptContextService;
 use App\Services\CourseChatTurnService;
@@ -46,13 +46,13 @@ final class CourseChatController extends Controller
     public function sendForCourse(
         Request $request,
         Course $course,
-        CourseChatAccessService $access
+        CourseEntitlementService $access
     ): JsonResponse
     {
         return $this->send($request, $course, $access);
     }
 
-    public function uploadAttachment(Request $request, Course $course, CourseChatAccessService $access): JsonResponse
+    public function uploadAttachment(Request $request, Course $course, CourseEntitlementService $access): JsonResponse
     {
         $validated = $request->validate([
             'client_upload_id' => 'required|uuid',
@@ -117,7 +117,7 @@ final class CourseChatController extends Controller
         ]);
     }
 
-    public function history(Request $request, CourseChatAccessService $access): JsonResponse
+    public function history(Request $request, CourseEntitlementService $access): JsonResponse
     {
         $validated = $request->validate([
             'course_id' => 'required|integer|exists:courses,id',
@@ -364,7 +364,7 @@ final class CourseChatController extends Controller
     private function send(
         Request $request,
         Course $course,
-        CourseChatAccessService $access
+        CourseEntitlementService $access
     ): JsonResponse
     {
         $validated = $request->validate([

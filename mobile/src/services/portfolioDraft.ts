@@ -7,6 +7,7 @@ import {
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import type {EligibleProject} from './api/profile';
+import {learnerDraftStorage} from './learnerDraftStorage';
 import {
   learnerDraftFileIsReadable,
   removeLearnerDraftFile,
@@ -23,7 +24,7 @@ export type PortfolioDraft = {
   updatedAt: number;
 };
 
-const STORAGE_KEY = '@rokn/portfolio-editor-draft/v1';
+const STORAGE_KEY = learnerDraftStorage.portfolioEditor.namespace;
 const REFERENCE_OWNER = 'portfolio-editor-draft';
 const TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const draftOperations = new Map<string, Promise<unknown>>();

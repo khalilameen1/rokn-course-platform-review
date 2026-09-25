@@ -7,17 +7,18 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\ApiResponseService;
+use App\Services\LearningRewardConfigurationService;
 use App\Services\LearningRewardService;
 use Illuminate\Http\JsonResponse;
 
 final class LearningRewardController extends Controller
 {
     public function configuration(
-        LearningRewardService $rewards,
+        LearningRewardConfigurationService $configuration,
         ApiResponseService $responses
     ): JsonResponse {
         return $responses->success(
-            $rewards->configuration(),
+            $configuration->configuration(),
             'تم تحميل نظام عملات ركن'
         );
     }

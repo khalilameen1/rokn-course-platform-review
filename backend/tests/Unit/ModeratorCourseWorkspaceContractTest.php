@@ -190,7 +190,7 @@ final class ModeratorCourseWorkspaceContractTest extends TestCase
         self::assertStringContainsString('name="publishing_intent" value="save"', $editor);
         self::assertStringContainsString('name="publishing_intent" value="publish"', $editor);
         self::assertStringNotContainsString("Form::checkbox('is_coming_soon'", $settings);
-        self::assertStringContainsString("input('publishing_intent') === 'publish'", $authoring);
+        self::assertStringContainsString('$edit->publishingRequested', $authoring);
         self::assertStringContainsString("Rule::in(['save', 'publish'])", $request);
     }
 

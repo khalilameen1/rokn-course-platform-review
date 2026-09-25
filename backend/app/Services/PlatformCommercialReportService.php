@@ -16,6 +16,7 @@ final readonly class PlatformCommercialReportService
 {
     public function __construct(
         private CourseCommercialReportService $courses,
+        private CommercialLearnerSummaryService $summaries,
         private AiUsageReportService $ai,
         private ProviderInvoiceReportService $invoices,
     )
@@ -115,7 +116,7 @@ final readonly class PlatformCommercialReportService
         $notificationUsage = $this->notificationUsage(
             $rows->pluck('enrollment.user_id')->map(fn ($id): int => (int) $id), $period
         );
-        $summary = $this->courses->groupSummary($rows);
+        $summary = $this->summaries->forRows($rows);
         $cohort = collect(['plan', 'source', 'q'])->contains(fn (string $key): bool => trim((string) ($filters[$key] ?? '')) !== '');
         $courseId = !empty($filters['course_id']) ? (int) $filters['course_id'] : null;
         $invoiceReport = $cohort ? null : $this->invoices->summary($period, $courseId);
@@ -152,7 +153,7 @@ final readonly class PlatformCommercialReportService
                 $first = $userRows->first();
                 $push = $notificationUsage->get($userId, $this->emptyNotificationUsage());
 
-                return $this->courses->groupSummary($userRows) + [
+                return $this->summaries->forRows($userRows) + [
                     'user' => $first['user'],
                     'active_courses' => $userRows->where('is_active', true)->count(),
                     'courses' => $userRows->pluck('course_name')->filter()->unique()->values(),
@@ -239,7 +240,7 @@ final readonly class PlatformCommercialReportService
                     ->mapWithKeys(fn (string $key): array => [$key => $cohort || $plans->contains(
                         fn (array $plan): bool => ($plan['period_metrics'][$key] ?? null) === null
                     ) ? null : $plans->sum(fn (array $plan) => $plan['period_metrics'][$key])])->all();
-                return array_replace($this->courses->groupSummary($rows->where('plan_code', $code)), [
+                return array_replace($this->summaries->forRows($rows->where('plan_code', $code)), [
                     'plan_code' => $code, 'plan_name' => $plans->first()['plan_name'], 'period_metrics' => $metrics,
                     'service_cost_egp' => null, 'service_cost_complete' => false,
                     'average_cost_per_student_egp' => null, 'margin_egp' => null,
@@ -259,7 +260,7 @@ final readonly class PlatformCommercialReportService
                 Course $course
             ) use ($courseReports, $cohort, $rows): array {
                 $courseRows = $rows->where('course_id', (int) $course->id);
-                $result = $this->courses->groupSummary($courseRows);
+                $result = $this->summaries->forRows($courseRows);
                 $courseReport = $courseReports->get((int) $course->id);
                 if (!$cohort) {
                     $result['service_cost_egp'] = $courseReport['service_cost_actual_egp'];
@@ -274,7 +275,7 @@ final readonly class PlatformCommercialReportService
             })->values(),
             'plan_breakdown' => $planBreakdown,
             'source_breakdown' => $rows->groupBy('source_label')->map(
-                fn (Collection $sourceRows): array => $this->courses->groupSummary($sourceRows)
+                fn (Collection $sourceRows): array => $this->summaries->forRows($sourceRows)
             ),
             'service_breakdown' => $serviceBreakdown,
             'cost_warnings' => $warnings->filter()->unique()->values(),

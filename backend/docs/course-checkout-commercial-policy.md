@@ -9,6 +9,30 @@
 - `CourseAccessPlanService::projectsEnabledForEnrollment()` owns legacy fallback and fails closed for malformed plan-backed receipts.
 - Deploy the version-6 MySQL CHECK migration before enabling new writers. It retains all historical schema branches. Do not restore an older CHECK after version-6 orders exist.
 
+### Code ownership
+
+`CourseAccessPlanService` reads available offers, captures receipts and projects
+their public capabilities. It has no authoring or entitlement-grant methods.
+
+`CoursePlanAuthoringService` owns editor defaults and atomic three-tier saves.
+It also applies global runtime policy to future offers. Definitions and policy
+mapping live in `CoursePlanDefinitionService`; financial floor calculations
+remain in `CoursePlanEconomicsService`. Do not duplicate either rule in a
+controller or form. Editor previews must not create database rows.
+
+`CoursePlanAttachmentGrantService` is the explicit, additive exception for
+enrollment attachment rights. Both the admin action and queued publication
+signals use it. It selects the model's active, unexpired enrollment scope and
+re-reads each enrollment under a row lock before updating its snapshot. It
+does not rewrite the order receipt, change the purchased tier or reduce an
+existing attachment allowance. Replaying an already-applied grant is a no-op.
+
+`CoursePlanOwnershipTest` covers whole-edit rollback, purchased receipt
+preservation, additive/idempotent grants and inactive/expired exclusions.
+The editor and staged-publication tests cover the dashboard call sites and
+stable plan identities. A local SQLite run does not prove MySQL lock scheduling;
+keep the separate MySQL contract checks in the release verification path.
+
 ### Explicit Basic-only activation
 
 After the new code and schema pass deployment checks, inspect each intended canonical course's current `authoring_version`. Run one course per invocation, substituting its actual ID and version:

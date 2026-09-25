@@ -64,7 +64,7 @@ final class SectionCompletionRevisionAcknowledgementTest extends TestCase
     {
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->once()->andReturn(['ready' => true, 'issues' => []]);
-        $revisions = new CourseStagedAuthoringService($publishing);
+        $revisions = $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
         $draft = $revisions->draftFor($course->fresh());
         if ($deleteSection) {
             $removed = $draft->sections()->firstOrFail();

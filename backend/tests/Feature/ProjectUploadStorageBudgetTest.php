@@ -8,6 +8,8 @@ use Aws\CommandInterface;
 use Aws\MockHandler;
 use Aws\Result;
 use App\Services\StoredFileDeletionService;
+use App\Services\StoredFileUploadService;
+use App\Support\UploadBudget;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Http\UploadedFile;
@@ -77,7 +79,7 @@ final class ProjectUploadStorageBudgetTest extends TestCase
         $this->app->instance('filesystem', $factory);
         $this->app->instance(FilesystemFactory::class, $factory);
 
-        $files = app(StoredFileDeletionService::class);
+        $files = app(StoredFileUploadService::class);
         // Test only the explicit same-target primitive and its I/O costs.
         // An orphan ledger is not domain admission; owning-service tests must
         // separately prove that a real caller may safely resume that target.
@@ -87,7 +89,7 @@ final class ProjectUploadStorageBudgetTest extends TestCase
             'project-test',
             'project-submission|5|8|request-1|0|hash'
         );
-        $reservedBefore = $files->trackPotentialOrphan('project-test', $first);
+        $reservedBefore = app(StoredFileDeletionService::class)->trackPotentialOrphan('project-test', $first);
         self::assertFalse($reservedBefore);
         $files->writeTrackedUpload($file, $first, 'project-test', $reservedBefore);
         $replayed = $files->trackedUploadDestination(
@@ -96,7 +98,7 @@ final class ProjectUploadStorageBudgetTest extends TestCase
             'project-test',
             'project-submission|5|8|request-1|0|hash'
         );
-        $reservedBefore = $files->trackPotentialOrphan('project-test', $replayed);
+        $reservedBefore = app(StoredFileDeletionService::class)->trackPotentialOrphan('project-test', $replayed);
         self::assertTrue($reservedBefore);
         $files->writeTrackedUpload($file, $replayed, 'project-test', $reservedBefore);
 
@@ -112,23 +114,20 @@ final class ProjectUploadStorageBudgetTest extends TestCase
         Queue::fake();
         $first = UploadedFile::fake()->createWithContent('first.jpg', 'first-project-file');
         $second = UploadedFile::fake()->createWithContent('second.jpg', 'second-project-file');
-        request()->attributes->set(
-            StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE,
-            microtime(true) + 16
-        );
+        $elapsed = 0.0;
+        $budget = UploadBudget::start(16, static function () use (&$elapsed): float {
+            return $elapsed;
+        });
 
         $handler = new MockHandler([
-            function (CommandInterface $command, RequestInterface $httpRequest): Result {
+            function (CommandInterface $command, RequestInterface $httpRequest) use (&$elapsed): Result {
                 self::assertSame('PutObject', $command->getName());
                 self::assertSame(0, $command['@retries']);
                 self::assertLessThanOrEqual(6.0, $command['@http']['timeout']);
                 self::assertLessThanOrEqual(2.0, $command['@http']['connect_timeout']);
                 // Simulate the first remote operation consuming the shared
                 // request budget. No second storage call may then start.
-                request()->attributes->set(
-                    StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE,
-                    microtime(true) - 1
-                );
+                $elapsed = 17.0;
 
                 return new Result(['@metadata' => [], 'ETag' => 'test-etag']);
             },
@@ -146,21 +145,23 @@ final class ProjectUploadStorageBudgetTest extends TestCase
         ]);
         Storage::forgetDisk('project-budget-test');
 
-        $files = app(StoredFileDeletionService::class);
+        $files = app(StoredFileUploadService::class);
         try {
             $files->storeTrackedUpload(
                 $first,
                 'project_submissions/5/8',
                 'project-budget-test',
                 60,
-                'project-submission|5|8|request-2|0|hash'
+                'project-submission|5|8|request-2|0|hash',
+                $budget
             );
             $files->storeTrackedUpload(
                 $second,
                 'project_submissions/5/8',
                 'project-budget-test',
                 60,
-                'project-submission|5|8|request-2|1|hash'
+                'project-submission|5|8|request-2|1|hash',
+                $budget
             );
             self::fail('A second upload started after the shared request budget expired.');
         } catch (UnableToWriteFile) {
@@ -170,9 +171,36 @@ final class ProjectUploadStorageBudgetTest extends TestCase
             self::assertCount(0, $handler);
         } finally {
             Storage::forgetDisk('project-budget-test');
-            request()->attributes->remove(
-                StoredFileDeletionService::REQUEST_UPLOAD_DEADLINE_ATTRIBUTE
-            );
         }
+    }
+
+    public function test_explicit_budgets_are_isolated_and_uploads_do_not_resolve_an_http_request(): void
+    {
+        Queue::fake();
+        Storage::fake('independent-uploads');
+        $this->app->bind('request', static function (): never {
+            throw new \LogicException('Storage must not read ambient HTTP state.');
+        });
+        $elapsed = 0.0;
+        $clock = static function () use (&$elapsed): float { return $elapsed; };
+        $expired = UploadBudget::start(5, $clock);
+        $independent = UploadBudget::start(16, $clock);
+        $elapsed = 6.0;
+        $file = UploadedFile::fake()->createWithContent('image.jpg', 'file-bytes');
+        $uploads = app(StoredFileUploadService::class);
+
+        try {
+            $uploads->storeTrackedUpload($file, 'projects', 'independent-uploads', budget: $expired);
+            self::fail('An expired budget allowed a write.');
+        } catch (UnableToWriteFile) {
+            self::assertSame(0, Schema::getConnection()->table('account_file_deletions')->count());
+        }
+
+        $path = $uploads->storeTrackedUpload($file, 'projects', 'independent-uploads', budget: $independent);
+        Storage::disk('independent-uploads')->assertExists($path);
+        // A non-project call has no upload deadline unless one is supplied.
+        $unbounded = $uploads->storeTrackedUpload($file, 'courses', 'independent-uploads');
+        Storage::disk('independent-uploads')->assertExists($unbounded);
+        self::assertSame(2, Schema::getConnection()->table('account_file_deletions')->count());
     }
 }

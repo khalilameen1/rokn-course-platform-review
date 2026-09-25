@@ -7,62 +7,31 @@ import {
   projectFileMatchesAllowedTypes,
   validateProjectFile,
 } from '../../../config/projects';
-import {
-  assertAccountSessionBoundary,
-  captureAccountSessionBoundary,
-  type AccountSessionBoundary,
-} from '../../../constants/helpers';
+import {assertAccountSessionBoundary} from '../../../constants/helpers';
 import {removeLearnerDraftFile} from '../../../services/learnerDraftFiles';
-import {
-  cacheProjectDraftFile,
-  clearProjectSubmissionDraft,
-  copyProjectSubmissionDraft,
-  loadProjectSubmissionDraft,
-  saveProjectSubmissionDraft,
-} from '../../../services/projectSubmissionDraft';
+import {cacheProjectDraftFile} from '../../../services/projectSubmissionDraft';
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
 import {resolveProjectJourneyState} from '../courseLearning/projectJourney';
 import type {ProjectSubmissionOutcome} from '../courseLearningApi';
 import type {CourseProject, ProjectStatus, SelectedProjectFile} from '../types';
 import {pickProjectFilesOwned} from './pickers';
 import {formatArabicNumber} from '../../../constants/arabicFormatting';
-import {asRecord} from '../courseLearning/shared';
 import {publishCourseRevisionChange} from '../courseLearning/playbackRevision';
-import {requestProjectRevisionConfirmation} from '../courseLearning/projectRemote';
-import {isAiConsentRequired, requestAiConsent} from '../../../services/aiConsent';
+import {
+  isAiConsentRequired,
+  requestAiConsent,
+} from '../../../services/aiConsent';
+
+import {useProjectDraftEditor} from './useProjectDraftEditor';
+import {
+  projectDraftRevision,
+  resolveLatestProjectDraftRevision,
+  prepareProjectDraftDestination,
+  type DraftRevision,
+  type DraftReplacementConfirmation,
+} from './projectDraftRevision';
 
 const EMPTY_MIME_TYPES: string[] = [];
-
-type DraftRevision = {response: unknown; currentProjectId: string | null};
-const projectDraftRevision = (
-  error: unknown,
-  sourceProjectId: string,
-): DraftRevision | null => {
-  const response = asRecord(asRecord(error).response || error);
-  const envelope = asRecord(response.data);
-  const data = asRecord(envelope.data);
-  const positiveId = (value: unknown) =>
-    typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
-  if (
-    response.status !== 409 ||
-    envelope.code !== 'course_revision_changed' ||
-    !positiveId(data.source_project_id) ||
-    String(data.source_project_id) !== sourceProjectId ||
-    !positiveId(data.course_id) ||
-    !positiveId(data.published_revision) ||
-    (data.current_project_id !== null &&
-      !positiveId(data.current_project_id)) ||
-    (data.current_project_id !== null &&
-      !positiveId(data.current_section_id)) ||
-    String(data.current_project_id) === sourceProjectId
-  )
-    return null;
-  return {
-    response,
-    currentProjectId:
-      data.current_project_id === null ? null : String(data.current_project_id),
-  };
-};
 
 const allowedFileTypesLabel = (mimeTypes: string[]) => {
   const labels: string[] = [];
@@ -119,24 +88,22 @@ export const useProjectSubmission = ({
   }
   const pickerFlightRef = useRef(false);
   const submissionFlightRef = useRef(false);
-  const draftGenerationRef = useRef(0);
-  const draftLifecycle = useMemo(
-    () => ({
-      projectId: project.id,
-      boundary: null as AccountSessionBoundary | null,
-      ready: false,
-      status: 'draft' as ProjectStatus,
-      snapshot: {files: [] as SelectedProjectFile[], note: ''},
-    }),
-    [project.id],
-  );
-
-  const [selectedFiles, setSelectedFiles] = useState<SelectedProjectFile[]>([]);
-  const [note, setNote] = useState('');
-  const [draftReady, setDraftReady] = useState(false);
-  const [draftSaveError, setDraftSaveError] = useState(false);
-  const [draftRestoreError, setDraftRestoreError] = useState(false);
-  const [draftRestoreAttempt, setDraftRestoreAttempt] = useState(0);
+  const {
+    session: draftSession,
+    files: selectedFiles,
+    setFiles: setSelectedFiles,
+    note,
+    setNote,
+    ready: draftReady,
+    saveError: draftSaveError,
+    restoreError: draftRestoreError,
+    retryRestore: retryDraftRestore,
+  } = useProjectDraftEditor({
+    projectId: project.id,
+    status,
+    active,
+    appIsActive,
+  });
   const [sending, setSending] = useState(false);
   const [editingRetry, setEditingRetry] = useState(false);
   const [syncNote, setSyncNote] = useState('');
@@ -212,13 +179,6 @@ export const useProjectSubmission = ({
     editingRetry,
   });
 
-  draftLifecycle.snapshot = {
-    files: selectedFiles,
-    note,
-  };
-  draftLifecycle.ready = draftReady;
-  draftLifecycle.status = status;
-
   const ownsProject = useCallback(
     (id: string, generation: number) =>
       identityRef.current.id === id &&
@@ -247,132 +207,6 @@ export const useProjectSubmission = ({
   useEffect(() => {
     if (status !== 'evaluating') setSyncNote('');
   }, [status]);
-
-  useEffect(
-    () => () => {
-      if (
-        !draftLifecycle.ready ||
-        !['draft', 'needs_changes'].includes(draftLifecycle.status)
-      ) {
-        return;
-      }
-      const snapshot = draftLifecycle.snapshot;
-      const boundary = draftLifecycle.boundary;
-      if (!boundary) return;
-      const persist =
-        snapshot.files.length === 0 && snapshot.note.trim() === ''
-          ? clearProjectSubmissionDraft(draftLifecycle.projectId, [], boundary)
-          : saveProjectSubmissionDraft(
-              draftLifecycle.projectId,
-              {
-                ...snapshot,
-                updatedAt: Date.now(),
-              },
-              boundary,
-            );
-      void persist.catch(() => undefined);
-    },
-    [draftLifecycle],
-  );
-
-  useEffect(() => {
-    const generation = ++draftGenerationRef.current;
-    const ownerBoundary = draftLifecycle.boundary;
-    draftLifecycle.ready = false;
-    draftLifecycle.snapshot = {files: [], note: ''};
-    setDraftReady(false);
-    setDraftSaveError(false);
-    setDraftRestoreError(false);
-    setSelectedFiles([]);
-    setNote('');
-    void captureAccountSessionBoundary()
-      .then(boundary => {
-        if (generation !== draftGenerationRef.current) return null;
-        // An explicit retry can renew this account's session, never adopt a
-        // different account's draft. Keep the owner even if this retry fails.
-        if (ownerBoundary && ownerBoundary.scope !== boundary.scope)
-          throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
-        assertAccountSessionBoundary(boundary);
-        draftLifecycle.boundary = boundary;
-        // A status refresh can describe an older upload whose response was
-        // lost. Only the matching accepted outcome below may clear this
-        // editor's files; the draft loader still enforces its normal TTL.
-        return loadProjectSubmissionDraft(project.id, boundary);
-      })
-      .then(draft => {
-        if (generation !== draftGenerationRef.current) return;
-        const boundary = draftLifecycle.boundary;
-        if (!boundary) return;
-        assertAccountSessionBoundary(boundary);
-        // New requirements can make old work incompatible, never disposable.
-        // Keep it visible until the learner explicitly edits or removes it.
-        if (draft) {
-          setSelectedFiles(draft.files || []);
-          setNote(draft.note);
-        }
-        draftLifecycle.ready = true;
-        setDraftReady(true);
-      })
-      .catch(() => {
-        if (generation === draftGenerationRef.current)
-          setDraftRestoreError(true);
-      });
-    return () => {
-      draftGenerationRef.current += 1;
-    };
-  }, [draftLifecycle, draftRestoreAttempt, project.id]);
-
-  useEffect(() => {
-    if (!['draft', 'needs_changes'].includes(status) || !draftReady) return;
-    const {id, generation} = identityRef.current;
-    const boundary = draftLifecycle.boundary;
-    if (!boundary) return;
-    const timer = setTimeout(() => {
-      const persist =
-        selectedFiles.length === 0 && note.trim() === ''
-          ? clearProjectSubmissionDraft(id, [], boundary)
-          : saveProjectSubmissionDraft(
-              id,
-              {
-                files: selectedFiles,
-                note,
-                updatedAt: Date.now(),
-              },
-              boundary,
-            );
-      void persist
-        .then(() => {
-          if (ownsProject(id, generation)) setDraftSaveError(false);
-        })
-        .catch(() => {
-          if (ownsProject(id, generation)) setDraftSaveError(true);
-        });
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [draftLifecycle, draftReady, note, ownsProject, selectedFiles, status]);
-
-  useEffect(() => {
-    if (
-      appIsActive ||
-      !['draft', 'needs_changes'].includes(status) ||
-      !draftReady
-    ) {
-      return;
-    }
-    const {id, generation} = identityRef.current;
-    const boundary = draftLifecycle.boundary;
-    if (!boundary) return;
-    void saveProjectSubmissionDraft(
-      id,
-      {
-        ...draftLifecycle.snapshot,
-        updatedAt: Date.now(),
-      },
-      boundary,
-    ).catch(() => {
-      if (ownsProject(id, generation)) setDraftSaveError(true);
-    });
-  }, [appIsActive, draftLifecycle, draftReady, ownsProject, status]);
 
   const submitSelectedFiles = useCallback(
     async (files: SelectedProjectFile[]) => {
@@ -435,22 +269,14 @@ export const useProjectSubmission = ({
       }
 
       if (!ownsProject(id, generation)) return;
-      const boundary = draftLifecycle.boundary;
+      const boundary = draftSession.boundary;
       if (!boundary) return;
       assertAccountSessionBoundary(boundary);
       setSyncNote('');
       try {
         // Commit the editor snapshot before resolving an older uncertain
         // attempt: its result may refresh the project and close this screen.
-        await saveProjectSubmissionDraft(
-          id,
-          {
-            files,
-            note,
-            updatedAt: Date.now(),
-          },
-          boundary,
-        );
+        await draftSession.persist({files, note});
         assertAccountSessionBoundary(boundary);
         if (!(await requestAiConsent(boundary))) return;
         assertAccountSessionBoundary(boundary);
@@ -462,19 +288,8 @@ export const useProjectSubmission = ({
         if (!ownsProject(id, generation)) return;
         onOutcome(outcome);
         if (outcome.accepted && !outcome.preserveDraft) {
-          // The consumed editor has a known empty replacement, not an unread
-          // draft. Keep it ready for a later asynchronous rejection too;
-          // server status and canSubmit still own presentation and submission.
           setEditingRetry(false);
-          draftLifecycle.ready = true;
-          draftLifecycle.status = outcome.submissionStatus;
-          draftLifecycle.snapshot = {files: [], note: ''};
-          setDraftReady(true);
-          setSelectedFiles([]);
-          setNote('');
-          void clearProjectSubmissionDraft(id, files, boundary).catch(
-            () => undefined,
-          );
+          draftSession.consume(outcome.submissionStatus, files);
         }
         if (!outcome.accepted && outcome.submissionStatus === 'draft') {
           Alert.alert(
@@ -498,7 +313,10 @@ export const useProjectSubmission = ({
         }
         const changed = projectDraftRevision(error, id);
         if (isAiConsentRequired(error)) {
-          Alert.alert('تأكيد استخدام المراجعة', 'أعد المحاولة لتأكيد اختيارك. مشروعك محفوظ');
+          Alert.alert(
+            'تأكيد استخدام المراجعة',
+            'أعد المحاولة لتأكيد اختيارك. مشروعك محفوظ',
+          );
           return;
         }
         if (changed) {
@@ -558,7 +376,7 @@ export const useProjectSubmission = ({
       }
     },
     [
-      draftLifecycle,
+      draftSession,
       allowedMimeTypes,
       fileSubmissionEnabled,
       normalizedNote,
@@ -568,6 +386,7 @@ export const useProjectSubmission = ({
       onOutcome,
       onSubmit,
       ownsProject,
+      setSelectedFiles,
       textSubmissionEnabled,
     ],
   );
@@ -645,8 +464,8 @@ export const useProjectSubmission = ({
       );
       assertAccountSessionBoundary(ownerBoundary);
       if (
-        draftLifecycle.boundary?.scope !== ownerBoundary.scope ||
-        draftLifecycle.boundary.epoch !== ownerBoundary.epoch
+        draftSession.boundary?.scope !== ownerBoundary.scope ||
+        draftSession.boundary.epoch !== ownerBoundary.epoch
       ) {
         return;
       }
@@ -697,7 +516,7 @@ export const useProjectSubmission = ({
     }
   }, [
     allowedMimeTypes,
-    draftLifecycle,
+    draftSession,
     fileSubmissionEnabled,
     maximumFiles,
     maximumFileBytes,
@@ -705,48 +524,33 @@ export const useProjectSubmission = ({
     draftReady,
     ownsProject,
     selectedFiles.length,
+    setSelectedFiles,
     revision,
     submissionAllowed,
   ]);
 
   const removeSubmissionFile = useCallback(
     (file: SelectedProjectFile) => {
-      if (!draftLifecycle.ready || submissionFlightRef.current) return;
+      if (!draftSession.ready || submissionFlightRef.current) return;
       setSelectedFiles(current =>
         current.filter(candidate => candidate.uri !== file.uri),
       );
       void removeLearnerDraftFile(file);
     },
-    [draftLifecycle],
+    [draftSession, setSelectedFiles],
   );
 
   const changeNote = useCallback(
     (value: string) => {
-      if (draftLifecycle.ready && !submissionFlightRef.current) {
+      if (draftSession.ready && !submissionFlightRef.current) {
         setNote(truncateGraphemes(value, 2000));
       }
     },
-    [draftLifecycle],
+    [draftSession, setNote],
   );
 
-  const restoreGeneration = draftGenerationRef.current;
-  const retryDraftRestore = () => {
-    if (
-      !draftRestoreError ||
-      !active ||
-      draftLifecycle.ready ||
-      identityRef.current.id !== project.id ||
-      draftGenerationRef.current !== restoreGeneration
-    )
-      return;
-    setDraftRestoreAttempt(attempt => attempt + 1);
-  };
-
   const reviewUpdatedProject = useCallback(
-    async (confirmation?: {
-      projectId: string;
-      snapshot: string;
-    }): Promise<void> => {
+    async (confirmation?: DraftReplacementConfirmation): Promise<void> => {
       if (!revision || submissionFlightRef.current || pickerFlightRef.current)
         return;
       const visit = revisionVisitRef.current;
@@ -754,51 +558,28 @@ export const useProjectSubmission = ({
       const {id, generation} = identityRef.current;
       const ownsRevisionAction = () =>
         revisionVisitRef.current === visit && ownsProject(id, generation);
-      const boundary = draftLifecycle.boundary;
+      const boundary = draftSession.boundary;
       if (!boundary) return;
       submissionFlightRef.current = true;
       setRevisionUpdating(true);
       setRevisionError('');
       try {
-        assertAccountSessionBoundary(boundary);
-        // A second publish can retire the destination while this editor or
-        // its confirmation is open. Read the original project again without
-        // broadcasting a navigation event before its draft is prepared.
-        let response: unknown;
-        try {
-          response = await requestProjectRevisionConfirmation(id);
-        } catch (error) {
-          response = error;
-        }
-        assertAccountSessionBoundary(boundary);
-        if (!ownsRevisionAction()) return;
-        const currentRevision = projectDraftRevision(response, id);
-        if (!currentRevision) throw new Error('PROJECT_REVISION_UNAVAILABLE');
-        setRevision(currentRevision);
-        const destinationId = currentRevision.currentProjectId;
-        if (!destinationId) {
-          await saveProjectSubmissionDraft(
-            id,
-            {...draftLifecycle.snapshot, updatedAt: Date.now()},
-            boundary,
-          );
-          assertAccountSessionBoundary(boundary);
-          if (ownsRevisionAction())
-            publishCourseRevisionChange(currentRevision.response);
-          return;
-        }
-        const result = await copyProjectSubmissionDraft(
+        const currentRevision = await resolveLatestProjectDraftRevision(
           id,
-          destinationId,
-          {...draftLifecycle.snapshot, updatedAt: Date.now()},
           boundary,
-          confirmation?.projectId === destinationId
-            ? confirmation.snapshot
-            : undefined,
         );
-        assertAccountSessionBoundary(boundary);
         if (!ownsRevisionAction()) return;
-        if (result.kind === 'conflict') {
+        setRevision(currentRevision);
+        const result = await prepareProjectDraftDestination({
+          sourceProjectId: id,
+          revision: currentRevision,
+          snapshot: draftSession.snapshot,
+          boundary,
+          confirmation,
+        });
+        if (!ownsRevisionAction()) return;
+        if (result.kind === 'conflict' && currentRevision.currentProjectId) {
+          const destinationId = currentRevision.currentProjectId;
           Alert.alert(
             'توجد مسودة للمشروع المحدّث',
             'هل تريد استبدالها بهذه المسودة\nستبقى نسختك الأصلية محفوظة',
@@ -838,7 +619,7 @@ export const useProjectSubmission = ({
         }
       }
     },
-    [draftLifecycle, ownsProject, revision],
+    [draftSession, ownsProject, revision],
   );
 
   return {

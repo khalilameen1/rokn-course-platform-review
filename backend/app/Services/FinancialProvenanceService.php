@@ -14,7 +14,7 @@ use App\Models\User;
 use App\Models\WalletCreditLot;
 use App\Models\WalletDebitAllocation;
 use App\Models\WalletTransaction;
-use App\Support\DatabaseCapabilities;
+use App\Support\FinancialProvenanceSchema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -28,18 +28,11 @@ final readonly class FinancialProvenanceService
     ) {
     }
 
-    public function schemaAvailable(): bool
-    {
-        return DatabaseCapabilities::hasTable('wallet_credit_lots')
-            && DatabaseCapabilities::hasTable('wallet_debit_allocations')
-            && DatabaseCapabilities::hasTable('financial_entitlement_holds');
-    }
-
     public function recordPaidPackageCredit(
         Order $packageOrder,
         WalletTransaction $credit
     ): WalletCreditLot {
-        if (!$this->schemaAvailable()) {
+        if (!FinancialProvenanceSchema::available()) {
             // Paid credits require complete source attribution.
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
@@ -120,7 +113,7 @@ final readonly class FinancialProvenanceService
         if ($paidAmount === 0) {
             return null;
         }
-        if (!$this->schemaAvailable()) {
+        if (!FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
         if (
@@ -212,7 +205,7 @@ final readonly class FinancialProvenanceService
         if ($paidAmount === 0) {
             return;
         }
-        if (!$this->schemaAvailable()) {
+        if (!FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
         if (
@@ -314,7 +307,7 @@ final readonly class FinancialProvenanceService
         if (trim($eventKey) === '') {
             throw new \InvalidArgumentException('A package reversal requires its financial event key.');
         }
-        if (!$this->schemaAvailable()) {
+        if (!FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
         if (
@@ -591,7 +584,7 @@ final readonly class FinancialProvenanceService
         ], true)) {
             throw new \InvalidArgumentException('Invalid financial resolution.');
         }
-        if (!$this->schemaAvailable()) {
+        if (!FinancialProvenanceSchema::available()) {
             throw new FinancialProvenanceException('Financial provenance is not ready.');
         }
 
@@ -748,50 +741,5 @@ final readonly class FinancialProvenanceService
                 'released_holds' => $holds->count(),
             ];
         }, 3);
-    }
-
-    /** @param list<string> $scopes */
-    public function enrollmentHasActiveHold(
-        CourseEnrollment $enrollment,
-        array $scopes = ['course']
-    ): bool
-    {
-        if (!$this->schemaAvailable() || !$enrollment->order_id) {
-            return false;
-        }
-        $hasCourseScope = in_array('course', $scopes, true);
-        $planScopes = array_values(array_intersect($scopes, ['chat', 'plan']));
-        $planOrderId = (int) ($enrollment->access_plan_order_id ?: $enrollment->order_id);
-        if (!$hasCourseScope && ($planScopes === [] || $planOrderId <= 0)) {
-            return false;
-        }
-
-        return FinancialEntitlementHold::query()
-            ->where('user_id', $enrollment->user_id)
-            ->where('course_id', $enrollment->course_id)
-            ->where('status', FinancialEntitlementHold::STATUS_ACTIVE)
-            ->whereIn('entitlement_scope', $scopes)
-            ->where(function (Builder $orders) use (
-                $enrollment,
-                $hasCourseScope,
-                $planScopes,
-                $planOrderId
-            ): void {
-                if ($hasCourseScope) {
-                    $orders->where(function (Builder $course) use ($enrollment): void {
-                        $course->where('entitlement_scope', 'course')
-                            ->where('course_order_id', $enrollment->order_id);
-                    });
-                }
-
-                if ($planScopes !== [] && $planOrderId > 0) {
-                    $method = $hasCourseScope ? 'orWhere' : 'where';
-                    $orders->{$method}(function (Builder $plan) use ($planOrderId, $planScopes): void {
-                        $plan->whereIn('entitlement_scope', $planScopes)
-                            ->where('course_order_id', $planOrderId);
-                    });
-                }
-            })
-            ->exists();
     }
 }

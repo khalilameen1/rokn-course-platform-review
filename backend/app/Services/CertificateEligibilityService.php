@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 final readonly class CertificateEligibilityService
 {
     public function __construct(
-        private CourseChatAccessService $courseAccess,
+        private CourseEntitlementService $courseAccess,
         private CourseSectionSequenceService $sectionSequence,
         private LearningEvidenceService $learningEvidence,
         private CurriculumCompletionService $curriculumCompletion,

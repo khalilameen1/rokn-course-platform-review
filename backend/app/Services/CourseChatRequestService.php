@@ -21,7 +21,7 @@ final class CourseChatRequestService
     public function uploadAttachment(
         User $user,
         Course $course,
-        CourseChatAccessService $access,
+        CourseEntitlementService $access,
         UploadedFile $file,
         string $clientUploadId
     ): array {

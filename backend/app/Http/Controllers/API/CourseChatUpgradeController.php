@@ -15,7 +15,7 @@ use App\Models\Order;
 use App\Models\Package;
 use App\Models\Setting;
 use App\Models\User;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
 use App\Services\FinancialAnomalyService;
 use App\Services\FinancialProvenanceService;
@@ -39,7 +39,7 @@ final class CourseChatUpgradeController extends Controller
     public function quote(
         Request $request,
         Course $course,
-        CourseChatAccessService $access,
+        CourseEntitlementService $access,
         CourseAccessPlanService $plans,
         WalletService $wallet
     ): JsonResponse
@@ -156,7 +156,7 @@ final class CourseChatUpgradeController extends Controller
     public function purchase(
         Request $request,
         Course $course,
-        CourseChatAccessService $access,
+        CourseEntitlementService $access,
         WalletService $wallet,
         FinancialProvenanceService $provenance,
         FinancialAnomalyService $financialRisk,

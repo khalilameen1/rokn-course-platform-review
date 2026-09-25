@@ -74,7 +74,7 @@ final class PortfolioReportingTest extends TestCase
     private function approveFixture(User $owner): void
     {
         $owner = $owner->fresh();
-        $snapshot = app(\App\Services\PortfolioModerationService::class)->snapshot($owner);
+        $snapshot = app(\App\Services\PortfolioReviewReadService::class)->snapshot($owner);
         $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
     }
 }

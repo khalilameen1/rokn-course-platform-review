@@ -330,6 +330,65 @@ describe('confirmed top-up delivery across terminal local storage', () => {
     expect(await readCoinCheckoutAttempt(7, mockOwner)).toBeNull();
   });
 
+  it('keeps another account independent of a stalled old-account cleanup', async () => {
+    jest.useFakeTimers();
+    mockOwner = {scope: 'retiring-account', epoch: 1};
+    const previousOwner = {...mockOwner};
+    const disk = new Map<string, string>();
+    const blocked = deferred();
+    const started = deferred();
+    (AsyncStorage.getItem as jest.Mock).mockImplementation(
+      async key => disk.get(key) ?? null,
+    );
+    (AsyncStorage.setItem as jest.Mock).mockImplementation(
+      async (key, value) => {
+        disk.set(key, value);
+      },
+    );
+    (AsyncStorage.removeItem as jest.Mock).mockImplementation(async key => {
+      started.resolve();
+      await blocked.promise;
+      disk.delete(key);
+    });
+    const initial = await getOrCreateCoinCheckoutAttempt(
+      7,
+      49,
+      600,
+      previousOwner,
+    );
+    const retirement = clearCoinCheckoutAttempt(
+      initial.idempotencyKey,
+      previousOwner,
+    );
+    let nextSettled = false;
+    let next: ReturnType<typeof getOrCreateCoinCheckoutAttempt> | undefined;
+    try {
+      await started.promise;
+      await jest.advanceTimersByTimeAsync(800);
+      await retirement;
+      mockOwner = {scope: 'next-account', epoch: 2};
+      next = getOrCreateCoinCheckoutAttempt(7, 49, 600, mockOwner).then(
+        value => {
+          nextSettled = true;
+          return value;
+        },
+      );
+      await jest.advanceTimersByTimeAsync(800);
+      expect(nextSettled).toBe(true);
+      expect(await readCoinCheckoutAttempt(7, mockOwner)).toMatchObject({
+        packageId: 7,
+      });
+    } finally {
+      blocked.resolve();
+      await retirement;
+      await next;
+      jest.useRealTimers();
+    }
+    expect(await readCoinCheckoutAttempt(7, mockOwner)).toMatchObject({
+      packageId: 7,
+    });
+  });
+
   it('preserves a new return destination behind the late removal of the old paid receipt', async () => {
     jest.useFakeTimers();
     jest.clearAllMocks();

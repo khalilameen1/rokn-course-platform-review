@@ -7,7 +7,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\ProjectSubmission;
 use App\Models\User;
-use App\Support\AdminEditorVersion;
+use App\Support\StudentEditorVersion;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -155,9 +155,7 @@ final readonly class AdminStudentReadService
             'paymentMethodLabels' => $this->paymentChannels->labels(),
             'deviceLoginPolicy' => $this->deviceLogin->configuredPolicy(),
             'accountStateVersion' => $this->accounts->editorVersion($user),
-            'deviceStateVersion' => AdminEditorVersion::for($user, [
-                'locked_device_id', 'profile_revision', 'deleted_at',
-            ]),
+            'deviceStateVersion' => StudentEditorVersion::device($user),
             'learning' => $learning,
             'projectSubmissions' => $projectSubmissions,
             'projectStatusCounts' => $projectStatusCounts,

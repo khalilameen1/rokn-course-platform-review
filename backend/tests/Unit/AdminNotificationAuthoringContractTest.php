@@ -40,7 +40,7 @@ final class AdminNotificationAuthoringContractTest extends TestCase
     public function test_quiz_is_not_an_available_notification_family(): void
     {
         $model = file_get_contents(dirname(__DIR__, 2).'/app/Models/AdminNotification.php');
-        $service = file_get_contents(dirname(__DIR__, 2).'/app/Services/NotificationService.php');
+        $service = file_get_contents(dirname(__DIR__, 2).'/app/Services/CourseContentNotificationService.php');
         $job = file_get_contents(dirname(__DIR__, 2).'/app/Jobs/SendStudentNotification.php');
 
         self::assertIsString($model);
@@ -76,7 +76,7 @@ final class AdminNotificationAuthoringContractTest extends TestCase
             dirname(__DIR__, 2).'/app/Http/Controllers/Admin/AdminNotificationsController.php'
         );
         $notificationService = file_get_contents(
-            dirname(__DIR__, 2).'/app/Services/NotificationService.php'
+            dirname(__DIR__, 2).'/app/Services/CourseContentNotificationService.php'
         );
 
         self::assertIsString($campaigns);
@@ -84,7 +84,10 @@ final class AdminNotificationAuthoringContractTest extends TestCase
         self::assertIsString($notificationService);
         self::assertStringContainsString('->paginate(30)', $campaigns);
         self::assertStringContainsString('->paginate(30)', $templates);
-        self::assertStringContainsString("\$payload['link'] = RoknAppLink::normalize", $templates);
+        self::assertStringContainsString(
+            "\$payload['link'] = RoknAppLink::normalize",
+            file_get_contents(dirname(__DIR__, 2).'/app/Services/AdminNotificationTemplateAuthoringService.php')
+        );
         self::assertStringNotContainsString('/Courses/', $notificationService);
     }
 

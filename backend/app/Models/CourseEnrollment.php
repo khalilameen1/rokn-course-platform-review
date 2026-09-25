@@ -115,16 +115,7 @@ class CourseEnrollment extends Model
     protected static function booted(): void
     {
         static::saving(function (CourseEnrollment $enrollment): void {
-            if (
-                $enrollment->exists
-                && $enrollment->getOriginal('completed_curriculum_revision') !== null
-                && $enrollment->isDirty([
-                    'completed_curriculum_revision',
-                    'curriculum_completed_at',
-                ])
-            ) {
-                throw new \LogicException('Earned curriculum completion is immutable.');
-            }
+            $enrollment->assertCompletionTransition();
 
             if (
                 !$enrollment->exists
@@ -158,6 +149,37 @@ class CourseEnrollment extends Model
                 );
             }
         });
+    }
+
+    /** Watching may become earned completion once; an earned record never changes. */
+    private function assertCompletionTransition(): void
+    {
+        if (
+            !$this->exists
+            || $this->getOriginal('completed_curriculum_revision') === null
+            || !$this->isDirty([
+                'completed_curriculum_revision',
+                'curriculum_completed_at',
+                'completed_with_projects',
+            ])
+        ) {
+            return;
+        }
+
+        // CurriculumCompletionService verifies the newly required projects
+        // under the enrollment lock before this one-way promotion. Its time
+        // and revision describe the earned curriculum, not the earlier watching.
+        // Null scope is a legacy earned record, never a watch-only exception.
+        if (
+            $this->getOriginal('completed_with_projects') === false
+            && $this->completed_with_projects === true
+            && (int) $this->completed_curriculum_revision > 0
+            && $this->curriculum_completed_at !== null
+        ) {
+            return;
+        }
+
+        throw new \LogicException('Earned curriculum completion is immutable.');
     }
 
     /**

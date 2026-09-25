@@ -16,7 +16,7 @@ use Illuminate\Support\Collection;
 /** Reads immutable learner facts through semantically continuous revisions. */
 final readonly class CourseRevisionLearnerReadService
 {
-    public function __construct(private CourseStagedAuthoringService $revisions) {}
+    public function __construct(private CourseRevisionResolver $revisions) {}
 
     /** @return Collection<int,int> current section IDs */
     public function completedSectionIds(int $userId, iterable $currentSectionIds): Collection

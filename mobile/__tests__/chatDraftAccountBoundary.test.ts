@@ -312,7 +312,22 @@ describe('chat draft account ownership', () => {
       'const boundary = await captureAccountSessionBoundary()',
     );
     expect(project).toMatch(
-      /uploadProjectFeedbackAttachment[\s\S]*?saveProjectFeedbackDraft\([\s\S]*?boundary/,
+      /uploadProjectFeedbackAttachment[\s\S]*?await draftSession\.stage\([\s\S]*?assertAccountSessionBoundary\(boundary\)/,
+    );
+    expect(project).toContain('draftBoundary.scope !== boundary.scope');
+    expect(project).toContain('draftBoundary.epoch !== boundary.epoch');
+    const editor = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        '../src/components/VideoPlayer/projectTransition/useProjectFeedbackDraftEditor.ts',
+      ),
+      'utf8',
+    );
+    expect(editor).toMatch(
+      /saveProjectFeedbackDraft\(\s*threadId,[\s\S]*?boundary,/,
+    );
+    expect(editor).toMatch(
+      /stage: async[\s\S]*?assertReady\(\);[\s\S]*?await write\(\);\s*assertReady\(\);/,
     );
     expect(project).toContain('activeProjectIdRef.current === projectId');
     expect(project).toContain('activeThreadIdRef.current === threadId');

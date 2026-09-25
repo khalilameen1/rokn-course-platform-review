@@ -5,6 +5,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Auth\SocialLoginCredentials;
+use App\Http\Requests\API\ClientDeviceInput;
+use App\Http\Responses\SocialLoginResponse;
+use App\Services\SocialLoginAction;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use App\Models\ApiToken;
 use App\Models\SocialOAuthAttempt;
 use App\Models\User;
@@ -192,15 +198,12 @@ final class SocialOAuthController extends Controller
         }
     }
 
-    public function complete(Request $request, SignController $signController)
+    public function complete(Request $request, SocialLoginAction $login)
     {
         $validated = $request->validate([
             'code' => 'required|string|min:32|max:200',
             'code_verifier' => ['required', 'string', 'min:43', 'max:128', 'regex:/^[A-Za-z0-9._~-]+$/'],
-            'device_os' => 'nullable|string|max:255',
-            'device_token' => 'nullable|string|max:500',
-            'device_type' => 'nullable|string|max:50',
-            'device_id' => ['nullable', 'uuid'],
+            ...ClientDeviceInput::rules(),
         ]);
 
         // Inspect without consuming first. A wrong verifier must not be able to
@@ -288,31 +291,22 @@ final class SocialOAuthController extends Controller
             ], 410);
         }
 
-        $forward = Request::create('/api/v1/social-login', 'POST', [
-            'provider' => $claimedAttempt->provider,
-            'token' => $providerToken,
-            'device_os' => $validated['device_os'] ?? null,
-            'device_token' => $validated['device_token'] ?? null,
-            'device_type' => $validated['device_type'] ?? null,
-            'device_id' => $validated['device_id'] ?? null,
-            'preferred_locale' => RoknLocale::fromRequest($request),
-        ]);
-        $forward->attributes->set('social_attempt_started_at', $claimedAttempt->created_at);
-        $forward->attributes->set('social_expected_nonce_hash', $claimedAttempt->nonce_hash);
-        $forward->attributes->set('social_browser_attempt_verified', true);
-        $forward->attributes->set('social_oauth_attempt_id', $claimedAttempt->id);
-        $forward->attributes->set(
-            'social_oauth_completion_claim_id',
-            $claimedAttempt->completion_claim_id
-        );
-        foreach (['Accept-Language', 'X-Rokn-Platform', 'X-Rokn-Device-Class', 'X-Rokn-App-Version', 'X-Rokn-App-Build'] as $header) {
-            if ($request->hasHeader($header)) {
-                $forward->headers->set($header, (string) $request->header($header));
-            }
-        }
-
         try {
-            $response = $signController->socialLogin($forward);
+            // Preserve the credential boundary previously reached through a
+            // synthetic HTTP request. Only server-owned attempt facts enter login.
+            Validator::make([
+                'provider' => $claimedAttempt->provider,
+                'token' => $providerToken,
+            ], [
+                'provider' => ['required', 'string', Rule::in($this->socialProviders->available()->all())],
+                'token' => 'required|string|max:10000',
+            ])->validate();
+
+            $response = SocialLoginResponse::make($login->login(
+                SocialLoginCredentials::fromClaimedAttempt($claimedAttempt, $providerToken),
+                ClientDeviceInput::fromValidated($request, $validated),
+                RoknLocale::fromRequest($request)
+            ), $request);
         } catch (\Throwable $exception) {
             $this->attempts->releaseCompletion($claimedAttempt);
             throw $exception;

@@ -8,11 +8,13 @@ import {
 } from '../../services/secureSession';
 import {
   flushPendingNotificationNavigation,
-  prepareNotificationChannels,
-  reconcilePushRegistration,
   subscribeToPushResponses,
+} from '../../services/pushNotificationNavigation';
+import {prepareNotificationChannels} from '../../services/notificationPresentation';
+import {
+  reconcilePushRegistration,
   subscribeToPushTokenRefresh,
-} from '../../services/pushNotifications';
+} from '../../services/pushDeviceRegistration';
 import {
   retryPendingPlaybackPositions,
   retryPendingProjectSubmissions,

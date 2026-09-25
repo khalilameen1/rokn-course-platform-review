@@ -126,7 +126,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($pendingOrders->take(5) as $order)
+                                @foreach($pendingOrders as $order)
                                 <tr id="order-row-{{ $order->id }}">
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -152,18 +152,9 @@
                                     </td>
                                     <td>
                                         <div class="d-flex gap-1">
-                                            <form action="{{ route('admin.urgent-tasks.approve-order', $order->id) }}" method="POST" class="urgent-inline-form">
-                                                @csrf
-                                                <button type="submit" class="action-btn btn-success-center">
-                                                    <i class="fa fa-check"></i> قبول
-                                                </button>
-                                            </form>
-                                            <form action="{{ route('admin.urgent-tasks.reject-order', $order->id) }}" method="POST" class="urgent-inline-form">
-                                                @csrf
-                                                <button type="submit" class="action-btn btn-danger-center">
-                                                    <i class="fa fa-times"></i> رفض
-                                                </button>
-                                            </form>
+                                            <a href="{{ route('admin.orders.show', $order->id) }}" class="action-btn btn-primary-center">
+                                                <i class="fa fa-eye"></i> مراجعة الطلب
+                                            </a>
                                         </div>
                                     </td>
                                 </tr>
@@ -202,7 +193,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($inactiveStudents->take(5) as $student)
+                                @foreach($inactiveStudents as $student)
                                 <tr id="student-row-{{ $student->id }}">
                                     <td>
                                         <div class="d-flex align-items-center">
@@ -305,16 +296,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Action button confirmations with modern styling
-    const actionForms = document.querySelectorAll('form[action*="approve-order"], form[action*="reject-order"], form[action*="activate-student"]');
+    const actionForms = document.querySelectorAll('form[action*="activate-student"]');
     actionForms.forEach(form => {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const action = this.action.includes('approve') ? 'قبول' :
-                          this.action.includes('reject') ? 'رفض' : 'تفعيل';
-            const type = this.action.includes('order') ? 'الطلب' : 'الطالب';
-
-            if (confirm(`هل أنت متأكد من ${action} هذا ${type}؟`)) {
+            if (confirm('هل أنت متأكد من تفعيل هذا الطالب؟')) {
                 this.submit();
             }
         });

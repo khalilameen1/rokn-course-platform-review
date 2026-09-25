@@ -22,7 +22,10 @@ use ZipArchive;
 
 final class AiInputAttachmentService
 {
-    public function __construct(private readonly StoredFileDeletionService $storedFiles)
+    public function __construct(
+        private readonly StoredFileDeletionService $storedFiles,
+        private readonly StoredFileUploadService $uploads
+    )
     {
     }
 
@@ -116,7 +119,7 @@ final class AiInputAttachmentService
         $operationIdentity = implode('|', [
             'ai-input', $user->id, $course->id, $purpose, strtolower($clientUploadId), $sha, Str::uuid(),
         ]);
-        $path = $this->storedFiles->trackedUploadDestination(
+        $path = $this->uploads->trackedUploadDestination(
             $file,
             $directory,
             $disk,
@@ -165,7 +168,7 @@ final class AiInputAttachmentService
             // so rejected uploads cannot flood either storage or the ledger.
             // The ledger still commits before the first byte is written.
             $this->storedFiles->trackPotentialOrphan($disk, $path, 60);
-            $this->storedFiles->writeTrackedUpload($file, $path, $disk);
+            $this->uploads->writeTrackedUpload($file, $path, $disk);
             $updated = AiInputAttachment::query()
                 ->whereKey($reservation->id)
                 ->where('status', AiInputAttachment::ALLOCATING)

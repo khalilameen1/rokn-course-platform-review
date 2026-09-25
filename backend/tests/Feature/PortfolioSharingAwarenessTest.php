@@ -8,7 +8,7 @@ use App\Http\Middleware\RequireAdminMfa;
 use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\User;
-use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Support\RoknPublicUrl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -24,7 +24,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
         $item = $this->item($owner);
         $this->approveFixture($owner);
         $owner->forceFill(['portfolio_sharing_suspended_at' => now()])->save();
-        $this->mock(BunnyService::class)->shouldReceive('generateBunnySignedUrl')
+        $this->mock(BunnyDeliveryService::class)->shouldReceive('storageUrl')
             ->andReturn('https://cdn.rokn.test/private-owner-image.jpg');
 
         $this->actingAs($owner, 'api')->getJson('/api/v1/portfolio-profile')
@@ -71,7 +71,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
             ->assertSee('معاينة إدارية خاصة')->assertSee($published->title)
             ->assertDontSee($private->title)->assertDontSee('الإبلاغ عن محتوى')
             ->assertSee(e($media), false)->assertHeader('Referrer-Policy', 'no-referrer');
-        $this->mock(BunnyService::class)->shouldReceive('generateBunnySignedUrl')
+        $this->mock(BunnyDeliveryService::class)->shouldReceive('storageUrl')
             ->once()->andReturn('https://cdn.rokn.test/admin-image.jpg');
         $this->get($media)->assertRedirect('https://cdn.rokn.test/admin-image.jpg');
         $this->get(route('admin.portfolio-preview.media', [$owner, $private->mediaFiles->first()->public_id]))->assertNotFound();
@@ -91,7 +91,7 @@ final class PortfolioSharingAwarenessTest extends TestCase
     private function approveFixture(User $owner): void
     {
         $owner = $owner->fresh();
-        $snapshot = app(\App\Services\PortfolioModerationService::class)->snapshot($owner);
+        $snapshot = app(\App\Services\PortfolioReviewReadService::class)->snapshot($owner);
         $owner->forceFill(['portfolio_sharing_status' => 'approved', 'portfolio_approved_hash' => $snapshot['hash']])->save();
     }
 

@@ -3,13 +3,8 @@
 declare(strict_types=1);
 
 // One local request per process. No credentials, network dependency or app boot.
-$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
-if ($server === false) {
-    fwrite(STDERR, $error);
-    exit(1);
-}
-fwrite(STDOUT, stream_socket_get_name($server, false).PHP_EOL);
-fflush(STDOUT);
+require __DIR__.'/local_http_server.php';
+$server = startLocalHttpFixture($argv[2]);
 $client = stream_socket_accept($server, 5);
 if ($client === false) {
     exit(2);

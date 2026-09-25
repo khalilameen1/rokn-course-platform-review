@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Jobs\DeleteAccountFile;
+use App\Data\NotificationAuthoringInput;
 use App\Jobs\SendStudentNotification;
 use App\Models\AccountFileDeletion;
 use App\Models\NotificationCampaign;
@@ -210,7 +211,18 @@ final class AdminNotificationImageRetryTest extends ApiTestCase
 
     private function author(Request $request): NotificationCampaign
     {
-        return app(AdminNotificationCampaignAuthoringService::class)->author($request, $request->except('image'));
+        return app(AdminNotificationCampaignAuthoringService::class)->author(
+            NotificationAuthoringInput::fromValidated(
+                (int) $request->user()->id,
+                [...$request->except('image'), 'image' => $request->file('image')]
+            ),
+            static function (?NotificationCampaign $campaign) use ($request): void {
+                app(AdminAuthoringCreateIntentService::class)->completeRedirect(
+                    $request, route('admin.notifications.index'), 302,
+                    $campaign ? NotificationCampaign::class : null, $campaign?->id
+                );
+            }
+        );
     }
 
     private function imageRequest(string $intentId, ?string $bytes = null, bool $individual = false): Request

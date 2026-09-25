@@ -20,7 +20,8 @@ final readonly class CourseCatalogueQueryService
 
     public function __construct(
         private CourseDurationService $duration,
-        private ArabicSearchNormalizer $searchNormalizer
+        private ArabicSearchNormalizer $searchNormalizer,
+        private CourseCatalogueRevisionService $revisions
     ) {}
 
     /**
@@ -194,20 +195,7 @@ final readonly class CourseCatalogueQueryService
 
     public function revision(): int
     {
-        try {
-            $key = 'courses:catalog-revision';
-            Cache::add(
-                $key,
-                max(1, (int) floor(microtime(true) * 1000)),
-                now()->addYears(10)
-            );
-
-            return max(1, (int) Cache::get($key));
-        } catch (Throwable) {
-            // Cache-backed pages are unavailable in the same failure mode, so
-            // this value is response metadata only and cannot resurrect data.
-            return 1;
-        }
+        return $this->revisions->current();
     }
 
     private function normalizedSearchKey(mixed $value): ?string

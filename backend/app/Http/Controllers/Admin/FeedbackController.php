@@ -6,18 +6,17 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\FeedbackAttachment;
+use App\Services\SupportCaseAttachmentDeliveryService;
 use App\Models\FeedbackReport;
-use App\Models\Order;
 use App\Models\SupportCaseMessage;
 use App\Models\User;
-use App\Services\OrderLifecycleService;
+use App\Services\SupportCaseCompensationService;
 use App\Services\SupportCaseService;
 use App\Support\BusinessClock;
 use App\Support\CsvCell;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -146,58 +145,7 @@ final class FeedbackController extends Controller
             'assigned_to' => ['nullable', Rule::exists('users', 'id')->where(fn ($q) => $q->where('role', 'admin'))],
             'resolution_kind' => ['nullable', Rule::in(['fixed', 'guidance', 'compensated', 'not_reproducible', 'duplicate'])],
         ]);
-        DB::transaction(function () use ($feedback, $validated, $cases): void {
-            if ($feedback->user_id) {
-                User::withTrashed()->whereKey($feedback->user_id)->lockForUpdate()->first();
-            }
-            $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($feedback->id);
-            $fromStatus = (string) $locked->status;
-            $closed = in_array($validated['status'], ['resolved', 'closed', 'dismissed'], true);
-            $desiredAssignedTo = isset($validated['assigned_to'])
-                ? (int) $validated['assigned_to']
-                : null;
-            $desiredResolutionKind = $closed
-                ? ($validated['resolution_kind'] ?? null)
-                : null;
-            if ((int) $locked->version !== (int) $validated['version']) {
-                // A browser may retry the same form after the first response was
-                // lost. Treat an already-applied desired state as success, while
-                // retaining optimistic locking for every genuinely stale edit.
-                $alreadyApplied = $fromStatus === $validated['status']
-                    && (string) $locked->priority === $validated['priority']
-                    && ($locked->assigned_to === null ? null : (int) $locked->assigned_to) === $desiredAssignedTo
-                    && ($locked->resolution_kind ?: null) === $desiredResolutionKind;
-                abort_unless($alreadyApplied, 409, "عدّل شخص آخر هذه الحالة\nحدّث الصفحة ثم أعد المحاولة");
-                return;
-            }
-            $statusChanged = $fromStatus !== $validated['status'];
-            $updates = [
-                'status' => $validated['status'],
-                'priority' => $validated['priority'],
-                'assigned_to' => $desiredAssignedTo,
-                'resolution_kind' => $desiredResolutionKind,
-                'resolved_at' => $validated['status'] === 'resolved' ? ($locked->resolved_at ?: now()) : null,
-                'closed_at' => in_array($validated['status'], ['closed', 'dismissed'], true)
-                    ? ($locked->closed_at ?: now()) : null,
-                'version' => (int) $locked->version + 1,
-            ];
-            if (!$locked->last_staff_message_at && $locked->priority !== $validated['priority']) {
-                $updates['first_response_due_at'] = $cases->firstResponseDueAt($validated['priority']);
-            }
-            $locked->update($updates);
-            $cases->event($locked, auth()->id(), 'updated', $fromStatus, $validated['status'], [
-                'assigned_to' => $updates['assigned_to'],
-                'priority' => $updates['priority'],
-                'resolution_kind' => $updates['resolution_kind'],
-            ]);
-            if ($statusChanged && in_array($validated['status'], ['waiting_for_user', 'resolved', 'closed'], true)) {
-                $cases->notifyStatus(
-                    $locked,
-                    $validated['status'],
-                    'support-case:'.$locked->id.':status:'.$validated['status'].':v'.$updates['version']
-                );
-            }
-        }, 3);
+        $cases->updateState($feedback, $validated, $request->user()?->id);
         return back()->with('success', 'تم تحديث الحالة');
     }
 
@@ -214,7 +162,7 @@ final class FeedbackController extends Controller
         ]);
         $cases->appendStaffMessage(
             $feedback,
-            auth()->user(),
+            $request->user(),
             trim($validated['message']),
             $validated['visibility'],
             $validated['client_request_id'],
@@ -226,8 +174,7 @@ final class FeedbackController extends Controller
     public function compensate(
         Request $request,
         FeedbackReport $feedback,
-        OrderLifecycleService $orders,
-        SupportCaseService $cases
+        SupportCaseCompensationService $compensation
     ): RedirectResponse {
         $validated = $request->validate([
             'version' => 'required|integer|min:1',
@@ -235,51 +182,22 @@ final class FeedbackController extends Controller
             'note' => 'required|string|min:8|max:1000',
         ]);
         if (!$feedback->order_id) return back()->with('error', 'اربط البلاغ بطلب موثّق أولًا');
-        $eventKey = 'support-case-compensation:'.$feedback->id.':'.hash('sha256', $validated['amount'].'|'.trim($validated['note']));
-
         try {
-            DB::transaction(function () use ($feedback, $validated, $eventKey, $orders, $cases): void {
-                if ($feedback->user_id) {
-                    User::withTrashed()->whereKey($feedback->user_id)->lockForUpdate()->firstOrFail();
-                }
-                $order = Order::query()->lockForUpdate()->findOrFail($feedback->order_id);
-                $locked = FeedbackReport::query()->lockForUpdate()->findOrFail($feedback->id);
-                abort_if((int) $locked->version !== (int) $validated['version'], 409, "تغيّرت الحالة\nحدّث الصفحة قبل تسجيل التعويض");
-                abort_unless(
-                    (int) $order->id === (int) $locked->order_id
-                    && (int) $order->user_id === (int) $locked->user_id,
-                    422
-                );
-                $orders->compensateCourseOrder(
-                    $order,
-                    (int) $validated['amount'],
-                    trim($validated['note']),
-                    $eventKey,
-                    auth()->id()
-                );
-                $locked->update(['resolution_kind' => 'compensated', 'version' => (int) $locked->version + 1]);
-                $cases->event($locked, auth()->id(), 'compensated', null, null, [
-                    'order_id' => $locked->order_id,
-                    'compensation_event_key' => $eventKey,
-                ]);
-            }, 3);
+            $compensation->compensate($feedback, $validated, $request->user()?->id);
         } catch (\DomainException|\InvalidArgumentException $exception) {
             return back()->with('error', 'لا يمكن تسجيل التعويض على هذا الطلب');
         }
         return back()->with('success', 'تم تسجيل التعويض وربطه بالبلاغ');
     }
 
-    public function attachment(FeedbackReport $feedback, FeedbackAttachment $attachment): Response
+    public function attachment(
+        FeedbackReport $feedback,
+        FeedbackAttachment $attachment,
+        SupportCaseAttachmentDeliveryService $delivery
+    ): Response
     {
         abort_unless((int) $attachment->feedback_report_id === (int) $feedback->id, 404);
-        abort_unless($attachment->scan_status === 'sanitized', 404);
-        $storage = Storage::disk($attachment->disk);
-        abort_unless($storage->exists($attachment->path), 410);
-        $bytes = $storage->get($attachment->path);
-        if ($attachment->sha256 && !hash_equals((string) $attachment->sha256, hash('sha256', $bytes))) {
-            $attachment->update(['scan_status' => 'corrupt']);
-            abort(410);
-        }
+        $bytes = $delivery->bytes($attachment);
         return response($bytes, 200, [
             'Content-Type' => 'image/jpeg',
             'Content-Disposition' => 'inline; filename="'.$feedback->public_id.'.jpg"',

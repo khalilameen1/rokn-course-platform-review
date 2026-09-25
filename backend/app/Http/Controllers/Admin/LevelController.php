@@ -5,14 +5,17 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Level;
 use App\Models\DesignSetting;
-use App\Services\StoredFileDeletionService;
+use App\Services\AdminLevelAuthoringService;
+use App\Support\LevelEditorVersion;
 use App\Services\AdminAuthoringCreateIntentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class LevelController extends Controller
 {
+    public function __construct(private readonly AdminLevelAuthoringService $authoring)
+    {
+    }
+
     /**
      * Get design settings for the views
      */
@@ -62,43 +65,16 @@ class LevelController extends Controller
             'authoring_request_id' => 'required|uuid',
         ]);
 
-        unset($validated['badge_image']);
-        $requestId = (string) $validated['authoring_request_id'];
-        $imagePath = $request->hasFile('badge_image')
-            ? app(StoredFileDeletionService::class)
-                ->storeTrackedUpload(
-                    $request->file('badge_image'),
-                    'levels',
-                    'public',
-                    60,
-                    'admin-level|'.strtolower($requestId).'|'.hash_file('sha256', $request->file('badge_image')->getRealPath())
-                )
-            : null;
-        if ($request->hasFile('badge_image') && (!is_string($imagePath) || $imagePath === '')) {
-            throw new \RuntimeException('Level badge storage failed');
-        }
-        try {
-            DB::transaction(function () use ($request, $validated, $imagePath, $requestId, $createIntents): void {
-                $level = Level::query()->where('authoring_request_id', $requestId)
-                    ->lockForUpdate()->first();
-                if (!$level) {
-                    $level = Level::create($validated);
-                }
-                if ($imagePath) {
-                    $level->allPhotos()->firstOrCreate(['path' => $imagePath, 'type' => 'featured']);
-                }
+        $this->authoring->create(
+            $validated,
+            (string) $validated['authoring_request_id'],
+            $request->file('badge_image'),
+            function (Level $level) use ($request, $createIntents): void {
                 $createIntents->completeRedirect(
-                    $request,
-                    route('admin.levels.index'),
-                    302,
-                    Level::class,
-                    $level->id
+                    $request, route('admin.levels.index'), 302, Level::class, $level->id
                 );
-            }, 3);
-        } catch (\Throwable $exception) {
-            if ($imagePath) app(StoredFileDeletionService::class)->deleteOrQueue('public', $imagePath);
-            throw $exception;
-        }
+            }
+        );
 
         return redirect()->route('admin.levels.index')
             ->with('success', 'تم إضافة المستوى بنجاح');
@@ -113,7 +89,7 @@ class LevelController extends Controller
     public function edit(Level $level)
     {
         $designSettings = $this->getDesignSettings();
-        $editorVersion = $this->editorVersion($level);
+        $editorVersion = LevelEditorVersion::for($level);
         return view('admin.levels.edit', compact('level', 'designSettings', 'editorVersion'));
     }
 
@@ -136,52 +112,9 @@ class LevelController extends Controller
             'editor_version' => 'required|string|size:64',
         ]);
 
-        $editorVersion = (string) $validated['editor_version'];
-        unset($validated['badge_image']);
-        unset($validated['editor_version']);
-        $newImagePath = $request->hasFile('badge_image')
-            ? app(StoredFileDeletionService::class)
-                ->storeTrackedUpload($request->file('badge_image'), 'levels')
-            : null;
-        if ($request->hasFile('badge_image') && (!is_string($newImagePath) || $newImagePath === '')) {
-            throw new \RuntimeException('Level badge storage failed');
-        }
-        $legacyImagePath = null;
-        try {
-            DB::transaction(function () use (
-                $level,
-                $validated,
-                $editorVersion,
-                $newImagePath,
-                &$legacyImagePath
-            ): void {
-                $locked = Level::query()->whereKey($level->id)->lockForUpdate()->firstOrFail();
-                if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
-                    throw ValidationException::withMessages([
-                        'editor_version' => "عدّل شخص آخر هذا المستوى\nأعد تحميل الصفحة قبل الحفظ",
-                    ]);
-                }
-                $locked->update($validated);
-                if ($newImagePath) {
-                    $legacyImagePath = (string) ($locked->badge_image ?? '');
-                    $locked->forceFill(['badge_image' => null])->save();
-                    $oldPhotos = $locked->allPhotos()->where('type', 'featured')->lockForUpdate()->get();
-                    $locked->allPhotos()->create(['path' => $newImagePath, 'type' => 'featured']);
-                    $oldPhotos->each->delete();
-                }
-            }, 3);
-        } catch (\Throwable $exception) {
-            if ($newImagePath) app(StoredFileDeletionService::class)->deleteOrQueue('public', $newImagePath);
-            throw $exception;
-        }
-        $legacyImagePath = ltrim(trim((string) $legacyImagePath), '/');
-        if (
-            $legacyImagePath !== ''
-            && !filter_var($legacyImagePath, FILTER_VALIDATE_URL)
-            && !str_starts_with($legacyImagePath, 'assets/')
-        ) {
-            app(StoredFileDeletionService::class)->deleteOrQueue('public', $legacyImagePath);
-        }
+        $this->authoring->update(
+            (int) $level->id, $validated, (string) $validated['editor_version'], $request->file('badge_image')
+        );
 
         return redirect()->route('admin.levels.index')
             ->with('success', 'تم تحديث المستوى بنجاح');
@@ -195,13 +128,7 @@ class LevelController extends Controller
      */
     public function destroy(Level $level)
     {
-        $blocked = DB::transaction(function () use ($level): bool {
-            $locked = Level::query()->whereKey($level->id)->lockForUpdate()->firstOrFail();
-            if ($locked->courses()->exists() || $locked->users()->exists()) return true;
-            $locked->delete();
-            return false;
-        }, 3);
-        if ($blocked) {
+        if (!$this->authoring->deleteIfUnused((int) $level->id)) {
             return redirect()->route('admin.levels.index')
                 ->with('error', 'لا يمكن حذف مستوى مرتبط بكورسات أو طلاب');
         }
@@ -210,16 +137,4 @@ class LevelController extends Controller
             ->with('success', 'تم حذف المستوى بنجاح');
     }
 
-    private function editorVersion(Level $level): string
-    {
-        return hash('sha256', json_encode([
-            $level->name_ar,
-            $level->name_en,
-            $level->description_ar,
-            $level->description_en,
-            $level->order,
-            $level->badge_image,
-            $level->photo?->path,
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
 }

@@ -15,12 +15,16 @@ const mockApi = {
   post: jest.fn(),
 };
 let mockAccountScope = 'user-a';
+let mockScopeUnavailable = false;
 
 jest.mock('expo-iap', () => mockExpoIap);
 jest.mock('../src/constants/api', () => ({publicRequest: mockApi}));
 jest.mock('../src/constants/helpers', () => ({
   accountScopedStorageKey: jest.fn(
-    async (key: string) => `${key}:${mockAccountScope}`,
+    async (key: string) => {
+      if (mockScopeUnavailable) throw new Error('Account storage unavailable');
+      return `${key}:${mockAccountScope}`;
+    },
   ),
 }));
 jest.mock('../src/constants/distribution', () => ({
@@ -43,6 +47,7 @@ describe('native store billing', () => {
     mockApi.get.mockReset();
     mockApi.post.mockReset();
     mockAccountScope = 'user-a';
+    mockScopeUnavailable = false;
     mockExpoIap.initConnection.mockResolvedValue(true);
     mockExpoIap.getAvailablePurchases.mockResolvedValue([]);
     mockExpoIap.purchaseUpdatedListener.mockImplementation(listener => {
@@ -53,6 +58,51 @@ describe('native store billing', () => {
       purchaseFailure = listener;
       return {remove: jest.fn()};
     });
+  });
+
+  it('leaves receipts for recovery when the local account cannot be read', async () => {
+    const {reconcileNativeStorePurchases} = require('../src/services/nativeStoreBilling');
+    mockScopeUnavailable = true;
+    await expect(reconcileNativeStorePurchases()).resolves.toEqual({
+      pending: false, pendingProductIds: [], reconciled: 0,
+    });
+    expect(mockApi.get).not.toHaveBeenCalled();
+    expect(mockApi.post).not.toHaveBeenCalled();
+    expect(mockExpoIap.getAvailablePurchases).not.toHaveBeenCalled();
+    expect(mockExpoIap.finishTransaction).not.toHaveBeenCalled();
+  });
+
+  it('settles an accepted purchase even if a screen observer throws', async () => {
+    mockApi.get.mockResolvedValue({
+      data: {data: {google_obfuscated_account_id: 'account-binding'}},
+    });
+    mockApi.post.mockResolvedValue({
+      data: {data: {coins_added: 600, finalize_transaction: true}},
+    });
+    mockExpoIap.requestPurchase.mockImplementation(async () => {
+      purchaseUpdate({
+        id: 'observer-purchase', store: 'google', productId: 'rokn.coins.600',
+        purchaseState: 'purchased', purchaseToken: 'observer-token',
+      });
+    });
+    const {purchaseNativeCoinPackage} = require('../src/services/nativeStoreBilling');
+    const {subscribeNativeStoreCredits} = require('../src/services/nativeStoreCredits');
+    const healthyObserver = jest.fn();
+    const unsubscribeBroken = subscribeNativeStoreCredits(() => {
+      throw new Error('Unmounted screen observer');
+    });
+    const unsubscribeHealthy = subscribeNativeStoreCredits(healthyObserver);
+    try {
+      await expect(purchaseNativeCoinPackage({
+        id: '1', coins: 600, price: 120, label: '600',
+        storeProductIds: {google: 'rokn.coins.600'},
+      })).resolves.toMatchObject({success: true, coinsAdded: 600});
+      expect(healthyObserver).toHaveBeenCalledTimes(1);
+      expect(mockExpoIap.finishTransaction).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribeBroken();
+      unsubscribeHealthy();
+    }
   });
 
   it('uses the store-localized product and omits unconfigured packages', async () => {

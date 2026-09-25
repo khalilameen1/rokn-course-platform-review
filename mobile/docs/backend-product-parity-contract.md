@@ -423,7 +423,7 @@ This is the minimum implementation surface in the sibling Laravel repository:
 - feature tests for every contract below.
 
 No change is authorized here to `CoursePurchaseController`, `PaymentController`,
-`WalletService`, `CourseChatAccessService`, `CertificateService`, course codes,
+`WalletService`, `CourseEntitlementService`, `CertificateService`, course codes,
 financial holds, or any enrolment/authorization middleware.
 
 ## 6. Acceptance tests

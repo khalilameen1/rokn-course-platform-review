@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {learnerDraftStorage} from './learnerDraftStorage';
 
 import type {ChatAttachmentDraft} from '../components/VideoPlayer/types';
 import {
@@ -22,7 +23,7 @@ export type ProjectFeedbackDraft = {
   updatedAt: number;
 };
 
-const STORAGE_KEY = '@rokn/project-feedback-draft/v1';
+const STORAGE_KEY = learnerDraftStorage.projectFeedback.namespace;
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
 const draftOperations = new Map<string, Promise<unknown>>();

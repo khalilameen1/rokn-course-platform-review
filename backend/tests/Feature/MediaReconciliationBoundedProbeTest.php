@@ -7,24 +7,25 @@ namespace Tests\Feature;
 use App\Models\Course;
 use App\Models\Lesson;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Services\MediaHealthService;
 use App\Services\MediaReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Symfony\Component\Process\Process;
+use Tests\Support\LocalHttpServer;
 use Tests\TestCase;
 
 final class MediaReconciliationBoundedProbeTest extends TestCase
 {
     use RefreshDatabase;
 
-    private ?Process $server = null;
+    private ?LocalHttpServer $server = null;
 
     protected function tearDown(): void
     {
-        $this->server?->stop(0);
+        $this->server?->stop();
         parent::tearDown();
     }
 
@@ -92,16 +93,10 @@ final class MediaReconciliationBoundedProbeTest extends TestCase
     private function reconcile(string $imagePath, string $manifestPath): array
     {
         $expectedRequests = str_contains($imagePath, 'fallback') ? 3 : 2;
-        $this->server = new Process([
-            PHP_BINARY, '-n', base_path('tests/Fixtures/media_probe_server.php'), (string) $expectedRequests,
-        ]);
-        $this->server->setTimeout(15);
-        $this->server->start();
-        self::assertTrue($this->server->waitUntil(static fn (string $type, string $output): bool =>
-            $type === Process::OUT && str_contains($output, "\n")
-        ), $this->server->getErrorOutput());
-        $address = trim($this->server->getOutput());
-        self::assertMatchesRegularExpression('/^127\.0\.0\.1:\d+$/', $address);
+        $this->server = new LocalHttpServer(
+            base_path('tests/Fixtures/media_probe_server.php'), [(string) $expectedRequests]
+        );
+        $address = $this->server->address();
         $origin = 'http://'.$address;
         Http::preventStrayRequests();
         Http::allowStrayRequests([$origin.'/*']);
@@ -122,6 +117,8 @@ final class MediaReconciliationBoundedProbeTest extends TestCase
             'bunny_video_id' => $guid,
             'thumbnail_path' => 'thumbnail.jpg',
         ]);
+        $delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $delivery);
         $bunny = Mockery::mock(BunnyService::class);
         $bunny->shouldReceive('inspectRemoteVideo')->once()->with($guid)->andReturn([
             'state' => 'ok',
@@ -135,16 +132,20 @@ final class MediaReconciliationBoundedProbeTest extends TestCase
             ],
             'http_status' => 200,
         ]);
-        $bunny->shouldReceive('generateBunnySignedUrl')->once()->with('thumbnail.jpg', 600)
+        $delivery->shouldReceive('storageUrl')->once()->with('thumbnail.jpg', 600)
             ->andReturn($origin.$imagePath);
-        $bunny->shouldReceive('getVideo')->once()->with($guid)
+        $delivery->shouldReceive('videoPlayback')->once()->with($guid)
             ->andReturn(['url' => $origin.$manifestPath]);
 
-        $result = (new MediaReconciliationService($bunny, new MediaHealthService($bunny)))
+        $result = (new MediaReconciliationService(
+            $bunny,
+            new MediaHealthService($bunny),
+            $delivery
+        ))
             ->reconcileLesson($lesson, false, true);
 
-        self::assertSame(0, $this->server->wait(), $this->server->getErrorOutput());
-        $lines = explode("\n", trim($this->server->getOutput()));
+        self::assertSame(0, $this->server->process->wait(), $this->server->process->getErrorOutput());
+        $lines = explode("\n", trim($this->server->process->getOutput()));
         array_shift($lines);
         $requests = array_map(static fn (string $line): array => json_decode($line, true, 512, JSON_THROW_ON_ERROR), $lines);
         self::assertCount($expectedRequests, $requests);

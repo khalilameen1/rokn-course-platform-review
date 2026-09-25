@@ -298,10 +298,10 @@ export const useCourseDetailsData = ({
       reloadAfterCredit();
     });
     if (CAN_START_NATIVE_CHECKOUT) {
-      void import('../../../services/nativeStoreBilling').then(storeBilling => {
+      void import('../../../services/nativeStoreCredits').then(storeCredits => {
         if (!active) return;
         unsubscribe =
-          storeBilling.subscribeNativeStoreCredits(reloadAfterCredit);
+          storeCredits.subscribeNativeStoreCredits(reloadAfterCredit);
       });
     }
     return () => {

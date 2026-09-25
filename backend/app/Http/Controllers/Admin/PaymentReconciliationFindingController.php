@@ -7,16 +7,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentReconciliationFinding;
 use App\Models\User;
-use App\Support\AdminEditorVersion;
+use App\Services\PaymentReconciliationReviewService;
+use App\Support\PaymentFindingEditorVersion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class PaymentReconciliationFindingController extends Controller
 {
+    public function __construct(private readonly PaymentReconciliationReviewService $reviews)
+    {
+    }
+
     public function index(Request $request): View
     {
         $filters = $request->validate([
@@ -57,7 +60,7 @@ class PaymentReconciliationFindingController extends Controller
             ->withQueryString();
         $editorVersions = $findings->getCollection()->mapWithKeys(
             static fn (PaymentReconciliationFinding $finding): array => [
-                $finding->getKey() => self::editorVersion($finding),
+                $finding->getKey() => PaymentFindingEditorVersion::for($finding),
             ]
         );
 
@@ -129,58 +132,15 @@ class PaymentReconciliationFindingController extends Controller
         $actor = $request->user();
         abort_unless($actor instanceof User, 403);
 
-        DB::transaction(function () use ($finding, $targetState, $validated, $actor): void {
-            $lockedFinding = PaymentReconciliationFinding::query()
-                ->whereKey($finding->getKey())
-                ->lockForUpdate()
-                ->firstOrFail();
-            $allowedStates = $targetState === PaymentReconciliationFinding::STATE_OPEN
-                ? [
-                    PaymentReconciliationFinding::STATE_RESOLVED,
-                    PaymentReconciliationFinding::STATE_IGNORED,
-                ]
-                : [PaymentReconciliationFinding::STATE_OPEN];
-
-            if (!in_array($lockedFinding->state, $allowedStates, true)) {
-                throw ValidationException::withMessages([
-                    'finding' => 'تغيرت حالة نتيجة التسوية بالفعل. حدّث الصفحة قبل تسجيل قرار جديد.',
-                ]);
-            }
-            if (!hash_equals(
-                self::editorVersion($lockedFinding),
-                (string) $validated['editor_version']
-            )) {
-                throw ValidationException::withMessages([
-                    'finding' => 'وصل دليل دفع أحدث منذ فتح الصفحة. راجعه قبل تسجيل القرار.',
-                ]);
-            }
-
-            $lockedFinding->update([
-                'state' => $targetState,
-                'resolved_at' => $targetState === PaymentReconciliationFinding::STATE_OPEN
-                    ? null
-                    : now(),
-                'resolved_by' => $targetState === PaymentReconciliationFinding::STATE_OPEN
-                    ? null
-                    : $actor->getKey(),
-                'resolution_note' => trim($validated['note']),
-            ]);
-        }, 3);
+        $this->reviews->transition(
+            (int) $finding->getKey(),
+            $targetState,
+            $validated['note'],
+            $validated['editor_version'],
+            (int) $actor->getKey()
+        );
 
         return back()->with('success', $successMessage);
     }
 
-    private static function editorVersion(PaymentReconciliationFinding $finding): string
-    {
-        return AdminEditorVersion::for($finding, [
-            'state',
-            'attempts',
-            'last_seen_at',
-            'local_status',
-            'local_financial_status',
-            'provider_status',
-            'provider_transaction_id',
-            'evidence',
-        ]);
-    }
 }

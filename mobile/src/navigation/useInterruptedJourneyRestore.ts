@@ -2,7 +2,7 @@ import {CommonActions} from '@react-navigation/native';
 import React from 'react';
 import {useSelector} from 'react-redux';
 
-import {setNotificationNavigationReady} from '../services/pushNotifications';
+import {setNotificationNavigationReady} from '../services/pushNotificationNavigation';
 import {sessionIdentityKey} from '../services/secureSession';
 import type {RootState} from '../store/store';
 import {

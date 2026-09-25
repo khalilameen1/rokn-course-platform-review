@@ -24,7 +24,8 @@ final class MediaReconciliationService
 
     public function __construct(
         private BunnyService $bunny,
-        private MediaHealthService $health
+        private MediaHealthService $health,
+        private BunnyDeliveryService $delivery
     ) {
     }
 
@@ -190,13 +191,13 @@ final class MediaReconciliationService
         if ($thumbnail === '' && $providerThumbnail === '') {
             $issues[] = $this->issue('thumbnail_unverified', 'attention', 'lesson', (int) $lesson->id);
         } elseif ($fetchManifest && $thumbnail !== '') {
-            $signedThumbnail = $this->bunny->generateBunnySignedUrl($thumbnail, 600);
+            $signedThumbnail = $this->delivery->storageUrl($thumbnail, 600);
             if (!$signedThumbnail || !$this->imageIsReadable($signedThumbnail)) {
                 $issues[] = $this->issue('thumbnail_delivery_unavailable', 'attention', 'lesson', (int) $lesson->id);
             }
         }
 
-        $source = $this->bunny->getVideo((string) $lesson->bunny_video_id);
+        $source = $this->delivery->videoPlayback((string) $lesson->bunny_video_id);
         if (!$source || trim((string) ($source['url'] ?? '')) === '') {
             $issues[] = $this->issue('signed_manifest_unavailable', 'quarantined', 'lesson', (int) $lesson->id);
         } elseif ($fetchManifest) {

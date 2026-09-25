@@ -12,15 +12,15 @@ use Illuminate\Support\Facades\Cache;
 final readonly class CourseChatPromptContextService
 {
     public function __construct(
-        private CourseStagedAuthoringService $stagedAuthoring,
+        private CourseRevisionResolver $revisionResolver,
         private AiPromptPolicy $promptPolicy,
-        private OpenRouterService $openRouter
+        private OpenRouterRequestPolicy $requestPolicy
     ) {
     }
 
     public function currentLesson(int $lessonId, Course $course): ?Lesson
     {
-        $currentId = $this->stagedAuthoring->currentLearnerEntityMap(
+        $currentId = $this->revisionResolver->currentLearnerEntityMap(
             Lesson::class,
             [$lessonId]
         )[$lessonId] ?? $lessonId;
@@ -71,7 +71,7 @@ final readonly class CourseChatPromptContextService
 
     public function model(): string
     {
-        return $this->openRouter->configuredModel();
+        return $this->requestPolicy->configuredModel();
     }
 
     public function version(Course $course): string

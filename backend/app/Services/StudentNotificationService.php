@@ -5,17 +5,21 @@ namespace App\Services;
 use App\Jobs\SendUserPushNotification;
 use App\Models\CoinEarningMethod;
 use App\Models\StudentNotification;
-use App\Models\Setting;
-use App\Models\RewardRule;
 use App\Models\User;
-use App\Models\WalletTransaction;
 use App\Support\DurableJobDispatch;
+use App\Support\StudentNotificationIntent;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Database\QueryException;
 
 class StudentNotificationService
 {
+    public function __construct(
+        private readonly EngagementMessageService $templates,
+        private readonly StudentNotificationPresentationService $presentation
+    ) {
+    }
+
     public const TYPE_COURSE_ENROLLED = 'course_enrolled';
     public const TYPE_COINS_CLAIMED = 'coins_claimed';
     public const TYPE_PACKAGE_PURCHASED = 'package_purchased';
@@ -26,60 +30,35 @@ class StudentNotificationService
     public const TYPE_SUPPORT_CASE_UPDATE = 'support_case_update';
     public const TYPE_PROJECT_UPDATE = 'project_update';
 
-    /**
-     * Create a StudentNotification for the user and send FCM push.
-     *
-     * @param User $user
-     * @param string $type
-     * @param string $titleAr
-     * @param string $titleEn
-     * @param string $messageAr
-     * @param string $messageEn
-     * @param string|null $link
-     * @param string|null $notifiableType
-     * @param int|null $notifiableId
-     * @return StudentNotification|null Null when the dashboard disabled this automated template.
-     */
-    public static function notifyUser(
-        User $user,
-        string $type,
-        string $titleAr,
-        string $titleEn,
-        string $messageAr,
-        string $messageEn,
-        ?string $link = null,
-        ?string $notifiableType = null,
-        ?int $notifiableId = null,
-        ?string $deliveryKey = null,
-        array $templateVariables = [],
-        ?string $imageUrl = null
-    ): ?StudentNotification {
-        $copy = app(EngagementMessageService::class)->notificationPayload(
-            $type,
-            $templateVariables,
+    /** Null when the template is disabled or the recipient cannot receive it. */
+    public function notifyUser(User $user, StudentNotificationIntent $intent): ?StudentNotification
+    {
+        $copy = $this->templates->notificationPayload(
+            $intent->notificationType,
+            $intent->templateVariables,
             [
-                'title_ar' => $titleAr,
-                'title_en' => $titleEn,
-                'message_ar' => $messageAr,
-                'message_en' => $messageEn,
+                'title_ar' => $intent->titleAr,
+                'title_en' => $intent->titleEn,
+                'message_ar' => $intent->messageAr,
+                'message_en' => $intent->messageEn,
                 'action_label_ar' => null,
                 'action_label_en' => null,
-                'image_url' => $imageUrl,
+                'image_url' => $intent->imageUrl,
             ]
         );
         if ($copy === null) {
             return null;
         }
-        $snapshot = self::deliverySnapshot(
-            $type,
-            $notifiableType,
-            $notifiableId,
-            $link ?: ($copy['template_link'] ?? null),
-            $imageUrl ?: ($copy['image_url'] ?? null),
+        $snapshot = $this->deliverySnapshot(
+            $intent->notificationType,
+            $intent->notifiableType,
+            $intent->notifiableId,
+            $intent->link ?: ($copy['template_link'] ?? null),
+            $intent->imageUrl ?: ($copy['image_url'] ?? null),
             $copy['action_label_ar'] ?? null,
             $copy['action_label_en'] ?? null
         );
-        $deliveryKey = self::normalizeDeliveryKey($deliveryKey ?: (string) Str::uuid());
+        $deliveryKey = $this->normalizeDeliveryKey($intent->deliveryKey ?: (string) Str::uuid());
         $identity = [
             'user_id' => $user->id,
             'delivery_key' => $deliveryKey,
@@ -87,9 +66,7 @@ class StudentNotificationService
         $notification = DB::transaction(function () use (
             $user,
             $identity,
-            $type,
-            $notifiableType,
-            $notifiableId,
+            $intent,
             $copy,
             $snapshot
         ): ?StudentNotification {
@@ -97,15 +74,15 @@ class StudentNotificationService
             // before clearing inbox rows, so a stale callback cannot recreate
             // personal notifications after the account has gone away.
             $lockedUser = User::query()->whereKey($user->id)->lockForUpdate()->first();
-            if (!$lockedUser || !NotificationDeliveryPolicy::allowsInbox($lockedUser, $type)) {
+            if (!$lockedUser || !NotificationDeliveryPolicy::allowsInbox($lockedUser, $intent->notificationType)) {
                 return null;
             }
 
             try {
                 return StudentNotification::query()->firstOrCreate($identity, [
-                    'notification_type' => $type,
-                    'notifiable_type' => $notifiableType,
-                    'notifiable_id' => $notifiableId,
+                    'notification_type' => $intent->notificationType,
+                    'notifiable_type' => $intent->notifiableType,
+                    'notifiable_id' => $intent->notifiableId,
                     'title_ar' => $copy['title_ar'],
                     'title_en' => $copy['title_en'],
                     'message_ar' => $copy['message_ar'],
@@ -133,154 +110,29 @@ class StudentNotificationService
         // Persist first so the in-app inbox is authoritative. Push delivery is
         // an after-commit side effect and can scale independently on workers.
         if ($notification->wasRecentlyCreated) {
-            self::enqueuePushAfterCommit((int) $notification->id);
+            $this->enqueuePushAfterCommit((int) $notification->id);
         }
 
         return $notification;
     }
 
     /**
-     * Grant registration bonus coins and send localized FCM push notification.
-     *
-     * @param User $user
-     * @return int Number of coins credited during this call.
+     * Persist the welcome receipt inside the grant's transaction and user lock.
+     * The template key intentionally differs from the persisted receipt type.
      */
-    public static function sendRegistrationBonus(User $user, ?string $verifiedProvider = null): int
-    {
-        try {
-            if (app(AcquisitionRewardTombstoneService::class)->userHasConsumed(
-                $user,
-                AcquisitionRewardTombstoneService::WELCOME_REWARD
-            )) {
-                return 0;
-            }
-
-            $method = CoinEarningMethod::active()->where('action_key', 'register')->first();
-
-            // Keep the granted amount identical to the login promise. The
-            // earning-method row remains the claim/audit record, not a second
-            // source of truth for this acquisition offer.
-            $coinsAmount = self::registrationBonusOffer(
-                $verifiedProvider ?: (string) $user->social_provider
-            );
-            $methodId = $method ? $method->id : null;
-
-            if ($coinsAmount <= 0) {
-                return 0;
-            }
-
-            $idempotencyKey = 'registration-bonus:' . $user->id;
-
-            return DB::transaction(function () use (
-                $user,
-                $method,
-                $methodId,
-                $coinsAmount,
-                $idempotencyKey
-            ): int {
-                // Serialize first-login retries. Wallet credit, audit row and
-                // inbox notification either complete together or can be retried.
-                $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
-
-                $existingCredit = WalletTransaction::query()
-                    ->where('user_id', $lockedUser->id)
-                    ->where('idempotency_key', $idempotencyKey)
-                    ->first();
-                $alreadyCredited = $existingCredit !== null;
-                $alreadyClaimed = $methodId
-                    ? $lockedUser->coinEarnings()
-                        ->where('coin_earning_method_id', $methodId)
-                        ->exists()
-                    : false;
-
-                // Preserve bonuses issued by the legacy system even when they
-                // predate the wallet ledger. Never add a second welcome credit.
-                if ($alreadyClaimed && !$alreadyCredited) {
-                    return 0;
-                }
-
-                if (!$alreadyCredited) {
-                    $credit = app(WalletService::class)->creditRewardWithinConfiguredCap(
-                        $lockedUser->id,
-                        $coinsAmount,
-                        'welcome_bonus',
-                        $idempotencyKey,
-                        $method,
-                        ['action_key' => 'register']
-                    );
-                    if (!$credit) {
-                        return 0;
-                    }
-                    $coinsAmount = (int) $credit->amount;
-                } else {
-                    // The immutable ledger fact wins over today's dashboard
-                    // value when a post-credit side effect is being replayed.
-                    $coinsAmount = (int) $existingCredit->amount;
-                }
-
-                if ($methodId) {
-                    $lockedUser->coinEarnings()->firstOrCreate(
-                        ['coin_earning_method_id' => $methodId],
-                        ['amount' => $coinsAmount]
-                    );
-                }
-
-                self::ensureRegistrationBonusNotification(
-                    $lockedUser,
-                    $coinsAmount,
-                    $methodId
-                );
-
-                return $alreadyCredited ? 0 : $coinsAmount;
-            }, 3);
-        } catch (\Throwable $e) {
-            if (app()->environment('testing')) {
-                throw $e;
-            }
-            \Illuminate\Support\Facades\Log::error('Failed to grant registration bonus', [
-                'user_id' => $user->id,
-                'exception' => $e::class,
-            ]);
-            return 0;
-        }
-    }
-
-    /** The discovery promise and the credited one-time amount share this rule. */
-    public static function registrationBonusOffer(?string $provider = null): int
-    {
-        $settings = Setting::query()->first();
-        $amount = RewardRule::configuredAmount(
-            'welcome_bonus',
-            (int) ($settings?->welcome_bonus_coins
-                ?? config('social_auth.welcome_bonus_coins', 20))
-        );
-        if (
-            $settings?->recommended_social_provider
-            && strtolower(trim((string) $provider)) === strtolower(trim((string) $settings->recommended_social_provider))
-        ) {
-            $amount += max(0, (int) $settings->recommended_provider_bonus_coins);
-        }
-
-        // WalletService treats acquisition offers as indivisible. Advertising
-        // an amount above the reward-wallet ceiling would promise coins that
-        // the canonical ledger must reject in full.
-        $cap = max(0, (int) ($settings?->reward_balance_cap ?? 1200));
-        return $amount > 0 && $amount <= $cap ? $amount : 0;
-    }
-
-    private static function ensureRegistrationBonusNotification(
+    public function welcomeRewardReceipt(
         User $user,
         int $coinsAmount,
         ?int $methodId
     ): void
     {
-        $copy = app(EngagementMessageService::class)->notificationPayload(
+        $copy = $this->templates->notificationPayload(
             'welcome_bonus_received',
             ['coins' => $coinsAmount],
             [
                 'title_ar' => 'وصلت هديتك',
                 'title_en' => 'Your balance is ready',
-                'message_ar' => self::arabicDigits($coinsAmount)
+                'message_ar' => $this->arabicDigits($coinsAmount)
                     . ' عملة ركن في محفظتك',
                 'message_en' => $coinsAmount . ' Rokn coins are in your wallet',
                 'action_label_ar' => 'افتح المحفظة',
@@ -290,7 +142,7 @@ class StudentNotificationService
         if ($copy === null) {
             return;
         }
-        $snapshot = self::deliverySnapshot(
+        $snapshot = $this->deliverySnapshot(
             self::TYPE_COINS_CLAIMED,
             $methodId ? CoinEarningMethod::class : null,
             $methodId,
@@ -305,7 +157,7 @@ class StudentNotificationService
         $notification = StudentNotification::firstOrCreate(
             [
                 'user_id' => $user->id,
-                'delivery_key' => self::normalizeDeliveryKey('registration-bonus:' . $user->id),
+                'delivery_key' => $this->normalizeDeliveryKey('registration-bonus:' . $user->id),
             ],
             [
                 'notification_type' => self::TYPE_COINS_CLAIMED,
@@ -327,10 +179,10 @@ class StudentNotificationService
             return;
         }
 
-        self::enqueuePushAfterCommit((int) $notification->id);
+        $this->enqueuePushAfterCommit((int) $notification->id);
     }
 
-    private static function enqueuePushAfterCommit(int $notificationId): void
+    private function enqueuePushAfterCommit(int $notificationId): void
     {
         // Catch inside the commit callback, not only around its registration.
         // Queue connections fail when the callback actually runs; allowing that
@@ -347,7 +199,7 @@ class StudentNotificationService
     }
 
     /** @return array{link:string,image_url:?string,action_label_ar:string,action_label_en:string} */
-    private static function deliverySnapshot(
+    private function deliverySnapshot(
         string $type,
         ?string $notifiableType,
         ?int $notifiableId,
@@ -366,12 +218,12 @@ class StudentNotificationService
             'action_label_en' => $actionLabelEn,
         ]);
 
-        $presentation = app(StudentNotificationPresentationService::class)->for($prototype);
+        $presentation = $this->presentation->for($prototype);
 
         return $presentation;
     }
 
-    private static function arabicDigits(int $value): string
+    private function arabicDigits(int $value): string
     {
         return strtr((string) $value, [
             '0' => '٠', '1' => '١', '2' => '٢', '3' => '٣', '4' => '٤',
@@ -379,7 +231,7 @@ class StudentNotificationService
         ]);
     }
 
-    private static function normalizeDeliveryKey(string $deliveryKey): string
+    private function normalizeDeliveryKey(string $deliveryKey): string
     {
         $deliveryKey = trim($deliveryKey);
 

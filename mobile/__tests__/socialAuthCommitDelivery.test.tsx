@@ -62,9 +62,11 @@ jest.mock('../src/services/smartReminders', () => ({
   cancelLearningReminders: jest.fn(async () => undefined),
   setSmartRemindersEnabled: jest.fn(async () => undefined),
 }));
-jest.mock('../src/services/pushNotifications', () => ({
-  getCurrentPushDeviceToken: jest.fn(async () => null),
-  clearCurrentPushDeviceRegistration: jest.fn(async () => undefined),
+jest.mock('../src/services/pushDeviceState', () => ({
+  getStoredPushDeviceToken: jest.fn(async () => null),
+}));
+jest.mock('../src/services/pushAccountCleanup', () => ({
+  clearAccountPushState: jest.fn(async () => undefined),
 }));
 jest.mock('../src/services/deviceSessions', () => ({
   revokeCurrentDeviceSession: jest.fn(async () => undefined),

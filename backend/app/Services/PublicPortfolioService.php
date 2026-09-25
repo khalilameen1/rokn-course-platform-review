@@ -14,7 +14,8 @@ final class PublicPortfolioService
 {
     public function __construct(
         private readonly PortfolioShareIdentityService $shareIdentity,
-        private readonly PortfolioModerationService $moderation
+        private readonly PortfolioModerationService $moderation,
+        private readonly PortfolioReviewReadService $reviews
     ) {
     }
 
@@ -29,8 +30,8 @@ final class PublicPortfolioService
             return null;
         }
 
-        $snapshot = $this->moderation->snapshot($user);
-        if ($this->moderation->status($user, $snapshot) !== 'approved') return null;
+        $snapshot = $this->reviews->snapshot($user);
+        if ($this->moderation->reconcile($user, $snapshot) !== 'approved') return null;
 
         return $this->fullPortfolio($snapshot, $slug, $projectPage, $projectsPerPage);
     }
@@ -39,8 +40,8 @@ final class PublicPortfolioService
     {
         $user = $this->userForSlug($slug);
         if (!$user) return null;
-        $snapshot = $this->moderation->snapshot($user);
-        if ($this->moderation->status($user, $snapshot) !== 'approved'
+        $snapshot = $this->reviews->snapshot($user);
+        if ($this->moderation->reconcile($user, $snapshot) !== 'approved'
             || !$this->matchesSnapshot($snapshot, $revision, $hash)) return null;
 
         return $this->mediaFromSnapshot($snapshot, $mediaPublicId);
@@ -50,8 +51,8 @@ final class PublicPortfolioService
     public function adminPreview(User $user): array
     {
         $user = $user->fresh();
-        $status = $this->moderation->status($user);
-        $snapshot = $this->moderation->snapshot($user);
+        $status = $this->moderation->reconcile($user);
+        $snapshot = $this->reviews->snapshot($user);
         return $this->fullPortfolio($snapshot, (string) $user->portfolio_slug, null, null, true) + [
             'review' => [
                 'status' => $status,
@@ -65,7 +66,7 @@ final class PublicPortfolioService
     /** Returns only published work, never the learner's private drafts. */
     public function adminPreviewMedia(User $user, string $mediaPublicId, string $revision = '', string $hash = ''): ?PortfolioMedia
     {
-        $snapshot = $this->moderation->snapshot($user->fresh());
+        $snapshot = $this->reviews->snapshot($user->fresh());
         return $this->matchesSnapshot($snapshot, $revision, $hash)
             ? $this->mediaFromSnapshot($snapshot, $mediaPublicId) : null;
     }

@@ -14,8 +14,7 @@ use App\Models\Lesson;
 use App\Models\LessonMediaState;
 use App\Models\Setting;
 use App\Models\User;
-use App\Services\CourseCompletionService;
-use App\Services\CoursePresentationService;
+use App\Services\CourseSectionAccessService;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -347,7 +346,7 @@ final class CourseContentSecurityTest extends TestCase
         ]);
         $laterModuleFirst = $this->section(104, 1, 202, $this->lesson(13, false, 'later'), 'بعد المشروع');
 
-        $states = app(CoursePresentationService::class)->sectionLockStatus(
+        $states = app(CourseSectionAccessService::class)->sectionLockStatus(
             collect([$laterModuleFirst, $project, $nextReel, $first]),
             collect(),
             42
@@ -414,7 +413,7 @@ final class CourseContentSecurityTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $states = app(CoursePresentationService::class)->sectionLockStatus(
+        $states = app(CourseSectionAccessService::class)->sectionLockStatus(
             collect([$nextLesson, $secondProject, $firstProject]),
             collect([201, 202]),
             42
@@ -471,7 +470,7 @@ final class CourseContentSecurityTest extends TestCase
             'الوحدة الثالثة بلا مشروع جديد'
         );
 
-        $states = app(CoursePresentationService::class)->sectionLockStatus(
+        $states = app(CourseSectionAccessService::class)->sectionLockStatus(
             collect([
                 $thirdModuleLesson,
                 $nextModuleSecond,
@@ -503,7 +502,7 @@ final class CourseContentSecurityTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $afterPass = app(CoursePresentationService::class)->sectionLockStatus(
+        $afterPass = app(CourseSectionAccessService::class)->sectionLockStatus(
             collect([
                 $thirdModuleLesson,
                 $nextModuleSecond,
@@ -610,9 +609,9 @@ final class CourseContentSecurityTest extends TestCase
         $user = new User();
         $user->forceFill(['id' => 42, 'active' => true]);
         $user->exists = true;
-        $completion = app(CourseCompletionService::class);
+        $access = app(CourseSectionAccessService::class);
 
-        $ordinaryReel = $completion->sectionAccessState(
+        $ordinaryReel = $access->sectionAccessState(
             $user,
             CourseSection::query()->findOrFail(306)
         );
@@ -621,7 +620,7 @@ final class CourseContentSecurityTest extends TestCase
         self::assertNull($ordinaryReel['lock_reason']);
 
         foreach ([304, 305] as $sectionId) {
-            $state = $completion->sectionAccessState(
+            $state = $access->sectionAccessState(
                 $user,
                 CourseSection::query()->findOrFail($sectionId)
             );
@@ -641,7 +640,7 @@ final class CourseContentSecurityTest extends TestCase
         ]);
 
         foreach ([304, 305] as $sectionId) {
-            $state = $completion->sectionAccessState(
+            $state = $access->sectionAccessState(
                 $user,
                 CourseSection::query()->findOrFail($sectionId)
             );

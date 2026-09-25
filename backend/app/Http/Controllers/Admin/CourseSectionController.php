@@ -6,16 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Course;
 use App\Models\CourseSection;
 use App\Models\Lesson;
-use App\Services\CourseAuthoringConcurrencyService;
 use App\Services\AdminAuthoringCreateIntentService;
 use App\Services\AdminCourseOutlinePresenter;
-use App\Services\CourseAuthoringDeletionService;
-use App\Services\CourseSectionInput;
-use App\Services\CourseSectionOrderingService;
-use App\Services\CourseSectionContentService;
-use App\Services\CourseSectionMediaService;
+use App\Services\AdminCourseSectionApplicationService;
+use App\Http\Requests\Admin\CourseSectionInput;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -23,13 +18,9 @@ use Throwable;
 class CourseSectionController extends Controller
 {
     public function __construct(
-        private readonly CourseAuthoringConcurrencyService $authoring,
+        private readonly AdminCourseSectionApplicationService $sections,
         private readonly AdminAuthoringCreateIntentService $createIntents,
         private readonly CourseSectionInput $input,
-        private readonly CourseSectionOrderingService $ordering,
-        private readonly CourseSectionContentService $content,
-        private readonly CourseSectionMediaService $media,
-        private readonly CourseAuthoringDeletionService $deletion,
         private readonly AdminCourseOutlinePresenter $outline
     ) {
     }
@@ -49,7 +40,7 @@ class CourseSectionController extends Controller
      */
     public function createIntentReceipt(Request $request, Course $course, string $intent)
     {
-        $this->assertDraftForStagedAuthoring($course);
+        $this->sections->assertDraft($course);
         $receipt = $this->createIntents->resourceReceipt(
             $request,
             $intent,
@@ -98,117 +89,32 @@ class CourseSectionController extends Controller
      */
     public function store(Request $request, Course $course)
     {
-        $this->assertDraftForStagedAuthoring($course);
-        $this->input->validate($request, $course, null, true);
-        $stage = null;
-        $transactionStarted = false;
-
+        $this->sections->assertDraft($course);
+        $edit = $this->input->validate($request, $course, null, true);
         try {
-            $stage = $this->media->stage($request, $course, null, null);
-
-            DB::beginTransaction();
-            $transactionStarted = true;
-            $lockedCourse = $this->authoring->lock($request, $course);
-            $this->assertDraftForStagedAuthoring($lockedCourse);
-
-            $moduleId = $request->integer('module_id');
-            $moduleMaxOrder = $lockedCourse->sections()
-                ->where('module_id', $moduleId)
-                ->max('order') ?? 0;
-            $order = $request->filled('order')
-                ? $request->integer('order')
-                : (int) $moduleMaxOrder + 1;
-
-            $this->media->attach($stage);
-
-            $sectionable = $this->content->create(
-                $request,
-                $course,
-                (int) $order,
-                $stage->videoGuid,
-                $stage->thumbnailPath
+            $payload = $this->sections->store(
+                $course, $edit, $request->user(),
+                function (Course $lockedCourse, CourseSection $section, array $payload) use ($request): void {
+                    if ($request->expectsJson()) {
+                        $this->createIntents->completeJson($request, $payload, 200, CourseSection::class, $section->id);
+                    } else {
+                        $this->createIntents->completeRedirect(
+                            $request, route('admin.courses.show', $lockedCourse), 302, CourseSection::class, $section->id
+                        );
+                    }
+                }
             );
+            if ($request->expectsJson()) return response()->json($payload);
 
-            $sectionData = [
-                'title_ar' => $request->title_ar,
-                'title_en' => $request->title_en,
-                'course_id' => $course->id,
-                'order' => $order,
-                'sectionable_type' => $this->content->modelClass((string) $request->section_type),
-                'sectionable_id' => $sectionable->id,
-                'module_id' => $moduleId,
-                'section_type' => $request->section_type,
-            ];
-            $section = CourseSection::create($sectionData);
-            $this->ordering->place($lockedCourse, $section, null, (int) $order);
-            $authoringVersion = $this->authoring->advance($lockedCourse);
-            $sectionPayload = $this->outline->section($lockedCourse, $section);
-
-            // Publish the resource and the exact browser/API receipt in the
-            // same transaction. A killed worker after commit can replay it
-            // without allocating or uploading a second section.
-            if ($request->expectsJson()) {
-                $this->createIntents->completeJson(
-                    $request,
-                    [
-                        'success' => true,
-                        'message' => 'تم إضافة القسم بنجاح',
-                        'section' => $sectionPayload,
-                        'authoring_version' => $authoringVersion,
-                    ],
-                    200,
-                    CourseSection::class,
-                    $section->id
-                );
-            } else {
-                $this->createIntents->completeRedirect(
-                    $request,
-                    route('admin.courses.show', $course),
-                    302,
-                    CourseSection::class,
-                    $section->id
-                );
-            }
-
-            DB::commit();
-            $transactionStarted = false;
-            $stage = null;
-            if ($sectionable instanceof Lesson) {
-                $this->media->probe($sectionable);
-            }
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'تم إضافة القسم بنجاح',
-                    'section' => $sectionPayload,
-                    'authoring_version' => $authoringVersion,
-                ]);
-            }
-
-            return $this->authoringRedirect($course)
-                ->with('success', 'تم إضافة القسم بنجاح');
+            return $this->authoringRedirect($course)->with('success', 'تم إضافة القسم بنجاح');
         } catch (Throwable $e) {
-            if ($transactionStarted) {
-                DB::rollBack();
-            }
-            if ($stage) {
-                $this->media->rollback($stage, 'section_create_rollback');
-            }
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
+            if ($e instanceof ValidationException) throw $e;
             report($e);
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'تعذر إضافة القسم الآن'
-                ], 500);
+                return response()->json(['success' => false, 'message' => 'تعذر إضافة القسم الآن'], 500);
             }
 
-            return redirect()->back()
-                ->with('error', 'حدث خطأ أثناء إضافة القسم')
-                ->withInput();
+            return redirect()->back()->with('error', 'حدث خطأ أثناء إضافة القسم')->withInput();
         }
     }
 
@@ -217,7 +123,7 @@ class CourseSectionController extends Controller
      */
     public function edit(Course $course, CourseSection $section)
     {
-        $this->ensureSectionBelongsToCourse($course, $section);
+        $this->sections->assertBelongsToCourse($course, $section);
 
         return $this->authoringRedirect($course);
     }
@@ -227,110 +133,25 @@ class CourseSectionController extends Controller
      */
     public function update(Request $request, Course $course, CourseSection $section)
     {
-        $this->assertDraftForStagedAuthoring($course);
-        $this->ensureSectionBelongsToCourse($course, $section);
-        $oldSectionType = $section->getSectionType();
-        $oldSectionable = $section->sectionable;
-        $oldLesson = $oldSectionType === 'lesson' && $oldSectionable instanceof Lesson
-            ? $oldSectionable
-            : null;
-        $oldVideoGuid = trim((string) $oldLesson?->bunny_video_id) ?: null;
-        $oldThumbnailPath = trim((string) $oldLesson?->thumbnail_path) ?: null;
-        $this->input->validate($request, $course, $section, !$oldVideoGuid);
-        $stage = null;
-        $transactionStarted = false;
-
+        $this->sections->assertDraft($course);
+        $this->sections->assertBelongsToCourse($course, $section);
+        $content = $section->sectionable;
+        $hasVideo = $section->getSectionType() === 'lesson' && $content instanceof Lesson
+            && trim((string) $content->bunny_video_id) !== '';
+        $edit = $this->input->validate($request, $course, $section, !$hasVideo);
         try {
-            $stage = $this->media->stage($request, $course, $section, $oldLesson);
+            $payload = $this->sections->update($course, $section, $edit, $request->user());
+            if ($request->expectsJson()) return response()->json($payload);
 
-            DB::beginTransaction();
-            $transactionStarted = true;
-            $lockedCourse = $this->authoring->lock($request, $course);
-            $this->assertDraftForStagedAuthoring($lockedCourse);
-            $section = CourseSection::query()
-                ->whereKey($section->id)
-                ->where('course_id', $course->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-
-            $order = $request->input('order', $section->order);
-            $sectionType = $request->section_type;
-            $this->media->attach($stage);
-
-            $sectionable = $this->content->update(
-                $request,
-                $course,
-                $section,
-                (int) $order,
-                $stage->videoGuid,
-                $stage->thumbnailPath,
-                $oldVideoGuid,
-                $oldThumbnailPath
-            );
-
-            // Update the section
-            $previousModuleId = $section->module_id;
-            $section->update([
-                'title_ar' => $request->title_ar,
-                'title_en' => $request->title_en,
-                'order' => $order,
-                'sectionable_type' => $this->content->modelClass($sectionType),
-                'sectionable_id' => $sectionable->id,
-                'module_id' => $request->module_id,
-                'section_type' => $sectionType,
-            ]);
-            $this->ordering->place(
-                $lockedCourse,
-                $section,
-                $previousModuleId,
-                (int) $order
-            );
-            $this->media->retireReplaced($stage, $sectionType);
-            $authoringVersion = $this->authoring->advance($lockedCourse);
-            $sectionPayload = $this->outline->section($lockedCourse, $section);
-
-            DB::commit();
-            $transactionStarted = false;
-
-            $shouldProbe = $sectionable instanceof Lesson
-                && ($stage->videoChanged || $stage->thumbnailChanged);
-            $stage = null;
-            if ($shouldProbe) {
-                $this->media->probe($sectionable);
-            }
-
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'تم تحديث القسم بنجاح',
-                    'section' => $sectionPayload,
-                    'authoring_version' => $authoringVersion,
-                ]);
-            }
-
-            return $this->authoringRedirect($course)
-                ->with('success', 'تم تحديث القسم بنجاح');
+            return $this->authoringRedirect($course)->with('success', 'تم تحديث القسم بنجاح');
         } catch (Throwable $e) {
-            if ($transactionStarted) {
-                DB::rollBack();
-            }
-            if ($stage) {
-                $this->media->rollback($stage, 'section_update_rollback');
-            }
-            if ($e instanceof ValidationException) {
-                throw $e;
-            }
+            if ($e instanceof ValidationException) throw $e;
             report($e);
             if ($request->expectsJson()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'تعذر تحديث القسم الآن'
-                ], 500);
+                return response()->json(['success' => false, 'message' => 'تعذر تحديث القسم الآن'], 500);
             }
 
-            return redirect()->back()
-                ->with('error', 'تعذر تحديث القسم الآن')
-                ->withInput();
+            return redirect()->back()->with('error', 'تعذر تحديث القسم الآن')->withInput();
         }
     }
 
@@ -339,33 +160,10 @@ class CourseSectionController extends Controller
      */
     public function destroy(Request $request, Course $course, CourseSection $section)
     {
-        $this->ensureSectionBelongsToCourse($course, $section);
-        $this->assertDraftForStagedAuthoring($course);
-        $request->validate(['authoring_version' => 'required|integer|min:1']);
-        $result = DB::transaction(function () use (
-            $request,
-            $course,
-            $section
-        ): array {
-            $lockedCourse = $this->authoring->lock($request, $course);
-            $this->assertDraftForStagedAuthoring($lockedCourse);
-            $lockedSection = CourseSection::query()
-                ->whereKey($section->id)
-                ->where('course_id', $course->id)
-                ->lockForUpdate()
-                ->firstOrFail();
-            $moduleId = (int) $lockedSection->module_id;
-            $this->deletion->deleteSection($lockedSection);
-            $this->ordering->normalizeModule($lockedCourse, $moduleId);
-            $authoringVersion = $this->authoring->advance($lockedCourse);
-
-            return [
-                'success' => true,
-                'message' => 'تم حذف المحتوى',
-                'deleted_section_id' => (int) $section->id,
-                'authoring_version' => $authoringVersion,
-            ];
-        });
+        $this->sections->assertBelongsToCourse($course, $section);
+        $this->sections->assertDraft($course);
+        $validated = $request->validate(['authoring_version' => 'required|integer|min:1']);
+        $result = $this->sections->delete($course, $section, (int) $validated['authoring_version']);
 
         if ($request->expectsJson()) return response()->json($result);
 
@@ -378,8 +176,8 @@ class CourseSectionController extends Controller
      */
     public function reorder(Request $request, Course $course)
     {
-        $this->assertDraftForStagedAuthoring($course);
-        $request->validate([
+        $this->sections->assertDraft($course);
+        $validated = $request->validate([
             'sections' => 'required|array',
             'sections.*.id' => [
                 'required',
@@ -403,36 +201,9 @@ class CourseSectionController extends Controller
             'module_id.exists' => 'الوحدة المختارة لم تعد متاحة',
         ]);
 
-        $result = DB::transaction(function () use ($request, $course): array {
-            $lockedCourse = $this->authoring->lock($request, $course);
-            $this->assertDraftForStagedAuthoring($lockedCourse);
-            $this->ordering->apply($lockedCourse, (array) $request->input('sections'));
-            $authoringVersion = $this->authoring->advance($lockedCourse);
-
-            return [
-                'success' => true,
-                'authoring_version' => $authoringVersion,
-                'modules' => $this->outline->graph($lockedCourse->fresh())['modules'],
-            ];
-        });
+        $result = $this->sections->reorder($course, $validated['sections'], (int) $validated['authoring_version']);
 
         return response()->json($result);
-    }
-
-    private function assertDraftForStagedAuthoring(Course $course): void
-    {
-        if (!$course->is_coming_soon) {
-            throw ValidationException::withMessages([
-                'course' => [
-                    'حوّل الكورس إلى مسودة قبل تغيير بنية المحتوى أو الفيديو ثم أعد نشره بعد الفحص',
-                ],
-            ]);
-        }
-    }
-
-    private function ensureSectionBelongsToCourse(Course $course, CourseSection $section): void
-    {
-        abort_unless((int) $section->course_id === (int) $course->id, 404);
     }
 
     private function authoringRedirect(Course $course)

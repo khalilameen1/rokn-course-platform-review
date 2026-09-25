@@ -13,6 +13,8 @@ final class ProjectSubmissionCanonicalStateContractTest extends TestCase
         $runtimeFiles = [
             'app/Services/CourseRevisionLearnerReadService.php',
             'app/Services/ProjectSubmissionService.php',
+            'app/Services/ProjectSubmissionReviewService.php',
+            'app/Services/ProjectSubmissionEvaluationScheduler.php',
             'app/Services/CertificateEligibilityService.php',
             'app/Services/CourseModuleAccessService.php',
             'app/Http/Controllers/API/ProjectController.php',
@@ -47,7 +49,7 @@ final class ProjectSubmissionCanonicalStateContractTest extends TestCase
     public function test_project_review_cannot_mutate_an_issued_certificate_claim(): void
     {
         $source = file_get_contents(
-            dirname(__DIR__, 2) . '/app/Services/ProjectSubmissionService.php'
+            dirname(__DIR__, 2) . '/app/Services/ProjectSubmissionReviewService.php'
         );
 
         self::assertIsString($source);

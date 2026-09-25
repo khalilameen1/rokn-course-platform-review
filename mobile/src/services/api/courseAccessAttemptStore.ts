@@ -7,6 +7,7 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {secureRandomUuid} from '../../utils/secureRandom';
+import {createKeyedAsyncQueue} from '../../utils/keyedAsyncQueue';
 import {settleWithin} from '../../utils/settleWithin';
 import {isApiRecord} from './common';
 
@@ -23,24 +24,7 @@ type AttemptSpec<TIntent extends AttemptIntent> = {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const storageTails = new Map<string, Promise<void>>();
-
-const serializeStorageMutation = <T>(
-  key: string,
-  operation: () => Promise<T>,
-): Promise<T> => {
-  const previous = storageTails.get(key) ?? Promise.resolve();
-  const result = previous.then(operation, operation);
-  const tail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  storageTails.set(key, tail);
-  void tail.then(() => {
-    if (storageTails.get(key) === tail) storageTails.delete(key);
-  });
-  return result;
-};
+const serializeStorageMutation = createKeyedAsyncQueue();
 
 const storageKey = <TIntent extends AttemptIntent>(
   spec: AttemptSpec<TIntent>,

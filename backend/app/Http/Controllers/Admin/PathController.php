@@ -4,16 +4,20 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Path;
-use App\Models\Classification;
-use App\Models\Course;
+use App\Services\AdminPathReadService;
+use App\Services\AdminPathAuthoringService;
 use App\Services\AdminAuthoringCreateIntentService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 
 class PathController extends Controller
 {
+    public function __construct(
+        private readonly AdminPathReadService $read,
+        private readonly AdminPathAuthoringService $authoring
+    ) {
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -43,9 +47,7 @@ class PathController extends Controller
      */
     public function create()
     {
-        $interests = Classification::all();
-        $courses = Course::query()->orderBy('name_ar')->get();
-        return view('admin.paths.create', compact('interests', 'courses'));
+        return view('admin.paths.create', $this->read->form());
     }
 
     /**
@@ -70,24 +72,8 @@ class PathController extends Controller
             'authoring_request_id' => 'required|uuid',
         ]);
 
-        unset($validated['authoring_request_id']);
-        DB::transaction(function () use ($request, $validated, $createIntents): void {
-            $path = Path::create([
-                'title_ar' => $validated['title_ar'],
-                'title_en' => $validated['title_en'],
-            ]);
-            $path->interests()->sync($validated['interest_ids'] ?? []);
-            Course::query()
-                ->whereIn('id', $validated['course_ids'] ?? [])
-                ->get()
-                ->each(fn (Course $course) => $course->update(['path_id' => $path->id]));
-            $createIntents->completeRedirect(
-                $request,
-                route('admin.paths.index'),
-                302,
-                Path::class,
-                $path->id
-            );
+        $this->authoring->create($validated, function (Path $path) use ($request, $createIntents): void {
+            $createIntents->completeRedirect($request, route('admin.paths.index'), 302, Path::class, $path->id);
         });
 
         return redirect()->route('admin.paths.index')->with('success', 'تم إضافة المسار بنجاح');
@@ -101,11 +87,7 @@ class PathController extends Controller
      */
     public function edit($id)
     {
-        $path = Path::with(['interests', 'courses'])->findOrFail($id);
-        $interests = Classification::all();
-        $courses = Course::query()->orderBy('name_ar')->get();
-        $editorVersion = $this->editorVersion($path);
-        return view('admin.paths.edit', compact('path', 'interests', 'courses', 'editorVersion'));
+        return view('admin.paths.edit', $this->read->form((int) $id));
     }
 
     /**
@@ -117,8 +99,6 @@ class PathController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $path = Path::findOrFail($id);
-
         $validated = $request->validate([
             'title_ar' => 'required|string|max:255',
             'title_en' => 'required|string|max:255',
@@ -133,49 +113,7 @@ class PathController extends Controller
             'editor_version' => 'required|string|size:64',
         ]);
 
-        $editorVersion = (string) $validated['editor_version'];
-        unset($validated['editor_version']);
-        $courseIds = collect($validated['course_ids'] ?? [])
-            ->map(fn ($courseId): int => (int) $courseId)
-            ->unique()
-            ->sort()
-            ->values();
-        DB::transaction(function () use ($path, $validated, $editorVersion, $courseIds): void {
-            $locked = Path::query()->whereKey($path->id)->lockForUpdate()->firstOrFail();
-            $affectedCourseIds = Course::query()
-                ->where('path_id', $locked->id)
-                ->pluck('id')
-                ->merge($courseIds)
-                ->unique()
-                ->sort()
-                ->values();
-            if ($affectedCourseIds->isNotEmpty()) {
-                Course::query()
-                    ->whereIn('id', $affectedCourseIds)
-                    ->orderBy('id')
-                    ->lockForUpdate()
-                    ->get(['id']);
-            }
-            if (!hash_equals($this->editorVersion($locked), $editorVersion)) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "عدّل شخص آخر هذا المسار\nأعد تحميل الصفحة قبل الحفظ",
-                ]);
-            }
-            $locked->update([
-                'title_ar' => $validated['title_ar'],
-                'title_en' => $validated['title_en'],
-            ]);
-            $locked->interests()->sync($validated['interest_ids'] ?? []);
-            Course::query()
-                ->where('path_id', $locked->id)
-                ->whereNotIn('id', $courseIds)
-                ->get()
-                ->each(fn (Course $course) => $course->update(['path_id' => null]));
-            Course::query()
-                ->whereIn('id', $courseIds)
-                ->get()
-                ->each(fn (Course $course) => $course->update(['path_id' => $locked->id]));
-        }, 3);
+        $this->authoring->update((int) $id, $validated, (string) $validated['editor_version']);
 
         return redirect()->route('admin.paths.index')->with('success', 'تم تعديل المسار بنجاح');
     }
@@ -188,15 +126,7 @@ class PathController extends Controller
      */
     public function destroy($id)
     {
-        $path = Path::findOrFail($id);
-        $blocked = DB::transaction(function () use ($path): bool {
-            $locked = Path::query()->whereKey($path->id)->lockForUpdate()->firstOrFail();
-            if ($locked->courses()->exists()) return true;
-            $locked->interests()->detach();
-            $locked->delete();
-            return false;
-        }, 3);
-        if ($blocked) {
+        if (!$this->authoring->deleteIfUnused((int) $id)) {
             return redirect()->route('admin.paths.index')
                 ->with('error', 'انقل الكورسات إلى مسار آخر قبل حذف هذا المسار');
         }
@@ -204,18 +134,4 @@ class PathController extends Controller
         return redirect()->route('admin.paths.index')->with('success', 'تم حذف المسار بنجاح');
     }
 
-    private function editorVersion(Path $path): string
-    {
-        $path->loadMissing('interests:id');
-        return hash('sha256', json_encode([
-            $path->title_ar,
-            $path->title_en,
-            collect($path->interests->modelKeys())->map(fn ($id): int => (int) $id)->sort()->values()->all(),
-            Course::query()
-                ->orderBy('id')
-                ->get(['id', 'path_id'])
-                ->map(fn (Course $course): array => [(int) $course->id, (int) ($course->path_id ?? 0)])
-                ->all(),
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    }
 }

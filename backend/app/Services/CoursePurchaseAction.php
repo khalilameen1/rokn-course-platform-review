@@ -21,6 +21,7 @@ final class CoursePurchaseAction
 {
     public function __construct(private readonly WalletService $wallet,
         private readonly FinancialProvenanceService $provenance,
+        private readonly FinancialEntitlementHoldReadService $holds,
         private readonly CourseAccessPlanService $plans,
         private readonly CourseCouponService $coupons,
         private readonly AiEntitlementBudgetService $aiBudget) {}
@@ -37,6 +38,7 @@ final class CoursePurchaseAction
     ): array {
         $walletService = $this->wallet;
         $provenance = $this->provenance;
+        $holds = $this->holds;
         $planService = $this->plans;
         $coupons = $this->coupons;
         $aiBudget = $this->aiBudget;
@@ -45,6 +47,7 @@ final class CoursePurchaseAction
                 $course,
                 $walletService,
                 $provenance,
+                $holds,
                 $planService,
                 $coupons,
                 $aiBudget,
@@ -92,7 +95,7 @@ final class CoursePurchaseAction
                         if (
                             !$replayedOrder->isFinanciallyEffective()
                             || !$existingEnrollment->isActive()
-                            || $provenance->enrollmentHasActiveHold($existingEnrollment, ['course'])
+                            || $holds->enrollmentHasActiveHold($existingEnrollment, ['course'])
                         ) {
                             throw new \DomainException('course_purchase_not_effective');
                         }
@@ -115,7 +118,7 @@ final class CoursePurchaseAction
                     if (
                         ($existingEnrollment->order
                             && !$existingEnrollment->order->isFinanciallyEffective())
-                        || $provenance->enrollmentHasActiveHold($existingEnrollment, ['course'])
+                        || $holds->enrollmentHasActiveHold($existingEnrollment, ['course'])
                     ) {
                         throw new \DomainException('course_access_under_review');
                     }

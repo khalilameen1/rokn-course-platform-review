@@ -9,6 +9,7 @@ import {
 import type {AccountSessionBoundary} from '../constants/helpers';
 import type {CoinCheckoutAttempt} from './coinCheckoutTypes';
 import {settleWithin} from '../utils/settleWithin';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 
 type CoinCheckoutLedger = {
   attempts: CoinCheckoutAttempt[];
@@ -18,19 +19,24 @@ const CHECKOUT_ATTEMPT_KEY = '@rokn/coin-checkout-attempt/v2';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ORDER_REFERENCE_PATTERN = /^[a-zA-Z0-9_-]{8,100}$/;
-let storageTail: Promise<void> = Promise.resolve();
-
-const withStorageLock = <T>(operation: () => Promise<T>): Promise<T> => {
-  const result = storageTail.then(operation, operation);
-  storageTail = result.then(
-    () => undefined,
-    () => undefined,
-  );
-  return result;
-};
+const serializeLedgerMutation = createKeyedAsyncQueue();
 
 export const coinCheckoutOwnerKey = (boundary: AccountSessionBoundary) =>
   accountScopedStorageKey(CHECKOUT_ATTEMPT_KEY, boundary);
+
+const withStorageLock = async <T>(
+  boundary: AccountSessionBoundary,
+  operation: (storageKey: string) => Promise<T>,
+): Promise<T> => {
+  assertAccountSessionBoundary(boundary);
+  const storageKey = await coinCheckoutOwnerKey(boundary);
+  // All packages share this account's ledger, but another account must not
+  // wait for a stalled cleanup belonging to the previous session.
+  return serializeLedgerMutation(storageKey, async () => {
+    assertAccountSessionBoundary(boundary);
+    return operation(storageKey);
+  });
+};
 
 const normalizeAttempt = (value: unknown): CoinCheckoutAttempt | null => {
   if (!value || typeof value !== 'object') return null;
@@ -121,9 +127,7 @@ export const getOrCreateCoinCheckoutAttempt = async (
   expectedCoins: number,
   boundary: AccountSessionBoundary,
 ): Promise<CoinCheckoutAttempt> =>
-  withStorageLock(async () => {
-    assertAccountSessionBoundary(boundary);
-    const storageKey = await coinCheckoutOwnerKey(boundary);
+  withStorageLock(boundary, async storageKey => {
     const attempts = normalizeLedger(await getItem(storageKey));
     assertAccountSessionBoundary(boundary);
     const stored = attempts.find(attempt => attempt.packageId === packageId);
@@ -146,9 +150,7 @@ export const rememberCoinCheckoutOrder = async (
   orderRef: string,
   boundary: AccountSessionBoundary,
 ) =>
-  withStorageLock(async () => {
-    assertAccountSessionBoundary(boundary);
-    const storageKey = await coinCheckoutOwnerKey(boundary);
+  withStorageLock(boundary, async storageKey => {
     const attempts = normalizeLedger(await getItem(storageKey));
     assertAccountSessionBoundary(boundary);
     const current = attempts.find(
@@ -182,9 +184,7 @@ export const reassociateCoinCheckoutAttempt = async (
   },
   boundary: AccountSessionBoundary,
 ) =>
-  withStorageLock(async () => {
-    assertAccountSessionBoundary(boundary);
-    const storageKey = await coinCheckoutOwnerKey(boundary);
+  withStorageLock(boundary, async storageKey => {
     const attempts = normalizeLedger(await getItem(storageKey));
     assertAccountSessionBoundary(boundary);
     const replacement = normalizeAttempt({
@@ -214,9 +214,7 @@ export const clearCoinCheckoutAttempt = async (
   // Terminal server truth can be delivered while this optional cleanup waits
   // for native storage. Keep the raw operation in the existing queue so a
   // later required intent write cannot overtake its removal.
-  const cleanup = withStorageLock(async () => {
-    assertAccountSessionBoundary(boundary);
-    const storageKey = await coinCheckoutOwnerKey(boundary);
+  const cleanup = withStorageLock(boundary, async storageKey => {
     const attempts = normalizeLedger(await getItem(storageKey));
     assertAccountSessionBoundary(boundary);
     await saveAttempts(

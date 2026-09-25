@@ -8,10 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Lesson;
 use App\Models\User;
 use App\Models\WatchingLog;
-use App\Services\CourseChatAccessService;
+use App\Services\CourseEntitlementService;
 use App\Services\CourseCompletionService;
-use App\Services\CourseStagedAuthoringService;
-use App\Services\BunnyService;
+use App\Services\CourseRevisionResolver;
+use App\Services\BunnyDeliveryService;
 use App\Services\LearningEvidenceService;
 use App\Services\LearningRewardService;
 use App\Services\PlaybackCapabilityService;
@@ -24,9 +24,9 @@ final class WatchHistoryController extends Controller
 {
     public function __construct(
         private readonly LearningEvidenceService $learningEvidence,
-        private readonly CourseChatAccessService $courseAccess,
-        private readonly CourseStagedAuthoringService $stagedAuthoring,
-        private readonly BunnyService $bunny
+        private readonly CourseEntitlementService $courseAccess,
+        private readonly CourseRevisionResolver $revisionResolver,
+        private readonly BunnyDeliveryService $delivery
     ) {
     }
 
@@ -84,7 +84,7 @@ final class WatchHistoryController extends Controller
                         : null;
                     $thumbnailPath = trim((string) $log->lesson?->thumbnail_path);
                     $thumbnail = $thumbnailPath !== ''
-                        ? $this->bunny->generateBunnySignedUrl($thumbnailPath)
+                        ? $this->delivery->storageUrl($thumbnailPath)
                         : null;
 
                     return [
@@ -124,7 +124,7 @@ final class WatchHistoryController extends Controller
             ->distinct()
             ->pluck('lesson_id');
         if ($lessonIds->isEmpty()) return;
-        $current = $this->stagedAuthoring->currentLearnerEntityMap(
+        $current = $this->revisionResolver->currentLearnerEntityMap(
             Lesson::class,
             $lessonIds
         );
@@ -252,10 +252,10 @@ final class WatchHistoryController extends Controller
         $course = $lesson->course;
         $section = $lesson->courseSection;
         $archiveRevision = $course && $course->is_coming_soon
-            ? $this->stagedAuthoring->activeArchiveForCourse($course)
+            ? $this->revisionResolver->activeArchiveForCourse($course)
             : null;
         $archiveContinuation = $archiveRevision
-            ? $this->stagedAuthoring->archivedPlaybackContinuation(
+            ? $this->revisionResolver->archivedPlaybackContinuation(
                 $user,
                 $lesson,
                 $validated['playback_session_id'] ?? null

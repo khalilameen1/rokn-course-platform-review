@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Data\NotificationAuthoringInput;
 use App\Models\Course;
 use App\Models\NotificationCampaign;
 use App\Models\User;
 use App\Support\PublicDiskUrl;
+use App\Support\NotificationAudience;
+use App\Support\NotificationCampaignIntent;
 use App\Support\RoknAppLink;
-use Illuminate\Http\Request;
+use Closure;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -20,16 +23,17 @@ final readonly class AdminNotificationCampaignAuthoringService
 {
     public function __construct(
         private CoursePublishingService $publishing,
-        private AdminAuthoringCreateIntentService $createIntents,
         private StoredFileDeletionService $files,
+        private StoredFileUploadService $uploads,
+        private NotificationCampaignService $campaigns,
     ) {
     }
 
-    /** @param array<string, mixed> $validated */
-    public function author(Request $request, array $validated): NotificationCampaign
+    /** @param Closure(?NotificationCampaign):void $completeIntent */
+    public function author(NotificationAuthoringInput $input, Closure $completeIntent): NotificationCampaign
     {
-        $targetStudent = !empty($validated['user_id'])
-            ? User::query()->students()->findOrFail((int) $validated['user_id'])
+        $targetStudent = $input->targetStudentId !== null
+            ? User::query()->students()->findOrFail($input->targetStudentId)
             : null;
         if ($targetStudent && (!(bool) $targetStudent->active || $targetStudent->trashed())) {
             throw ValidationException::withMessages([
@@ -37,34 +41,34 @@ final readonly class AdminNotificationCampaignAuthoringService
             ]);
         }
 
-        $titleAr = trim((string) $validated['title_ar']);
-        $messageAr = trim((string) $validated['message_ar']);
-        $titleEn = trim((string) ($validated['title_en'] ?? '')) ?: $titleAr;
-        $messageEn = trim((string) ($validated['message_en'] ?? '')) ?: $messageAr;
-        $courseId = !empty($validated['course_id']) ? (int) $validated['course_id'] : null;
-        $audience = $targetStudent ? 'all' : (string) ($validated['audience'] ?? 'all');
+        $titleAr = trim($input->titleAr);
+        $messageAr = trim($input->messageAr);
+        $titleEn = trim((string) $input->titleEn) ?: $titleAr;
+        $messageEn = trim((string) $input->messageEn) ?: $messageAr;
+        $courseId = $input->courseId;
+        $audience = $targetStudent ? 'all' : $input->audience;
         $notificationType = $targetStudent
             ? 'admin_message'
             : (!$courseId
-                ? (($validated['notification_kind'] ?? null) === 'service'
+                ? ($input->kind === 'service'
                     ? 'service_notice'
                     : 'admin_broadcast')
                 : ($audience === 'enrolled' ? 'continue_course' : 'course_promotion'));
-        $actionLabelAr = trim((string) ($validated['action_label'] ?? '')) ?: ($courseId
+        $actionLabelAr = trim((string) $input->actionLabel) ?: ($courseId
             ? ($audience === 'enrolled' ? 'أكمل من مكانك' : 'تفاصيل الكورس')
             : 'افتح ركن');
         $link = $courseId
             ? RoknAppLink::course($courseId, !$targetStudent && $audience === 'enrolled')
-            : (RoknAppLink::normalize($validated['action_link'] ?? null) ?: 'rokn://home');
-        $scheduledAt = $this->scheduledAt($validated['send_at'] ?? null);
-        $authorId = (int) ($request->user()?->getAuthIdentifier() ?? 0);
+            : (RoknAppLink::normalize($input->actionLink) ?: 'rokn://home');
+        $scheduledAt = $this->scheduledAt($input->sendAt);
+        $authorId = $input->authorId;
         abort_if($authorId <= 0, 403);
 
         if ($courseId) {
             $this->assertCourseCanReceive($courseId, $audience, $targetStudent !== null);
         }
 
-        $requestId = strtolower((string) $validated['authoring_request_id']);
+        $requestId = strtolower($input->requestId);
         $deliveryKey = ($targetStudent
             ? 'admin-message:' . $authorId . ':' . $targetStudent->id . ':'
             : 'admin-broadcast:' . $authorId . ':') . $requestId;
@@ -78,23 +82,23 @@ final readonly class AdminNotificationCampaignAuthoringService
         if ($existing) {
             $this->assertReplayMatches(
                 $existing,
-                $request,
+                $input->image,
                 compact(
                     'notificationType', 'audience', 'courseId', 'titleAr', 'titleEn',
                     'messageAr', 'messageEn', 'actionLabelAr', 'link', 'scheduledAt',
                     'userIds', 'imageIdentity'
                 )
             );
-            $this->completeIntent($request, $existing);
+            $completeIntent($existing);
 
             return $existing;
         }
 
         $imagePath = null;
         $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $logicalPath = $this->files->trackedUploadDestination(
+        if ($input->image !== null) {
+            $image = $input->image;
+            $logicalPath = $this->uploads->trackedUploadDestination(
                 $image,
                 'student-notifications',
                 'public',
@@ -105,59 +109,47 @@ final readonly class AdminNotificationCampaignAuthoringService
             $imagePath = dirname($logicalPath) . '/' . pathinfo($logicalPath, PATHINFO_FILENAME)
                 . '-' . Str::uuid() . '.' . pathinfo($logicalPath, PATHINFO_EXTENSION);
             $this->files->trackPotentialOrphan('public', $imagePath);
-            $this->files->writeTrackedUpload($image, $imagePath, 'public', false);
+            $this->uploads->writeTrackedUpload($image, $imagePath, 'public', false);
             $imageUrl = PublicDiskUrl::from($imagePath);
         }
 
         $campaign = null;
         $committed = false;
         try {
-            DB::transaction(function () use (
-                $request,
-                $notificationType,
-                $audience,
-                $courseId,
-                $titleAr,
-                $titleEn,
-                $messageAr,
-                $messageEn,
-                $actionLabelAr,
-                $link,
-                $scheduledAt,
-                $deliveryKey,
-                $userIds,
-                $imageUrl,
-                $authorId,
-                &$campaign
-            ): void {
-                $queued = NotificationService::notifyGeneric($notificationType, $userIds, [
-                    'title_ar' => $titleAr,
-                    'title_en' => $titleEn,
-                    'message_ar' => $messageAr,
-                    'message_en' => $messageEn,
-                    'link' => $link,
-                    'notifiable_type' => $courseId ? Course::class : null,
-                    'notifiable_id' => $courseId,
-                    'course_id' => $courseId,
-                    'audience' => $audience,
-                    'delivery_key' => $deliveryKey,
-                    'image_url' => $imageUrl,
-                    'action_label_ar' => $actionLabelAr,
-                    'action_label_en' => $courseId
-                        ? ($audience === 'enrolled' ? 'Continue learning' : 'View course')
-                        : 'Open Rokn',
-                    'scheduled_at' => $scheduledAt,
-                    'authored_by' => $authorId,
-                ]);
+            $intent = new NotificationCampaignIntent(
+                notificationType: $notificationType,
+                deliveryKey: $deliveryKey,
+                audience: new NotificationAudience(
+                    selector: $audience,
+                    courseId: $courseId,
+                    userIds: $userIds
+                ),
+                titleAr: $titleAr,
+                titleEn: $titleEn,
+                messageAr: $messageAr,
+                messageEn: $messageEn,
+                notifiableType: $courseId ? Course::class : null,
+                notifiableId: $courseId,
+                link: $link,
+                imageUrl: $imageUrl,
+                actionLabelAr: $actionLabelAr,
+                actionLabelEn: $courseId
+                    ? ($audience === 'enrolled' ? 'Continue learning' : 'View course')
+                    : 'Open Rokn',
+                scheduledAt: $scheduledAt,
+                authoredBy: $authorId
+            );
+            DB::transaction(function () use ($completeIntent, $intent, &$campaign): void {
+                $queued = $this->campaigns->queue($intent);
                 $campaign = NotificationCampaign::query()
-                    ->where('delivery_key', $deliveryKey)
+                    ->where('delivery_key', $intent->deliveryKey)
                     ->first();
                 if (!$queued && !$campaign) {
                     throw ValidationException::withMessages([
                         'notification_kind' => ['هذا النوع متوقف حاليًا من إعدادات الإشعارات'],
                     ]);
                 }
-                $this->completeIntent($request, $campaign);
+                $completeIntent($campaign);
             }, 3);
             $committed = true;
         } finally {
@@ -203,7 +195,7 @@ final readonly class AdminNotificationCampaignAuthoringService
     /** @param array<string, mixed> $expected */
     private function assertReplayMatches(
         NotificationCampaign $existing,
-        Request $request,
+        ?UploadedFile $image,
         array $expected
     ): void {
         $scheduledAt = $expected['scheduledAt'];
@@ -236,11 +228,10 @@ final readonly class AdminNotificationCampaignAuthoringService
             && hash_equals((string) ($existing->link ?: ''), (string) ($expected['link'] ?: ''))
             && $sameSchedule
             && $sameUsers;
-        $replayHasImage = $request->hasFile('image');
         $samePayload = $samePayload
-            && (!$replayHasImage || $this->notificationImageMatches(
+            && ($image === null || $this->notificationImageMatches(
                 (string) $existing->image_url,
-                $request->file('image'),
+                $image,
                 $expected['imageIdentity']
             ));
         if (!$samePayload) {
@@ -261,17 +252,6 @@ final readonly class AdminNotificationCampaignAuthoringService
         return $storedIdentity !== '' && hash_equals(
             $storedIdentity,
             hash('sha256', $identityPrefix . '|' . hash_file('sha256', $image->getRealPath()))
-        );
-    }
-
-    private function completeIntent(Request $request, ?NotificationCampaign $campaign): void
-    {
-        $this->createIntents->completeRedirect(
-            $request,
-            route('admin.notifications.index'),
-            302,
-            $campaign ? NotificationCampaign::class : null,
-            $campaign?->id
         );
     }
 }

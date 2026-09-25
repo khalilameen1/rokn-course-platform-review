@@ -42,7 +42,7 @@ final class CourseAttachmentLearnerLifecycleTest extends TestCase
         // entitlement and the signed HTTP routes remain real here.
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->andReturn(['ready' => true, 'issues' => []]);
-        $this->revisions = new CourseStagedAuthoringService($publishing);
+        $this->revisions = $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
         $this->course = (new Course())->forceFill([
             'tenant_id' => 1, 'name_ar' => 'كورس الملفات', 'description_ar' => 'وصف',
             'price' => 0, 'is_coming_soon' => false, 'is_catalog_visible' => true,

@@ -17,7 +17,7 @@ jest.mock('react-redux', () =>
 jest.mock('../src/navigation/RootNavigationHelper', () => ({
   navigationRef: mockNavigationRef,
 }));
-jest.mock('../src/services/pushNotifications', () => ({
+jest.mock('../src/services/pushNotificationNavigation', () => ({
   flushPendingNotificationNavigation: async () => undefined,
   setNotificationNavigationReady: jest.fn(),
 }));

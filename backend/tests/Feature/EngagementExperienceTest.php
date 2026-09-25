@@ -16,7 +16,8 @@ use App\Models\RewardRule;
 use App\Models\Setting;
 use App\Models\StudentNotification;
 use App\Models\User;
-use App\Services\StudentNotificationService;
+use App\Services\WelcomeRewardService;
+use App\Services\WelcomeRewardOfferService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -128,9 +129,9 @@ final class EngagementExperienceTest extends TestCase
             'wallet_purchased_coins' => 0,
         ])->save();
 
-        self::assertSame(29, StudentNotificationService::sendRegistrationBonus($user));
+        self::assertSame(29, app(WelcomeRewardService::class)->grant($user));
         self::assertSame(29, (int) $user->fresh()->wallet_reward_coins);
-        self::assertSame(0, StudentNotificationService::sendRegistrationBonus($user));
+        self::assertSame(0, app(WelcomeRewardService::class)->grant($user));
     }
 
     public function test_login_offer_refreshes_after_settings_save_and_matches_the_actual_grant(): void
@@ -160,7 +161,7 @@ final class EngagementExperienceTest extends TestCase
             ->json('data.recommended_provider_total_coins');
 
         $user = $this->student('fresh-offer-google@rokn.test', 'google');
-        $granted = StudentNotificationService::sendRegistrationBonus($user, 'google');
+        $granted = app(WelcomeRewardService::class)->grant($user, 'google');
 
         self::assertSame($promised, $granted);
         self::assertSame($promised, (int) $user->fresh()->wallet_reward_coins);
@@ -198,7 +199,7 @@ final class EngagementExperienceTest extends TestCase
             ->json('data.recommended_provider_total_coins');
 
         $user = $this->student('fresh-rule-google@rokn.test', 'google');
-        $granted = StudentNotificationService::sendRegistrationBonus($user, 'google');
+        $granted = app(WelcomeRewardService::class)->grant($user, 'google');
 
         self::assertSame($promised, $granted);
         self::assertSame($promised, (int) $user->fresh()->wallet_reward_coins);
@@ -241,12 +242,12 @@ final class EngagementExperienceTest extends TestCase
         $facebookUser = $this->student('fresh-offer-facebook@rokn.test', 'facebook');
         self::assertSame(
             $promised,
-            StudentNotificationService::sendRegistrationBonus($facebookUser, 'facebook')
+            app(WelcomeRewardService::class)->grant($facebookUser, 'facebook')
         );
         self::assertSame($promised, (int) $facebookUser->fresh()->wallet_reward_coins);
 
         $googleUser = $this->student('base-offer-google@rokn.test', 'google');
-        self::assertSame(20, StudentNotificationService::sendRegistrationBonus($googleUser, 'google'));
+        self::assertSame(20, app(WelcomeRewardService::class)->grant($googleUser, 'google'));
         self::assertSame(20, (int) $googleUser->fresh()->wallet_reward_coins);
     }
 
@@ -266,9 +267,9 @@ final class EngagementExperienceTest extends TestCase
             'wallet_purchased_coins' => 0,
         ])->save();
 
-        self::assertSame(20, StudentNotificationService::registrationBonusOffer());
-        self::assertSame(0, StudentNotificationService::registrationBonusOffer('google'));
-        self::assertSame(0, StudentNotificationService::sendRegistrationBonus($user, 'google'));
+        self::assertSame(20, app(WelcomeRewardOfferService::class)->amountForProvider());
+        self::assertSame(0, app(WelcomeRewardOfferService::class)->amountForProvider('google'));
+        self::assertSame(0, app(WelcomeRewardService::class)->grant($user, 'google'));
         $this->assertDatabaseMissing('wallet_transactions', [
             'user_id' => $user->id,
             'category' => 'welcome_bonus',

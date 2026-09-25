@@ -4,84 +4,32 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Exceptions\RewardGrantDeferred;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\Project;
 use App\Models\RewardRule;
-use App\Models\Setting;
 use App\Models\User;
 use App\Models\UserDailyLearningActivity;
 use App\Models\WalletTransaction;
 use App\Support\DatabaseCapabilities;
-use Carbon\CarbonImmutable;
 use App\Support\BusinessClock;
 use Illuminate\Support\Facades\DB;
 
+/** Records earned activity contracts; delegates wallet settlement to the credit owner. */
 final class LearningRewardService
 {
-    private const DEFAULT_REWARD_BALANCE_CAP = 1200;
-    private const DEFAULT_REWARD_CONTRIBUTION_PER_COURSE = 1200;
-    private const TEMPORARY_BALANCE_CAP_RETRY_HOURS = 12;
-
     public function __construct(
         private readonly WalletService $wallet,
-        private readonly CourseChatAccessService $courseAccess
+        private readonly CourseEntitlementService $courseAccess,
+        private readonly LearningRewardCreditService $credits
     ) {
-    }
-
-    public function configuration(): array
-    {
-        $settings = $this->settings();
-        $welcome = RewardRule::activeFor('welcome_bonus');
-        $daily = RewardRule::activeFor('daily_checkin');
-        $streak = RewardRule::activeFor('streak_milestone');
-        $study = RewardRule::activeFor('study_session');
-        $firstProject = RewardRule::activeFor('first_project_passed');
-        $courseCompletion = RewardRule::activeFor('course_completed');
-
-        return [
-            'reward_timezone' => $this->rewardTimezone(),
-            'welcome_bonus_coins' => (int) ($welcome?->coins_amount ?? 0),
-            'reward_balance_cap' => (int) $settings->reward_balance_cap,
-            'max_reward_contribution_per_course' => (int) $settings->max_reward_contribution_per_course,
-            'max_course_promotion_percent' => min(20, max(0, (int) ($settings->max_course_promotion_percent ?? config('course_plans.max_promotion_percent', 20)))),
-            'daily' => [
-                'enabled' => $daily !== null,
-                'coins' => (int) ($daily?->coins_amount ?? 0),
-                'rolling_30_day_cap' => (int) ($daily?->rolling_30_day_cap ?? 0),
-            ],
-            'streak' => [
-                'enabled' => $streak !== null,
-                'days' => (int) ($streak?->interval_count ?? 0),
-                'coins' => (int) ($streak?->coins_amount ?? 0),
-                'rolling_30_day_cap' => (int) ($streak?->rolling_30_day_cap ?? 0),
-            ],
-            'study' => [
-                'enabled' => $study !== null,
-                'coins' => (int) ($study?->coins_amount ?? 0),
-                'qualified_minutes' => (int) ($study?->interval_count ?? 0),
-                'daily_cap' => (int) ($study?->daily_cap ?? 0),
-                'rolling_30_day_cap' => (int) ($study?->rolling_30_day_cap ?? 0),
-            ],
-            'first_project' => [
-                'enabled' => $firstProject !== null,
-                'coins' => (int) ($firstProject?->coins_amount ?? 0),
-                'lifetime_cap' => (int) ($firstProject?->rolling_30_day_cap ?? 0),
-            ],
-            'course_completion' => [
-                'enabled' => $courseCompletion !== null,
-                'coins' => (int) ($courseCompletion?->coins_amount ?? 0),
-                'rolling_30_day_cap' => (int) ($courseCompletion?->rolling_30_day_cap ?? 0),
-            ],
-        ];
     }
 
     public function claimDaily(User $user): array
     {
         $dailyRule = RewardRule::activeFor('daily_checkin');
         $streakRule = RewardRule::activeFor('streak_milestone');
-        $today = $this->rewardNow()->toDateString();
+        $today = BusinessClock::now()->toDateString();
         $contracts = DB::transaction(function () use (
             $user,
             $today,
@@ -116,14 +64,14 @@ final class LearningRewardService
         }, 3);
 
         $dailyContract = $contracts['daily'];
-        $transaction = $dailyContract ? $this->award(
-            $user,
-            (int) $dailyContract['coins_amount'],
-            'daily_learning_reward',
-            "daily-learning:{$user->id}:{$today}",
-            (int) $dailyContract['rolling_30_day_cap'],
-            RewardRule::query()->find($dailyContract['rule_id']),
-            ['activity_date' => $today, 'reward_rule_id' => $dailyContract['rule_id']]
+        $transaction = $dailyContract ? $this->credits->credit(
+            user: $user,
+            requested: (int) $dailyContract['coins_amount'],
+            category: 'daily_learning_reward',
+            idempotencyKey: "daily-learning:{$user->id}:{$today}",
+            rollingCap: (int) $dailyContract['rolling_30_day_cap'],
+            source: RewardRule::query()->find($dailyContract['rule_id']),
+            metadata: ['activity_date' => $today, 'reward_rule_id' => $dailyContract['rule_id']]
         ) : null;
 
         $streakDays = $this->currentCheckinStreak((int) $user->id);
@@ -131,14 +79,14 @@ final class LearningRewardService
         $milestoneDays = max(2, (int) ($streakContract['interval_count'] ?? 7));
         $streakTransaction = null;
         if ($streakContract && $streakDays > 0 && $streakDays % $milestoneDays === 0) {
-            $streakTransaction = $this->award(
-                $user,
-                (int) $streakContract['coins_amount'],
-                'streak_reward',
-                "streak-reward:{$user->id}:{$today}",
-                (int) $streakContract['rolling_30_day_cap'],
-                RewardRule::query()->find($streakContract['rule_id']),
-                [
+            $streakTransaction = $this->credits->credit(
+                user: $user,
+                requested: (int) $streakContract['coins_amount'],
+                category: 'streak_reward',
+                idempotencyKey: "streak-reward:{$user->id}:{$today}",
+                rollingCap: (int) $streakContract['rolling_30_day_cap'],
+                source: RewardRule::query()->find($streakContract['rule_id']),
+                metadata: [
                     'reward_rule_id' => $streakContract['rule_id'],
                     'milestone_days' => $streakDays,
                     'configured_interval_days' => $milestoneDays,
@@ -166,7 +114,7 @@ final class LearningRewardService
         }
 
         $rule = RewardRule::activeFor('study_session');
-        $today = $this->rewardNow()->toDateString();
+        $today = BusinessClock::now()->toDateString();
         $activity = DB::transaction(function () use ($user, $today, $seconds, $rule) {
             // One atomic insert protects the daily row from concurrent player
             // heartbeats. The previous select-then-create sequence could race
@@ -231,14 +179,14 @@ final class LearningRewardService
         $last = null;
         $sourceRule = RewardRule::query()->find((int) ($contract['rule_id'] ?? 0));
         for ($sequence = $creditedSlots + 1; $sequence <= $targetSlots; $sequence++) {
-            $last = $this->award(
-                $user,
-                $coinsPerSlot,
-                'study_reward',
-                "study-reward:{$user->id}:{$today}:{$sequence}",
-                (int) ($contract['rolling_30_day_cap'] ?? 0),
-                $sourceRule,
-                [
+            $last = $this->credits->credit(
+                user: $user,
+                requested: $coinsPerSlot,
+                category: 'study_reward',
+                idempotencyKey: "study-reward:{$user->id}:{$today}:{$sequence}",
+                rollingCap: (int) ($contract['rolling_30_day_cap'] ?? 0),
+                source: $sourceRule,
+                metadata: [
                     'reward_rule_id' => (int) ($contract['rule_id'] ?? 0),
                     'activity_date' => $today,
                     'qualified_seconds' => (int) $activity->qualified_seconds,
@@ -279,15 +227,15 @@ final class LearningRewardService
         if (!$contract) {
             return $this->result($user, null);
         }
-        $transaction = $this->award(
-            $user,
-            (int) $contract['coins_amount'],
-            'first_project_reward',
-            "first-project-reward:{$user->id}",
-            (int) $contract['rolling_30_day_cap'],
-            RewardRule::query()->find((int) $contract['rule_id']),
-            ['project_id' => $projectId, 'reward_rule_id' => $contract['rule_id']],
-            true
+        $transaction = $this->credits->credit(
+            user: $user,
+            requested: (int) $contract['coins_amount'],
+            category: 'first_project_reward',
+            idempotencyKey: "first-project-reward:{$user->id}",
+            rollingCap: (int) $contract['rolling_30_day_cap'],
+            source: RewardRule::query()->find((int) $contract['rule_id']),
+            metadata: ['project_id' => $projectId, 'reward_rule_id' => $contract['rule_id']],
+            deferOnCap: true
         );
 
         return $this->result($user, $transaction);
@@ -309,148 +257,18 @@ final class LearningRewardService
         if (!$contract) {
             return $this->result($user, null);
         }
-        $transaction = $this->award(
-            $user,
-            (int) $contract['coins_amount'],
-            'course_completion_reward',
-            "course-completion-reward:{$user->id}:{$course->id}",
-            (int) $contract['rolling_30_day_cap'],
-            RewardRule::query()->find((int) $contract['rule_id']),
-            ['course_id' => $course->id, 'reward_rule_id' => $contract['rule_id']],
-            true
+        $transaction = $this->credits->credit(
+            user: $user,
+            requested: (int) $contract['coins_amount'],
+            category: 'course_completion_reward',
+            idempotencyKey: "course-completion-reward:{$user->id}:{$course->id}",
+            rollingCap: (int) $contract['rolling_30_day_cap'],
+            source: RewardRule::query()->find((int) $contract['rule_id']),
+            metadata: ['course_id' => $course->id, 'reward_rule_id' => $contract['rule_id']],
+            deferOnCap: true
         );
 
         return $this->result($user, $transaction);
-    }
-
-    private function award(
-        User $user,
-        int $requested,
-        string $category,
-        string $idempotencyKey,
-        int $rollingCap,
-        $source = null,
-        array $metadata = [],
-        bool $deferOnCap = false
-    ): ?WalletTransaction {
-        $requested = max(0, $requested);
-        if ($requested === 0) {
-            return null;
-        }
-
-        return DB::transaction(function () use (
-            $user,
-            $requested,
-            $category,
-            $idempotencyKey,
-            $rollingCap,
-            $source,
-            $metadata,
-            $deferOnCap
-        ): ?WalletTransaction {
-            // All reward sources share the same user aggregate lock. This keeps
-            // two different simultaneous rewards from each seeing stale room
-            // under the balance or rolling cap.
-            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
-            if (WalletTransaction::query()
-                ->where('user_id', $lockedUser->id)
-                ->where('idempotency_key', $idempotencyKey)
-                ->exists()) {
-                return null;
-            }
-
-            $settings = $this->settings();
-            $rollingTotal = (int) WalletTransaction::query()
-                ->where('user_id', $lockedUser->id)
-                ->where('category', $category)
-                ->where('direction', WalletTransaction::DIRECTION_CREDIT)
-                ->where('occurred_at', '>=', $this->rewardNow()->subDays(30))
-                ->sum('amount');
-            $rollingRoom = max(0, $rollingCap - $rollingTotal);
-            $balances = $this->wallet->balances($lockedUser);
-            $balanceRoom = max(
-                0,
-                (int) $settings->reward_balance_cap - $balances['reward']
-            );
-            // A displayed reward is one commercial promise. Crediting a
-            // smaller remainder would consume its one-time idempotency key
-            // while silently paying fewer coins than the configured amount.
-            if ($requested > $rollingRoom || $requested > $balanceRoom) {
-                $balanceCap = max(0, (int) $settings->reward_balance_cap);
-                $canEverFit = $requested <= $rollingCap && $requested <= $balanceCap;
-                if ($deferOnCap && $canEverFit) {
-                    $retryAt = $this->rewardNow()
-                        ->addHours(self::TEMPORARY_BALANCE_CAP_RETRY_HOURS)
-                        ->utc();
-                    if ($requested > $rollingRoom) {
-                        $rollingRetryAt = $this->rollingCapRetryAt(
-                            (int) $lockedUser->id,
-                            $category,
-                            $requested,
-                            $rollingCap,
-                            $rollingTotal
-                        );
-                        if ($rollingRetryAt && $rollingRetryAt->greaterThan($retryAt)) {
-                            $retryAt = $rollingRetryAt;
-                        }
-                    }
-
-                    throw new RewardGrantDeferred($retryAt);
-                }
-
-                return null;
-            }
-
-            return $this->wallet->credit(
-                $lockedUser->id,
-                $requested,
-                $category,
-                $idempotencyKey,
-                $source,
-                $metadata + [
-                    'requested_amount' => $requested,
-                    'reward_balance_cap' => (int) $settings->reward_balance_cap,
-                    'rolling_30_day_cap' => $rollingCap,
-                    'reward_timezone' => $this->rewardTimezone(),
-                ],
-                WalletTransaction::BUCKET_REWARD
-            );
-        }, 3);
-    }
-
-    private function rollingCapRetryAt(
-        int $userId,
-        string $category,
-        int $requested,
-        int $rollingCap,
-        int $rollingTotal
-    ): ?CarbonImmutable {
-        $amountThatMustExpire = max(0, $rollingTotal + $requested - $rollingCap);
-        if ($amountThatMustExpire === 0) {
-            return null;
-        }
-
-        $expiringAmount = 0;
-        $credits = WalletTransaction::query()
-            ->where('user_id', $userId)
-            ->where('category', $category)
-            ->where('direction', WalletTransaction::DIRECTION_CREDIT)
-            ->where('occurred_at', '>=', $this->rewardNow()->subDays(30))
-            ->orderBy('occurred_at')
-            ->orderBy('id')
-            ->get(['amount', 'occurred_at']);
-        foreach ($credits as $credit) {
-            $expiringAmount += max(0, (int) $credit->amount);
-            if ($expiringAmount >= $amountThatMustExpire) {
-                return CarbonImmutable::parse($credit->occurred_at)
-                    ->setTimezone($this->rewardTimezone())
-                    ->addDays(30)
-                    ->addSecond()
-                    ->utc();
-            }
-        }
-
-        return null;
     }
 
     private function result(User $user, ?WalletTransaction $transaction, array $extra = []): array
@@ -469,24 +287,6 @@ final class LearningRewardService
         ];
     }
 
-    private function settings(): Setting
-    {
-        $settings = Setting::query()->first();
-        if ($settings) {
-            return $settings;
-        }
-
-        // Public configuration and reward reads must never create the global
-        // settings row. Apart from making GET mutate state, firstOrCreate([])
-        // could race on a fresh installation because the table has no natural
-        // singleton key. The dashboard remains the sole explicit creator; the
-        // service uses the same migration defaults until that first save.
-        return (new Setting())->forceFill([
-            'reward_balance_cap' => self::DEFAULT_REWARD_BALANCE_CAP,
-            'max_reward_contribution_per_course' => self::DEFAULT_REWARD_CONTRIBUTION_PER_COURSE,
-        ]);
-    }
-
     private function currentCheckinStreak(int $userId): int
     {
         $dates = DB::table('user_reward_checkins')
@@ -496,7 +296,7 @@ final class LearningRewardService
             ->map(fn ($date): string => (string) $date)
             ->all();
 
-        $expected = $this->rewardNow()->startOfDay();
+        $expected = BusinessClock::now()->startOfDay();
         $streak = 0;
         foreach ($dates as $date) {
             if ($date !== $expected->toDateString()) {
@@ -507,16 +307,6 @@ final class LearningRewardService
         }
 
         return $streak;
-    }
-
-    private function rewardTimezone(): string
-    {
-        return BusinessClock::timezoneName();
-    }
-
-    private function rewardNow(): CarbonImmutable
-    {
-        return BusinessClock::now();
     }
 
     private function encodeRuleSnapshot(?RewardRule $rule): ?string

@@ -11,20 +11,22 @@ use App\Models\OperatingCostPool;
 use App\Models\Setting;
 use App\Services\CourseCostReportService;
 use App\Services\AdminAuthoringCreateIntentService;
+use App\Services\AdminOperatingCostAuthoringService;
 use App\Services\PlatformCommercialReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 use App\Support\CsvCell;
-use App\Support\AdminEditorVersion;
-use App\Support\AdminSingletonLock;
-use Illuminate\Validation\ValidationException;
+use App\Support\OperatingCostEditorVersion;
 
 final class OperatingCostPoolController extends Controller
 {
+    public function __construct(private readonly AdminOperatingCostAuthoringService $authoring)
+    {
+    }
+
     public function index(Request $request): View
     {
         $filters = $request->validate([
@@ -59,13 +61,10 @@ final class OperatingCostPoolController extends Controller
             ? OperatingCostPool::query()->with(['course' => fn ($query) => $query->withTrashed()])->findOrFail((int) $request->input('edit_cost'))
             : null;
         $poolEditorVersions = $pools->getCollection()->mapWithKeys(
-            fn (OperatingCostPool $pool): array => [$pool->id => $this->editorVersion($pool)]
+            fn (OperatingCostPool $pool): array => [$pool->id => OperatingCostEditorVersion::for($pool)]
         );
-        $editPoolEditorVersion = $editPool ? $this->editorVersion($editPool) : null;
-        $exchangeRateEditorVersion = AdminEditorVersion::for(
-            $settings,
-            ['openrouter_usd_to_egp_rate']
-        );
+        $editPoolEditorVersion = $editPool ? OperatingCostEditorVersion::for($editPool) : null;
+        $exchangeRateEditorVersion = OperatingCostEditorVersion::exchangeRate($settings);
 
         $actualRows = $summaryRows->filter(fn ($row): bool => (bool) $row->is_final);
         $estimatedRows = $summaryRows->reject(fn ($row): bool => (bool) $row->is_final);
@@ -88,11 +87,9 @@ final class OperatingCostPoolController extends Controller
     public function store(Request $request, AdminAuthoringCreateIntentService $createIntents): RedirectResponse
     {
         $data = $this->validated($request);
-        $this->assertInvoiceCourse($data);
-        DB::transaction(function () use ($request, $data, $createIntents): void {
-            $pool = OperatingCostPool::query()->create($data + ['created_by' => $request->user()->id]);
+        $this->authoring->create($data, (int) $request->user()->id, function (OperatingCostPool $pool) use ($request, $createIntents): void {
             $createIntents->completeRedirect($request, url()->previous(), 302, OperatingCostPool::class, $pool->id);
-        }, 3);
+        });
 
         return back()->with('success', $data['is_final']
             ? 'تم حفظ الفاتورة النهائية لتقارير التشغيل.'
@@ -101,19 +98,12 @@ final class OperatingCostPoolController extends Controller
 
     public function update(Request $request, OperatingCostPool $operatingCost): RedirectResponse
     {
-        $request->validate(['editor_version' => 'required|string|size:64']);
-        $data = $this->validated($request);
-        $this->assertInvoiceCourse($data, $operatingCost);
-        DB::transaction(function () use ($request, $operatingCost, $data): void {
-            $locked = OperatingCostPool::query()->whereKey($operatingCost->id)
-                ->lockForUpdate()->firstOrFail();
-            if (!hash_equals($this->editorVersion($locked), (string) $request->input('editor_version'))) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                ]);
-            }
-            $locked->update($data);
-        }, 3);
+        $version = $request->validate(['editor_version' => 'required|string|size:64']);
+        $this->authoring->update(
+            (int) $operatingCost->id,
+            $this->validated($request),
+            (string) $version['editor_version']
+        );
 
         return back()->with('success', 'تم تحديث تكلفة التشغيل.');
     }
@@ -121,16 +111,7 @@ final class OperatingCostPoolController extends Controller
     public function destroy(Request $request, OperatingCostPool $operatingCost): RedirectResponse
     {
         $validated = $request->validate(['editor_version' => 'required|string|size:64']);
-        DB::transaction(function () use ($operatingCost, $validated): void {
-            $locked = OperatingCostPool::query()->whereKey($operatingCost->id)
-                ->lockForUpdate()->firstOrFail();
-            if (!hash_equals($this->editorVersion($locked), (string) $validated['editor_version'])) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّرت فاتورة التشغيل منذ فتح الصفحة\nأعد تحميلها قبل الحذف",
-                ]);
-            }
-            $locked->delete();
-        }, 3);
+        $this->authoring->delete((int) $operatingCost->id, (string) $validated['editor_version']);
 
         return back()->with('success', 'تم حذف بند التكلفة.');
     }
@@ -141,24 +122,10 @@ final class OperatingCostPoolController extends Controller
             'openrouter_usd_to_egp_rate' => ['required', 'numeric', 'min:0.0001', 'max:10000'],
             'editor_version' => ['required', 'string', 'size:64'],
         ]);
-        $editorVersion = (string) $data['editor_version'];
-        unset($data['editor_version']);
-        DB::transaction(function () use ($data, $editorVersion): void {
-            AdminSingletonLock::acquire('settings');
-            $setting = Setting::query()->lockForUpdate()->first();
-            if (!$setting) {
-                $setting = new Setting();
-            }
-            if (!hash_equals(AdminEditorVersion::for(
-                $setting,
-                ['openrouter_usd_to_egp_rate']
-            ), $editorVersion)) {
-                throw ValidationException::withMessages([
-                    'editor_version' => "تغيّر سعر التحويل منذ فتح الصفحة\nأعد تحميلها قبل الحفظ",
-                ]);
-            }
-            $setting->fill($data)->save();
-        }, 3);
+        $this->authoring->updateExchangeRate(
+            (float) $data['openrouter_usd_to_egp_rate'],
+            (string) $data['editor_version']
+        );
 
         return back()->with('success', 'تم تحديث سعر تحويل تكلفة OpenRouter للتقارير الجديدة.');
     }
@@ -281,32 +248,9 @@ final class OperatingCostPoolController extends Controller
         ]);
     }
 
-    private function editorVersion(OperatingCostPool $pool): string
-    {
-        return AdminEditorVersion::for($pool, [
-            'name', 'service_key', 'course_id', 'period_start', 'period_end',
-            'amount', 'currency', 'fx_rate_to_egp', 'allocation_driver',
-            'is_final', 'notes',
-        ]);
-    }
-
     private function invoiceCourses(): \Illuminate\Database\Eloquent\Builder
     {
         return Course::withTrashed()->whereNotIn('courses.id',
             CourseAuthoringRevision::query()->select('revision_course_id'));
     }
-
-    private function assertInvoiceCourse(array $data, ?OperatingCostPool $existing = null): void
-    {
-        $courseId = $data['course_id'] ?? null;
-        // Keep historical attribution when editing an existing invoice; never
-        // silently move an old invoice onto today's canonical course.
-        if ($courseId === null || ($existing !== null && (int) $existing->course_id === (int) $courseId)) {
-            return;
-        }
-        if (CourseAuthoringRevision::query()->where('revision_course_id', $courseId)->exists()) {
-            throw ValidationException::withMessages(['course_id' => 'اختر الكورس الأصلي، وليس نسخة التأليف.']);
-        }
-    }
-
 }

@@ -12,7 +12,7 @@ use App\Models\User;
 final readonly class UserPathProgressService
 {
     public function __construct(
-        private FinancialProvenanceService $financialProvenance,
+        private FinancialEntitlementHoldReadService $holds,
         private CourseSectionSequenceService $sectionSequence,
         private CourseRevisionLearnerReadService $revisionReads,
         private CourseCatalogueQueryService $catalogue
@@ -44,7 +44,7 @@ final readonly class UserPathProgressService
             ])
             ->get()
             ->reject(fn (CourseEnrollment $enrollment): bool =>
-                $this->financialProvenance->enrollmentHasActiveHold($enrollment, ['course'])
+                $this->holds->enrollmentHasActiveHold($enrollment, ['course'])
             )
             ->values();
 

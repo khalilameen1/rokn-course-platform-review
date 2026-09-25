@@ -10,6 +10,8 @@ use App\Models\PortfolioItem;
 use App\Models\PortfolioVideoUpload;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
+use App\Services\BunnyMediaRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
@@ -27,6 +29,8 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
 
     private PortfolioItem $item;
     private \Mockery\MockInterface $bunny;
+    private \Mockery\MockInterface $delivery;
+    private \Mockery\MockInterface $mediaRegistry;
 
     protected function setUp(): void
     {
@@ -47,7 +51,11 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
             'expected_media_count' => 1,
             'is_public' => false,
         ]);
+        $this->delivery = Mockery::mock(BunnyDeliveryService::class);
+        $this->app->instance(BunnyDeliveryService::class, $this->delivery);
         $this->bunny = Mockery::mock(BunnyService::class);
+        $this->mediaRegistry = Mockery::mock(BunnyMediaRegistry::class);
+        $this->app->instance(BunnyMediaRegistry::class, $this->mediaRegistry);
         $this->bunny->shouldReceive('createVideo')->andReturn(
             ['guid' => self::VIDEO_ID],
             ['guid' => '44444444-4444-4444-8444-444444444444']
@@ -57,7 +65,7 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
             'authorization_expires_at' => now()->addMinutes(30)->toIso8601String(),
             'authorization_expires_in_seconds' => 1800,
         ]);
-        $this->bunny->shouldReceive('queueVideoCleanup')->andReturnUsing(
+        $this->mediaRegistry->shouldReceive('queueVideoCleanup')->andReturnUsing(
             fn (string $guid, $lessonId, string $reason, int $hours): BunnyVideoCleanupCandidate =>
                 BunnyVideoCleanupCandidate::query()->updateOrCreate(['video_guid' => $guid], [
                     'reason' => $reason,
@@ -71,8 +79,8 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
             'state' => 'ok',
             'details' => ['status' => 4, 'encodeProgress' => 100],
         ]);
-        $this->bunny->shouldReceive('getSignedEmbedUrl')->andReturn(['url' => 'https://video.example.test/embed']);
-        $this->bunny->shouldReceive('getSignedPlayUrl')->andReturn(['url' => 'https://video.example.test/play.m3u8']);
+        $this->delivery->shouldReceive('videoEmbed')->andReturn(['url' => 'https://video.example.test/embed']);
+        $this->delivery->shouldReceive('videoPlayback')->andReturn(['url' => 'https://video.example.test/play.m3u8']);
         $this->app->instance(BunnyService::class, $this->bunny);
     }
 
@@ -116,9 +124,9 @@ final class PortfolioVideoReplayAfterDeletionTest extends TestCase
     public function test_a_deleted_image_request_cannot_be_reused_to_allocate_a_video(): void
     {
         $this->bunny->shouldReceive('uploadFileToStorage')->once()->andReturn('portfolio/accepted-image.jpg');
-        $this->bunny->shouldReceive('consumeStorageCleanupCandidate')->andReturnNull();
-        $this->bunny->shouldReceive('generateBunnySignedUrl')->andReturn('https://cdn.example.test/accepted-image.jpg');
-        $this->bunny->shouldReceive('queueStorageCleanup')->andReturnTrue();
+        $this->mediaRegistry->shouldReceive('consumeStorageCleanupCandidate')->andReturnNull();
+        $this->delivery->shouldReceive('storageUrl')->andReturn('https://cdn.example.test/accepted-image.jpg');
+        $this->mediaRegistry->shouldReceive('queueStorageCleanup')->andReturnTrue();
         $mediaId = $this->post('/api/v1/portfolio/'.$this->item->id.'/media', [
             'client_request_id' => self::REQUEST_ID,
             'file' => UploadedFile::fake()->image('work.jpg', 10, 10)->size(2),

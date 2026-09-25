@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\AdminCoursePdfApplicationService;
 use App\Services\CoursePublishingService;
 use App\Services\CourseStagedAuthoringService;
+use App\Services\CourseRevisionResolver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -225,7 +226,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         self::assertSame('دليل الهاتف', $copy->fresh()->title);
         self::assertSame($currentPath, $copy->fresh()->file_path);
         Storage::disk('course-pdfs-shared')->assertExists($currentPath);
-        self::assertSame($copy->id, app(CourseStagedAuthoringService::class)->currentEntityId(CoursePdf::class, $old->id));
+        self::assertSame($copy->id, app(CourseRevisionResolver::class)->currentEntityId(CoursePdf::class, $old->id));
         self::assertSame('https://example.org/original.zip', $old->fresh()->external_url);
         Http::assertNothingSent();
     }
@@ -240,7 +241,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         ]);
         $publishing = Mockery::mock(CoursePublishingService::class);
         $publishing->shouldReceive('audit')->once()->andReturn(['ready' => true, 'issues' => []]);
-        $revisions = new CourseStagedAuthoringService($publishing);
+        $revisions = $this->app->makeWith(CourseStagedAuthoringService::class, ['publishing' => $publishing]);
         $draft = $revisions->draftFor($canonical);
         $copy = $draft->pdfs()->firstOrFail();
         self::assertNotSame($old->id, $copy->id);
@@ -256,7 +257,7 @@ final class CourseExternalAttachmentLifecycleTest extends TestCase
         self::assertSame('external', $current->source_type);
         self::assertSame('mobile', $current->platform);
         self::assertSame('https://example.org/revised.zip', $current->external_url);
-        self::assertSame($current->id, $revisions->currentEntityId(CoursePdf::class, $old->id));
+        self::assertSame($current->id, app(CourseRevisionResolver::class)->currentEntityId(CoursePdf::class, $old->id));
         $archive = $published['archive']->pdfs()->firstOrFail();
         self::assertSame('computer', $archive->platform);
         self::assertSame('https://example.org/original.zip', $archive->external_url);

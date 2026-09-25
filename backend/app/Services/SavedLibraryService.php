@@ -18,8 +18,8 @@ final class SavedLibraryService
     private const REVISION_MATERIALIZATION_BATCH = 250;
 
     public function __construct(
-        private readonly CourseChatAccessService $courseAccess,
-        private readonly CourseStagedAuthoringService $revisions
+        private readonly CourseEntitlementService $courseAccess,
+        private readonly CourseRevisionResolver $revisions
     ) {}
 
     public function savedLessons(User $user, int $perPage): LengthAwarePaginator

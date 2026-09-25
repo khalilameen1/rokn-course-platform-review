@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {learnerDraftStorage} from './learnerDraftStorage';
 
 import {
   accountScopedStorageKey,
@@ -20,7 +21,7 @@ export type ProjectSubmissionDraft = {
   updatedAt: number;
 };
 
-const KEY = '@rokn/project-editor-draft/v1';
+const KEY = learnerDraftStorage.projectEditor.namespace;
 const TTL_MS = 14 * 24 * 60 * 60 * 1000;
 const MAX_BYTES = 25 * 1024 * 1024;
 const draftOperations = new Map<string, Promise<unknown>>();

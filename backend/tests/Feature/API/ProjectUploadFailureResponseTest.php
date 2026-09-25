@@ -7,7 +7,7 @@ namespace Tests\Feature\API;
 use App\Http\Middleware\RequireProductFeature;
 use App\Models\Project;
 use App\Services\AiConsentService;
-use App\Services\ProjectSubmissionOrchestrator;
+use App\Services\ProjectSubmissionFilePolicy;
 use App\Services\ProjectSubmissionService;
 use Illuminate\Contracts\Filesystem\Factory as FilesystemFactory;
 use Illuminate\Http\UploadedFile;
@@ -38,6 +38,17 @@ final class ProjectUploadFailureResponseTest extends ApiTestCase
         $disk = Mockery::mock();
         $disk->shouldReceive('putFileAs')
             ->once()
+            ->withArgs(static function (string $directory, UploadedFile $file, string $name, array $options): bool {
+                // The real HTTP route must forward the same bounded policy all
+                // the way through orchestration and file storage.
+                self::assertArrayHasKey('before_upload', $options);
+                $command = new \Aws\Command('PutObject');
+                $options['before_upload']($command);
+                self::assertSame(0, $command['@retries']);
+                self::assertLessThanOrEqual(6.0, $command['@http']['timeout']);
+                self::assertLessThanOrEqual(2.0, $command['@http']['connect_timeout']);
+                return true;
+            })
             ->andThrow(UnableToWriteFile::atLocation('project-submission', 'storage timeout'));
         $factory = Mockery::mock(FilesystemFactory::class);
         $factory->shouldReceive('disk')->twice()->with('project-test')->andReturn($disk);
@@ -46,7 +57,7 @@ final class ProjectUploadFailureResponseTest extends ApiTestCase
 
         $baseImage = UploadedFile::fake()->image('attempt.jpg', 600, 600);
         $imageBytes = (string) file_get_contents($baseImage->getRealPath());
-        $allowedSize = ProjectSubmissionOrchestrator::maximumFileBytes();
+        $allowedSize = ProjectSubmissionFilePolicy::maximumFileBytes();
         $allowedImage = UploadedFile::fake()->createWithContent(
             'attempt.jpg',
             $imageBytes.str_repeat("\0", $allowedSize - strlen($imageBytes))

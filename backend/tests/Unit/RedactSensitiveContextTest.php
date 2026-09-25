@@ -91,13 +91,13 @@ final class RedactSensitiveContextTest extends TestCase
 
     public function test_redeemable_codes_are_not_duplicated_into_free_form_financial_fields(): void
     {
-        $courseCodes = file_get_contents(app_path('Models/CourseCode.php'));
+        $courseCodes = file_get_contents(app_path('Services/CourseCodeReceiptService.php'));
         $coursePurchases = file_get_contents(
             app_path('Services/CoursePurchaseAction.php')
         );
 
         self::assertIsString($courseCodes);
-        self::assertStringNotContainsString("'coupon_code' => \$this->code", $courseCodes);
+        self::assertStringNotContainsString("'coupon_code' => \$code->code", $courseCodes);
         self::assertStringNotContainsString("'notes' => 'Course code redemption: '", $courseCodes);
         self::assertIsString($coursePurchases);
         $debitStart = strpos($coursePurchases, '$walletTransaction = $walletService->debit(');

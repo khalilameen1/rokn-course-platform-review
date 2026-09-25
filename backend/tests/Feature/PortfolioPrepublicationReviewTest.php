@@ -9,6 +9,7 @@ use App\Models\PortfolioItem;
 use App\Models\PortfolioMedia;
 use App\Models\User;
 use App\Services\BunnyService;
+use App\Services\BunnyDeliveryService;
 use App\Services\PortfolioModerationService;
 use App\Services\PublicPortfolioService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -24,7 +25,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(RequireAdminMfa::class);
-        $this->mock(BunnyService::class)->shouldReceive('generateBunnySignedUrl')
+        $this->mock(BunnyDeliveryService::class)->shouldReceive('storageUrl')
             ->andReturnUsing(fn (string $path) => 'https://cdn.rokn.test/'.$path);
     }
 
@@ -145,7 +146,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         $private = $this->work($owner, false);
         $private->update(['title' => 'Draft only']);
         $item->update(['title' => $item->title]);
-        self::assertSame('approved', app(PortfolioModerationService::class)->ownerState($owner)['sharing_status']);
+        self::assertSame('approved', app(PortfolioModerationService::class)->reconcileOwnerState($owner)['sharing_status']);
         $this->actingAs($owner->fresh(), 'api')->putJson('/api/v1/portfolio-profile', ['portfolio_headline' => 'عنوان جديد'])
             ->assertOk()->assertJsonPath('data.sharing_status', 'pending')->assertJsonPath('data.public_url', null);
         $this->approve($owner);
@@ -222,7 +223,7 @@ final class PortfolioPrepublicationReviewTest extends TestCase
         ])->assertOk()->assertJsonPath('data.sharing_status', 'pending')->assertJsonPath('data.public_url', null);
         $this->actingAs($this->owner(), 'api')->postJson('/api/v1/portfolio/'.$item->id, ['title' => 'Other account edit'])->assertNotFound();
         $item->mediaFiles->first()->update(['file_type' => 'video', 'file_path' => (string) Str::uuid()]);
-        app(BunnyService::class)->shouldReceive('inspectRemoteVideo')
+        $this->mock(BunnyService::class)->shouldReceive('inspectRemoteVideo')
             ->once()->andReturn(['state' => 'unavailable']);
         $this->actingAs($this->owner('admin'), 'web');
         $preview = app(PublicPortfolioService::class)->adminPreview($owner);

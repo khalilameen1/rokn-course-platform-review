@@ -158,7 +158,7 @@ final class PaidAiCallExecutionService
     }
 
     public function recoverLandedSettlements(
-        AiEntitlementBudgetService $budget,
+        AiUsageSettlementService $settlements,
         int $limit = 500
     ): int {
         $events = AiUsageEvent::query()
@@ -171,13 +171,13 @@ final class PaidAiCallExecutionService
         foreach ($events as $event) {
             $result = $this->landedResult($event);
             if ($result === null) continue;
-            $outcome = $budget->settleForActiveUser(
+            $outcome = $settlements->settleForActiveUser(
                 $event,
                 $result,
                 (int) $event->user_id
             );
-            if (AiEntitlementBudgetService::settlementAllowsDelivery($outcome)
-                || $outcome === AiEntitlementBudgetService::SETTLEMENT_INACTIVE) {
+            if (AiUsageSettlementService::settlementAllowsDelivery($outcome)
+                || $outcome === AiUsageSettlementService::SETTLEMENT_INACTIVE) {
                 $recovered++;
             }
         }
@@ -267,34 +267,6 @@ final class PaidAiCallExecutionService
             (int) config('course_plans.ai_reservation_ttl_seconds', 120),
             (int) config('openrouter.timeout_seconds', 45) + 60
         );
-    }
-
-    public function settleUnknown(
-        AiEntitlementBudgetService $budget,
-        AiUsageEvent $event,
-        array $requestContext,
-        string $reason = 'provider_outcome_unknown'
-    ): void {
-        DB::transaction(function () use ($event, $reason): void {
-            $locked = AiUsageEvent::query()->lockForUpdate()->find($event->id);
-            if (!$locked || $locked->status !== 'reserved') return;
-            $metadata = is_array($locked->metadata) ? $locked->metadata : [];
-            $metadata['provider_call_state'] = 'outcome_unknown';
-            $metadata['provider_outcome_reason'] = $reason;
-            $metadata['provider_outcome_recorded_at'] = now()->toIso8601String();
-            $locked->forceFill(['metadata' => $metadata])->save();
-        }, 3);
-        $budget->settle($event, [
-            'entitlement_delivered' => false,
-            'usage' => [
-                'prompt_tokens' => 0,
-                'completion_tokens' => 0,
-                'total_tokens' => 0,
-                'cost' => 0,
-                'cost_reported' => false,
-            ],
-            'request_context' => $requestContext,
-        ]);
     }
 
     public function providerWasStarted(?AiUsageEvent $event): bool

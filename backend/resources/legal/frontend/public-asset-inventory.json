@@ -46,12 +46,12 @@
     },
     {
       "path": "public/admin/assets/css/course-codes-create.css",
-      "sha256": "d97b3547fa378e7adf7f7f1fc045639e54af2df5ef8ba3f853e2bbffe4d35c92",
+      "sha256": "3a6dbc3f082ed76093a41ca3fc914e3965b847cc314867b01acd7290459b28ea",
       "classification": "first_party"
     },
     {
       "path": "public/admin/assets/css/course-codes-edit.css",
-      "sha256": "2cab4718550b1bef8553d9f1e51ad11615aab6758a7801574f3fa7d12a968d50",
+      "sha256": "f7c3f3bfb69491e0cf6aba0a03578dd54ffd0687f401e3de392996998591fe1e",
       "classification": "first_party"
     },
     {
@@ -331,6 +331,21 @@
     {
       "path": "public/admin/assets/js/course-studio-attachments.js",
       "sha256": "7b51148606fbf669f49ce31c040722411adc9a5a3c0d9600333b00f7f6aad987",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-bunny-upload-form.js",
+      "sha256": "13b67d1a06dda8ec99df85f30eff870a42ced0399beb3f818e0892e51363537f",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-bunny-upload-records.js",
+      "sha256": "a4f883f56e642b05e309eb1a1a21c8f49178bf914b97bd1c76cb693bfa3b6fb7",
+      "classification": "first_party"
+    },
+    {
+      "path": "public/admin/assets/js/course-studio-bunny-upload-transfer.js",
+      "sha256": "8f7599bd493d7054adb8794c606764eea006f0db5d52be015249a0a401c683b8",
       "classification": "first_party"
     },
     {

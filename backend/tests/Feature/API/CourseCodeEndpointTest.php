@@ -15,13 +15,15 @@ class CourseCodeEndpointTest extends ApiTestCase
     public function test_can_redeem_course_code(): void
     {
         $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/course-codes/redeem', ['code' => 'TESTCODE']);
-        $this->assertNotEquals(404, $response->status());
+        $response->assertOk()->assertJsonPath('success', true)
+            ->assertJsonPath('data.learning_access', true);
     }
 
     public function test_can_check_course_code(): void
     {
         $response = $this->actingAs($this->user, 'api')->postJson('/api/v1/course-codes/check', ['code' => 'TESTCODE']);
-        $this->assertNotEquals(404, $response->status());
+        $response->assertOk()->assertJsonPath('data.can_use', true)
+            ->assertJsonPath('data.code', 'TESTCODE');
     }
 
     public function test_grant_redemption_returns_watch_only_access_and_retry_does_not_charge(): void
@@ -52,7 +54,7 @@ class CourseCodeEndpointTest extends ApiTestCase
     public function test_can_view_my_codes(): void
     {
         $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/course-codes/my-codes');
-        $this->assertNotEquals(404, $response->status());
+        $response->assertOk()->assertJsonPath('data', []);
     }
 
     public function test_wrong_course_does_not_consume_grant_code(): void

@@ -42,12 +42,12 @@ describe('course attachment native delivery', () => {
     const promptOwner = source(
       'src/components/VideoPlayer/feedSideBar/useAttachmentPrompt.ts',
     );
-    const downloader = source(
-      'src/components/VideoPlayer/attachmentActions.ts',
+    const access = source(
+      'src/components/VideoPlayer/attachmentAccess.ts',
     );
     expect(promptOwner).toContain('const attachments = course.attachments');
     expect(promptOwner).toContain("const scope = 'course'");
-    expect(downloader).toContain(
+    expect(access).toContain(
       'course.attachments.find(item => item.id === attachment.id)',
     );
   });
