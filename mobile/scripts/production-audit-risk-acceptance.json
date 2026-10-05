@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "reviewedAt": "2026-10-05T00:00:00.000Z",
   "expiresAt": "2026-10-19T00:00:00.000Z",
-  "lockSha256": "c65f0f1422feab20f36ed987fd6d4c4a6eca9cc7d59fea3ce3eab4574f14d913",
+  "lockSha256": "b2368127bce6bc31df42d8f2ca294ba8e89f7d51900510fb14f3e5e05c8e8c99",
   "reason": "Delegated risk acceptance, not patched dependencies. Native Android/iOS Metro graphs exclude grpc/Firestore, braces and node-forge; tooling remains exposed as documented in STORE_RELEASE_STATUS.md. Re-review on any lock or advisory change. No blanket severity ignore.",
   "entries": {
     "@expo/cli": {
