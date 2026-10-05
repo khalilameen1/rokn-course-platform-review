@@ -1,0 +1,163 @@
+{
+  "method": "existing-native-launcher-mark-export-no-ai-redrawing",
+  "source": {
+    "file": "mobile/android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png",
+    "sha256": "122925077327dfa6b5678b2d008339ca457e0c6cf2f6a2d8711664df2c3ee3b3"
+  },
+  "background": "#2C69DB",
+  "sharp": "0.35.4",
+  "outputs": [
+    {
+      "file": "mobile/src/assets/images/brand/rokn-app-icon-foreground.png",
+      "width": 432,
+      "height": 432,
+      "alpha": true,
+      "bytes": 35974,
+      "sha256": "122925077327dfa6b5678b2d008339ca457e0c6cf2f6a2d8711664df2c3ee3b3"
+    },
+    {
+      "file": "mobile/src/assets/images/brand/rokn-app-icon-1024.png",
+      "width": 1024,
+      "height": 1024,
+      "alpha": false,
+      "bytes": 109096,
+      "sha256": "68c22b1f7d8b564bec0526c9faaf08aa62ccc5b7b713483441004dc76706eb1b"
+    },
+    {
+      "file": "mobile/src/assets/images/brand/rokn-app-icon-background.png",
+      "width": 1024,
+      "height": 1024,
+      "alpha": false,
+      "bytes": 4576,
+      "sha256": "f7302866f60510a98627142a4fa3f10b45eb750d94d0f253ff17a3b9076a186b"
+    },
+    {
+      "file": "mobile/store/assets/play-icon-512.png",
+      "width": 512,
+      "height": 512,
+      "alpha": false,
+      "bytes": 41299,
+      "sha256": "065cce03746a3e3c01ff52d4a3d3300e83d1f26e4986390230f2876937eb4e78"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png",
+      "width": 40,
+      "height": 40,
+      "alpha": false,
+      "bytes": 1087,
+      "sha256": "8710f0ec5b4d45de240587755386bf14f13fa33fb962960d78a09ad8de23f47d"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png",
+      "width": 60,
+      "height": 60,
+      "alpha": false,
+      "bytes": 1771,
+      "sha256": "181ed250eab1ba206f6ed295718460211b4cb03dc97f393cfdc9acfb16c7cb29"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png",
+      "width": 29,
+      "height": 29,
+      "alpha": false,
+      "bytes": 729,
+      "sha256": "ccb2fc2c7736f05404e136d5d6aa1f6c597cde806a033e8e891cbc228669402c"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png",
+      "width": 58,
+      "height": 58,
+      "alpha": false,
+      "bytes": 1680,
+      "sha256": "9a97753454b72ada3f70321ca1eb2a07b6dc135d5e5346506ab3eea91acc9706"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png",
+      "width": 87,
+      "height": 87,
+      "alpha": false,
+      "bytes": 2876,
+      "sha256": "78a68a77703c95fe90b1789493cbed47bab552f1ee15c9d72780e54fb01baae1"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png",
+      "width": 80,
+      "height": 80,
+      "alpha": false,
+      "bytes": 2595,
+      "sha256": "c98ed4f887581c69a2efe040a7345e184a7f8a9914c1dc527acc5ecaaf2dde4a"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png",
+      "width": 120,
+      "height": 120,
+      "alpha": false,
+      "bytes": 4501,
+      "sha256": "47a9205f1afddd0abd485a275f6cff339b505280a587aa0d0dff24280e07da73"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png",
+      "width": 120,
+      "height": 120,
+      "alpha": false,
+      "bytes": 4501,
+      "sha256": "47a9205f1afddd0abd485a275f6cff339b505280a587aa0d0dff24280e07da73"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png",
+      "width": 180,
+      "height": 180,
+      "alpha": false,
+      "bytes": 7932,
+      "sha256": "c19df6a6b25d67e276ffdf40e689e955e958c8f7e3f78901e504ff9e06bf750d"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png",
+      "width": 152,
+      "height": 152,
+      "alpha": false,
+      "bytes": 6269,
+      "sha256": "f25aa954c60425f9a8828346e79c1a03e4f9d955e7168fe46d20c4dfa75a573c"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png",
+      "width": 20,
+      "height": 20,
+      "alpha": false,
+      "bytes": 503,
+      "sha256": "10e97428fae661cdf249dc9b7709589031b7b1cb8e261ea2d1c0471caca4f3e8"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png",
+      "width": 40,
+      "height": 40,
+      "alpha": false,
+      "bytes": 1087,
+      "sha256": "8710f0ec5b4d45de240587755386bf14f13fa33fb962960d78a09ad8de23f47d"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png",
+      "width": 76,
+      "height": 76,
+      "alpha": false,
+      "bytes": 2395,
+      "sha256": "12d573ddbfbad88fd6263de6e6f3e2bc6435e68a1011591eb02a14a75f34aeac"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png",
+      "width": 167,
+      "height": 167,
+      "alpha": false,
+      "bytes": 7212,
+      "sha256": "65936c78c699031011428a987bda00db59dc3497f223e88fa180b6649bde1e02"
+    },
+    {
+      "file": "mobile/ios/Rokn/Images.xcassets/AppIcon.appiconset/ItunesArtwork@2x.png",
+      "width": 1024,
+      "height": 1024,
+      "alpha": false,
+      "bytes": 109096,
+      "sha256": "68c22b1f7d8b564bec0526c9faaf08aa62ccc5b7b713483441004dc76706eb1b"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ const outputDir = __dirname;
 const mobileRoot = path.resolve(outputDir, '../..');
 const iconPath = path.join(mobileRoot, 'src/assets/images/brand/rokn-app-icon-1024.png');
 const fontPath = path.join(mobileRoot, 'src/assets/fonts/Cairo/Cairo-Bold.ttf');
-const sourceSha256 = '7cbbeb281e9c06ab3409e406513d380a7581e8fbfd7cc9e63d28d387f980f6ca';
+const sourceSha256 = '68c22b1f7d8b564bec0526c9faaf08aa62ccc5b7b713483441004dc76706eb1b';
 const fontSha256 = 'a0e58d71b85b15902ea87914d8e31a6d22da48ac2db70213dcfd1a7dad3f198a';
 const hash = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 

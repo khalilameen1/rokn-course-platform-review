@@ -2,6 +2,44 @@
 
 ## Current local final-gate checkpoint — 2026-10-05
 
+### Isolated resource creation and original-mark blue icons — 2026-10-05
+
+After the human's action-time confirmation, Laravel Cloud created
+`rokn_restore_verify_20261005` in Rokn Production: MySQL 8.4, Frankfurt,
+Dev/Flex 512 MiB, 1 vCPU, 5 GB, five-minute sleep and one-day backup. The quote
+was up to $8.30/month plus $0.12/GB-month of backups. The observed resource
+is not attached to any environment and its public endpoint is disabled.
+Production still shows deployment 209 / `1c70551`. No pending deploy change
+was applied. Resource creation supersedes the earlier not-created checkpoint;
+it does not prove a new backup, candidate boot, restore, or recovery acceptance.
+Specific permission to transmit the temporary resource credential through the
+Cloud command interface is still pending. No credential was transmitted.
+
+The mobile icon update now uses the existing transparent native launcher mark
+byte-for-byte on Rokn primary `#2C69DB`, not the generated preview that redrew
+the mark. The Coursera visual reference (10M+ Google Play downloads observed
+on October 5) informed only the white-symbol/solid-blue treatment; no competitor
+source was copied. The repository's existing Sharp 0.35.4 export tooling is
+reused. All Android density foregrounds remain unchanged, Expo adaptive and
+monochrome now use the same transparent mark, and native Android background,
+all existing iOS catalog files, 1024px master and opaque 512px Play export agree.
+All 19 manifest outputs were checked against actual file hashes/dimensions,
+opaque outputs' corner pixels match Rokn blue, the original source hash is
+unchanged, and `verify-release-config.js` passed. Independent review accepted
+the visual/native asset unit after the store-export checksum conflict was
+corrected. The retained feature graphic records its real previous source
+snapshot; approved feature artwork, screenshots and in-app branding were not
+regenerated. See `mobile/store/assets/APP_ICON_EXPORT.md`.
+
+A working isolated release runtime now reports actual Node 24.19.0, npm 10.9.3
+and npx 10.9.3 through the official launchers; copied Node/package identities
+were checked. No fake launcher/version bypass was added. It is ignored local
+tooling, not application source or a dependency-lock change.
+
+This is not acceptance of a native binary, launcher masks on a device, an iOS
+archive, deployment or store submission. Those remain outstanding alongside
+the real backup/restore gate. No full test suite was repeated for this asset unit.
+
 ### Delegated dependency-risk decision — 2026-10-05
 
 After disclosure of the temporary restore-resource cost and the remaining

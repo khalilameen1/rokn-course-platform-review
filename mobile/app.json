@@ -66,9 +66,9 @@
         }
       ],
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/brand/rokn-app-icon-1024.png",
-        "monochromeImage": "./src/assets/images/authLogo.png",
-        "backgroundColor": "#080B12"
+        "foregroundImage": "./src/assets/images/brand/rokn-app-icon-foreground.png",
+        "monochromeImage": "./src/assets/images/brand/rokn-app-icon-foreground.png",
+        "backgroundColor": "#2C69DB"
       },
       "splash": {
         "image": "./src/assets/images/logo.png",
