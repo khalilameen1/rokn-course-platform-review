@@ -2,6 +2,44 @@
 
 ## Current local final-gate checkpoint — 2026-10-05
 
+### Restore-test credential-fixture classification — 2026-10-05
+
+Backend run
+[37330485664](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/37330485664)
+is terminal and failed at the repository secret scan on head
+`bc9c37cbec448433fe923209f8b8d74836eec515`. Three synthetic URL parser
+fixtures added in `78aaaa2` triggered the credentialed-connection rule in
+both the current test file and its committed history. Subsequent backend
+verification steps, including the full test suite, were skipped. Certificate
+artwork QA and landing preview succeeded separately; the complete candidate
+gate did not pass.
+
+The corrected test assembles these same synthetic URLs at runtime rather
+than committing credential-bearing literal URLs. The existing reviewed
+history-fixture mechanism now accepts only the three complete, quoted PHP
+literals at `tests/Feature/RestoreDrillConnectionIsolationTest.php`, removes
+those exact literals and scans the remaining historical blob again. It does
+not exempt current files, whole test paths, arbitrary reserved hosts, other
+credential values or other secret rules. No shared Git history was rewritten,
+and no production credential was found or changed by this correction.
+
+The focused PHP 8.4.24/PhpUnit 11.5.56 run passed 44 tests and 359 assertions:
+`RepositorySecretScannerTest|RestoreDrillConnectionIsolationTest|RestoreDrillFinancialConsistencyTest`.
+Ten new policy cases cover exact reviewed history, nested backend paths,
+rejection of current literals, another file, an additional credential, changed
+password/host/URL, an unrelated secret and the pre-existing private-key fixture.
+The independent source review accepted this bounded classifier/fixture change,
+not native/device acceptance or deployment. All three changed PHP files have
+identical canonical Git blobs in the original and isolated candidate checkouts;
+local line endings differ in two files. The original user's index is untouched.
+The real current/history scanner then finished with exit zero in session 28538,
+covering 2121 current files plus the configured history paths. This proves the
+corrected repository scan, not the subsequent CI stages or a production restore.
+
+This change does not approve the separate native dependency-audit exception,
+create the unapproved paid restore resource, install the generated icon preview,
+deploy the candidate, build a binary or upload to a store.
+
 This checkpoint concerns the dirty
 `rokn-course-platform-review-publish` checkout, not a newly built or uploaded
 binary. The September store/deployment entries below are historical evidence;

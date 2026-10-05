@@ -67,6 +67,20 @@ $reviewedHistoryFixtures = [
         'tests/Feature/ProductionCapabilityTest.php' =>
             '-----BEGIN'.' PRIVATE KEY-----\nfixture\n-----END'.' PRIVATE KEY-----',
     ],
+    // These three exact, quoted PHP literals were reviewed in commit 78aaaa2.
+    // They are synthetic parser inputs on reserved .invalid hosts, not live
+    // credentials. Current files remain unconditionally scanned. In history,
+    // remove only these complete literals at this path and rescan the remainder.
+    'credentialed_connection_url' => [
+        'tests/Feature/RestoreDrillConnectionIsolationTest.php' => array_map(
+            static fn (string $suffix): string => "'".implode('', ['mysql://', $suffix])."'",
+            [
+                'url_user:fixture-only@url-host.invalid:3307/url_primary?read[database]=production&write[database]=production',
+                'url_user:fixture-only@url-host.invalid:3307/url_primary',
+                'fixture:fixture-only@unused.invalid/rokn_restore_verify_primary',
+            ]
+        ),
+    ],
 ];
 
 $output = $runGit(['ls-files', '--cached', '--others', '--exclude-standard', '-z']);
@@ -169,10 +183,10 @@ if ($scanHistory) {
                 $commit = $parts[1];
                 $path = $parts[2];
 
-                $reviewedFixture = $reviewedHistoryFixtures[$rule][$path] ?? null;
-                if (is_string($reviewedFixture)) {
+                $reviewedFixtures = $reviewedHistoryFixtures[$rule][$path] ?? null;
+                if (is_string($reviewedFixtures) || is_array($reviewedFixtures)) {
                     $blob = $runGit(['cat-file', 'blob', $commit.':'.$gitPathPrefix.$path]);
-                    $withoutFixture = str_replace($reviewedFixture, '', $blob, $replacementCount);
+                    $withoutFixture = str_replace($reviewedFixtures, '', $blob, $replacementCount);
 
                     if ($replacementCount > 0 && ! in_array($rule, $scanner->scanContents($withoutFixture), true)) {
                         continue;

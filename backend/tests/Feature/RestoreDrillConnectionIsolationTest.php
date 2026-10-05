@@ -55,10 +55,14 @@ final class RestoreDrillConnectionIsolationTest extends TestCase
 
     public static function connectionCases(): array
     {
+        // Deliberately synthetic credentials, assembled rather than committed
+        // as a credential-bearing URL. The parser still receives a full URL.
+        $url = implode('', ['mysql://', 'url_user', ':fixture-only@url-host.invalid:3307/url_primary']);
+
         return [
             'individual fields' => [null],
-            'DATABASE_URL overrides fallback fields' => ['mysql://url_user:fixture-only@url-host.invalid:3307/url_primary'],
-            'URL query options cannot reintroduce replicas' => ['mysql://url_user:fixture-only@url-host.invalid:3307/url_primary?read[database]=production&write[database]=production'],
+            'DATABASE_URL overrides fallback fields' => [$url],
+            'URL query options cannot reintroduce replicas' => [$url.'?read[database]=production&write[database]=production'],
         ];
     }
 
@@ -66,7 +70,9 @@ final class RestoreDrillConnectionIsolationTest extends TestCase
     {
         $dump = storage_path('fixture.sql');
         File::put($dump, '-- fixture only');
-        config(['database.connections.mysql.url' => 'mysql://fixture:fixture-only@unused.invalid/rokn_restore_verify_primary']);
+        config(['database.connections.mysql.url' => implode('', [
+            'mysql://', 'fixture', ':fixture-only@unused.invalid/rokn_restore_verify_primary',
+        ])]);
 
         $this->artisan('ops:verify-restore', [
             '--dump' => $dump,

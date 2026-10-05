@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit;
 
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Rokn\Tooling\RepositorySecretScanner;
 
 require_once dirname(__DIR__, 2).'/scripts/RepositorySecretScanner.php';
@@ -269,6 +270,70 @@ final class RepositorySecretScannerTest extends TestCase
             $output
         );
         self::assertStringNotContainsString('ordinaryProductionPassword123!', $output);
+    }
+
+    #[DataProvider('reviewedUrlHistoryCases')]
+    public function test_reviewed_url_history_is_exact_path_scoped_and_does_not_exempt_current_files(
+        string $path,
+        string $contents,
+        bool $keepCurrent,
+        bool $nested,
+        int $expectedExit,
+        string $expectedIssue
+    ): void {
+        $this->runCommand(['git', 'init', '--quiet'], $this->directory);
+        $this->runCommand(['git', 'config', 'user.email', 'security-test@rokn.invalid'], $this->directory);
+        $this->runCommand(['git', 'config', 'user.name', 'Rokn Security Test'], $this->directory);
+        $root = $nested ? $this->directory.DIRECTORY_SEPARATOR.'backend' : $this->directory;
+        $file = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $path);
+        self::assertTrue(mkdir(dirname($file), 0700, true));
+        file_put_contents($file, $contents);
+        $this->runCommand(['git', 'add', '--all'], $this->directory);
+        $this->runCommand(['git', 'commit', '--quiet', '-m', 'reviewed URL fixture policy'], $this->directory);
+
+        if (! $keepCurrent) {
+            self::assertTrue(unlink($file));
+            $this->runCommand(['git', 'add', '--all'], $this->directory);
+            $this->runCommand(['git', 'commit', '--quiet', '-m', 'delete fixture'], $this->directory);
+        }
+
+        [$exitCode, $output] = $this->runCommand([
+            PHP_BINARY,
+            dirname(__DIR__, 2).'/scripts/verify-repository-secrets.php',
+            '--root='.$root,
+            '--history',
+        ], $root, false);
+
+        self::assertSame($expectedExit, $exitCode, $output);
+        self::assertStringContainsString($expectedIssue, $output);
+        self::assertStringNotContainsString('fixture-only', $output);
+        self::assertStringNotContainsString('ordinaryProductionPassword123!', $output);
+    }
+
+    public static function reviewedUrlHistoryCases(): array
+    {
+        $path = 'tests/Feature/RestoreDrillConnectionIsolationTest.php';
+        $quotedUrl = static fn (string $suffix): string => "'".implode('', ['mysql://', $suffix])."'";
+        $plain = $quotedUrl('url_user:fixture-only@url-host.invalid:3307/url_primary');
+        $reviewed = implode("\n", [
+            $quotedUrl('url_user:fixture-only@url-host.invalid:3307/url_primary?read[database]=production&write[database]=production'),
+            $plain,
+            $quotedUrl('fixture:fixture-only@unused.invalid/rokn_restore_verify_primary'),
+        ]);
+        $historyIssue = 'history:'.$path.' [credentialed_connection_url]';
+
+        return [
+            'all exact reviewed literals in history' => [$path, $reviewed, false, false, 0, 'Repository secret scan passed'],
+            'reviewed literals in nested backend history' => [$path, $reviewed, false, true, 0, 'Repository secret scan passed'],
+            'current files are not exempt' => [$path, $reviewed, true, false, 1, "\n- ".$path.' [credentialed_connection_url]'],
+            'same literal at another path is not reviewed' => ['tests/Feature/OtherTest.php', $reviewed, false, false, 1, 'history:tests/Feature/OtherTest.php [credentialed_connection_url]'],
+            'additional credential at reviewed path is rejected' => [$path, $reviewed."\n".$quotedUrl('user:ordinaryProductionPassword123!@production.invalid/db'), false, false, 1, $historyIssue],
+            'changed fixture password is rejected' => [$path, str_replace('fixture-only', 'ordinaryProductionPassword123!', $plain), false, false, 1, $historyIssue],
+            'changed fixture host is rejected' => [$path, str_replace('url-host.invalid', 'production.invalid', $plain), false, false, 1, $historyIssue],
+            'extended fixture URL is not the reviewed literal' => [$path, substr($plain, 0, -1)."/other'", false, false, 1, $historyIssue],
+            'other secret rules remain active at reviewed path' => [$path, $reviewed."\nDB_"."PASSWORD=ordinaryProductionPassword123!", false, false, 1, 'history:'.$path.' [non_placeholder_secret_assignment]'],
+            'existing single private key fixture is preserved' => ['tests/Feature/ProductionPreflightTest.php', '-----BEGIN'.' PRIVATE KEY-----\\nfixture\\n-----END'.' PRIVATE KEY-----', false, true, 0, 'Repository secret scan passed'],
+        ];
     }
 
     /**
