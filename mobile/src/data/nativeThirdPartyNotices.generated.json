@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "androidDependencyCount": 241,
   "androidProjectComponentCount": 24,
-  "podDependencyCount": 127,
+  "podDependencyCount": 128,
   "android": [
     {
       "coordinate": "androidx.activity:activity-ktx:1.9.3",
@@ -3118,6 +3118,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "react-native-netinfo@11.5.2",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "react-native-restart@0.0.27",
       "licenses": [
         "MIT"
@@ -3195,5 +3203,5 @@
       ]
     }
   ],
-  "inventoryHash": "e0cb03df60bf7bef54fdbfb8b49beea531611cf85376e05b29935e9adf83e03f"
+  "inventoryHash": "67cfa0f86aef5f2faeb14d7d9aec96e2a4f26a818b86b615c392dc1446aed932"
 }

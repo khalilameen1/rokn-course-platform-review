@@ -7,7 +7,7 @@
 This artifact is bound to the resolved Android releaseRuntimeClasspath and the exact Podfile.lock roots/checksums. Package-specific legal files and NOTICE files take precedence; standard terms are used only for an explicitly declared standard license when no package-specific text is published.
 
 - Android Maven coordinates: 241
-- CocoaPods roots: 127
+- CocoaPods roots: 128
 - Android retained legal texts: 24
 - CocoaPods retained legal texts: 28
 
@@ -47859,7 +47859,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License
@@ -47922,7 +47922,70 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+
+```text
+MIT License
+
+Copyright (c) 2015-present, Facebook, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### gradle-project:::react-native-community_netinfo
+
+- Platform: Android project
+- Selected license(s): MIT
+- Classified npm production source: `@react-native-community/netinfo@11.5.2`
+
+#### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
+
+Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License
@@ -48895,7 +48958,7 @@ SOFTWARE.
 
 #### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License
@@ -53507,7 +53570,7 @@ SOFTWARE.
 
 #### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `installed-pod:react-native-netinfo@11.5.2/LICENSE`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License
@@ -53571,7 +53634,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `installed-pod:react-native-netinfo@11.5.2/LICENSE`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License
@@ -59757,7 +59820,71 @@ SOFTWARE.
 
 #### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `installed-pod:react-native-netinfo@11.5.2/LICENSE`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+
+```text
+MIT License
+
+Copyright (c) 2015-present, Facebook, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+#### Retained legal document 8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2
+
+Source(s): `canonical:MIT/node_modules/@babel/code-frame/LICENSE`
+
+```text
+MIT License
+
+Copyright (c) 2014-present Sebastian McKenzie and other contributors
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+### react-native-netinfo@11.5.2
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `c3944e83b347f7cc0d7e06df93f9d38a70c2a2ed`
+- Owning npm source: `@react-native-community/netinfo@11.5.2`
+
+#### Retained legal document 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
+
+Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `installed-pod:react-native-netinfo@11.5.2/LICENSE`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License

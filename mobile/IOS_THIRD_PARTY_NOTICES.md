@@ -6,7 +6,7 @@
 
 This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retains package-specific LICENSE and NOTICE documents from the distributed sources.
 
-- Dependencies: 127
+- Dependencies: 128
 - Retained unique legal texts: 28
 
 ### AppAuth@2.1.0
@@ -992,6 +992,14 @@ This file is bound to the exact Podfile.lock roots and SPEC CHECKSUMS and retain
 - Owning npm source: `react-native-image-picker@8.2.1`
 - Retained legal document(s): `212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
+### react-native-netinfo@11.5.2
+
+- Platform: iOS
+- Selected license(s): MIT
+- Podspec checksum: `c3944e83b347f7cc0d7e06df93f9d38a70c2a2ed`
+- Owning npm source: `@react-native-community/netinfo@11.5.2`
+- Retained legal document(s): `212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
 ### react-native-restart@0.0.27
 
 - Platform: iOS
@@ -1038,7 +1046,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `installed-pod:RNCAsyncStorage@2.2.0/LICENSE`, `installed-pod:RNCClipboard@1.16.3/LICENSE`, `installed-pod:react-native-image-picker@8.2.1/LICENSE.md`, `installed-pod:react-native-netinfo@11.5.2/LICENSE`, `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License

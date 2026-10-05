@@ -3,9 +3,9 @@
   "generatedFrom": "Podfile.lock exact roots, CocoaPods SPEC CHECKSUMS, Pods/Manifest.lock, and installed source bytes",
   "podfileChecksum": "bc486f7163589e6fd01f35b3c3bd18386b55b0b9",
   "cocoapodsVersion": "1.16.2",
-  "manifestSha256": "1b12d3b8395d485bdb90ef2aabb1ef3b874ea068ecdc6e4fafc7c7adf10bd685",
-  "installedSourceCount": 125,
-  "dependencyCount": 127,
+  "manifestSha256": "709207eab9e525267b60ef1e78bc911d9b4eec4d1730b6c10edc11d1137e409c",
+  "installedSourceCount": 126,
+  "dependencyCount": 128,
   "dependencies": [
     {
       "name": "AppAuth",
@@ -5237,6 +5237,48 @@
       }
     },
     {
+      "name": "react-native-netinfo",
+      "version": "11.5.2",
+      "coordinate": "react-native-netinfo@11.5.2",
+      "specChecksum": "c3944e83b347f7cc0d7e06df93f9d38a70c2a2ed",
+      "firstPartyGenerated": false,
+      "sourceKind": "external",
+      "externalSource": {
+        "path": "../node_modules/@react-native-community/netinfo"
+      },
+      "sourceReference": {
+        "path": "../node_modules/@react-native-community/netinfo"
+      },
+      "specSha256": "4f9e841a23e56f93f5773c53fc60d2d27ce0ac1f03fd523df772fed8bf7786c9",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "licenseMetadata": {
+        "type": null,
+        "file": null
+      },
+      "owningNpmPackage": {
+        "coordinate": "@react-native-community/netinfo@11.5.2",
+        "license": "MIT"
+      },
+      "upstreamLegalDocument": null,
+      "exactLicenseSelection": null,
+      "legalDocumentSha256s": [
+        "212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ],
+      "reviewedAbsence": null,
+      "installedLegalDocumentSha256s": [
+        "212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c"
+      ],
+      "installedSource": {
+        "kind": "npm-lock-sri",
+        "npmCoordinate": "@react-native-community/netinfo@11.5.2",
+        "npmIntegrity": "sha512-/g0m65BtX9HU+bPiCH2517bOHpEIUsGrWFXDzi1a5nNKn5KujQgm04WhL7/OSXWKHyrT8VVtUoJA0XKRxueBpQ==",
+        "sourceLocation": "npm:@react-native-community/netinfo@11.5.2"
+      }
+    },
+    {
       "name": "react-native-restart",
       "version": "0.0.27",
       "coordinate": "react-native-restart@0.0.27",
@@ -5391,11 +5433,19 @@
           "path": "LICENSE.md"
         },
         {
+          "source": "installed-pod:react-native-netinfo@11.5.2",
+          "path": "LICENSE"
+        },
+        {
           "source": "npm:@react-native-async-storage/async-storage@2.2.0",
           "path": "LICENSE"
         },
         {
           "source": "npm:@react-native-clipboard/clipboard@1.16.3",
+          "path": "LICENSE"
+        },
+        {
+          "source": "npm:@react-native-community/netinfo@11.5.2",
           "path": "LICENSE"
         },
         {
