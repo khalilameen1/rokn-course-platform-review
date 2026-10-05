@@ -2,6 +2,54 @@
 
 ## Current local final-gate checkpoint — 2026-10-05
 
+### Completed post-restore-correction Linux gate — 2026-10-05
+
+The actual
+[backend run 37333727435](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/37333727435)
+finished successfully on source commit
+`73d99655c7ab821c250df04376a7b77c1f100542`. All three jobs are terminal
+success: verify `111843067814` (16m44s), certificate artwork
+`111843067626` (32s), and landing preview `111843067352` (27s). Observer
+session 61646 exited zero and is no longer a live wait handle.
+
+The complete actual CLI log is retained in
+`mobile/.cache/final-gate-20261005/backend-linux-ci-37333727435-complete.log`
+in the original checkout, SHA-256
+`2d069773776112c0ce15f803f29524b0f2567089b17c1d7f4c9e685527644d0a`.
+It records:
+
+- PHP 8.4.26 and the unchanged strict locked dependency audit, with no security
+  vulnerability advisories found. The actual secret scan passed 2121 current
+  files plus history. Frontend build, upload/public-asset/legal-notice checks
+  and the shared wallet/payment-contract gate passed; the latter is 107 tests
+  and 546 assertions.
+- Actual MySQL schema replay/preflight and the existing MySQL contract suite
+  passed on `phpunit.mysql.xml`, 17 tests/126 assertions, no skips. Redis
+  connection/write-read and configuration/routes/schedules/views compilation
+  passed. These are CI services, not live production workers or transactions.
+- The complete test command ran with SQLite `:memory:` and passed 2552 tests,
+  with six MySQL-only skips, 23477 assertions and duration 579.93 seconds.
+  The six skips are one project-evaluation snapshot readback, four access-plan
+  snapshot constraint/purchase cases and one artwork-storage schema case.
+  They belong to `ProjectSubmissionEvaluationSnapshotTest`,
+  `AccessPlanSnapshotMysqlConstraintTest` and `AppArtworkMysqlStorageTest`,
+  which are included in the separately passed 17-case MySQL suite. The full
+  SQLite suite must not be described as a full MySQL run.
+- Landing regression passed 5/157; certificate pixel regression passed 17/119;
+  certificate issuance/recovery/authoring contracts passed 95/1777. The existing
+  Node-action deprecation annotations remain warnings; no CI rule was disabled
+  to obtain success.
+
+This result supersedes the failed complete gate on `bc9c37c` below, while
+preserving that failure as historical evidence. Independent read-only review
+accepted this new complete log after checking its hash, source commit, executed
+new restore/fixture cases and the exact six skips against the separately passed
+MySQL suite. The reviewer did not rerun tests or modify files. No fresh production restore,
+deployment, native APK/IPA, emulator/device acceptance or store upload is
+proved by this Linux result. The separate paid restore-resource and native
+dependency-audit decisions remain unapproved. The original user's index stays
+untouched and the generated icon preview remains uninstalled.
+
 ### Restore-test credential-fixture classification — 2026-10-05
 
 Backend run
