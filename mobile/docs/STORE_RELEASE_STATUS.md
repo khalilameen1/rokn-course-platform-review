@@ -50,6 +50,16 @@ proved by this Linux result. The separate paid restore-resource and native
 dependency-audit decisions remain unapproved. The original user's index stays
 untouched and the generated icon preview remains uninstalled.
 
+A final public-registry/API recheck found no compatible released remedy for
+the remaining native audit roots: braces latest is still 3.0.3, node-forge
+latest is 1.4.0, RN Firebase app latest is 26.4.0 with firebase 12.17.1, and
+Firestore latest 4.17.2 still requires gRPC `~1.9.0`. Forge PR 1152 remains
+open/unmerged. GitHub's API shows braces PR 72 **closed without merge**, with
+`closed_at=2026-10-05T06:43:43Z`; its earlier open-status wording below was
+stale, not evidence of a current open fix. The braces advisory remains active,
+affects versions through 3.0.3 and has no first patched version. No dependency
+lock, audit exception or library implementation was changed by this recheck.
+
 ### Restore-test credential-fixture classification — 2026-10-05
 
 Backend run
@@ -829,7 +839,10 @@ Fresh registry reads retained in `mobile-braces-registry-state.log` and
 [reviewed advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
 lists no patched release for recursive AST stack exhaustion. The proposed
 [upstream depth-guard PR 72](https://github.com/micromatch/braces/pull/72)
-is open/unmerged. No library substitution, private depth-guard backport,
+is closed without merge. The final GitHub API recheck confirms closure at
+2026-10-05 06:43:43 UTC, superseding the stale earlier open-status observation;
+the active advisory and registry still provide no patched release.
+No library substitution, private depth-guard backport,
 invented version, framework downgrade or high-severity exception was applied.
 This braces root is distinct from the separately corrected brace-expansion
 package; their names do not describe the same implementation or advisory.
