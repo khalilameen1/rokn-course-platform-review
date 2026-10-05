@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Schema\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\ConfigurationUrlParser;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -47,7 +48,12 @@ final class VerifyRestoreDrill extends Command
         if ($confirmation !== 'RESTORE_'.$database) {
             return $this->failVerification('Confirmation must be exactly RESTORE_'.$database.'.');
         }
-        if ($database === (string) config('database.connections.mysql.database')) {
+        try {
+            $connection = $this->mysqlConnectionConfig();
+        } catch (Throwable) {
+            return $this->failVerification('Provide a valid MySQL restore connection.');
+        }
+        if ($database === (string) ($connection['database'] ?? '')) {
             return $this->failVerification('Refusing to restore over the configured primary database.');
         }
         if (!preg_match('/\.(?:sql|sql\.gz)\z/i', $dump)) {
@@ -62,7 +68,6 @@ final class VerifyRestoreDrill extends Command
             return $this->failVerification('The restore artifact does not match the signed backup record.');
         }
 
-        $connection = (array) config('database.connections.mysql');
         $binary = trim((string) config('operations.mysql_binary', 'mysql'));
         $evidencePath = (string) ($this->option('evidence') ?: config('operations.recovery_evidence_path'));
         $originalDefault = (string) config('database.default');
@@ -98,6 +103,7 @@ final class VerifyRestoreDrill extends Command
             config(['database.connections.restore_verify' => [...$connection, 'database' => $database]]);
             DB::purge('restore_verify');
             $restored = DB::connection('restore_verify');
+            $this->assertRestoredDatabase($restored, $database);
             $schema = $restored->getSchemaBuilder();
             $tables = collect($restored->select('SHOW TABLES'))
                 ->map(fn (object $row): string => (string) array_values((array) $row)[0])
@@ -189,6 +195,34 @@ final class VerifyRestoreDrill extends Command
                     $this->warn('Could not remove disposable restore database; remove it manually.');
                 }
             }
+        }
+    }
+
+    /** @return array<string, mixed> */
+    private function mysqlConnectionConfig(): array
+    {
+        // Resolve DATABASE_URL once through Laravel, then pin a single endpoint
+        // for both the MySQL client and PDO. Replicas must not redirect a drill.
+        $connection = (new ConfigurationUrlParser)->parseConfiguration(config('database.connections.mysql'));
+        unset($connection['url'], $connection['read'], $connection['write']);
+        if (($connection['driver'] ?? null) !== 'mysql') {
+            throw new RuntimeException('Restore verification requires MySQL.');
+        }
+        $host = $connection['host'] ?? null;
+        $socket = $connection['unix_socket'] ?? '';
+        if (!is_string($host) || trim($host) === '' || strtolower(trim($host)) === 'localhost'
+            || !is_string($socket) || trim($socket) !== '') {
+            throw new RuntimeException('Restore verification requires one explicit TCP host without a Unix socket.');
+        }
+
+        return $connection;
+    }
+
+    private function assertRestoredDatabase(ConnectionInterface $connection, string $database): void
+    {
+        $identity = $connection->selectOne('SELECT DATABASE() AS database_name');
+        if (!is_object($identity) || ($identity->database_name ?? null) !== $database) {
+            throw new RuntimeException('Restore connection is not bound to the disposable database.');
         }
     }
 

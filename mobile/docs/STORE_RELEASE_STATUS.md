@@ -349,6 +349,51 @@ performed by command 230. Independent read-only review accepted the bounded
 diagnosis against the deployed source and matched documents, without accepting
 a new backup, restore, production-data audit or deployment.
 
+### Candidate preparation and restore connection correction — 2026-10-05
+
+Cloud command 234 completed a public-repository clone at exactly
+`fd42802b1afba5a20e38d0843973689082504ee8` in a private temporary directory.
+It did not change traffic or run migrations. Command 235 failed PHP parsing
+before executing its body. The corrected command 236 reached
+`locked_install_started` and then Cloud reported Failed without a diagnostic.
+Read-only command 237 finished with the exact candidate directory/log absent
+and no matching process in that command's execution context. This does not
+prove an OOM, global cleanup, completion of dependency installation, or absence
+of effects on every instance. Do not restart a possibly live job or claim
+candidate boot/restore acceptance from this result.
+
+Independent source review identified a real restore-routing defect:
+`DATABASE_URL` and inherited read/write configurations could override the
+disposable database selected for PDO, while the MySQL CLI used other fields.
+`VerifyRestoreDrill` now reuses Laravel's installed `ConfigurationUrlParser`
+to resolve the connection once, removes URL/replica overrides, checks the
+resolved primary name, rejects Unix sockets/localhost/host lists that cannot
+share the CLI's explicit TCP transport, and verifies the actual PDO database with
+`SELECT DATABASE()` before applying migrations. No vendor code was copied or
+modified, no new framework was introduced, and the primary configuration is
+left unchanged.
+The Unix-only localhost transport behavior is documented in the
+[PHP PDO MySQL manual](https://www.php.net/manual/en/ref.pdo-mysql.connection.php).
+
+Focused local verification on PHP 8.4.24 passed **20 tests / 71 assertions**:
+the new connection-isolation cases and the existing receipt-consistency cases.
+The URL/replica cases exercise Laravel's actual parser/connection factory
+without opening a live database; the selected-database guard uses controlled
+connection responses. They are not a real production-data restore. The earlier
+full Linux gate remains evidence for its recorded commit, not blanket
+acceptance of this later code correction.
+Independent read-only review accepted this source/configuration correction
+after its socket/host-list counterexamples were closed. It did not execute the
+tests itself or accept a live isolated restore, account, deployment or binary.
+
+The runbook additionally requires an isolated MySQL server or restricted
+account. A disposable database using production credentials alone is not
+that isolation. Candidate restore evidence must use a separate protected
+`--evidence` destination, not overwrite the current production drill record.
+No isolated account/resource, fresh backup, restore, production migration,
+deployment, mobile binary, emulator verification or store upload has been
+created by this preparation unit.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
