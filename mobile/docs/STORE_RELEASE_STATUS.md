@@ -137,6 +137,65 @@ refresh/build job is skipped, and the macOS job restores the real installed
 Pods from the committed lock before generating native legal provenance.
 This run is still in progress, not a passed build or completed legal inventory.
 
+### Completed native legal provenance and fresh backend audit — 2026-10-05
+
+Native lock-refresh run 37315371161 finished successfully. The existing
+macOS job restored CocoaPods using `--deployment`, verified the exact lock,
+generated and checked installed native legal provenance, then committed only
+five generated files as `01b86ec791b0626a206608a856a6e7d0ddc1302b`. Its normal
+fetch/rebase preserved the intervening inventory correction on the same
+candidate branch; remote `main` was not changed.
+
+The iOS inventory now contains 128 pod roots and 126 installed sources, adding
+NetInfo 11.5.2 alone; Android remains at 241 Maven coordinates/24 npm projects.
+The aggregate notices also include the already-approved Android NetInfo entry.
+The five generated files were fast-forwarded into the isolated worktree and
+copied byte-for-byte into the authoritative checkout only after checking that
+the previous source blobs had not independently changed. Independent read-only
+review accepted the exact bounded legal update. The actual local portable
+check later exited zero in session 78726, with output retained in
+`native-legal-37315371161-portable-check.log`. Neither legal result is a native
+binary, emulator, signed archive or store acceptance.
+
+Fresh backend run 37316217704 against the inventory-corrected source passed
+the production frontend chain and frontend guards. It is now terminal and
+failed `composer audit --locked`: two CommonMark advisories and one Laravel
+debug-page advisory remain in that run's old PHP lock. Later MySQL/Redis/full
+tests were skipped, not accepted. The report is retained in
+`backend-linux-ci-37316217704-composer-audit-failure.log`. The earlier complete
+local backend pass predates the PHP dependency corrections now required; it
+must not be presented as acceptance of an upgraded PHP lock.
+
+### Official CommonMark security correction — 2026-10-05
+
+The existing Laravel dependency is reused with its official compatible
+CommonMark release, rather than a custom sanitizer or edited vendor parser.
+Upstream fixes both [raw HTML tag bypass](https://github.com/thephpleague/commonmark/security/advisories/GHSA-97jj-33gv-5xf9)
+and [table-parser quadratic scan](https://github.com/thephpleague/commonmark/security/advisories/GHSA-3q6v-r5mr-hxv8)
+in version 2.10.2. Composer 2.10.3 was downloaded from the official release URL
+and matched its published SHA-256
+`7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6`.
+
+The actual targeted `update league/commonmark:2.10.2 --minimal-changes
+--no-install --no-scripts` changed that package alone from 2.10.0, preserving
+the root constraints, all other package versions, license metadata and the
+application code. An isolated normal-extension PHP 8.4.24/Composer install
+then installed the real locked dependencies without executing application
+scripts. The four dependency-compatibility cases passed with 12 assertions:
+installed fixed version, normal Arabic/heading/emphasis rendering, GFM tables
+and multiline paragraphs, and the upstream bare-disallowed-tag regression.
+These cases do not claim a DoS benchmark or full application acceptance.
+
+Strict manifest validation passed. The actual locked audit now lists only
+the still-unfixed Laravel advisory; no audit ignore or filtering was added.
+The generated lock and test source were synchronized into the authoritative
+checkout after preserving its existing index. Its installed vendor tree still
+predates this correction, so previous full-suite results are not substituted
+for a fresh upgraded-runtime gate. Logs: `backend-commonmark-official-upgrade.log`,
+`backend-isolated-commonmark-composer-install.log`,
+`backend-commonmark-compatible-upgrade-tests.log` and
+`backend-composer-audit-after-commonmark.json`.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
