@@ -19,7 +19,7 @@
         "jenssegers/agent": "^2.6.4",
         "khaled.alshamaa/ar-php": "^7.0",
         "kreait/firebase-php": "^7.24.1",
-        "laravel/framework": "^12.61.1",
+        "laravel/framework": "^12.69.0",
         "laravel/nightwatch": "^1.30",
         "laravel/tinker": "^2.10",
         "laravel/ui": "^4.6.3",

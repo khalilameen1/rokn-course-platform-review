@@ -196,6 +196,36 @@ for a fresh upgraded-runtime gate. Logs: `backend-commonmark-official-upgrade.lo
 `backend-commonmark-compatible-upgrade-tests.log` and
 `backend-composer-audit-after-commonmark.json`.
 
+### Official Laravel security correction — 2026-10-05
+
+The existing Laravel 12 framework was updated from 12.65.0 to the official
+12.69.0 release fixing [debug-page tooltip XSS](https://github.com/laravel/framework/security/advisories/GHSA-jh5r-qr3c-85q8).
+The root minimum is now `^12.69.0`; targeted Composer 2.10.3 resolution with
+`--minimal-changes --no-scripts` changed only Laravel and its root content hash.
+No application code, vendor parser, audit ignore or security guard was altered.
+
+The isolated PHP 8.4.24 runtime actually installed the new lock. A guarded
+testing-only SQLite in-memory run passed 95 cases/281 assertions, including the
+existing mobile/backend route-parity cases, CommonMark compatibility and the
+new Laravel version/Arabic Markdown mail cases. The guard verified no database
+URL, rather than allowing a production connection. The initial empty-string
+URL guard rejected execution; using Laravel's `(null)` environment value then
+passed the same strict guard before PHPUnit ran.
+
+The actual locked Composer audit returned empty advisories, abandoned packages
+and filters; strict manifest validation passed. Logs are retained under
+`mobile/.cache/final-gate-20261005/` as `backend-laravel-official-upgrade.log`,
+`backend-laravel-compatible-upgrade-tests.log`, its JUnit XML and
+`backend-composer-audit-after-laravel.json`. The generated lock was synchronized
+byte-for-byte into the original checkout after checking its previous blob;
+the original user's index was unchanged. Its installed vendor tree was then
+synchronized with normal `composer install --no-scripts`, which exited zero
+in session 75068. Alongside the two official security releases, Composer
+remirrored the already-locked `rokn/form-compat` path-package source; this
+did not change its committed lock or introduce a dependency update.
+These focused cases are not full Linux/MySQL/Redis acceptance;
+the new complete CI gate and native build/device/store acceptance remain pending.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
