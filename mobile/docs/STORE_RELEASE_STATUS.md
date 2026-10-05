@@ -100,6 +100,43 @@ native-build success or store upload. The strict dependency audit remains
 unresolved; no exception has been applied. The nonblack app-icon preview is
 not installed or included as a replacement asset in this checkpoint.
 
+### Backend public-notice inventory correction — 2026-10-05
+
+Backend run 37314578733 is terminal and failed the production frontend chain
+at the unchanged public-asset verifier. Certificate artwork QA and landing
+preview passed separately, but later MySQL/Redis/full-suite steps were skipped.
+The reported file is `public/THIRD_PARTY_NOTICES.frontend.md`: the inventory
+still pinned the old notice despite the earlier approved Uppy license-block
+restoration. This was a stale derived hash, not a platform-only line-ending
+problem; the existing canonical LF hash is identical in both checkouts and
+in the committed notice bytes.
+
+Only that generated notice's inventory entry was updated from
+`2d872072439a758d6d0ecaa8e01d51542496569fb1278357f2b84d99fc74222a` to
+`5933fc3811e35237b99c7c17bb26c24e444c05d4ad20197697f0aecac3f82f2b`.
+No verifier, generator, legal text, application code or other inventory entry
+was changed. The existing Sass/esbuild/legal-generation production chain
+passed on the isolated clean-source checkout using the already-installed
+locked frontend dependencies and Node 24.19.0/npm 10.9.3. All six existing
+public-policy cases also passed without skips. The actual Linux CI toolchain
+uses Node 22.23.2 and has not yet accepted this correction.
+
+Logs are retained as `backend-clean-checkout-notice-hash-production.log`,
+`backend-notice-inventory-policy-recheck.log` and the original failure
+`backend-linux-ci-37314578733-notice-hash-failure.log`. The frontend build
+created ignored vendor outputs and refreshed generated text working bytes,
+but no tracked application/artifact content diff beyond the one inventory
+entry remains. No server or store was updated.
+
+The generated iOS lock was separately published as commit
+`a90f0e4b277c06e23dec3d8456ae7cb692eb1c42`. Existing lock-refresh
+[run 37315371161](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/37315371161)
+was dispatched with both `reuse_native_locks=true` and
+`skip_linux_android=true`. Its actual head matches that commit; the Android
+refresh/build job is skipped, and the macOS job restores the real installed
+Pods from the committed lock before generating native legal provenance.
+This run is still in progress, not a passed build or completed legal inventory.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
