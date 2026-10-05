@@ -24,6 +24,86 @@ test('Gradle plugins and release dependencies are hash-verified and locked', () 
   assert.ok(result.autolinkedPublicationCount > 5);
 });
 
+test('native Media3 compilation is locked to the existing react-native-video release', () => {
+  const appGradle = fs.readFileSync(
+    path.join(ROOT, 'android', 'app', 'build.gradle'),
+    'utf8',
+  );
+  const videoProperties = fs.readFileSync(
+    path.join(
+      ROOT,
+      'node_modules',
+      'react-native-video',
+      'android',
+      'gradle.properties',
+    ),
+    'utf8',
+  );
+  const appVersion = appGradle.match(/def roknMedia3Version = "([^"]+)"/)?.[1];
+  const videoVersion = videoProperties
+    .match(/^RNVideo_media3Version=(.+)$/m)?.[1]
+    .trim();
+  assert.ok(appVersion);
+  assert.equal(appVersion, videoVersion);
+
+  const locks = new Map(
+    fs
+      .readFileSync(
+        path.join(ROOT, 'android', 'app', 'gradle.lockfile'),
+        'utf8',
+      )
+      .split(/\r?\n/)
+      .filter(line => line && !line.startsWith('#'))
+      .map(line => {
+        const [coordinate, configurations] = line.split('=');
+        return [coordinate, new Set(configurations.split(','))];
+      }),
+  );
+  // This is the compile closure resolved by Gradle for the existing player,
+  // not a separate version pin or replacement for native dependency resolution.
+  const compileCoordinates = [
+    'common',
+    'container',
+    'database',
+    'datasource',
+    'decoder',
+    'exoplayer',
+    'exoplayer-dash',
+    'exoplayer-hls',
+    'extractor',
+  ].map(module => `androidx.media3:media3-${module}:${appVersion}`);
+  // Reuse the runtime-selected transitive versions rather than introducing
+  // another Guava pin. Several tool configurations legitimately use other versions.
+  for (const module of ['guava', 'failureaccess']) {
+    const runtimeCoordinates = [...locks].filter(
+      ([coordinate, configurations]) =>
+        coordinate.startsWith(`com.google.guava:${module}:`) &&
+        configurations.has('releaseRuntimeClasspath'),
+    );
+    assert.equal(
+      runtimeCoordinates.length,
+      1,
+      `${module} runtime version must be unambiguous`,
+    );
+    compileCoordinates.push(runtimeCoordinates[0][0]);
+  }
+  for (const coordinate of compileCoordinates) {
+    for (const variant of ['debug', 'debugOptimized', 'release']) {
+      for (const suffix of [
+        'CompileClasspath',
+        'UnitTestCompileClasspath',
+        'RuntimeClasspath',
+      ]) {
+        const configuration = `${variant}${suffix}`;
+        assert.ok(
+          locks.get(coordinate)?.has(configuration),
+          `${coordinate} missing ${configuration}`,
+        );
+      }
+    }
+  }
+});
+
 test('Gradle provenance gate rejects missing hashes and dynamic lock versions', () => {
   const metadata = fs.readFileSync(
     path.join(ROOT, 'android', 'gradle', 'verification-metadata.xml'),
