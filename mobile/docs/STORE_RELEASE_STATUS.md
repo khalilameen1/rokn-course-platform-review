@@ -2,6 +2,54 @@
 
 ## Current local final-gate checkpoint — 2026-10-05
 
+### Delegated dependency-risk decision — 2026-10-05
+
+After disclosure of the temporary restore-resource cost and the remaining
+native dependency advisories, the human delegated the pending decisions.
+The native audit now uses npm's actual live report with a repository-owned,
+explicit risk-acceptance manifest, not patched or relabeled dependencies.
+It expires at **2026-10-19 00:00 UTC** and is bounded to the exact canonical
+lockfile fingerprint, every reported installed path (including nested nodes),
+version and registry integrity, dependency chain and advisory identity,
+severity and affected range. Any new advisory or changed dependency fails;
+critical findings are never accepted. Incomplete/error reports, mismatched
+metadata, invalid dates, dangling chains and expired acceptance fail closed.
+Only changes to registry source IDs and explanatory prose are ignored.
+
+This extends the existing npm-audit integration; no competitor source or
+third-party risk-policy implementation was copied. The successful native Metro
+reachability and bounded tooling inspections recorded below are the rationale,
+not proof that these upstream bugs are fixed. Build tooling remains exposed;
+the exception must be re-reviewed or removed when compatible fixes arrive.
+
+The 18 new focused tests passed. Independent read-only review ran them again,
+matched all 43 entries to the saved report and accepted this policy unit only.
+Then the actual npm 10.9.3 CLI on Node 24.19.0 ran `npm run audit:release`
+in the candidate checkout and exited zero, reporting **43 still-vulnerable
+dependency entries** under the explicit temporary acceptance. This is not a
+clean vulnerability report and not native, emulator or release acceptance.
+
+The isolated checkout then completed a real locked `npm ci` using Node 24.19.0
+and npm 10.9.3. All three existing post-install fixes passed unchanged. npm's
+install-time audit includes development dependencies and reports 63 affected
+entries; that wider report is not covered by the production-only acceptance.
+The existing release-script command, with the 18 added policy cases, passed
+**120 tests**, zero failures/skips, in 46.915 seconds on the pinned runtime.
+No entire application suite or native build was repeated for this policy unit.
+The real mobile repository scan with `--history` completed successfully,
+covering 1183 current files and the existing Git history. Both newly added
+policy/test files also passed an explicit scan through that same classifier.
+
+The old Laravel Cloud tab failed repeatedly at tab focus. A fresh tab in the
+same Chrome profile recovered access. The unsubmitted creation form now has
+`rokn_restore_verify_20261005`, Laravel MySQL 8.4, Frankfurt and the Dev preset
+(512 MiB, 5 GB, five-minute sleep, one-day backup). Its live quote remains up
+to $8.30/month plus $0.12/GB-month of backups. The Create button was not clicked;
+the required action-time financial confirmation is outstanding despite the
+delegated technical choice. No resource, production backup/restore, deployment,
+native binary or store upload was completed. The existing review deployment
+remains unchanged. The generated icon preview is not installed.
+
 ### Completed post-restore-correction Linux gate — 2026-10-05
 
 The actual
@@ -46,8 +94,8 @@ accepted this new complete log after checking its hash, source commit, executed
 new restore/fixture cases and the exact six skips against the separately passed
 MySQL suite. The reviewer did not rerun tests or modify files. No fresh production restore,
 deployment, native APK/IPA, emulator/device acceptance or store upload is
-proved by this Linux result. The separate paid restore-resource and native
-dependency-audit decisions remain unapproved. The original user's index stays
+proved by this Linux result. At that checkpoint, the separate paid restore-resource and native
+dependency-audit decisions were still pending; the later decision above supersedes that status. The original user's index stays
 untouched and the generated icon preview remains uninstalled.
 
 A final public-registry/API recheck found no compatible released remedy for

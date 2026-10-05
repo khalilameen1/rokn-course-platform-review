@@ -1,0 +1,580 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-10-05T00:00:00.000Z",
+  "expiresAt": "2026-10-19T00:00:00.000Z",
+  "lockSha256": "c65f0f1422feab20f36ed987fd6d4c4a6eca9cc7d59fea3ce3eab4574f14d913",
+  "reason": "Delegated risk acceptance, not patched dependencies. Native Android/iOS Metro graphs exclude grpc/Firestore, braces and node-forge; tooling remains exposed as documented in STORE_RELEASE_STATUS.md. Re-review on any lock or advisory change. No blanket severity ignore.",
+  "entries": {
+    "@expo/cli": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/expo/node_modules/@expo/cli": {
+          "version": "55.0.36",
+          "integrity": "sha512-jVMEXmxeUKXAzJdRWQer7fyogjPMYiTbrGOrlioJlwMuFqKfao3FeFInmATMNGLhNN01aBs/s6pnJKqiAdlUQg=="
+        }
+      },
+      "via": [
+        "@expo/code-signing-certificates",
+        "@expo/metro",
+        "@expo/metro-config",
+        "node-forge"
+      ]
+    },
+    "@expo/code-signing-certificates": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@expo/code-signing-certificates": {
+          "version": "0.0.6",
+          "integrity": "sha512-iNe0puxwBNEcuua9gmTGzq+SuMDa0iATai1FlFTMHJ/vUmKvN/V//drXoLJkVb5i5H3iE/n/qIJxyoBnXouD0w=="
+        }
+      },
+      "via": [
+        "node-forge"
+      ]
+    },
+    "@expo/metro": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@expo/metro": {
+          "version": "55.1.2",
+          "integrity": "sha512-EOBoqqX4jD7JvHBHKDoek8SmWyAFPuJePyDSqIAhIjOCPAM67fVxd4+pCXJ6SDK1P9so55v2iTFBwCoeCmEj4Q=="
+        }
+      },
+      "via": [
+        "metro",
+        "metro-config",
+        "metro-file-map",
+        "metro-transform-worker"
+      ]
+    },
+    "@expo/metro-config": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/expo/node_modules/@expo/metro-config": {
+          "version": "55.0.27",
+          "integrity": "sha512-oikn1NPFpQgNqL/HTqA6oAG2Af/BwldIezlecTidc8D+fkFgLFKkZHUq1Hh1g/vuCPGTQNWDlHla13dAgYwRvg=="
+        }
+      },
+      "via": [
+        "@expo/metro"
+      ]
+    },
+    "@firebase/firestore": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@firebase/firestore": {
+          "version": "4.17.0",
+          "integrity": "sha512-P9tof6pyO1bnLlMWbux+5O7WFJqlb7OTPMKxxOiXKYiQl7mxykAvxr1BFCgWeEXUU7DZxQncyJ040B0IhFVZCg=="
+        }
+      },
+      "via": [
+        "@grpc/grpc-js"
+      ]
+    },
+    "@firebase/firestore-compat": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@firebase/firestore-compat": {
+          "version": "0.4.12",
+          "integrity": "sha512-k2uX81Ao/S0jnFcWGPOQpKK1cPlJHvD9WIqh/RE1XBDP2yg5zhE4rHhSg1rtB11k39q3nKon9XLNDDrPjGclag=="
+        }
+      },
+      "via": [
+        "@firebase/firestore"
+      ]
+    },
+    "@grpc/grpc-js": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@grpc/grpc-js": {
+          "version": "1.9.16",
+          "integrity": "sha512-wE4Ut/olIzfKqp631XrG+wbF0v1vWFN4YL9FyXC2LJiG33DsV7PLzURjrCvY/6je2ntdRkeLpPDluzSRGaVltQ=="
+        }
+      },
+      "via": [
+        {
+          "name": "@grpc/grpc-js",
+          "dependency": "@grpc/grpc-js",
+          "url": "https://github.com/advisories/GHSA-m9gg-hp2v-232j",
+          "severity": "high",
+          "range": "<1.13.6"
+        },
+        {
+          "name": "@grpc/grpc-js",
+          "dependency": "@grpc/grpc-js",
+          "url": "https://github.com/advisories/GHSA-f596-whhp-79r4",
+          "severity": "low",
+          "range": "<1.13.6"
+        }
+      ]
+    },
+    "@jest/environment": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@jest/environment": {
+          "version": "29.7.0",
+          "integrity": "sha512-aQIfHDq33ExsN4jP1NWGXhxgQ/wixs60gDiKO+XVMd8Mn0NWPWgc34ZQDTb2jKaUWQ7MuwoitXAsN2XVXNMpAw=="
+        }
+      },
+      "via": [
+        "@jest/fake-timers"
+      ]
+    },
+    "@jest/fake-timers": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@jest/fake-timers": {
+          "version": "29.7.0",
+          "integrity": "sha512-q4DH1Ha4TTFPdxLsqDXK1d3+ioSL7yL5oCMJZgDYm6i+6CygW5E5xVr/D1HdsGxjt1ZWSfUAs9OxSB/BNelWrQ=="
+        }
+      },
+      "via": [
+        "jest-message-util"
+      ]
+    },
+    "@jest/transform": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@jest/transform": {
+          "version": "29.7.0",
+          "integrity": "sha512-ok/BTPFzFKVMwO5eOHRrvnBVHdRy9IrsrW1GpMaQ9MCnilNLXQKmAX8s1YXDFaai9xJpac2ySzV0YeRRECr2Vw=="
+        }
+      },
+      "via": [
+        "jest-haste-map",
+        "micromatch"
+      ]
+    },
+    "@react-native-community/cli": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli": {
+          "version": "20.2.0",
+          "integrity": "sha512-5RZKkBeUFC4hhrzySzxWmRJwXBTc2PE3L6QUgvnJk3QDxNYMY7aGuI8Gr9eZRS1DbiY10IPWqpJfqSIplzVG6A=="
+        }
+      },
+      "via": [
+        "@react-native-community/cli-clean",
+        "@react-native-community/cli-config",
+        "@react-native-community/cli-doctor"
+      ]
+    },
+    "@react-native-community/cli-clean": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-clean": {
+          "version": "20.2.0",
+          "integrity": "sha512-krqbhFiwHN8l5wZ2XTcrNq9N+DqDWHxW8RK0bIcrK0O+fMvjYi9e/1Pnx2W0CTotOVcZpHzUbgZ4TQVF231Skw=="
+        }
+      },
+      "via": [
+        "fast-glob"
+      ]
+    },
+    "@react-native-community/cli-config": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-config": {
+          "version": "20.2.0",
+          "integrity": "sha512-GF5FxgDfOSLPi/bSiE/xvOGELwzV2GLQnDED+7ArbPi01W1Vu+hD/m+J+bwX34Pocpo767eXAVxc2h9WFUTUfQ=="
+        }
+      },
+      "via": [
+        "fast-glob"
+      ]
+    },
+    "@react-native-community/cli-config-android": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-config-android": {
+          "version": "20.2.0",
+          "integrity": "sha512-lASofUNBVK0Pq3VEJ1JrCfAW94Rnk38DikauycRcoHl0hWjHIN3XhsN20dEq+CaIJoq37aCg5NSSSpmkET+ShA=="
+        }
+      },
+      "via": [
+        "fast-glob"
+      ]
+    },
+    "@react-native-community/cli-config-apple": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-config-apple": {
+          "version": "20.2.0",
+          "integrity": "sha512-oohr6BV2riWJ5PYjayi1u52bG3H95MwKPkJCZo9pnOlYTjifZQVkMxZ8VTuk392efh0bijVTYfxH8iJPi97SIQ=="
+        }
+      },
+      "via": [
+        "fast-glob"
+      ]
+    },
+    "@react-native-community/cli-doctor": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-doctor": {
+          "version": "20.2.0",
+          "integrity": "sha512-eZjlwmjPoBXgyD6nV5oDDocL1VH5UW4LxZcMAqyN3rQw5vq3CeJikFpNedKTtSl3P6JizIkInyIHpfrW+9qfJA=="
+        }
+      },
+      "via": [
+        "@react-native-community/cli-config",
+        "@react-native-community/cli-platform-android",
+        "@react-native-community/cli-platform-apple",
+        "@react-native-community/cli-platform-ios"
+      ]
+    },
+    "@react-native-community/cli-platform-android": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-platform-android": {
+          "version": "20.2.0",
+          "integrity": "sha512-fRglzcf/Yq5lnIkqdA8uf1GvlG18x3Dm48Yvo+l7KiWgh/SVtfVhfvalrtX5rmx+KeJkDA534bGoPvi5+ruWjw=="
+        }
+      },
+      "via": [
+        "@react-native-community/cli-config-android"
+      ]
+    },
+    "@react-native-community/cli-platform-apple": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-platform-apple": {
+          "version": "20.2.0",
+          "integrity": "sha512-jkEPLAd8C/ZRu39a3nhxwSXe0iisUiJC808GExnrnTcViLtg3sad2ciQ/HjjvbdsPCS9sT+Jr7xh3MzBsPojsQ=="
+        }
+      },
+      "via": [
+        "@react-native-community/cli-config-apple"
+      ]
+    },
+    "@react-native-community/cli-platform-ios": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-community/cli-platform-ios": {
+          "version": "20.2.0",
+          "integrity": "sha512-bCKlBt2HoD7WTl/HX60+4HFhR1lKY64Y9MPWu7yWQwOCEqYRMi6MkRxLimiONj9M2/lNf0z9BPHDzdDe5HM2ag=="
+        }
+      },
+      "via": [
+        "@react-native-community/cli-platform-apple"
+      ]
+    },
+    "@react-native-firebase/app": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-firebase/app": {
+          "version": "26.3.2",
+          "integrity": "sha512-AtPF1PhUI7AjYCKp7XS9+IMP+T1IpPk9rx0ZhjhS2hcxKjNFThpH1ntSlolvwGXORov7e51PZ2XfYOnkmuJuEQ=="
+        }
+      },
+      "via": [
+        "expo",
+        "firebase"
+      ]
+    },
+    "@react-native-firebase/messaging": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-firebase/messaging": {
+          "version": "26.3.2",
+          "integrity": "sha512-iLFBQW8EJerqVyh2TrhZMoQbA5Se1LnLZVBhbNrcWzrrHl/H212J0XcAxITmGmJxvHZMw8uZEve+31oGl5hiGg=="
+        }
+      },
+      "via": [
+        "@react-native-firebase/app",
+        "expo"
+      ]
+    },
+    "@react-native-google-signin/google-signin": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native-google-signin/google-signin": {
+          "version": "16.1.2",
+          "integrity": "sha512-1hf4pRmpnS5t0dHtqU72Q1FmWzsCZR2Sm3uVQbbfMKeNPl5TKjpAsP6F8QTZ9L+Q6Cnn9tL9BXpDCb1nyutdCQ=="
+        }
+      },
+      "via": [
+        "expo"
+      ]
+    },
+    "@react-native/community-cli-plugin": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native/community-cli-plugin": {
+          "version": "0.83.10",
+          "integrity": "sha512-7QmZ7FLAIJbYjgxILBUE1k71lQB6atXZSLRczKE6Iti+BO3XHNiDSCZxuxUkYUJI0V/0kCbO/M8/a5zqHNu+Rw=="
+        }
+      },
+      "via": [
+        "@react-native/metro-config",
+        "metro",
+        "metro-config"
+      ]
+    },
+    "@react-native/metro-config": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@react-native/metro-config": {
+          "version": "0.83.10",
+          "integrity": "sha512-ay7e/GJjjylpeMSEe7NdgM0+C0W2s9QCdNStCQkqKzW2HngZOuNiQyCjULq0tOXQNf/00dfrki7xDlqCeUqMgQ=="
+        }
+      },
+      "via": [
+        "metro-config"
+      ]
+    },
+    "@react-navigation/core": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/@react-navigation/core": {
+          "version": "7.13.7",
+          "integrity": "sha512-k2ABo3250vq1ovOh/iVwXS6Hwr5PVRGXoPh/ewVFOOuEKTvOx9i//OBzt8EF+HokBxS2HBRlR2b+aCOmscRqBw=="
+        }
+      },
+      "via": [
+        "query-string"
+      ]
+    },
+    "@sentry/react-native": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/@sentry/react-native": {
+          "version": "7.11.0",
+          "integrity": "sha512-OiDaLCAGpRN18YG/o7IIwLhU0Xpb0tYKQ5QxkGHiwb+L3VHn+MqGCGfITYNdhqr06HHMvu9Lysm+UJxaNmGaJg=="
+        }
+      },
+      "via": [
+        "expo"
+      ]
+    },
+    "babel-jest": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/babel-jest": {
+          "version": "29.7.0",
+          "integrity": "sha512-BrvGY3xZSwEcCzKvKsCi2GgHqDqsYkOP4/by5xCgIwGXQxIEh+8ew3gmrE1y7XRR6LHZIj6yLYnUi/mm2KXKBg=="
+        }
+      },
+      "via": [
+        "@jest/transform"
+      ]
+    },
+    "braces": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/braces": {
+          "version": "3.0.3",
+          "integrity": "sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA=="
+        }
+      },
+      "via": [
+        {
+          "name": "braces",
+          "dependency": "braces",
+          "url": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
+          "severity": "high",
+          "range": "<=3.0.3"
+        }
+      ]
+    },
+    "decode-uri-component": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/decode-uri-component": {
+          "version": "0.2.2",
+          "integrity": "sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ=="
+        }
+      },
+      "via": [
+        {
+          "name": "decode-uri-component",
+          "dependency": "decode-uri-component",
+          "url": "https://github.com/advisories/GHSA-vcc3-ghjq-m6fr",
+          "severity": "moderate",
+          "range": "<=0.4.2"
+        }
+      ]
+    },
+    "expo": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/expo": {
+          "version": "55.0.31",
+          "integrity": "sha512-ZqV6jniU7twd18ADh1xP7moVrgP/BO1OTJwF2OzYnfJI9ak5cXDk+8DrV2jlgj33pMrLKqlnUvNz11zxyhwo7w=="
+        }
+      },
+      "via": [
+        "@expo/cli",
+        "@expo/metro",
+        "@expo/metro-config"
+      ]
+    },
+    "fast-glob": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/fast-glob": {
+          "version": "3.3.3",
+          "integrity": "sha512-7MptL8U0cqcFdzIzwOTHoilX9x5BrNqye7Z/LuC7kCMRio1EMSyqRK3BEAUD7sXRq4iT4AzTVuZdhgQ2TCvYLg=="
+        }
+      },
+      "via": [
+        "micromatch"
+      ]
+    },
+    "firebase": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/firebase": {
+          "version": "12.17.1",
+          "integrity": "sha512-dhp41ye9jMQvhx5FwjMkf/hjDHJApl7gXmvzOZGvP0M7c/GZGUnQ4qvsvlOBkF0Pa7wAwHMdcpL0ON2pXCQ4Sw=="
+        }
+      },
+      "via": [
+        "@firebase/firestore",
+        "@firebase/firestore-compat"
+      ]
+    },
+    "jest-environment-node": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/jest-environment-node": {
+          "version": "29.7.0",
+          "integrity": "sha512-DOSwCRqXirTOyheM+4d5YZOrWcdu0LNZ87ewUoywbcb2XR4wKgqiG8vNeYwhjFMbEkfju7wx2GYH0P2gevGvFw=="
+        }
+      },
+      "via": [
+        "@jest/environment",
+        "@jest/fake-timers"
+      ]
+    },
+    "jest-haste-map": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/jest-haste-map": {
+          "version": "29.7.0",
+          "integrity": "sha512-fP8u2pyfqx0K1rGn1R9pyE0/KTn+G7PxktWidOBTqFPLYX0b9ksaMFkhK5vrS3DVun09pckLdlx90QthlW7AmA=="
+        }
+      },
+      "via": [
+        "micromatch"
+      ]
+    },
+    "jest-message-util": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/jest-message-util": {
+          "version": "29.7.0",
+          "integrity": "sha512-GBEV4GRADeP+qtB2+6u61stea8mGcOT4mCtrYISZwfu9/ISHFJ/5zOMXYbpBE9RsS5+Gb63DW4FgmnKJ79Kf6w=="
+        }
+      },
+      "via": [
+        "micromatch"
+      ]
+    },
+    "metro": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/metro": {
+          "version": "0.83.8",
+          "integrity": "sha512-ZbJDJCDlvv0O3QHVbhZkyP2/DtebfEoDZ3wVyYHgu6Uoy6DmmE/bis6lIDBYh+kWPuaueJDegyutPjkIBLtZDQ=="
+        }
+      },
+      "via": [
+        "metro-config",
+        "metro-file-map",
+        "metro-transform-worker"
+      ]
+    },
+    "metro-config": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/metro-config": {
+          "version": "0.83.8",
+          "integrity": "sha512-crNbNy+/B4tCne2+HjUshwvC57gNBQj+V9fFSy3lHH2RlKcLHib3Mil/SfTX8Pfh2fCY5pPuSu2OKa7YiadB+Q=="
+        }
+      },
+      "via": [
+        "metro"
+      ]
+    },
+    "metro-file-map": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/metro-file-map": {
+          "version": "0.83.8",
+          "integrity": "sha512-+W++EUuzEXIfWQEFTWQMVThzhWbnJL4gRNJ9WSHzIAM5pT7gsprUxo9+2hrfirURm/TLvrKwhq37oCECJcDSyQ=="
+        }
+      },
+      "via": [
+        "micromatch"
+      ]
+    },
+    "metro-transform-worker": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/metro-transform-worker": {
+          "version": "0.83.8",
+          "integrity": "sha512-Pa2hOfhUmWpI/dmkhsLq8uGyFHK2opoEK7j/YCiRtqNSe0YzzxYguXTNgg8AMiuZfc9LPcB1AhGENS10O5wcIw=="
+        }
+      },
+      "via": [
+        "metro"
+      ]
+    },
+    "micromatch": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/micromatch": {
+          "version": "4.0.8",
+          "integrity": "sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA=="
+        }
+      },
+      "via": [
+        "braces"
+      ]
+    },
+    "node-forge": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/node-forge": {
+          "version": "1.4.0",
+          "integrity": "sha512-LarFH0+6VfriEhqMMcLX2F7SwSXeWwnEAJEsYm5QKWchiVYVvJyV9v7UDvUv+w5HO23ZpQTXDv/GxdDdMyOuoQ=="
+        }
+      },
+      "via": [
+        {
+          "name": "node-forge",
+          "dependency": "node-forge",
+          "url": "https://github.com/advisories/GHSA-86w9-cpqp-85rv",
+          "severity": "high",
+          "range": "<=1.4.0"
+        }
+      ]
+    },
+    "query-string": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/query-string": {
+          "version": "7.1.3",
+          "integrity": "sha512-hh2WYhq4fi8+b+/2Kg9CEge4fDPvHS534aOOvOZeQ3+Vf2mCFsaFBYj0i+iXcAq6I9Vzp5fjMFBlONvayDC1qg=="
+        }
+      },
+      "via": [
+        "decode-uri-component"
+      ]
+    },
+    "react-native": {
+      "severity": "high",
+      "nodes": {
+        "node_modules/react-native": {
+          "version": "0.83.10",
+          "integrity": "sha512-4gbmtAyfC0F4jU2hl/l/HZbRIfRl0d5RdHNpJLf7sT/0zhYDEhiFcFk7ii2utl7O8BIHRUmGe/anfWP3DNPTZw=="
+        }
+      },
+      "via": [
+        "@react-native/community-cli-plugin",
+        "babel-jest",
+        "jest-environment-node"
+      ]
+    }
+  }
+}
