@@ -394,6 +394,22 @@ No isolated account/resource, fresh backup, restore, production migration,
 deployment, mobile binary, emulator verification or store upload has been
 created by this preparation unit.
 
+Subsequent read-only Cloud command 238 finished at 2026-10-05 15:03:34 UTC:
+the deployed account has neither CREATE USER/global-all capability nor GRANT
+OPTION; the named candidate target does not exist; deployed MySQL URL/socket
+settings are absent. This does not establish absence of every possible routing
+condition, and no credential or raw grant was printed. The account cannot be
+used to grant itself a restricted restore identity. A fresh public readiness
+request returned HTTP 200, which is current service readiness only.
+
+The organization resource list contains one MySQL cluster. The unsubmitted
+New database cluster dialog, set to MySQL 8.4 / Frankfurt / Dev (512 MiB,
+5 GB storage, sleep after 5 minutes, one-day backup), quotes up to **$8.30/month
+plus $0.12 per GB-month of backups**. No Create action was submitted. A separate
+temporary resource and its ongoing retention cost require the owner's explicit
+decision; do not treat the active goal or a historical backup authorization as
+approval of this new resource. Mobile audit exceptions also remain unapproved.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
