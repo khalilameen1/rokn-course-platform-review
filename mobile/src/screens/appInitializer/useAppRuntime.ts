@@ -24,6 +24,7 @@ import {CAN_START_NATIVE_CHECKOUT} from '../../constants/distribution';
 import {reconcilePendingCoinCheckout} from '../../services/coinCheckout';
 import {flushProductEvents} from '../../services/productAnalytics';
 import {flushPendingAccountWrites} from '../../services/pendingAccountWrites';
+import {subscribeToPlaybackPreferenceRecovery} from '../../services/playbackPreferenceConnectivity';
 import {flushOperationalTelemetry} from '../../services/operationalTelemetry';
 import {replayPendingPortfolioMediaUploads} from '../../services/portfolioMediaReplay';
 import {networkFailureKind} from '../../services/networkExperience';
@@ -47,6 +48,11 @@ export const useAppRuntime = ({
   resumePendingAuthentication,
 }: RuntimeInput) => {
   const hasSession = Boolean(extractApiToken(storedUser));
+
+  useEffect(() => {
+    if (!sessionReady) return;
+    return subscribeToPlaybackPreferenceRecovery();
+  }, [sessionReady]);
 
   useEffect(() => {
     void prepareNotificationChannels().catch(() => undefined);

@@ -154,6 +154,13 @@ describe('local conversation hydration failure is not an empty draft', () => {
         );
         await flush();
       });
+      // A restored clean draft no longer starts a redundant autosave. Make a
+      // real edit so this test owns an actual old save, not an unused mock.
+      await act(async () => {
+        if (kind === 'new') composer.setMessage('تعديل قبل استعادة البديل');
+        else cases.setReply('تعديل قبل استعادة البديل');
+        await flush();
+      });
       let release!: (boundary: typeof mockBoundary) => void;
       const delayed = new Promise<typeof mockBoundary>(resolve => {
         release = resolve;
@@ -171,6 +178,15 @@ describe('local conversation hydration failure is not an empty draft', () => {
         restore.onPress!();
         await flush();
       });
+      if (kind === 'reply') {
+        // Reply departure reserves the shared durable queue. Preserve its
+        // edited current slot before swapping the migrated alternative in.
+        expect(cases.replyReady).toBe(false);
+        await act(async () => {
+          release({...mockBoundary});
+          await flush();
+        });
+      }
       expect(kind === 'new' ? composer.message : cases.replyMessage).toBe(
         'المسودة الأخرى المستعادة',
       );
@@ -183,6 +199,16 @@ describe('local conversation hydration failure is not an empty draft', () => {
           ? await loadProductFeedbackDraft()
           : await loadProductFeedbackReplyDraft(caseId);
       expect(persisted?.message).toBe('المسودة الأخرى المستعادة');
+      if (kind === 'reply') {
+        const conflicts = JSON.parse(
+          (await AsyncStorage.getItem(
+            `@rokn/product-feedback-draft-conflicts/v1:${mockBoundary.scope}`,
+          ))!,
+        );
+        expect(JSON.parse(conflicts[0].raw).message).toBe(
+          'تعديل قبل استعادة البديل',
+        );
+      }
       expect(publicRequest.post).not.toHaveBeenCalled();
     },
   );
@@ -221,6 +247,7 @@ describe('local conversation hydration failure is not an empty draft', () => {
       let courseId = '3';
       let sourceScreen = 'settings';
       const inFlightAttachmentIds = {current: new Set<string>()};
+      const inFlightRequestId = {current: () => undefined};
       const Harness = () => {
         composer = useFeedbackComposer({
           identityKey: mockBoundary.scope,
@@ -232,6 +259,8 @@ describe('local conversation hydration failure is not an empty draft', () => {
           courseId,
           conversationScope: `${mockBoundary.scope}:${courseId}`,
           inFlightAttachmentIds,
+          inFlightRequestId,
+          active: true,
           remoteEnabled: false,
         });
         return null;
@@ -304,6 +333,7 @@ describe('local conversation hydration failure is not an empty draft', () => {
     let cases!: ReturnType<typeof useFeedbackCases>;
     let chat!: ReturnType<typeof useCourseChatConversation>;
     const inFlightAttachmentIds = {current: new Set<string>()};
+    const inFlightRequestId = {current: () => undefined};
     const Harness = () => {
       composer = useFeedbackComposer({
         identityKey: mockBoundary.scope,
@@ -315,6 +345,8 @@ describe('local conversation hydration failure is not an empty draft', () => {
         courseId: '3',
         conversationScope: `${mockBoundary.scope}:3`,
         inFlightAttachmentIds,
+        inFlightRequestId,
+        active: true,
         remoteEnabled: false,
       });
       return null;
@@ -473,11 +505,14 @@ describe('local conversation hydration failure is not an empty draft', () => {
         .mockRejectedValue(new Error('EIO'));
       let hook!: ReturnType<typeof useCourseChatConversation>;
       const inFlightAttachmentIds = {current: new Set<string>()};
+      const inFlightRequestId = {current: () => undefined};
       const Harness = () => {
         hook = useCourseChatConversation({
           courseId: '3',
           conversationScope: `${mockBoundary.scope}:3`,
           inFlightAttachmentIds,
+          inFlightRequestId,
+          active: true,
           remoteEnabled: true,
         });
         return null;

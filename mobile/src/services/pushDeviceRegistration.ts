@@ -8,6 +8,7 @@ import {
   getItem,
   saveItem,
   assertAccountSessionBoundary,
+  captureAccountSessionBoundary,
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import {
@@ -44,12 +45,48 @@ const serializePushRegistration = <T>(operation: () => Promise<T>) => {
   return result;
 };
 
+// Resolve the account at admission, not after another device mutation drains.
+// Store a settled capture so a retired session cannot reject unobserved while
+// it is waiting behind native token acquisition or invalidation.
+const capturePushOwner = (ownerBoundary?: AccountSessionBoundary) =>
+  (ownerBoundary
+    ? Promise.resolve(ownerBoundary)
+    : captureAccountSessionBoundary()
+  ).then(
+    boundary => ({boundary}),
+    (error: unknown) => ({error}),
+  );
+
+const resolvePushOwner = async (capture: ReturnType<typeof capturePushOwner>) => {
+  const captured = await capture;
+  if ('error' in captured) throw captured.error;
+  assertAccountSessionBoundary(captured.boundary);
+  return captured.boundary;
+};
+
 const currentSessionToken = async () =>
   extractApiToken(await getItem(AsyncKeys.USER_DATA));
 
-const sessionStillCurrent = async (token: string, accountScope: string) =>
-  (await currentSessionToken()) === token &&
-  (await getCurrentAccountStorageScope()) === accountScope;
+const sessionStillCurrent = async (
+  token: string,
+  accountScope: string,
+  boundary: AccountSessionBoundary,
+) => {
+  try {
+    const currentToken = await currentSessionToken();
+    assertAccountSessionBoundary(boundary);
+    const currentScope = await getCurrentAccountStorageScope();
+    assertAccountSessionBoundary(boundary);
+    return currentToken === token && currentScope === accountScope;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
+    )
+      return false;
+    throw error;
+  }
+};
 
 const removeTokenFromCapturedSession = async (
   token: string,
@@ -62,7 +99,11 @@ const removeTokenFromCapturedSession = async (
   } as RoknRequestConfig);
 };
 
-const permissionGranted = async (requestPermission: boolean) => {
+const permissionGranted = async (
+  requestPermission: boolean,
+  boundary: AccountSessionBoundary,
+  generation: number,
+) => {
   type PermissionSnapshot = {
     granted?: boolean;
     status?: string;
@@ -70,29 +111,36 @@ const permissionGranted = async (requestPermission: boolean) => {
   };
   const current =
     (await Notifications.getPermissionsAsync()) as PermissionSnapshot;
+  assertAccountSessionBoundary(boundary);
+  if (generation !== pushRegistrationGeneration) return false;
   if (current.granted || current.status === 'granted') return true;
   if (!requestPermission || !current.canAskAgain) return false;
   const requested =
     (await Notifications.requestPermissionsAsync()) as PermissionSnapshot;
+  assertAccountSessionBoundary(boundary);
   return requested.granted || requested.status === 'granted';
 };
 
 const registerTokenForCurrentAccountNow = async (
   token: string,
-  generation = pushRegistrationGeneration,
+  generation: number,
+  boundary: AccountSessionBoundary,
 ) => {
+  assertAccountSessionBoundary(boundary);
   if (generation !== pushRegistrationGeneration) return false;
   const sessionToken = await currentSessionToken();
+  assertAccountSessionBoundary(boundary);
   if (!token || !sessionToken) return false;
-  if (!(await getSmartRemindersEnabled())) return false;
+  if (!(await getSmartRemindersEnabled(boundary))) return false;
 
-  const accountScope = await getCurrentAccountStorageScope();
-  const tokenKey = await pushStorageKey(PUSH_TOKEN_KEY);
+  const accountScope = boundary.scope;
+  const tokenKey = await pushStorageKey(PUSH_TOKEN_KEY, boundary);
   const previousToken = await getItem<string>(tokenKey);
   const installationId = await getInstallationId();
+  assertAccountSessionBoundary(boundary);
   if (
     generation !== pushRegistrationGeneration ||
-    !(await sessionStillCurrent(sessionToken, accountScope))
+    !(await sessionStillCurrent(sessionToken, accountScope, boundary))
   ) {
     return false;
   }
@@ -103,6 +151,7 @@ const registerTokenForCurrentAccountNow = async (
       device_os: Platform.OS,
       ...(installationId ? {device_id: installationId} : {}),
     });
+    assertAccountSessionBoundary(boundary);
   } catch (error) {
     if (
       error instanceof Error &&
@@ -116,7 +165,7 @@ const registerTokenForCurrentAccountNow = async (
   }
   if (
     generation !== pushRegistrationGeneration ||
-    !(await sessionStillCurrent(sessionToken, accountScope))
+    !(await sessionStillCurrent(sessionToken, accountScope, boundary))
   ) {
     await removeTokenFromCapturedSession(token, sessionToken).catch(
       () => undefined,
@@ -126,7 +175,7 @@ const registerTokenForCurrentAccountNow = async (
   await saveItem(tokenKey, token);
   if (
     generation !== pushRegistrationGeneration ||
-    !(await sessionStillCurrent(sessionToken, accountScope))
+    !(await sessionStillCurrent(sessionToken, accountScope, boundary))
   ) {
     await removeTokenFromCapturedSession(token, sessionToken).catch(
       () => undefined,
@@ -148,10 +197,16 @@ const registerTokenForCurrentAccountNow = async (
 const registerTokenForCurrentAccount = (
   token: string,
   generation = pushRegistrationGeneration,
-) =>
-  serializePushRegistration(() =>
-    registerTokenForCurrentAccountNow(token, generation),
+) => {
+  const capture = capturePushOwner();
+  return serializePushRegistration(async () =>
+    registerTokenForCurrentAccountNow(
+      token,
+      generation,
+      await resolvePushOwner(capture),
+    ),
   );
+};
 
 /**
  * Register only after both account authentication and the learner's explicit
@@ -160,43 +215,71 @@ const registerTokenForCurrentAccount = (
  */
 export const registerPushDeviceIfEligible = ({
   requestPermission = false,
-}: {requestPermission?: boolean} = {}) => {
+  ownerBoundary,
+}: {
+  requestPermission?: boolean;
+  ownerBoundary?: AccountSessionBoundary;
+} = {}) => {
+  const capture = capturePushOwner(ownerBoundary);
   const generation = pushRegistrationGeneration;
   return serializePushRegistration(async () => {
+    const boundary = await resolvePushOwner(capture);
     if (generation !== pushRegistrationGeneration) return false;
     // Token acquisition belongs inside the mutation queue. If a learner turns
     // notifications off and immediately on, the new registration must mint a
     // token after native invalidation rather than re-registering the one that
     // the preceding opt-out just deleted.
     if (!(await retryPendingNativePushTokenInvalidation())) return false;
+    assertAccountSessionBoundary(boundary);
     if (!(await currentSessionToken())) return false;
-    if (!(await getSmartRemindersEnabled())) return false;
-    if (!(await permissionGranted(requestPermission))) return false;
+    assertAccountSessionBoundary(boundary);
+    if (!(await getSmartRemindersEnabled(boundary))) return false;
+    if (!(await permissionGranted(requestPermission, boundary, generation)))
+      return false;
+    assertAccountSessionBoundary(boundary);
+    if (generation !== pushRegistrationGeneration) return false;
 
     await prepareNotificationChannels();
+    assertAccountSessionBoundary(boundary);
+    if (generation !== pushRegistrationGeneration) return false;
     const token = await getBackendPushToken();
+    assertAccountSessionBoundary(boundary);
     if (!token) return false;
 
-    return registerTokenForCurrentAccountNow(token, generation);
+    return registerTokenForCurrentAccountNow(token, generation, boundary);
   });
 };
 
-export const unregisterPushDevice = () => {
+export const unregisterPushDevice = (ownerBoundary?: AccountSessionBoundary) => {
+  // A stale caller must not invalidate a newer account's active registration.
+  if (ownerBoundary) {
+    try {
+      assertAccountSessionBoundary(ownerBoundary);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+  const capture = capturePushOwner(ownerBoundary);
   pushRegistrationGeneration += 1;
   const generation = pushRegistrationGeneration;
   return serializePushRegistration(async () => {
+    const boundary = await resolvePushOwner(capture);
     if (generation !== pushRegistrationGeneration) return false;
-    const token = await getStoredPushDeviceToken();
+    const token = await getStoredPushDeviceToken(boundary);
     if (generation !== pushRegistrationGeneration) return false;
     let removedFromServer = !token;
-    if (token && (await currentSessionToken())) {
+    const sessionToken = await currentSessionToken();
+    assertAccountSessionBoundary(boundary);
+    if (token && sessionToken) {
       removedFromServer = await publicRequest
         .delete('user/device-token', {data: {device_token: token}})
         .then(() => true)
         .catch(() => false);
     }
+    assertAccountSessionBoundary(boundary);
     if (generation !== pushRegistrationGeneration) return false;
-    await invalidateLocalPushDeviceRegistration();
+    await invalidateLocalPushDeviceRegistration(boundary);
+    assertAccountSessionBoundary(boundary);
     return removedFromServer;
   });
 };
@@ -218,8 +301,10 @@ export const clearPushDeviceRegistration = async (
 
 /** Reconcile token rotation or a previously interrupted unregister. Never prompts. */
 export const reconcilePushRegistration = async () => {
+  const boundary = await captureAccountSessionBoundary();
   // Runs during bootstrap and foreground transitions even for guests.
   const hasSession = Boolean(await currentSessionToken());
+  assertAccountSessionBoundary(boundary);
   if (hasSession) {
     // Authentication transfers reminder ownership to the backend even before
     // a token refresh succeeds. Retire a guest timer here as well as after
@@ -228,14 +313,16 @@ export const reconcilePushRegistration = async () => {
     cancelLearningReminders();
   }
   if (!(await retryPendingNativePushTokenInvalidation())) return false;
+  assertAccountSessionBoundary(boundary);
   if (!hasSession) return false;
-  const optedIn = await getSmartRemindersEnabled();
+  const optedIn = await getSmartRemindersEnabled(boundary);
   if (optedIn) {
-    return registerPushDeviceIfEligible({requestPermission: false}).catch(
-      () => false,
-    );
+    return registerPushDeviceIfEligible({
+      requestPermission: false,
+      ownerBoundary: boundary,
+    }).catch(() => false);
   }
-  return unregisterPushDevice().catch(() => false);
+  return unregisterPushDevice(boundary).catch(() => false);
 };
 
 export const subscribeToPushTokenRefresh = () =>

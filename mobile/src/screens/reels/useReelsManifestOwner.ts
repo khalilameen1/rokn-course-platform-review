@@ -21,7 +21,6 @@ type Params = {
   course: CourseLearningData | null;
   courseRef: MutableRefObject<CourseLearningData | null>;
   currentIndex: number;
-  currentItem?: CourseFeedItem;
   currentReel?: CourseReel;
   dataSaver: boolean;
   durations: MutableRefObject<Record<string, number>>;
@@ -55,7 +54,6 @@ export const useReelsManifestOwner = ({
   course,
   courseRef,
   currentIndex,
-  currentItem,
   currentReel,
   dataSaver,
   durations,
@@ -206,34 +204,35 @@ export const useReelsManifestOwner = ({
 
   useEffect(() => {
     if (!canPreloadAdjacentSource || serverSession !== true) return;
-    if (
-      currentItem?.type === 'reel' &&
-      (!currentItem.reel.playbackSessionId || !currentItem.reel.videoUrl.trim())
-    ) {
-      return;
+    // Acquire the adjacent authorized sources alongside the current one.
+    // Waiting for the current response made rapid swipes start another serial
+    // network chain. Android prepares samples without an adjacent decoder;
+    // other platforms retain the existing bounded next-player preparation.
+    for (const nextItem of [
+      feedItems[currentIndex + 1],
+      feedItems[currentIndex - 1],
+    ]) {
+      if (nextItem?.type !== 'reel' || nextItem.reel.isLocked) continue;
+      const sessionId = nextItem.reel.playbackSessionId;
+      const sessionClosed = Boolean(
+        sessionId && sessionsClosed.current.has(sessionId),
+      );
+      const sourceExpired =
+        Boolean(sessionId) &&
+        manifestRefreshDelayMs(nextItem.reel.playbackExpiresAt) === 0;
+      if (
+        sessionId &&
+        !sessionClosed &&
+        !sourceExpired &&
+        nextItem.reel.videoUrl.trim()
+      ) {
+        continue;
+      }
+      void requestPlaybackManifest(nextItem.reel, sessionId, !sessionClosed);
     }
-    const nextItem = feedItems[currentIndex + 1];
-    if (nextItem?.type !== 'reel' || nextItem.reel.isLocked) return;
-    const sessionId = nextItem.reel.playbackSessionId;
-    const sessionClosed = Boolean(
-      sessionId && sessionsClosed.current.has(sessionId),
-    );
-    const sourceExpired =
-      Boolean(sessionId) &&
-      manifestRefreshDelayMs(nextItem.reel.playbackExpiresAt) === 0;
-    if (
-      sessionId &&
-      !sessionClosed &&
-      !sourceExpired &&
-      nextItem.reel.videoUrl.trim()
-    ) {
-      return;
-    }
-    void requestPlaybackManifest(nextItem.reel, sessionId, !sessionClosed);
   }, [
     canPreloadAdjacentSource,
     currentIndex,
-    currentItem,
     feedItems,
     refreshNonce,
     requestPlaybackManifest,

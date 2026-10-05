@@ -177,6 +177,45 @@ describe('saved library focus lifecycle', () => {
     );
   });
 
+  it('retries folder reads remotely, keeps lessons on repeated failure, and restores offline fallback on refocus', async () => {
+    mockGetSavedLessonsPage.mockResolvedValue(page(1));
+    mockGetSavedFolderOptions.mockRejectedValueOnce(new Error('offline'));
+    const view = await mountLibrary();
+    try {
+      expect(view.current.error).toBe('');
+      expect(view.current.folderLoadError).not.toBe('');
+      expect(view.current.saved).toHaveLength(1);
+      mockGetSavedFolderOptions.mockRejectedValueOnce(new Error('offline'));
+      await act(async () => {
+        view.current.retry();
+        await flush();
+      });
+      expect(mockGetSavedFolderOptions).toHaveBeenLastCalledWith({
+        requireFresh: true,
+      });
+      expect(view.current.error).toBe('');
+      expect(view.current.folderLoadError).not.toBe('');
+      expect(view.current.saved).toHaveLength(1);
+      await act(async () => {
+        view.current.retry();
+        await flush();
+      });
+      expect(view.current.folderLoadError).toBe('');
+      expect(mockGetSavedFolderOptions).toHaveBeenLastCalledWith({
+        requireFresh: true,
+      });
+      await act(async () => {
+        blur();
+        refocus();
+        await flush();
+      });
+      expect(mockGetSavedFolderOptions).toHaveBeenLastCalledWith(undefined);
+      expect(mockRemoveLessonFromSavedFolder).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => view.renderer.unmount());
+    }
+  });
+
   it('opens an older folder independently of the latest twenty global saves', async () => {
     mockGetSavedFolderOptions.mockResolvedValue([
       {id: '7', name: 'القديمة', lessonsCount: 1},
@@ -222,7 +261,12 @@ describe('saved library focus lifecycle', () => {
     }
   });
 
-  it.each(['success', 'failure', 'success-already-reflected'])(
+  it.each([
+    'success',
+    'failure',
+    'success-already-reflected',
+    'success-count-unavailable',
+  ])(
     'settles a removal after a foreground refresh restores the old rows (%s)',
     async outcome => {
       const succeeded = outcome !== 'failure';
@@ -269,17 +313,56 @@ describe('saved library focus lifecycle', () => {
         await act(async () => {
           void view.current.removeSaved(item);
           if (succeeded) {
-            mockGetSavedFolderOptions.mockResolvedValueOnce([
-              {...folders[0], lessonsCount: 0},
-            ]);
+            if (outcome === 'success-count-unavailable') {
+              mockGetSavedFolderOptions.mockRejectedValueOnce(
+                new Error('offline'),
+              );
+            } else {
+              mockGetSavedFolderOptions.mockResolvedValueOnce([
+                {...folders[0], lessonsCount: 0},
+              ]);
+            }
             removal.resolve();
           } else removal.reject(new Error('offline'));
           await flush();
         });
         expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
         expect(view.current.saved).toHaveLength(succeeded ? 0 : 1);
-        expect(view.current.folderCounts.get('7')).toBe(succeeded ? 0 : 1);
+        expect(view.current.folderCounts.get('7')).toBe(
+          outcome === 'success-count-unavailable'
+            ? undefined
+            : succeeded
+            ? 0
+            : 1,
+        );
         expect(view.current.removingSaved.size).toBe(0);
+        if (outcome === 'success-count-unavailable') {
+          expect(view.current.error).toBe('');
+          expect(view.current.actionError).toBe('');
+          expect(view.current.folderLoadError).toContain('تمت إزالة المقطع');
+          expect(view.current.folderLoadError).toContain(
+            'تعذّر تحديث عدد المقاطع',
+          );
+          mockGetSavedFolderOptions.mockResolvedValueOnce([
+            {...folders[0], lessonsCount: 0},
+          ]);
+          mockGetSavedFolderLessonsPage.mockResolvedValueOnce({
+            ...folderPage('7'),
+            lessons: [],
+            total: 0,
+          });
+          await act(async () => {
+            view.current.retry();
+            await flush();
+          });
+          expect(view.current.saved).toEqual([]);
+          expect(view.current.folderCounts.get('7')).toBe(0);
+          expect(view.current.folderLoadError).toBe('');
+          expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
+          expect(mockGetSavedFolderOptions).toHaveBeenLastCalledWith({
+            requireFresh: true,
+          });
+        }
       } finally {
         await act(async () => view.renderer.unmount());
       }
@@ -405,7 +488,10 @@ describe('saved library focus lifecycle', () => {
           });
         }
         if (outcome === 'success-count-unavailable') {
-          expect(view.current.error).toContain('تعذّر تحديث عدد المقاطع');
+          expect(view.current.error).toBe('');
+          expect(view.current.folderLoadError).toContain(
+            'تعذّر تحديث عدد المقاطع',
+          );
           expect(view.current.actionError).toBe('');
           mockGetSavedFolderOptions.mockResolvedValueOnce([
             {...folders[0], lessonsCount: 0},
@@ -417,6 +503,7 @@ describe('saved library focus lifecycle', () => {
           });
           expect(view.current.folderCounts.get('7')).toBe(0);
           expect(view.current.error).toBe('');
+          expect(view.current.folderLoadError).toBe('');
           expect(mockRemoveLessonFromSavedFolder).toHaveBeenCalledTimes(1);
         }
       } finally {

@@ -4,11 +4,6 @@ import {
   type AccountSessionBoundary,
 } from '../constants/helpers';
 import type {CoinPackage} from './api/coinPackageMapper';
-import {
-  CAN_START_EXTERNAL_CHECKOUT,
-  CAN_START_NATIVE_CHECKOUT,
-  DISTRIBUTION_CHANNEL,
-} from '../constants/distribution';
 import {reportClientError} from './operationalTelemetry';
 import {requireProductFeature} from './productFeatures';
 import {errorCode} from '../utils/errorPayload';
@@ -46,12 +41,19 @@ import {
 } from './coinCheckoutRecovery';
 import {
   openCoinCheckoutSurface,
+  openCourseBrowserCheckoutSurface,
   parseCoinCheckoutCallback,
 } from './coinCheckoutProvider';
 import type {
   CoinCheckoutAttempt,
   CoinCheckoutResult,
 } from './coinCheckoutTypes';
+import {
+  walletCheckoutTransport,
+  checkoutProviderIdentity,
+  canRecoverExternalCheckout,
+  type CheckoutTransport,
+} from './checkoutRouting';
 
 export type {CoinCheckoutResult} from './coinCheckoutTypes';
 export {subscribeCoinCheckoutCredits};
@@ -97,16 +99,9 @@ const checkoutReturnIntentParts = (value?: LoginReturnTo): unknown[] => {
   return [returnTo.name];
 };
 
-const checkoutProviderSnapshot = (coinPackage: CoinPackage) => {
-  if (DISTRIBUTION_CHANNEL === 'direct') return ['kashier', 'EGP', ''];
-  if (DISTRIBUTION_CHANNEL === 'play') {
-    return ['google_play', 'store', coinPackage.storeProductIds?.google];
-  }
-  return ['apple_app_store', 'store', coinPackage.storeProductIds?.apple];
-};
-
 const coinCheckoutIntentKey = (
   coinPackage: CoinPackage,
+  transport: CheckoutTransport,
   returnTo?: LoginReturnTo,
   courseCheckoutId?: string,
 ) =>
@@ -115,7 +110,7 @@ const coinCheckoutIntentKey = (
     coinPackage.id,
     coinPackage.coins,
     Math.round(coinPackage.price * 100),
-    ...checkoutProviderSnapshot(coinPackage),
+    ...checkoutProviderIdentity(transport, coinPackage),
     ...checkoutReturnIntentParts(returnTo),
     courseCheckoutId,
   ]
@@ -198,19 +193,20 @@ const terminalCheckoutFailureCodes = new Set([
 const runCoinCheckout = async (
   coinPackage: CoinPackage,
   boundary: AccountSessionBoundary,
+  transport: CheckoutTransport,
   allowFreshRetry = true,
   courseCheckoutId?: string,
 ): Promise<CoinCheckoutResult> => {
   assertAccountSessionBoundary(boundary);
   const packageId = validCoinPackage(coinPackage);
-  if (CAN_START_NATIVE_CHECKOUT) {
+  if (transport.kind === 'native') {
     await requireProductFeature('checkout');
     const {purchaseNativeCoinPackage} = await import('./nativeStoreBilling');
     return purchaseNativeCoinPackage(coinPackage, {courseCheckoutId});
   }
-  if (!CAN_START_EXTERNAL_CHECKOUT) {
-    throw new Error('CHECKOUT_DISABLED_FOR_DISTRIBUTION');
-  }
+  const browser = transport.surface === 'browser';
+  if (browser && !courseCheckoutId)
+    throw new Error('COURSE_CHECKOUT_BINDING_INVALID');
   await requireProductFeature('checkout');
 
   const packageSwitch = await reconcileCoinCheckoutPackageSwitch(
@@ -245,6 +241,7 @@ const runCoinCheckout = async (
         expectedCoins: attempt.expectedCoins,
         idempotencyKey: attempt.idempotencyKey,
         courseCheckoutId,
+        browser,
       },
       boundary,
     );
@@ -309,7 +306,13 @@ const runCoinCheckout = async (
           ['cancelled', 'rejected', 'failed'].includes(failure.status)))
     ) {
       await clearCoinCheckoutAttempt(attempt.idempotencyKey, boundary);
-      return runCoinCheckout(coinPackage, boundary, false, courseCheckoutId);
+      return runCoinCheckout(
+        coinPackage,
+        boundary,
+        transport,
+        false,
+        courseCheckoutId,
+      );
     }
 
     if (failure.code === 'payment_under_review' && failure.orderRef) {
@@ -412,6 +415,7 @@ const runCoinCheckout = async (
           return runCoinCheckout(
             coinPackage,
             boundary,
+            transport,
             false,
             courseCheckoutId,
           );
@@ -451,10 +455,14 @@ const runCoinCheckout = async (
 
   try {
     assertAccountSessionBoundary(boundary);
-    const callbackUrl = await openCoinCheckoutSurface(paymentUrl);
+    const callbackUrl = browser
+      ? await openCourseBrowserCheckoutSurface(paymentUrl)
+      : await openCoinCheckoutSurface(paymentUrl);
     assertAccountSessionBoundary(boundary);
     const callback = parseCoinCheckoutCallback(callbackUrl);
-    if (!callback.valid) throw new Error('PAYMENT_CALLBACK_INVALID');
+    if (!callback.valid && !(browser && callbackUrl === '')) {
+      throw new Error('PAYMENT_CALLBACK_INVALID');
+    }
     if (callback.orderRef && callback.orderRef !== orderRef) {
       throw new Error('PAYMENT_CALLBACK_ORDER_MISMATCH');
     }
@@ -505,7 +513,7 @@ const runCoinCheckout = async (
 };
 
 export const reconcilePendingCoinCheckout = async () => {
-  if (!CAN_START_EXTERNAL_CHECKOUT) return null;
+  if (!canRecoverExternalCheckout) return null;
   const boundary = await captureAccountSessionBoundary();
   const ownerKey = `${await coinCheckoutOwnerKey(boundary)}:${boundary.epoch}`;
   return runCoinCheckoutReconciliationSingleFlight(ownerKey, async () => {
@@ -520,12 +528,18 @@ export const reconcilePendingCoinCheckout = async () => {
 
 export const openCoinCheckout = async (
   coinPackage: CoinPackage,
-  options: {returnTo?: LoginReturnTo; courseCheckoutId?: string} = {},
+  options: {
+    returnTo?: LoginReturnTo;
+    courseCheckoutId?: string;
+    transport?: CheckoutTransport;
+  } = {},
 ): Promise<CoinCheckoutResult> => {
   const boundary = await captureAccountSessionBoundary();
   const ownerKey = `${await coinCheckoutOwnerKey(boundary)}:${boundary.epoch}`;
+  const transport = options.transport ?? walletCheckoutTransport;
   const intentKey = coinCheckoutIntentKey(
     coinPackage,
+    transport,
     options.returnTo,
     options.courseCheckoutId,
   );
@@ -540,6 +554,7 @@ export const openCoinCheckout = async (
       result = await runCoinCheckout(
         coinPackage,
         boundary,
+        transport,
         true,
         options.courseCheckoutId,
       );
@@ -547,7 +562,7 @@ export const openCoinCheckout = async (
       // The initiating screen may have been removed while reconciliation was
       // pending. Credit belongs to this operation, not that screen's lifetime.
       // Native billing already emits its own verified purchase notification.
-      if (CAN_START_EXTERNAL_CHECKOUT && result.success) {
+      if (transport.kind === 'external' && result.success) {
         emitCoinCheckoutCreditOnce(boundary.scope, result);
       }
       return result;

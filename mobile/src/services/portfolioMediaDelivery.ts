@@ -6,15 +6,45 @@ import {appendPortfolioMedia, type PortfolioMedia} from './api/profile';
 import {
   completePortfolioMediaUpload,
   discardPortfolioMediaUploads,
+  portfolioMediaUploadIsPaused,
+  setPortfolioMediaUploadsPaused,
   type PortfolioMediaOutboxEntry,
 } from './portfolioMediaOutbox';
 import {portfolioMediaFailureDisposition} from './portfolioMediaPolicy';
+import type {
+  PortfolioTransferObserver,
+  PortfolioTransferProgress,
+} from './portfolioUploadProgress';
 
 export type PortfolioMediaDeliveryResult =
   | {state: 'uploaded'; media: PortfolioMedia}
-  | {state: 'discarded_file' | 'discarded_project' | 'retry'};
+  | {state: 'discarded_file' | 'discarded_project' | 'retry' | 'paused'};
 
-const flights = new Map<string, Promise<PortfolioMediaDeliveryResult>>();
+type DeliveryFlight = {
+  promise: Promise<PortfolioMediaDeliveryResult>;
+  observers: Set<PortfolioTransferObserver>;
+  progress?: PortfolioTransferProgress;
+  active: boolean;
+  controller: AbortController;
+  projectId: string;
+  scope: string;
+};
+const flights = new Map<string, DeliveryFlight>();
+
+const observe = (
+  flight: DeliveryFlight,
+  observer?: PortfolioTransferObserver,
+) => {
+  if (!observer) return;
+  flight.observers.add(observer);
+  if (flight.progress) {
+    try {
+      observer(flight.progress);
+    } catch {
+      /* Presentation cannot fail delivery. */
+    }
+  }
+};
 
 const responseStatus = (error: unknown) =>
   Number(
@@ -32,19 +62,55 @@ const deliveryKey = (
 export const deliverPortfolioMedia = (
   entry: PortfolioMediaOutboxEntry,
   boundary: AccountSessionBoundary,
+  onProgress?: PortfolioTransferObserver,
 ): Promise<PortfolioMediaDeliveryResult> => {
   const key = deliveryKey(entry, boundary);
   const existing = flights.get(key);
-  if (existing) return existing;
+  if (existing) {
+    assertAccountSessionBoundary(boundary);
+    observe(existing, onProgress);
+    return existing.promise;
+  }
 
-  const flight = (async (): Promise<PortfolioMediaDeliveryResult> => {
+  const flight: DeliveryFlight = {
+    promise: Promise.resolve({state: 'retry'}),
+    observers: new Set(),
+    active: true,
+    controller: new AbortController(),
+    projectId: entry.projectId,
+    scope: boundary.scope,
+  };
+  observe(flight, onProgress);
+  const publish: PortfolioTransferObserver = progress => {
+    if (!flight.active || flight.controller.signal.aborted) return;
     try {
       assertAccountSessionBoundary(boundary);
+    } catch {
+      return;
+    }
+    flight.progress = progress;
+    flight.observers.forEach(observer => {
+      try {
+        observer(progress);
+      } catch {
+        /* Presentation cannot fail delivery. */
+      }
+    });
+  };
+
+  flight.promise = (async (): Promise<PortfolioMediaDeliveryResult> => {
+    try {
+      assertAccountSessionBoundary(boundary);
+      if (await portfolioMediaUploadIsPaused(entry, boundary))
+        return {state: 'paused'};
+      if (flight.controller.signal.aborted) return {state: 'paused'};
       const media = await appendPortfolioMedia(
         entry.projectId,
         entry.file,
         entry.clientRequestId,
         boundary,
+        publish,
+        flight.controller.signal,
       );
       assertAccountSessionBoundary(boundary);
       await completePortfolioMediaUpload(entry, boundary);
@@ -57,6 +123,7 @@ export const deliverPortfolioMedia = (
       ) {
         throw error;
       }
+      if (flight.controller.signal.aborted) return {state: 'paused'};
       const disposition = portfolioMediaFailureDisposition(
         responseStatus(error),
       );
@@ -71,10 +138,27 @@ export const deliverPortfolioMedia = (
       return {state: 'retry'};
     }
   })().finally(() => {
+    flight.active = false;
+    flight.observers.clear();
     if (flights.get(key) === flight) flights.delete(key);
   });
   flights.set(key, flight);
-  return flight;
+  return flight.promise;
+};
+
+/** Persist first. A failed storage write must not falsely acknowledge a pause. */
+export const pausePortfolioMediaDelivery = async (
+  projectId: string,
+  boundary: AccountSessionBoundary,
+): Promise<boolean> => {
+  const count = await setPortfolioMediaUploadsPaused(projectId, true, boundary);
+  assertAccountSessionBoundary(boundary);
+  if (!count) return false;
+  flights.forEach(flight => {
+    if (flight.projectId === projectId && flight.scope === boundary.scope)
+      flight.controller.abort();
+  });
+  return true;
 };
 
 export const resetPortfolioMediaDeliveryForTests = () => flights.clear();

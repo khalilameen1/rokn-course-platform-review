@@ -27,7 +27,16 @@ import type {CourseAttachment} from '../../../components/VideoPlayer/types';
 import {useAppForegroundState} from '../../../hooks/useAppActiveState';
 import {settleWithin} from '../../../utils/settleWithin';
 
-export function useCertificatesController(resolvedDisplayName?: string) {
+type CertificateMutationFlight = {
+  presentation: number;
+  dispatched: boolean;
+};
+
+/** A course-scoped caller must key its controller by account + course. */
+export function useCertificatesController(
+  resolvedDisplayName?: string,
+  courseId?: string,
+) {
   const cancellationForAttachment = useAttachmentDownloadCancellation();
   const screenFocused = useIsFocused();
   const appIsActive = useAppForegroundState();
@@ -48,13 +57,59 @@ export function useCertificatesController(resolvedDisplayName?: string) {
   const [issueName, setIssueName] = useState('');
   const [issuing, setIssuing] = useState(false);
   const loadGeneration = useRef(0);
-  const issueFlight = useRef<symbol | null>(null);
+  const issueFlight = useRef<CertificateMutationFlight | null>(null);
+  const presentationGeneration = useRef(0);
+  const canonicalReadReady = useRef(false);
+  const readSettled = useRef(false);
   const pendingPollAttempts = useRef(0);
   const acceptedIssueCourseIds = useRef(new Set<string>());
   const identityOwnerRef = useRef(identityKey);
+  const activeIdentityRef = useRef(identityKey);
+  const presentationActiveRef = useRef(screenFocused && appIsActive);
+  const mountedRef = useRef(true);
+  activeIdentityRef.current = identityKey;
+  presentationActiveRef.current = screenFocused && appIsActive;
+
+  const ownsIdentity = useCallback(
+    (expectedIdentity: string) =>
+      mountedRef.current &&
+      activeIdentityRef.current === expectedIdentity &&
+      identityOwnerRef.current === expectedIdentity,
+    [],
+  );
+  const ownsPresentation = useCallback(
+    (expectedIdentity: string) =>
+      ownsIdentity(expectedIdentity) && presentationActiveRef.current,
+    [ownsIdentity],
+  );
+  const ownsFlight = useCallback(
+    (flight: CertificateMutationFlight, expectedIdentity: string) =>
+      ownsIdentity(expectedIdentity) && issueFlight.current === flight,
+    [ownsIdentity],
+  );
+  const ownsIssue = useCallback(
+    (flight: CertificateMutationFlight, expectedIdentity: string) =>
+      ownsFlight(flight, expectedIdentity) &&
+      ownsPresentation(expectedIdentity) &&
+      presentationGeneration.current === flight.presentation,
+    [ownsFlight, ownsPresentation],
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      loadGeneration.current += 1;
+      canonicalReadReady.current = false;
+      readSettled.current = false;
+      issueFlight.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     loadGeneration.current += 1;
+    canonicalReadReady.current = false;
+    readSettled.current = false;
     issueFlight.current = null;
     pendingPollAttempts.current = 0;
     acceptedIssueCourseIds.current.clear();
@@ -74,14 +129,19 @@ export function useCertificatesController(resolvedDisplayName?: string) {
   }, [identityKey]);
 
   const loadCertificates = useCallback(async () => {
+    if (!ownsPresentation(identityKey)) return;
     const generation = ++loadGeneration.current;
+    canonicalReadReady.current = false;
+    readSettled.current = false;
     const isCurrent = () =>
-      loadGeneration.current === generation &&
-      identityOwnerRef.current === identityKey;
+      loadGeneration.current === generation && ownsPresentation(identityKey);
     setLoading(true);
     setLoadError('');
+    if (acceptedIssueCourseIds.current.size > 0) setCertificatePending(true);
     try {
       const boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!isCurrent()) return;
       const sessionAvailable = await hasSession();
       assertAccountSessionBoundary(boundary);
       if (!isCurrent()) return;
@@ -98,13 +158,16 @@ export function useCertificatesController(resolvedDisplayName?: string) {
           [],
         );
         assertAccountSessionBoundary(boundary);
-        if (isCurrent() && cachedCertificates.length) {
+        const scopedCachedCertificates = cachedCertificates.filter(
+          item => !courseId || item.courseId === courseId,
+        );
+        if (isCurrent() && scopedCachedCertificates.length) {
           setCertificates(
-            cachedCertificates.filter(item => item.status !== 'revoked'),
+            scopedCachedCertificates.filter(item => item.status !== 'revoked'),
           );
           setCertificatePending(
             acceptedIssueCourseIds.current.size > 0 ||
-              cachedCertificates.some(item => item.status === 'pending'),
+              scopedCachedCertificates.some(item => item.status === 'pending'),
           );
         }
         const [certificatesResult, learningResult] = await remoteReads;
@@ -126,6 +189,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
           setGrantCourses(
             learningResult.value.filter(
               course =>
+                (!courseId || course.id === courseId) &&
                 course.accessType === 'scholarship' &&
                 !course.certificateAvailable &&
                 (course.progress >= 100 ||
@@ -135,7 +199,10 @@ export function useCertificatesController(resolvedDisplayName?: string) {
           );
         }
         if (certificatesResult.status === 'fulfilled') {
-          const remoteCertificates = certificatesResult.value;
+          canonicalReadReady.current = true;
+          const remoteCertificates = certificatesResult.value.filter(
+            item => !courseId || item.courseId === courseId,
+          );
           remoteCertificates.forEach(item => {
             acceptedIssueCourseIds.current.delete(item.courseId);
           });
@@ -151,6 +218,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
               // progress alone does not include every project/evidence gate.
               setReadyCourses(
                 learningResult.value
+                  .filter(course => !courseId || course.id === courseId)
                   .filter(course => course.certificateAvailable)
                   .filter(
                     course =>
@@ -189,71 +257,115 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         setLoadError('تعذّر التحقق من شهاداتك الآن\nشهاداتك محفوظة');
       }
     } finally {
-      if (isCurrent()) setLoading(false);
+      if (isCurrent()) {
+        readSettled.current = true;
+        setLoading(false);
+      }
     }
-  }, [identityKey]);
+  }, [courseId, identityKey, ownsPresentation]);
+
+  const finishIssueFlight = useCallback(
+    async (flight: CertificateMutationFlight) => {
+      if (!ownsFlight(flight, identityKey)) return;
+      // Blur cannot undo a dispatched request. Keep its lock through the
+      // response and reconcile under the current presentation before another
+      // mutation; an earlier GET is not proof of this POST's outcome.
+      if (
+        flight.dispatched &&
+        !ownsIssue(flight, identityKey) &&
+        ownsPresentation(identityKey)
+      ) {
+        await loadCertificates();
+      }
+      if (ownsFlight(flight, identityKey)) {
+        issueFlight.current = null;
+        setIssuing(false);
+      }
+    },
+    [identityKey, loadCertificates, ownsFlight, ownsIssue, ownsPresentation],
+  );
 
   useFocusEffect(
     useCallback(() => {
       if (!appIsActive) return () => undefined;
+      setIssuing(Boolean(issueFlight.current));
       loadCertificates();
       return () => {
         loadGeneration.current += 1;
+        presentationGeneration.current += 1;
+        canonicalReadReady.current = false;
+        readSettled.current = false;
       };
     }, [appIsActive, loadCertificates]),
   );
 
   const recoverPendingCertificates = useCallback(async () => {
-    if (issueFlight.current) return;
-    const flight = Symbol('certificate-recovery-all');
+    if (
+      issueFlight.current ||
+      !readSettled.current ||
+      !ownsPresentation(identityKey)
+    )
+      return;
+    const flight = {
+      presentation: presentationGeneration.current,
+      dispatched: false,
+    };
     issueFlight.current = flight;
+    setIssuing(true);
     pendingPollAttempts.current = 0;
     try {
       const boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!ownsIssue(flight, identityKey)) return;
       const pendingCourseIds = Array.from(
-        new Set(
-          [
-            ...certificates
-              .filter(certificate => certificate.status === 'pending')
-              .map(certificate => certificate.courseId),
-            ...acceptedIssueCourseIds.current,
-          ],
-        ),
+        new Set([
+          ...certificates
+            .filter(certificate => certificate.status === 'pending')
+            .map(certificate => certificate.courseId),
+          ...acceptedIssueCourseIds.current,
+        ]),
       );
       // POST issue is idempotent for user + course. For an existing pending
       // row it only re-enqueues artifact recovery; one controller flight keeps
       // repeated taps from wasting the mutation throttle.
+      flight.dispatched = pendingCourseIds.length > 0;
       const recoveryResults = pendingCourseIds.length
         ? await Promise.allSettled(
-          pendingCourseIds.map(courseId =>
-            recoverCertificate(courseId, boundary),
-          ),
-        )
+            pendingCourseIds.map(pendingCourseId =>
+              recoverCertificate(pendingCourseId, boundary),
+            ),
+          )
         : [];
       assertAccountSessionBoundary(boundary);
-      if (issueFlight.current !== flight) return;
+      if (!ownsIssue(flight, identityKey)) return;
       await loadCertificates();
       if (
         recoveryResults.length > 0 &&
         recoveryResults.every(result => result.status === 'rejected') &&
-        issueFlight.current === flight
+        ownsIssue(flight, identityKey)
       ) {
         setLoadError('تعذّر تحديث الشهادة الآن\nحاول مرة أخرى');
       }
     } catch (error: unknown) {
+      if (!ownsIssue(flight, identityKey)) return;
       if (
         error instanceof Error &&
         error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
       ) {
         return;
       }
-      if (issueFlight.current === flight) {
-        setLoadError('تعذّر تحديث الشهادة الآن\nحاول مرة أخرى');
-      }
+      setLoadError('تعذّر تحديث الشهادة الآن\nحاول مرة أخرى');
     } finally {
-      if (issueFlight.current === flight) issueFlight.current = null;
+      await finishIssueFlight(flight);
     }
-  }, [certificates, loadCertificates]);
+  }, [
+    certificates,
+    finishIssueFlight,
+    identityKey,
+    loadCertificates,
+    ownsPresentation,
+    ownsIssue,
+  ]);
 
   useEffect(() => {
     if (
@@ -276,7 +388,13 @@ export function useCertificatesController(resolvedDisplayName?: string) {
       void loadCertificates();
     }, delayMs);
     return () => clearTimeout(timer);
-  }, [appIsActive, certificatePending, loadCertificates, loading, screenFocused]);
+  }, [
+    appIsActive,
+    certificatePending,
+    loadCertificates,
+    loading,
+    screenFocused,
+  ]);
 
   const selectedCertificate =
     certificates.find(certificate => certificate.publicId === selectedId) ||
@@ -339,35 +457,63 @@ export function useCertificatesController(resolvedDisplayName?: string) {
   };
 
   const openIssueCertificate = (course: CourseProgress) => {
+    if (
+      !ownsPresentation(identityKey) ||
+      !readSettled.current ||
+      !canonicalReadReady.current ||
+      issuing ||
+      issueFlight.current
+    )
+      return;
     setIssueName(displayName);
     setIssueCourseId(course.id);
   };
 
   const closeIssueCertificate = () => {
-    if (issuing) return;
+    if (issuing || !ownsPresentation(identityKey)) return;
     setIssueCourseId(null);
     setIssueName('');
   };
 
   const confirmIssueCertificate = async () => {
-    if (!issueCourse || issuing || issueFlight.current) return;
+    if (
+      !issueCourse ||
+      issuing ||
+      issueFlight.current ||
+      !readSettled.current ||
+      !canonicalReadReady.current ||
+      !ownsPresentation(identityKey)
+    )
+      return;
     const holderName = issueName.trim().replace(/\s+/g, ' ');
     if (Array.from(holderName).length < 2) {
       Alert.alert('اكتب اسمك', 'هذا الاسم سيظهر على الشهادة');
       return;
     }
-    const flight = Symbol('certificate-issue');
+    const flight = {
+      presentation: presentationGeneration.current,
+      dispatched: false,
+    };
     issueFlight.current = flight;
     setIssuing(true);
     try {
       const boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!ownsIssue(flight, identityKey)) return;
+      flight.dispatched = true;
       const issued = await issueCertificate(
         issueCourse.id,
         holderName,
         boundary,
       );
       assertAccountSessionBoundary(boundary);
-      if (issueFlight.current !== flight) return;
+      if (!ownsFlight(flight, identityKey)) return;
+      if (issued?.status !== 'active') {
+        // A positive receipt belongs to this account even after blur. Preserve
+        // the marker until a canonical read observes the reserved credential.
+        acceptedIssueCourseIds.current.add(issueCourse.id);
+      }
+      if (!ownsIssue(flight, identityKey)) return;
       setReadyCourses(current =>
         current.filter(course => course.id !== issueCourse.id),
       );
@@ -382,7 +528,6 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         ]);
         setSelectedId(issued.publicId);
       } else {
-        acceptedIssueCourseIds.current.add(issueCourse.id);
         pendingPollAttempts.current = 0;
         setCertificatePending(true);
         // Keep ownership until the read endpoint has observed the accepted
@@ -390,6 +535,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         await loadCertificates();
       }
     } catch (error: unknown) {
+      if (!ownsIssue(flight, identityKey)) return;
       if (
         error instanceof Error &&
         error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -405,28 +551,38 @@ export function useCertificatesController(resolvedDisplayName?: string) {
       // cannot request the same credential again.
       await loadCertificates();
     } finally {
-      if (issueFlight.current === flight) {
-        issueFlight.current = null;
-        setIssuing(false);
-      }
+      await finishIssueFlight(flight);
     }
   };
 
   const retryPendingCertificate = async (certificate: CertificateDto) => {
-    if (issueFlight.current) return;
-    const flight = Symbol('certificate-recovery');
+    if (
+      issueFlight.current ||
+      !readSettled.current ||
+      !ownsPresentation(identityKey)
+    )
+      return;
+    const flight = {
+      presentation: presentationGeneration.current,
+      dispatched: false,
+    };
     issueFlight.current = flight;
+    setIssuing(true);
     try {
       const boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!ownsIssue(flight, identityKey)) return;
       // The original issue already froze the learner name. Reissuing without
       // a name addresses the same canonical row and only asks the backend to
       // recover its missing artifact; it cannot create a second credential.
+      flight.dispatched = true;
       await recoverCertificate(certificate.courseId, boundary);
       assertAccountSessionBoundary(boundary);
-      if (issueFlight.current !== flight) return;
+      if (!ownsIssue(flight, identityKey)) return;
       pendingPollAttempts.current = 0;
       await loadCertificates();
     } catch (error: unknown) {
+      if (!ownsIssue(flight, identityKey)) return;
       if (
         error instanceof Error &&
         error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -438,9 +594,7 @@ export function useCertificatesController(resolvedDisplayName?: string) {
         learnerErrorMessage(error, 'حاول مرة أخرى'),
       );
     } finally {
-      if (issueFlight.current === flight) {
-        issueFlight.current = null;
-      }
+      await finishIssueFlight(flight);
     }
   };
 
@@ -448,6 +602,19 @@ export function useCertificatesController(resolvedDisplayName?: string) {
     activeCertificateQrDestination,
     activeCourseTitle,
     activeCredential,
+    issueReady:
+      canonicalReadReady.current &&
+      readSettled.current &&
+      !loading &&
+      !issuing &&
+      !issueFlight.current &&
+      ownsPresentation(identityKey),
+    mutationReady:
+      readSettled.current &&
+      !loading &&
+      !issuing &&
+      !issueFlight.current &&
+      ownsPresentation(identityKey),
     certificatePending,
     certificates,
     closeIssueCertificate,

@@ -576,8 +576,8 @@ test('Android release snapshot covers the resolved closure and ships exact texts
     snapshot.dependencies.filter(item => item.artifacts.length === 0).length,
     34,
   );
-  assert.equal(snapshot.projectComponentCount, 23);
-  assert.equal(snapshot.projectComponents.length, 23);
+  assert.equal(snapshot.projectComponentCount, 24);
+  assert.equal(snapshot.projectComponents.length, 24);
   assert.equal(snapshot.unresolvedDependencyCount, 0);
   assert.equal(snapshot.unclassifiedLocalFileCount, 0);
   assert.equal(snapshot.unclassifiedResolvedArtifactCount, 0);
@@ -621,6 +621,37 @@ test('Android release snapshot covers the resolved closure and ships exact texts
       assert.ok(documents.has(hash)),
     );
   }
+  const netInfo = snapshot.projectComponents.find(
+    component =>
+      component.coordinate ===
+      'gradle-project:::react-native-community_netinfo',
+  );
+  assert.ok(netInfo);
+  assert.equal(netInfo.npmCoordinate, '@react-native-community/netinfo@11.5.2');
+  assert.deepEqual(netInfo.selectedLicenses, ['MIT']);
+  const npmLock = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'),
+  );
+  assert.equal(
+    netInfo.npmIntegrity,
+    npmLock.packages['node_modules/@react-native-community/netinfo'].integrity,
+  );
+  const netInfoLicenseHash = sha256(
+    fs.readFileSync(
+      path.join(ROOT, 'node_modules/@react-native-community/netinfo/LICENSE'),
+      'utf8',
+    ),
+  );
+  assert.ok(netInfo.legalDocumentSha256s.includes(netInfoLicenseHash));
+  assert.ok(
+    documents
+      .get(netInfoLicenseHash)
+      .sources.some(
+        source =>
+          source.source === 'npm:@react-native-community/netinfo@11.5.2' &&
+          source.path === 'LICENSE',
+      ),
+  );
   const markdown = fs.readFileSync(
     path.join(ROOT, 'ANDROID_THIRD_PARTY_NOTICES.md'),
     'utf8',
@@ -654,20 +685,20 @@ test('Android release snapshot covers the resolved closure and ships exact texts
   const appMetadata = JSON.parse(appMetadataText);
   const podSnapshot = JSON.parse(
     fs.readFileSync(
-      path.join(
-        ROOT,
-        'scripts',
-        'licenses',
-        'ios-pods-notices.generated.json',
-      ),
+      path.join(ROOT, 'scripts', 'licenses', 'ios-pods-notices.generated.json'),
       'utf8',
     ),
   );
   assert.equal(appMetadata.androidDependencyCount, 241);
-  assert.equal(appMetadata.androidProjectComponentCount, 23);
+  assert.equal(appMetadata.androidProjectComponentCount, 24);
   assert.equal(appMetadata.podDependencyCount, podSnapshot.dependencyCount);
   assert.equal(appMetadata.android.length, 241);
-  assert.equal(appMetadata.androidProjects.length, 23);
+  assert.equal(appMetadata.androidProjects.length, 24);
+  assert.ok(
+    appMetadata.androidProjects.some(
+      component => component.coordinate === netInfo.coordinate,
+    ),
+  );
   assert.equal(appMetadata.pods.length, podSnapshot.dependencies.length);
   assert.deepEqual(
     appMetadata.pods.map(item => item.coordinate),

@@ -13,6 +13,118 @@ use Illuminate\Support\Str;
  */
 class ProfileEndpointTest extends ApiTestCase
 {
+    public function test_reminder_time_and_timezone_are_one_persisted_profile_preference(): void
+    {
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
+            'learning_reminder_hour' => 10,
+            'learning_reminder_timezone' => 'Asia/Kolkata',
+        ])->assertOk()
+            ->assertJsonPath('data.learning_reminder_hour', 10)
+            ->assertJsonPath('data.learning_reminder_timezone', 'Asia/Kolkata');
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'learning_reminder_hour' => 10,
+            'learning_reminder_timezone' => 'Asia/Kolkata',
+        ]);
+        // v60 and unrelated patches do not erase the newer preference.
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
+            'watch_history_enabled' => false,
+        ])->assertOk();
+        $this->actingAs($this->user, 'api')->getJson('/api/v1/user/profile')
+            ->assertOk()->assertJsonPath('data.learning_reminder_hour', 10);
+    }
+
+    public function test_reminder_preference_rejects_an_invalid_or_half_pair_without_mutation(): void
+    {
+        foreach ([
+            ['learning_reminder_hour' => 10],
+            ['learning_reminder_timezone' => 'Africa/Cairo'],
+            ['learning_reminder_hour' => 8, 'learning_reminder_timezone' => 'Africa/Cairo'],
+            ['learning_reminder_hour' => 15, 'learning_reminder_timezone' => 'Not/AZone'],
+        ] as $patch) {
+            $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', $patch)
+                ->assertUnprocessable();
+        }
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id, 'learning_reminder_hour' => 20,
+            'learning_reminder_timezone' => 'Africa/Cairo',
+        ]);
+    }
+
+    public function test_reminder_preference_is_part_of_the_profile_idempotency_fingerprint(): void
+    {
+        $id = (string) Str::uuid();
+        $patch = ['client_request_id' => $id, 'learning_reminder_hour' => 10,
+            'learning_reminder_timezone' => 'Africa/Cairo'];
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', $patch)->assertOk();
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', $patch)->assertOk();
+        $patch['learning_reminder_hour'] = 15;
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', $patch)->assertConflict();
+        $this->assertDatabaseHas('users', ['id' => $this->user->id, 'learning_reminder_hour' => 10]);
+    }
+
+    public function test_new_account_uses_the_production_playback_defaults(): void
+    {
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'video_quality_preference' => 'auto',
+            'playback_speed' => 1,
+        ]);
+        $this->actingAs($this->user, 'api')->getJson('/api/v1/user/profile')
+            ->assertOk()
+            ->assertJsonPath('data.video_quality_preference', 'auto')
+            ->assertJsonPath('data.playback_speed', 1)
+            ->assertJsonMissingPath('data.autoplay_next_enabled')
+            ->assertJsonMissingPath('data.video_fit_mode');
+    }
+
+    public function test_playback_preferences_are_persisted_and_returned_by_the_same_profile_contract(): void
+    {
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
+            'video_quality_preference' => '720p',
+            'playback_speed' => 1.5,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'video_quality_preference' => '720p',
+            'playback_speed' => 1.5,
+        ]);
+        $this->actingAs($this->user, 'api')->getJson('/api/v1/user/profile')
+            ->assertOk()
+            ->assertJsonPath('data.video_quality_preference', '720p')
+            ->assertJsonPath('data.playback_speed', 1.5);
+    }
+
+    public function test_quality_only_patch_preserves_speed_and_can_be_repeated_without_resetting_it(): void
+    {
+        $this->user->forceFill(['playback_speed' => 1.5])->save();
+        foreach (range(1, 2) as $attempt) {
+            $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
+                'video_quality_preference' => '360p',
+            ])->assertOk();
+        }
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'video_quality_preference' => '360p',
+            'playback_speed' => 1.5,
+        ]);
+    }
+
+    public function test_invalid_playback_preference_patch_does_not_change_the_saved_values(): void
+    {
+        $this->user->forceFill(['video_quality_preference' => '720p', 'playback_speed' => 1.5])->save();
+        $this->actingAs($this->user, 'api')->putJson('/api/v1/user/profile', [
+            'video_quality_preference' => '8K',
+            'playback_speed' => 10,
+        ])->assertUnprocessable();
+        $this->assertDatabaseHas('users', [
+            'id' => $this->user->id,
+            'video_quality_preference' => '720p',
+            'playback_speed' => 1.5,
+        ]);
+    }
+
     public function test_authenticated_user_can_view_profile(): void
     {
         $response = $this->actingAs($this->user, 'api')->getJson('/api/v1/user/profile');

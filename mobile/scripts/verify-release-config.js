@@ -48,6 +48,11 @@ const objectKeyPaths = (value, prefix = '') => {
 
 const packageJson = json('package.json');
 const packageLock = json('package-lock.json');
+try {
+  require('./rnv-shared-playback-resources').applyExtension({root, check: true});
+} catch (error) {
+  failures.push(`Native reel preloader integration is not installed: ${error.message}`);
+}
 const app = json('app.json').expo;
 const eas = json('eas.json');
 for (const profile of [

@@ -28,6 +28,7 @@ jest.mock('../src/constants/helpers', () => ({
   saveItem: jest.fn(async () => true),
 }));
 jest.mock('../src/constants/distribution', () => ({
+  DISTRIBUTION_CHANNEL: 'direct',
   CAN_START_EXTERNAL_CHECKOUT: true,
   CAN_START_NATIVE_CHECKOUT: false,
 }));
@@ -96,15 +97,17 @@ describe('coin checkout boundary', () => {
     const {removeItem} = require('../src/constants/helpers');
     const {openCoinCheckout} = require('../src/services/coinCheckout');
     publicRequest.post.mockResolvedValueOnce({
-      data: {data: {
-        order_ref: 'PKG-OLDER-PAID',
-        order_status: 'approved',
-        checkout_state: 'paid',
-        financial_status: 'settled',
-        transaction_id: 'TXN-OLDER',
-        coins_added: 300,
-        package: {id: 2, coins: 300},
-      }},
+      data: {
+        data: {
+          order_ref: 'PKG-OLDER-PAID',
+          order_status: 'approved',
+          checkout_state: 'paid',
+          financial_status: 'settled',
+          transaction_id: 'TXN-OLDER',
+          coins_added: 300,
+          package: {id: 2, coins: 300},
+        },
+      },
     });
 
     await expect(
@@ -130,14 +133,18 @@ describe('coin checkout boundary', () => {
     publicRequest.post.mockImplementationOnce(async () => {
       mockCoinAccountEpoch = 2;
       mockCoinAccountScope = 'user-b';
-      return {data: {data: {
-        order_ref: 'PKG-OLDER-PAID',
-        order_status: 'approved',
-        checkout_state: 'paid',
-        financial_status: 'settled',
-        coins_added: 300,
-        package: {id: 2, coins: 300},
-      }}};
+      return {
+        data: {
+          data: {
+            order_ref: 'PKG-OLDER-PAID',
+            order_status: 'approved',
+            checkout_state: 'paid',
+            financial_status: 'settled',
+            coins_added: 300,
+            package: {id: 2, coins: 300},
+          },
+        },
+      };
     });
 
     await expect(
@@ -347,9 +354,10 @@ describe('coin checkout boundary', () => {
     const {publicRequest} = require('../src/constants/api') as {
       publicRequest: {post: jest.Mock};
     };
-    const AsyncStorage = require('@react-native-async-storage/async-storage') as {
-      setItem: jest.Mock;
-    };
+    const AsyncStorage =
+      require('@react-native-async-storage/async-storage') as {
+        setItem: jest.Mock;
+      };
     let finishSurface:
       | ((value: {type: 'success'; url: string}) => void)
       | undefined;

@@ -6,11 +6,16 @@ const mockRecoverAttempts = jest.fn();
 const mockBoundary = {scope: 'foreground-learner', epoch: 1};
 const mockNavigation = {setParams: jest.fn(), dispatch: jest.fn()};
 
-jest.mock('@react-navigation/native', () => ({
-  useIsFocused: () => true,
-  useNavigation: () => mockNavigation,
-  useRoute: () => ({params: {}}),
-}));
+jest.mock('@react-navigation/native', () => {
+  const core = jest.requireActual('@react-navigation/core');
+  return {
+    CommonActions: core.CommonActions,
+    createNavigationContainerRef: core.createNavigationContainerRef,
+    useIsFocused: () => true,
+    useNavigation: () => mockNavigation,
+    useRoute: () => ({params: {}}),
+  };
+});
 
 jest.mock('../src/constants/helpers', () => ({
   extractUserProfile: () => ({id: 52}),
@@ -18,6 +23,7 @@ jest.mock('../src/constants/helpers', () => ({
   assertAccountSessionBoundary: jest.fn(),
 }));
 jest.mock('../src/constants/distribution', () => ({
+  DISTRIBUTION_CHANNEL: 'direct',
   CAN_START_EXTERNAL_CHECKOUT: true,
   CAN_START_NATIVE_CHECKOUT: false,
 }));

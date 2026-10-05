@@ -52,6 +52,31 @@ final class EngagementExperienceTest extends TestCase
             ->assertJsonFragment(['action_label_ar' => 'تسجيل الدخول']);
     }
 
+    public function test_compact_welcome_copy_keeps_its_amount_separate_from_text(): void
+    {
+        RewardRule::query()->where('event_key', 'welcome_bonus')->update(['coins_amount' => 83]);
+        $this->getJson('/api/v1/engagement/messages/guest_registration_prompt')
+            ->assertOk()
+            ->assertJsonPath('data.title_ar', 'حصلت على هدية ترحيبية')
+            ->assertJsonPath('data.description_ar', '')
+            ->assertJsonPath('data.coins', 83)
+            ->assertJsonPath('data.secondary_action_label_ar', 'تابع كزائر');
+    }
+
+    public function test_guest_template_body_can_be_empty_without_weakening_other_templates(): void
+    {
+        $request = \App\Http\Requests\Admin\AdminNotificationRequest::create('/admin/templates', 'PUT', ['system_key' => 'guest_registration_prompt']);
+        $rules = $request->rules();
+        self::assertTrue(\Illuminate\Support\Facades\Validator::make(
+            ['description_ar' => ''], ['description_ar' => $rules['description_ar']]
+        )->passes());
+        $request->merge(['system_key' => 'new_course']);
+        $rules = $request->rules();
+        self::assertFalse(\Illuminate\Support\Facades\Validator::make(
+            ['description_ar' => ''], ['description_ar' => $rules['description_ar']]
+        )->passes());
+    }
+
     public function test_inbound_whatsapp_message_verifies_the_number_and_credits_only_once(): void
     {
         $user = $this->student('whatsapp-student@rokn.test');

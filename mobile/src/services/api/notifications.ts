@@ -6,6 +6,8 @@ import {
 } from '../../constants/helpers';
 import {mapNotification} from '../notificationMapper';
 import type {Notification} from '../notificationMapper';
+import {safeNotificationImageUrl} from '../notificationCampaigns';
+import {cleanUnicodeText} from '../../utils/unicodeText';
 import {
   firstBoolean,
   isApiRecord,
@@ -28,7 +30,10 @@ type NotificationDto = Parameters<typeof mapNotification>[0] & {
   id?: unknown;
 };
 
-const mapNotificationContract = (value: unknown): Notification => {
+const mapNotificationContract = (
+  value: unknown,
+  home = false,
+): Notification => {
   if (!isApiRecord(value)) {
     throw new Error('NOTIFICATIONS_CONTRACT_INVALID');
   }
@@ -59,7 +64,29 @@ const mapNotificationContract = (value: unknown): Notification => {
   ) {
     throw new Error('NOTIFICATIONS_CONTRACT_INVALID');
   }
-  return mapped;
+  if (!home) return mapped;
+  const course = value.home_course;
+  if (!isApiRecord(course))
+    throw new Error('HOME_NOTIFICATIONS_CONTRACT_INVALID');
+  const courseId = String(course.id ?? '').trim();
+  const courseTitle =
+    typeof course.title === 'string'
+      ? cleanUnicodeText(course.title).trim()
+      : '';
+  const courseImage = safeNotificationImageUrl(course.image_url);
+  if (
+    !/^[1-9]\d{0,17}$/.test(courseId) ||
+    mapped.courseId !== courseId ||
+    mapped.read ||
+    (mapped.kind !== 'new_course' && mapped.kind !== 'course_recommendation') ||
+    !courseTitle ||
+    !courseImage
+  )
+    throw new Error('HOME_NOTIFICATIONS_CONTRACT_INVALID');
+  return {
+    ...mapped,
+    homeCourse: {id: courseId, title: courseTitle, imageUrl: courseImage},
+  };
 };
 
 type NotificationsPayloadDto = {
@@ -80,12 +107,14 @@ export const getNotificationsPage = async ({
   cursor,
   signal,
   ownerBoundary,
+  surface,
 }: {
   page?: number;
   perPage?: number;
   cursor?: string | null;
   signal?: AbortSignal;
   ownerBoundary?: AccountSessionBoundary;
+  surface?: 'home';
 } = {}): Promise<NotificationsPage> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
@@ -96,6 +125,7 @@ export const getNotificationsPage = async ({
       per_page: Math.max(1, Math.min(50, Math.floor(perPage))),
       pagination_mode: 'cursor',
       ...(cursor ? {cursor} : {}),
+      ...(surface ? {surface, filter: 'unread'} : {}),
     },
   });
   assertAccountSessionBoundary(boundary);
@@ -105,6 +135,11 @@ export const getNotificationsPage = async ({
   }
   const items = resourceList<NotificationDto>(data);
   const envelope = responseEnvelope(response);
+  if (surface === 'home' && envelope.surface !== 'home') {
+    // A server ignoring the new surface must never resurrect the old
+    // first-inbox-page/catalogue-dependent selection by accident.
+    throw new Error('HOME_NOTIFICATIONS_CONTRACT_INVALID');
+  }
   const envelopePagination = isApiRecord(envelope.pagination)
     ? (envelope.pagination as PaginationDto)
     : undefined;
@@ -123,7 +158,9 @@ export const getNotificationsPage = async ({
   // dropping one malformed row and accepting next_cursor would make that
   // notification unreachable forever. Reject the page so the screen keeps its
   // last-known-good inbox and retries the same cursor.
-  const notifications = items.map(mapNotificationContract);
+  const notifications = items.map(item =>
+    mapNotificationContract(item, surface === 'home'),
+  );
   if (
     new Set(notifications.map(item => item.id)).size !== notifications.length
   ) {

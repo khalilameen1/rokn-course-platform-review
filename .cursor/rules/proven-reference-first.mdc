@@ -1,0 +1,16 @@
+---
+description: Proven implementation first for Rokn code, design, UX and copy
+alwaysApply: true
+---
+
+# Proven implementation first
+
+- The user explicitly requires established, demonstrably successful references as the starting point, not original implementations followed by retrospective reference claims.
+- Prefer actual reuse of mature compatible libraries and open-source implementations. Adapt only Rokn identity, integration contracts and product-specific behavior.
+- For design and UX, follow an existing successful shipped flow, preserving approved Rokn design decisions. Do not invent replacement flows.
+- Identify the source, evidence of real adoption, what was reused and what was changed. Stars and official documentation alone do not establish successful real-world use.
+- Clearly distinguish reused source code, architecture inspired by a reference, and reproduction of observable UX. Never claim access to a closed-source competitor's code.
+- If no suitable proven implementation is accessible, explain that gap before implementing an original substitute. Do not introduce an incompatible provider or library solely for its popularity.
+- Preserve attribution and licensing for copied code. Verify compatibility with existing mobile, backend and dashboard contracts.
+- Example: payment UI should use the payment provider's supported hosted implementation; do not create another card form or put a redirect page into an undocumented iframe.
+- Validate normal functional flows and failure recovery. Report unexecuted integration tests honestly. Avoid patch chains, redundant branches and unrelated rewrites.

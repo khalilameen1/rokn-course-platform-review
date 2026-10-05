@@ -79,3 +79,78 @@ it('rejects a changed disclosure version instead of silently accepting it', asyn
   }}});
   await expect(requireAiConsent(boundary)).rejects.toThrow('AI_CONSENT_CONTRACT_INVALID');
 });
+
+const deferred = <T,>() => {
+  let resolve!: (value: T) => void;
+  let reject!: (reason: Error) => void;
+  const promise = new Promise<T>((yes, no) => {resolve = yes; reject = no;});
+  return {promise, resolve, reject};
+};
+
+it.each(['declined on server', 'failed read'])(
+  'does not present a late prompt or failure after owner retirement for %s', async result => {
+    const read = deferred<ReturnType<typeof payload>>();
+    (publicRequest.get as jest.Mock).mockReturnValueOnce(read.promise);
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+    let current = true;
+    const requested = requestAiConsent(boundary, () => current);
+    current = false;
+    if (result === 'failed read') read.reject(new Error('NETWORK_ERROR'));
+    else read.resolve(payload(false));
+    await expect(requested).resolves.toBe(false);
+    expect(alert).not.toHaveBeenCalled();
+    expect(publicRequest.put).not.toHaveBeenCalled();
+  },
+);
+
+it('keeps one shared prompt for a surviving same-account action without reviving a departed action', async () => {
+  const read = deferred<ReturnType<typeof payload>>();
+  (publicRequest.get as jest.Mock).mockReturnValueOnce(read.promise);
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  let firstCurrent = true;
+  const first = requestAiConsent(boundary, () => firstCurrent);
+  const second = requestAiConsent(boundary, () => true);
+  firstCurrent = false;
+  read.resolve(payload(false));
+  for (let i = 0; i < 15; i++) await Promise.resolve();
+  expect(alert).toHaveBeenCalledTimes(1);
+  alert.mock.calls[0][2]![2].onPress!();
+  await expect(first).resolves.toBe(false);
+  await expect(second).resolves.toBe(true);
+  expect(publicRequest.put).toHaveBeenCalledTimes(1);
+});
+
+it('does not apply a displayed dialog button after all owners depart and permits a new explicit request', async () => {
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  let current = true;
+  const first = requestAiConsent(boundary, () => current);
+  for (let i = 0; i < 15; i++) await Promise.resolve();
+  expect(alert).toHaveBeenCalledTimes(1);
+  current = false;
+  alert.mock.calls[0][2]![2].onPress!();
+  await expect(first).resolves.toBe(false);
+  expect(publicRequest.put).not.toHaveBeenCalled();
+  const retry = requestAiConsent(boundary, () => true);
+  for (let i = 0; i < 15; i++) await Promise.resolve();
+  expect(alert).toHaveBeenCalledTimes(2);
+  alert.mock.calls[1][2]![2].onPress!();
+  await expect(retry).resolves.toBe(true);
+  expect(publicRequest.put).toHaveBeenCalledTimes(1);
+});
+
+it('keeps an explicitly posted account consent receipt without resuming its departed project action', async () => {
+  const write = deferred<ReturnType<typeof payload>>();
+  (publicRequest.put as jest.Mock).mockReturnValueOnce(write.promise);
+  const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+  let current = true;
+  const requested = requestAiConsent(boundary, () => current);
+  for (let i = 0; i < 15; i++) await Promise.resolve();
+  alert.mock.calls[0][2]![2].onPress!();
+  await Promise.resolve();
+  expect(publicRequest.put).toHaveBeenCalledTimes(1);
+  current = false;
+  write.resolve(payload(true));
+  await expect(requested).resolves.toBe(false);
+  expect(await AsyncStorage.getItem('@rokn/ai-consent/v1:user-a')).toContain(AI_CONSENT_VERSION);
+  expect(alert).toHaveBeenCalledTimes(1);
+});

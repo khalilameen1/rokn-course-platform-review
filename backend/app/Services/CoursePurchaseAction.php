@@ -146,7 +146,7 @@ final class CoursePurchaseAction
                     ];
                 }
 
-                if (!$this->isAvailableForNewPurchase($lockedCourse)) {
+                if (!$lockedCourse->isAvailableForNewPurchase()) {
                     throw new \DomainException('course_not_available');
                 }
                 if ($expectedCourseRevision !== null
@@ -322,12 +322,6 @@ final class CoursePurchaseAction
     private function rewardContribution(WalletService $wallet, int $userId, int $courseId, int $targetPrice): array
     {
         return app(CoursePromotionPolicy::class)->allowance($userId, $courseId, $targetPrice);
-    }
-
-    private function isAvailableForNewPurchase(Course $course): bool
-    {
-        return (bool) $course->is_catalog_visible
-            && $course->isPublishedForLearning();
     }
 
     private function publishedRevision(Course $course): int

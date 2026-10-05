@@ -1,6 +1,11 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+jest.mock('../src/hooks/useAppActiveState', () => ({
+  useAppForegroundState: () => true,
+}));
+
 const mockClaimCoinTask = jest.fn();
 const mockStartCoinTask = jest.fn();
 const mockOpenExternalUrlOnce = jest.fn();

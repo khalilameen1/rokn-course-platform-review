@@ -12,6 +12,18 @@ use App\Support\UnicodeText;
 
 final class StudentNotificationPresentationService
 {
+    /** Home uses the live course, not the campaign's historical copy/artwork.
+     * @return array{id:int,title:string,image_url:string}|null
+     */
+    public function homeCourse(Course $course): ?array
+    {
+        $title = UnicodeText::clean($course->title);
+        $image = $this->safeImageUrl($course->image);
+        if ($title === '' || $image === null) return null;
+
+        return ['id' => (int) $course->id, 'title' => mb_substr($title, 0, 240), 'image_url' => $image];
+    }
+
     public function learnerText(mixed $value, string $fallback): string
     {
         // These fields contain authored copy and course names. Delivery errors

@@ -6,7 +6,7 @@
                 {{ $user->active ? 'مفعل' : 'غير مفعل' }}
             </span>
         </div>
-        <img class="profile-avatar" src="{{ $user->image ?: '/images/avatar/customer_blank.png' }}" alt="{{ $user->name }}">
+        <img class="profile-avatar" src="{{ $user->profile_image_url ?: '/images/avatar/customer_blank.png' }}" alt="{{ $user->name }}">
         <h2 class="profile-name">{{ $user->name }}</h2>
         <div class="profile-email"><i class="fa fa-envelope"></i> {{ $user->email }}</div>
         <div class="profile-phone"><i class="fa fa-phone"></i> {{ $user->phone }}</div>
@@ -20,6 +20,11 @@
     </div>
 
     <div class="profile-body">
+        <div class="study-info">
+            <h6 class="study-info__heading"><i class="fa fa-bell-o"></i> تذكير التعلّم</h6>
+            <span class="stat-badge stat-badge-light">{{ $user->notifications_status ? 'مفعّل' : 'متوقف' }}</span>
+            <span class="stat-badge stat-badge-light">{{ sprintf('%02d:00', \App\Support\LearningReminderSchedule::hour($user->learning_reminder_hour)) }} · {{ \App\Support\LearningReminderSchedule::timezone($user->learning_reminder_timezone) }}</span>
+        </div>
         <div class="study-info">
             <h6 class="study-info__heading"><i class="fa fa-database"></i> رصيد العملات</h6>
             <span class="stat-badge stat-badge-primary">الإجمالي {{ number_format($walletSummary['total_balance']) }}</span>

@@ -11,7 +11,7 @@ export const useWalletController = () => {
   const user = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(user);
   const [walletModal, setWalletModal] = useState<
-    'breakdown' | 'rules' | 'transactions' | null
+    'rules' | 'transactions' | null
   >(null);
   const showCoinRules = useCallback(() => setWalletModal('rules'), []);
   useEffect(() => setWalletModal(null), [identityKey]);
@@ -23,9 +23,6 @@ export const useWalletController = () => {
   const displayedBalance = usingRemoteWallet
     ? data.wallet?.balance ?? null
     : null;
-  const displayedPaidBalance = usingRemoteWallet
-    ? data.wallet?.paidBalance ?? 0
-    : 0;
   const displayedRewardBalance = usingRemoteWallet
     ? data.wallet?.rewardBalance ?? 0
     : 0;
@@ -35,7 +32,6 @@ export const useWalletController = () => {
     displayedCoinRules: usingRemoteWallet
       ? data.wallet?.rewardRules ?? DEFAULT_REWARDS_HELP
       : [],
-    displayedPaidBalance,
     displayedRewardBalance,
     displayedTasks: usingRemoteWallet ? learnerRewardTasks(data.tasks) : [],
     displayedTransactions: usingRemoteWallet

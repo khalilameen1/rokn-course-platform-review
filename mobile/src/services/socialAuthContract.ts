@@ -4,6 +4,15 @@ export type SocialAuthPurpose = 'login' | 'reauth';
 
 export type SocialAuthOptions = {
   purpose?: SocialAuthPurpose;
+  /** Presentation ownership applies only until the provider window opens. */
+  canStart?: () => boolean;
+  onProviderStarted?: () => void;
+};
+
+export const assertSocialAuthCanStart = (options: SocialAuthOptions) => {
+  if (options.canStart && !options.canStart()) {
+    throw new Error('LOGIN_CANCELLED');
+  }
 };
 
 export const nonEmptySocialAuthString = (value: unknown) =>

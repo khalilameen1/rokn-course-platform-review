@@ -76,7 +76,7 @@ export const resolveProjectReportViewState = ({
   retryAvailable: boolean;
 }): ProjectReportViewState => {
   if (projectStatus !== 'passed' || !reportEnabled) return 'hidden';
-  if (hydrating) return 'loading';
+  if (hydrating && !thread?.messages.length) return 'loading';
   if (reportStatus === 'queued') return 'preparing';
   if (reportStatus === 'ready') {
     return thread?.messages.length ? 'ready' : 'failed';

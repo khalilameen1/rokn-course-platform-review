@@ -21,6 +21,7 @@ const CATEGORIES: Array<{key: ProductFeedbackCategory; label: string}> = [
 
 type Props = {
   attachment?: FeedbackAttachment;
+  preparingAttachment?: boolean;
   busy: boolean;
   canSubmit: boolean;
   category: ProductFeedbackCategory;
@@ -41,6 +42,7 @@ type Props = {
 
 export const FeedbackForm = ({
   attachment,
+  preparingAttachment = false,
   busy,
   canSubmit,
   category,
@@ -133,11 +135,20 @@ export const FeedbackForm = ({
               style={styles.attachmentImage}
             />
             <View style={styles.attachmentCopy}>
-              <Text style={styles.attachmentTitle}>الصورة جاهزة للإرسال</Text>
+              <Text
+                style={styles.attachmentTitle}
+                accessibilityLiveRegion="polite">
+                {preparingAttachment
+                  ? 'جارٍ تجهيز الصورة'
+                  : 'الصورة جاهزة للإرسال'}
+              </Text>
               <Pressable
                 accessibilityLabel="حذف الصورة المرفقة"
                 accessibilityRole="button"
-                disabled={busy || !ready}
+                accessibilityState={{
+                  disabled: busy || !ready || preparingAttachment,
+                }}
+                disabled={busy || !ready || preparingAttachment}
                 hitSlop={8}
                 onPress={onRemoveAttachment}
                 style={styles.removeAttachmentButton}>
@@ -149,13 +160,21 @@ export const FeedbackForm = ({
           <Pressable
             accessibilityLabel="إضافة صورة توضح المشكلة"
             accessibilityRole="button"
-            disabled={busy || !ready}
+            accessibilityState={{
+              busy: preparingAttachment,
+              disabled: busy || !ready || preparingAttachment,
+            }}
+            disabled={busy || !ready || preparingAttachment}
             onPress={onChooseAttachment}
             style={({pressed}) => [
               styles.attachmentButton,
               pressed && styles.pressed,
             ]}>
-            <Text style={styles.attachmentButtonText}>إضافة صورة</Text>
+            <Text
+              style={styles.attachmentButtonText}
+              accessibilityLiveRegion="polite">
+              {preparingAttachment ? 'جارٍ تجهيز الصورة' : 'إضافة صورة'}
+            </Text>
           </Pressable>
         )}
 
@@ -213,12 +232,15 @@ export const FeedbackForm = ({
       <Pressable
         accessibilityLabel="إرسال الملاحظة"
         accessibilityRole="button"
-        accessibilityState={{busy, disabled: !canSubmit}}
-        disabled={!canSubmit}
+        accessibilityState={{
+          busy: busy || preparingAttachment,
+          disabled: !canSubmit || preparingAttachment,
+        }}
+        disabled={!canSubmit || preparingAttachment}
         onPress={onSubmit}
         style={({pressed}) => [
           styles.submit,
-          !canSubmit && styles.submitDisabled,
+          (!canSubmit || preparingAttachment) && styles.submitDisabled,
           pressed && styles.pressed,
         ]}>
         <Text style={styles.submitText}>{busy ? 'جارٍ الإرسال' : 'إرسال'}</Text>

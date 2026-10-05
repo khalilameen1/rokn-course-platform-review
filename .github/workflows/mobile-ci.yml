@@ -71,9 +71,8 @@ jobs:
       - name: Reject committed credentials and private keys
         run: node scripts/verify-repository-secrets.js --history
       - run: npm ci --include=dev
-      - name: Verify mobile CI provenance and fixture contracts
-        run: npm run test:release-scripts
-      - run: npm run verify:release
+      - name: Verify the complete mobile release gate once
+        run: npm run verify:release
 
   android-native:
     if: ${{ github.event_name != 'workflow_dispatch' || !inputs.ios_only }}

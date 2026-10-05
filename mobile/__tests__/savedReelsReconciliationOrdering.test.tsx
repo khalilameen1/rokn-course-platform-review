@@ -61,6 +61,9 @@ jest.mock('../src/services/roknApi', () => ({
   removeSavedLessonEverywhereFromCache: jest.fn(async () => undefined),
 }));
 jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
+  ...jest.requireActual(
+    '../src/components/VideoPlayer/courseLearning/persistence',
+  ),
   updatePlayerStateForScope: jest.fn(
     async (
       _scope: string,
@@ -72,7 +75,9 @@ jest.mock('../src/components/VideoPlayer/courseLearning/persistence', () => ({
   ),
 }));
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
-  ...jest.requireActual('../src/components/VideoPlayer/courseLearning/savedCollections'),
+  ...jest.requireActual(
+    '../src/components/VideoPlayer/courseLearning/savedCollections',
+  ),
   applyLocalLearningState: async (course: CourseLearningData) => course,
   getLocalLearningState: async () => ({...mockPlayerState, positions: {}}),
   loadCourseLearningData: async () => ({course: mockCourse}),
@@ -139,6 +144,7 @@ const mountCourse = async () => {
       refs,
       ...setters,
       setSavedLessons: saved.setSavedLessons,
+      savedLessonsVersion: saved.savedLessonsVersion,
     });
     return null;
   };
@@ -215,7 +221,9 @@ it.each(
         );
         await drain();
       });
-      const oldSnapshot = response({saved_lesson_ids: initiallySaved ? [44] : []});
+      const oldSnapshot = response({
+        saved_lesson_ids: initiallySaved ? [44] : [],
+      });
       if (arrival === 'before-ack') {
         await act(async () => {
           oldRead.resolve(oldSnapshot);
@@ -233,17 +241,23 @@ it.each(
           await drain();
         });
       }
-      expect([...view.current.savedLessons]).toEqual(initiallySaved ? [] : ['44']);
-      expect(mockPlayerState.savedLessons).toEqual(initiallySaved ? [] : ['44']);
+      expect([...view.current.savedLessons]).toEqual(
+        initiallySaved ? [] : ['44'],
+      );
+      expect(mockPlayerState.savedLessons).toEqual(
+        initiallySaved ? [] : ['44'],
+      );
       expect(view.current.savingLessons.size).toBe(0);
       expect(api.post).toHaveBeenCalledTimes(initiallySaved ? 0 : 1);
       expect(api.delete).toHaveBeenCalledTimes(initiallySaved ? 1 : 0);
-      expect(api.get.mock.calls.filter(([path]) => path === 'saved-lessons/state')).toHaveLength(
-        arrival === 'after-ack' ? 2 : 1,
-      );
+      expect(
+        api.get.mock.calls.filter(([path]) => path === 'saved-lessons/state'),
+      ).toHaveLength(arrival === 'after-ack' ? 2 : 1);
     } finally {
       ack.resolve();
-      oldRead.resolve(response({saved_lesson_ids: mockServerSaved ? [44] : []}));
+      oldRead.resolve(
+        response({saved_lesson_ids: mockServerSaved ? [44] : []}),
+      );
       await changing;
       await act(async () => {
         await drain();
@@ -280,7 +294,8 @@ it.each(['http-failure', 'malformed-ack'])(
     const view = await mountCourse();
     if (failure === 'http-failure')
       api.post.mockRejectedValueOnce(new Error('offline'));
-    else api.post.mockResolvedValueOnce(response({folder_id: 7, lesson_id: 44}));
+    else
+      api.post.mockResolvedValueOnce(response({folder_id: 7, lesson_id: 44}));
     try {
       await act(async () => {
         await expect(
@@ -335,7 +350,8 @@ it.each(['offline', 'second-mutation'])(
     const first = deferred<ReturnType<typeof response>>();
     const second = deferred<ReturnType<typeof response>>();
     api.get.mockReturnValueOnce(first.promise);
-    if (outcome === 'offline') api.get.mockRejectedValueOnce(new Error('offline'));
+    if (outcome === 'offline')
+      api.get.mockRejectedValueOnce(new Error('offline'));
     else api.get.mockReturnValueOnce(second.promise);
     api.post.mockImplementation(async () => {
       mockServerSaved = true;

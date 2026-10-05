@@ -95,6 +95,14 @@ export default function SavedVideos() {
     );
   }
 
+  // A primary failure without rows already has its full error state below.
+  // Folder/index failures remain recoverable beside successful lesson content.
+  const partialReadError = saved.length
+    ? error || folderLoadError
+    : error
+    ? ''
+    : folderLoadError;
+
   return (
     <View style={styles.container}>
       <SectionHeading
@@ -102,22 +110,22 @@ export default function SavedVideos() {
         onAction={toggleCreateFolder}
         title="محفوظاتك"
       />
-      {!!error && saved.length ? (
+      {partialReadError ? (
         <Pressable
+          accessibilityLabel="إعادة تحميل المحفوظات والقوائم"
           accessibilityRole="button"
+          accessibilityState={{disabled: loading, busy: loading}}
+          disabled={loading}
           onPress={() => retry()}
           style={({pressed}) => [
             styles.retryNotice,
             pressed && styles.pressed,
           ]}>
-          <Text style={styles.retryNoticeText}>{error}</Text>
-          <Text style={styles.retryNoticeAction}>إعادة المحاولة</Text>
+          <Text style={styles.retryNoticeText}>{partialReadError}</Text>
+          <Text style={styles.retryNoticeAction}>
+            {loading ? 'جارٍ التحديث' : 'إعادة المحاولة'}
+          </Text>
         </Pressable>
-      ) : null}
-      {folderLoadError ? (
-        <Text accessibilityRole="alert" style={styles.actionError}>
-          {folderLoadError}
-        </Text>
       ) : null}
       {showCreateFolder ? (
         <View style={styles.createFolderCard}>

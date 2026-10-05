@@ -36,6 +36,19 @@ final class AppArtworkService
         return $urls;
     }
 
+    /** Known shipped artwork only; dashboard uploads never inherit its padding. */
+    public function defaultUrls(?DesignSetting $settings = null): array
+    {
+        $settings ??= DesignSetting::getDefaultSettings();
+        $urls = [];
+        foreach (self::ASSETS as $key => $asset) {
+            if (!$settings->getAttribute($key.'_image_url')) {
+                $urls[$key] = asset('assets/app-artwork/v1/'.$asset['file']);
+            }
+        }
+        return $urls;
+    }
+
     public function levelDefault(int $order): string
     {
         $key = $order <= 1 ? 'badge_junior' : ($order === 2 ? 'badge_mid' : 'badge_senior');

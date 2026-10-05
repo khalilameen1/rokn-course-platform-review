@@ -18,9 +18,13 @@ const task = {
   requiresExternalVisit: false,
 };
 jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => true,
   useFocusEffect: (effect: () => void | (() => void)) => {
     jest.requireActual('react').useEffect(effect, [effect]);
   },
+}));
+jest.mock('../src/hooks/useAppActiveState', () => ({
+  useAppForegroundState: () => true,
 }));
 jest.mock('../src/constants/api', () => ({
   publicRequest: {

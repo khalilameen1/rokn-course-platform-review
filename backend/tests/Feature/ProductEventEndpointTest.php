@@ -98,6 +98,17 @@ final class ProductEventEndpointTest extends TestCase
         $this->postJson('/api/v1/product-events', $payload)->assertStatus(409);
     }
 
+    public function test_public_client_cannot_impersonate_a_committed_server_purchase(): void
+    {
+        $this->postJson('/api/v1/product-events', [
+            'event_id' => (string) Str::uuid(), 'session_key' => (string) Str::uuid(),
+            'event_name' => 'purchase_completed', 'source' => 'server',
+            'screen_key' => 'course_details', 'course_id' => 42,
+            'occurred_at' => now()->toIso8601String(),
+        ])->assertUnprocessable();
+        self::assertSame(0, ProductEvent::query()->count());
+    }
+
     public function test_batch_contract_rejects_unbounded_or_free_form_data(): void
     {
         Queue::fake();

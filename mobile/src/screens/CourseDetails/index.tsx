@@ -50,11 +50,13 @@ export default function CourseDetails() {
   const details = useCourseDetailsData({courseId, identityKey});
   const {course} = details;
   const reloadCourse = course.reload;
+  const prepareLearningNavigation = course.prepareLearningNavigation;
 
   const purchase = useCoursePurchase({
     courseId,
     data: details,
     identityKey,
+    presentationActive: appIsActive && screenFocused,
     navigation,
     routeParams: route.params,
     setNotice,
@@ -116,6 +118,7 @@ export default function CourseDetails() {
       }
       navigation.navigate('Reels', {
         courseId,
+        learningHandoffKey: prepareLearningNavigation(),
         reelId: undefined,
         lessonId: undefined,
         projectId: undefined,
@@ -129,6 +132,7 @@ export default function CourseDetails() {
     [
       courseId,
       navigation,
+      prepareLearningNavigation,
       route.params?.resumeAfterPreview,
       route.params?.resumeReelId,
     ],
@@ -145,6 +149,7 @@ export default function CourseDetails() {
       });
       navigation.navigate('Reels', {
         courseId,
+        learningHandoffKey: prepareLearningNavigation(),
         reelId: reelId || undefined,
         lessonId: undefined,
         projectId: undefined,
@@ -154,7 +159,7 @@ export default function CourseDetails() {
         initialPositionSeconds: undefined,
       });
     },
-    [courseId, navigation, previewReelCount],
+    [courseId, navigation, prepareLearningNavigation, previewReelCount],
   );
 
   const handlePrimaryAction = useCallback(() => {
@@ -169,8 +174,8 @@ export default function CourseDetails() {
   }, [navigation]);
 
   const openCertificates = useCallback(() => {
-    navigation.navigate('Profile', {tab: 'certificates'});
-  }, [navigation]);
+    navigation.navigate('CourseCertificate', {courseId: String(courseId)});
+  }, [courseId, navigation]);
 
   const heroHeight = Math.min(
     440,

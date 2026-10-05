@@ -13,6 +13,7 @@ export type AppArtworkUrls = Partial<
 
 export type PublicAppSettings = {
   artwork?: AppArtworkUrls;
+  artwork_defaults?: AppArtworkUrls;
   contract_version?: number;
   revision?: string;
   android_app_url?: unknown;
@@ -91,10 +92,27 @@ const normalizeSettings = (value: unknown): PublicAppSettings | null => {
     !Array.isArray(raw.artwork)
       ? (raw.artwork as Record<string, unknown>)
       : {};
+  const artworkDefaults =
+    raw.artwork_defaults &&
+    typeof raw.artwork_defaults === 'object' &&
+    !Array.isArray(raw.artwork_defaults)
+      ? (raw.artwork_defaults as Record<string, unknown>)
+      : {};
   return {
     artwork: Object.fromEntries(
       ['coin', 'coin_stack', 'badge_junior', 'badge_mid', 'badge_senior'].map(
         key => [key, safeHttpsUrl(artwork[key]) || undefined],
+      ),
+    ),
+    artwork_defaults: Object.fromEntries(
+      ['coin', 'coin_stack', 'badge_junior', 'badge_mid', 'badge_senior'].map(
+        key => {
+          const url = safeHttpsUrl(artworkDefaults[key]);
+          return [
+            key,
+            url && url === safeHttpsUrl(artwork[key]) ? url : undefined,
+          ];
+        },
       ),
     ),
     contract_version: Number.isInteger(raw.contract_version)

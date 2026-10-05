@@ -56,6 +56,7 @@
                                 @endforeach
                             </select>
                             <small class="form-text text-muted">اختيار كورس مطلوب عند استهداف المسجلين أو غير المسجلين ويجعل الضغط يفتح صفحة الكورس.</small>
+                            <small class="form-text text-muted">نافذة المحتوى الجديد في الرئيسية تعرض عنوان الكورس وغلافه الحاليين وشارة جديد وزر ابدأ الكورس وتظهر نافذة واحدة فقط في الجلسة ولا تظهر مباشرة بعد تسجيل الدخول</small>
                         </div>
                         @unless($targetStudent)
                         <div class="form-group">

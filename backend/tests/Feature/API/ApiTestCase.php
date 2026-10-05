@@ -15,7 +15,7 @@ use Tests\TestCase;
 /**
  * Abstract base test case for API endpoint feature tests.
  * Sets up an isolated in-memory SQLite schema and base seed fixtures cleanly
- * without modifying or running historical migrations.
+ * using a minimal schema and selected production migrations for shared contracts.
  */
 abstract class ApiTestCase extends TestCase
 {
@@ -1083,7 +1083,11 @@ abstract class ApiTestCase extends TestCase
             $table->timestamps();
         });
 
+        // Use the real preference defaults and column types rather than a
+        // second, incomplete test-only playback schema.
+        (require database_path('migrations/2026_08_11_030000_add_playback_preferences_and_course_search.php'))->up();
         (require database_path('migrations/2026_09_01_000071_create_social_identity_guards_table.php'))->up();
+        (require database_path('migrations/2026_10_05_000001_add_learning_reminder_preferences.php'))->up();
         (require database_path('migrations/2026_09_01_000068_add_portfolio_lifecycle_state.php'))->up();
         (require database_path('migrations/2026_09_01_000070_add_public_id_to_portfolio_media.php'))->up();
         (require database_path('migrations/2026_09_01_000073_create_portfolio_video_uploads_table.php'))->up();
@@ -1091,6 +1095,10 @@ abstract class ApiTestCase extends TestCase
         (require database_path('migrations/2026_09_12_230100_add_portfolio_sharing_suspension.php'))->up();
         (require database_path('migrations/2026_09_13_180000_add_portfolio_prepublication_review.php'))->up();
         (require database_path('migrations/2026_09_01_000078_create_internal_signals_table.php'))->up();
+        // Accepted learning evidence now owns product-event transitions too.
+        // Reuse their real schemas, not mocks of the transactional event writer.
+        (require database_path('migrations/2026_08_10_030100_create_product_events_outbox_and_webhooks.php'))->up();
+        (require database_path('migrations/2026_08_10_060000_harden_outbox_delivery_and_retention_indexes.php'))->up();
 
     }
 
@@ -1098,6 +1106,7 @@ abstract class ApiTestCase extends TestCase
     {
         Schema::dropIfExists('portfolio_deleted_uploads');
         $tables = [
+            'webhook_deliveries', 'webhook_endpoints', 'outbox_events', 'product_events',
             'internal_signals', 'social_identity_guards', 'social_oauth_attempts', 'course_grant_claims', 'course_code_usages', 'student_section_progress', 'account_file_deletions', 'api_tokens', 'photos', 'verification_codes', 'user_device_tokens', 'deleted_social_reward_tombstones', 'social_accounts', 'user_coin_task_attempts', 'user_coin_earnings', 'coin_earning_methods',
             'notification_push_deliveries', 'admin_notifications', 'financial_entitlement_holds',
             'ai_usage_events', 'ai_entitlement_usages',

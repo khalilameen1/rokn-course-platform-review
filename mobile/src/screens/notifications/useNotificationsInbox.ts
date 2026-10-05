@@ -52,6 +52,7 @@ export function useNotificationsInbox() {
     Record<string, ImageSourcePropType>
   >({});
   const notificationGenerationRef = useRef(0);
+  const authoritativePageGenerationRef = useRef(0);
   const notificationMutationRevisionRef = useRef(0);
   const locallyReadNotificationIdsRef = useRef(new Set<string>());
   const notificationReadScopeRef = useRef<string | null>(null);
@@ -137,27 +138,41 @@ export function useNotificationsInbox() {
         setNotificationError('');
         return;
       }
-      // Start the authoritative read before optional device storage. Neither
-      // an old inbox nor cached course artwork owns delivery of new messages.
-      const freshNotificationsRequest = Promise.all([
-        getNotificationsPage({
-          signal: controller.signal,
-          ownerBoundary: boundary,
-        }),
-        settleWithin(getCachedPublishedCourses(), []),
-      ]).then(
-        value => ({ok: true as const, value}),
-        error => ({ok: false as const, error}),
-      );
-      const cachedNotifications = await settleWithin(
+      // The page, optional inbox cache and artwork settle independently. A
+      // server page (including an empty one) always supersedes device cache;
+      // failure still allows cached rows without hiding the refresh error.
+      const ownsRead = () => {
+        if (requestGeneration !== notificationGenerationRef.current)
+          return false;
+        try {
+          assertAccountSessionBoundary(boundary);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      const freshNotificationsRequest = getNotificationsPage({
+        signal: controller.signal,
+        ownerBoundary: boundary,
+      });
+      void settleWithin(getCachedPublishedCourses(), []).then(cachedCourses => {
+        if (!ownsRead()) return;
+        setCourseImages(
+          Object.fromEntries(
+            cachedCourses.map(course => [course.id, course.image]),
+          ),
+        );
+      });
+      void settleWithin(
         readCachedNotifications(scopedCacheKey, boundary),
         [],
-      );
-      assertAccountSessionBoundary(boundary);
-      if (
-        requestGeneration === notificationGenerationRef.current &&
-        cachedNotifications.length
-      ) {
+      ).then(cachedNotifications => {
+        if (
+          !ownsRead() ||
+          authoritativePageGenerationRef.current === requestGeneration ||
+          !cachedNotifications.length
+        )
+          return;
         setServerNotifications(current => {
           const locallyRead = new Set(locallyReadNotificationIdsRef.current);
           if (mutationRevision !== notificationMutationRevisionRef.current) {
@@ -172,13 +187,11 @@ export function useNotificationsInbox() {
           );
         });
         setLoading(false);
-      }
-      assertAccountSessionBoundary(boundary);
-      const result = await freshNotificationsRequest;
-      if (!result.ok) throw result.error;
-      const [page, cachedCourses] = result.value;
+      });
+      const page = await freshNotificationsRequest;
       assertAccountSessionBoundary(boundary);
       if (requestGeneration !== notificationGenerationRef.current) return;
+      authoritativePageGenerationRef.current = requestGeneration;
       setServerNotifications(current => {
         const locallyRead = new Set(locallyReadNotificationIdsRef.current);
         if (mutationRevision !== notificationMutationRevisionRef.current) {
@@ -194,11 +207,6 @@ export function useNotificationsInbox() {
         );
         return next;
       });
-      setCourseImages(
-        Object.fromEntries(
-          cachedCourses.map(course => [course.id, course.image]),
-        ),
-      );
       setNotificationCursor(page.nextCursor);
       setHasMoreNotifications(page.hasMore);
       setNotificationError('');
@@ -254,6 +262,9 @@ export function useNotificationsInbox() {
         requestGeneration !== notificationGenerationRef.current
       )
         return;
+      // Accepted older rows also supersede this refresh's optional cache.
+      // Otherwise a late fallback could erase rows while advancing the cursor.
+      authoritativePageGenerationRef.current = requestGeneration;
       setServerNotifications(current => {
         const merged = new Map(current.map(item => [item.id, item]));
         page.notifications.forEach(item => {

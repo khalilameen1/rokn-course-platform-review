@@ -14,6 +14,24 @@ beforeEach(async () => {
 });
 
 describe('safeLoginReturnToFromRoute', () => {
+  it('returns to the exact course certificate without arbitrary parameters', () => {
+    const certificateRoute = {
+      name: 'CourseCertificate',
+      params: {courseId: ' 52 ', holderName: 'must-not-persist'},
+    };
+    expect(safeLoginReturnToFromRoute(certificateRoute)).toEqual({
+      name: 'CourseCertificate',
+      params: {courseId: '52'},
+    });
+    expect(resolveLoginReturnDestination(certificateRoute, 'authenticated')).toEqual({
+      name: 'CourseCertificate',
+      params: {courseId: '52'},
+    });
+    expect(resolveLoginReturnDestination(certificateRoute, 'guest')).toEqual({name: 'Home'});
+    expect(safeLoginReturnToFromRoute({
+      name: 'CourseCertificate', params: {courseId: '../52'},
+    })).toBeUndefined();
+  });
   it('preserves the exact course position without copying arbitrary params', () => {
     expect(
       safeLoginReturnToFromRoute({
@@ -190,17 +208,22 @@ describe('login return navigation policy', () => {
     'EditAccount',
     'DeviceSessions',
     'Notifications',
-  ] as const)(
-    'does not return a guest to protected route %s',
-    name => {
-      expect(resolveLoginReturnDestination({name}, 'guest')).toEqual({
-        name: 'Home',
-      });
-    },
-  );
+  ] as const)('does not return a guest to protected route %s', name => {
+    expect(resolveLoginReturnDestination({name}, 'guest')).toEqual({
+      name: 'Home',
+    });
+  });
 });
 
 describe('durable login return hand-off', () => {
+  it('does not overwrite a newer journey when an abandoned preparation reaches storage', async () => {
+    await savePendingLoginReturnTo({name: 'Wallet'});
+    await savePendingLoginReturnTo({name: 'Profile'}, 'login', () => false);
+    expect((await claimPendingLoginReturnTo())?.returnTo).toEqual({
+      name: 'Wallet',
+    });
+  });
+
   it('keeps the route until navigation acknowledges the exact receipt', async () => {
     await savePendingLoginReturnTo({
       name: 'CourseDetails',

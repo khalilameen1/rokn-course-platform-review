@@ -41,7 +41,16 @@ jest.mock('react-native-image-picker', () => ({
 }));
 jest.mock('react-native-video', () => 'Video');
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
-jest.mock('@react-navigation/native', () => ({useNavigation: () => ({})}));
+jest.mock('@react-navigation/native', () => {
+  // Native re-exports these core primitives. Keep the real root ref rather
+  // than replacing the upload-session import graph with a fake controller.
+  const core = jest.requireActual('@react-navigation/core');
+  return {
+    CommonActions: core.CommonActions,
+    createNavigationContainerRef: core.createNavigationContainerRef,
+    useNavigation: () => ({}),
+  };
+});
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({top: 0, bottom: 0, left: 0, right: 0}),
 }));

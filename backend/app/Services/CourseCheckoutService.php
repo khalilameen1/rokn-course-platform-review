@@ -18,7 +18,8 @@ use Illuminate\Support\Str;
 final readonly class CourseCheckoutService
 {
     public function __construct(private CourseCheckoutQuoteService $quotes, private WalletService $wallet,
-        private CoursePlanUpgradeAction $upgrades, private CoursePurchaseAction $purchases) {}
+        private CoursePlanUpgradeAction $upgrades, private CoursePurchaseAction $purchases,
+        private ProductEventService $productEvents) {}
 
     public function create(User $user, array $input): array
     {
@@ -32,6 +33,7 @@ final readonly class CourseCheckoutService
                 'terms' => $terms, 'terms_hash' => $this->quotes->commercialHash($terms),
                 'expires_at' => now()->addMinutes(15), 'status' => 'quoted',
             ]);
+            $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'checkout_quoted');
             return $this->payload($checkout);
         }, 3);
     }
@@ -47,7 +49,7 @@ final readonly class CourseCheckoutService
         $checkout = CourseCheckout::query()->where('user_id', $user->id)->where('course_id', $courseId)
             ->where(function ($query): void {
                 $query->whereIn('status', ['completed', 'reconfirm_required'])
-                    ->orWhere(fn ($pending) => $pending->where('status', 'pending_payment')->where('expires_at', '>', now()));
+                    ->orWhere(fn ($pending) => $pending->awaitingSettlement());
             })
             ->orderByRaw("CASE WHEN status = 'pending_payment' THEN 0 ELSE 1 END")
             ->latest('id')->first();
@@ -62,12 +64,13 @@ final readonly class CourseCheckoutService
             if ($checkout->status !== 'quoted') return $this->fulfillLocked($user, $checkout);
             if ($checkout->expires_at->isPast()) return $this->stop($checkout, 'expired', 'checkout_expired');
             if (!$this->stillValid($user, $checkout, true)) return $this->stop($checkout, 'reconfirm_required', 'checkout_terms_changed');
-            if (CourseCheckout::query()->where('user_id', $user->id)->where('status', 'pending_payment')
-                ->where('expires_at', '>', now())->where('id', '!=', $checkout->id)->exists()) {
+            if (CourseCheckout::query()->where('user_id', $user->id)->awaitingSettlement()
+                ->where('id', '!=', $checkout->id)->exists()) {
                 throw new \DomainException('checkout_already_pending');
             }
             if ($checkout->terms['deficit'] > 0 && !$checkout->package_id) throw new \DomainException('checkout_package_required');
             $checkout->forceFill(['status' => 'pending_payment', 'authorized_at' => now()])->save();
+            $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'purchase_started');
             return $this->fulfillLocked($user, $checkout);
         }, 3);
     }
@@ -108,6 +111,7 @@ final readonly class CourseCheckoutService
                 elseif ($purchase->provider === 'apple' && is_numeric($audit['purchase_date'] ?? null)) $occurred = CarbonImmutable::createFromTimestampMs((int) $audit['purchase_date']);
             } catch (\Throwable) { /* Without trusted purchase time, credit only; never auto-spend. */ }
             if (!$checkout->authorized_at || !$occurred || $occurred->lt($checkout->authorized_at)) return $this->stop($checkout, 'reconfirm_required', 'checkout_receipt_not_bound');
+            if ($checkout->quoteHasExpired()) return $this->stop($checkout, 'expired', 'checkout_expired');
             $this->attachFunding($checkout, $purchase->order()->firstOrFail());
             return $this->fulfillLocked($user, $checkout);
         }, 3);
@@ -152,6 +156,8 @@ final readonly class CourseCheckoutService
             }
             || (int) $order->package_id !== (int) $checkout->package_id
             || (int) $order->package_coins !== (int) ($package['coins'] ?? 0)
+            || ($checkout->channel === 'direct' && (int) round((float) $order->final_amount * 100)
+                !== (int) round((float) ($package['direct_price'] ?? 0) * 100))
             || ($checkout->funding_order_id && (int) $checkout->funding_order_id !== (int) $order->id)
             || CourseCheckout::query()->where('funding_order_id', $order->id)->where('id', '!=', $checkout->id)->exists()) throw new \DomainException('checkout_funding_mismatch');
         if (!$checkout->funding_order_id) $checkout->forceFill(['funding_order_id' => $order->id])->save();
@@ -166,7 +172,7 @@ final readonly class CourseCheckoutService
             return $this->payload($checkout);
         }
         if (!in_array($checkout->status, ['quoted', 'pending_payment'], true)) return $this->payload($checkout);
-        if ($checkout->expires_at->isPast()) return $this->stop($checkout, 'expired', 'checkout_expired');
+        if ($checkout->quoteHasExpired()) return $this->stop($checkout, 'expired', 'checkout_expired');
         if ($checkout->status !== 'pending_payment') return $this->payload($checkout);
         if ($checkout->package_id) {
             if (!$checkout->funding_order_id) return $this->payload($checkout);
@@ -188,6 +194,7 @@ final readonly class CourseCheckoutService
                 : $this->purchases->execute($user, $course, $terms['access_plan_code'], $key, $terms['final_price'], $terms['course_revision'], $terms['coupon_code'], $terms['allocation']['reward_coins']);
             if (!empty($result['access_changed']) || empty($result['order'])) return $this->stop($checkout, 'reconfirm_required', 'course_access_changed');
             $checkout->forceFill(['course_order_id' => $result['order']->id, 'status' => 'completed', 'completed_at' => now(), 'error_code' => null])->save();
+            $this->productEvents->recordCourseCheckoutTransition($user, $checkout, 'purchase_completed');
         } catch (\DomainException $exception) {
             return $this->stop($checkout, 'reconfirm_required', $exception->getMessage());
         } catch (\Illuminate\Validation\ValidationException) {
@@ -224,7 +231,12 @@ final readonly class CourseCheckoutService
     {
         $terms = $checkout->terms;
         unset($terms['plan_contract'], $terms['enrollment_order_id']);
+        $funding = $checkout->funding_order_id ? Order::query()->find($checkout->funding_order_id) : null;
         return array_merge($terms, ['id' => $checkout->public_id, 'status' => $checkout->status,
+            'payment' => $funding ? [
+                'can_resume' => $checkout->canResumePaymentWith($funding),
+                'expires_at' => $funding->checkout_expires_at?->toIso8601String(),
+            ] : null,
             'expires_at' => $checkout->expires_at->toIso8601String(), 'error_code' => $checkout->error_code,
             'purchase' => $checkout->course_order_id ? ['order_id' => (int) $checkout->course_order_id,
                 'enrollment_id' => CourseEnrollment::query()->where('user_id', $checkout->user_id)->where('course_id', $checkout->course_id)->value('id')] : null]);

@@ -13,7 +13,7 @@ use Throwable;
 
 final class PublicAppSettingsService
 {
-    private const CACHE_KEY_PREFIX = 'public-app-settings:v4:';
+    private const CACHE_KEY_PREFIX = 'public-app-settings:v5:';
     private const CACHE_GENERATION_KEY = 'public-app-settings:generation';
 
     private const SOCIAL_HOSTS = [
@@ -58,6 +58,12 @@ final class PublicAppSettingsService
                 'artwork' => array_map(
                     fn (string $url): ?string => $this->publicMediaUrl($url),
                     app(AppArtworkService::class)->urls($design)
+                ),
+                // Additive source identity, not an administrator-selected fit
+                // mode. Old clients still receive the same artwork URL map.
+                'artwork_defaults' => array_map(
+                    fn (string $url): ?string => $this->publicMediaUrl($url),
+                    app(AppArtworkService::class)->defaultUrls($design)
                 ),
                 'social_media' => [
                     'facebook' => $this->socialUrl('facebook', $design->facebook_url),

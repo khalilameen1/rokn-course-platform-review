@@ -131,26 +131,36 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
   });
 
   it.each(['delete', 'finalize'] as const)(
-    'releases the confirmed %s action while cleanup of its already-retired file is stalled',
+    'releases the confirmed %s action while terminal native cleanup is stalled',
     async operation => {
       const boundary = mockBoundary;
       const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
-      const filePath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/uploaded.jpg`;
-      await AsyncStorage.setItem(
-        key,
-        JSON.stringify([
-          {
-            projectId: '9',
-            clientRequestId: '11111111-1111-4111-8111-111111111111',
-            file: {uri: `file://${filePath}`, type: 'image/jpeg'},
-            createdAt: Date.now(),
-          },
-        ]),
-      );
+      const filePath = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${
+        boundary.scope
+      }/${operation === 'delete' ? 'uploaded.jpg' : '.references.json.backup'}`;
+      if (operation === 'delete') {
+        await AsyncStorage.setItem(
+          key,
+          JSON.stringify([
+            {
+              projectId: '9',
+              clientRequestId: '11111111-1111-4111-8111-111111111111',
+              file: {uri: `file://${filePath}`, type: 'image/jpeg'},
+              createdAt: Date.now(),
+            },
+          ]),
+        );
+      }
       const gate = deferred<void>();
       const started = deferred<void>();
       (RNFS.unlink as jest.Mock).mockImplementation(async path => {
-        if (path === filePath) {
+        if (
+          path === filePath &&
+          (operation === 'delete' ||
+            mockPost.mock.calls.some(
+              ([endpoint]) => endpoint === 'portfolio/9/finalize',
+            ))
+        ) {
           started.resolve();
           await gate.promise;
         }
@@ -171,12 +181,16 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
           }
         });
         await started.promise;
-        // This is terminal native-file maintenance after both the server ACK
-        // and the actual outbox removal, not an unaccepted upload or lost ACK.
+        // Delete retires its media intent; finalize starts with no pending
+        // uploads and stalls registry maintenance only after its HTTP ACK.
+        // Neither fixture mistakes pre-publication pruning for a server ACK.
         expect(await AsyncStorage.getItem(key)).toBeNull();
         expect(
           operation === 'delete' ? mockDelete : mockPost,
         ).toHaveBeenCalledTimes(1);
+        if (operation === 'finalize') {
+          expect(mockPost).toHaveBeenCalledWith('portfolio/9/finalize');
+        }
         await act(async () => {
           await jest.advanceTimersByTimeAsync(1500);
         });
@@ -281,13 +295,18 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         deliverPortfolioMedia(entry, boundary),
       ).resolves.toMatchObject({state: 'uploaded', media: {id: '71'}});
       expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([entry]);
-      expect(RNFS.unlink).not.toHaveBeenCalled();
+      expect(
+        (RNFS.unlink as jest.Mock).mock.calls.map(([path]) => path),
+      ).toEqual([
+        `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/.references.json.backup`,
+      ]);
       await expect(
         deliverPortfolioMedia(entry, boundary),
       ).resolves.toMatchObject({state: 'uploaded', media: {id: '71'}});
       expect(mockPost).toHaveBeenCalledTimes(2);
       expect(serverIdentities).toEqual(new Set([entry.clientRequestId]));
       expect(await AsyncStorage.getItem(key)).toBeNull();
+      expect(RNFS.unlink).toHaveBeenCalledWith(entry.file.uri.slice(7));
     } finally {
       remove.mockImplementation(originalRemove);
     }
@@ -309,7 +328,11 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       state: 'retry',
     });
     expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([entry]);
-    expect(RNFS.unlink).not.toHaveBeenCalled();
+    expect((RNFS.unlink as jest.Mock).mock.calls.map(([path]) => path)).toEqual(
+      [
+        `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/.references.json.backup`,
+      ],
+    );
     expect(mockPost).toHaveBeenCalledTimes(1);
   });
 
@@ -337,11 +360,16 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         await gate.promise;
       }
     });
-    let completion!: Promise<unknown>;
     await act(async () => {
-      completion = owner.finalizeSelectedProject();
+      owner.confirmDeleteSelectedProject();
+      const buttons = (Alert.alert as jest.Mock).mock.calls[0][2];
+      buttons
+        .find((button: {style?: string}) => button.style === 'destructive')
+        .onPress();
     });
     await started.promise;
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockPost).not.toHaveBeenCalled();
     await act(async () => {
       await jest.advanceTimersByTimeAsync(750);
     });
@@ -365,15 +393,16 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
         await jest.advanceTimersByTimeAsync(10);
       });
       expect(owner.saving).toBe(false);
+      expect(owner.selected).toBeNull();
+      expect(projects).toEqual([]);
       expect(staged).toBe(false);
       expect(await AsyncStorage.getItem(key)).toBeNull();
       await act(async () => {
         gate.resolve();
-        await completion;
         await next;
       });
       expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([
-        {...nextEntry, storageKey: key},
+        {...nextEntry, storageKey: key, paused: false},
       ]);
       expect(RNFS.unlink).not.toHaveBeenCalledWith(nextPath);
       expect(RNFS.writeFile).toHaveBeenLastCalledWith(
@@ -383,8 +412,99 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       );
     } finally {
       gate.resolve();
-      await completion;
       await next;
+    }
+  });
+
+  it.each([false, true])(
+    'does not finalize while a readable upload remains pending with paused=%s',
+    async paused => {
+      const boundary = mockBoundary;
+      const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+      const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/pending.jpg`;
+      const entry = {
+        projectId: '9',
+        clientRequestId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        file: {uri: `file://${path}`, type: 'image/jpeg'},
+        createdAt: Date.now(),
+        paused,
+      };
+      await AsyncStorage.setItem(key, JSON.stringify([entry]));
+      jest.spyOn(RNFS, 'stat').mockResolvedValue({
+        isFile: () => true,
+        size: 128,
+      } as Awaited<ReturnType<typeof RNFS.stat>>);
+      const selected = owner.selected;
+      await act(async () => {
+        await owner.finalizeSelectedProject();
+      });
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(mockDelete).not.toHaveBeenCalled();
+      expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([entry]);
+      expect(RNFS.unlink).not.toHaveBeenCalledWith(path);
+      expect(owner.selected).toEqual(selected);
+      expect(owner.saving).toBe(false);
+      expect(setMutationBlocked).toHaveBeenLastCalledWith(false);
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'الرفع غير مكتمل',
+        'أكمل رفع الملفات أولاً',
+      );
+    },
+  );
+
+  it('does not treat stalled pre-publication pruning as a confirmed finalize', async () => {
+    const boundary = mockBoundary;
+    const key = `@rokn/portfolio-media-outbox/v1:${boundary.scope}`;
+    const path = `${RNFS.CachesDirectoryPath}/rokn_learner_drafts/${boundary.scope}/unreadable.jpg`;
+    await AsyncStorage.setItem(
+      key,
+      JSON.stringify([
+        {
+          projectId: '9',
+          clientRequestId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+          file: {uri: `file://${path}`},
+          createdAt: Date.now(),
+        },
+      ]),
+    );
+    // A zero-byte file requires preflight pruning, not retirement following
+    // an accepted finalize request.
+    jest.spyOn(RNFS, 'stat').mockResolvedValue({
+      isFile: () => true,
+      size: 0,
+    } as Awaited<ReturnType<typeof RNFS.stat>>);
+    const gate = deferred<void>();
+    const started = deferred<void>();
+    (RNFS.unlink as jest.Mock).mockImplementation(async filePath => {
+      if (filePath === path) {
+        started.resolve();
+        await gate.promise;
+      }
+    });
+    let completion!: Promise<unknown>;
+    await act(async () => {
+      completion = owner.finalizeSelectedProject();
+    });
+    try {
+      await started.promise;
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(1500);
+      });
+      expect(await AsyncStorage.getItem(key)).toBeNull();
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(owner.saving).toBe(true);
+      expect(setMutationBlocked).toHaveBeenLastCalledWith(true);
+      await act(async () => {
+        gate.resolve();
+        await completion;
+      });
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockPost).toHaveBeenCalledWith('portfolio/9/finalize');
+      expect(owner.saving).toBe(false);
+      expect(owner.selected?.shareReady).toBe(true);
+    } finally {
+      gate.resolve();
+      await completion;
     }
   });
 
@@ -502,9 +622,13 @@ describe('confirmed portfolio actions versus native outbox cleanup', () => {
       expect(await AsyncStorage.getItem(key)).toBeNull();
       expect(mockPost).not.toHaveBeenCalled();
       gate.resolve();
-      await expect(pending).resolves.toEqual({...entry, storageKey: key});
+      await expect(pending).resolves.toEqual({
+        ...entry,
+        storageKey: key,
+        paused: false,
+      });
       expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual([
-        {...entry, storageKey: key},
+        {...entry, storageKey: key, paused: false},
       ]);
     } finally {
       gate.resolve();

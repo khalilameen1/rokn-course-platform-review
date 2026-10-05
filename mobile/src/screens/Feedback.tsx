@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Pressable, Text, View} from 'react-native';
-import {useRoute} from '@react-navigation/native';
+import {useIsFocused, useRoute} from '@react-navigation/native';
 import {useTranslation} from 'react-i18next';
 import {useSelector} from 'react-redux';
 
@@ -18,6 +18,7 @@ import {useFeedbackComposer} from './feedback/useFeedbackComposer';
 
 export default function Feedback() {
   const route = useRoute<RootRoute<'Feedback'>>();
+  const focused = useIsFocused();
   const {i18n} = useTranslation();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
@@ -27,11 +28,16 @@ export default function Feedback() {
     if (requestedCaseId) setShowComposer(false);
   }, [requestedCaseId]);
   const composer = useFeedbackComposer({
+    focused,
     identityKey,
     locale: i18n.resolvedLanguage || i18n.language || 'ar',
     sourceScreen: route.params?.sourceScreen || 'feedback',
   });
-  const cases = useFeedbackCases(identityKey, requestedCaseId);
+  const cases = useFeedbackCases(
+    identityKey,
+    requestedCaseId,
+    focused && !showComposer,
+  );
 
   if (composer.sent) {
     return (
@@ -111,7 +117,10 @@ export default function Feedback() {
               onSendReply={() => void cases.sendReply()}
               previewArtifact={cases.previewArtifact}
               previewLoadFailed={cases.previewLoadFailed}
+              previewBusy={cases.previewBusy}
+              previewRequestKey={cases.previewRequestKey}
               replyAttachment={cases.replyAttachment}
+              replyAttachmentBusy={cases.replyAttachmentBusy}
               replyBusy={cases.replyBusy}
               replyError={cases.replyError}
               replyReady={cases.replyReady}
@@ -133,6 +142,7 @@ export default function Feedback() {
             ) : (
               <FeedbackForm
                 attachment={composer.attachment}
+                preparingAttachment={composer.preparingAttachment}
                 busy={composer.busy}
                 canSubmit={composer.canSubmit}
                 category={composer.category}

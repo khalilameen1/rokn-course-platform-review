@@ -1,8 +1,19 @@
-import React, {useEffect, useState} from 'react';
-import {ImageSourcePropType, Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React from 'react';
+import {
+  ImageSourcePropType,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../../components/ui/RasterImage';
+import {CoinAmount} from '../../components/ui/RoknCoin';
+import {AppArtwork} from '../../components/ui/AppArtwork';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
+import {Fonts} from '../../constants/styleConstants';
 import {
   Accessibility,
   Palette,
@@ -21,357 +32,237 @@ export type HomeCampaign = {
   courseId?: string;
   image?: ImageSourcePropType;
   actionLabel: string;
+  badge?: string;
 };
-
 type Props = {
   campaign: HomeCampaign | null;
   campaignImageFailed: boolean;
   onCampaignImageError: () => void;
   onDismissCampaign: (open: boolean) => void;
-  onDismissWelcome: () => void;
-  onOpenWelcome: () => void;
   guestPrompt: EngagementMessage | null;
   onDismissGuestPrompt: () => void;
   onOpenGuestPrompt: () => void;
-  welcomeMessage: EngagementMessage | null;
-  rewardPrompt: EngagementMessage | null;
-  onDismissRewardPrompt: () => void;
-  onOpenRewardPrompt: () => void;
 };
-
-const OverlayFrame = ({children}: {children: React.ReactNode}) => {
-  const insets = useSafeAreaInsets();
-  return (
-    <View style={styles.overlay}>
-      <ScrollView
-        bounces={false}
-        contentContainerStyle={[
-          styles.overlayContent,
-          {
-            paddingTop: Math.max(insets.top, Spacing.lg),
-            paddingBottom: Math.max(insets.bottom, Spacing.lg),
-            paddingLeft: Math.max(insets.left + Spacing.md, Spacing.xl),
-            paddingRight: Math.max(insets.right + Spacing.md, Spacing.xl),
-          },
-        ]}
-        showsVerticalScrollIndicator={false}>
-        {children}
-      </ScrollView>
-    </View>
-  );
-};
-
-const PromptVisual = ({uri}: {uri?: string}) => {
-  const [failed, setFailed] = useState(false);
-  useEffect(() => setFailed(false), [uri]);
-  return uri && !failed ? (
-    <Image
-      accessibilityElementsHidden
-      importantForAccessibility="no"
-      onError={() => setFailed(true)}
-      progressiveRenderingEnabled
-      resizeMethod="resize"
-      source={{uri}}
-      style={styles.promptImage}
-    />
-  ) : null;
-};
-
+/** Approved composition rendered by RN Modal, not a parallel overlay stack. */
 export const HomeOverlays = ({
   campaign,
   campaignImageFailed,
   onCampaignImageError,
   onDismissCampaign,
-  onDismissWelcome,
-  onOpenWelcome,
   guestPrompt,
   onDismissGuestPrompt,
   onOpenGuestPrompt,
-  welcomeMessage,
-  rewardPrompt,
-  onDismissRewardPrompt,
-  onOpenRewardPrompt,
 }: Props) => {
   const reducedMotion = useReducedMotion();
+  const insets = useSafeAreaInsets();
+  const gift = guestPrompt !== null;
+  const title = gift ? guestPrompt.title : campaign?.title;
+  const dismiss = () =>
+    gift ? onDismissGuestPrompt() : onDismissCampaign(false);
   return (
-    <>
-      <Modal
-        animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={onDismissWelcome}
-        statusBarTranslucent
-        transparent
-        visible={welcomeMessage !== null}>
-        <OverlayFrame>
-          <View accessibilityViewIsModal style={styles.welcomeCard}>
-            <PromptVisual uri={welcomeMessage?.imageUrl} />
-            <Text accessibilityRole="header" style={styles.welcomeTitle}>
-              {welcomeMessage?.title}
-            </Text>
-            <Text style={styles.welcomeText}>
-              {welcomeMessage?.description}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onOpenWelcome}
-              style={({pressed}) => [
-                styles.actionButton,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.actionButtonText}>
-                {welcomeMessage?.actionLabel}
-              </Text>
-            </Pressable>
-          </View>
-        </OverlayFrame>
-      </Modal>
-
-      <Modal
-        animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={
-          rewardPrompt?.dismissible ? onDismissRewardPrompt : () => undefined
-        }
-        statusBarTranslucent
-        transparent
-        visible={rewardPrompt !== null}>
-        <OverlayFrame>
-          <View accessibilityViewIsModal style={styles.welcomeCard}>
-            <PromptVisual uri={rewardPrompt?.imageUrl} />
-            <Text accessibilityRole="header" style={styles.welcomeTitle}>
-              {rewardPrompt?.title}
-            </Text>
-            <Text style={styles.welcomeText}>{rewardPrompt?.description}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onOpenRewardPrompt}
-              style={({pressed}) => [
-                styles.actionButton,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.actionButtonText}>
-                {rewardPrompt?.actionLabel}
-              </Text>
-            </Pressable>
-            {rewardPrompt?.dismissible && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onDismissRewardPrompt}
-                style={({pressed}) => [
-                  styles.secondaryButton,
-                  pressed && styles.pressed,
-                ]}>
-                <Text style={styles.secondaryButtonText}>
-                  {rewardPrompt.secondaryActionLabel}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        </OverlayFrame>
-      </Modal>
-
-      <Modal
-        animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={
-          guestPrompt?.dismissible ? onDismissGuestPrompt : () => undefined
-        }
-        statusBarTranslucent
-        transparent
-        visible={guestPrompt !== null}>
-        <OverlayFrame>
-          <View accessibilityViewIsModal style={styles.welcomeCard}>
-            <PromptVisual uri={guestPrompt?.imageUrl} />
-            <Text accessibilityRole="header" style={styles.welcomeTitle}>
-              {guestPrompt?.title}
-            </Text>
-            <Text style={styles.welcomeText}>{guestPrompt?.description}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onOpenGuestPrompt}
-              style={({pressed}) => [
-                styles.actionButton,
-                pressed && styles.pressed,
-              ]}>
-              <Text style={styles.actionButtonText}>
-                {guestPrompt?.actionLabel}
-              </Text>
-            </Pressable>
-            {guestPrompt?.dismissible && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={onDismissGuestPrompt}
-                style={({pressed}) => [
-                  styles.secondaryButton,
-                  pressed && styles.pressed,
-                ]}>
-                <Text style={styles.secondaryButtonText}>
-                  {guestPrompt.secondaryActionLabel}
-                </Text>
-              </Pressable>
-            )}
-          </View>
-        </OverlayFrame>
-      </Modal>
-
-      <Modal
-        animationType={reducedMotion ? 'none' : 'fade'}
-        onRequestClose={() => onDismissCampaign(false)}
-        statusBarTranslucent
-        transparent
-        visible={campaign !== null}>
-        <OverlayFrame>
-          <View accessibilityViewIsModal style={styles.campaignCard}>
-            {campaign?.image && !campaignImageFailed ? (
-              <View style={styles.campaignVisual}>
-                <Image
-                  accessibilityIgnoresInvertColors
-                  onError={onCampaignImageError}
-                  progressiveRenderingEnabled
-                  resizeMethod="resize"
-                  source={campaign.image}
-                  style={styles.campaignCourseImage}
-                />
-              </View>
-            ) : null}
+    <Modal
+      animationType={reducedMotion ? 'none' : 'fade'}
+      onRequestClose={dismiss}
+      statusBarTranslucent
+      transparent
+      visible={gift || campaign !== null}>
+      <View style={styles.overlay}>
+        <ScrollView
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.overlayContent,
+            {
+              paddingTop: Math.max(insets.top + 16, 24),
+              paddingBottom: Math.max(insets.bottom + 16, 24),
+              paddingLeft: Math.max(insets.left + 16, 20),
+              paddingRight: Math.max(insets.right + 16, 20),
+            },
+          ]}>
+          <View
+            accessibilityViewIsModal
+            testID="home-announcement-card"
+            style={[styles.card, gift && styles.giftCard]}>
             <Pressable
               accessibilityLabel="إغلاق"
               accessibilityRole="button"
-              hitSlop={10}
-              onPress={() => onDismissCampaign(false)}
-              style={styles.campaignClose}>
-              <Text style={styles.campaignCloseText}>×</Text>
+              onPress={dismiss}
+              style={styles.close}>
+              <Text style={styles.closeText}>×</Text>
             </Pressable>
-            <Text accessibilityRole="header" style={styles.campaignTitle}>
-              {formatAuthoredDisplayText(campaign?.title)}
+            {gift ? (
+              <View style={styles.giftVisual}>
+                <AppArtwork
+                  asset="coin_stack"
+                  uri={guestPrompt.imageUrl}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                  style={styles.giftArt}
+                  defaultArtworkStyle={styles.defaultGiftArt}
+                  resizeMode="contain"
+                />
+              </View>
+            ) : (
+              <View style={styles.courseVisual}>
+                {campaign?.image && !campaignImageFailed && (
+                  <Image
+                    accessibilityIgnoresInvertColors
+                    onError={onCampaignImageError}
+                    source={campaign.image}
+                    style={styles.cover}
+                    resizeMode="cover"
+                  />
+                )}
+                {!!campaign?.badge && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{campaign.badge}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, gift && styles.giftTitle]}>
+              {formatAuthoredDisplayText(title)}
             </Text>
-            <Text style={styles.campaignText}>
-              {formatAuthoredDisplayText(campaign?.description)}
-            </Text>
+            {gift ? (
+              <CoinAmount
+                value={guestPrompt.coins}
+                size={28}
+                style={styles.amount}
+                textStyle={styles.amountText}
+              />
+            ) : (
+              !!campaign?.description && (
+                <Text style={styles.description}>
+                  {formatAuthoredDisplayText(campaign.description)}
+                </Text>
+              )
+            )}
             <Pressable
               accessibilityRole="button"
-              onPress={() => onDismissCampaign(true)}
+              onPress={gift ? onOpenGuestPrompt : () => onDismissCampaign(true)}
               style={({pressed}) => [
                 styles.actionButton,
                 pressed && styles.pressed,
               ]}>
-              <Text style={styles.actionButtonText}>
-                {campaign?.actionLabel}
+              <Text style={styles.actionText}>
+                {gift ? guestPrompt.actionLabel : campaign?.actionLabel}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={dismiss}
+              style={styles.secondaryButton}>
+              <Text style={styles.secondaryText}>
+                {gift ? guestPrompt.secondaryActionLabel : 'ليس الآن'}
               </Text>
             </Pressable>
           </View>
-        </OverlayFrame>
-      </Modal>
-    </>
+        </ScrollView>
+      </View>
+    </Modal>
   );
 };
-
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: Palette.overlay,
-  },
-  overlayContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-  },
-  welcomeCard: {
+  overlay: {flex: 1, backgroundColor: Palette.overlay},
+  overlayContent: {flexGrow: 1, alignItems: 'center', justifyContent: 'center'},
+  card: {
     width: '100%',
-    maxWidth: 440,
-    alignItems: 'center',
-    padding: Spacing.xl,
-    borderRadius: Radius.xl,
-    backgroundColor: Palette.surfaceRaised,
+    maxWidth: 400,
+    paddingHorizontal: 20,
+    paddingTop: 52,
+    paddingBottom: 10,
+    borderRadius: 24,
+    backgroundColor: '#142033',
+    borderColor: '#2C3A50',
+    borderWidth: 1,
   },
-  welcomeTitle: {
-    ...Type.title,
-    ...textDirection,
-    color: Palette.text,
-    textAlign: 'center',
-    marginTop: Spacing.xs,
-  },
-  welcomeText: {
-    ...Type.body,
-    writingDirection: 'rtl',
-    color: Palette.textMuted,
-    textAlign: 'center',
-    marginTop: Spacing.xs,
-  },
-  actionButton: {
-    width: '100%',
-    minHeight: Accessibility.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: Radius.md,
-    backgroundColor: Palette.primary,
-  },
-  actionButtonText: {
-    ...Type.bodyStrong,
-    ...textDirection,
-    textAlign: 'center',
-    color: '#FFFFFF',
-  },
-  secondaryButton: {
-    minHeight: Accessibility.minTouchTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: Spacing.xs,
-    paddingHorizontal: Spacing.lg,
-  },
-  secondaryButtonText: {...Type.bodyStrong, color: Palette.textMuted},
-  promptImage: {
-    width: 112,
-    height: 92,
-    borderRadius: Radius.md,
-    resizeMode: 'cover',
-  },
-  campaignCard: {
-    width: '100%',
-    maxWidth: 440,
-    alignItems: 'center',
-    padding: Spacing.xl,
-    paddingTop: Spacing.xxl,
-    borderRadius: Radius.xl,
-    backgroundColor: Palette.surfaceRaised,
-  },
-  campaignClose: {
+  giftCard: {minHeight: 320, alignItems: 'center'},
+  close: {
     position: 'absolute',
-    top: Spacing.sm,
-    right: Spacing.sm,
+    top: 3,
+    left: 5,
     width: Accessibility.minTouchTarget,
     height: Accessibility.minTouchTarget,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  campaignCloseText: {fontSize: 30, lineHeight: 34, color: Palette.textMuted},
-  campaignVisual: {
-    width: 108,
-    height: 88,
+  closeText: {fontSize: 28, color: '#B4C0D2'},
+  giftVisual: {
+    height: 104,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xs,
+    overflow: 'hidden',
   },
-  campaignCourseImage: {
-    width: 108,
-    height: 88,
-    borderRadius: Radius.md,
-    resizeMode: 'cover',
+  giftArt: {width: '100%', maxWidth: 200, height: 104},
+  // Only the shipped coin stack has known transparent padding. Its approved
+  // 200px framing crops that padding, not arbitrary dashboard artwork.
+  defaultGiftArt: {height: 200},
+  courseVisual: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: 13,
+    backgroundColor: Palette.surfaceRaised,
   },
-  campaignTitle: {
-    ...Type.title,
-    writingDirection: 'rtl',
+  cover: {width: '100%', height: '100%', borderRadius: 13},
+  badge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: Palette.primary,
+  },
+  badgeText: {...Type.caption, color: '#FFFFFF'},
+  title: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    fontSize: 18,
     color: Palette.text,
-    textAlign: 'center',
-    marginTop: Spacing.lg,
+    textAlign: 'right',
+    marginTop: 14,
   },
-  campaignText: {
-    ...Type.body,
-    writingDirection: 'rtl',
+  giftTitle: {textAlign: 'center', marginTop: 0},
+  amount: {
+    alignSelf: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  amountText: {fontFamily: Fonts.extraBold, fontSize: 34, color: '#FFFFFF'},
+  description: {
+    ...Type.caption,
+    ...textDirection,
     color: Palette.textMuted,
-    textAlign: 'center',
-    marginTop: Spacing.sm,
+    marginTop: Spacing.xs,
   },
+  actionButton: {
+    width: '100%',
+    minHeight: 48,
+    marginTop: 8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: Radius.md,
+    backgroundColor: Palette.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  secondaryButton: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  secondaryText: {...Type.caption, color: '#B4C0D2'},
   pressed: {opacity: 0.75},
 });

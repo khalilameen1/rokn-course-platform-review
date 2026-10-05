@@ -7,6 +7,7 @@ import {serverNowMs} from '../utils/serverClock';
 import {exchangeAppleSocialToken} from './socialAuthCompletion';
 import {
   socialAuthCompletionIsTerminal,
+  assertSocialAuthCanStart,
   socialAuthRecord,
   type SocialAuthOptions,
 } from './socialAuthContract';
@@ -34,13 +35,16 @@ const createAppleNonce = async () => {
 };
 
 export const startAppleSocialAuth = async (options: SocialAuthOptions) => {
+  assertSocialAuthCanStart(options);
   if (!(await appleSocialAuthAvailable())) {
     throw new Error('PROVIDER_NOT_CONFIGURED');
   }
+  assertSocialAuthCanStart(options);
 
   let ownedAttempt: PendingSocialAuthAttempt | null = null;
   try {
     const nonce = await createAppleNonce();
+    assertSocialAuthCanStart(options);
     const attempt: PendingSocialAuthAttempt = {
       provider: 'apple',
       verifier: nonce.raw,
@@ -50,6 +54,8 @@ export const startAppleSocialAuth = async (options: SocialAuthOptions) => {
     };
     ownedAttempt = attempt;
     await savePendingSocialAuthAttempt(attempt);
+    assertSocialAuthCanStart(options);
+    options.onProviderStarted?.();
     const credential = await AppleAuthentication.signInAsync({
       requestedScopes: [
         AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
@@ -94,9 +100,11 @@ export const startAppleSocialAuth = async (options: SocialAuthOptions) => {
     }
     const localTerminal =
       error instanceof Error &&
-      ['APPLE_NONCE_GENERATION_FAILED', 'LOGIN_SESSION_INVALID'].includes(
-        error.message,
-      );
+      [
+        'APPLE_NONCE_GENERATION_FAILED',
+        'LOGIN_SESSION_INVALID',
+        'LOGIN_CANCELLED',
+      ].includes(error.message);
     if (
       ownedAttempt &&
       (localTerminal || socialAuthCompletionIsTerminal(error))

@@ -48,6 +48,8 @@ import {
   writePortfolioEditorDraft,
 } from '../src/services/portfolioDraft';
 import type {PortfolioItem} from '../src/services/api/portfolio';
+import {listPortfolioMediaUploads} from '../src/services/portfolioMediaOutbox';
+import {replayPendingPortfolioMediaUploads} from '../src/services/portfolioMediaReplay';
 
 const media = {
   id: 71,
@@ -257,6 +259,53 @@ describe('accepted portfolio creation versus editor draft cleanup', () => {
     expect(await readPortfolioEditorDraft(mockBoundary)).toEqual(draft);
     expect(files.has(filePath)).toBe(true);
     expect(mockPost).toHaveBeenCalledTimes(1);
+  });
+
+  it('creation Back persists pause and retains staged files without finalizing or automatic replay', async () => {
+    const started = deferred<AbortSignal>();
+    mockPost.mockImplementation(
+      (url: string, _body: unknown, options: {signal: AbortSignal}) => {
+        if (!url.endsWith('/media'))
+          return Promise.resolve({data: {data: item()}});
+        return new Promise((_resolve, reject) => {
+          started.resolve(options.signal);
+          options.signal.addEventListener(
+            'abort',
+            () => reject(new Error('PORTFOLIO_UPLOAD_PAUSED')),
+            {once: true},
+          );
+        });
+      },
+    );
+    let completion!: Promise<void>;
+    await act(async () => {
+      completion = owner.addProject();
+      await flush();
+    });
+    const signal = await started.promise;
+    expect(owner.canPauseCreateUpload).toBe(true);
+    await act(async () => {
+      owner.closeAddProject();
+      await completion;
+      await flush();
+    });
+    expect(signal.aborted).toBe(true);
+    expect(owner.saving).toBe(false);
+    expect(owner.adding).toBe(false);
+    expect(busyRef.current).toBe(false);
+    expect(await readPortfolioEditorDraft(mockBoundary)).toBeNull();
+    expect(files.has(filePath)).toBe(true);
+    const entries = await listPortfolioMediaUploads('9', mockBoundary);
+    expect(entries).toHaveLength(1);
+    expect(entries[0].paused).toBe(true);
+    expect(entries[0].file.uri).toBe(`file://${filePath}`);
+    expect(mockPost.mock.calls.map(([url]) => url)).toEqual([
+      'portfolio',
+      'portfolio/9/media',
+    ]);
+    expect(Alert.alert).not.toHaveBeenCalled();
+    await replayPendingPortfolioMediaUploads();
+    expect(mockPost).toHaveBeenCalledTimes(2);
   });
 
   it('orders retirement after an already-started draft write and before the next draft', async () => {

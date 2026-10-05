@@ -131,11 +131,23 @@ describe('project report view state', () => {
 
   it('keeps report loading, ready and retry states mutually exclusive', () => {
     expect(report({reportStatus: 'queued'})).toBe('preparing');
-    expect(report({hydrating: true})).toBe('loading');
+    expect(
+      report({
+        hydrating: true,
+        thread: {...defaultInput.thread!, messages: []},
+      }),
+    ).toBe('loading');
     expect(report()).toBe('ready');
     expect(report({reportStatus: 'failed', retryAvailable: true})).toBe(
       'failed_retryable',
     );
     expect(report({projectStatus: 'evaluating'})).toBe('hidden');
+  });
+
+  it('keeps the received report visible during access refresh or a read retry', () => {
+    expect(report({hydrating: true})).toBe('ready');
+    expect(
+      report({hydrating: true, reportStatus: 'failed', retryAvailable: true}),
+    ).toBe('failed_retryable');
   });
 });

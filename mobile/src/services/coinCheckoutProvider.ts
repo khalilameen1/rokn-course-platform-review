@@ -1,8 +1,10 @@
-import {NativeModules, Platform} from 'react-native';
+import {AppState, Linking, NativeModules, Platform} from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import {isCoursePaymentUrl} from './coursePaymentUrl';
 
 type CheckoutNativeModule = {
   open: (url: string) => Promise<string>;
+  openBrowser?: (url: string) => Promise<void>;
 };
 
 export type CoinCheckoutCallback = {
@@ -15,6 +17,40 @@ export type CoinCheckoutCallback = {
 const nativeCheckout = NativeModules.RoknCheckout as
   | CheckoutNativeModule
   | undefined;
+
+/** Returning without a provider callback means reconcile, not cancel.
+ * Listeners are installed before launch; cold starts use the durable order. */
+export const openCourseBrowserCheckoutSurface = (
+  url: string,
+): Promise<string> => {
+  if (!isCoursePaymentUrl(url))
+    return Promise.reject(new Error('PAYMENT_URL_INVALID'));
+  if (Platform.OS !== 'android' || !nativeCheckout?.openBrowser) {
+    return Promise.reject(new Error('CHECKOUT_BROWSER_UNAVAILABLE'));
+  }
+  return new Promise((resolve, reject) => {
+    let backgrounded = false;
+    let finished = false;
+    const finish = (value: string, error?: unknown) => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timeout);
+      links.remove();
+      states.remove();
+      if (error) reject(error);
+      else resolve(value);
+    };
+    const links = Linking.addEventListener('url', event => {
+      if (parseCoinCheckoutCallback(event.url).valid) finish(event.url);
+    });
+    const states = AppState.addEventListener('change', state => {
+      if (state !== 'active') backgrounded = true;
+      else if (backgrounded) finish('');
+    });
+    const timeout = setTimeout(() => finish(''), 30 * 60 * 1000);
+    void nativeCheckout.openBrowser!(url).catch(error => finish('', error));
+  });
+};
 
 export const parseCoinCheckoutCallback = (
   value: string,

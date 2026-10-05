@@ -67,5 +67,11 @@ Thumbs.db
 **/.claude/
 **/.specify/
 **/.cursor/
+# Keep only the approved shared working rule, not local editor state.
+!/.cursor/
+/.cursor/*
+!/.cursor/rules/
+/.cursor/rules/*
+!/.cursor/rules/proven-reference-first.mdc
 **/.agents/
 **/.codex/

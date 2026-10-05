@@ -28,6 +28,7 @@ import {useReelsPosition} from './useReelsPosition';
 import {useReelsSavedLessons} from './useReelsSavedLessons';
 import {useReelsPlaybackRuntime} from './useReelsPlaybackRuntime';
 import {useReelsManifestOwner} from './useReelsManifestOwner';
+import {useReelsNativePreloading} from './useReelsNativePreloading';
 import {useReelsCourseState} from './useReelsCourseState';
 import {useReelsCourseRevision} from './useReelsCourseRevision';
 import {sessionIdentityKey} from '../../constants/helpers';
@@ -86,7 +87,7 @@ export const useReelsController = () => {
     playbackPreferencesReady,
     playbackSpeed,
     selectedQuality,
-  } = usePlaybackPreferences(serverSession, identityKey);
+  } = usePlaybackPreferences(identityKey);
   const [chatVisible, setChatVisible] = useState(false);
 
   useEffect(() => {
@@ -116,29 +117,25 @@ export const useReelsController = () => {
     [],
   );
   const [previewGateVisible, setPreviewGateVisible] = useState(false);
-  const {
-    closeReminderNudge,
-    enableRemindersFromNudge,
-    maybeOfferReminders,
-    reminderNudgeVisible,
-  } = useReminderNudge({
-    courseId: course?.id,
-    courseTitle: course?.title,
-  });
   const routeNavigationFlightRef = useRef(false);
   const courseRevisionReloadHandlerRef = useRef<(lessonId?: string) => void>(
     () => undefined,
   );
   const mountedRef = useRef(true);
   const delayedActionsRef = useRef(new Set<ReturnType<typeof setTimeout>>());
-  const {savedLessons, savingLessons, setSavedLessons, toggleSaved} =
-    useReelsSavedLessons({
-      loadedCourse: loadedCourseRef,
-      mounted: mountedRef,
-      ownerGeneration: accountViewGenerationRef,
-      scopeKey: `${identityKey}:${requestedCourseViewKey}`,
-      setConnectionNote,
-    });
+  const {
+    savedLessons,
+    savedLessonsVersion,
+    savingLessons,
+    setSavedLessons,
+    toggleSaved,
+  } = useReelsSavedLessons({
+    loadedCourse: loadedCourseRef,
+    mounted: mountedRef,
+    ownerGeneration: accountViewGenerationRef,
+    scopeKey: `${identityKey}:${requestedCourseViewKey}`,
+    setConnectionNote,
+  });
 
   useEffect(() => {
     // Non-course collaborators own only their local scope cleanup. Course
@@ -199,6 +196,26 @@ export const useReelsController = () => {
   const currentItem = feedItems[currentIndex] || feedItems[0];
   const currentReel: CourseReel | undefined =
     currentItem?.type === 'reel' ? currentItem.reel : undefined;
+  const {
+    closeReminderNudge,
+    enableRemindersFromNudge,
+    maybeOfferReminders,
+    reminderNudgeVisible,
+  } = useReminderNudge({
+    active: isScreenFocused,
+    blocked:
+      loading ||
+      !course ||
+      currentItem?.type !== 'reel' ||
+      chatVisible ||
+      previewGateVisible ||
+      contentOverlayVisible ||
+      courseRevisionRefreshing,
+    contextKey: `${currentItem?.key || ''}:${paging ? 'paging' : 'settled'}`,
+    courseId: course?.id,
+    courseTitle: course?.title,
+    scopeKey: `${identityKey}:${requestedCourseViewKey}`,
+  });
   const manifestRefreshHandlerRef = useRef<() => void>(() => undefined);
   const refreshPlaybackSources = useCallback(
     () => manifestRefreshHandlerRef.current(),
@@ -259,7 +276,6 @@ export const useReelsController = () => {
     course,
     courseRef: loadedCourseRef,
     currentIndex,
-    currentItem,
     currentReel,
     dataSaver,
     durations: playbackDurationRef,
@@ -283,6 +299,15 @@ export const useReelsController = () => {
     sessionsClosed: closedPlaybackSessionsRef,
   });
   manifestRefreshHandlerRef.current = manifestOwner.refreshSources;
+  const nativePreloading = useReelsNativePreloading({
+    scopeKey: `${identityKey}:${requestedCourseViewKey}`,
+    active: isScreenFocused && appIsActive,
+    preloadEnabled:
+      isScreenFocused && appIsActive && !interactionLocked && !dataSaver,
+    feedItems,
+    currentIndex,
+    quality: selectedQuality,
+  });
   const {
     canPreloadAdjacentVideo,
     invalidateManifests,
@@ -324,6 +349,7 @@ export const useReelsController = () => {
     setLoading,
     setPreviewGateVisible,
     setSavedLessons,
+    savedLessonsVersion,
     setServerSession,
   });
 
@@ -547,6 +573,7 @@ export const useReelsController = () => {
       !isScreenFocused || !appIsActive || interactionLocked || paging,
     // Paging pauses playback, but must not discard the next decoder's preload.
     preloadNext: canPreloadAdjacentVideo,
+    ...nativePreloading,
     positions: positionsRef,
     preview: params.preview === true,
     previewCount: params.previewCount,
@@ -622,6 +649,7 @@ export const useReelsController = () => {
     onViewableItemsChanged,
     previewGateVisible,
     refreshCourseEntitlements,
+    reminderNudgeScopeKey: `${identityKey}:${requestedCourseViewKey}`,
     reminderNudgeVisible,
     renderItem,
     scrollEnabled: !interactionLocked,

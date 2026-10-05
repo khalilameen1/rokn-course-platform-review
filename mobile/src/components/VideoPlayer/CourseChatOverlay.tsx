@@ -1,5 +1,4 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {useNavigation} from '@react-navigation/native';
 import {
   Alert,
   Dimensions,
@@ -22,7 +21,6 @@ import {useReducedMotion} from '../../hooks/useReducedMotion';
 import {cleanUnicodeText, truncateGraphemes} from '../../utils/unicodeText';
 import {removeLearnerDraftFile} from '../../services/learnerDraftFiles';
 import {openCourseAssistantAttachment} from './courseLearningApi';
-import {useCourseChatAttachments} from './courseChat/useCourseChatAttachments';
 import {courseChatStyles as styles} from './courseChat/styles';
 import {CourseChatGate} from './courseChat/CourseChatGate';
 import FullTrackUpgradeSheet from '../FullTrackUpgradeSheet';
@@ -30,11 +28,6 @@ import {CourseChatConversation} from './courseChat/CourseChatConversation';
 import {courseAssistantEntryMode} from './courseEntitlements';
 import {courseChatSheetLayout} from './courseChat/layout';
 import {StatusView} from '../ui/PremiumUI';
-import {requestAiConsent} from '../../services/aiConsent';
-import {
-  captureAccountSessionBoundary,
-  assertAccountSessionBoundary,
-} from '../../constants/helpers';
 
 interface CourseChatOverlayProps {
   visible: boolean;
@@ -44,13 +37,6 @@ interface CourseChatOverlayProps {
   onEntitlementChanged: () => void | Promise<void>;
   onOpenCourseAccess: () => void;
 }
-
-type CourseChatNavigation = {
-  navigate: (
-    screen: 'Wallet',
-    params?: {returnTo?: import('../../navigation/types').LoginReturnTo},
-  ) => void;
-};
 
 const presenceLabel = (presence: AssistantPresence): string => {
   switch (presence) {
@@ -89,15 +75,14 @@ const CourseChatOverlay = ({
     insets.top,
     fontScale,
   );
-  const navigation = useNavigation<CourseChatNavigation>();
   const previousVisibleRef = useRef(false);
   const previousAssistantIncludedRef = useRef(true);
   const previousCourseIdRef = useRef(String(course.id));
-  const consentFlightRef = useRef(false);
   const {
     answerPending,
     assistantPresence,
     assistantIncluded,
+    consentPending,
     attachments,
     chatAccessUnavailable,
     input,
@@ -105,7 +90,10 @@ const CourseChatOverlay = ({
     hydrationError,
     retryHydration,
     messages,
+    pickAttachments,
     planLimitReached,
+    upgradeStatus,
+    retryUpgradeQuote,
     retry,
     scrollRef,
     send,
@@ -118,42 +106,14 @@ const CourseChatOverlay = ({
     visible,
     course,
     reel,
-    onEntitlementChanged,
-    onOpenWallet: () => {
-      // A native Modal belongs to this screen even after another route is
-      // pushed. Close it before navigation so its backdrop/keyboard cannot
-      // remain above Wallet and consume taps meant for the new screen.
-      onClose();
-      navigation.navigate('Wallet', {
-        returnTo: {
-          name: 'Reels',
-          params: {
-            courseId: String(course.id),
-            reelId: reel?.id ? String(reel.id) : undefined,
-            lessonId: reel?.lessonId ? String(reel.lessonId) : undefined,
-            openCourseChatUpgrade: true,
-          },
-        },
-      });
-    },
   });
   const entryMode = courseAssistantEntryMode(course);
   const courseAccessRequired = entryMode === 'course_access';
   const courseChatUnavailable = entryMode === 'unavailable';
   const hasSendableInput =
     cleanUnicodeText(input).length > 0 || attachments.length > 0;
-  const turnBusy = sending || isSendInFlight();
+  const turnBusy = consentPending || sending || isSendInFlight();
   const attachmentLimit = Math.max(0, course.chatAttachmentMaxFiles || 0);
-  const {pickAttachments, pickerIsActive} = useCourseChatAttachments({
-    attachments,
-    courseId: String(course.id),
-    enabled: hydrated && Boolean(course.chatAttachmentsEnabled),
-    isSendInFlight,
-    limit: attachmentLimit,
-    sending,
-    setAttachments,
-    visible,
-  });
 
   useEffect(() => {
     const courseChanged = previousCourseIdRef.current !== String(course.id);
@@ -176,37 +136,9 @@ const CourseChatOverlay = ({
     visible,
   ]);
 
-  const withConsent = async (action: () => void) => {
-    if (consentFlightRef.current) return;
-    consentFlightRef.current = true;
-    const courseId = String(course.id);
-    try {
-      const boundary = await captureAccountSessionBoundary();
-      if (!(await requestAiConsent(boundary))) return;
-      assertAccountSessionBoundary(boundary);
-      if (
-        !previousVisibleRef.current ||
-        previousCourseIdRef.current !== courseId
-      )
-        return;
-      action();
-    } finally {
-      consentFlightRef.current = false;
-    }
-  };
-
   const sendCurrentMessage = () => {
-    // The picker returns before its selected files are copied into our durable
-    // draft registry. Sending during that window would submit the previous
-    // attachment set and leave the newly picked files on the next message.
-    if (pickerIsActive()) return;
     if (!hasSendableInput) return;
-    void withConsent(send).catch(() => undefined);
-  };
-
-  const retryMessage = (clientRequestId: string) => {
-    if (pickerIsActive()) return;
-    void withConsent(() => retry(clientRequestId)).catch(() => undefined);
+    send();
   };
 
   return (
@@ -313,6 +245,8 @@ const CourseChatOverlay = ({
                     onOpenCourseAccess();
                   }}
                   planLimitReached={planLimitReached}
+                  upgradeStatus={upgradeStatus}
+                  onRetryUpgrade={retryUpgradeQuote}
                 />
               ) : !hydrated ? (
                 <StatusView
@@ -337,6 +271,7 @@ const CourseChatOverlay = ({
                   inputMaxHeight={sheetLayout.inputMaxHeight}
                   hasSendableInput={hasSendableInput}
                   input={input}
+                  composerLocked={consentPending}
                   messages={messages}
                   onInputChange={value =>
                     setInput(truncateGraphemes(value, 1600))
@@ -354,7 +289,7 @@ const CourseChatOverlay = ({
                     );
                     void removeLearnerDraftFile(file);
                   }}
-                  onRetry={retryMessage}
+                  onRetry={retry}
                   onSend={sendCurrentMessage}
                   onStop={() => void stop()}
                   scrollRef={scrollRef}

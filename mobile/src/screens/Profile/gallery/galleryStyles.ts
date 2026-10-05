@@ -288,12 +288,6 @@ export const galleryStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   manualEntryLabel: {...Type.caption, ...textDirection, color: Palette.text},
-  savingIndicator: {
-    marginTop: Spacing.sm,
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  uploadProgressText: {...Type.caption, color: Palette.textMuted},
   draftError: {
     ...Type.caption,
     ...textDirection,

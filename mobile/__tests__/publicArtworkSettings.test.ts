@@ -1,3 +1,5 @@
+export {};
+
 const mockGet = jest.fn();
 const mockRead = jest.fn();
 const mockSave = jest.fn();
@@ -60,5 +62,45 @@ describe('Public artwork settings', () => {
     expect((await readFresh()()).artwork?.coin).toBe(
       'https://rokn.test/cached.png',
     );
+  });
+
+  it('keeps default identities only for the matching safe artwork source', async () => {
+    mockGet.mockResolvedValue({
+      data: {
+        data: {
+          artwork: {
+            coin: 'https://rokn.test/coin.png',
+            coin_stack: 'https://rokn.test/default-stack.png',
+            badge_mid: 'https://rokn.test/mid.png',
+          },
+          artwork_defaults: {
+            coin: 'https://rokn.test/old-coin.png',
+            coin_stack: 'https://rokn.test/default-stack.png',
+            badge_mid: 'http://rokn.test/mid.png',
+            unknown: 'https://rokn.test/extra.png',
+          },
+        },
+      },
+    });
+    expect((await readFresh()()).artwork_defaults).toEqual({
+      coin: undefined,
+      coin_stack: 'https://rokn.test/default-stack.png',
+      badge_junior: undefined,
+      badge_mid: undefined,
+      badge_senior: undefined,
+    });
+  });
+
+  it('retains validated default identity with a cached offline snapshot', async () => {
+    const stack = 'https://rokn.test/default-stack.png';
+    mockRead.mockResolvedValue({
+      savedAt: Date.now() - 120000,
+      settings: {
+        artwork: {coin_stack: stack},
+        artwork_defaults: {coin_stack: stack},
+      },
+    });
+    mockGet.mockRejectedValue(new Error('offline'));
+    expect((await readFresh()()).artwork_defaults?.coin_stack).toBe(stack);
   });
 });

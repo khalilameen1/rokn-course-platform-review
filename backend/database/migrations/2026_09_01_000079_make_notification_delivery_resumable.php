@@ -192,6 +192,9 @@ return new class extends Migration
 
         if (Schema::hasTable('notification_campaigns')) {
             Schema::table('notification_campaigns', function (Blueprint $table): void {
+                if (Schema::hasIndex('notification_campaigns', 'notification_campaigns_scheduled_at_index')) {
+                    $table->dropIndex('notification_campaigns_scheduled_at_index');
+                }
                 $columns = array_values(array_filter([
                     'scheduled_at',
                     'selection_cursor',

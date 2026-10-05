@@ -17,13 +17,14 @@
             <article class="notification-template-card {{ !$notification->is_active ? 'is-disabled' : '' }}">
                 <div class="notification-template-card__visual">@if($notification->public_image_url)<img src="{{ $notification->public_image_url }}" alt="">@else<i class="fa fa-bell-o" aria-hidden="true"></i>@endif</div>
                 <div class="notification-template-card__copy">
-                    <div class="notification-template-card__meta"><span>{{ \App\Models\AdminNotification::SURFACES[$notification->surface] ?? $notification->surface }}</span><span>{{ $notification->is_active ? 'مفعّل' : 'متوقف' }}</span>@if($notification->cooldown_hours)<span>تهدئة {{ $notification->cooldown_hours }}س</span>@endif</div>
+                    @php($isWelcomeOffer = $notification->system_key === 'guest_registration_prompt')
+                    <div class="notification-template-card__meta"><span>{{ $isWelcomeOffer ? 'قبل تسجيل الدخول' : (\App\Models\AdminNotification::SURFACES[$notification->surface] ?? $notification->surface) }}</span><span>{{ $notification->is_active ? 'مفعّل' : 'متوقف' }}</span>@if($isWelcomeOffer)<span>مرة واحدة على الجهاز</span>@elseif($notification->cooldown_hours)<span>تهدئة {{ $notification->cooldown_hours }}س</span>@endif</div>
                     <h2>{{ $notification->title_ar }}</h2>
                     <p>{{ $notification->description_ar }}</p>
-                    @if($notification->action_label_ar && $notification->link)
+                    @if($notification->action_label_ar && ($isWelcomeOffer || $notification->link))
                         <div class="small text-primary">{{ $notification->action_label_ar }}</div>
                     @endif
-                    <small><code>{{ $notification->system_key ?: 'إعلان يدوي' }}</code> · أولوية {{ $notification->priority }}</small>
+                    <small><code>{{ $notification->system_key ?: 'إعلان يدوي' }}</code>@unless($isWelcomeOffer) · أولوية {{ $notification->priority }}@endunless</small>
                 </div>
                 <div class="notification-template-card__actions">
                     <a class="btn btn-sm btn-primary" href="{{ route('admin.admin_notifications.edit', $notification) }}">تعديل</a>

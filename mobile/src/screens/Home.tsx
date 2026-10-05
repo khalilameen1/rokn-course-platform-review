@@ -1,7 +1,14 @@
 import {useIsFocused, useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../components/ui/RasterImage';
 import {useTranslation} from 'react-i18next';
 import {NotificationIcon, SearchIcon} from '../assets/SVG';
@@ -42,6 +49,7 @@ import type {RootState} from '../store/store';
 import {useHomeScrollMemory} from './home/useHomeScrollMemory';
 import {useHomeEngagement} from './home/useHomeEngagement';
 import {useHomeSearch} from './home/useHomeSearch';
+import {useStartupExperience} from './appInitializer/StartupExperience';
 
 const QUICK_SEARCHES = [
   'العمل الحر',
@@ -59,6 +67,7 @@ const Home = () => {
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const identityKey = sessionIdentityKey(storedUser);
   const {t} = useTranslation();
+  const startup = useStartupExperience();
   const search = useHomeSearch(identityKey);
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
@@ -90,6 +99,7 @@ const Home = () => {
     loadingMore,
     loadMoreError,
     loadedSearchQuery,
+    searchResultsReady,
     serverSession,
     refresh: refreshCatalogue,
     remoteCourses,
@@ -113,9 +123,12 @@ const Home = () => {
     loading: catalogueLoading,
     navigation,
     openCourse: openCourseDetailsOnce,
-    remoteCourses,
     serverSession,
   });
+  const initialContentReady = startup?.initialContentReady;
+  useEffect(() => {
+    if (!catalogueLoading) initialContentReady?.();
+  }, [catalogueLoading, initialContentReady]);
 
   useEffect(() => {
     void trackProductEvent({event_name: 'home_viewed', screen_key: 'home'});
@@ -143,7 +156,8 @@ const Home = () => {
     [catalogue, loadedSearchQuery, remoteCourses, search.query],
   );
 
-  const hasSearchQuery = Boolean(normalizeText(search.query));
+  const normalizedSearchQuery = normalizeText(search.query);
+  const hasSearchQuery = Boolean(normalizedSearchQuery);
 
   const handleHomeScroll = useCallback(
     (event: Parameters<typeof handleCatalogueScroll>[0]) => {
@@ -154,25 +168,14 @@ const Home = () => {
   );
 
   useEffect(() => {
-    if (
-      hasSearchQuery &&
-      !catalogueLoading &&
-      !catalogueError &&
-      searchMatches.length === 0
-    ) {
+    if (searchResultsReady && searchMatches.length === 0) {
       void trackProductEvent({
         event_name: 'search_zero_results',
         screen_key: 'search',
-        value: Math.min(search.query.trim().length, 200),
+        value: Math.min(normalizedSearchQuery.length, 200),
       });
     }
-  }, [
-    catalogueError,
-    catalogueLoading,
-    hasSearchQuery,
-    searchMatches.length,
-    search.query,
-  ]);
+  }, [searchResultsReady, searchMatches.length, normalizedSearchQuery]);
 
   const openCourse = useCallback(
     (course: Course) => {
@@ -307,15 +310,9 @@ const Home = () => {
         onDismissCampaign={open => {
           void engagement.dismissCampaign(open).catch(() => undefined);
         }}
-        onDismissWelcome={engagement.dismissWelcome}
-        onOpenWelcome={engagement.openWelcome}
         guestPrompt={engagement.guestPrompt}
         onDismissGuestPrompt={engagement.dismissGuest}
         onOpenGuestPrompt={engagement.openGuest}
-        welcomeMessage={engagement.welcome}
-        rewardPrompt={engagement.rewardPrompt}
-        onDismissRewardPrompt={engagement.dismissReward}
-        onOpenRewardPrompt={engagement.openReward}
       />
     </Container>
   );

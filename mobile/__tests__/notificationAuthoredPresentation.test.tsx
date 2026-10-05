@@ -88,15 +88,9 @@ describe('authored notification rendering', () => {
             campaignImageFailed={false}
             onCampaignImageError={jest.fn()}
             onDismissCampaign={onDismissCampaign}
-            onDismissWelcome={jest.fn()}
-            onOpenWelcome={jest.fn()}
             guestPrompt={null}
             onDismissGuestPrompt={jest.fn()}
             onOpenGuestPrompt={jest.fn()}
-            welcomeMessage={null}
-            rewardPrompt={null}
-            onDismissRewardPrompt={jest.fn()}
-            onOpenRewardPrompt={jest.fn()}
           />,
         );
       });

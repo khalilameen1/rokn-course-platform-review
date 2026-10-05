@@ -428,6 +428,123 @@ describe('saved folder default destination', () => {
     await act(async () => view.renderer.unmount());
   });
 
+  it('retries a failed read in place without clearing a name or repeating a save', async () => {
+    const freshRead = deferred<{id: string; name: string}[]>();
+    mockGetSavedFolderOptions
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockReturnValueOnce(freshRead.promise);
+    const view = await mountPicker();
+    await act(async () => view.picker.open());
+    act(() => view.picker.setName('قائمتي'));
+    expect(view.picker.loadError).toBe('تعذّر تحميل قوائمك');
+    expect(view.picker.error).toBe('');
+
+    await act(async () => {
+      view.picker.retryFolders();
+      view.picker.retryFolders();
+    });
+    expect(view.picker.loading).toBe(true);
+    expect(view.picker.loadError).toBe('تعذّر تحميل قوائمك');
+    expect(mockGetSavedFolderOptions.mock.calls).toEqual([
+      [],
+      [{requireFresh: true}],
+    ]);
+    expect(view.present).toHaveBeenCalledTimes(1);
+    expect(view.picker.name).toBe('قائمتي');
+    expect(mockCreateSavedFolderOption).not.toHaveBeenCalled();
+    expect(view.onToggleSave).not.toHaveBeenCalled();
+
+    await act(async () => freshRead.resolve([{id: '8', name: 'للمراجعة'}]));
+    expect(view.picker.loadError).toBe('');
+    expect(view.picker.loading).toBe(false);
+    expect(view.picker.folders).toEqual([{id: '8', name: 'للمراجعة'}]);
+    expect(view.picker.name).toBe('قائمتي');
+    act(() => view.picker.saveInFolder(view.picker.folders[0]));
+    expect(view.onToggleSave.mock.calls).toEqual([
+      [{id: '8', name: 'للمراجعة'}],
+    ]);
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('preserves known folders and the draft name after another failed read', async () => {
+    mockGetSavedFolderOptions
+      .mockResolvedValueOnce([{id: '8', name: 'للمراجعة'}])
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockRejectedValueOnce(new Error('still offline'));
+    const view = await mountPicker();
+    await act(async () => view.picker.open());
+    act(() => view.picker.close());
+    await act(async () => view.picker.open());
+    act(() => view.picker.setName('قائمتي'));
+    await act(async () => view.picker.retryFolders());
+    expect(view.picker.folders).toEqual([{id: '8', name: 'للمراجعة'}]);
+    expect(view.picker.name).toBe('قائمتي');
+    expect(view.picker.loadError).toBe('تعذّر تحميل قوائمك');
+    expect(view.picker.loading).toBe(false);
+    expect(view.onToggleSave).not.toHaveBeenCalled();
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('does not turn a folder creation failure into a read retry', async () => {
+    mockCreateSavedFolderOption.mockRejectedValueOnce(new Error('offline'));
+    const view = await mountPicker();
+    await act(async () => view.picker.open());
+    act(() => view.picker.setName('قائمتي'));
+    await act(async () => view.picker.createAndSave());
+    act(() => view.picker.retryFolders());
+    expect(view.picker.loadError).toBe('');
+    expect(view.picker.error).toContain('تعذّر إنشاء القائمة');
+    expect(mockGetSavedFolderOptions).toHaveBeenCalledTimes(1);
+    expect(mockCreateSavedFolderOption).toHaveBeenCalledTimes(1);
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('does not let read recovery retire an active creation', async () => {
+    const creation = deferred<{id: string; name: string}>();
+    mockGetSavedFolderOptions.mockRejectedValueOnce(new Error('offline'));
+    mockCreateSavedFolderOption.mockReturnValueOnce(creation.promise);
+    const view = await mountPicker();
+    await act(async () => view.picker.open());
+    act(() => view.picker.setName('قائمتي'));
+    let creating!: Promise<void>;
+    await act(async () => {
+      creating = view.picker.createAndSave();
+    });
+    act(() => view.picker.retryFolders());
+    expect(mockGetSavedFolderOptions).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      creation.resolve({id: '8', name: 'قائمتي'});
+      await creating;
+    });
+    expect(view.onToggleSave.mock.calls).toEqual([[{id: '8', name: 'قائمتي'}]]);
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('ignores late retry results and callbacks after closing and reopening', async () => {
+    const oldRead = deferred<{id: string; name: string}[]>();
+    mockGetSavedFolderOptions
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockReturnValueOnce(oldRead.promise)
+      .mockResolvedValueOnce([{id: '9', name: 'حالي'}]);
+    const view = await mountPicker();
+    await act(async () => view.picker.open());
+    const oldVisit = view.picker;
+    await act(async () => view.picker.retryFolders());
+    act(() => view.picker.close());
+    await act(async () => view.picker.open());
+    act(() => view.picker.setName('اسم حالي'));
+    act(() => oldVisit.retryFolders());
+    expect(mockGetSavedFolderOptions).toHaveBeenCalledTimes(3);
+    expect(mockGetSavedFolderOptions.mock.calls[2]).toEqual([]);
+    await act(async () => oldRead.resolve([{id: '8', name: 'قديم'}]));
+    expect(view.picker.folders).toEqual([{id: '9', name: 'حالي'}]);
+    expect(view.picker.name).toBe('اسم حالي');
+    expect(view.picker.loading).toBe(false);
+    expect(view.picker.loadError).toBe('');
+    expect(view.onToggleSave).not.toHaveBeenCalled();
+    await act(async () => view.renderer.unmount());
+  });
+
   it('does not delete another-list save when adding the default destination', async () => {
     let saved!: ReturnType<typeof useReelsSavedLessons>;
     const loadedCourse = {

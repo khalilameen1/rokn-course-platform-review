@@ -1,5 +1,31 @@
 'use strict';
 
+/*
+ * setSelectionLocked adapts Uppy Dashboard.disableInteractiveElements:
+ * https://github.com/transloadit/uppy/blob/3f1aca3d26157785030e2be20aa5d411b6a5ed66/packages/%40uppy/dashboard/src/Dashboard.tsx
+ * Scoped to Rokn's file/type controls; the existing transfer/claim remains owner.
+ * The MIT License (MIT)
+ * Copyright (c) 2019 Transloadit (https://transloadit.com)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 (function (window) {
     // Form presentation and save handoff. Transport and resume records have separate owners.
     const create = ({ownerId, serverRejectedClaim}) => {
@@ -38,6 +64,14 @@
         let submittingAfterUpload = false;
         let lastSubmitter = null;
         let reconciliationRequired = false;
+        let selectionLockedNodes = null;
+        const setSelectionLocked = locked => {
+            // Restore only nodes this owner disabled, not pre-disabled controls.
+            const nodes = selectionLockedNodes
+                ?? [fileInput, sectionType].filter(node => node && !node.disabled);
+            for (const node of nodes) node.disabled = locked;
+            selectionLockedNodes = locked ? nodes : null;
+        };
         const submitControls = () => Array.from(new Set([
             ...form.querySelectorAll('button[type="submit"], input[type="submit"]'),
             ...document.querySelectorAll('[form="' + CSS.escape(form.id) + '"][type="submit"]'),
@@ -125,17 +159,30 @@
         });
 
         const startUploadAndSubmit = async () => {
-            if (!currentFile || uploading) return;
+            if (uploading || submittingAfterUpload) return;
+            const file = fileInput.files?.[0];
+            if (!file || sectionType?.value !== 'lesson') return;
+            currentFile = file;
+            const uploadSectionId = sectionId();
             uploading = true;
+            setSelectionLocked(true);
             setSubmissionBusy(true);
             transfer.reset();
             retryButton?.classList.add('is-hidden');
             try {
+                const uploadVersion = currentAuthoringVersion();
                 const title = (document.getElementById('title_ar')?.value || '').trim();
-                const claim = await transfer.upload(currentFile, title);
+                const claim = await transfer.upload(file, title);
                 transfer.assertActive();
+                if (currentFile !== file || sectionType.value !== 'lesson'
+                    || sectionId() !== uploadSectionId || currentAuthoringVersion() !== uploadVersion) {
+                    throw Object.assign(new Error('تغيّرت بيانات المقطع أثناء الرفع\nراجعها قبل الحفظ'), {cancelled: true});
+                }
                 completedClaim = claim;
                 claimInput.value = completedClaim;
+                // Disabled fields are omitted from FormData. Restore the type
+                // before the real editor's submit handler captures this form.
+                setSelectionLocked(false);
                 fileInput.removeAttribute('required');
                 fileInput.removeAttribute('data-required');
                 fileInput.disabled = true;
@@ -169,11 +216,20 @@
                 show(error.message || 'تعذر رفع الفيديو', Number(progressBar?.getAttribute('aria-valuenow') || 0), true);
             } finally {
                 uploading = false;
-                if (!submittingAfterUpload && !reconciliationRequired) setSubmissionBusy(false);
+                if (!reconciliationRequired) {
+                    setSelectionLocked(false);
+                    if (!submittingAfterUpload) setSubmissionBusy(false);
+                }
             }
         };
 
         fileInput.addEventListener('change', function () {
+            // Retire an unexpected replacement without switching the records
+            // adapter beneath an outstanding transfer. Retry adopts the new file.
+            if (uploading || submittingAfterUpload) {
+                transfer.stop();
+                return;
+            }
             currentFile = this.files?.[0] || null;
             claimInput.value = '';
             completedClaim = '';

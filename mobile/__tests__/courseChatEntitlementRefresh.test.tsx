@@ -2,160 +2,208 @@ import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
 
 const mockGetUpgradeQuote = jest.fn();
-const mockPurchaseUpgrade = jest.fn();
-
 jest.mock('../src/services/roknApi', () => ({
-  getFullTrackUpgradeQuote: (...args: unknown[]) => mockGetUpgradeQuote(...args),
-  purchaseFullTrackUpgrade: (...args: unknown[]) => mockPurchaseUpgrade(...args),
+  getFullTrackUpgradeQuote: (...args: unknown[]) =>
+    mockGetUpgradeQuote(...args),
 }));
 
 import {useCourseChatUpgrade} from '../src/components/VideoPlayer/courseChat/useCourseChatUpgrade';
 
-const quote = {
-  courseRevision: 4,
+let hook!: ReturnType<typeof useCourseChatUpgrade>;
+const Harness = ({
+  accountKey = 'account-a',
+  courseId = '3',
+  chatAvailable = false,
+  revision = 'captured-basic',
+  active = true,
+  accessType = 'paid',
+}: {
+  accountKey?: string;
+  courseId?: string;
+  chatAvailable?: boolean;
+  revision?: string;
+  active?: boolean;
+  accessType?: string;
+}) => {
+  hook = useCourseChatUpgrade({
+    accountKey,
+    courseId,
+    chatAvailable,
+    active,
+    accessType,
+    chatEntitlementRevision: revision,
+  });
+  return null;
+};
+const unavailable = {
+  upgradeAvailable: false,
+  availablePlanCodes: [],
   alreadyUpgraded: false,
   chatAvailable: false,
-  certificateAvailable: false,
-  aiIncluded: false,
-  price: 120,
-  totalBalance: 200,
-  spendableBalance: 200,
-  deficit: 0,
-  rewardContributionCap: 0,
-  packages: [],
-  targetPlanCode: 'guided',
-  targetPlanName: 'المتابعة',
+};
+const available = {
+  upgradeAvailable: true,
+  availablePlanCodes: ['mentor'],
+  alreadyUpgraded: false,
+  chatAvailable: false,
 };
 
-describe('course chat entitlement refresh', () => {
+describe('course chat authoritative upgrade offers', () => {
+  it('retires a closed visit and discovers availability again when reopened', async () => {
+    let finish!: (value: typeof available) => void;
+    mockGetUpgradeQuote.mockReset()
+      .mockReturnValueOnce(new Promise(resolve => {finish = resolve;}))
+      .mockResolvedValueOnce(unavailable);
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {renderer = TestRenderer.create(<Harness />);});
+      await act(async () => {renderer.update(<Harness active={false} />);});
+      expect(hook.upgradeStatus).toBe('idle');
+      await act(async () => {renderer.update(<Harness />);});
+      await act(async () => {finish(available);});
+      expect(mockGetUpgradeQuote).toHaveBeenCalledTimes(2);
+      expect(hook.upgradeStatus).toBe('unavailable');
+    } finally {
+      if (renderer) await act(async () => renderer.unmount());
+    }
+  });
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockGetUpgradeQuote.mockResolvedValue(quote);
-    mockPurchaseUpgrade.mockResolvedValue({
-      ...quote,
+    jest.resetAllMocks();
+    mockGetUpgradeQuote.mockResolvedValue(unavailable);
+  });
+
+  it('does not expose a second purchase path or infer rights from a highest-tier quote', async () => {
+    mockGetUpgradeQuote.mockResolvedValue({
+      ...unavailable,
       alreadyUpgraded: true,
       chatAvailable: true,
     });
-  });
-
-  it('keeps chat available immediately and refreshes the full course contract after upgrade', async () => {
-    const onEntitlementChanged = jest.fn(async () => undefined);
-    let hook!: ReturnType<typeof useCourseChatUpgrade>;
-    const Harness = () => {
-      hook = useCourseChatUpgrade({
-        accountKey: 'account-a',
-        accessType: 'paid',
-        chatAvailable: false,
-        courseId: '3',
-        onEntitlementChanged,
-        onOpenWallet: jest.fn(),
-      });
-      return null;
-    };
-
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness />);
+      renderer = TestRenderer.create(
+        <Harness chatAvailable revision="captured-mentor" />,
+      );
     });
     await act(async () => {
-      await hook.loadUpgradeQuote();
+      hook.recordServerBlock('chat_plan_limit_reached');
     });
-    await act(async () => {
-      await hook.confirmUpgrade();
-    });
-
-    expect(hook.upgraded).toBe(true);
-    expect(onEntitlementChanged).toHaveBeenCalledTimes(1);
-    expect(mockPurchaseUpgrade).toHaveBeenCalledWith('3', 'guided', 120, 4);
-
+    expect(hook.upgradeStatus).toBe('unavailable');
+    expect(hook.serverBlockCode).toBe('chat_plan_limit_reached');
+    expect(hook).not.toHaveProperty('confirmUpgrade');
+    expect(hook).not.toHaveProperty('upgraded');
     await act(async () => renderer.unmount());
   });
 
-  it('does not refresh the next account from an upgrade that settled late', async () => {
-    let finishPurchase!: (value: typeof quote) => void;
-    mockPurchaseUpgrade.mockReturnValue(
-      new Promise(resolve => {
-        finishPurchase = resolve;
-      }),
-    );
-    const onEntitlementChanged = jest.fn();
-    let hook!: ReturnType<typeof useCourseChatUpgrade>;
-    const Harness = ({accountKey}: {accountKey: string}) => {
-      hook = useCourseChatUpgrade({
-        accountKey,
-        accessType: 'paid',
-        chatAvailable: false,
-        courseId: '3',
-        onEntitlementChanged,
-        onOpenWallet: jest.fn(),
-      });
-      return null;
-    };
-
+  it('offers a real higher tier without clearing the exhausted gate before purchase', async () => {
+    mockGetUpgradeQuote.mockResolvedValue(available);
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      renderer = TestRenderer.create(<Harness accountKey="account-a" />);
+      renderer = TestRenderer.create(
+        <Harness chatAvailable revision="captured-guided" />,
+      );
     });
     await act(async () => {
-      await hook.loadUpgradeQuote();
+      hook.recordServerBlock('chat_plan_limit_reached');
     });
-    let purchase!: Promise<void>;
+    expect(mockGetUpgradeQuote).toHaveBeenCalledWith('3', {
+      requiredFeature: 'chat',
+    });
+    expect(hook.upgradeStatus).toBe('available');
+    expect(hook.serverBlockCode).toBe('chat_plan_limit_reached');
+    await act(async () => renderer.unmount());
+  });
+
+  it('retires exhaustion only after the captured entitlement changes even when paid/chat flags stay the same', async () => {
+    let finish!: (value: typeof available) => void;
+    mockGetUpgradeQuote.mockReturnValue(
+      new Promise(resolve => {
+        finish = resolve;
+      }),
+    );
+    let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      purchase = hook.confirmUpgrade();
-      await Promise.resolve();
+      renderer = TestRenderer.create(
+        <Harness chatAvailable revision="captured-guided" />,
+      );
+    });
+    await act(async () => {
+      hook.recordServerBlock('chat_plan_limit_reached');
+    });
+    await act(async () => {
+      renderer.update(<Harness chatAvailable revision="captured-mentor" />);
+    });
+    expect(hook.serverBlockCode).toBe('');
+    expect(hook.upgradeStatus).toBe('idle');
+    await act(async () => {
+      finish(available);
+    });
+    expect(hook.serverBlockCode).toBe('');
+    expect(hook.upgradeStatus).toBe('idle');
+    await act(async () => renderer.unmount());
+  });
+
+  it('ignores an offer that arrived for the previous account', async () => {
+    let finish!: (value: typeof available) => void;
+    mockGetUpgradeQuote
+      .mockReturnValueOnce(
+        new Promise(resolve => {
+          finish = resolve;
+        }),
+      )
+      .mockResolvedValueOnce(unavailable);
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
     });
     await act(async () => {
       renderer.update(<Harness accountKey="account-b" />);
     });
     await act(async () => {
-      finishPurchase({...quote, alreadyUpgraded: true, chatAvailable: true});
-      await purchase;
+      finish(available);
     });
-
-    expect(hook.upgraded).toBe(false);
-    expect(onEntitlementChanged).not.toHaveBeenCalled();
-
+    expect(hook.upgradeStatus).toBe('unavailable');
     await act(async () => renderer.unmount());
   });
 
-  it('refreshes the course contract when a lost purchase reply is recovered by the quote', async () => {
+  it('offers retry on a failed eligibility read rather than fabricating an available upgrade', async () => {
     mockGetUpgradeQuote
-      .mockResolvedValueOnce(quote)
-      .mockResolvedValueOnce({
-        ...quote,
-        alreadyUpgraded: true,
-        chatAvailable: true,
-      });
-    mockPurchaseUpgrade.mockRejectedValue(new Error('timeout'));
-    const onEntitlementChanged = jest.fn();
-    let hook!: ReturnType<typeof useCourseChatUpgrade>;
-    const Harness = () => {
-      hook = useCourseChatUpgrade({
-        accountKey: 'account-a',
-        accessType: 'paid',
-        chatAvailable: false,
-        courseId: '3',
-        onEntitlementChanged,
-        onOpenWallet: jest.fn(),
-      });
-      return null;
-    };
-
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce(available);
     let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
       renderer = TestRenderer.create(<Harness />);
     });
+    expect(hook.upgradeStatus).toBe('error');
     await act(async () => {
-      await hook.loadUpgradeQuote();
+      hook.retryUpgradeQuote();
     });
+    expect(hook.upgradeStatus).toBe('available');
+    await act(async () => renderer.unmount());
+  });
+
+  it.each(['none', 'free'])(
+    'does not ask for an upgrade quote without upgradeable learning access (%s)',
+    async accessType => {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<Harness accessType={accessType} />);
+      });
+      expect(mockGetUpgradeQuote).not.toHaveBeenCalled();
+      expect(hook.upgradeStatus).toBe('idle');
+      await act(async () => renderer.unmount());
+    },
+  );
+
+  it('rejects a missing authoritative availability contract', async () => {
+    mockGetUpgradeQuote.mockResolvedValue({
+      alreadyUpgraded: false,
+      targetPlanCode: 'mentor',
+    });
+    let renderer!: TestRenderer.ReactTestRenderer;
     await act(async () => {
-      await hook.confirmUpgrade();
+      renderer = TestRenderer.create(<Harness />);
     });
-
-    expect(hook.upgraded).toBe(true);
-    expect(hook.upgradeError).toBe('');
-    expect(onEntitlementChanged).toHaveBeenCalledTimes(1);
-
+    expect(hook.upgradeStatus).toBe('error');
     await act(async () => renderer.unmount());
   });
 });

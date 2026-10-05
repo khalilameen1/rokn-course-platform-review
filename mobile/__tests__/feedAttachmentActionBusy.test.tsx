@@ -2,6 +2,11 @@ import React from 'react';
 import {ActivityIndicator, Alert} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 
+const mockRetryFolders = jest.fn();
+let mockFolderReadError = '';
+let mockFolderLoading = false;
+let mockFolderCreating = false;
+
 jest.mock('@gorhom/bottom-sheet', () => {
   const ReactModule = require('react');
   const {View} = require('react-native');
@@ -46,10 +51,12 @@ jest.mock(
   () => ({
     useSavedFolderPicker: () => ({
       createAndSave: jest.fn(),
-      creating: false,
+      creating: mockFolderCreating,
       error: '',
+      loadError: mockFolderReadError,
       folders: [],
-      loading: false,
+      loading: mockFolderLoading,
+      retryFolders: mockRetryFolders,
       name: '',
       open: jest.fn(),
       saveInFolder: jest.fn(),
@@ -143,6 +150,9 @@ describe('attachment row preparation feedback', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockFolderReadError = '';
+    mockFolderLoading = false;
+    mockFolderCreating = false;
     jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
     await act(async () => {
       renderer = TestRenderer.create(render());
@@ -192,6 +202,37 @@ describe('attachment row preparation feedback', () => {
       0,
     );
     expect(row('ملف الكمبيوتر').props.disabled).toBe(false);
+  });
+
+  it('shows one read retry inside the picker and disables it during reload or creation', async () => {
+    mockFolderReadError = 'تعذّر تحميل قوائمك';
+    await act(async () => renderer.update(render()));
+    const retry = () =>
+      renderer.root.findAll(
+        node =>
+          typeof node.props.onPress === 'function' &&
+          node.props.accessibilityLabel === 'إعادة تحميل قوائم الحفظ',
+      );
+    expect(retry()).toHaveLength(1);
+    expect(retry()[0].props.disabled).toBe(false);
+    act(() => retry()[0].props.onPress());
+    expect(mockRetryFolders).toHaveBeenCalledTimes(1);
+    mockFolderLoading = true;
+    await act(async () => renderer.update(render()));
+    expect(retry()[0].props.accessibilityState).toEqual({
+      busy: true,
+      disabled: true,
+    });
+    expect(
+      retry()[0].findAll(node => node.props.children === 'جارٍ التحديث').length,
+    ).toBeGreaterThan(0);
+    mockFolderLoading = false;
+    mockFolderCreating = true;
+    await act(async () => renderer.update(render()));
+    expect(retry()[0].props.disabled).toBe(true);
+    mockFolderReadError = '';
+    await act(async () => renderer.update(render()));
+    expect(retry()).toHaveLength(0);
   });
 
   it.each(['cancel', 'error'])(

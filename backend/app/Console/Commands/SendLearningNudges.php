@@ -14,6 +14,7 @@ use App\Services\NotificationDeliveryPolicy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use App\Support\BusinessClock;
+use App\Support\LearningReminderSchedule;
 
 final class SendLearningNudges extends Command
 {
@@ -36,10 +37,35 @@ final class SendLearningNudges extends Command
         $limit = max(1, min(5000, (int) $this->option('limit')));
         $sent = 0;
 
+        // Same shipped scheduling principle as Loop Habit Tracker: the stored
+        // chosen hour owns the next reminder. This is Carbon/Query Builder
+        // integration, not a copy of Loop's GPL Kotlin alarm implementation.
+        // Filter due recipients BEFORE limit, so another timezone cannot starve
+        // the learners whose local reminder window is open.
+        $due = [];
+        foreach (User::query()->where('role', 'client')->where('active', true)
+            ->where('notifications_status', true)->distinct()
+            ->pluck('learning_reminder_timezone') as $timezone) {
+            $hour = LearningReminderSchedule::dueHour((string) $timezone, $clock);
+            if ($hour !== null) $due[] = ['timezone' => (string) $timezone, 'hour' => $hour];
+        }
+        if ($due === []) {
+            $this->info('No learning reminder window is open.');
+            return self::SUCCESS;
+        }
+
         $students = User::query()
             ->where('role', 'client')
             ->where('active', true)
             ->where('notifications_status', true)
+            ->where(function ($query) use ($due): void {
+                foreach ($due as $preference) {
+                    $query->orWhere(function ($window) use ($preference): void {
+                        $window->where('learning_reminder_timezone', $preference['timezone'])
+                            ->where('learning_reminder_hour', $preference['hour']);
+                    });
+                }
+            })
             ->whereHas('enrollments', function ($query): void {
                 $query->where('is_active', true)
                     // Completion is an earned immutable fact. A retention

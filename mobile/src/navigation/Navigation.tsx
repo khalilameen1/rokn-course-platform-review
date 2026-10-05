@@ -2,8 +2,6 @@ import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
-import {RasterImage as Image} from '../components/ui/RasterImage';
 
 import {navigationRef} from './RootNavigationHelper';
 
@@ -11,6 +9,7 @@ import Reels from '../screens/Reels';
 import Home from '../screens/Home';
 import Login from '../screens/Login';
 import CourseDetails from '../screens/CourseDetails';
+import CourseCertificate from '../screens/CourseCertificate';
 import MyCorner from '../screens/MyCorner';
 import Wallet from '../screens/Wallet';
 import Profile from '../screens/Profile';
@@ -35,23 +34,15 @@ import {
   roknLinking,
 } from './roknLinking';
 import {useInterruptedJourneyRestore} from './useInterruptedJourneyRestore';
-import {Palette} from '../constants/designSystem';
 import {AuthenticatedScreenBoundary} from './AuthenticatedScreenBoundary';
 import {extractApiToken} from '../constants/helpers';
 import {useSelector} from 'react-redux';
 import type {RootState} from '../store/store';
+import {StartupBrand} from '../components/ui/StartupBrand';
+import {useStartupExperience} from '../screens/appInitializer/StartupExperience';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const NavigationFallback = () => (
-  <View style={styles.fallback}>
-    <Image
-      accessibilityElementsHidden
-      importantForAccessibility="no"
-      source={require('../assets/images/logo.png')}
-      style={styles.fallbackLogo}
-    />
-  </View>
-);
+const NavigationFallback = () => <StartupBrand />;
 
 const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
   const reducedMotion = useReducedMotion();
@@ -100,6 +91,7 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
         <Stack.Screen name="MyCorner" component={MyCorner} />
         <Stack.Screen name="Wallet" component={Wallet} />
         <Stack.Screen name="Profile" component={Profile} />
+        <Stack.Screen name="CourseCertificate" component={CourseCertificate} />
         <Stack.Screen name="Notifications" component={Notifications} />
         <Stack.Screen name="DeviceSessions" component={DeviceSessions} />
       </Stack.Group>
@@ -108,6 +100,7 @@ const Stacks = ({sessionReady}: {sessionReady: boolean}) => {
 };
 
 const Navigation = ({sessionReady}: {sessionReady: boolean}) => {
+  const startup = useStartupExperience();
   const {run: restoreInterruptedJourney, sessionKey} =
     useInterruptedJourneyRestore();
 
@@ -118,6 +111,9 @@ const Navigation = ({sessionReady}: {sessionReady: boolean}) => {
       onReady={() => {
         void restoreInterruptedJourney().finally(() => {
           markRoknNavigationReady();
+          if (navigationRef.getCurrentRoute()?.name !== 'Home') {
+            startup?.initialContentReady();
+          }
           flushLateInitialDestination();
           setNotificationNavigationReady(true);
           void flushPendingNotificationNavigation();
@@ -128,15 +124,5 @@ const Navigation = ({sessionReady}: {sessionReady: boolean}) => {
     </NavigationContainer>
   );
 };
-
-const styles = StyleSheet.create({
-  fallback: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Palette.canvas,
-  },
-  fallbackLogo: {width: 104, height: 42, resizeMode: 'contain'},
-});
 
 export default Navigation;

@@ -7,13 +7,13 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {useAppForegroundState} from '../../hooks/useAppActiveState';
-import {removeLearnerDraftFile} from '../../services/learnerDraftFiles';
 import {
   clearProductFeedbackDraft,
   loadProductFeedbackDraft,
   loadProductFeedbackDraftConflicts,
   type FeedbackAttachment,
   type ProductFeedbackCategory,
+  type ProductFeedbackDraft,
   type ProductFeedbackReceipt,
   persistProductFeedbackReceipt,
   restoreProductFeedbackDraftConflict,
@@ -21,15 +21,17 @@ import {
   submitProductFeedback,
 } from '../../services/productFeedback';
 import {secureRandomUuid} from '../../utils/secureRandom';
-import {pickFeedbackScreenshot} from './pickFeedbackScreenshot';
+import {useFeedbackScreenshotPreparation} from './useFeedbackScreenshotPreparation';
 
 type Options = {
+  focused?: boolean;
   identityKey: string;
   locale: string;
   sourceScreen: string;
 };
 
 export const useFeedbackComposer = ({
+  focused = true,
   identityKey,
   locale,
   sourceScreen,
@@ -51,12 +53,15 @@ export const useFeedbackComposer = ({
   const [receipt, setReceipt] = useState<ProductFeedbackReceipt>();
   const [trackingRecoveryNeeded, setTrackingRecoveryNeeded] = useState(false);
   const mountedRef = useRef(true);
-  const pickerFlightRef = useRef(false);
   const submitFlightRef = useRef(false);
   const submitGenerationRef = useRef(0);
   const dataOwnerRef = useRef(identityKey);
   const draftOwnerScopeRef = useRef('');
   const draftRestoreGenerationRef = useRef(0);
+  const draftDirtyRef = useRef(false);
+  const draftWritableRef = useRef(false);
+  draftWritableRef.current =
+    draftReady && !sent && !busy && !trackingRecoveryNeeded;
   const discardedAttachmentsRef = useRef<FeedbackAttachment[]>([]);
   const persistDraft = useCallback(
     async (
@@ -65,6 +70,11 @@ export const useFeedbackComposer = ({
     ) => {
       const discarded = discardedAttachmentsRef.current;
       await saveProductFeedbackDraft(draft, boundary, discarded);
+      if (
+        draftSnapshotRef.current.clientRequestId === draft.clientRequestId &&
+        draftOwnerScopeRef.current === boundary.scope
+      )
+        draftDirtyRef.current = false;
       discardedAttachmentsRef.current = discardedAttachmentsRef.current.filter(
         file => !discarded.includes(file),
       );
@@ -90,21 +100,119 @@ export const useFeedbackComposer = ({
     updatedAt: Date.now(),
   };
 
+  const changeDraft = (
+    change: Partial<
+      Pick<
+        ProductFeedbackDraft,
+        'attachment' | 'category' | 'includeDiagnostics' | 'message'
+      >
+    >,
+  ) => {
+    if (
+      !draftWritableRef.current ||
+      submitFlightRef.current ||
+      !mountedRef.current ||
+      dataOwnerRef.current !== identityKey
+    )
+      return;
+    const next = {
+      ...draftSnapshotRef.current,
+      ...change,
+      clientRequestId: secureRandomUuid(),
+      sourceScreen,
+      updatedAt: Date.now(),
+    };
+    draftDirtyRef.current = true;
+    setAttachment(next.attachment);
+    setCategory(next.category);
+    setMessage(next.message);
+    setIncludeDiagnostics(next.includeDiagnostics);
+    setClientRequestId(next.clientRequestId);
+    setDraftSourceScreen(next.sourceScreen);
+    setReceipt(undefined);
+    setError('');
+    // Back navigation can tear down the form before a React render commits.
+    draftSnapshotRef.current = next;
+  };
+
+  const screenshot = useFeedbackScreenshotPreparation({
+    ownerKey: identityKey,
+    canPrepare: () =>
+      dataOwnerRef.current === identityKey &&
+      draftWritableRef.current &&
+      draftReady &&
+      !busy &&
+      !submitFlightRef.current &&
+      !sent &&
+      !trackingRecoveryNeeded,
+    onPrepared: selected => {
+      const previous = draftSnapshotRef.current.attachment;
+      if (previous) discardedAttachmentsRef.current.push(previous);
+      changeDraft({attachment: selected});
+    },
+  });
+  const invalidateScreenshot = screenshot.invalidate;
+
   const canSubmit = useMemo(
     () =>
       draftReady &&
       message.trim().length >= 10 &&
       !busy &&
+      !screenshot.preparing &&
       !trackingRecoveryNeeded,
-    [busy, draftReady, message, trackingRecoveryNeeded],
+    [busy, draftReady, message, screenshot.preparing, trackingRecoveryNeeded],
   );
+
+  const saveCurrentDraft = useCallback(async () => {
+    if (
+      !draftWritableRef.current ||
+      !draftDirtyRef.current ||
+      submitFlightRef.current ||
+      dataOwnerRef.current !== identityKey
+    )
+      return;
+    const ownerScope = draftOwnerScopeRef.current;
+    if (!ownerScope) return;
+    const restoreGeneration = draftRestoreGenerationRef.current;
+    const snapshot = {...draftSnapshotRef.current, updatedAt: Date.now()};
+    const ownsSnapshot = () =>
+      dataOwnerRef.current === identityKey &&
+      restoreGeneration === draftRestoreGenerationRef.current &&
+      snapshot.clientRequestId === draftSnapshotRef.current.clientRequestId;
+    try {
+      const boundary = await captureAccountSessionBoundary();
+      if (
+        !ownsSnapshot() ||
+        !draftWritableRef.current ||
+        submitFlightRef.current
+      )
+        return;
+      if (boundary.scope !== ownerScope)
+        throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
+      await persistDraft(snapshot, boundary);
+      if (mountedRef.current && ownsSnapshot()) setDraftSaveError(false);
+    } catch (saveError) {
+      if (
+        mountedRef.current &&
+        ownsSnapshot() &&
+        !(
+          saveError instanceof Error &&
+          saveError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
+        )
+      )
+        setDraftSaveError(true);
+    }
+  }, [identityKey, persistDraft]);
+  const flushDraftRef = useRef(saveCurrentDraft);
+  flushDraftRef.current = saveCurrentDraft;
 
   useEffect(() => {
     if (dataOwnerRef.current === identityKey) return;
     dataOwnerRef.current = identityKey;
     submitGenerationRef.current += 1;
     submitFlightRef.current = false;
-    pickerFlightRef.current = false;
+    draftWritableRef.current = false;
+    draftDirtyRef.current = false;
     draftOwnerScopeRef.current = '';
     discardedAttachmentsRef.current = [];
     setCategory('problem');
@@ -124,6 +232,8 @@ export const useFeedbackComposer = ({
 
   useEffect(() => {
     let active = true;
+    draftWritableRef.current = false;
+    invalidateScreenshot();
     draftRestoreGenerationRef.current += 1;
     setDraftReady(false);
     setDraftRestoreError(false);
@@ -150,6 +260,7 @@ export const useFeedbackComposer = ({
           return;
         }
         draftOwnerScopeRef.current = boundary.scope;
+        draftDirtyRef.current = false;
         if (draft) {
           setCategory(draft.category);
           setMessage(draft.message);
@@ -177,6 +288,8 @@ export const useFeedbackComposer = ({
                 )
                   return;
                 draftRestoreGenerationRef.current += 1;
+                draftWritableRef.current = false;
+                invalidateScreenshot();
                 setDraftReady(false);
                 void (async () => {
                   try {
@@ -210,6 +323,7 @@ export const useFeedbackComposer = ({
                       return;
                     }
                     if (!value) throw new Error('DRAFT_RESTORE_UNAVAILABLE');
+                    draftDirtyRef.current = false;
                     setCategory(value.category);
                     setMessage(value.message);
                     setAttachment(value.attachment);
@@ -241,48 +355,18 @@ export const useFeedbackComposer = ({
     return () => {
       active = false;
     };
-  }, [identityKey, sourceScreen, draftRestoreRevision]);
+  }, [identityKey, sourceScreen, draftRestoreRevision, invalidateScreenshot]);
 
   useEffect(() => {
-    if (!draftReady || sent || busy || trackingRecoveryNeeded) return;
-    const ownerScope = draftOwnerScopeRef.current;
-    if (!ownerScope) return;
-    const restoreGeneration = draftRestoreGenerationRef.current;
-    const timer = setTimeout(() => {
-      void captureAccountSessionBoundary()
-        .then(boundary => {
-          if (restoreGeneration !== draftRestoreGenerationRef.current) return;
-          if (boundary.scope !== ownerScope) {
-            throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
-          }
-          return persistDraft(
-            {
-              attachment,
-              category,
-              clientRequestId,
-              includeDiagnostics,
-              message,
-              sourceScreen: draftSourceScreen,
-              updatedAt: Date.now(),
-            },
-            boundary,
-          );
-        })
-        .then(() => {
-          if (mountedRef.current) setDraftSaveError(false);
-        })
-        .catch(saveError => {
-          if (
-            mountedRef.current &&
-            !(
-              saveError instanceof Error &&
-              saveError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
-            )
-          ) {
-            setDraftSaveError(true);
-          }
-        });
-    }, 250);
+    if (
+      !draftReady ||
+      sent ||
+      busy ||
+      trackingRecoveryNeeded ||
+      !draftDirtyRef.current
+    )
+      return;
+    const timer = setTimeout(() => void saveCurrentDraft(), 250);
 
     return () => clearTimeout(timer);
   }, [
@@ -294,108 +378,56 @@ export const useFeedbackComposer = ({
     draftSourceScreen,
     includeDiagnostics,
     message,
-    persistDraft,
+    saveCurrentDraft,
     sent,
     trackingRecoveryNeeded,
   ]);
 
   useEffect(() => {
-    if (appActive || !draftReady || sent || busy || trackingRecoveryNeeded)
-      return;
-    const ownerScope = draftOwnerScopeRef.current;
-    if (!ownerScope) return;
-    const restoreGeneration = draftRestoreGenerationRef.current;
-    void captureAccountSessionBoundary()
-      .then(boundary => {
-        if (restoreGeneration !== draftRestoreGenerationRef.current) return;
-        if (boundary.scope !== ownerScope) {
-          throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
-        }
-        return persistDraft(
-          {
-            ...draftSnapshotRef.current,
-            updatedAt: Date.now(),
-          },
-          boundary,
-        );
-      })
-      .catch(saveError => {
-        if (
-          mountedRef.current &&
-          !(
-            saveError instanceof Error &&
-            saveError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
-          )
-        ) {
-          setDraftSaveError(true);
-        }
-      });
-  }, [appActive, busy, draftReady, persistDraft, sent, trackingRecoveryNeeded]);
+    if (!appActive || !focused) void saveCurrentDraft();
+  }, [
+    appActive,
+    focused,
+    saveCurrentDraft,
+    clientRequestId,
+    draftReady,
+    busy,
+    sent,
+    trackingRecoveryNeeded,
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      void flushDraftRef.current();
       submitGenerationRef.current += 1;
     };
   }, []);
 
-  const changeDraft = (change: () => void) => {
-    if (busy || !draftReady || trackingRecoveryNeeded) return;
-    change();
-    setClientRequestId(secureRandomUuid());
-    setDraftSourceScreen(sourceScreen);
-    setReceipt(undefined);
-    setError('');
-  };
-
-  const chooseScreenshot = async () => {
-    if (pickerFlightRef.current || busy) return;
-    const generation = submitGenerationRef.current;
-    const owner = identityKey;
-    pickerFlightRef.current = true;
-    try {
-      const selected = await pickFeedbackScreenshot();
-      if (!selected) return;
-      if (
-        !mountedRef.current ||
-        generation !== submitGenerationRef.current ||
-        owner !== dataOwnerRef.current
-      ) {
-        await removeLearnerDraftFile(selected).catch(() => undefined);
-        return;
-      }
-      const previous = attachment;
-      changeDraft(() => {
-        if (previous)
-          discardedAttachmentsRef.current = [
-            ...discardedAttachmentsRef.current,
-            previous,
-          ];
-        setAttachment(selected);
-      });
-    } finally {
-      pickerFlightRef.current = false;
-    }
-  };
-
   const removeScreenshot = () => {
-    if (busy) return;
-    const previous = attachment;
-    changeDraft(() => {
-      if (previous)
-        discardedAttachmentsRef.current = [
-          ...discardedAttachmentsRef.current,
-          previous,
-        ];
-      setAttachment(undefined);
-    });
+    if (screenshot.isPreparing() || busy) return;
+    const previous = draftSnapshotRef.current.attachment;
+    if (previous) discardedAttachmentsRef.current.push(previous);
+    changeDraft({attachment: undefined});
   };
 
   const submit = async () => {
-    if (!canSubmit || submitFlightRef.current) return;
+    if (
+      !canSubmit ||
+      screenshot.isPreparing() ||
+      submitFlightRef.current ||
+      !mountedRef.current ||
+      dataOwnerRef.current !== identityKey
+    )
+      return;
     const generation = submitGenerationRef.current;
+    const pendingDraft = {
+      ...draftSnapshotRef.current,
+      updatedAt: Date.now(),
+    } satisfies Parameters<typeof saveProductFeedbackDraft>[0];
     submitFlightRef.current = true;
+    draftWritableRef.current = false;
     setBusy(true);
     setError('');
     try {
@@ -406,15 +438,6 @@ export const useFeedbackComposer = ({
       }
       draftOwnerScopeRef.current = boundary.scope;
       assertAccountSessionBoundary(boundary);
-      const pendingDraft = {
-        attachment,
-        category,
-        clientRequestId,
-        includeDiagnostics,
-        message,
-        sourceScreen: draftSourceScreen,
-        updatedAt: Date.now(),
-      } satisfies Parameters<typeof saveProductFeedbackDraft>[0];
       try {
         await persistDraft(pendingDraft, boundary);
       } catch {
@@ -430,15 +453,15 @@ export const useFeedbackComposer = ({
       }
       const received = await submitProductFeedback(
         {
-          attachment,
-          category,
-          clientRequestId,
+          attachment: pendingDraft.attachment,
+          category: pendingDraft.category,
+          clientRequestId: pendingDraft.clientRequestId,
           context: {
-            includeDiagnostics,
+            includeDiagnostics: pendingDraft.includeDiagnostics,
             locale,
-            sourceScreen: draftSourceScreen,
+            sourceScreen: pendingDraft.sourceScreen,
           },
-          message,
+          message: pendingDraft.message,
         },
         boundary,
       );
@@ -455,6 +478,7 @@ export const useFeedbackComposer = ({
         !received.trackingSaved && !boundary.scope.startsWith('user-');
       setTrackingRecoveryNeeded(needsTracking);
       if (!needsTracking) {
+        draftRestoreGenerationRef.current += 1;
         // The account index or durable guest receipt retains access. Cleanup is
         // ancillary and stays on the existing draft queue, even if it is slow.
         void clearProductFeedbackDraft(boundary).catch(() => undefined);
@@ -482,13 +506,24 @@ export const useFeedbackComposer = ({
   };
 
   const resetDraft = () => {
+    const requestId = secureRandomUuid();
+    draftDirtyRef.current = false;
     setCategory('problem');
     setMessage('');
     setAttachment(undefined);
     setIncludeDiagnostics(false);
-    setClientRequestId(secureRandomUuid());
+    setClientRequestId(requestId);
     setDraftSourceScreen(sourceScreen);
     setDraftSaveError(false);
+    draftSnapshotRef.current = {
+      attachment: undefined,
+      category: 'problem',
+      message: '',
+      includeDiagnostics: false,
+      clientRequestId: requestId,
+      sourceScreen,
+      updatedAt: Date.now(),
+    };
   };
 
   const retryTracking = async () => {
@@ -508,6 +543,8 @@ export const useFeedbackComposer = ({
       )
         return;
       setTrackingRecoveryNeeded(false);
+      draftWritableRef.current = false;
+      draftRestoreGenerationRef.current += 1;
       void clearProductFeedbackDraft(boundary).catch(() => undefined);
       resetDraft();
     } catch {
@@ -527,7 +564,8 @@ export const useFeedbackComposer = ({
     busy,
     canSubmit,
     category,
-    chooseScreenshot,
+    chooseScreenshot: screenshot.choose,
+    preparingAttachment: screenshot.preparing,
     dismissReceipt: () => setSent(false),
     draftSaveError,
     draftRestoreError,
@@ -553,11 +591,11 @@ export const useFeedbackComposer = ({
     ready: draftReady,
     removeScreenshot,
     selectCategory: (value: ProductFeedbackCategory) =>
-      changeDraft(() => setCategory(value)),
+      changeDraft({category: value}),
     setIncludeDiagnostics: (value: boolean) =>
-      changeDraft(() => setIncludeDiagnostics(value)),
+      changeDraft({includeDiagnostics: value}),
     sent,
-    setMessage: (value: string) => changeDraft(() => setMessage(value)),
+    setMessage: (value: string) => changeDraft({message: value}),
     submit,
   };
 };

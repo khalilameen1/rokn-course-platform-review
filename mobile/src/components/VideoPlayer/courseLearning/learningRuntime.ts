@@ -2,8 +2,10 @@ import {getCurrentAccountStorageScope} from '../../../constants/helpers';
 import {clearAccountLearnerDraftFiles} from '../../../services/learnerDraftFiles';
 import {resetPlaybackRuntimeState} from './playback';
 import {quiesceProjectSubmissionRuntime} from './projectSubmissionOutbox';
+import {learningNavigationHandoff} from './navigationHandoff';
 
 export const quiesceLearningRuntime = () => {
+  learningNavigationHandoff.clear();
   resetPlaybackRuntimeState();
   quiesceProjectSubmissionRuntime();
 };

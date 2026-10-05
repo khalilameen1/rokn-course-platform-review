@@ -133,5 +133,7 @@ export type CourseProgress = {
   nextSectionId?: string;
   nextSectionTitle?: string;
   nextSectionType?: string;
+  /** Canonical course activity, including project completion as well as watching. */
+  lastActivityAt?: string;
   lastWatchedAt?: string;
 };

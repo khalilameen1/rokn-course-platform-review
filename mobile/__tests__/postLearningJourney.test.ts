@@ -32,8 +32,13 @@ describe('post-learning journey contract', () => {
 
     expect(model).toContain('shareReady: false');
     expect(details).not.toContain('if (selected.shareReady)');
+    // Selection and explicit resume share one transfer/finalization owner.
+    // Assert that binding rather than the old order of function declarations.
     expect(details).toMatch(
-      /addSelectedMedia[\s\S]*?finalizeAfterUpload\([\s\S]*?publication === 'processing'/,
+      /const addSelectedMedia = useCallback\([\s\S]*?await stagePortfolioMediaFiles\([\s\S]*?await uploadSelectedEntries\(/,
+    );
+    expect(details).toMatch(
+      /const uploadSelectedEntries = useCallback\([\s\S]*?await uploadPortfolioMediaFiles\([\s\S]*?if \(!interrupted && !paused\)[\s\S]*?await finalizeAfterUpload\([\s\S]*?publication === 'processing'/,
     );
     expect(publication).toContain('await finalizePortfolioItem(');
     expect(publication).toContain("return 'published'");

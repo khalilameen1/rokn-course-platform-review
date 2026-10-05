@@ -9,6 +9,10 @@ jest.mock('react-native/Libraries/AppState/AppState', () => ({
 }));
 
 jest.mock('react-redux', () => ({useSelector: () => ({id: 7})}));
+jest.mock('expo-document-picker', () => ({getDocumentAsync: jest.fn()}));
+jest.mock('../src/services/aiConsent', () => ({
+  requestAiConsent: jest.fn(async () => true),
+}));
 jest.mock('../src/constants/helpers', () => ({
   sessionIdentityKey: () => 'user-7',
   captureAccountSessionBoundary: async () => ({epoch: 1, scope: 'user-7'}),
@@ -51,6 +55,7 @@ jest.mock('../src/utils/secureRandom', () => ({
 
 import {
   askCourseAssistant,
+  loadCourseAssistantHistory,
   pollCourseAssistantTurn,
 } from '../src/components/VideoPlayer/courseLearningApi';
 import {useCourseChat} from '../src/components/VideoPlayer/courseChat/useCourseChat';
@@ -84,8 +89,6 @@ describe('chat in an Android modal', () => {
     chat = useCourseChat({
       visible: true,
       course,
-      onEntitlementChanged: jest.fn(),
-      onOpenWallet: jest.fn(),
     });
     return null;
   };
@@ -131,7 +134,9 @@ describe('chat in an Android modal', () => {
     await act(async () => {
       renderer = TestRenderer.create(<Harness />);
     });
+    expect(loadCourseAssistantHistory).toHaveBeenCalledTimes(1);
     await act(async () => events.get('blur')?.());
+    expect(loadCourseAssistantHistory).toHaveBeenCalledTimes(1);
     expect(playbackActive).toBe(false);
     expect(onBackground).not.toHaveBeenCalled();
     expect(onForeground).not.toHaveBeenCalled();
@@ -176,6 +181,7 @@ describe('chat in an Android modal', () => {
     ).toBe(false);
 
     await act(async () => events.get('change')?.('active'));
+    expect(loadCourseAssistantHistory).toHaveBeenCalledTimes(2);
     expect(onForeground).toHaveBeenCalledTimes(1);
     expect(pollCourseAssistantTurn).toHaveBeenCalledTimes(1);
     expect(askCourseAssistant).toHaveBeenCalledTimes(1);

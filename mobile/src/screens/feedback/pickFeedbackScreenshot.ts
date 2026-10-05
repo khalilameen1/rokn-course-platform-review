@@ -14,19 +14,22 @@ import type {FeedbackAttachment} from '../../services/productFeedback';
 
 const MAX_SCREENSHOT_BYTES = 4 * 1024 * 1024;
 
-export const pickFeedbackScreenshot = async (): Promise<
-  FeedbackAttachment | undefined
-> => {
+export const pickFeedbackScreenshot = async (
+  isCurrent: () => boolean = () => true,
+): Promise<FeedbackAttachment | undefined> => {
   let cachedSelection: FeedbackAttachment | undefined;
   try {
+    if (!isCurrent()) return undefined;
     const boundary = await captureAccountSessionBoundary();
     assertAccountSessionBoundary(boundary);
+    if (!isCurrent()) return undefined;
     const result = await launchImageLibrary({
       mediaType: 'photo',
       quality: 0.8 as PhotoQuality,
       selectionLimit: 1,
     });
     assertAccountSessionBoundary(boundary);
+    if (!isCurrent()) return undefined;
     if (result.didCancel) return undefined;
     if (result.errorCode) {
       showMediaPickerFailure(result.errorCode);
@@ -52,10 +55,15 @@ export const pickFeedbackScreenshot = async (): Promise<
       boundary,
     );
     assertAccountSessionBoundary(boundary);
+    if (!isCurrent()) {
+      await removeLearnerDraftFile(cachedSelection).catch(() => undefined);
+      return undefined;
+    }
 
     return cachedSelection;
   } catch (error: unknown) {
     await removeLearnerDraftFile(cachedSelection).catch(() => undefined);
+    if (!isCurrent()) return undefined;
     if (
       error instanceof Error &&
       error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'

@@ -32,7 +32,7 @@ import type {WalletController} from '../src/screens/wallet/useWalletController';
 describe('wallet details on demand', () => {
   const transaction = {
     id: '1',
-    title: 'شحن المحفظة',
+    title: 'مكافأة الترحيب',
     amount: 50,
     createdAt: Date.now(),
   };
@@ -51,7 +51,6 @@ describe('wallet details on demand', () => {
         serverSession: true,
         usingRemoteWallet: true,
         displayedBalance: 50,
-        displayedPaidBalance: 50,
         displayedRewardBalance: 0,
         displayedRewardContributionCap: 100,
         displayedSpendableBalance: 50,
@@ -104,6 +103,7 @@ describe('wallet details on demand', () => {
     expect(hasText(transaction.title)).toBe(false);
     await pressText('سجل المكافآت');
     expect(hasText(transaction.title)).toBe(true);
+    expect(hasText('آخر حركات الرصيد')).toBe(true);
     expect(hasText('كيف يعمل الرصيد')).toBe(true);
     await act(async () => {
       renderer.root.findByType(Modal).props.onRequestClose();
@@ -116,19 +116,41 @@ describe('wallet details on demand', () => {
 
   it('keeps a clear empty history behind the same entry point', async () => {
     await render([]);
-    expect(hasText('لا توجد مكافآت بعد')).toBe(false);
+    expect(hasText('لا توجد حركات رصيد بعد')).toBe(false);
     await pressText('سجل المكافآت');
-    expect(hasText('لا توجد مكافآت بعد')).toBe(true);
-    await pressText('تم');
-    expect(hasText('لا توجد مكافآت بعد')).toBe(false);
+    expect(hasText('لا توجد حركات رصيد بعد')).toBe(true);
+    await pressText('إغلاق التفاصيل');
+    expect(hasText('لا توجد حركات رصيد بعد')).toBe(false);
   });
 
   it('does not describe a failed history load as an empty wallet', async () => {
     await render([], 'error');
     await pressText('سجل المكافآت');
     expect(hasText('تعذّر تحميل السجل')).toBe(true);
-    expect(hasText('لا توجد مكافآت بعد')).toBe(false);
+    expect(hasText('لا توجد حركات رصيد بعد')).toBe(false);
     await pressText('إعادة المحاولة');
     expect(refreshWallet).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps help controlled by the server without a nested paid-balance page', async () => {
+    await render();
+    await pressText('كيف يعمل الرصيد');
+    expect(hasText('استخدم العملات لفتح الكورسات')).toBe(true);
+    expect(hasText('رصيد مدفوع متاح عند الشراء')).toBe(false);
+    expect(hasText('إجمالي الرصيد')).toBe(false);
+    expect(hasText('رصيد مدفوع')).toBe(false);
+    await pressText('إغلاق التفاصيل');
+    expect(hasText('استخدم العملات لفتح الكورسات')).toBe(false);
+  });
+
+  it('keeps reward credits and debits directionally isolated in recent history', async () => {
+    await render([
+      transaction,
+      {...transaction, id: '2', title: 'خصم على اشتراك كورس', amount: -20},
+    ]);
+    await pressText('سجل المكافآت');
+    expect(hasText('\u2066+ ٥٠\u2069')).toBe(true);
+    expect(hasText('\u2066− ٢٠\u2069')).toBe(true);
+    expect(hasText('آخر حركات الرصيد')).toBe(true);
   });
 });

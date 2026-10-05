@@ -10,6 +10,7 @@ import {
 } from './courseAccessAttemptStore';
 import {mapFinancialPackages, numericCourseId} from './courseAccessValidation';
 import {firstBoolean, payload, requireNonNegativeNumber} from './common';
+import type {CourseCheckoutFeature} from './courseCheckout';
 
 type CourseUpgradeQuoteDto = {
   course_revision?: unknown;
@@ -28,6 +29,8 @@ type CourseUpgradeQuoteDto = {
   target_plan_code?: unknown;
   target_plan_name?: unknown;
   target_message_limit?: unknown;
+  upgrade_available?: unknown;
+  available_plan_codes?: unknown;
 };
 
 export type CourseChatUpgradeQuote = {
@@ -47,11 +50,35 @@ export type CourseChatUpgradeQuote = {
   targetPlanCode?: string;
   targetPlanName?: string;
   targetMessageLimit?: number;
+  upgradeAvailable?: boolean;
+  availablePlanCodes?: string[];
 };
 
 const mapCourseChatUpgradeQuote = (
   data: CourseUpgradeQuoteDto,
+  requireAvailability = false,
 ): CourseChatUpgradeQuote => {
+  const upgradeAvailable = firstBoolean(data.upgrade_available);
+  const rawCodes = data.available_plan_codes;
+  if (
+    (requireAvailability &&
+      (upgradeAvailable === undefined || !Array.isArray(rawCodes))) ||
+    (rawCodes !== undefined &&
+      (!Array.isArray(rawCodes) ||
+        rawCodes.some(code => !['guided', 'mentor'].includes(String(code)))))
+  ) {
+    throw new Error('API_CONTRACT_INVALID_COURSE_UPGRADE_AVAILABILITY');
+  }
+  const availablePlanCodes = Array.isArray(rawCodes)
+    ? Array.from(new Set(rawCodes as string[]))
+    : undefined;
+  if (
+    upgradeAvailable !== undefined &&
+    availablePlanCodes &&
+    upgradeAvailable !== availablePlanCodes.length > 0
+  ) {
+    throw new Error('API_CONTRACT_INVALID_COURSE_UPGRADE_AVAILABILITY');
+  }
   const courseRevision = Number(data.course_revision);
   if (!Number.isSafeInteger(courseRevision) || courseRevision < 1) {
     throw new Error('API_CONTRACT_INVALID_COURSE_UPGRADE_REVISION');
@@ -72,6 +99,8 @@ const mapCourseChatUpgradeQuote = (
       deficit: 0,
       rewardContributionCap: 0,
       packages: [],
+      upgradeAvailable,
+      availablePlanCodes,
       targetPlanCode: data.target_plan_code
         ? String(data.target_plan_code)
         : undefined,
@@ -137,19 +166,29 @@ const mapCourseChatUpgradeQuote = (
       ? String(data.target_plan_name)
       : undefined,
     targetMessageLimit,
+    upgradeAvailable,
+    availablePlanCodes,
   };
 };
 
 export const getFullTrackUpgradeQuote = async (
   courseId: string,
-): Promise<CourseChatUpgradeQuote> =>
-  mapCourseChatUpgradeQuote(
-    payload(
-      await publicRequest.get(
-        `courses/${numericCourseId(courseId)}/full-track-upgrade`,
-      ),
-    ),
+  options: {requiredFeature?: CourseCheckoutFeature} = {},
+): Promise<CourseChatUpgradeQuote> => {
+  const boundary = await captureAccountSessionBoundary();
+  assertAccountSessionBoundary(boundary);
+  const endpoint = `courses/${numericCourseId(courseId)}/full-track-upgrade`;
+  const response = options.requiredFeature
+    ? await publicRequest.get(endpoint, {
+        params: {required_feature: options.requiredFeature},
+      })
+    : await publicRequest.get(endpoint);
+  assertAccountSessionBoundary(boundary);
+  return mapCourseChatUpgradeQuote(
+    payload(response),
+    Boolean(options.requiredFeature),
   );
+};
 
 export const purchaseFullTrackUpgrade = async (
   courseId: string,

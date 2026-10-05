@@ -17,6 +17,9 @@ on:
 permissions:
   contents: write
 
+env:
+  ROKN_LOCK_REFRESH_BRANCH: ${{ github.ref_name }}
+
 concurrency:
   group: refresh-ios-lock
   cancel-in-progress: false
@@ -36,9 +39,17 @@ jobs:
       EXPO_PUBLIC_BUILD_PROFILE: production
       EXPO_PUBLIC_REQUIRE_FEATURE_FLAGS: "1"
     steps:
+      - name: Require a branch target for lock refresh
+        working-directory: .
+        run: |
+          if test "$GITHUB_REF_TYPE" != branch; then
+            echo "Lock refresh must target a branch, not a tag."
+            exit 1
+          fi
+          git check-ref-format "refs/heads/$ROKN_LOCK_REFRESH_BRANCH"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ env.ROKN_LOCK_REFRESH_BRANCH }}
           fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -87,9 +98,9 @@ jobs:
             echo "Linux dependency verification metadata is already current."
           else
             git commit -m "Refresh Linux Android dependency verification"
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
+            git fetch origin "refs/heads/$ROKN_LOCK_REFRESH_BRANCH:refs/remotes/origin/$ROKN_LOCK_REFRESH_BRANCH"
+            git rebase "origin/$ROKN_LOCK_REFRESH_BRANCH"
+            git push origin "HEAD:refs/heads/$ROKN_LOCK_REFRESH_BRANCH"
           fi
 
   refresh:
@@ -100,9 +111,17 @@ jobs:
     env:
       NODE_ENV: production
     steps:
+      - name: Require a branch target for lock refresh
+        working-directory: .
+        run: |
+          if test "$GITHUB_REF_TYPE" != branch; then
+            echo "Lock refresh must target a branch, not a tag."
+            exit 1
+          fi
+          git check-ref-format "refs/heads/$ROKN_LOCK_REFRESH_BRANCH"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ env.ROKN_LOCK_REFRESH_BRANCH }}
           fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -181,9 +200,9 @@ jobs:
               git stash push --include-untracked -m native-lock-refresh-working-tree
               had_refresh_changes=1
             fi
-            git fetch origin main
-            git rebase origin/main
-            git push origin HEAD:main
+            git fetch origin "refs/heads/$ROKN_LOCK_REFRESH_BRANCH:refs/remotes/origin/$ROKN_LOCK_REFRESH_BRANCH"
+            git rebase "origin/$ROKN_LOCK_REFRESH_BRANCH"
+            git push origin "HEAD:refs/heads/$ROKN_LOCK_REFRESH_BRANCH"
             if test "$had_refresh_changes" = 1; then
               git stash pop
             fi
@@ -212,6 +231,6 @@ jobs:
             exit 0
           fi
           git commit -m "Refresh native legal provenance"
-          git fetch origin main
-          git rebase origin/main
-          git push origin HEAD:main
+          git fetch origin "refs/heads/$ROKN_LOCK_REFRESH_BRANCH:refs/remotes/origin/$ROKN_LOCK_REFRESH_BRANCH"
+          git rebase "origin/$ROKN_LOCK_REFRESH_BRANCH"
+          git push origin "HEAD:refs/heads/$ROKN_LOCK_REFRESH_BRANCH"

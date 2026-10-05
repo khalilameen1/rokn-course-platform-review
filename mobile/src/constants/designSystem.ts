@@ -147,13 +147,12 @@ export const useResponsiveLayout = () => {
     Math.max(minimumRailCardWidth, contentWidth * (isTablet ? 0.3 : 0.52)),
   );
 
-  const featuredHorizontal = contentWidth >= 720 && fontScale < 1.5;
-  const featuredImageWidth = featuredHorizontal
-    ? (availableGridWidth - Spacing.xl) * 0.58
-    : availableGridWidth;
-  const featuredImageHeight = Math.min(
-    isTablet ? 340 : 196,
-    featuredImageWidth * (9 / 16),
+  // One artwork/title/action composition at every width. The native card may
+  // grow beyond this minimum when accessibility text needs more room.
+  const featuredCardWidth = availableGridWidth;
+  const featuredCardMinHeight = Math.min(
+    isTablet ? 520 : 480,
+    Math.max(408, featuredCardWidth * 1.24),
   );
 
   return {
@@ -170,9 +169,8 @@ export const useResponsiveLayout = () => {
     gridGap,
     gridCardWidth,
     railCardWidth,
-    featuredHorizontal,
-    featuredImageWidth,
-    featuredImageHeight,
+    featuredCardWidth,
+    featuredCardMinHeight,
   };
 };
 

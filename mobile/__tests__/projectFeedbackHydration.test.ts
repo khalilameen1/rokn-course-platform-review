@@ -22,6 +22,7 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 
 import {mapCourseProject} from '../src/components/VideoPlayer/courseLearning/projectMapping';
+import {mapProjectFeedbackThread} from '../src/components/VideoPlayer/courseLearning/projectFeedbackMapping';
 import {
   loadProjectFeedbackThread,
   loadProjectResolution,
@@ -110,6 +111,11 @@ const initialThreadFromCourseMap = (canRetry: boolean) =>
   )?.feedbackThread;
 
 describe('project feedback hydration parity', () => {
+  it.each([true, false, undefined])('preserves the additive capacity verdict %s without guessing it', value => {
+    const payload = {...feedbackThreadPayload(true), reply_limit_reached: value};
+    expect(mapProjectFeedbackThread(payload)?.replyLimitReached).toBe(value);
+    expect(mapProjectFeedbackThread(payload)?.remainingMessages).toBe(3);
+  });
   beforeEach(() => {
     mockGet.mockReset();
     mockPost.mockReset();

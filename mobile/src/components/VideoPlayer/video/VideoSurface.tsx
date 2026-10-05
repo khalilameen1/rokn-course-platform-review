@@ -1,13 +1,24 @@
 import React from 'react';
 import {Platform, StyleSheet, View} from 'react-native';
 import {RasterImage as Image} from '../../ui/RasterImage';
-import Video, {
-  BufferingStrategyType,
-  ViewType,
-} from 'react-native-video';
+import Video, {BufferingStrategyType, ViewType} from 'react-native-video';
 import {VideoChrome} from './VideoChrome';
 import {VIDEO_BITRATE_BY_QUALITY} from './policy';
 import type {VideoController} from './useVideoController';
+
+// RNV v6 includes bufferConfig in native Source equality. Changing it when a
+// paused preload becomes visible prepares that source again, losing its warm
+// samples. Keep the same bounded Media3 policy for both players and let the
+// library's memory-aware load control manage pressure.
+const REEL_BUFFER_CONFIG = {
+  minBufferMs: 4000,
+  maxBufferMs: 10000,
+  bufferForPlaybackMs: 600,
+  bufferForPlaybackAfterRebufferMs: 2500,
+  maxHeapAllocationPercent: 0.12,
+  minBufferMemoryReservePercent: 0.15,
+  initialBitrate: 750_000,
+};
 
 const VideoSurface = (controller: VideoController) => {
   const {data, playbackEligible, playbackPaused} = controller;
@@ -37,7 +48,10 @@ const VideoSurface = (controller: VideoController) => {
         <Video
           key={videoKey}
           ref={controller.videoRef}
-          source={controller.source}
+          source={controller.nativePreloadOwner ? {
+            ...controller.source,
+            metadata: {title: data.title, description: controller.nativePreloadOwner},
+          } : controller.source}
           resizeMode="cover"
           viewType={Platform.OS === 'android' ? ViewType.TEXTURE : undefined}
           shutterColor="#030507"
@@ -55,7 +69,7 @@ const VideoSurface = (controller: VideoController) => {
           mixWithOthers="inherit"
           disableFocus={!playbackEligible || controller.pausedByUser}
           automaticallyWaitsToMinimizeStalling
-          preferredForwardBufferDuration={playbackEligible ? 6 : 1}
+          preferredForwardBufferDuration={4}
           bufferingStrategy={
             Platform.OS === 'android'
               ? BufferingStrategyType.DEPENDING_ON_MEMORY
@@ -67,30 +81,8 @@ const VideoSurface = (controller: VideoController) => {
           onAudioBecomingNoisy={controller.handleAudioBecomingNoisy}
           onAudioFocusChanged={controller.handleAudioFocusChanged}
           style={StyleSheet.absoluteFill}
-          bufferConfig={
-            playbackEligible
-              ? {
-                  minBufferMs: 4000,
-                  maxBufferMs: 18000,
-                  bufferForPlaybackMs: 1200,
-                  bufferForPlaybackAfterRebufferMs: 2500,
-                  maxHeapAllocationPercent: 0.24,
-                  minBufferMemoryReservePercent: 0.15,
-                }
-              : {
-                  minBufferMs: 900,
-                  maxBufferMs: 2600,
-                  bufferForPlaybackMs: 600,
-                  bufferForPlaybackAfterRebufferMs: 900,
-                  maxHeapAllocationPercent: 0.12,
-                  minBufferMemoryReservePercent: 0.15,
-                }
-          }
-          maxBitRate={
-            playbackEligible
-              ? VIDEO_BITRATE_BY_QUALITY[controller.effectiveQuality]
-              : 750_000
-          }
+          bufferConfig={REEL_BUFFER_CONFIG}
+          maxBitRate={VIDEO_BITRATE_BY_QUALITY[controller.effectiveQuality]}
           {...controller.videoEventHandlers}
         />
       )}

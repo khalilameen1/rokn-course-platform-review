@@ -6,7 +6,10 @@ import {sha256Base64Url} from '../utils/sha256';
 import {serverNow} from '../utils/serverClock';
 import {openAndroidAuthSession} from './androidAuthSession';
 import {resumePendingSocialAuth} from './socialAuthCompletion';
-import type {SocialAuthOptions} from './socialAuthContract';
+import {
+  assertSocialAuthCanStart,
+  type SocialAuthOptions,
+} from './socialAuthContract';
 import {safeAuthorizationUrl} from './socialAuthMethods';
 import {
   deletePendingSocialAuthAttempt,
@@ -38,6 +41,7 @@ export const startBrowserSocialAuth = async (
   methods: SocialAuthMethods,
   options: SocialAuthOptions,
 ) => {
+  assertSocialAuthCanStart(options);
   const startUrl = methods.authorizationUrls[provider];
   const resolvedStartUrl = startUrl
     ? safeAuthorizationUrl(provider, startUrl, methods.authorizationApiUrl)
@@ -50,6 +54,7 @@ export const startBrowserSocialAuth = async (
   } catch {
     throw new Error('LOGIN_SECURE_FLOW_UNAVAILABLE');
   }
+  assertSocialAuthCanStart(options);
   const returnUrl = 'rokn://auth';
   const separator = resolvedStartUrl.includes('?') ? '&' : '?';
   const authorizationUrl = `${resolvedStartUrl}${separator}${encodeQuery({
@@ -72,6 +77,9 @@ export const startBrowserSocialAuth = async (
     | Awaited<ReturnType<typeof WebBrowser.openAuthSessionAsync>>
     | Awaited<ReturnType<typeof openAndroidAuthSession>>;
   try {
+    // No await between ownership acceptance and the actual native open.
+    assertSocialAuthCanStart(options);
+    options.onProviderStarted?.();
     result =
       Platform.OS === 'android'
         ? await openAndroidAuthSession(

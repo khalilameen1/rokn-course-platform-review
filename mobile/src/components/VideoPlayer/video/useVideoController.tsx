@@ -29,6 +29,7 @@ export interface VideoComponentHandle {
 
 export interface VideoComponentProps {
   data: CourseReel;
+  nativePreloadOwner?: string;
   width: number;
   height: number;
   isVisible: boolean;
@@ -47,6 +48,7 @@ export interface VideoComponentProps {
 export const useVideoController = (
   {
     data,
+    nativePreloadOwner,
     width,
     height,
     isVisible,
@@ -165,7 +167,6 @@ export const useVideoController = (
     usingFallback,
   } = useVideoSourceSelection({
     data,
-    isVisible,
     preferredQuality: selectedQuality,
   });
   const windowIsActive = useAppActiveState();
@@ -220,6 +221,30 @@ export const useVideoController = (
   }
 
   useImperativeHandle(forwardedRef, () => ({seekTo}), [seekTo]);
+
+  useEffect(() => {
+    // Optional device state can finish after a paused adjacent decoder loads.
+    // Adopt its resume hint before playback starts, not by rewinding a reel
+    // that has played or replacing a seek already owned by the learner.
+    if (
+      reelIdentityRef.current !== data.id ||
+      hasStartedRef.current ||
+      pendingSeekRef.current !== null ||
+      lastPositionRef.current > 0 ||
+      !Number.isFinite(initialPosition) ||
+      initialPosition <= 0
+    )
+      return;
+    reelInitialPositionRef.current = initialPosition;
+    if (hasRestoredRef.current) seekTo(initialPosition);
+  }, [
+    data.id,
+    initialPosition,
+    hasStartedRef,
+    lastPositionRef,
+    pendingSeekRef,
+    seekTo,
+  ]);
 
   useEffect(() => {
     hasRestoredRef.current = false;
@@ -549,6 +574,7 @@ export const useVideoController = (
 
   return {
     appIsActive,
+    nativePreloadOwner,
     bottomInset,
     currentTime,
     data,

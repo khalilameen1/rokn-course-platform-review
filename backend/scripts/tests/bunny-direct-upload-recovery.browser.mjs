@@ -24,7 +24,7 @@ const uploadScript = uploadModules.join('\n') + '\n' + uploadBootstrap;
 const fixture = `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"></head><body>
 <form id="sectionForm" data-course-id="3" data-section-id="" data-bunny-upload-init="/init" data-bunny-upload-renew="/renew">
  <input name="_token" value="csrf"><input name="authoring_version" value="1">
- <input id="section_type" value="lesson"><input id="title_ar" value="المقطع الثاني">
+ <input id="section_type" name="section_type" type="hidden" value="lesson"><input id="title_ar" name="title_ar" value="المقطع الثاني">
  <input id="bunny_video_claim" name="bunny_video_claim">
  <input id="bunny_video" type="file" data-video-required="true" required>
  <button id="save" type="submit">حفظ</button>
@@ -39,6 +39,7 @@ window.__initAttempts = [];
 window.__initFailureMode = 'none';
 window.__renewCalls = 0;
 window.__submittedClaim = null;
+window.__submittedType = null;
 window.__submissionCount = 0;
 window.__blockedMutations = 0;
 window.RoknAdminRequest = {
@@ -86,6 +87,7 @@ document.getElementById('sectionForm').addEventListener('submit', event => {
  if (!claim && document.getElementById('sectionForm').dataset.sectionId !== 'existing') return;
  event.preventDefault();
  window.__submittedClaim = claim;
+ window.__submittedType = new FormData(document.getElementById('sectionForm')).get('section_type');
  window.__submissionCount += 1;
 });
 </script>
@@ -194,8 +196,56 @@ const openScenario = async (mode, initFailureMode = 'none') => {
     };
 };
 
+const waitForInitialHead = async scenario => {
+    const deadline = Date.now() + 3000;
+    while (scenario.calls.head < 1 && Date.now() < deadline) {
+        await new Promise(done => setTimeout(done, 10));
+    }
+    assert.equal(scenario.calls.head, 1, 'the pending HEAD must start before retiring its owner');
+};
+
 try {
     browser = await chromium.launch({channel: 'chrome', headless: true});
+
+    const locked = await openScenario('cancel-head');
+    await locked.page.locator('#save').click();
+    await locked.page.waitForFunction(() => window.RoknCourseVideoUpload.isBusy()
+        && document.getElementById('bunny_video_claim').value !== '');
+    await waitForInitialHead(locked);
+    assert.equal(await locked.page.locator('#bunny_video').isDisabled(), true,
+        'the active file cannot be replaced while its claim is being uploaded');
+    assert.equal(await locked.page.locator('#section_type').isDisabled(), true);
+    assert.equal(await locked.page.locator('#bunny_upload_cancel').isEnabled(), true);
+    await locked.page.locator('#bunny_upload_cancel').click();
+    locked.releasePendingHead();
+    await locked.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
+    assert.equal(await locked.page.locator('#bunny_video').isEnabled(), true,
+        'a stopped transfer must restore file selection');
+    assert.equal(await locked.page.locator('#section_type').isEnabled(), true);
+    assert.equal(await locked.page.evaluate(() => window.__submissionCount), 0);
+    await locked.page.locator('#bunny_upload_retry').click();
+    await locked.page.waitForFunction(() => window.__submissionCount === 1);
+    assert.equal(await locked.page.evaluate(() => window.__submittedType), 'lesson',
+        'restored type must be present in the editor FormData handoff');
+    assert.equal(locked.calls.post, 1, 'resume retains the first upload instead of creating another');
+    await locked.context.close();
+
+    const replaced = await openScenario('cancel-head');
+    await replaced.page.locator('#save').click();
+    await replaced.page.waitForFunction(() => window.RoknCourseVideoUpload.isBusy()
+        && document.getElementById('bunny_video_claim').value !== '');
+    await waitForInitialHead(replaced);
+    // A scripted change must also retire the old presentation, even though a
+    // real user cannot open the disabled file picker during this transfer.
+    await selectScenarioFile(replaced.page, 'transport-retry');
+    replaced.releasePendingHead();
+    await replaced.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
+    assert.equal(await replaced.page.evaluate(() => window.__submissionCount), 0);
+    await replaced.page.locator('#bunny_upload_retry').click();
+    await replaced.page.waitForFunction(() => window.__submissionCount === 1);
+    assert.equal(await replaced.page.evaluate(() => window.__initCalls.at(-1).original_name), 'retry.mp4');
+    assert.equal(replaced.calls.post, 2, 'a replacement file must have its own allocation and transfer');
+    await replaced.context.close();
 
     for (const reload of [false, true]) {
         const paused = await openScenario('cancel-head');
@@ -301,6 +351,10 @@ try {
     assert.equal(await boundedAllocation.page.evaluate(() => window.__initAttempts.length), 4,
         'automatic allocation continuation must remain bounded');
     assert.equal(await boundedAllocation.page.evaluate(() => window.__blockedMutations), 0);
+    await boundedAllocation.page.waitForFunction(() => !window.RoknCourseVideoUpload.isBusy());
+    assert.equal(await boundedAllocation.page.locator('#bunny_video').isEnabled(), true,
+        'a preparation failure must release file selection rather than strand the form');
+    assert.equal(await boundedAllocation.page.locator('#section_type').isEnabled(), true);
     assert.equal(await boundedAllocation.page.locator('#bunny_upload_retry').textContent(), 'متابعة الرفع');
     assert.equal((await boundedAllocation.page.locator('#bunny_upload_status').textContent()).includes('نعيد تحميل'), false);
     assert.equal(await boundedAllocation.page.evaluate(() => Object.keys(localStorage)

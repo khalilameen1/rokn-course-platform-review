@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\StoredFileDeletionService;
 use App\Services\PortfolioShareIdentityService;
 use App\Support\UnicodeText;
+use App\Support\LearningReminderSchedule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -81,6 +82,8 @@ final class ProfileController extends Controller
             'notifications_status' => 'nullable|boolean',
             'watch_history_enabled' => 'nullable|boolean',
             'marketing_notifications_enabled' => 'nullable|boolean',
+            'learning_reminder_hour' => ['required_with:learning_reminder_timezone', 'integer', \Illuminate\Validation\Rule::in(LearningReminderSchedule::HOURS)],
+            'learning_reminder_timezone' => 'required_with:learning_reminder_hour|string|max:64|timezone',
             'preferred_locale' => 'nullable|string|in:ar,en',
             'leaderboard_opt_in' => 'nullable|boolean',
             // Vertical playback always advances using the course sequence.
@@ -118,6 +121,8 @@ final class ProfileController extends Controller
             'notifications_status' => $request->has('notifications_status') ? $request->boolean('notifications_status') : '__missing__',
             'watch_history_enabled' => $request->has('watch_history_enabled') ? $request->boolean('watch_history_enabled') : '__missing__',
             'marketing_notifications_enabled' => $request->has('marketing_notifications_enabled') ? $request->boolean('marketing_notifications_enabled') : '__missing__',
+            'learning_reminder_hour' => $request->input('learning_reminder_hour', '__missing__'),
+            'learning_reminder_timezone' => $request->input('learning_reminder_timezone', '__missing__'),
             'preferred_locale' => $request->input('preferred_locale', '__missing__'),
             'leaderboard_opt_in' => $request->has('leaderboard_opt_in') ? $request->boolean('leaderboard_opt_in') : '__missing__',
             'video_quality_preference' => $request->input('video_quality_preference', '__missing__'),
@@ -167,6 +172,11 @@ final class ProfileController extends Controller
 
         if ($request->has('marketing_notifications_enabled')) {
             $updateData['marketing_notifications_enabled'] = $request->boolean('marketing_notifications_enabled');
+        }
+
+        if ($request->has('learning_reminder_hour')) {
+            $updateData['learning_reminder_hour'] = (int) $validated['learning_reminder_hour'];
+            $updateData['learning_reminder_timezone'] = $validated['learning_reminder_timezone'];
         }
 
         if ($request->has('preferred_locale')) {

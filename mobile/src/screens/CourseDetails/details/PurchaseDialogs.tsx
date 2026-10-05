@@ -21,6 +21,7 @@ type Props = {
   dialogStep: DialogStep;
   notice: string;
   onClose: () => void;
+  onPaymentAttempt?: () => void;
   onCourseCodeChange?: (value: string) => void;
   onRedeemCourseCode?: () => void | Promise<void>;
   onSelectPlan: (plan: CourseAccessPlan) => void;
@@ -39,6 +40,7 @@ export function CoursePurchaseDialog(props: Props) {
       selectedPlan={props.selectedPlan}
       onSelectPlan={props.onSelectPlan}
       onClose={props.onClose}
+      onPaymentAttempt={props.onPaymentAttempt}
       onCompleted={props.onSubscribed}
       onStart={props.onSuccessStart}
       hasProjects={(props.projectCount || 0) > 0}

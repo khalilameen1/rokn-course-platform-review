@@ -8,6 +8,7 @@ use App\Exceptions\AiPlanLimitReachedException;
 use App\Models\AiEntitlementUsage;
 use App\Models\AiUsageEvent;
 use App\Models\CourseEnrollment;
+use App\Models\ProjectFeedbackMessage;
 use App\Models\User;
 use App\Support\AiUsageCost;
 use App\Support\DatabaseCapabilities;
@@ -132,15 +133,8 @@ final readonly class AiEntitlementBudgetService
 
             if (
                 !$featureAllowed
-                || (
-                    $requestLimit !== null
-                    && $usage->used_requests + $usage->reserved_requests + 1
-                        > $requestLimit
-                )
-                || $usage->used_tokens + $usage->reserved_tokens + $estimatedTokens > $tokenBudget
-                || AiUsageCost::micros($usage->used_cost_usd)
-                    + AiUsageCost::micros($usage->reserved_cost_usd)
-                    + $reserveCostMicros > $costBudgetMicros
+                || !$this->hasCapacity($usage, $requestLimit, $tokenBudget,
+                    $costBudgetMicros, $reserveCostMicros, $estimatedTokens)
             ) {
                 throw new AiPlanLimitReachedException('The selected plan AI budget is exhausted.');
             }
@@ -168,6 +162,55 @@ final readonly class AiEntitlementBudgetService
                 'reservation_expires_at' => now()->addSeconds($this->reservationTtlSeconds()),
             ]);
         }, 3);
+    }
+
+    /** Read-only offer eligibility. Existing consumption survives a plan upgrade. */
+    public function hasChatCapacity(array $terms, int $estimatedTokens, ?CourseEnrollment $enrollment = null): bool
+    {
+        $usage = $enrollment ? AiEntitlementUsage::query()
+            ->where('enrollment_id', $enrollment->id)
+            ->where('feature', AiEntitlementUsage::FEATURE_COURSE_CHAT)->first() : null;
+
+        return $this->hasCapacity($usage, (int) ($terms['chat_message_limit'] ?? 0),
+            (int) ($terms['chat_token_budget'] ?? 0), AiUsageCost::micros($terms['ai_budget_usd'] ?? 0),
+            max(1, AiUsageCost::micros($terms['request_reserve_usd'] ?? 0)),
+            max(1, $estimatedTokens));
+    }
+
+    public function hasProjectFollowupCapacity(array $terms, int $estimatedTokens, ?CourseEnrollment $enrollment = null): bool
+    {
+        $usage = $enrollment ? AiEntitlementUsage::query()
+            ->where('enrollment_id', $enrollment->id)
+            ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP)->first() : null;
+        $limit = (int) ($terms['project_followup_message_limit'] ?? 0);
+
+        return (!$enrollment || $this->projectFollowupCommittedRequests($enrollment, $usage) < $limit)
+            && $this->hasCapacity($usage, $limit, (int) ($terms['project_followup_token_budget'] ?? 0),
+                AiUsageCost::micros($terms['project_followup_budget_usd'] ?? 0),
+                max(1, AiUsageCost::micros($terms['project_followup_reserve_usd'] ?? 0)), max(1, $estimatedTokens));
+    }
+
+    /** SENT can precede its reservation; QUEUED has not reserved yet. Do not double count SENT. */
+    public function projectFollowupCommittedRequests(CourseEnrollment $enrollment, ?AiEntitlementUsage $usage): int
+    {
+        $pending = ProjectFeedbackMessage::query()->where('role', 'user')
+            ->whereIn('status', [ProjectFeedbackMessage::QUEUED, ProjectFeedbackMessage::SENT])
+            ->whereHas('thread', fn ($query) => $query->where('enrollment_id', $enrollment->id))
+            ->selectRaw('status, COUNT(*) as total')->groupBy('status')->pluck('total', 'status');
+
+        return (int) ($usage?->used_requests ?? 0)
+            + max((int) ($usage?->reserved_requests ?? 0), (int) ($pending[ProjectFeedbackMessage::SENT] ?? 0))
+            + (int) ($pending[ProjectFeedbackMessage::QUEUED] ?? 0);
+    }
+
+    private function hasCapacity(?AiEntitlementUsage $usage, ?int $requestLimit, int $tokenBudget,
+        int $costBudgetMicros, int $reserveCostMicros, int $estimatedTokens): bool
+    {
+        return ($requestLimit === null || (int) ($usage?->used_requests ?? 0)
+                + (int) ($usage?->reserved_requests ?? 0) + 1 <= $requestLimit)
+            && (int) ($usage?->used_tokens ?? 0) + (int) ($usage?->reserved_tokens ?? 0) + $estimatedTokens <= $tokenBudget
+            && AiUsageCost::micros($usage?->used_cost_usd ?? 0)
+                + AiUsageCost::micros($usage?->reserved_cost_usd ?? 0) + $reserveCostMicros <= $costBudgetMicros;
     }
 
     /** Compulsory relevance review is platform funded, never a report/message entitlement. */

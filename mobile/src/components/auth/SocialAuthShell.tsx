@@ -48,6 +48,16 @@ import {settleWithin} from '../../utils/settleWithin';
 import SocialAuthView from './SocialAuthView';
 
 type LoginRoute = RouteProp<{Login: LoginRouteParams}, 'Login'>;
+type LoginAttempt = {
+  phase:
+    | 'preparing'
+    | 'provider_started'
+    | 'failed'
+    | 'resuming'
+    | 'committed'
+    | 'retired';
+  returnReceipt?: string;
+};
 
 type AuthFlowState =
   | {phase: 'discovering'; methods: null; provider: null}
@@ -118,8 +128,24 @@ export default function SocialAuthShell() {
   const authMethodsGenerationRef = useRef(0);
   const authMethodsRequestRef = useRef<Promise<SocialAuthMethods> | null>(null);
   const authIntentGenerationRef = useRef(0);
-  const authAttemptInFlightRef = useRef(false);
+  const authAttemptInFlightRef = useRef<LoginAttempt | null>(null);
+  const journeyAttemptRef = useRef<LoginAttempt | null>(null);
+  const mountedRef = useRef(true);
+  const focusedRef = useRef(true);
   const dismissingRef = useRef(false);
+
+  const retirePreparation = useCallback(() => {
+    authIntentGenerationRef.current += 1;
+    const attempt = journeyAttemptRef.current;
+    if (attempt?.phase === 'preparing' || attempt?.phase === 'failed') {
+      attempt.phase = 'retired';
+      if (attempt.returnReceipt) {
+        void acknowledgePendingLoginReturnTo(attempt.returnReceipt).catch(
+          () => undefined,
+        );
+      }
+    }
+  }, []);
 
   const loadAuthMethods = useCallback(async () => {
     const generation = ++authMethodsGenerationRef.current;
@@ -155,29 +181,60 @@ export default function SocialAuthShell() {
   };
 
   useEffect(() => {
+    mountedRef.current = true;
     void loadAuthMethods().catch(() => undefined);
     return () => {
+      mountedRef.current = false;
       authMethodsGenerationRef.current += 1;
-      authIntentGenerationRef.current += 1;
+      retirePreparation();
     };
-  }, [loadAuthMethods]);
+  }, [loadAuthMethods, retirePreparation]);
+
+  useEffect(() => {
+    const blur = navigation.addListener('blur', () => {
+      focusedRef.current = false;
+      retirePreparation();
+    });
+    const focus = navigation.addListener('focus', () => {
+      focusedRef.current = true;
+    });
+    return () => {
+      blur();
+      focus();
+    };
+  }, [navigation, retirePreparation]);
 
   useEffect(
     () =>
       navigation.addListener('beforeRemove', () => {
+        retirePreparation();
+        // Only a window that has actually opened owns credential completion.
+        // Preparation still belongs to this screen and retires on departure.
+        if (authAttemptInFlightRef.current?.phase === 'provider_started') {
+          return;
+        }
         if (
-          authAttemptInFlightRef.current ||
           extractApiToken(currentSession) ||
           extractApiToken(peekSecureSession().session)
         ) {
           return;
+        }
+        // Explicit Back also abandons a recoverable browser wait that has not
+        // committed a session. Merely opening Terms (blur) does not do so.
+        const journey = journeyAttemptRef.current;
+        if (journey?.phase === 'resuming') {
+          journey.phase = 'retired';
+          if (journey.returnReceipt) {
+            void acknowledgePendingLoginReturnTo(journey.returnReceipt).catch(
+              () => undefined,
+            );
+          }
         }
         // Back means the learner abandoned this login journey. Retaining its
         // route reopened Login on the next cold start, while retaining its
         // encrypted provider attempt allowed a late Android callback to sign
         // in after the learner had explicitly left the screen.
         const abandonedAt = serverNowMs();
-        authIntentGenerationRef.current += 1;
         void claimPendingLoginReturnTo()
           .then(claim =>
             claim && claim.createdAt < abandonedAt
@@ -197,12 +254,13 @@ export default function SocialAuthShell() {
           })
           .catch(() => undefined);
       }),
-    [currentSession, navigation],
+    [currentSession, navigation, retirePreparation],
   );
 
   const continueWith = async (provider: SocialProvider) => {
     if (
       dismissingRef.current ||
+      !focusedRef.current ||
       authAttemptInFlightRef.current ||
       authFlow.phase !== 'ready' ||
       !authFlow.methods.providers.includes(provider)
@@ -221,8 +279,19 @@ export default function SocialAuthShell() {
     }
     const intentGeneration = ++authIntentGenerationRef.current;
     const stillOwnsIntent = () =>
+      mountedRef.current &&
+      focusedRef.current &&
       intentGeneration === authIntentGenerationRef.current;
-    authAttemptInFlightRef.current = true;
+    const attempt: LoginAttempt = {phase: 'preparing'};
+    const canStart = () => attempt.phase === 'preparing' && stillOwnsIntent();
+    const canPersistJourney = () =>
+      attempt.phase === 'provider_started' ||
+      attempt.phase === 'committed' ||
+      attempt.phase === 'resuming' ||
+      ((attempt.phase === 'preparing' || attempt.phase === 'failed') &&
+        stillOwnsIntent());
+    authAttemptInFlightRef.current = attempt;
+    journeyAttemptRef.current = attempt;
     sendAuthFlow({type: 'authorize', provider});
     try {
       const canPersistSession = await settleWithin(
@@ -230,6 +299,7 @@ export default function SocialAuthShell() {
         false,
         3_000,
       );
+      if (!canStart()) return;
       if (!canPersistSession) {
         throw new Error('SESSION_STORAGE_UNAVAILABLE_DEADLINE');
       }
@@ -237,13 +307,31 @@ export default function SocialAuthShell() {
       // is part of the OAuth credential. A full AsyncStorage database must not
       // prevent a session that SecureStore can safely persist.
       const prepareGuestJourney = Promise.allSettled([
-        savePendingLoginReturnTo(route.params?.returnTo),
-        getCurrentAccountStorageScope().then(stageGuestAccountMigration),
+        savePendingLoginReturnTo(
+          route.params?.returnTo,
+          'login',
+          canPersistJourney,
+        ).then(receipt => {
+          attempt.returnReceipt = receipt;
+          if (receipt && !canPersistJourney()) {
+            return acknowledgePendingLoginReturnTo(receipt);
+          }
+        }),
+        getCurrentAccountStorageScope().then(scope =>
+          canPersistJourney() ? stageGuestAccountMigration(scope) : undefined,
+        ),
       ]).then(() => undefined);
       await settleWithin(prepareGuestJourney, undefined, 600);
+      if (!canStart()) return;
       const authenticatedSession = await signInWithSocialProvider(
         provider,
         authFlow.methods,
+        {
+          canStart,
+          onProviderStarted: () => {
+            attempt.phase = 'provider_started';
+          },
+        },
       );
       const committedSession = peekSecureSession().session;
       if (
@@ -256,6 +344,7 @@ export default function SocialAuthShell() {
       // adopt that exact session even if the Login screen was replaced while
       // the provider callback was finishing. Dropping the local adoption here
       // left the app visibly logged out until the next cold start.
+      attempt.phase = 'committed';
       dispatch(saveLoginData(committedSession));
       void resumeCompleteGuestAccountMigration().catch(() => undefined);
       // Redux changes the navigator key from guest to this account. Keep the
@@ -264,11 +353,20 @@ export default function SocialAuthShell() {
       // resetting here as well caused a visible double navigation and could
       // retire the route before the account-owned stack mounted.
     } catch (error) {
-      if (!stillOwnsIntent()) return;
       const code = socialAuthFailureCode(error);
       if (code === 'LOGIN_CANCELLED') {
-        await clearPendingLoginReturnTo().catch(() => undefined);
+        attempt.phase = 'retired';
+      } else {
+        attempt.phase = code === 'LOGIN_RESUMING' ? 'resuming' : 'failed';
       }
+      if (!canPersistJourney()) {
+        if (attempt.returnReceipt) {
+          await acknowledgePendingLoginReturnTo(attempt.returnReceipt).catch(
+            () => undefined,
+          );
+        }
+      }
+      if (!stillOwnsIntent()) return;
       if (code !== 'LOGIN_CANCELLED' && code !== 'LOGIN_RESUMING') {
         void reportClientError(new Error(code), {
           source: `auth.${provider}`,
@@ -277,9 +375,11 @@ export default function SocialAuthShell() {
       const message = socialAuthMessage(code);
       if (message) Alert.alert('تعذّر تسجيل الدخول', message);
     } finally {
-      authAttemptInFlightRef.current = false;
-      if (stillOwnsIntent()) {
-        sendAuthFlow({type: 'authorization_finished'});
+      if (authAttemptInFlightRef.current === attempt) {
+        authAttemptInFlightRef.current = null;
+        if (mountedRef.current) {
+          sendAuthFlow({type: 'authorization_finished'});
+        }
       }
     }
   };
@@ -292,7 +392,7 @@ export default function SocialAuthShell() {
     if (authAttemptInFlightRef.current || dismissingRef.current) return;
     dismissingRef.current = true;
     authIntentGenerationRef.current += 1;
-    authAttemptInFlightRef.current = false;
+    authAttemptInFlightRef.current = null;
     sendAuthFlow({type: 'authorization_finished'});
     const existingSession = extractApiToken(currentSession)
       ? currentSession

@@ -115,6 +115,7 @@ export type CourseSubscriptionSheetProps = {
   selectedPlan?: CourseAccessPlan;
   onSelectPlan: (plan: CourseAccessPlan) => void;
   onClose: () => void;
+  onPaymentAttempt?: () => void;
   onCompleted: () => void | Promise<void>;
   onStart?: () => void;
   hasProjects?: boolean;
@@ -128,7 +129,7 @@ export type CourseSubscriptionSheetProps = {
   embedded?: boolean;
 };
 
-/** A single sheet from choosing a tier through the store's native confirmation.
+/** A single sheet from choosing a tier through its configured payment surface.
  * No package picker, fabricated cash conversion, or second enrollment consent. */
 export default function CourseSubscriptionSheet({
   visible,
@@ -139,6 +140,7 @@ export default function CourseSubscriptionSheet({
   selectedPlan,
   onSelectPlan,
   onClose,
+  onPaymentAttempt,
   onCompleted,
   onStart,
   hasProjects = false,
@@ -166,6 +168,7 @@ export default function CourseSubscriptionSheet({
     requiredFeature,
     visible: visible && !success,
     onCompleted,
+    onPaymentRecovery: onPaymentAttempt,
   });
   const {
     quote,
@@ -205,6 +208,11 @@ export default function CourseSubscriptionSheet({
   useEffect(() => {
     if (!visible) setCodeExpanded(false);
   }, [visible]);
+  useEffect(() => {
+    // Restoring a previously committed payment is already an attempted
+    // purchase, even before pressing resume/cancel in this app process.
+    if (visible && (pending || blockedByPreviousCheckout)) onPaymentAttempt?.();
+  }, [blockedByPreviousCheckout, onPaymentAttempt, pending, visible]);
   const content = (
     <View
       accessibilityViewIsModal={!embedded}
@@ -361,7 +369,12 @@ export default function CourseSubscriptionSheet({
             {quote && (
               <View style={styles.summary}>
                 {mode === 'purchase' && quote.rewardCoins > 0 && (
-                  <SummaryLine label="حصلت على خصم" value={quote.rewardCoins} />
+                  <SummaryLine
+                    label={
+                      quote.channel === 'direct' ? 'حصلت على خصم' : 'من مكافآتك'
+                    }
+                    value={quote.rewardCoins}
+                  />
                 )}
                 {coinPackage && (
                   <View style={styles.cashRow}>
@@ -372,6 +385,14 @@ export default function CourseSubscriptionSheet({
                     </Text>
                   </View>
                 )}
+                {coinPackage &&
+                  quote.channel !== 'direct' &&
+                  quote.remainingPaidCoins > 0 && (
+                    <SummaryLine
+                      label="رصيد متبقٍ بعد الاشتراك"
+                      value={quote.remainingPaidCoins}
+                    />
+                  )}
               </View>
             )}
           </>
@@ -399,7 +420,10 @@ export default function CourseSubscriptionSheet({
                   : 'إلغاء طلب الاشتراك'
               }
               disabled={busy}
-              onPress={() => void checkout.cancelPending()}
+              onPress={() => {
+                onPaymentAttempt?.();
+                void checkout.cancelPending();
+              }}
               style={styles.disclosure}>
               <Text style={styles.detailAction}>
                 {blockedByPreviousCheckout
@@ -431,7 +455,10 @@ export default function CourseSubscriptionSheet({
               ? onStart || onClose
               : !quote
               ? checkout.retry
-              : () => void checkout.confirm()
+              : () => {
+                  onPaymentAttempt?.();
+                  void checkout.confirm();
+                }
           }
           style={({pressed}) => [
             styles.primary,
@@ -451,7 +478,9 @@ export default function CourseSubscriptionSheet({
                 : blockedByPreviousCheckout
                 ? 'التحقق من الدفع السابق'
                 : pending
-                ? 'التحقق من الدفع'
+                ? checkout.canResumePayment
+                  ? 'متابعة الدفع'
+                  : 'التحقق من الدفع'
                 : !quote
                 ? 'إعادة المحاولة'
                 : quote.status !== 'quoted'

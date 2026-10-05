@@ -75,7 +75,13 @@ final class AdminCourseSectionStateContractTest extends TestCase
         $view = $this->uploadSources();
         $draft = $this->source('resources/views/admin/partials/course-authoring-draft.blade.php');
 
-        self::assertMatchesRegularExpression('/await transfer\.upload\(currentFile, title\);\s+transfer\.assertActive\(\);\s+completedClaim = claim;/', $view);
+        self::assertMatchesRegularExpression(
+            '/const claim = await transfer\.upload\(file, title\);\s+transfer\.assertActive\(\);\s+if \(currentFile !== file[\s\S]*?completedClaim = claim;/',
+            $view
+        );
+        self::assertStringContainsString("sectionType.value !== 'lesson'", $view);
+        self::assertStringContainsString('sectionId() !== uploadSectionId || currentAuthoringVersion() !== uploadVersion', $view);
+        self::assertStringContainsString('{cancelled: true}', $view);
         self::assertStringContainsString('if (!uploading || submittingAfterUpload) return;', $view);
         self::assertStringContainsString('if (!event.defaultPrevented) return;', $view);
         self::assertStringContainsString('submittingAfterUpload = false;', $view);

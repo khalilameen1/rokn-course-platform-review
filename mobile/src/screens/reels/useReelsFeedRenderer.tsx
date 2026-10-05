@@ -42,6 +42,9 @@ export const useReelsFeedRenderer = ({
   playbackSpeed,
   playbackBlocked,
   preloadNext,
+  nativePreloadMode = false,
+  nativePreloadPending = false,
+  nativePreloadOwner,
   positions,
   preview,
   previewCount,
@@ -87,6 +90,9 @@ export const useReelsFeedRenderer = ({
   playbackSpeed: number;
   playbackBlocked: boolean;
   preloadNext: boolean;
+  nativePreloadMode?: boolean;
+  nativePreloadPending?: boolean;
+  nativePreloadOwner?: string;
   positions: MutableRefObject<Record<string, number>>;
   preview: boolean;
   previewCount?: number;
@@ -139,12 +145,14 @@ export const useReelsFeedRenderer = ({
           frameWidth={frameWidth}
           isVisible={index === currentIndex && screenFocused}
           playbackBlocked={playbackBlocked}
+          nativePreloadOwner={nativePreloadOwner}
           shouldMountVideo={
             screenFocused &&
+            !nativePreloadPending &&
             Boolean(reel?.videoUrl.trim()) &&
             !signedSourceExpired &&
             (index === currentIndex ||
-              (preloadNext && index === currentIndex + 1))
+              (preloadNext && !nativePreloadMode && index === currentIndex + 1))
           }
           playbackSpeed={playbackSpeed}
           selectedQuality={selectedQuality}
@@ -233,6 +241,9 @@ export const useReelsFeedRenderer = ({
       playbackSpeed,
       playbackBlocked,
       preloadNext,
+      nativePreloadMode,
+      nativePreloadPending,
+      nativePreloadOwner,
       positions,
       preview,
       previewCount,

@@ -21,6 +21,10 @@ Route::get('/apple-app-site-association', [\App\Http\Controllers\AppAssociationC
     ->name('app-association.apple.root');
 
 Route::get('/', [\App\Http\Controllers\LandingPageController::class, 'index'])->name('landing');
+Route::get('/course-payment/{checkoutId}', \App\Http\Controllers\CourseBrowserPaymentController::class)
+    ->whereUuid('checkoutId')
+    ->middleware(['signed', 'throttle:60,1'])
+    ->name('course-payment.show');
 Route::get('/downloads/rokn-preview.apk', \App\Http\Controllers\PreviewAppDownloadController::class)
     ->name('app-download.preview');
 // Separate from /wallet, which is an installed-app link. The website uses

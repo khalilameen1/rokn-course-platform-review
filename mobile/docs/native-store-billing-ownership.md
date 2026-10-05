@@ -65,3 +65,29 @@ release and old-tail cleanup while a newer operation is still queued.
 
 These are local mocked-provider tests, not a real Play/App Store purchase or
 verification on a physical device. No store build or server deployment is implied.
+
+## Final gate — foreground browser recovery test boundary, 5 October 2026
+
+The external checkout branch uses the existing shared runtime/coordinator credit
+handoff; this check does not start or verify a native store purchase. The full
+`coinCheckoutForegroundRecovery.test.tsx` suite initially stopped before its
+single case because its partial navigation mock omitted the real container ref,
+reached through the runtime's playback-preference import graph. The fixture now
+exposes MIT core `CommonActions` and `createNavigationContainerRef`, as exported
+by the installed native navigation package. Focus, route and screen navigation
+doubles and the existing controlled recovery response remain unchanged.
+
+The actual runtime, wallet subscriber, coordinator and credit emitter stay
+under test. The case proves, at these mocked boundaries, no competing recovery
+while the provider flight is live, no premature wallet refresh, one deferred
+recovery and one refresh after settlement, no second checkout and no unintended
+navigation across another 60 seconds of fake time. All its assertions passed in
+`mobile/.cache/final-gate-20261005/mobile-checkout-foreground-navigation-final.log`;
+the import-only baseline is `mobile-checkout-foreground-navigation-reproduction.log`.
+Independent read-only review accepted this limited fixture correction and read
+the result without running tests. No coordinator, provider, runtime, server
+settlement or dashboard behavior changed to satisfy the fixture.
+
+This is not real Kashier/Google/Apple payment, browser callback or native device
+acceptance. The complete release gate remains open; no build, commit, push,
+deployment or store mutation was performed.

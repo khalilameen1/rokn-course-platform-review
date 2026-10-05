@@ -1,5 +1,11 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {ActivityIndicator, Pressable, StyleSheet, Text, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../ui/RasterImage';
 import {CourseLearningData, CourseFeedItem, VideoQuality} from './types';
 import VideoComponent from './VideoComponent';
@@ -29,6 +35,7 @@ interface FeedRowProps {
   isVisible: boolean;
   playbackBlocked: boolean;
   shouldMountVideo: boolean;
+  nativePreloadOwner?: string;
   playbackSpeed: number;
   selectedQuality: VideoQuality;
   saved: boolean;
@@ -66,6 +73,7 @@ const FeedRow = ({
   isVisible,
   playbackBlocked,
   shouldMountVideo,
+  nativePreloadOwner,
   playbackSpeed,
   selectedQuality,
   saved,
@@ -242,6 +250,7 @@ const FeedRow = ({
         {shouldMountVideo ? (
           <VideoComponent
             data={item.reel}
+            nativePreloadOwner={nativePreloadOwner}
             width={frameWidth}
             height={pageHeight}
             isVisible={isVisible}
@@ -289,12 +298,9 @@ const FeedRow = ({
               ) : (
                 <View
                   accessibilityLiveRegion="polite"
-                  accessibilityLabel="جارٍ تجهيز الفيديو"
+                  accessibilityLabel="جارٍ تحميل الفيديو"
                   style={styles.sourceLoader}>
                   <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.sourceLoaderText}>
-                    جارٍ تجهيز الفيديو
-                  </Text>
                 </View>
               ))}
           </View>
@@ -352,11 +358,6 @@ const styles = StyleSheet.create({
   sourceLoader: {
     alignItems: 'center',
     gap: 10,
-  },
-  sourceLoaderText: {
-    color: 'rgba(255,255,255,.75)',
-    fontFamily: Fonts.medium,
-    fontSize: 12,
   },
   sourceRetry: {
     alignItems: 'center',

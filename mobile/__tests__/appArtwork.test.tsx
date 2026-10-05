@@ -1,5 +1,5 @@
 import React from 'react';
-import {Image} from 'react-native';
+import {Image, StyleSheet} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {AppArtwork, levelArtworkKey} from '../src/components/ui/AppArtwork';
 import {AppArtworkProvider} from '../src/components/AppArtworkProvider';
@@ -103,5 +103,43 @@ describe('Dashboard artwork delivery', () => {
       'badge_mid',
       'badge_senior',
     ]);
+  });
+  it('delivers source identity and URL together, retiring default framing on a dashboard upload', async () => {
+    const shipped = 'https://rokn.test/coin-stack.png';
+    const uploaded = 'https://rokn.test/uploaded.png';
+    const tree = () => (
+      <AppArtworkProvider>
+        <AppArtwork
+          asset="coin_stack"
+          style={{width: 200, height: 104}}
+          defaultArtworkStyle={{height: 200}}
+          resizeMode="contain"
+        />
+      </AppArtworkProvider>
+    );
+    settings.mockResolvedValue({
+      artwork: {coin_stack: shipped},
+      artwork_defaults: {coin_stack: shipped},
+    });
+    await act(async () => {
+      renderer = TestRenderer.create(tree());
+    });
+    expect(
+      StyleSheet.flatten(renderer.root.findByType(Image).props.style).height,
+    ).toBe(200);
+    mockActive = false;
+    await act(async () => renderer.update(tree()));
+    settings.mockResolvedValue({
+      artwork: {coin_stack: uploaded},
+      artwork_defaults: {},
+    });
+    mockActive = true;
+    await act(async () => renderer.update(tree()));
+    expect(renderer.root.findByType(Image).props.source).toEqual({
+      uri: uploaded,
+    });
+    expect(
+      StyleSheet.flatten(renderer.root.findByType(Image).props.style).height,
+    ).toBe(104);
   });
 });

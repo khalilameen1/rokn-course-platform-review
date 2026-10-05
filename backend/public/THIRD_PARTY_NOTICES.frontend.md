@@ -4,6 +4,40 @@ This generated notice covers the compiled application bundle, the active legacy/
 Every retained public file is separately classified and hash-pinned by `resources/legal/frontend/public-asset-inventory.json`.
 Run `npm run notices:frontend` after changing frontend dependencies or legal metadata.
 
+## Uppy control-lock adaptation in Rokn upload form Source commit 3f1aca3d26157785030e2be20aa5d411b6a5ed66
+
+License: MIT (adapted fragment)
+Pinned source: https://github.com/transloadit/uppy/blob/3f1aca3d26157785030e2be20aa5d411b6a5ed66/packages/%40uppy/dashboard/src/Dashboard.tsx
+Distributed artifacts: public/admin/assets/js/course-studio-bunny-upload-form.js
+Modifications/provenance: disableInteractiveElements adapted to the two upload-selection controls. Other form, transport, claims and storage code is Rokn-owned; no Uppy package or transport is bundled.
+
+### Uppy MIT license
+
+Exact legal text source: `resources/legal/frontend/UPPY-CONTROL-LOCK-MIT.txt`
+
+~~~text
+The MIT License (MIT)
+
+Copyright (c) 2019 Transloadit (https://transloadit.com)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+~~~
 ## Apple App Store and Google Play badges Official English downloads retrieved 2026-09-10
 
 License: Brand-owned marketing assets; respective store marketing terms apply

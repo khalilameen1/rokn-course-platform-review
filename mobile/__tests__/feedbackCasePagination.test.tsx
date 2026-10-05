@@ -22,6 +22,7 @@ jest.mock('../src/constants/helpers', () => ({
 jest.mock('../src/services/learnerDraftFiles', () => ({
   learnerDraftFileIsReadable: async () => true,
   removeLearnerDraftFile: async () => undefined,
+  retainLearnerDraftFiles: async () => undefined,
 }));
 jest.mock('../src/screens/feedback/pickFeedbackScreenshot', () => ({
   pickFeedbackScreenshot: jest.fn(),

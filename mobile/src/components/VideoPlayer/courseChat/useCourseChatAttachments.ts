@@ -1,10 +1,11 @@
 import {useCallback, useEffect, useRef} from 'react';
-import type {Dispatch, SetStateAction} from 'react';
+import type {Dispatch, MutableRefObject, SetStateAction} from 'react';
 import * as DocumentPicker from 'expo-document-picker';
 import type {ChatAttachmentDraft} from '../types';
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
+  type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {
   cacheLearnerDraftFile,
@@ -12,6 +13,7 @@ import {
 } from '../../../services/learnerDraftFiles';
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
 import {secureRandomUuid} from '../../../utils/secureRandom';
+import {reportClientError} from '../../../services/operationalTelemetry';
 
 const CHAT_ATTACHMENT_MIME_TYPES = [
   'image/jpeg',
@@ -23,9 +25,19 @@ const CHAT_ATTACHMENT_MIME_TYPES = [
   'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 ];
 
+const discardPickedFiles = async (files: ChatAttachmentDraft[]) => {
+  await Promise.all(files.map(removeLearnerDraftFile)).catch((error: unknown) => {
+    void reportClientError(
+      error instanceof Error ? error : new Error('CHAT_DRAFT_CLEANUP_FAILED'),
+      {source: 'course_chat_attachment_cleanup'},
+    );
+  });
+};
+
 export const useCourseChatAttachments = ({
-  attachments,
-  courseId,
+  appIsActive,
+  attachmentsRef,
+  conversationScope,
   enabled,
   isSendInFlight,
   limit,
@@ -33,8 +45,9 @@ export const useCourseChatAttachments = ({
   setAttachments,
   visible,
 }: {
-  attachments: ChatAttachmentDraft[];
-  courseId: string;
+  appIsActive: boolean;
+  attachmentsRef: MutableRefObject<ChatAttachmentDraft[]>;
+  conversationScope: string;
   enabled: boolean;
   isSendInFlight: () => boolean;
   limit: number;
@@ -42,25 +55,51 @@ export const useCourseChatAttachments = ({
   setAttachments: Dispatch<SetStateAction<ChatAttachmentDraft[]>>;
   visible: boolean;
 }) => {
-  const pickerFlightRef = useRef(false);
-  const pickerGenerationRef = useRef(0);
-  const activeCourseRef = useRef(courseId);
-  const visibleRef = useRef(visible);
-  activeCourseRef.current = courseId;
-  visibleRef.current = visible;
+  const available = visible && enabled && limit > 0;
+  const visitRef = useRef({conversationScope, available, limit});
+  if (
+    visitRef.current.conversationScope !== conversationScope ||
+    visitRef.current.available !== available ||
+    visitRef.current.limit !== limit
+  ) visitRef.current = {conversationScope, available, limit};
+  const visit = visitRef.current;
+  // Native document selection temporarily backgrounds the app. Retire only
+  // pre-launch preparation on a foreground change, not the native selection.
+  const preparationRef = useRef({visit, appIsActive});
+  if (
+    preparationRef.current.visit !== visit ||
+    preparationRef.current.appIsActive !== appIsActive
+  ) preparationRef.current = {visit, appIsActive};
+  const preparation = preparationRef.current;
+  const mountedRef = useRef(false);
+  const pickerFlightRef = useRef<{
+    visit: typeof visit;
+    preparation: typeof preparation;
+    nativeStarted: boolean;
+  } | null>(null);
 
   useEffect(() => {
-    pickerGenerationRef.current += 1;
-    pickerFlightRef.current = false;
+    mountedRef.current = true;
     return () => {
-      pickerGenerationRef.current += 1;
+      mountedRef.current = false;
+      if (pickerFlightRef.current?.visit === visit)
+        pickerFlightRef.current = null;
     };
-  }, [courseId, visible]);
+  }, [visit]);
+  useEffect(() => {
+    const flight = pickerFlightRef.current;
+    if (flight && !flight.nativeStarted && flight.preparation !== preparation)
+      pickerFlightRef.current = null;
+  }, [preparation]);
 
   const pickAttachments = useCallback(async () => {
     if (
-      !enabled ||
-      attachments.length >= limit ||
+      !mountedRef.current ||
+      visitRef.current !== visit ||
+      preparationRef.current !== preparation ||
+      !preparation.appIsActive ||
+      !visit.available ||
+      attachmentsRef.current.length >= limit ||
       pickerFlightRef.current ||
       sending ||
       isSendInFlight()
@@ -68,19 +107,34 @@ export const useCourseChatAttachments = ({
       return;
     }
 
-    const pickerCourseId = courseId;
-    const pickerGeneration = pickerGenerationRef.current;
-    const ownsPicker = () =>
-      visibleRef.current &&
-      activeCourseRef.current === pickerCourseId &&
-      pickerGenerationRef.current === pickerGeneration;
+    const flight = {visit, preparation, nativeStarted: false};
+    pickerFlightRef.current = flight;
+    let boundary: AccountSessionBoundary | undefined;
+    const ownsPicker = () => {
+      if (
+        !mountedRef.current ||
+        visitRef.current !== visit ||
+        pickerFlightRef.current !== flight
+      ) return false;
+      try {
+        if (boundary) assertAccountSessionBoundary(boundary);
+        return true;
+      } catch {
+        return false;
+      }
+    };
     const selected: ChatAttachmentDraft[] = [];
     let retainedByComposer = false;
-    pickerFlightRef.current = true;
 
     try {
-      const boundary = await captureAccountSessionBoundary();
+      boundary = await captureAccountSessionBoundary();
       assertAccountSessionBoundary(boundary);
+      if (
+        !ownsPicker() ||
+        preparationRef.current !== preparation ||
+        isSendInFlight()
+      ) return;
+      flight.nativeStarted = true;
       const result = await DocumentPicker.getDocumentAsync({
         type: CHAT_ATTACHMENT_MIME_TYPES,
         multiple: true,
@@ -89,7 +143,7 @@ export const useCourseChatAttachments = ({
       assertAccountSessionBoundary(boundary);
       if (result.canceled || !ownsPicker()) return;
 
-      const remaining = Math.max(0, limit - attachments.length);
+      const remaining = Math.max(0, limit - attachmentsRef.current.length);
       for (const asset of result.assets.slice(0, remaining)) {
         const cached = await cacheLearnerDraftFile(
           'course_chat',
@@ -102,7 +156,6 @@ export const useCourseChatAttachments = ({
           8 * 1024 * 1024,
           boundary,
         );
-        assertAccountSessionBoundary(boundary);
         selected.push({
           uri: cached.uri,
           name: cached.fileName || asset.name,
@@ -110,22 +163,26 @@ export const useCourseChatAttachments = ({
           size: cached.size,
           uploadId: secureRandomUuid(),
         });
+        // Track the owned copy before checking for a departed account/visit,
+        // so a result made obsolete at this await is still cleaned up.
+        assertAccountSessionBoundary(boundary);
         if (!ownsPicker()) return;
       }
 
+      if (!ownsPicker()) return;
+      // Once native selection started, a recovery of an older sent turn may
+      // continue independently. It uses its own outbox, not this next-question
+      // composer. Controller send/retry remains gated until copying settles.
       retainedByComposer = true;
       setAttachments(current => {
         const kept = [...current, ...selected].slice(0, limit);
         const keptIds = new Set(kept.map(file => file.uploadId));
-        void Promise.all(
-          selected
-            .filter(file => !keptIds.has(file.uploadId))
-            .map(removeLearnerDraftFile),
-        );
+        void discardPickedFiles(selected.filter(file => !keptIds.has(file.uploadId)));
         return kept;
       });
     } catch (error: unknown) {
       if (
+        preparationRef.current.appIsActive &&
         ownsPicker() &&
         !(
           error instanceof Error &&
@@ -140,23 +197,26 @@ export const useCourseChatAttachments = ({
         );
       }
     } finally {
-      if (!retainedByComposer) {
-        await Promise.all(selected.map(removeLearnerDraftFile));
+      try {
+        if (!retainedByComposer)
+          await discardPickedFiles(selected);
+      } finally {
+        // An obsolete operation must never release the new visit's picker.
+        if (pickerFlightRef.current === flight) pickerFlightRef.current = null;
       }
-      if (ownsPicker()) pickerFlightRef.current = false;
     }
   }, [
-    attachments,
-    courseId,
-    enabled,
+    attachmentsRef,
     isSendInFlight,
     limit,
     sending,
     setAttachments,
+    visit,
+    preparation,
   ]);
 
   return {
     pickAttachments,
-    pickerIsActive: () => pickerFlightRef.current,
+    pickerIsActive: useCallback(() => Boolean(pickerFlightRef.current), []),
   };
 };

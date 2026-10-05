@@ -14,6 +14,10 @@ import {
   type PortfolioMediaOutboxEntry,
 } from './portfolioMediaOutbox';
 import {deliverPortfolioMedia} from './portfolioMediaDelivery';
+import {
+  createPortfolioUploadProgress,
+  type PortfolioUploadProgress,
+} from './portfolioUploadProgress';
 
 type PortfolioMediaSource = Pick<
   LearnerDraftFile,
@@ -30,13 +34,14 @@ type StagePortfolioMediaOptions = {
 type UploadPortfolioMediaOptions = {
   boundary: AccountSessionBoundary;
   entries: PortfolioMediaOutboxEntry[];
-  onProgress?: (completed: number, total: number) => void;
+  onProgress?: (progress: PortfolioUploadProgress) => void;
   onUploaded: (projectId: string, media: PortfolioMedia) => void;
 };
 
 export type PortfolioMediaUploadResult = {
   discardedFiles: number;
   interrupted: boolean;
+  paused?: boolean;
 };
 
 export const stagePortfolioMediaFiles = async ({
@@ -86,24 +91,37 @@ export const uploadPortfolioMediaFiles = async ({
   onProgress,
   onUploaded,
 }: UploadPortfolioMediaOptions): Promise<PortfolioMediaUploadResult> => {
+  assertAccountSessionBoundary(boundary);
   let discardedFiles = 0;
+  const progress = createPortfolioUploadProgress(
+    entries.map(entry => entry.file.size),
+    onProgress,
+  );
 
   for (const [index, entry] of entries.entries()) {
     assertAccountSessionBoundary(boundary);
-    const result = await deliverPortfolioMedia(entry, boundary);
+    const result = await deliverPortfolioMedia(entry, boundary, value =>
+      progress.transfer(index, value),
+    );
     assertAccountSessionBoundary(boundary);
     if (result.state === 'uploaded') {
       onUploaded(entry.projectId, result.media);
-      onProgress?.(index + 1, entries.length);
+      assertAccountSessionBoundary(boundary);
+      progress.settle(index, true);
       continue;
     }
     if (result.state === 'discarded_file') {
       discardedFiles += 1;
-      onProgress?.(index + 1, entries.length);
+      progress.settle(index, false);
       continue;
     }
-    return {discardedFiles, interrupted: true};
+    return {
+      discardedFiles,
+      interrupted: true,
+      ...(result.state === 'paused' ? {paused: true} : {}),
+    };
   }
 
+  assertAccountSessionBoundary(boundary);
   return {discardedFiles, interrupted: false};
 };

@@ -6,6 +6,7 @@ jest.mock('../src/constants/helpers', () => ({
 }));
 
 import {publicRequest} from '../src/constants/api';
+import {roknApiUrl} from '../src/constants/apiBaseUrl';
 import {
   abandonCoinCheckoutOrder,
   initiateCoinCheckout,
@@ -29,8 +30,88 @@ const paidCheckout = {
   package: {id: 2, name_ar: 'باقة سابقة', name_en: 'Older package', coins: 300},
 };
 
+const coursePaymentPage = (courseCheckoutId: string) => {
+  const url = new URL(`../../course-payment/${courseCheckoutId}`, roknApiUrl);
+  url.searchParams.set('order', '1');
+  url.searchParams.set('expires', '1900000000');
+  url.searchParams.set('signature', 'a'.repeat(64));
+  return url.href;
+};
+
 describe('coin checkout HTTP contract', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('requests the signed domain page for a bound browser course checkout', async () => {
+    const courseCheckoutId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const paymentUrl = coursePaymentPage(courseCheckoutId);
+    (publicRequest.post as jest.Mock).mockResolvedValueOnce({
+      data: {
+        data: {
+          checkout_state: 'created',
+          payment_url: paymentUrl,
+          course_checkout_id: courseCheckoutId,
+          order_ref: 'PKG-PAYABLE-01',
+          idempotency_key: request.idempotencyKey,
+        },
+      },
+    });
+    await expect(
+      initiateCoinCheckout(
+        {...request, courseCheckoutId, browser: true},
+        boundary,
+      ),
+    ).resolves.toMatchObject({state: 'payable', paymentUrl});
+    expect(publicRequest.post).toHaveBeenCalledWith(
+      'payment/initiate',
+      expect.objectContaining({
+        course_checkout_id: courseCheckoutId,
+        checkout_surface: 'browser',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects an unrelated or raw gateway page for a browser course request', async () => {
+    const courseCheckoutId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    (publicRequest.post as jest.Mock).mockResolvedValueOnce({
+      data: {
+        data: {
+          payment_url: 'https://checkout.kashier.io/session',
+          course_checkout_id: courseCheckoutId,
+          order_ref: 'PKG-PAYABLE-01',
+          idempotency_key: request.idempotencyKey,
+        },
+      },
+    });
+    await expect(
+      initiateCoinCheckout(
+        {...request, courseCheckoutId, browser: true},
+        boundary,
+      ),
+    ).rejects.toThrow('PAYMENT_SESSION_CONTRACT_INVALID');
+  });
+
+  it('rejects a signed domain page bound to a different course checkout', async () => {
+    const courseCheckoutId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    (publicRequest.post as jest.Mock).mockResolvedValueOnce({
+      data: {
+        data: {
+          payment_url: coursePaymentPage(
+            'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+          ),
+          course_checkout_id: courseCheckoutId,
+          order_ref: 'PKG-PAYABLE-01',
+          idempotency_key: request.idempotencyKey,
+        },
+      },
+    });
+    await expect(
+      initiateCoinCheckout(
+        {...request, courseCheckoutId, browser: true},
+        boundary,
+      ),
+    ).rejects.toThrow('PAYMENT_SESSION_CONTRACT_INVALID');
+  });
 
   it('accepts the backend paid replay without a URL or a new intent key', async () => {
     (publicRequest.post as jest.Mock).mockResolvedValueOnce({
@@ -47,12 +128,14 @@ describe('coin checkout HTTP contract', () => {
 
   it('keeps a payable initiation distinct from a settled payment', async () => {
     (publicRequest.post as jest.Mock).mockResolvedValueOnce({
-      data: {data: {
-        checkout_state: 'created',
-        payment_url: 'https://checkout.kashier.io/session',
-        order_ref: 'PKG-PAYABLE-01',
-        idempotency_key: request.idempotencyKey,
-      }},
+      data: {
+        data: {
+          checkout_state: 'created',
+          payment_url: 'https://checkout.kashier.io/session',
+          order_ref: 'PKG-PAYABLE-01',
+          idempotency_key: request.idempotencyKey,
+        },
+      },
     });
 
     await expect(initiateCoinCheckout(request, boundary)).resolves.toEqual({
@@ -73,15 +156,18 @@ describe('coin checkout HTTP contract', () => {
     {coins_added: 1.5},
     {coins_added: true},
     {coins_added: Number.MAX_SAFE_INTEGER + 1},
-  ])('rejects a malformed or financially ineffective paid response %p', async fields => {
-    (publicRequest.post as jest.Mock).mockResolvedValueOnce({
-      data: {data: {...paidCheckout, ...fields}},
-    });
+  ])(
+    'rejects a malformed or financially ineffective paid response %p',
+    async fields => {
+      (publicRequest.post as jest.Mock).mockResolvedValueOnce({
+        data: {data: {...paidCheckout, ...fields}},
+      });
 
-    await expect(initiateCoinCheckout(request, boundary)).rejects.toThrow(
-      'PAYMENT_SESSION_CONTRACT_INVALID',
-    );
-  });
+      await expect(initiateCoinCheckout(request, boundary)).rejects.toThrow(
+        'PAYMENT_SESSION_CONTRACT_INVALID',
+      );
+    },
+  );
 
   it('retires an orphaned local attempt when the server has no order', async () => {
     (publicRequest.post as jest.Mock).mockRejectedValueOnce({

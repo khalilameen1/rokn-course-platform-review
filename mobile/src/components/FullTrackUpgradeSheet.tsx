@@ -31,7 +31,6 @@ type Props = {
   requiredFeature?: CourseCheckoutFeature;
   quotaExhausted?: boolean;
 };
-const rank: Record<string, number> = {basic: 0, guided: 1, mentor: 2};
 
 export default function FullTrackUpgradeSheet({
   visible,
@@ -64,27 +63,20 @@ export default function FullTrackUpgradeSheet({
         const boundary = await captureAccountSessionBoundary();
         const [course, upgrade] = await Promise.all([
           getCourseDetails(courseId),
-          getFullTrackUpgradeQuote(courseId),
+          getFullTrackUpgradeQuote(courseId, {requiredFeature}),
         ]);
         assertAccountSessionBoundary(boundary);
         if (token !== generation.current) return;
-        if (upgrade.alreadyUpgraded) {
+        if (upgrade.alreadyUpgraded || upgrade.upgradeAvailable === false) {
           // Owning the highest tier does not replenish an exhausted allowance.
           // Only a completed checkout may signal a successful upgrade.
           setUnavailable(true);
           return;
         }
-        const minimum = rank[upgrade.targetPlanCode || ''];
-        const available = course.accessPlans.filter(
-          plan =>
-            minimum !== undefined &&
-            rank[plan.code] >= minimum &&
-            (requiredFeature !== 'chat' ||
-              (plan.chatEnabled && plan.chatMessageLimit > 0)) &&
-            (requiredFeature !== 'project_discussion' ||
-              (plan.projectsEnabled !== false &&
-                plan.projectFollowupEnabled === true &&
-                (plan.projectFollowupMessageLimit || 0) > 0)),
+        if (!Array.isArray(upgrade.availablePlanCodes))
+          throw new Error('COURSE_UPGRADE_AVAILABILITY_MISSING');
+        const available = course.accessPlans.filter(plan =>
+          upgrade.availablePlanCodes!.includes(plan.code),
         );
         if (!available.length) {
           setUnavailable(true);

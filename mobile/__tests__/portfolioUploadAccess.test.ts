@@ -116,4 +116,56 @@ describe('portfolio storage entitlement preflight', () => {
       mockPost.mock.invocationCallOrder[0],
     );
   });
+
+  it('forwards Axios transfer events, distinguishes saving, and drops late callbacks', async () => {
+    mockGet.mockResolvedValue({data: {data: {can_upload: true}}});
+    const observer = jest.fn();
+    let emit!: (event: {loaded: number; total?: number}) => void;
+    let resolve!: (response: unknown) => void;
+    mockPost.mockImplementation((_url, _body, options) => {
+      emit = options.onUploadProgress;
+      return new Promise(next => {
+        resolve = next;
+      });
+    });
+    const upload = appendPortfolioMedia(
+      '1',
+      {uri: 'file:///work.jpg', type: 'image/jpeg', size: 80},
+      'request',
+      mockBoundary,
+      observer,
+    );
+    for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+    expect(observer).toHaveBeenLastCalledWith({
+      loaded: 0,
+      total: null,
+      phase: 'uploading',
+    });
+    observer.mockClear();
+    emit({loaded: 50, total: 100});
+    expect(observer).toHaveBeenLastCalledWith({
+      loaded: 50,
+      total: 100,
+      phase: 'uploading',
+    });
+    emit({loaded: 100, total: 100});
+    expect(observer).toHaveBeenLastCalledWith({
+      loaded: 100,
+      total: 100,
+      phase: 'saving',
+    });
+    resolve({
+      data: {
+        data: {
+          id: 9,
+          file_type: 'image',
+          status: 'ready',
+          image_url: 'https://media.example/image.jpg',
+        },
+      },
+    });
+    await expect(upload).resolves.toMatchObject({id: '9'});
+    emit({loaded: 10, total: 100});
+    expect(observer).toHaveBeenCalledTimes(2);
+  });
 });

@@ -2,7 +2,15 @@ import React from 'react';
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../../../navigation/types';
 import {openGuestLogin} from '../../../navigation/journeyNavigation';
-import {ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../../../components/ui/RasterImage';
 import Video from 'react-native-video';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
@@ -22,6 +30,7 @@ import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import type {PortfolioGalleryController} from './usePortfolioGalleryController';
 import {galleryStyles as styles} from './galleryStyles';
 import {PortfolioProjectGrid} from './PortfolioProjectGrid';
+import {PortfolioUploadStatus} from './PortfolioUploadStatus';
 
 type DetailActionsController = Pick<
   PortfolioGalleryController,
@@ -32,6 +41,17 @@ type DetailActionsController = Pick<
   | 'finalizeSelectedProject'
   | 'onSharePortfolio'
   | 'saving'
+  | 'mediaUploadProgress'
+  | 'canPauseSelectedUpload'
+  | 'pausingSelectedUpload'
+  | 'pauseSelectedUpload'
+  | 'preparingSelectedUpload'
+  | 'pendingUploadsReady'
+  | 'pendingUploadsError'
+  | 'hasPendingUploads'
+  | 'selectedUploadPaused'
+  | 'retryPendingUploads'
+  | 'resumeSelectedUploads'
   | 'selectedAction'
   | 'selectedMediaSlots'
 >;
@@ -51,32 +71,81 @@ export const PortfolioDetailActions = ({
     finalizeSelectedProject,
     onSharePortfolio,
     saving,
+    mediaUploadProgress,
+    canPauseSelectedUpload,
+    pausingSelectedUpload,
+    pauseSelectedUpload,
+    preparingSelectedUpload,
+    pendingUploadsReady,
+    pendingUploadsError,
+    hasPendingUploads,
+    selectedUploadPaused,
+    retryPendingUploads,
+    resumeSelectedUploads,
     selectedAction,
     selectedMediaSlots,
   } = controller;
-  const primaryAction =
-    selectedAction === 'complete'
-      ? {label: 'إتمام المشروع', onPress: finalizeSelectedProject}
-      : selectedAction === 'share' && onSharePortfolio
-      ? {label: 'مشاركة البورتفوليو', onPress: onSharePortfolio}
-      : null;
-  const mediaDisabled = saving || selectedMediaSlots === 0;
+  const primaryAction = pendingUploadsError
+    ? {label: 'إعادة المحاولة', onPress: retryPendingUploads}
+    : !pendingUploadsReady
+    ? null
+    : hasPendingUploads
+    ? {label: 'استكمال الرفع', onPress: resumeSelectedUploads}
+    : selectedAction === 'complete'
+    ? {label: 'إتمام المشروع', onPress: finalizeSelectedProject}
+    : selectedAction === 'share' && onSharePortfolio
+    ? {label: 'مشاركة البورتفوليو', onPress: onSharePortfolio}
+    : null;
+  const actionsBusy = saving || preparingSelectedUpload;
+  const mediaDisabled =
+    actionsBusy ||
+    !pendingUploadsReady ||
+    hasPendingUploads ||
+    selectedMediaSlots === 0;
 
   return (
     <View style={styles.detailActions}>
+      {selectedUploadPaused && !saving && (
+        <Text style={styles.detailSecondaryLabel}>الرفع متوقف</Text>
+      )}
+      {saving && mediaUploadProgress && (
+        <PortfolioUploadStatus progress={mediaUploadProgress} />
+      )}
+      {(canPauseSelectedUpload || pausingSelectedUpload) && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            pausingSelectedUpload ? 'جار الإيقاف' : 'إيقاف الرفع'
+          }
+          disabled={pausingSelectedUpload}
+          accessibilityState={{
+            busy: pausingSelectedUpload,
+            disabled: pausingSelectedUpload,
+          }}
+          onPress={() => void pauseSelectedUpload()}
+          style={({pressed}) => [
+            styles.detailSecondaryAction,
+            pausingSelectedUpload && styles.detailActionDisabled,
+            pressed && styles.detailActionPressed,
+          ]}>
+          <Text style={styles.detailSecondaryLabel}>
+            {pausingSelectedUpload ? 'جار الإيقاف' : 'إيقاف الرفع'}
+          </Text>
+        </Pressable>
+      )}
       {primaryAction && (
         <Pressable
           accessibilityLabel={primaryAction.label}
           accessibilityRole="button"
-          accessibilityState={{busy: saving, disabled: saving}}
-          disabled={saving}
+          accessibilityState={{busy: actionsBusy, disabled: actionsBusy}}
+          disabled={actionsBusy}
           onPress={() => void primaryAction.onPress()}
           style={({pressed}) => [
             styles.detailPrimaryAction,
-            saving && styles.detailActionDisabled,
+            actionsBusy && styles.detailActionDisabled,
             pressed && styles.detailActionPressed,
           ]}>
-          {saving ? (
+          {actionsBusy ? (
             <ActivityIndicator color={Palette.text} size="small" />
           ) : (
             <Text style={styles.detailPrimaryLabel}>{primaryAction.label}</Text>
@@ -87,7 +156,7 @@ export const PortfolioDetailActions = ({
         <Pressable
           accessibilityLabel="إضافة صور أو فيديو"
           accessibilityRole="button"
-          accessibilityState={{busy: saving, disabled: mediaDisabled}}
+          accessibilityState={{busy: actionsBusy, disabled: mediaDisabled}}
           disabled={mediaDisabled}
           onPress={addSelectedMedia}
           style={({pressed}) => [
@@ -96,7 +165,7 @@ export const PortfolioDetailActions = ({
             mediaDisabled && styles.detailActionDisabled,
             pressed && styles.detailActionPressed,
           ]}>
-          {saving ? (
+          {actionsBusy ? (
             <ActivityIndicator color={Palette.textMuted} size="small" />
           ) : (
             <Text style={styles.detailSecondaryLabel}>إضافة صور أو فيديو</Text>
@@ -105,13 +174,13 @@ export const PortfolioDetailActions = ({
         <Pressable
           accessibilityLabel="تعديل المشروع"
           accessibilityRole="button"
-          accessibilityState={{disabled: saving}}
-          disabled={saving}
+          accessibilityState={{disabled: actionsBusy}}
+          disabled={actionsBusy}
           onPress={beginEdit}
           style={({pressed}) => [
             styles.detailSecondaryAction,
             fontScale >= 1.3 && styles.detailSecondaryActionStacked,
-            saving && styles.detailActionDisabled,
+            actionsBusy && styles.detailActionDisabled,
             pressed && styles.detailActionPressed,
           ]}>
           <Text style={styles.detailSecondaryLabel}>تعديل</Text>
@@ -121,30 +190,35 @@ export const PortfolioDetailActions = ({
         <Pressable
           accessibilityLabel="حذف المشروع"
           accessibilityRole="button"
-          accessibilityState={{busy: saving, disabled: saving}}
-          disabled={saving}
+          accessibilityState={{busy: actionsBusy, disabled: actionsBusy}}
+          disabled={actionsBusy}
           onPress={confirmDeleteSelectedProject}
           style={({pressed}) => [
             styles.detailUtilityAction,
-            saving && styles.detailActionDisabled,
+            actionsBusy && styles.detailActionDisabled,
             pressed && styles.detailActionPressed,
           ]}>
-          {saving ? (
+          {actionsBusy ? (
             <ActivityIndicator color={Palette.danger} size="small" />
           ) : (
             <Text style={styles.detailDeleteLabel}>حذف المشروع</Text>
           )}
         </Pressable>
-        <Pressable
-          accessibilityLabel="إغلاق تفاصيل المشروع"
-          accessibilityRole="button"
-          onPress={closeProject}
-          style={({pressed}) => [
-            styles.detailUtilityAction,
-            pressed && styles.detailActionPressed,
-          ]}>
-          <Text style={styles.detailCloseLabel}>إغلاق</Text>
-        </Pressable>
+        {!canPauseSelectedUpload && !pausingSelectedUpload && (
+          <Pressable
+            accessibilityLabel="إغلاق تفاصيل المشروع"
+            accessibilityRole="button"
+            accessibilityState={{disabled: preparingSelectedUpload}}
+            disabled={preparingSelectedUpload}
+            onPress={closeProject}
+            style={({pressed}) => [
+              styles.detailUtilityAction,
+              preparingSelectedUpload && styles.detailActionDisabled,
+              pressed && styles.detailActionPressed,
+            ]}>
+            <Text style={styles.detailCloseLabel}>إغلاق</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -167,6 +241,8 @@ export const PortfolioGalleryView = ({
     chooseSourceProject,
     clearSelectedSourceProject,
     closeAddProject,
+    canPauseCreateUpload,
+    pausingCreateUpload,
     closeProject,
     detailLoading,
     draftCover,
@@ -646,21 +722,20 @@ export const PortfolioGalleryView = ({
                   title="إضافة للبورتفوليو"
                 />
                 <Button
-                  disable={saving}
+                  disable={
+                    (saving && !canPauseCreateUpload) || pausingCreateUpload
+                  }
                   onPress={closeAddProject}
-                  title="إلغاء"
+                  title={
+                    pausingCreateUpload
+                      ? 'جار الإيقاف'
+                      : canPauseCreateUpload
+                      ? 'إيقاف الرفع'
+                      : 'إلغاء'
+                  }
                   useGradient={false}
                 />
-                {saving && (
-                  <View style={styles.savingIndicator}>
-                    <ActivityIndicator color={Palette.primary} />
-                    {uploadProgress ? (
-                      <Text style={styles.uploadProgressText}>
-                        رفع {uploadProgress.completed} من {uploadProgress.total}
-                      </Text>
-                    ) : null}
-                  </View>
-                )}
+                {saving && <PortfolioUploadStatus progress={uploadProgress} />}
                 {draftReady && draftSaveError && !saving && (
                   <Text accessibilityRole="alert" style={styles.draftError}>
                     لم تُحفظ المسودة على الجهاز

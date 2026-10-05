@@ -84,7 +84,7 @@
                                             <td><a href="{{ route('admin.users.show', $user->id) }}" class="user-names"><strong>#{{ $user->id }}</strong></a></td>
                                             <td>
                                                 <div class="user-data">
-                                                    <img src="{{ $user->image ? $user->image : '/images/avatar/customer_blank.png' }}" alt="{{ $user->name }}" class="user-avatar">
+                                                    <img src="{{ $user->profile_image_url ?: '/images/avatar/customer_blank.png' }}" alt="{{ $user->name }}" class="user-avatar">
                                                     <div>
                                                         <a href="{{ route('admin.users.show', $user->id) }}" class="user-names">{{ $user->name }}</a>
                                                         <small class="d-block text-muted user-email">{{ $user->email }}</small>

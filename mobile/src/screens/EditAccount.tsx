@@ -1,7 +1,15 @@
-import {useNavigation} from '@react-navigation/native';
+import {useIsFocused, useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../navigation/types';
-import React, {useEffect, useRef, useState} from 'react';
-import {Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../components/ui/RasterImage';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {useDispatch, useSelector} from 'react-redux';
@@ -36,11 +44,13 @@ import {asRecord, learnerErrorMessage} from '../utils/errorPayload';
 import {
   cacheLearnerDraftFile,
   removeLearnerDraftFile,
+  type LearnerDraftFile,
 } from '../services/learnerDraftFiles';
 import {secureRandomUuid} from '../utils/secureRandom';
 import {showMediaPickerFailure} from '../services/mediaPickerErrors';
 import {DefaultAvatar} from '../components/ui/DefaultAvatar';
 import {settleWithin} from '../utils/settleWithin';
+import {useAppForegroundState} from '../hooks/useAppActiveState';
 
 const discardAvatar = (file: Parameters<typeof removeLearnerDraftFile>[0]) => {
   void removeLearnerDraftFile(file).catch(() => undefined);
@@ -48,10 +58,13 @@ const discardAvatar = (file: Parameters<typeof removeLearnerDraftFile>[0]) => {
 
 export default function EditAccount() {
   const navigation = useNavigation<RootNavigation>();
+  const focused = useIsFocused();
+  const foreground = useAppForegroundState();
   const dispatch = useDispatch();
   const storedUser = useSelector((state: RootState) => state.auth.userData);
   const user = extractUserProfile(storedUser);
-  const hasStoredToken = Boolean(extractApiToken(storedUser));
+  const accountToken = extractApiToken(storedUser);
+  const hasStoredToken = Boolean(accountToken);
   const identityKey = sessionIdentityKey(storedUser);
   const [name, setName] = useState(user.name ?? '');
   const [portfolioHeadline, setPortfolioHeadline] = useState(
@@ -63,9 +76,6 @@ export default function EditAccount() {
   const storedAvatar = user.avatar || user.profile_image;
   const [avatar, setAvatar] = useState(storedAvatar || '');
   const [failedAvatarUri, setFailedAvatarUri] = useState<string>();
-  const [avatarUpload, setAvatarUpload] = useState<
-    {uri: string; type?: string; fileName?: string; size?: number} | undefined
-  >();
   const [profileRevision, setProfileRevision] = useState(0);
   const [serverSession, setServerSession] = useState<boolean | null>(null);
   const [hydrationState, setHydrationState] = useState<
@@ -73,6 +83,7 @@ export default function EditAccount() {
   >('loading');
   const [reloadProfile, setReloadProfile] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [preparingAvatar, setPreparingAvatar] = useState(false);
   const normalizedName = name.trim().replace(/\s+/g, ' ');
   const normalizedPortfolioHeadline = portfolioHeadline
     .trim()
@@ -80,13 +91,39 @@ export default function EditAccount() {
   const validName = Array.from(normalizedName).length >= 2;
   const mountedRef = useRef(true);
   const saveFlightRef = useRef(false);
-  const pickerFlightRef = useRef(false);
-  const identityRef = useRef(identityKey);
-  const avatarUploadRef = useRef(avatarUpload);
-  avatarUploadRef.current = avatarUpload;
+  // Keep one physical native picker/copy flight even after navigating away.
+  // A new focus visit may not adopt a result belonging to the previous visit.
+  const pickerFlightRef = useRef<symbol | null>(null);
+  const editorVisit = useMemo(
+    () => ({identityKey, accountToken, focused}),
+    [identityKey, accountToken, focused],
+  );
+  const editorVisitRef = useRef(editorVisit);
+  editorVisitRef.current = editorVisit;
+  // A native gallery temporarily backgrounds the app. It owns the editor visit,
+  // not this narrower owner of save alerts and navigation.
+  const savePresentationVisit = useMemo(
+    () => ({editorVisit, foreground}),
+    [editorVisit, foreground],
+  );
+  const savePresentationVisitRef = useRef(savePresentationVisit);
+  savePresentationVisitRef.current = savePresentationVisit;
+  const identityRef = useRef({identityKey, accountToken});
+  const avatarUploadRef = useRef<LearnerDraftFile | undefined>(undefined);
   const profileRequestRef = useRef<{fingerprint: string; id: string} | null>(
     null,
   );
+  const profileBaselineRef = useRef({
+    identityKey,
+    accountToken,
+    name: user.name ?? '',
+    portfolioHeadline:
+      typeof user.portfolio_headline === 'string'
+        ? user.portfolio_headline
+        : '',
+    avatar: storedAvatar || '',
+    profileRevision: Math.max(0, Number(user.profile_revision) || 0),
+  });
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -98,23 +135,40 @@ export default function EditAccount() {
   }, []);
 
   useEffect(() => {
-    if (identityRef.current === identityKey) return;
-    identityRef.current = identityKey;
+    if (
+      identityRef.current.identityKey === identityKey &&
+      identityRef.current.accountToken === accountToken
+    )
+      return;
+    identityRef.current = {identityKey, accountToken};
     const staleDraft = avatarUploadRef.current;
     avatarUploadRef.current = undefined;
-    setAvatarUpload(undefined);
     profileRequestRef.current = null;
-    setName('');
-    setPortfolioHeadline('');
-    setEmail('');
-    setAvatar('');
+    const nextUser = extractUserProfile(storedUser);
+    const nextBaseline = {
+      identityKey,
+      accountToken,
+      name: nextUser.name ?? '',
+      portfolioHeadline:
+        typeof nextUser.portfolio_headline === 'string'
+          ? nextUser.portfolio_headline
+          : '',
+      avatar: nextUser.avatar || nextUser.profile_image || '',
+      profileRevision: Math.max(0, Number(nextUser.profile_revision) || 0),
+    };
+    setName(nextBaseline.name);
+    setPortfolioHeadline(nextBaseline.portfolioHeadline);
+    setEmail(nextUser.email ?? '');
+    setAvatar(nextBaseline.avatar);
     setProfileRevision(0);
     setServerSession(null);
+    profileBaselineRef.current = nextBaseline;
     discardAvatar(staleDraft);
-  }, [identityKey]);
+  }, [identityKey, accountToken, storedUser]);
 
   useEffect(() => {
     let active = true;
+    const readRevision = profileBaselineRef.current.profileRevision;
     void (async () => {
       if (active) setHydrationState('loading');
       if (!hasStoredToken) {
@@ -135,11 +189,24 @@ export default function EditAccount() {
         reason => ({status: 'rejected' as const, reason}),
       );
       assertAccountSessionBoundary(boundary);
-      if (!active) {
+      if (
+        !active ||
+        profileBaselineRef.current.profileRevision > readRevision
+      ) {
+        // A newer canonical commit already unlocked this editor. Even an
+        // equal-revision GET must not replay over work typed after that commit.
         return;
       }
       if (active && profileResult.status === 'fulfilled') {
         const profile = profileResult.value;
+        profileBaselineRef.current = {
+          identityKey,
+          accountToken,
+          name: profile.name,
+          portfolioHeadline: profile.portfolioHeadline,
+          avatar: profile.avatar || '',
+          profileRevision: profile.profileRevision,
+        };
         setName(profile.name);
         setPortfolioHeadline(profile.portfolioHeadline);
         setEmail(profile.email);
@@ -152,39 +219,88 @@ export default function EditAccount() {
         );
       }
     })().catch(() => {
-      if (active) setHydrationState('error');
+      if (active && profileBaselineRef.current.profileRevision <= readRevision)
+        setHydrationState('error');
     });
     return () => {
       active = false;
     };
-  }, [hasStoredToken, identityKey, reloadProfile]);
+  }, [hasStoredToken, identityKey, accountToken, reloadProfile]);
+
+  useEffect(() => {
+    const baseline = profileBaselineRef.current;
+    const current = peekSecureSession();
+    const sharedProfile = extractUserProfile(storedUser);
+    const committedRevision = Math.max(
+      0,
+      Number(sharedProfile.profile_revision) || 0,
+    );
+    if (
+      baseline.identityKey !== identityKey ||
+      baseline.accountToken !== accountToken ||
+      committedRevision <= baseline.profileRevision ||
+      !current.ready ||
+      sessionIdentityKey(current.session) !== identityKey ||
+      extractApiToken(current.session) !== accountToken
+    )
+      return;
+    const committedUser = extractUserProfile(current.session);
+    if (Number(committedUser.profile_revision) !== committedRevision) return;
+    const next = {
+      identityKey,
+      accountToken,
+      name: committedUser.name ?? '',
+      portfolioHeadline:
+        typeof committedUser.portfolio_headline === 'string'
+          ? committedUser.portfolio_headline
+          : '',
+      avatar: committedUser.avatar || committedUser.profile_image || '',
+      profileRevision: committedRevision,
+    };
+    // Follow the existing committed account snapshot, not a second profile
+    // cache. Merge only untouched fields; a reopened editor may hold new work.
+    setName(value => (value === baseline.name ? next.name : value));
+    setPortfolioHeadline(value =>
+      value === baseline.portfolioHeadline ? next.portfolioHeadline : value,
+    );
+    if (!avatarUploadRef.current) setAvatar(next.avatar);
+    setEmail(committedUser.email ?? '');
+    setProfileRevision(next.profileRevision);
+    profileBaselineRef.current = next;
+    setServerSession(true);
+    setHydrationState('ready');
+  }, [storedUser, identityKey, accountToken]);
 
   const chooseAvatar = async () => {
     if (
+      !mountedRef.current ||
+      !editorVisit.focused ||
+      editorVisitRef.current !== editorVisit ||
       serverSession !== true ||
       hydrationState !== 'ready' ||
       pickerFlightRef.current ||
       saveFlightRef.current
     )
       return;
-    pickerFlightRef.current = true;
-    let cachedSelection:
-      | {uri: string; type?: string; fileName?: string; size?: number}
-      | undefined;
+    const token = Symbol('account-avatar-preparation');
+    pickerFlightRef.current = token;
+    setPreparingAvatar(true);
+    const ownsSelection = () =>
+      mountedRef.current &&
+      editorVisitRef.current === editorVisit &&
+      pickerFlightRef.current === token;
+    let cachedSelection: LearnerDraftFile | undefined;
     try {
       const pickerBoundary = await captureAccountSessionBoundary();
       assertAccountSessionBoundary(pickerBoundary);
+      if (!ownsSelection()) return;
       const result = await launchImageLibrary({
         mediaType: 'photo',
         selectionLimit: 1,
         quality: 0.8,
       });
       assertAccountSessionBoundary(pickerBoundary);
-      if (!mountedRef.current) return;
-      if (result.errorCode === 'permission') {
-        showMediaPickerFailure(result.errorCode);
-        return;
-      }
+      if (!ownsSelection() || result.didCancel) return;
       if (result.errorCode) {
         showMediaPickerFailure(result.errorCode);
         return;
@@ -208,14 +324,15 @@ export default function EditAccount() {
         );
         cachedSelection = cached;
         assertAccountSessionBoundary(pickerBoundary);
-        if (!mountedRef.current) {
+        if (!ownsSelection()) {
           discardAvatar(cached);
           cachedSelection = undefined;
           return;
         }
-        const previous = avatarUpload;
+        const previous = avatarUploadRef.current;
+        // Transfer file ownership before React renders or saving is unlocked.
+        avatarUploadRef.current = cached;
         setAvatar(cached.uri);
-        setAvatarUpload(cached);
         cachedSelection = undefined;
         profileRequestRef.current = null;
         discardAvatar(previous);
@@ -227,7 +344,7 @@ export default function EditAccount() {
         error.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
       )
         return;
-      if (mountedRef.current) {
+      if (ownsSelection()) {
         showMediaPickerFailure(
           typeof error === 'object' && error && 'errorCode' in error
             ? String(error.errorCode)
@@ -235,12 +352,24 @@ export default function EditAccount() {
         );
       }
     } finally {
-      pickerFlightRef.current = false;
+      if (pickerFlightRef.current === token) {
+        pickerFlightRef.current = null;
+        if (mountedRef.current) setPreparingAvatar(false);
+      }
     }
   };
 
   const save = async () => {
+    const currentSession = peekSecureSession();
     if (
+      !mountedRef.current ||
+      !editorVisit.focused ||
+      !foreground ||
+      editorVisitRef.current !== editorVisit ||
+      savePresentationVisitRef.current !== savePresentationVisit ||
+      !currentSession.ready ||
+      sessionIdentityKey(currentSession.session) !== identityKey ||
+      extractApiToken(currentSession.session) !== accountToken ||
       serverSession !== true ||
       hydrationState !== 'ready' ||
       !validName ||
@@ -248,14 +377,54 @@ export default function EditAccount() {
       saveFlightRef.current
     )
       return;
+    const selectedAvatar = avatarUploadRef.current;
     saveFlightRef.current = true;
     setSaving(true);
+    const ownsPresentation = () =>
+      mountedRef.current &&
+      savePresentationVisitRef.current === savePresentationVisit;
+    const sameEditorAccount = () =>
+      mountedRef.current &&
+      editorVisitRef.current.identityKey === identityKey &&
+      editorVisitRef.current.accountToken === accountToken;
     let remoteProfileSaved = false;
     let sessionAtStart: unknown;
+    let remoteName = normalizedName;
+    let remotePortfolioHeadline = normalizedPortfolioHeadline;
+    let remoteAvatar = storedAvatar;
+    let remoteProfileRevision = profileRevision;
+    // Saving is an accepted account intent, not a disposable focus effect.
+    // Settling its canonical form is safe while controls remain flight-locked;
+    // navigation and alerts still belong only to the originating focus visit.
+    const applyCommittedForm = () => {
+      if (!sameEditorAccount()) return;
+      profileBaselineRef.current = {
+        identityKey,
+        accountToken,
+        name: remoteName,
+        portfolioHeadline: remotePortfolioHeadline,
+        avatar: remoteAvatar || '',
+        profileRevision: remoteProfileRevision,
+      };
+      setName(remoteName);
+      setPortfolioHeadline(remotePortfolioHeadline);
+      setAvatar(remoteAvatar || '');
+      setProfileRevision(remoteProfileRevision);
+    };
+    const releaseSelectedAvatar = () => {
+      discardAvatar(selectedAvatar);
+      if (avatarUploadRef.current === selectedAvatar)
+        avatarUploadRef.current = undefined;
+    };
     try {
       const accountBoundary = await captureAccountSessionBoundary();
       sessionAtStart = await getItem(AsyncKeys.USER_DATA);
       assertAccountSessionBoundary(accountBoundary);
+      if (
+        sessionIdentityKey(sessionAtStart) !== identityKey ||
+        extractApiToken(sessionAtStart) !== accountToken
+      )
+        throw new Error('ACCOUNT_CHANGED_DURING_REQUEST');
       const ownerAtStart = extractUserProfile(sessionAtStart);
       const expectedOwner = String(
         ownerAtStart.id ?? ownerAtStart.user_id ?? '',
@@ -263,17 +432,13 @@ export default function EditAccount() {
       if (!expectedOwner) {
         throw new Error('PROFILE_SESSION_OWNER_UNAVAILABLE');
       }
-      let remoteName = normalizedName;
-      let remotePortfolioHeadline = normalizedPortfolioHeadline;
-      let remoteAvatar = storedAvatar;
-      let remoteProfileRevision = profileRevision;
       if (serverSession) {
         assertAccountSessionBoundary(accountBoundary);
         const requestFingerprint = JSON.stringify([
           normalizedName,
           normalizedPortfolioHeadline,
-          avatarUpload?.uri || '',
-          avatarUpload?.size || 0,
+          selectedAvatar?.uri || '',
+          selectedAvatar?.size || 0,
           profileRevision,
         ]);
         if (profileRequestRef.current?.fingerprint !== requestFingerprint) {
@@ -285,7 +450,7 @@ export default function EditAccount() {
         const profile = await updateProfile(
           {
             name: normalizedName,
-            avatar: avatarUpload,
+            avatar: selectedAvatar,
             portfolioHeadline: normalizedPortfolioHeadline,
             clientRequestId: profileRequestRef.current.id,
             expectedProfileRevision: profileRevision,
@@ -293,14 +458,13 @@ export default function EditAccount() {
           accountBoundary,
         );
         assertAccountSessionBoundary(accountBoundary);
-        if (avatarUpload && !profile.avatar) {
+        if (selectedAvatar && !profile.avatar) {
           throw new Error('PROFILE_AVATAR_NOT_PERSISTED');
         }
         remoteName = profile.name;
         remotePortfolioHeadline = profile.portfolioHeadline;
         remoteAvatar = profile.avatar || remoteAvatar;
         remoteProfileRevision = profile.profileRevision;
-        setProfileRevision(profile.profileRevision);
         remoteProfileSaved = true;
       }
       assertAccountSessionBoundary(accountBoundary);
@@ -343,9 +507,9 @@ export default function EditAccount() {
       // snapshot, never the pre-write boundary or a superseded profile result.
       dispatch(saveLoginData(current.session));
       profileRequestRef.current = null;
-      discardAvatar(avatarUpload);
-      if (mountedRef.current) {
-        setAvatarUpload(undefined);
+      releaseSelectedAvatar();
+      applyCommittedForm();
+      if (ownsPresentation()) {
         navigation.goBack();
       }
     } catch (error: unknown) {
@@ -363,20 +527,21 @@ export default function EditAccount() {
           extractApiToken(current.session) !== extractApiToken(sessionAtStart))
       )
         return;
-      if (mountedRef.current) {
-        if (remoteProfileSaved) {
-          profileRequestRef.current = null;
+      if (remoteProfileSaved) {
+        profileRequestRef.current = null;
+        releaseSelectedAvatar();
+        applyCommittedForm();
+        if (sameEditorAccount()) {
           setHydrationState('loading');
           setReloadProfile(value => value + 1);
-          discardAvatar(avatarUpload);
-          setAvatarUpload(undefined);
-          Alert.alert('حُفظت التغييرات', 'ستظهر عند فتح الصفحة من جديد');
-        } else {
-          Alert.alert(
-            'تعذّر حفظ التغييرات',
-            learnerErrorMessage(error, 'لم تكتمل التغييرات\nحاول مرة أخرى'),
-          );
         }
+        if (ownsPresentation())
+          Alert.alert('حُفظت التغييرات', 'ستظهر عند فتح الصفحة من جديد');
+      } else if (ownsPresentation()) {
+        Alert.alert(
+          'تعذّر حفظ التغييرات',
+          learnerErrorMessage(error, 'لم تكتمل التغييرات\nحاول مرة أخرى'),
+        );
       }
     } finally {
       saveFlightRef.current = false;
@@ -422,9 +587,13 @@ export default function EditAccount() {
                   accessibilityLabel="اختيار صورة الحساب"
                   accessibilityRole="button"
                   accessibilityState={{
-                    disabled: saving || hydrationState !== 'ready',
+                    busy: preparingAvatar,
+                    disabled:
+                      saving || preparingAvatar || hydrationState !== 'ready',
                   }}
-                  disabled={saving || hydrationState !== 'ready'}
+                  disabled={
+                    saving || preparingAvatar || hydrationState !== 'ready'
+                  }
                   onPress={chooseAvatar}
                   style={({pressed}) => [
                     styles.avatarButton,
@@ -450,10 +619,29 @@ export default function EditAccount() {
                 <Pressable
                   accessibilityLabel="تغيير صورة الحساب"
                   accessibilityRole="button"
-                  disabled={saving || hydrationState !== 'ready'}
+                  accessibilityState={{
+                    busy: preparingAvatar,
+                    disabled:
+                      saving || preparingAvatar || hydrationState !== 'ready',
+                  }}
+                  disabled={
+                    saving || preparingAvatar || hydrationState !== 'ready'
+                  }
                   onPress={chooseAvatar}
                   style={styles.changePhoto}>
-                  <Text style={styles.changePhotoLabel}>تغيير الصورة</Text>
+                  {preparingAvatar ? (
+                    <ActivityIndicator
+                      accessibilityElementsHidden
+                      importantForAccessibility="no"
+                      color={Palette.primary}
+                      size="small"
+                    />
+                  ) : null}
+                  <Text
+                    accessibilityLiveRegion="polite"
+                    style={styles.changePhotoLabel}>
+                    {preparingAvatar ? 'جارٍ تجهيز الصورة' : 'تغيير الصورة'}
+                  </Text>
                 </Pressable>
               </View>
               <View style={styles.form}>
@@ -496,7 +684,12 @@ export default function EditAccount() {
                 </Text>
               </View>
               <Button
-                disable={saving || hydrationState !== 'ready' || !validName}
+                disable={
+                  saving ||
+                  preparingAvatar ||
+                  hydrationState !== 'ready' ||
+                  !validName
+                }
                 loader={saving}
                 onPress={save}
                 title="حفظ التغييرات"
@@ -530,6 +723,9 @@ const styles = StyleSheet.create({
     borderColor: Palette.line,
   },
   changePhoto: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
     minHeight: 48,
     justifyContent: 'center',
     paddingHorizontal: Spacing.md,

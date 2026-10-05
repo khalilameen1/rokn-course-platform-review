@@ -12,18 +12,25 @@ jest.mock('../src/constants/designSystem', () => ({
   Palette: {},
   Radius: {},
   Spacing: {},
-  Type: {},
+  Type: {
+    bodyStrong: {fontSize: 15, lineHeight: 25},
+    display: {fontSize: 30, lineHeight: 42},
+    caption: {fontSize: 12, lineHeight: 20},
+  },
   rtlRowStyle: {},
   textDirection: {},
   useResponsiveLayout: () => ({
+    fontScale: 1,
     largeText: false,
     railCardWidth: 180,
     gutter: 16,
     contentWidth: 390,
     isTablet: false,
+    featuredCardWidth: 358,
+    featuredCardMinHeight: 444,
   }),
 }));
-jest.mock('../src/assets/SVG', () => ({ArrowRight: () => null}));
+jest.mock('react-native-linear-gradient', () => 'LinearGradient');
 jest.mock('../src/components/ui/PremiumUI', () => {
   const {Text: MockText} = require('react-native');
   return {
@@ -201,7 +208,7 @@ describe('course card labels', () => {
     {published: true, owned: true, coinPrice: 400, state: 'مختار لك'},
     {published: false, owned: false, coinPrice: 400, state: 'قريبًا'},
   ])(
-    'announces the featured course title instructor and $state as one details action',
+    'announces only the featured title without instructor or $state while keeping the details action',
     async ({state, ...availability}) => {
       const onButtonPress = jest.fn();
       await render(
@@ -222,7 +229,7 @@ describe('course card labels', () => {
       );
       expect(button.props.accessibilityRole).toBe('button');
       expect(cleanUnicodeText(button.props.accessibilityLabel)).toBe(
-        ['تصوير بالموبايل', 'مدرب ركن', state].filter(Boolean).join(' — '),
+        'تصوير بالموبايل',
       );
       expect(button.props.accessibilityHint).toBe('يفتح تفاصيل الكورس');
       expect(visibleCount(400)).toBe(0);
@@ -230,6 +237,8 @@ describe('course card labels', () => {
       expect(button.props.accessibilityLabel).not.toContain('400');
       expect(button.props.accessibilityLabel).not.toContain('عملة');
       expect(button.props.accessibilityLabel).not.toContain('ضمن كورساتك');
+      expect(visibleCount(state)).toBe(0);
+      expect(visibleCount('مدرب ركن')).toBe(0);
 
       await act(async () => button.props.onPress());
       expect(onButtonPress).toHaveBeenCalledTimes(1);

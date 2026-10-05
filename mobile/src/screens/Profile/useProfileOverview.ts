@@ -45,7 +45,9 @@ export function useProfileOverview() {
   const [portfolioProfile, setPortfolioProfile] =
     useState<PortfolioProfile | null>(null);
   const [loadedIdentity, setLoadedIdentity] = useState('');
-  const [profileError, setProfileError] = useState('');
+  const [identityReadError, setIdentityReadError] = useState('');
+  const [portfolioReadError, setPortfolioReadError] = useState('');
+  const profileError = identityReadError || portfolioReadError;
   const [hasShareablePortfolio, setHasShareablePortfolio] = useState(false);
   const hasShareablePortfolioRef = useRef(false);
   const shareCheckRef = useRef<symbol | null>(null);
@@ -140,7 +142,8 @@ export function useProfileOverview() {
     setRemoteProfile(null);
     setPortfolioProfile(null);
     setLoadedIdentity('');
-    setProfileError('');
+    setIdentityReadError('');
+    setPortfolioReadError('');
     setHasShareablePortfolio(false);
     hasShareablePortfolioRef.current = false;
   }, [identityKey]);
@@ -165,7 +168,8 @@ export function useProfileOverview() {
       const portfolioRead = ++portfolioReadRef.current;
       void (async () => {
         try {
-          setProfileError('');
+          setIdentityReadError('');
+          setPortfolioReadError('');
           const boundary = await captureAccountSessionBoundary();
           const sessionAvailable = await hasSession();
           assertAccountSessionBoundary(boundary);
@@ -177,30 +181,45 @@ export function useProfileOverview() {
             setLoadedIdentity(identityKey);
             return;
           }
-          const [profileResult, portfolioResult] = await Promise.allSettled([
-            getProfile(boundary),
-            getPortfolioProfile(boundary),
-          ]);
-          assertAccountSessionBoundary(boundary);
-          if (!active || requestRevision !== reloadProfileRef.current) return;
-          if (profileResult.status === 'fulfilled') {
-            setRemoteProfile(profileResult.value);
-          }
-          if (portfolioRead === portfolioReadRef.current) {
-            setPortfolioProfile(
-              portfolioResult.status === 'fulfilled'
-                ? portfolioResult.value
-                : null,
-            );
-          }
+          // Session ownership is common; identity and reviewed sharing status
+          // are independent reads. Neither endpoint delays the other's result
+          // or clears its error. Only portfolio status can authorize sharing.
           setLoadedIdentity(identityKey);
-          if (
-            profileResult.status === 'rejected' ||
-            (portfolioRead === portfolioReadRef.current &&
-              portfolioResult.status === 'rejected')
-          ) {
-            setProfileError('تعذّر تحديث بعض بيانات الحساب');
-          }
+          const ownsRead = () => {
+            if (!active || requestRevision !== reloadProfileRef.current)
+              return false;
+            try {
+              assertAccountSessionBoundary(boundary);
+              return true;
+            } catch {
+              return false;
+            }
+          };
+          const ownsPortfolioRead = () =>
+            ownsRead() && portfolioRead === portfolioReadRef.current;
+          void getProfile(boundary).then(
+            profile => {
+              if (!ownsRead()) return;
+              setRemoteProfile(profile);
+              setIdentityReadError('');
+            },
+            () => {
+              if (ownsRead())
+                setIdentityReadError('تعذّر تحديث بعض بيانات الحساب');
+            },
+          );
+          void getPortfolioProfile(boundary).then(
+            portfolio => {
+              if (!ownsPortfolioRead()) return;
+              setPortfolioProfile(portfolio);
+              setPortfolioReadError('');
+            },
+            () => {
+              if (!ownsPortfolioRead()) return;
+              setPortfolioProfile(null);
+              setPortfolioReadError('تعذّر تحديث بعض بيانات الحساب');
+            },
+          );
         } catch (error: unknown) {
           if (!active || requestRevision !== reloadProfileRef.current) return;
           if (
@@ -209,7 +228,7 @@ export function useProfileOverview() {
           ) {
             return;
           }
-          setProfileError('تعذّر تحديث بيانات الحساب');
+          setIdentityReadError('تعذّر تحديث بيانات الحساب');
         }
       })();
       return () => {
@@ -240,6 +259,7 @@ export function useProfileOverview() {
       assertAccountSessionBoundary(boundary);
       if (!isCurrent()) return;
       setPortfolioProfile(latest);
+      setPortfolioReadError('');
       if (latest.sharingStatus !== 'approved' || latest.sharingSuspended) {
         const notice = sharingNotice(latest);
         Alert.alert(
@@ -254,7 +274,7 @@ export function useProfileOverview() {
     } catch {
       if (!isCurrent()) return;
       setPortfolioProfile(null);
-      setProfileError('تعذّر تحديث حالة المشاركة');
+      setPortfolioReadError('تعذّر تحديث حالة المشاركة');
       Alert.alert('تعذّرت المشاركة', 'حاول مرة أخرى');
     } finally {
       if (shareCheckRef.current === flight) shareCheckRef.current = null;

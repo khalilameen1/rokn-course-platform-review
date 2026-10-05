@@ -27,7 +27,11 @@ let mockStoredSession: Record<string, unknown> = {
 };
 
 jest.mock('@react-navigation/native', () => ({
+  useIsFocused: () => true,
   useNavigation: () => ({goBack: mockGoBack, replace: mockReplace}),
+}));
+jest.mock('../src/hooks/useAppActiveState', () => ({
+  useAppForegroundState: () => true,
 }));
 jest.mock('react-redux', () => ({
   useDispatch: () => mockDispatch,

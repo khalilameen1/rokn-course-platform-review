@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@color/app_background" />
-    <item android:gravity="center">
+    <item android:drawable="@color/rokn_startup_background" />
+    <item android:gravity="center" android:width="205dp" android:height="68dp">
         <bitmap
-            android:gravity="center"
-            android:src="@mipmap/ic_launcher_foreground" />
+            android:gravity="fill"
+            android:src="@drawable/rokn_wordmark" />
     </item>
 </layer-list>

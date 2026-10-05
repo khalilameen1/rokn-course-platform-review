@@ -78,3 +78,21 @@ open state survived while the other account-owned state was reset.
 This is not a claim that the repository-wide cleanup is complete.
 
 Verification here is local automated verification, not a device or store build.
+
+## Final gate — saved-reel loader fixture, 5 October 2026
+
+All 15 ordering cases freshly failed before any saved-state GET. The fixture's
+wholesale persistence mock omitted `emptyLocalLearningState`, which the actual
+course loader now calls. The fixture retains the actual persistence exports and
+only its previous controlled player-store updater. It also passes the real saved
+owner's `savedLessonsVersion` to the loader, matching the production controller.
+No production owner, saved API, reducer, dashboard or storage contract changed.
+
+The full suite passes 15/15 in
+`mobile/.cache/final-gate-20261005/mobile-saved-reels-owner-fixture-final.log`.
+Original before/after-ACK, save/folder-save/remove, authoritative read, rollback,
+deletion, bounded fresh-read and account-replacement assertions remain intact.
+Independent read-only review accepted the fixture correction. HTTP and native
+player storage are controlled boundaries; this is not device/storage/server or
+release proof. The failing reproduction is retained in
+`mobile-saved-reels-reproduction.log`; no new reference implementation was added.

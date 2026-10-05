@@ -14,6 +14,8 @@ export type CourseDetailsRouteParams = {
 
 export type ReelsRouteParams = {
   courseId?: string | number;
+  /** Memory-only, one-use handoff from a fresh course details read. */
+  learningHandoffKey?: string;
   reelId?: string | number;
   lessonId?: string | number;
   projectId?: string | number;
@@ -38,6 +40,7 @@ export type LoginReturnToParamlessRoute =
   (typeof LOGIN_RETURN_TO_PARAMLESS_ROUTES)[number];
 
 export type LoginReturnTo =
+  | {name: 'CourseCertificate'; params: {courseId: string}}
   | {
       name: 'CourseDetails';
       params: Omit<CourseDetailsRouteParams, 'courseId'> & {courseId: string};
@@ -74,6 +77,7 @@ export type RootStackParamList = {
   Home: undefined;
   Reels: ReelsRouteParams;
   CourseDetails: CourseDetailsRouteParams;
+  CourseCertificate: {courseId: string};
   MyCorner: undefined;
   Wallet: {returnTo?: LoginReturnTo} | undefined;
   Profile: {tab?: 'portfolio' | 'certificates' | 'saved'} | undefined;

@@ -10,6 +10,7 @@ import {
   errorStatus,
 } from '../utils/errorPayload';
 import type {CoinCheckoutOrderStatus} from './coinCheckoutTypes';
+import {isCoursePaymentUrl} from './coursePaymentUrl';
 
 type CheckoutInitiation =
   | {
@@ -76,6 +77,7 @@ export const initiateCoinCheckout = async (
     expectedCoins: number;
     idempotencyKey: string;
     courseCheckoutId?: string;
+    browser?: boolean;
   },
   boundary: AccountSessionBoundary,
 ): Promise<CheckoutInitiation> => {
@@ -87,6 +89,7 @@ export const initiateCoinCheckout = async (
       expected_amount: request.expectedAmount,
       expected_coins: request.expectedCoins,
       idempotency_key: request.idempotencyKey,
+      ...(request.browser ? {checkout_surface: 'browser'} : {}),
       ...(request.courseCheckoutId
         ? {course_checkout_id: request.courseCheckoutId}
         : {}),
@@ -112,7 +115,15 @@ export const initiateCoinCheckout = async (
   const paymentUrl = String(data.payment_url || '').trim();
   const idempotencyKey = String(data.idempotency_key || '').toLowerCase();
   if (
-    !/^https:\/\/checkout\.kashier\.io(?:\/|\?|$)/i.test(paymentUrl) ||
+    !(request.browser
+      ? isCoursePaymentUrl(paymentUrl)
+      : /^https:\/\/checkout\.kashier\.io(?:\/|\?|$)/i.test(paymentUrl)) ||
+    (request.browser &&
+      (!request.courseCheckoutId ||
+        data.course_checkout_id !== request.courseCheckoutId ||
+        !new URL(paymentUrl).pathname.endsWith(
+          `/course-payment/${request.courseCheckoutId}`,
+        ))) ||
     !ORDER_REFERENCE_PATTERN.test(orderRef) ||
     idempotencyKey !== request.idempotencyKey
   ) {

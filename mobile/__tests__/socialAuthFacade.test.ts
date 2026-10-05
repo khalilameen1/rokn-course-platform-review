@@ -59,6 +59,32 @@ describe('social auth facade ownership', () => {
     expect(mockStartBrowser).not.toHaveBeenCalled();
   });
 
+  it('does not launch an intent retired while installation identity was preparing', async () => {
+    let resolve!: (id: string) => void;
+    let current = true;
+    const options = {canStart: () => current};
+    mockGetRequiredInstallationId.mockReturnValueOnce(
+      new Promise<string>(done => {
+        resolve = done;
+      }),
+    );
+    const pending = signInWithSocialProvider('google', methods, options);
+    const rejection = (async () => {
+      await expect(pending).rejects.toThrow('LOGIN_CANCELLED');
+    })();
+    await expect(
+      signInWithSocialProvider('google', methods, {canStart: () => true}),
+    ).rejects.toThrow('SOCIAL_LOGIN_IN_PROGRESS');
+    current = false;
+    resolve('11111111-1111-4111-8111-111111111111');
+    await rejection;
+    expect(mockStartBrowser).not.toHaveBeenCalled();
+    mockStartBrowser.mockResolvedValueOnce({api_token: 'new-session'});
+    await expect(
+      signInWithSocialProvider('google', methods),
+    ).resolves.toMatchObject({api_token: 'new-session'});
+  });
+
   it('joins an identical tap and rejects a competing provider attempt', async () => {
     let finish!: (value: {api_token: string; user: never}) => void;
     mockStartBrowser.mockReturnValueOnce(

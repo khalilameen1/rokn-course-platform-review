@@ -22,7 +22,8 @@ final class CoursePlanUpgradeAction
     public function __construct(private readonly CourseEntitlementService $access,
         private readonly WalletService $wallet, private readonly FinancialProvenanceService $provenance,
         private readonly FinancialEntitlementHoldReadService $holds,
-        private readonly CourseAccessPlanService $plans) {}
+        private readonly CourseAccessPlanService $plans,
+        private readonly CoursePlanUpgradeEligibilityService $upgrades) {}
 
     public function execute(User $user, Course $course, string $requestedCode,
         ?string $clientIdempotencyKey, int $expectedPrice,
@@ -308,54 +309,7 @@ final class CoursePlanUpgradeAction
         ?string $requestedCode = null
     ): ?CourseAccessPlan
     {
-        // Purchases retain these exact terms in their order snapshot. A
-        // concurrent catalogue edit affects the next quote, never this debit.
-        // Only the two upgrade tiers are candidates. Their value can be
-        // projects/reports rather than chat; Basic is never an upgrade target.
-        $available = $plans->publicPlans($course)->filter(
-            fn (CourseAccessPlan $plan): bool => in_array($plan->code, [CourseAccessPlan::GUIDED, CourseAccessPlan::MENTOR], true)
-        )->values();
-        if ($available->isEmpty()) {
-            return null;
-        }
-        $currentTerms = $plans->termsForEnrollment($enrollment);
-        $currentCode = (string) ($currentTerms['code'] ?? '');
-        $currentRank = $this->planRank(
-            $currentCode,
-            (int) ($currentTerms['sort_order'] ?? 0)
-        );
-        if (
-            !$currentTerms
-            && $enrollment->order
-            && $enrollment->order->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE
-        ) {
-            // Legacy paid enrollments retain their original chat entitlement.
-            return null;
-        }
-        if ($requestedCode) {
-            $requested = $available->firstWhere('code', $requestedCode);
-            if (!$requested) {
-                throw new \DomainException('full_track_upgrade_not_available');
-            }
-            if (
-                $currentTerms
-                && $this->planRank((string) $requested->code, (int) $requested->sort_order) <= $currentRank
-            ) {
-                throw new \DomainException('full_track_upgrade_not_available');
-            }
-            $plans->assertPurchasableEconomics($requested);
-            return $requested;
-        }
-
-        // Legacy clients without an explicit target still advance from their
-        // current tier. Looking only at the first chat tier incorrectly made a
-        // guided learner appear fully upgraded while a mentor tier existed.
-        $next = $available->first(
-            fn (CourseAccessPlan $plan): bool => !$currentTerms
-                || $this->planRank((string) $plan->code, (int) $plan->sort_order) > $currentRank
-        );
-        if ($next) $plans->assertPurchasableEconomics($next);
-        return $next;
+        return $this->upgrades->targetPlan($course, $enrollment, $requestedCode);
     }
 
     public function upgradePrice(
@@ -365,22 +319,7 @@ final class CoursePlanUpgradeAction
         CourseAccessPlanService $plans
     ): ?int
     {
-        if (!$course->isPublishedForLearning() || !$targetPlan) {
-            return null;
-        }
-
-        $current = $plans->termsForEnrollment($enrollment);
-        $currentPrice = $current ? (int) ($current['price_coins'] ?? 0) : 0;
-        $difference = max(0, (int) $targetPlan->price_coins - $currentPrice);
-
-        $remainingPaidFloor = max(0, (int) $targetPlan->minimum_paid_coins
-            - $this->wallet->coursePaidContribution((int) $enrollment->user_id, (int) $course->id));
-        if ($remainingPaidFloor > $difference) {
-            // Never increase the accepted price or activate an unfunded tier.
-            throw new \DomainException('full_track_upgrade_paid_floor_unfunded');
-        }
-
-        return $difference;
+        return $this->upgrades->upgradePrice($course, $enrollment, $targetPlan);
     }
 
     private function isSameUpgradeReplay(
@@ -406,16 +345,6 @@ final class CoursePlanUpgradeAction
 
         return $targetPlanCode === null
             || (string) data_get($order->access_plan_snapshot, 'code') === $targetPlanCode;
-    }
-
-    private function planRank(string $code, int $storedSortOrder): int
-    {
-        return match ($code) {
-            'basic' => 10,
-            'guided' => 20,
-            'mentor' => 30,
-            default => max(0, $storedSortOrder),
-        };
     }
 
     private function publishedRevision(Course $course): int

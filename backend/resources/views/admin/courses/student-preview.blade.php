@@ -126,6 +126,17 @@
                 </div>
             </section>
             <section class="learner-preview__side-section">
+                <h3>ترقيات الشات لطالب جديد</h3>
+                <div class="learner-preview__features">
+                    @forelse($chatUpgradePlanCodes as $code)
+                        <span class="learner-preview__chip">{{ $planOptions->firstWhere('code', $code)['name'] }}</span>
+                    @empty
+                        <span class="learner-preview__chip is-off">لا توجد ترقية للشات</span>
+                    @endforelse
+                </div>
+                <p>يتحدد العرض الفعلي حسب الاشتراك المشترى والاستخدام والسعر المنشور</p>
+            </section>
+            <section class="learner-preview__side-section">
                 <h3>مرفقات الكورس</h3>
                 <p>{{ $attachmentCount ? number_format($attachmentCount).' ملفات تظهر عند فتح وحدتها' : 'لا توجد مرفقات في هذه النسخة' }}</p>
                 @if(!empty($previewPayload['attachment_prompt']['enabled']))

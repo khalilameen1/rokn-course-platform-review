@@ -1,5 +1,13 @@
 export const thirdPartyFamilies = [
     {
+        id: 'uppy-control-lock', name: 'Uppy control-lock adaptation in Rokn upload form',
+        version: 'Source commit 3f1aca3d26157785030e2be20aa5d411b6a5ed66', license: 'MIT (adapted fragment)',
+        source: 'https://github.com/transloadit/uppy/blob/3f1aca3d26157785030e2be20aa5d411b6a5ed66/packages/%40uppy/dashboard/src/Dashboard.tsx',
+        artifacts: ['public/admin/assets/js/course-studio-bunny-upload-form.js'],
+        legal: [['Uppy MIT license', 'resources/legal/frontend/UPPY-CONTROL-LOCK-MIT.txt']],
+        modifications: 'disableInteractiveElements adapted to the two upload-selection controls. Other form, transport, claims and storage code is Rokn-owned; no Uppy package or transport is bundled.',
+    },
+    {
         id: 'store-marketing-badges', name: 'Apple App Store and Google Play badges',
         version: 'Official English downloads retrieved 2026-09-10',
         license: 'Brand-owned marketing assets; respective store marketing terms apply',

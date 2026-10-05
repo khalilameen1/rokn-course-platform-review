@@ -41,11 +41,19 @@ final class AdminCourseLifecycleService
                 return $course;
             }
 
+            // Unlisting edits the catalogue, not the published learner contract.
+            // Legacy publications read their revision from authoring_version;
+            // freeze that effective revision before advancing the editor version.
+            $publishedRevision = $course->isPublishedForLearning()
+                ? ['last_published_authoring_version' => max(1, (int) (
+                    $course->last_published_authoring_version ?: $course->authoring_version
+                ))]
+                : [];
             $course->forceFill([
                 'is_catalog_visible' => false,
                 'is_main_course' => false,
                 'authoring_version' => (int) $course->authoring_version + 1,
-            ])->save();
+            ] + $publishedRevision)->save();
             $unlisted = true;
 
             $draft = CourseAuthoringRevision::query()

@@ -73,6 +73,7 @@ const renderProgress = async ({
   const scrollToIndex = jest.fn();
   const refreshAfterSectionCompletion = jest.fn(async () => true);
   const setPreviewGateVisible = jest.fn();
+  const maybeOfferReminders = jest.fn();
   let api: ProgressApi | null = null;
 
   const Harness = () => {
@@ -81,7 +82,7 @@ const renderProgress = async ({
       course,
       currentIndex: 0,
       feedItems,
-      maybeOfferReminders: jest.fn(),
+      maybeOfferReminders,
       playbackSpeed: 1,
       previewMode,
       refs: {
@@ -114,6 +115,7 @@ const renderProgress = async ({
     renderer: renderer!,
     scrollToIndex,
     setPreviewGateVisible,
+    maybeOfferReminders,
   };
 };
 
@@ -129,7 +131,15 @@ describe('reel completion navigation', () => {
 
   it('joins the final progress save and opens the next ordinary reel once', async () => {
     const first = firstReel();
-    const second = {...firstReel(), id: 'reel-2', lessonId: 'lesson-2', sectionId: 'section-2', title: 'المقطع الثاني', reelNumber: 2, sectionOrder: 2};
+    const second = {
+      ...firstReel(),
+      id: 'reel-2',
+      lessonId: 'lesson-2',
+      sectionId: 'section-2',
+      title: 'المقطع الثاني',
+      reelNumber: 2,
+      sectionOrder: 2,
+    };
     const course = courseWith([first, second]);
     const feedItems: CourseFeedItem[] = [first, second].map(reel => ({
       key: `reel-${reel.id}`,
@@ -153,6 +163,7 @@ describe('reel completion navigation', () => {
     expect(markSectionComplete).toHaveBeenCalledTimes(1);
     expect(harness.scrollToIndex).toHaveBeenCalledWith(1);
     expect(harness.refreshAfterSectionCompletion).not.toHaveBeenCalled();
+    expect(harness.maybeOfferReminders).toHaveBeenCalledTimes(1);
 
     await act(async () => harness.renderer.unmount());
   });
@@ -173,7 +184,12 @@ describe('reel completion navigation', () => {
     const course = courseWith([first], [project]);
     const feedItems: CourseFeedItem[] = [
       {key: 'reel-reel-1', type: 'reel', moduleId: 'module-1', reel: first},
-      {key: 'project-project-1', type: 'project', moduleId: 'module-1', project},
+      {
+        key: 'project-project-1',
+        type: 'project',
+        moduleId: 'module-1',
+        project,
+      },
     ];
     const harness = await renderProgress({course, feedItems});
 
@@ -185,6 +201,7 @@ describe('reel completion navigation', () => {
 
     expect(harness.refreshAfterSectionCompletion).toHaveBeenCalledWith(1);
     expect(harness.scrollToIndex).not.toHaveBeenCalled();
+    expect(harness.maybeOfferReminders).not.toHaveBeenCalled();
 
     await act(async () => harness.renderer.unmount());
   });
@@ -195,7 +212,11 @@ describe('reel completion navigation', () => {
     const feedItems: CourseFeedItem[] = [
       {key: 'reel-reel-1', type: 'reel', moduleId: 'module-1', reel: preview},
     ];
-    const harness = await renderProgress({course, feedItems, previewMode: true});
+    const harness = await renderProgress({
+      course,
+      feedItems,
+      previewMode: true,
+    });
 
     await act(async () => {
       harness.api().completeAndAdvance(preview);
@@ -205,7 +226,27 @@ describe('reel completion navigation', () => {
 
     expect(harness.setPreviewGateVisible).toHaveBeenCalledWith(true);
     expect(harness.scrollToIndex).not.toHaveBeenCalled();
+    expect(harness.maybeOfferReminders).not.toHaveBeenCalled();
 
+    await act(async () => harness.renderer.unmount());
+  });
+
+  it('does not interrupt playback at the 95 percent checkpoint or prompt at course end', async () => {
+    const reel = firstReel();
+    const course = courseWith([reel]);
+    const feedItems: CourseFeedItem[] = [
+      {key: `reel-${reel.id}`, type: 'reel', moduleId: reel.moduleId, reel},
+    ];
+    const harness = await renderProgress({course, feedItems});
+    await act(async () => {
+      harness.api().persistProgress(reel, 96, 100);
+    });
+    expect(harness.maybeOfferReminders).not.toHaveBeenCalled();
+    await act(async () => {
+      harness.api().completeAndAdvance(reel);
+      await jest.runAllTimersAsync();
+    });
+    expect(harness.maybeOfferReminders).not.toHaveBeenCalled();
     await act(async () => harness.renderer.unmount());
   });
 });

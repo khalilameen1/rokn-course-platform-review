@@ -93,6 +93,7 @@ export const useHomeCatalogue = ({
     loadedSearchQuery: publicCatalogue.loadedSearchQuery,
     refresh,
     remoteCourses,
+    searchResultsReady: publicCatalogue.searchResultsReady,
     serverSession: access.session,
     staleNotice: publicCatalogue.staleNotice,
   };

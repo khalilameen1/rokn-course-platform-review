@@ -4,7 +4,10 @@ import {startAppleSocialAuth} from './socialAuthApple';
 import {startBrowserSocialAuth} from './socialAuthBrowser';
 import {resumePendingSocialAuth} from './socialAuthCompletion';
 import {getRequiredInstallationId} from './installationIdentity';
-import type {SocialAuthOptions} from './socialAuthContract';
+import {
+  assertSocialAuthCanStart,
+  type SocialAuthOptions,
+} from './socialAuthContract';
 import {getDeviceSocialAuthMethods} from './socialAuthDiscovery';
 import type {
   SocialAuthMethods,
@@ -26,6 +29,7 @@ export const getSocialAuthMethods = getDeviceSocialAuthMethods;
 let activeStart:
   | {
       key: string;
+      canStart?: SocialAuthOptions['canStart'];
       promise: Promise<SocialAuthSession>;
     }
   | undefined;
@@ -42,23 +46,28 @@ export const signInWithSocialProvider = (
 ) => {
   const key = `${options.purpose ?? 'login'}:${provider}`;
   if (activeStart) {
-    if (activeStart.key === key) return activeStart.promise;
+    if (activeStart.key === key && activeStart.canStart === options.canStart) {
+      return activeStart.promise;
+    }
     return Promise.reject(new Error('SOCIAL_LOGIN_IN_PROGRESS'));
   }
 
   let promise: Promise<SocialAuthSession>;
   promise = (async () => {
+    assertSocialAuthCanStart(options);
     const methods = preloadedMethods ?? (await getSocialAuthMethods());
+    assertSocialAuthCanStart(options);
     if (!methods.providers.includes(provider)) {
       throw new Error('PROVIDER_NOT_CONFIGURED');
     }
     await getRequiredInstallationId();
+    assertSocialAuthCanStart(options);
     return provider === 'apple'
       ? startAppleSocialAuth(options)
       : startBrowserSocialAuth(provider, methods, options);
   })().finally(() => {
     if (activeStart?.promise === promise) activeStart = undefined;
   });
-  activeStart = {key, promise};
+  activeStart = {key, canStart: options.canStart, promise};
   return promise;
 };

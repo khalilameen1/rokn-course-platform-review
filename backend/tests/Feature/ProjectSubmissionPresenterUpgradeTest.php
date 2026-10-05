@@ -39,6 +39,174 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_thread_reports_capacity_without_reinterpreting_legacy_entitlement_permission(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $threads = app(ProjectFeedbackThreadService::class);
+        $usage = AiEntitlementUsage::query()->create([
+            'enrollment_id' => $fixture['enrollment']->id,
+            'feature' => AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP,
+            'used_requests' => 1, 'reserved_requests' => 0,
+            'used_tokens' => 0, 'reserved_tokens' => 0,
+            'used_cost_usd' => '0.000000', 'reserved_cost_usd' => '0.000000',
+        ]);
+        $defaults = $usage->only([
+            'used_requests', 'reserved_requests', 'used_tokens', 'reserved_tokens',
+            'used_cost_usd', 'reserved_cost_usd',
+        ]);
+        self::assertFalse($threads->payload($thread->fresh())['reply_limit_reached']);
+        foreach ([
+            ['used_requests' => 10],
+            ['used_tokens' => 3999],
+            ['used_cost_usd' => '0.190000'],
+            ['reserved_requests' => 9],
+            ['reserved_tokens' => 3999],
+            ['reserved_cost_usd' => '0.190000'],
+        ] as $exhaustion) {
+            $usage->forceFill([...$defaults, ...$exhaustion])->save();
+            $payload = $threads->payload($thread->fresh());
+            self::assertTrue($payload['can_reply']); // v60 semantics stay intact.
+            self::assertTrue($payload['reply_limit_reached']);
+            if (!isset($exhaustion['used_requests']) && !isset($exhaustion['reserved_requests'])) {
+                self::assertSame(9, $payload['remaining_messages']);
+            }
+        }
+        $usage->forceFill($defaults)->save();
+        self::assertFalse($threads->payload($thread->fresh())['reply_limit_reached']);
+        Http::assertNothingSent();
+        Bus::assertNothingDispatched();
+    }
+
+    public function test_capacity_exhaustion_is_not_a_report_failure_or_a_revoked_entitlement(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $threads = app(ProjectFeedbackThreadService::class);
+        $reportOnly = $this->submissionFixture(upgradedToEnhanced: false);
+        self::assertFalse($threads->payload($reportOnly['submission']->feedbackThread)['reply_limit_reached']);
+        $enhanced = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $enhanced['submission']->feedbackThread;
+        $thread->forceFill(['status' => 'failed'])->save();
+        self::assertFalse($threads->payload($thread->fresh())['reply_limit_reached']);
+        $thread->forceFill(['status' => 'ready'])->save();
+        $enhanced['enrollment']->forceFill(['is_active' => false])->save();
+        self::assertFalse($threads->payload($thread->fresh())['reply_limit_reached']);
+        Http::assertNothingSent();
+        Bus::assertNothingDispatched();
+    }
+
+    public function test_quota_race_returns_a_stable_rejection_without_queueing_or_changing_usage(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        AiEntitlementUsage::query()->create([
+            'enrollment_id' => $fixture['enrollment']->id,
+            'feature' => AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP,
+            'used_requests' => 10, 'reserved_requests' => 0,
+            'used_tokens' => 1000, 'reserved_tokens' => 0,
+            'used_cost_usd' => '0.100000', 'reserved_cost_usd' => '0.000000',
+        ]);
+        $before = ProjectFeedbackMessage::query()->count();
+        app(AiConsentService::class)->record($fixture['user'], true);
+        $this->actingAs($fixture['user'], 'api')->postJson(
+            '/api/v1/project-feedback-threads/'.$thread->public_id.'/messages',
+            ['message' => 'سؤالي', 'client_request_id' => (string) Str::uuid()]
+        )->assertStatus(422)->assertJsonPath('code', 'project_discussion_limit_reached');
+        self::assertSame($before, ProjectFeedbackMessage::query()->count());
+        self::assertSame(10, (int) AiEntitlementUsage::query()->sole()->used_requests);
+        Http::assertNothingSent();
+        Bus::assertNothingDispatched();
+    }
+
+    public function test_upgrade_offer_counts_pending_followups_without_double_counting_sent_reservations(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: false);
+        $enrollment = $fixture['enrollment'];
+        $thread = $fixture['submission']->feedbackThread;
+        $target = CourseAccessPlan::query()->where('course_id', $enrollment->course_id)->where('code', 'mentor')->firstOrFail();
+        $usage = AiEntitlementUsage::query()->create([
+            'enrollment_id' => $enrollment->id, 'feature' => 'project_followup',
+            'used_requests' => 7, 'reserved_requests' => 2,
+            'used_tokens' => 1000, 'reserved_tokens' => 0,
+            'used_cost_usd' => '.050000', 'reserved_cost_usd' => '.040000',
+        ]);
+        foreach (['queued', 'sent'] as $status) {
+            ProjectFeedbackMessage::query()->create([
+                'public_id' => (string) Str::uuid(), 'thread_id' => $thread->id,
+                'role' => 'user', 'status' => $status, 'body' => 'سؤال عن التنفيذ',
+                'client_request_id' => (string) Str::uuid(),
+            ]);
+        }
+        $budget = app(\App\Services\AiEntitlementBudgetService::class);
+        $offers = app(\App\Services\CoursePlanUpgradeEligibilityService::class);
+        $course = Course::query()->findOrFail($enrollment->course_id);
+        // 7 used + max(2 reserved, 1 SENT) + 1 QUEUED = 10, not 11.
+        self::assertSame(10, $budget->projectFollowupCommittedRequests($enrollment, $usage));
+        self::assertSame([], $offers->availablePlans($course, $enrollment, 'project_discussion')->pluck('code')->all());
+        $usage->forceFill(['reserved_requests' => 1])->save();
+        self::assertSame(9, $budget->projectFollowupCommittedRequests($enrollment, $usage->fresh()));
+        self::assertSame(['mentor'], $offers->availablePlans($course, $enrollment, 'project_discussion')->pluck('code')->all());
+        // A request-count opening is not an opening in token or cost capacity.
+        $usage->forceFill(['used_tokens' => 3900])->save();
+        self::assertSame([], $offers->availablePlans($course, $enrollment, 'project_discussion')->pluck('code')->all());
+        $usage->forceFill(['used_tokens' => 1000, 'used_cost_usd' => '.190000', 'reserved_cost_usd' => 0])->save();
+        self::assertSame([], $offers->availablePlans($course, $enrollment, 'project_discussion')->pluck('code')->all());
+        self::assertSame(10, (int) $target->project_followup_message_limit);
+        Http::assertNothingSent();
+    }
+
+    public function test_reply_admission_obeys_the_same_cross_thread_commitment_boundary(): void
+    {
+        Bus::fake();
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $enrollment = $fixture['enrollment'];
+        $occupiedThread = $fixture['submission']->feedbackThread;
+        $usage = AiEntitlementUsage::query()->create([
+            'enrollment_id' => $enrollment->id, 'feature' => 'project_followup',
+            'used_requests' => 7, 'reserved_requests' => 2,
+            'used_tokens' => 1000, 'reserved_tokens' => 0,
+            'used_cost_usd' => '.050000', 'reserved_cost_usd' => '.040000',
+        ]);
+        foreach (['queued', 'sent'] as $status) {
+            ProjectFeedbackMessage::query()->create([
+                'public_id' => (string) Str::uuid(), 'thread_id' => $occupiedThread->id,
+                'role' => 'user', 'status' => $status, 'body' => 'سؤال سابق',
+                'client_request_id' => (string) Str::uuid(),
+            ]);
+        }
+        // A second valid report has no in-flight reply. It must be stopped by
+        // the enrollment quota, not by report-only access or thread busy state.
+        $submission = $fixture['submission']->replicate(['public_id', 'idempotency_key']);
+        $submission->forceFill(['public_id' => (string) Str::uuid(), 'idempotency_key' => (string) Str::uuid()])->save();
+        $openThread = $occupiedThread->replicate(['public_id', 'submission_id']);
+        $openThread->forceFill(['public_id' => (string) Str::uuid(), 'submission_id' => $submission->id])->save();
+        $before = ProjectFeedbackMessage::query()->count();
+        $threads = app(ProjectFeedbackThreadService::class);
+        $requestId = (string) Str::uuid();
+        try {
+            $threads->queueReply($fixture['user'], $openThread, 'كيف أحسن التنفيذ', $requestId);
+            self::fail('Ten effective commitments must prevent an eleventh message.');
+        } catch (\App\Exceptions\AiPlanLimitReachedException $exception) {
+            self::assertSame('Project discussion request allowance is exhausted.', $exception->getMessage());
+        }
+        self::assertSame($before, ProjectFeedbackMessage::query()->count());
+        $usage->forceFill(['reserved_requests' => 1])->save();
+        $accepted = $threads->queueReply($fixture['user'], $openThread, 'كيف أحسن التنفيذ', $requestId);
+        self::assertSame(ProjectFeedbackMessage::QUEUED, $accepted->status);
+        self::assertSame($before + 1, ProjectFeedbackMessage::query()->count());
+        self::assertSame(10, app(\App\Services\AiEntitlementBudgetService::class)
+            ->projectFollowupCommittedRequests($enrollment, $usage->fresh()));
+        Http::assertNothingSent();
+    }
+
     public function test_review_retry_returns_the_same_submission_without_upload_or_provider_call(): void
     {
         Bus::fake();
@@ -401,6 +569,131 @@ final class ProjectSubmissionPresenterUpgradeTest extends TestCase
         self::assertContains(['role' => 'user', 'content' => $prior['user']], $messages);
         self::assertContains(['role' => 'assistant', 'content' => $prior['assistant']], $messages);
         self::assertSame(ProjectFeedbackMessage::COMPLETED, $current->fresh()->status);
+    }
+
+    public function test_followup_history_pins_report_and_latest_exchange_within_the_existing_total_text_budget(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $report = $thread->messages()->firstOrFail();
+        $reportBody = str_repeat('تقرير المشروع ', 400);
+        $report->forceFill(['body' => $reportBody])->save();
+        $annotations = [['type' => 'file', 'file' => ['filename' => 'project.pdf']]];
+        foreach (range(1, 5) as $round) {
+            foreach (['user', 'assistant'] as $role) {
+                ProjectFeedbackMessage::query()->create([
+                    'public_id' => (string) Str::uuid(), 'thread_id' => $thread->id,
+                    'client_request_id' => (string) Str::uuid(), 'role' => $role,
+                    'status' => ProjectFeedbackMessage::COMPLETED,
+                    'body' => ($round === 5 ? 'أحدث تبادل ' : "تبادل {$round} ").str_repeat('شرح ', 700),
+                    'provider_annotations' => $role === 'assistant' ? $annotations : null,
+                    'completed_at' => now(),
+                ]);
+            }
+        }
+        $current = ProjectFeedbackMessage::query()->create([
+            'public_id' => (string) Str::uuid(), 'thread_id' => $thread->id,
+            'client_request_id' => (string) Str::uuid(), 'role' => 'user',
+            'status' => ProjectFeedbackMessage::QUEUED, 'body' => 'وضح آخر تعديل',
+        ]);
+        $reader = new \ReflectionMethod(GenerateProjectFeedbackReply::class, 'boundedConversationHistory');
+        $history = $reader->invoke(new GenerateProjectFeedbackReply($current->id), $thread, [
+            'project_followup_token_budget' => 4000,
+        ]);
+
+        self::assertLessThanOrEqual(6000, array_sum(array_map(
+            fn (array $item): int => mb_strlen($item['content'], 'UTF-8'), $history
+        )));
+        self::assertCount(3, $history);
+        self::assertSame(mb_substr(trim($reportBody), 0, 3000, 'UTF-8'), $history[0]['content']);
+        self::assertSame(['assistant', 'user', 'assistant'], array_column($history, 'role'));
+        self::assertStringStartsWith('أحدث تبادل', $history[1]['content']);
+        self::assertStringStartsWith('أحدث تبادل', $history[2]['content']);
+        self::assertSame($annotations, $history[2]['annotations']);
+        self::assertStringNotContainsString($current->body, implode('\n', array_column($history, 'content')));
+        Http::assertNothingSent();
+    }
+
+    public function test_smallest_followup_history_window_keeps_both_report_and_latest_discussion(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $thread->messages()->firstOrFail()->forceFill(['body' => str_repeat('التقرير ', 700)])->save();
+        foreach (['user', 'assistant'] as $role) {
+            ProjectFeedbackMessage::query()->create([
+                'public_id' => (string) Str::uuid(), 'thread_id' => $thread->id,
+                'client_request_id' => (string) Str::uuid(), 'role' => $role,
+                'status' => ProjectFeedbackMessage::COMPLETED,
+                'body' => ($role === 'user' ? 'السؤال الحالي ' : 'الرد الحالي ').str_repeat('شرح ', 800),
+                'completed_at' => now(),
+            ]);
+        }
+        $reader = new \ReflectionMethod(GenerateProjectFeedbackReply::class, 'boundedConversationHistory');
+        $history = $reader->invoke(new GenerateProjectFeedbackReply(0), $thread, [
+            'project_followup_token_budget' => 1000,
+        ]);
+        self::assertSame(['assistant', 'user', 'assistant'], array_column($history, 'role'));
+        self::assertSame(4000, array_sum(array_map(
+            fn (array $item): int => mb_strlen($item['content'], 'UTF-8'), $history
+        )));
+        self::assertSame(2000, mb_strlen($history[0]['content'], 'UTF-8'));
+        self::assertStringStartsWith('التقرير', $history[0]['content']);
+        self::assertStringStartsWith('السؤال الحالي', $history[1]['content']);
+        self::assertStringStartsWith('الرد الحالي', $history[2]['content']);
+        Http::assertNothingSent();
+    }
+
+    public function test_older_excerpt_header_and_recent_pairs_share_the_same_budget_without_a_four_round_minimum(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $thread->messages()->firstOrFail()->forceFill(['body' => 'التقرير الأصلي'])->save();
+        foreach (range(1, 8) as $round) {
+            foreach (['user', 'assistant'] as $role) {
+                ProjectFeedbackMessage::query()->create([
+                    'public_id' => (string) Str::uuid(), 'thread_id' => $thread->id,
+                    'client_request_id' => (string) Str::uuid(), 'role' => $role,
+                    'status' => ProjectFeedbackMessage::COMPLETED,
+                    'body' => "round-{$round} ".str_repeat('x', 1000), 'completed_at' => now(),
+                ]);
+            }
+        }
+        $reader = new \ReflectionMethod(GenerateProjectFeedbackReply::class, 'boundedConversationHistory');
+        $history = $reader->invoke(new GenerateProjectFeedbackReply(0), $thread, [
+            'project_followup_token_budget' => 4000,
+        ]);
+        self::assertLessThanOrEqual(6000, array_sum(array_map(
+            fn (array $item): int => mb_strlen($item['content'], 'UTF-8'), $history
+        )));
+        self::assertSame('التقرير الأصلي', $history[0]['content']);
+        $pairs = array_values(array_filter(array_slice($history, 1), fn (array $item): bool => $item['role'] !== 'system'));
+        self::assertSame(['user', 'assistant', 'user', 'assistant'], array_column($pairs, 'role'));
+        self::assertStringStartsWith('round-7', $pairs[0]['content']);
+        self::assertStringStartsWith('round-8', $pairs[2]['content']);
+        self::assertSame(1, count(array_filter($history, fn (array $item): bool => $item['role'] === 'system')));
+        Http::assertNothingSent();
+    }
+
+    public function test_older_memory_does_not_expand_a_small_or_closed_remaining_window(): void
+    {
+        Http::preventStrayRequests();
+        $fixture = $this->submissionFixture(upgradedToEnhanced: true);
+        $thread = $fixture['submission']->feedbackThread;
+        $old = ProjectFeedbackMessage::query()->create([
+            'public_id' => (string) Str::uuid(), 'thread_id' => $thread->id,
+            'client_request_id' => (string) Str::uuid(), 'role' => 'user',
+            'status' => ProjectFeedbackMessage::COMPLETED,
+            'body' => str_repeat('تفاصيل المشروع ', 100), 'completed_at' => now(),
+        ]);
+        $memory = app(AiConversationContextService::class);
+        $reportId = 'report:'.$fixture['submission']->public_id;
+        self::assertSame('', $memory->projectThread($thread, $old->id + 1, $reportId, 0, 'المشروع'));
+        self::assertSame(0, \App\Models\AiConversationContext::query()->count());
+        self::assertSame('', $memory->projectThread($thread, $old->id + 1, $reportId, 50, 'المشروع'));
+        Http::assertNothingSent();
     }
 
     public function test_older_project_memory_preserves_html_and_excludes_failed_messages(): void

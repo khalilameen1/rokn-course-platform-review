@@ -25,6 +25,10 @@ import {
   mapCoursePayload,
 } from '../../../components/VideoPlayer/courseLearningApi';
 import type {CourseLearningData} from '../../../components/VideoPlayer/types';
+import {
+  learningNavigationHandoff,
+  type FreshLearningRead,
+} from '../../../components/VideoPlayer/courseLearning/navigationHandoff';
 import {settleWithin} from '../../../utils/settleWithin';
 import {courseRequiresWallet} from './purchaseTerms';
 
@@ -68,6 +72,7 @@ export const useCourseDetailsData = ({
   const remoteLearningCourse = remoteSnapshot?.learning ?? null;
   const [remoteCommerceLoading, setRemoteCommerceLoading] = useState(false);
   const loadedCourseRef = useRef<CourseDetailsDto | null>(null);
+  const learningNavigationReadRef = useRef<FreshLearningRead | null>(null);
   const ownershipWriteEpochRef = useRef(0);
   const walletWriteEpochRef = useRef(0);
   const loadedOwnerRef = useRef(identityKey);
@@ -76,14 +81,27 @@ export const useCourseDetailsData = ({
   const [remoteError, setRemoteError] = useState('');
   const [remoteNotice, setRemoteNotice] = useState('');
   const [remoteReload, setRemoteReload] = useState(0);
-  const reloadRemote = useCallback(
-    () => setRemoteReload(value => value + 1),
-    [],
-  );
+  const reloadRemote = useCallback(() => {
+    learningNavigationReadRef.current = null;
+    setRemoteReload(value => value + 1);
+  }, []);
+
+  const prepareLearningNavigation = useCallback(() => {
+    const read = learningNavigationReadRef.current;
+    if (
+      !read ||
+      read.course.id !== courseId ||
+      displayScopeRef.current.courseId !== courseId ||
+      displayScopeRef.current.identityKey !== identityKey
+    )
+      return undefined;
+    return learningNavigationHandoff.prepare(read);
+  }, [courseId, identityKey]);
 
   useEffect(() => {
     let active = true;
     const controller = new AbortController();
+    learningNavigationReadRef.current = null;
     if (
       displayScopeRef.current.courseId !== courseId ||
       displayScopeRef.current.identityKey !== identityKey
@@ -159,27 +177,34 @@ export const useCourseDetailsData = ({
           signal: controller.signal,
         });
         const details = snapshot.course;
-        const mappedLearningCourse =
-          details.owned && snapshot.responsePayload
-            ? mapCoursePayload(snapshot.responsePayload)
-            : null;
+        const receivedAt = Date.now();
+        const mappedLearningCourse = snapshot.responsePayload
+          ? mapCoursePayload(snapshot.responsePayload)
+          : null;
         if (details.owned && !mappedLearningCourse) {
           throw new Error('API_CONTRACT_INVALID_COURSE_LEARNING_SNAPSHOT');
         }
         // Local completion hints are optional; a stalled native cache must not
         // hide the fresh server course or replace its access/project gates.
-        const learningCourse = mappedLearningCourse
-          ? await settleWithin(
-              applyLocalLearningState(mappedLearningCourse),
-              mappedLearningCourse,
-            )
-          : null;
+        const learningCourse =
+          details.owned && mappedLearningCourse
+            ? await settleWithin(
+                applyLocalLearningState(mappedLearningCourse),
+                mappedLearningCourse,
+              )
+            : null;
         assertAccountSessionBoundary(boundary);
         detailsLoaded = true;
         resolvedDetails = details;
         if (stillOwned()) {
           const ownershipChangedWhileReading =
             ownershipWriteEpochRef.current !== ownershipWriteEpoch;
+          learningNavigationReadRef.current =
+            !ownershipChangedWhileReading &&
+            !details.fromCache &&
+            mappedLearningCourse
+              ? {course: mappedLearningCourse, boundary, receivedAt}
+              : null;
           loadedOwnerRef.current = identityKey;
           setRemoteSnapshot(current => {
             const currentRatingIsNewer =
@@ -318,6 +343,7 @@ export const useCourseDetailsData = ({
 
   const setRemoteCourse: Dispatch<SetStateAction<CourseDetailsDto | null>> =
     useCallback(update => {
+      learningNavigationReadRef.current = null;
       setRemoteSnapshot(current => {
         const currentDetails = current?.details ?? null;
         const next =
@@ -331,6 +357,7 @@ export const useCourseDetailsData = ({
 
   const setRemoteOwned = useCallback(
     (owned: boolean) => {
+      learningNavigationReadRef.current = null;
       const ownershipChanged = loadedCourseRef.current?.owned !== owned;
       ownershipWriteEpochRef.current += 1;
       setRemoteSnapshot(current => {
@@ -368,6 +395,7 @@ export const useCourseDetailsData = ({
       loading: remoteLoading || !ownerMatches,
       notice: ownerMatches ? remoteNotice : '',
       reload: reloadRemote,
+      prepareLearningNavigation,
       session: ownerMatches ? remoteSession : null,
       setOwned: setRemoteOwned,
       setValue: setRemoteCourse,

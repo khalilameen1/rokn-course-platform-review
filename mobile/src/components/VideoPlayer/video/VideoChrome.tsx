@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -10,7 +11,6 @@ import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import LinearGradient from 'react-native-linear-gradient';
 import {Fonts} from '../../../constants/styleConstants';
 import {Palette, textDirection} from '../../../constants/designSystem';
-import {SkeletonBlock} from '../../ui/Skeleton';
 import {
   formatVideoDuration,
   selectPlaybackErrorCopy,
@@ -101,13 +101,17 @@ export const VideoChrome = ({
       {!sourceFailed && (isBuffering || !isLoaded) && (
         <View
           accessibilityLiveRegion="polite"
-          accessibilityLabel={recoveryMessage || 'جارٍ تجهيز الفيديو'}
+          accessibilityLabel={recoveryMessage || 'جارٍ تحميل الفيديو'}
           pointerEvents="none"
           style={styles.centerState}>
-          <SkeletonBlock height={54} radius={27} width={54} />
-          <Text style={styles.stateText}>
-            {recoveryMessage || 'جارٍ تجهيز الفيديو'}
-          </Text>
+          <ActivityIndicator
+            testID="video-buffering"
+            color="#FFFFFF"
+            size="small"
+          />
+          {!!recoveryMessage && (
+            <Text style={styles.stateText}>{recoveryMessage}</Text>
+          )}
         </View>
       )}
 

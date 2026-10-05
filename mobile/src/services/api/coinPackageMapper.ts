@@ -1,4 +1,7 @@
-import {DISTRIBUTION_CHANNEL} from '../../constants/distribution';
+import {
+  DISTRIBUTION_CHANNEL,
+  type DistributionChannel,
+} from '../../constants/distribution';
 import {nonNegativeNumber, resourceList} from './common';
 
 export type CoinPackage = {
@@ -39,13 +42,14 @@ const firstNonEmptyText = (...values: unknown[]) =>
 export const mapCoinPackages = (
   value: unknown,
   invalidContractCode: string,
+  channel: DistributionChannel = DISTRIBUTION_CHANNEL,
 ): CoinPackage[] => {
   const candidates = resourceList<CoinPackageDto>(value);
   const channelEnabled = (item: CoinPackageDto) => {
-    if (DISTRIBUTION_CHANNEL === 'direct') {
+    if (channel === 'direct') {
       return item.channels?.direct;
     }
-    if (DISTRIBUTION_CHANNEL === 'play') {
+    if (channel === 'play') {
       return item.channels?.google;
     }
     return item.channels?.apple;
@@ -56,12 +60,12 @@ export const mapCoinPackages = (
     const coins = nonNegativeNumber(item.coins);
     const enabled = channelEnabled(item);
     const selectedPrice = nonNegativeNumber(
-      DISTRIBUTION_CHANNEL === 'direct' ? item.direct_price : item.price,
+      channel === 'direct' ? item.direct_price : item.price,
     );
     const productId = String(
-      DISTRIBUTION_CHANNEL === 'play'
+      channel === 'play'
         ? item.store_products?.google ?? ''
-        : DISTRIBUTION_CHANNEL === 'appstore'
+        : channel === 'appstore'
         ? item.store_products?.apple ?? ''
         : '',
     ).trim();
@@ -77,7 +81,7 @@ export const mapCoinPackages = (
       !label ||
       typeof enabled !== 'boolean' ||
       (enabled && (selectedPrice === null || selectedPrice <= 0)) ||
-      (enabled && DISTRIBUTION_CHANNEL !== 'direct' && !productId)
+      (enabled && channel !== 'direct' && !productId)
     ) {
       return true;
     }
@@ -91,11 +95,7 @@ export const mapCoinPackages = (
   const packages = eligible.map(item => {
     const id = String(item.id).trim();
     const coins = Number(item.coins);
-    const price = Number(
-      DISTRIBUTION_CHANNEL === 'direct'
-        ? item.direct_price
-        : item.price,
-    );
+    const price = Number(channel === 'direct' ? item.direct_price : item.price);
     return {
       id,
       coins,

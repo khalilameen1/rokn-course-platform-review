@@ -8,6 +8,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class StudentNotificationResource extends JsonResource
 {
+    private ?array $homeCourse = null;
+
+    /** Additive, explicitly requested presentation; legacy inbox stays intact. */
+    public function withHomeCourse(array $course): static
+    {
+        $this->homeCourse = $course;
+
+        return $this;
+    }
+
     /**
      * Transform the resource into an array.
      *
@@ -52,6 +62,7 @@ class StudentNotificationResource extends JsonResource
             'created_at' => $this->created_at->toIso8601String(),
             'notifiable_type' => $this->notifiable_type,
             'notifiable_id' => $this->notifiable_id,
+            ...($this->homeCourse !== null ? ['home_course' => $this->homeCourse] : []),
         ];
     }
 

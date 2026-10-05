@@ -15,6 +15,7 @@ jest.mock('react-native-svg', () => ({
   Path: 'Path',
   Rect: 'Rect',
 }));
+jest.mock('../src/services/roknApi', () => ({getFullTrackUpgradeQuote: jest.fn()}));
 
 const mockOpenAttachment = jest.fn(async (..._args: unknown[]) => undefined);
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
@@ -429,7 +430,7 @@ describe('project feedback report and conversation presentation', () => {
       ),
     );
     expect(renderer.root.findAllByType(TextInput)).toHaveLength(0);
-    expect(texts(renderer)).toContain('استخدمت كل رسائل مناقشة المشاريع');
+    expect(texts(renderer)).toContain('انتهى حد مناقشة المشاريع في اشتراكك');
   });
 
   it('keeps discussion opt-in and preserves its draft and history when collapsed', () => {

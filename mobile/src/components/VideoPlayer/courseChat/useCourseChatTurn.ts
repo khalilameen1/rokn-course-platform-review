@@ -18,6 +18,7 @@ import type {
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
+  type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {removeLearnerDraftFile} from '../../../services/learnerDraftFiles';
 import {reportClientError} from '../../../services/operationalTelemetry';
@@ -69,7 +70,6 @@ type Params = {
   reel?: CourseReel;
   scheduleScrollToEnd: (animated: boolean, delay: number) => void;
   setInput: (value: string) => void;
-  upgraded: boolean;
 };
 
 /** Owns exactly one paid turn from local outbox through terminal recovery. */
@@ -94,19 +94,32 @@ export const useCourseChatTurn = ({
   reel,
   scheduleScrollToEnd,
   setInput,
-  upgraded,
 }: Params) => {
   const courseId = course.id;
   const [sending, setSending] = useState(false);
   const [recoverySignal, setRecoverySignal] = useState(0);
-  const sendFlightRef = useRef<symbol | null>(null);
+  const sendFlightRef = useRef<{
+    requestId: string;
+    conversationScope: string;
+    conversationGeneration: number;
+  } | null>(null);
   const sendGenerationRef = useRef(0);
   const stopFlightRef = useRef<{
     conversation: string;
-    flight: symbol;
+    generation: number;
+    requestId: string;
+    phase: 'preparing' | 'dispatched';
+    visit: {conversationScope: string; interactive: boolean};
   } | null>(null);
   const resumeInterruptedTurnRef = useRef(false);
   const interactiveRef = useRef(interactive);
+  const noticeVisitRef = useRef({conversationScope, interactive});
+  if (
+    noticeVisitRef.current.conversationScope !== conversationScope ||
+    noticeVisitRef.current.interactive !== interactive
+  ) noticeVisitRef.current = {conversationScope, interactive};
+  const controlVisit = noticeVisitRef.current;
+  const noticeMountedRef = useRef(false);
   const reportedTerminalTurnsRef = useRef(new Set<string>());
   const runTurnRef = useRef<
     (
@@ -118,6 +131,11 @@ export const useCourseChatTurn = ({
   interactiveRef.current = interactive;
 
   useEffect(() => {
+    noticeMountedRef.current = true;
+    return () => {noticeMountedRef.current = false;};
+  }, []);
+
+  useEffect(() => {
     sendGenerationRef.current += 1;
     sendFlightRef.current = null;
     stopFlightRef.current = null;
@@ -125,6 +143,13 @@ export const useCourseChatTurn = ({
     reportedTerminalTurnsRef.current.clear();
     setSending(false);
   }, [conversationScope]);
+
+  useEffect(() => {
+    const stopping = stopFlightRef.current;
+    if (stopping?.phase === 'preparing' && stopping.visit !== controlVisit) {
+      stopFlightRef.current = null;
+    }
+  }, [controlVisit]);
 
   const reportTerminalTurn = useCallback((requestId: string, code: string) => {
     const normalizedRequestId = String(requestId || '').trim();
@@ -184,6 +209,7 @@ export const useCourseChatTurn = ({
           selectedAttachments.length === 0) ||
         (retryClientRequestId && !existingAssistant) ||
         sendFlightRef.current ||
+        stopFlightRef.current ||
         !assistantIncluded ||
         (!retryClientRequestId &&
           messagesRef.current.some(
@@ -196,14 +222,19 @@ export const useCourseChatTurn = ({
         return;
       }
 
-      const flight = Symbol('course-chat-send');
       const sendGeneration = ++sendGenerationRef.current;
       let clientRequestId = retryClientRequestId || secureRandomUuid();
+      const ownedConversationGeneration = conversationGeneration.current;
+      const flight = {
+        requestId: clientRequestId,
+        conversationScope,
+        conversationGeneration: ownedConversationGeneration,
+      };
       sendFlightRef.current = flight;
       selectedAttachments.forEach(file =>
         inFlightAttachmentIds.current.add(file.uploadId),
       );
-      const ownedConversationGeneration = conversationGeneration.current;
+      const noticeVisit = noticeVisitRef.current;
       const queuedTurn = recoveryOnly
         ? {
             messages: messagesRef.current.map(item =>
@@ -283,12 +314,16 @@ export const useCourseChatTurn = ({
             ...file,
             uri: '',
           }));
-          queuedMessages = markTurnUploadComplete(
-            queuedMessages,
-            userMessage!.id,
-            uploadedAttachments,
-          );
           assertAccountSessionBoundary(turnBoundary);
+          if (!ownsTurn()) return;
+          commitMessages(rendered => {
+            queuedMessages = markTurnUploadComplete(
+              rendered,
+              userMessage!.id,
+              uploadedAttachments,
+            );
+            return queuedMessages;
+          });
           await saveCourseChatHistory(
             courseId,
             queuedMessages,
@@ -304,24 +339,24 @@ export const useCourseChatTurn = ({
               .map(removeLearnerDraftFile),
           ).catch(() => undefined);
           if (!ownsTurn()) return;
-          commitMessages(queuedMessages);
         }
 
         const attachmentIds = uploadedAttachments
           .map(file => file.serverId)
           .filter((id): id is string => Boolean(id));
-        const requestCourse = upgraded
-          ? {...course, accessType: 'paid', chatAvailable: true}
-          : course;
+        const requestCourse = course;
         if (freshRetryAllowed) {
           clientRequestId = secureRandomUuid();
-          queuedMessages = replaceTurnClientRequestId(
-            queuedMessages,
-            userMessage!.id,
-            pendingId,
-            clientRequestId,
-          );
-          commitMessages(queuedMessages);
+          flight.requestId = clientRequestId;
+          commitMessages(rendered => {
+            queuedMessages = replaceTurnClientRequestId(
+              rendered,
+              userMessage!.id,
+              pendingId,
+              clientRequestId,
+            );
+            return queuedMessages;
+          });
           await saveCourseChatHistory(
             courseId,
             queuedMessages,
@@ -361,8 +396,17 @@ export const useCourseChatTurn = ({
         response = polling.response;
         const {foregroundWaitExpired} = polling;
         if (!ownsTurn()) return;
+        assertAccountSessionBoundary(turnBoundary);
         if (response.blocked) recordServerBlock(response.code);
-        if (response.code === 'chat_daily_limit_reached') {
+        // The receipt still settles into its conversation after closing, but
+        // a native notice belongs to the visit that began this send/recovery.
+        // Returning later must not revive the departed visit's dialog.
+        if (
+          response.code === 'chat_daily_limit_reached' &&
+          noticeMountedRef.current &&
+          noticeVisitRef.current === noticeVisit &&
+          noticeVisit.interactive
+        ) {
           const message = subscriptionMessages.chatDailyLimit;
           Alert.alert(message.title, message.body, [{text: message.action}]);
         }
@@ -442,12 +486,32 @@ export const useCourseChatTurn = ({
       reportTerminalTurn,
       scheduleScrollToEnd,
       setInput,
-      upgraded,
     ],
   );
 
   const send = useCallback(() => void runTurn(), [runTurn]);
-  const isSendInFlight = useCallback(() => Boolean(sendFlightRef.current), []);
+  const isSendInFlight = useCallback(
+    () => Boolean(sendFlightRef.current || stopFlightRef.current),
+    [],
+  );
+  const getInFlightRequestId = useCallback(
+    () => {
+      const stopping = stopFlightRef.current;
+      if (
+        stopping?.phase === 'dispatched' &&
+        stopping.conversation === activeConversation.current &&
+        stopping.generation === conversationGeneration.current
+      ) return stopping.requestId;
+      const flight = sendFlightRef.current;
+      if (
+        !flight ||
+        flight.conversationScope !== activeConversation.current ||
+        flight.conversationGeneration !== conversationGeneration.current
+      ) return undefined;
+      return flight.requestId;
+    },
+    [activeConversation, conversationGeneration],
+  );
   const retry = useCallback(
     (clientRequestId: string) => {
       const userMessage = messagesRef.current.find(
@@ -465,7 +529,14 @@ export const useCourseChatTurn = ({
   );
 
   const stop = useCallback(async () => {
-    if (stopFlightRef.current?.conversation === conversationScope) return;
+    if (
+      !noticeMountedRef.current ||
+      !controlVisit.interactive ||
+      noticeVisitRef.current !== controlVisit ||
+      activeConversation.current !== conversationScope ||
+      hydratedConversation.current !== conversationScope ||
+      stopFlightRef.current
+    ) return;
     const pending = [...messagesRef.current]
       .reverse()
       .find(
@@ -475,29 +546,50 @@ export const useCourseChatTurn = ({
           courseChatTurnIsUnresolved(item.deliveryStatus),
       );
     if (!pending?.clientRequestId) return;
-    const stopFlight = Symbol('course-chat-stop');
-    stopFlightRef.current = {
+    const stopFlight = {
       conversation: conversationScope,
-      flight: stopFlight,
+      generation: conversationGeneration.current,
+      requestId: pending.clientRequestId,
+      phase: 'preparing' as 'preparing' | 'dispatched',
+      visit: controlVisit,
     };
+    stopFlightRef.current = stopFlight;
     const stoppedRequestId = pending.clientRequestId;
-    const stoppedSendFlight = sendFlightRef.current;
-    const stopConversationGeneration = conversationGeneration.current;
-    sendGenerationRef.current += 1;
-    setSending(false);
-    commitMessages(current =>
-      markCourseChatTurnStopping(current, stoppedRequestId),
-    );
+    let boundary: AccountSessionBoundary | undefined;
+    let recoverAfterStop = false;
+    const ownsStop = () =>
+      noticeMountedRef.current &&
+      stopFlightRef.current === stopFlight &&
+      stopFlight.generation === conversationGeneration.current &&
+      activeConversation.current === conversationScope;
     try {
+      boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (
+        !ownsStop() ||
+        noticeVisitRef.current !== controlVisit ||
+        activeAccountScope.current !== boundary.scope ||
+        !messagesRef.current.some(message =>
+          message.role === 'assistant' &&
+          message.clientRequestId === stoppedRequestId &&
+          courseChatTurnIsUnresolved(message.deliveryStatus),
+        )
+      ) return;
+      // From this point the same-account cancellation receipt belongs to the
+      // durable turn, even if the learner closes the chat while DELETE runs.
+      stopFlight.phase = 'dispatched';
+      const stoppedSendFlight = sendFlightRef.current;
+      sendGenerationRef.current += 1;
+      setSending(false);
+      commitMessages(current =>
+        markCourseChatTurnStopping(current, stoppedRequestId),
+      );
       const cancelledAtServer = await cancelCourseAssistantTurn(
         stoppedRequestId,
+        boundary,
       );
-      if (
-        stopConversationGeneration !== conversationGeneration.current ||
-        activeConversation.current !== conversationScope
-      ) {
-        return;
-      }
+      assertAccountSessionBoundary(boundary);
+      if (!ownsStop()) return;
       resumeInterruptedTurnRef.current = !cancelledAtServer;
       if (cancelledAtServer && sendFlightRef.current === stoppedSendFlight) {
         sendFlightRef.current = null;
@@ -509,19 +601,29 @@ export const useCourseChatTurn = ({
           cancelledAtServer,
         ),
       );
-      if (!cancelledAtServer) {
-        setRecoverySignal(value => value + 1);
-      }
+      recoverAfterStop = !cancelledAtServer;
+    } catch {
+      if (!ownsStop() || stopFlight.phase !== 'dispatched' || !boundary) return;
+      try {assertAccountSessionBoundary(boundary);} catch {return;}
+      resumeInterruptedTurnRef.current = true;
+      commitMessages(current =>
+        settleCourseChatCancellation(current, stoppedRequestId, false),
+      );
+      recoverAfterStop = true;
     } finally {
-      if (stopFlightRef.current?.flight === stopFlight) {
+      if (stopFlightRef.current === stopFlight) {
         stopFlightRef.current = null;
+        if (recoverAfterStop) setRecoverySignal(value => value + 1);
       }
     }
   }, [
+    activeAccountScope,
     activeConversation,
     commitMessages,
+    controlVisit,
     conversationGeneration,
     conversationScope,
+    hydratedConversation,
     messagesRef,
   ]);
 
@@ -551,6 +653,7 @@ export const useCourseChatTurn = ({
       !resumeInterruptedTurnRef.current ||
       sending ||
       sendFlightRef.current ||
+      stopFlightRef.current ||
       hydratedConversation.current !== conversationScope
     ) {
       return;
@@ -585,5 +688,5 @@ export const useCourseChatTurn = ({
     sending,
   ]);
 
-  return {isSendInFlight, retry, send, sending, stop};
+  return {getInFlightRequestId, isSendInFlight, retry, send, sending, stop};
 };

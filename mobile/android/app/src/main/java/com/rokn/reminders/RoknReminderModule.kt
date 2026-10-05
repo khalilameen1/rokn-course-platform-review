@@ -144,19 +144,26 @@ class RoknReminderModule(
   }
 
   @ReactMethod
-  fun cancel(id: Double) {
-    val notificationId = id.toInt()
-    ReminderScheduleStore.remove(reactContext, notificationId)
-    val pendingIntent = PendingIntent.getBroadcast(
-      reactContext,
-      notificationId,
-      Intent(reactContext, ReminderReceiver::class.java),
-      PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
-    ) ?: return
-    val alarmManager =
-      reactContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-    alarmManager.cancel(pendingIntent)
-    pendingIntent.cancel()
+  fun cancel(id: Double, promise: Promise) {
+    try {
+      val notificationId = id.toInt()
+      ReminderScheduleStore.remove(reactContext, notificationId)
+      val pendingIntent = PendingIntent.getBroadcast(
+        reactContext,
+        notificationId,
+        Intent(reactContext, ReminderReceiver::class.java),
+        PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE,
+      )
+      if (pendingIntent != null) {
+        val alarmManager =
+          reactContext.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
+      }
+      promise.resolve(null)
+    } catch (error: Exception) {
+      promise.reject("REMINDER_CANCEL_FAILED", error)
+    }
   }
 
   private fun canNotify(): Boolean =

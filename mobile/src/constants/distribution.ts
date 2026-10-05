@@ -1,7 +1,8 @@
 /**
  * Distribution-aware commerce guard.
  *
- * Store builds use native billing. Direct builds use Rokn's web checkout.
+ * Wallet billing remains distribution-aware. Android course subscriptions use
+ * their separate transport selected by checkoutRouting.
  */
 export type DistributionChannel = 'direct' | 'play' | 'appstore';
 

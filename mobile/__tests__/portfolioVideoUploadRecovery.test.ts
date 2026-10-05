@@ -83,19 +83,16 @@ describe('portfolio resumable video authorization recovery', () => {
 
     global.fetch = jest.fn(async (_url: unknown, init?: RequestInit) => {
       if (init?.method === 'POST') {
-        return {
-          ok: true,
-          headers: {get: () => '/upload/1'},
-        } as unknown as Response;
+        return new Response(null, {
+          status: 201,
+          headers: {Location: '/upload/1'},
+        });
       }
-      return {
-        ok: true,
+      return new Response(null, {
         status: 200,
-        headers: {
-          get: (name: string) => (name === 'Upload-Offset' ? '0' : null),
-        },
-      } as unknown as Response;
-    }) as typeof fetch;
+        headers: {'Upload-Offset': '0'},
+      });
+    });
 
     class RejectedPatchRequest {
       status = 403;
@@ -142,6 +139,150 @@ describe('portfolio resumable video authorization recovery', () => {
     );
     expect(renewCalls).toHaveLength(2);
     expect(mockStorage.has('@portfolio-video:user-a')).toBe(true);
+  });
+
+  it('aborts the native PATCH and retains the same resume record and claim', async () => {
+    let sent!: () => void;
+    const sending = new Promise<void>(resolve => {
+      sent = resolve;
+    });
+    const aborted = jest.fn();
+    class CancelPatchRequest {
+      timeout = 0;
+      onabort: (() => void) | null = null;
+      open() {}
+      setRequestHeader() {}
+      send() {
+        sent();
+      }
+      abort() {
+        aborted();
+        this.onabort?.();
+      }
+    }
+    global.XMLHttpRequest =
+      CancelPatchRequest as unknown as typeof XMLHttpRequest;
+    const controller = new AbortController();
+    const requestId = '11111111-1111-4111-8111-111111111111';
+    const upload = uploadPortfolioVideo(
+      '42',
+      {uri: 'file:///portfolio.mp4', type: 'video/mp4', size: 4},
+      requestId,
+      {epoch: 1, scope: 'user-a'},
+      undefined,
+      controller.signal,
+    );
+    await sending;
+    controller.abort();
+    await expect(upload).rejects.toThrow('PORTFOLIO_UPLOAD_PAUSED');
+    expect(aborted).toHaveBeenCalledTimes(1);
+    const saved = JSON.parse(mockStorage.get('@portfolio-video:user-a')!)[
+      requestId
+    ];
+    expect(saved.uploadUrl).toBe('https://video.example/upload/1');
+    expect(saved.claim).toBe('claim-2');
+    expect(mockPost.mock.calls.some(([url]) => url.endsWith('/claim'))).toBe(
+      false,
+    );
+  });
+
+  it('reports resumed payload bytes but waits for valid PATCH offset and server claim', async () => {
+    let sent!: (request: ProgressPatchRequest) => void;
+    const sending = new Promise<ProgressPatchRequest>(resolve => {
+      sent = resolve;
+    });
+    let claimed!: () => void;
+    const claiming = new Promise<void>(resolve => {
+      claimed = resolve;
+    });
+    let finishClaim!: (response: unknown) => void;
+    const claimResponse = new Promise(resolve => {
+      finishClaim = resolve;
+    });
+    class ProgressPatchRequest {
+      status = 204;
+      timeout = 0;
+      upload: {onprogress: ((event: {loaded: number}) => void) | null} = {
+        onprogress: null,
+      };
+      onload: (() => void) | null = null;
+      open() {}
+      setRequestHeader() {}
+      getResponseHeader() {
+        return '8';
+      }
+      send() {
+        sent(this);
+      }
+    }
+    global.XMLHttpRequest =
+      ProgressPatchRequest as unknown as typeof XMLHttpRequest;
+    global.fetch = jest.fn(
+      async (_url: unknown, init?: RequestInit) =>
+        new Response(null, {
+          status: 200,
+          headers:
+            init?.method === 'POST'
+              ? {Location: '/upload/1'}
+              : {'Upload-Offset': '4'},
+        }),
+    );
+    mockPost.mockReset();
+    mockPost.mockImplementation((endpoint: string) => {
+      if (endpoint.endsWith('/claim')) {
+        claimed();
+        return claimResponse;
+      }
+      return Promise.resolve({
+        data: {
+          data: {
+            upload_endpoint: 'https://video.example/tus',
+            claim: 'claim-1',
+            headers: {Authorization: 'upload-only'},
+          },
+        },
+      });
+    });
+    const observer = jest.fn();
+    const upload = uploadPortfolioVideo(
+      '42',
+      {uri: 'file:///portfolio.mp4', type: 'video/mp4', size: 8},
+      '11111111-1111-4111-8111-111111111111',
+      {epoch: 1, scope: 'user-a'},
+      observer,
+    );
+    const patch = await sending;
+    expect(observer).toHaveBeenLastCalledWith({
+      loaded: 4,
+      total: 8,
+      phase: 'uploading',
+    });
+    const nativeProgress = patch.upload.onprogress!;
+    nativeProgress({loaded: 2});
+    expect(observer).toHaveBeenLastCalledWith({
+      loaded: 6,
+      total: 8,
+      phase: 'uploading',
+    });
+    nativeProgress({loaded: 99});
+    expect(observer).toHaveBeenLastCalledWith({
+      loaded: 8,
+      total: 8,
+      phase: 'saving',
+    });
+    expect(mockPost.mock.calls.some(([url]) => url.endsWith('/claim'))).toBe(
+      false,
+    );
+    patch.onload?.();
+    await claiming;
+    expect(patch.upload.onprogress).toBeNull();
+    const callbacks = observer.mock.calls.length;
+    nativeProgress({loaded: 1});
+    expect(observer).toHaveBeenCalledTimes(callbacks);
+    finishClaim({
+      data: {data: {id: 11, file_type: 'video', status: 'processing'}},
+    });
+    await expect(upload).resolves.toMatchObject({id: 11, status: 'processing'});
   });
 
   it('returns confirmed media when removing the old upload record fails', async () => {

@@ -5,7 +5,14 @@ import {
   getLocalLearningState,
   loadCourseLearningData,
   reconcileServerSavedLessons,
+  retryPendingSectionCompletions,
 } from '../../components/VideoPlayer/courseLearningApi';
+import {learningNavigationHandoff} from '../../components/VideoPlayer/courseLearning/navigationHandoff';
+import {
+  emptyLocalLearningState,
+  overlayLocalLearningState,
+} from '../../components/VideoPlayer/courseLearning/persistence';
+import {settleWithin} from '../../utils/settleWithin';
 import type {CourseLearningData} from '../../components/VideoPlayer/types';
 import type {PlaybackRuntimeMetrics} from '../../components/VideoPlayer/playbackTelemetry';
 import {
@@ -56,6 +63,7 @@ export const useReelsCourseLoader = ({
   setPreviewGateVisible,
   requestInitialPosition,
   setSavedLessons,
+  savedLessonsVersion,
   setServerSession,
 }: {
   navigation: Pick<RootNavigation, 'replace'>;
@@ -70,6 +78,7 @@ export const useReelsCourseLoader = ({
   setPreviewGateVisible: Dispatch<SetStateAction<boolean>>;
   requestInitialPosition: (request: {key?: string; index?: number}) => void;
   setSavedLessons: Dispatch<SetStateAction<Set<string>>>;
+  savedLessonsVersion?: MutableRefObject<number>;
   setServerSession: Dispatch<SetStateAction<boolean | null>>;
 }) => {
   const consumedContinueAfterTokenRef = useRef<string | null>(null);
@@ -80,6 +89,7 @@ export const useReelsCourseLoader = ({
       refs.loadAbort.current = controller;
       const requestId = ++refs.loadRequest.current;
       const requestedCourseId = String(params.courseId || '');
+      const savedVersionAtLoadStart = savedLessonsVersion?.current;
       const hasCurrentCourse =
         refs.loadedCourse.current?.id === requestedCourseId &&
         refs.loadedCourseOwner.current === identityKey;
@@ -124,10 +134,40 @@ export const useReelsCourseLoader = ({
           reloadTarget?.onResult?.(false);
           return;
         }
-        const result = await loadCourseLearningData(
-          requestedCourseId || undefined,
-          {signal: controller.signal},
+        if (!isCurrentOwner()) return;
+        // Optional native state and session restore overlap the metadata read.
+        // Read player state once, with one short budget, rather than making a
+        // second identical storage read after course details have arrived.
+        const rawLocalStateFlight = getLocalLearningState(undefined, boundary);
+        const localFallback = emptyLocalLearningState();
+        const localStateFlight = settleWithin(
+          rawLocalStateFlight,
+          localFallback,
+          250,
         );
+        const sessionFlight = hasSession();
+        // Attach a rejection handler now even if metadata takes longer.
+        const localContextFlight = Promise.all([
+          localStateFlight,
+          sessionFlight,
+        ]);
+        void localContextFlight.catch(() => undefined);
+        const handoff =
+          !hasCurrentCourse && !reloadTarget
+            ? learningNavigationHandoff.take(
+                params.learningHandoffKey,
+                requestedCourseId,
+                boundary,
+              )
+            : null;
+        if (handoff) {
+          void retryPendingSectionCompletions().catch(() => undefined);
+        }
+        const result = handoff
+          ? {course: handoff}
+          : await loadCourseLearningData(requestedCourseId || undefined, {
+              signal: controller.signal,
+            });
         if (!isCurrentOwner()) return;
         // A public details payload contains the free samples plus the outline.
         // It is not a learning entitlement. If a stale CTA/deep link opens the
@@ -159,16 +199,26 @@ export const useReelsCourseLoader = ({
           reloadTarget.onResult?.(false, 'project_changed');
           return;
         }
-        const [withLocalState, localState, sessionAvailable] =
-          await Promise.all([
-            applyLocalLearningState(result.course),
-            getLocalLearningState(),
-            hasSession(),
-          ]);
+        const [localState, sessionAvailable] = await localContextFlight;
+        const withLocalState = await applyLocalLearningState(
+          result.course,
+          localState,
+        );
         if (!isCurrentOwner()) return;
         setServerSession(sessionAvailable);
-        refs.positions.current = localState.positions;
-        setSavedLessons(new Set(localState.savedLessons));
+        // An in-place refresh must not erase the current session while its
+        // optional device read is slow, or replace a newer position with an
+        // older persisted sample. New course/account entry still resets it.
+        refs.positions.current = hasCurrentCourse
+          ? {...localState.positions, ...refs.positions.current}
+          : localState.positions;
+        if (!hasCurrentCourse) {
+          setSavedLessons(new Set(localState.savedLessons));
+        }
+        let savedReadVersion = hasCurrentCourse
+          ? savedVersionAtLoadStart
+          : savedLessonsVersion?.current;
+        let serverSavedResolved = false;
         refs.loadedCourse.current = withLocalState;
         refs.loadedCourseOwner.current = identityKey;
         setCourse(withLocalState);
@@ -179,8 +229,11 @@ export const useReelsCourseLoader = ({
           );
           void reconcileServerSavedLessons(lessonIds)
             .then(serverSaved => {
-              if (isCurrentOwner()) {
+              if (!isCurrentOwner()) return;
+              serverSavedResolved = true;
+              if (savedLessonsVersion?.current === savedReadVersion) {
                 setSavedLessons(new Set(serverSaved));
+                savedReadVersion = savedLessonsVersion?.current;
               }
             })
             .catch(() => undefined);
@@ -250,6 +303,35 @@ export const useReelsCourseLoader = ({
         if (pendingContinueAfterReelId) {
           consumedContinueAfterTokenRef.current = continueAfterToken;
         }
+        if (localState === localFallback) {
+          // A slow read is not a lost read. Restore only untouched positions
+          // and presentation hints; never reposition the feed or overwrite a
+          // newer playback sample, explicit route position or bookmark command.
+          void rawLocalStateFlight
+            .then(lateState => {
+              if (!isCurrentOwner()) return;
+              refs.positions.current = {
+                ...lateState.positions,
+                ...refs.positions.current,
+              };
+              setCourse(current => {
+                if (!isCurrentOwner() || current?.id !== requestedCourseId)
+                  return current;
+                const hydrated = overlayLocalLearningState(current, lateState);
+                refs.loadedCourse.current = hydrated;
+                return hydrated;
+              });
+              if (
+                !hasCurrentCourse &&
+                !serverSavedResolved &&
+                savedLessonsVersion?.current === savedReadVersion
+              ) {
+                setSavedLessons(new Set(lateState.savedLessons));
+                savedReadVersion = savedLessonsVersion?.current;
+              }
+            })
+            .catch(() => undefined);
+        }
         reloadTarget?.onResult?.(true);
       } catch (error) {
         if (!isCurrentOwner()) return;
@@ -278,6 +360,7 @@ export const useReelsCourseLoader = ({
       params.courseId,
       params.continueAfterReelId,
       params.initialReelIndex,
+      params.learningHandoffKey,
       params.initialPositionSeconds,
       params.lessonId,
       params.projectId,
@@ -291,13 +374,18 @@ export const useReelsCourseLoader = ({
       setLoading,
       setPreviewGateVisible,
       setSavedLessons,
+      savedLessonsVersion,
       setServerSession,
     ],
   );
 
   useEffect(() => {
     void load();
-  }, [load]);
+    return () => {
+      refs.loadAbort.current?.abort();
+      refs.loadRequest.current += 1;
+    };
+  }, [load, refs]);
 
   return load;
 };

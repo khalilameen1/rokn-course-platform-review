@@ -334,6 +334,14 @@ final class ProjectController extends Controller
                 (string) $validated['client_request_id'],
                 array_values($validated['attachment_ids'] ?? [])
             );
+        } catch (\App\Exceptions\AiPlanLimitReachedException $exception) {
+            return response()->json([
+                'status' => 422,
+                'success' => false,
+                'code' => 'project_discussion_limit_reached',
+                'message' => 'انتهى حد مناقشة المشاريع في اشتراكك',
+                'data' => null,
+            ], 422);
         } catch (\Illuminate\Auth\Access\AuthorizationException $exception) {
             return $this->error('الردود غير متاحة لهذا المشروع', 403);
         } catch (\UnexpectedValueException $exception) {

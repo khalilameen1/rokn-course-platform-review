@@ -9,6 +9,9 @@ module.exports = {
     '/scripts/tests/',
     '/tools/rokn-recorder/test/',
     '/.codex-tmp/',
+    // Local toolchain binaries and npm's own command named test.js are not
+    // application suites. Keep all app tests, including failing ones, in scope.
+    '<rootDir>/\\.tools/',
   ],
   // Expo's Babel preset rewrites EXPO_PUBLIC_* reads to expo/virtual/env. Expo
   // ships that module as ESM, so the React Native Jest preset must transform it

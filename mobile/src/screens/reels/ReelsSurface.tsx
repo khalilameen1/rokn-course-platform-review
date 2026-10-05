@@ -110,6 +110,7 @@ const ReelsSurface = (controller: ReelsController) => {
             />
           )}
           <NotificationPermissionPrimer
+            key={controller.reminderNudgeScopeKey}
             onClose={controller.closeReminderNudge}
             onEnable={controller.enableRemindersFromNudge}
             visible={controller.reminderNudgeVisible}

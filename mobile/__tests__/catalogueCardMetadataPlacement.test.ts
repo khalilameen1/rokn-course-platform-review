@@ -17,7 +17,7 @@ describe('public course metadata placement', () => {
     );
   });
 
-  it('keeps one public catalogue label while learner ownership and progress stay out of discovery', () => {
+  it('keeps public badges only on smaller cards and learner ownership out of discovery', () => {
     const courseCard = source('src/components/view/CourseCard.tsx');
     const carouselCard = source('src/components/view/CarouselItem.tsx');
 
@@ -26,12 +26,15 @@ describe('public course metadata placement', () => {
       expect(card).not.toContain("from '../ui/RoknCoin'");
       expect(card).not.toMatch(/value=\{(?:item|course)\.coinPrice/);
       expect(card).not.toMatch(/\$\{(?:item|course)\.coinPrice\}/);
-      expect(card).toContain('courseCatalogueLabel');
       expect(card).not.toMatch(/(?:item|course)\.(owned|started|progress)/);
       expect(card).not.toMatch(
         /ضمن كورساتك|قيد التعلّم|راجع الكورس|progressTrack/,
       );
     }
+    expect(courseCard).toContain('courseCatalogueLabel');
+    expect(carouselCard).not.toContain('courseCatalogueLabel');
+    expect(carouselCard).not.toContain('course.instructor');
+    expect(courseCard).not.toContain('item.instructor');
   });
 
   it('keeps those decision metrics on the course details surface', () => {

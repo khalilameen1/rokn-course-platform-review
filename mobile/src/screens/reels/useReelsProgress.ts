@@ -198,7 +198,6 @@ export const useReelsProgress = ({
         void confirmReelCompletion(reel, finalEvidenceSave).then(completed => {
           if (!completed && !completeLocally) return;
           if (!ownsActiveReel(course.id, reel)) return;
-          maybeOfferReminders();
           const nextTitle = nextLearningTitle(course, reel);
           const lastPreviewItem = feedItems[feedItems.length - 1];
           const isLastPreviewReel =
@@ -218,7 +217,6 @@ export const useReelsProgress = ({
     [
       course,
       feedItems,
-      maybeOfferReminders,
       ownsActiveReel,
       ownsCourse,
       playbackSpeed,
@@ -245,7 +243,6 @@ export const useReelsProgress = ({
       }
       const advance = async () => {
         if (!ownsActiveReel(course.id, reel)) return;
-        maybeOfferReminders();
         const isLastPreviewReel =
           previewMode && currentIndex >= refs.feedLength.current - 1;
         const nextTitle = nextLearningTitle(course, reel);
@@ -273,6 +270,11 @@ export const useReelsProgress = ({
           // when automatic video playback is disabled.
           await refreshAfterSectionCompletion(currentIndex + 1);
           return;
+        }
+        // Optional consent belongs only to an ordinary reel boundary, never
+        // the last preview, course end or an authored project transition.
+        if (nextItem?.type === 'reel' && !nextItem.reel.isLocked) {
+          maybeOfferReminders();
         }
         if (autoplay) {
           scheduleDelayedAction(() => {

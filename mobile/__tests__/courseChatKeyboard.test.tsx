@@ -22,6 +22,7 @@ import type {
   ChatAttachmentDraft,
   ChatMessage,
 } from '../src/components/VideoPlayer/types';
+import type {CourseChatUpgradeStatus} from '../src/components/VideoPlayer/courseChat/useCourseChatUpgrade';
 
 const {execPath} = require('node:process') as {execPath: string};
 const mockInsets = {top: 0, bottom: 0, left: 0, right: 0};
@@ -32,6 +33,9 @@ const mockChatState = {
   hydrationError: '',
   retryHydration: jest.fn(),
   assistantIncluded: true,
+  upgradeStatus: 'idle' as CourseChatUpgradeStatus,
+  retryUpgradeQuote: jest.fn(),
+  consentPending: false,
   assistantPresence: 'connected',
   attachments: [] as ChatAttachmentDraft[],
   input: 'سؤال مكتوب',
@@ -39,6 +43,7 @@ const mockChatState = {
   sending: false,
   answerPending: false,
   isSendInFlight: () => false,
+  pickAttachments: jest.fn(),
   scrollRef: {current: null},
   setInput: jest.fn(),
 };
@@ -47,15 +52,6 @@ jest.unmock('react-native/Libraries/Components/ScrollView/ScrollView');
 jest.mock('../src/components/VideoPlayer/courseChat/useCourseChat', () => ({
   useCourseChat: () => mockUseCourseChat(),
 }));
-jest.mock(
-  '../src/components/VideoPlayer/courseChat/useCourseChatAttachments',
-  () => ({
-    useCourseChatAttachments: () => ({
-      pickerIsActive: () => false,
-      pickAttachments: jest.fn(),
-    }),
-  }),
-);
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   openCourseAssistantAttachment: jest.fn(),
 }));
@@ -118,6 +114,8 @@ describe('course conversation keyboard ownership', () => {
     mockChatState.hydrated = true;
     mockChatState.hydrationError = '';
     mockChatState.assistantIncluded = true;
+    mockChatState.upgradeStatus = 'idle';
+    mockChatState.consentPending = false;
     mockInsets.top = 0;
     mockInsets.bottom = 0;
   });
@@ -142,9 +140,35 @@ describe('course conversation keyboard ownership', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('locks only the consent preparation composer without replacing its draft or inventing a sent question', async () => {
+    mockChatState.consentPending = true;
+    mockChatState.attachments = [{
+      uri: 'file:///work.pdf', name: 'work.pdf', type: 'application/pdf', uploadId: 'file-1',
+    }];
+    await render();
+    const input = renderer.root.findByType(TextInput);
+    expect(input.props.editable).toBe(false);
+    expect(input.props.value).toBe('سؤال مكتوب');
+    const removal = renderer.root.findAllByProps({accessibilityLabel: 'حذف work.pdf'})[0];
+    expect(removal.props.disabled).toBe(true);
+    expect(removal.props.accessibilityState).toEqual({disabled: true});
+    const send = renderer.root.findAllByProps({accessibilityLabel: 'إرسال'})[0];
+    expect(send.props.disabled).toBe(true);
+    expect(send.props.accessibilityState.busy).toBe(true);
+    expect(mockChatState.answerPending).toBe(false);
+  });
+
   it('opens chat-specific checkout only after a tap and returns to the explanation on reopen', async () => {
     mockChatState.assistantIncluded = false;
     await render();
+    expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(0);
+    // This view test replaces the controller. Model its GET-only discovery
+    // result explicitly; no purchase is offered while the quote is pending.
+    expect(renderer.root.findAllByProps({accessibilityLabel: 'ترقية الاشتراك'})).toHaveLength(0);
+    const props = renderer.root.findByType(CourseChatOverlay)
+      .props as React.ComponentProps<typeof CourseChatOverlay>;
+    mockChatState.upgradeStatus = 'available';
+    await act(async () => renderer.update(<CourseChatOverlay {...props} />));
     expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(0);
     await act(async () =>
       renderer.root
@@ -154,15 +178,17 @@ describe('course conversation keyboard ownership', () => {
     expect(
       renderer.root.findByType(FullTrackUpgradeSheet).props.requiredFeature,
     ).toBe('chat');
-    const props = renderer.root.findByType(CourseChatOverlay)
-      .props as React.ComponentProps<typeof CourseChatOverlay>;
     await act(async () =>
       renderer.update(<CourseChatOverlay {...props} visible={false} />),
     );
+    mockChatState.upgradeStatus = 'loading';
     await act(async () =>
       renderer.update(<CourseChatOverlay {...props} visible />),
     );
     expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(0);
+    expect(renderer.root.findAllByProps({accessibilityLabel: 'ترقية الاشتراك'})).toHaveLength(0);
+    mockChatState.upgradeStatus = 'available';
+    await act(async () => renderer.update(<CourseChatOverlay {...props} visible />));
     expect(
       renderer.root.findByProps({accessibilityLabel: 'ترقية الاشتراك'}),
     ).toBeDefined();

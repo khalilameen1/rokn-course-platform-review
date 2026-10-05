@@ -22,6 +22,7 @@ export type PortfolioMediaOutboxEntry = {
   file: LearnerDraftFile;
   createdAt: number;
   storageKey?: string;
+  paused?: boolean;
 };
 
 const STORAGE_KEY = learnerDraftStorage.portfolioMedia.namespace;
@@ -51,7 +52,8 @@ const validEntry = (value: unknown): value is PortfolioMediaOutboxEntry => {
     /^\d+$/.test(String(entry.projectId || '')) &&
     /^[0-9a-f-]{36}$/i.test(String(entry.clientRequestId || '')) &&
     Boolean(entry.file?.uri) &&
-    Number.isFinite(entry.createdAt)
+    Number.isFinite(entry.createdAt) &&
+    (entry.paused === undefined || typeof entry.paused === 'boolean')
   );
 };
 
@@ -172,6 +174,13 @@ export const stagePortfolioMediaUpload = async (
     const replaced = entries.find(
       candidate => candidate.clientRequestId === scopedEntry.clientRequestId,
     );
+    // Re-staging or adding a sibling never silently revokes a saved pause.
+    scopedEntry.paused =
+      entries.some(
+        candidate =>
+          candidate.projectId === scopedEntry.projectId &&
+          candidate.paused === true,
+      ) || scopedEntry.paused === true;
     const next = [
       ...entries.filter(
         candidate => candidate.clientRequestId !== scopedEntry.clientRequestId,
@@ -196,6 +205,45 @@ export const stagePortfolioMediaUpload = async (
     assertAccountSessionBoundary(boundary);
   });
   return scopedEntry;
+};
+
+/** Durable local intent only; never downgrades an already accepted server file. */
+export const setPortfolioMediaUploadsPaused = async (
+  projectId: string,
+  paused: boolean,
+  boundary: AccountSessionBoundary,
+): Promise<number> => {
+  const key = await scopedKey(boundary);
+  return withLock(key, async () => {
+    assertAccountSessionBoundary(boundary);
+    const entries = await readStored(key);
+    let changed = 0;
+    const next = entries.map(entry => {
+      if (entry.projectId !== projectId) return entry;
+      changed += 1;
+      return {...entry, paused};
+    });
+    if (changed) await writeStored(key, next);
+    assertAccountSessionBoundary(boundary);
+    return changed;
+  });
+};
+
+/** Re-check under the same storage lock, not a stale replay list snapshot. */
+export const portfolioMediaUploadIsPaused = async (
+  entry: PortfolioMediaOutboxEntry,
+  boundary: AccountSessionBoundary,
+): Promise<boolean> => {
+  const key = await scopedKey(boundary, entry.storageKey);
+  return withLock(key, async () => {
+    assertAccountSessionBoundary(boundary);
+    const entries = await readStored(key);
+    assertAccountSessionBoundary(boundary);
+    return entries.some(
+      candidate =>
+        candidate.projectId === entry.projectId && candidate.paused === true,
+    );
+  });
 };
 
 export const completePortfolioMediaUpload = async (

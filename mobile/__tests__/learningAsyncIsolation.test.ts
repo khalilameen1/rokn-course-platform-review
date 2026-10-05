@@ -41,14 +41,13 @@ describe('learning async ownership contracts', () => {
     const notifications = source(
       'src/screens/notifications/useNotificationsInbox.ts',
     );
-    expect(chatUpgrade).toContain('generationRef.current === generation');
-    expect(chatUpgrade).toContain('activeCourseIdRef.current === courseId');
+    const upgradeOffer = source('src/hooks/useCourseUpgradeOffer.ts');
+    expect(upgradeOffer).toContain('ownerRef.current === owner');
+    expect(upgradeOffer).toContain('!cancelled');
     expect(chatUpgrade).toContain(
-      '[accountKey, accessType, chatAvailable, courseId]',
+      'ownerKey: JSON.stringify([scope, serverBlockCode])',
     );
-    expect(chat).toContain(
-      'stopConversationGeneration !== conversationGeneration.current',
-    );
+    expect(chatUpgrade).toContain('chatEntitlementRevision');
     expect(chat).toMatch(
       /sendGenerationRef\.current \+= 1;[\s\S]*setSending\(false\);[\s\S]*await cancelCourseAssistantTurn/,
     );
@@ -56,10 +55,19 @@ describe('learning async ownership contracts', () => {
       chat.indexOf('const stop = useCallback'),
       chat.indexOf('runTurnRef.current = runTurn'),
     );
+    expect(stopBlock).toContain('generation: conversationGeneration.current');
+    expect(stopBlock).toMatch(
+      /const ownsStop = \(\) =>\s*noticeMountedRef\.current &&\s*stopFlightRef\.current === stopFlight &&\s*stopFlight\.generation === conversationGeneration\.current &&\s*activeConversation\.current === conversationScope/,
+    );
+    expect(stopBlock).toMatch(
+      /await cancelCourseAssistantTurn\([\s\S]*?assertAccountSessionBoundary\(boundary\);\s*if \(!ownsStop\(\)\) return;/,
+    );
     expect(stopBlock).toContain(
       'if (cancelledAtServer && sendFlightRef.current === stoppedSendFlight)',
     );
-    expect(stopBlock).toContain('resumeInterruptedTurnRef.current = !cancelledAtServer');
+    expect(stopBlock).toContain(
+      'resumeInterruptedTurnRef.current = !cancelledAtServer',
+    );
     expect(chat).toContain('setRecoverySignal(value => value + 1)');
     expect(chatPolling).toContain(
       'response = await pollCourseAssistantTurn(clientRequestId)',
@@ -72,11 +80,8 @@ describe('learning async ownership contracts', () => {
     expect(chat).toContain(
       'courseChatFailureCanStartFreshTurn(response.canRetry)',
     );
-    const chatOverlay = source(
-      'src/components/VideoPlayer/courseChat/useCourseChatAttachments.ts',
-    );
-    expect(chatOverlay).toContain('pickerGenerationRef.current += 1');
-    expect(chatOverlay).toContain('if (!ownsPicker())');
+    // Native picker ownership is covered by the real-hook behavioral cases in
+    // courseChatPickerOwnership rather than matching implementation variable names.
     expect(notifications).toContain('new Map<string, symbol>()');
     expect(notifications).toContain(
       'readFlightsRef.current.get(item.id) === flight',
@@ -203,8 +208,6 @@ describe('learning async ownership contracts', () => {
     expect(upgrade).toMatch(
       /boundary = await captureAccountSessionBoundary\(\);[\s\S]*await authorizeCourseCheckout\([\s\S]*assertAccountSessionBoundary\(boundary\)/,
     );
-    expect(upgrade).toContain(
-      'if (!owns(token)) return;',
-    );
+    expect(upgrade).toContain('if (!owns(token)) return;');
   });
 });

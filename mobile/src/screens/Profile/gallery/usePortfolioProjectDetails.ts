@@ -17,6 +17,8 @@ import {
 import {
   discardPortfolioMediaUploads,
   listPortfolioMediaUploads,
+  setPortfolioMediaUploadsPaused,
+  type PortfolioMediaOutboxEntry,
 } from '../../../services/portfolioMediaOutbox';
 import {
   stagePortfolioMediaFiles,
@@ -33,6 +35,8 @@ import {portfolioAction, portfolioMediaSlots} from '../portfolioState';
 import {isPortfolioAccountChangedError, type Project} from './portfolioModel';
 import {usePortfolioPublication} from './usePortfolioPublication';
 import {usePortfolioProjectSelection} from './usePortfolioProjectSelection';
+import type {PortfolioUploadProgress} from '../../../services/portfolioUploadProgress';
+import {usePortfolioUploadSession} from './usePortfolioUploadSession';
 
 type Options = {
   onSubscriptions?: PortfolioSubscriptionAction;
@@ -58,7 +62,24 @@ export const usePortfolioProjectDetails = ({
   const [editTitle, setEditTitle] = useState('');
   const [editSummary, setEditSummary] = useState('');
   const [saving, setSaving] = useState(false);
+  const [uploadPreparing, setUploadPreparing] = useState(false);
+  const uploadSession = usePortfolioUploadSession(mountedRef);
+  const {
+    begin: beginUpload,
+    end: endUpload,
+    pause: pauseUpload,
+  } = uploadSession;
+  const [pendingReadRevision, setPendingReadRevision] = useState(0);
+  const [pendingUploads, setPendingUploads] = useState<{
+    projectId: string;
+    status: 'ready' | 'error';
+    count: number;
+    paused: boolean;
+  } | null>(null);
+  const [mediaUploadProgress, setMediaUploadProgress] =
+    useState<PortfolioUploadProgress | null>(null);
   const mutationFlightRef = useRef<symbol | null>(null);
+  const uploadFlightRef = useRef<symbol | null>(null);
   const selection = usePortfolioProjectSelection({
     captureBoundary,
     isCreateBusy,
@@ -84,6 +105,73 @@ export const usePortfolioProjectDetails = ({
     selectedRef,
     selectPreviewMedia,
   } = selection;
+  useEffect(() => {
+    const projectId = selected?.source === 'remote' ? selected.id : null;
+    if (!projectId) {
+      setPendingUploads(null);
+      return;
+    }
+    let current = true;
+    const generation = detailGenerationRef.current;
+    void captureBoundary()
+      .then(async boundary => {
+        const entries = await listPortfolioMediaUploads(projectId, boundary);
+        assertAccountSessionBoundary(boundary);
+        if (
+          current &&
+          mountedRef.current &&
+          detailGenerationRef.current === generation &&
+          selectedRef.current?.id === projectId
+        ) {
+          setPendingUploads({
+            projectId,
+            status: 'ready',
+            count: entries.length,
+            paused: entries.some(entry => entry.paused === true),
+          });
+        }
+      })
+      .catch(error => {
+        if (
+          current &&
+          mountedRef.current &&
+          detailGenerationRef.current === generation &&
+          selectedRef.current?.id === projectId &&
+          !isPortfolioAccountChangedError(error)
+        )
+          setPendingUploads({
+            projectId,
+            status: 'error',
+            count: 0,
+            paused: false,
+          });
+      });
+    return () => {
+      current = false;
+    };
+  }, [
+    captureBoundary,
+    detailGenerationRef,
+    mountedRef,
+    pendingReadRevision,
+    saving,
+    selected?.id,
+    selected?.source,
+    selected?.uploadedMediaCount,
+    selectedRef,
+  ]);
+  const pendingUploadsReady = Boolean(
+    selected &&
+      pendingUploads &&
+      selected.id === pendingUploads.projectId &&
+      pendingUploads.status === 'ready',
+  );
+  const hasPendingUploads =
+    pendingUploadsReady && (pendingUploads?.count ?? 0) > 0;
+  const retryPendingUploads = useCallback(
+    () => setPendingReadRevision(current => current + 1),
+    [],
+  );
   const isMutationActive = useCallback(
     () => Boolean(mutationFlightRef.current),
     [],
@@ -110,6 +198,7 @@ export const usePortfolioProjectDetails = ({
   useEffect(
     () => () => {
       mutationFlightRef.current = null;
+      uploadFlightRef.current = null;
       setMutationBlocked(false);
     },
     [setMutationBlocked],
@@ -141,10 +230,27 @@ export const usePortfolioProjectDetails = ({
     (flight: symbol) => {
       if (mutationFlightRef.current !== flight) return;
       mutationFlightRef.current = null;
+      if (uploadFlightRef.current === flight) uploadFlightRef.current = null;
       setMutationBlocked(false);
-      if (mountedRef.current) setSaving(false);
+      if (mountedRef.current) {
+        setSaving(false);
+        setUploadPreparing(false);
+        setMediaUploadProgress(null);
+      }
     },
     [mountedRef, setMutationBlocked],
+  );
+
+  const beginUploadMutation = useCallback(
+    (showSaving = true) => {
+      const flight = beginMutation(showSaving);
+      if (flight) {
+        uploadFlightRef.current = flight;
+        setUploadPreparing(true);
+      }
+      return flight;
+    },
+    [beginMutation],
   );
 
   const settleUploadedProjects = useCallback(
@@ -174,9 +280,25 @@ export const usePortfolioProjectDetails = ({
   );
 
   const closeProject = useCallback(() => {
+    if (uploadFlightRef.current) {
+      // Preparation has no cancellable transport yet. Keep its selection
+      // owner; once staged, Back and the visible stop action share pause.
+      void pauseUpload();
+      return;
+    }
     setEditing(false);
     closeSelection();
-  }, [closeSelection]);
+  }, [closeSelection, pauseUpload]);
+
+  const ownsSelectedUpload = useCallback(
+    (projectId: string, generation: number, flight: symbol) =>
+      mountedRef.current &&
+      mutationFlightRef.current === flight &&
+      uploadFlightRef.current === flight &&
+      detailGenerationRef.current === generation &&
+      selectedRef.current?.id === projectId,
+    [detailGenerationRef, mountedRef, selectedRef],
+  );
 
   const beginEdit = useCallback(() => {
     const current = selectedRef.current;
@@ -245,6 +367,11 @@ export const usePortfolioProjectDetails = ({
     const projectId = current.id;
     try {
       const boundary = await captureBoundary();
+      if ((await listPortfolioMediaUploads(projectId, boundary)).length) {
+        if (mountedRef.current)
+          Alert.alert('الرفع غير مكتمل', 'أكمل رفع الملفات أولاً');
+        return;
+      }
       const publication = await finalizeAfterUpload(projectId, boundary, {
         ownsMutation: true,
       });
@@ -280,35 +407,162 @@ export const usePortfolioProjectDetails = ({
     selectedRef,
   ]);
 
-  const addSelectedMedia = useCallback(async () => {
+  const uploadSelectedEntries = useCallback(
+    async (
+      projectId: string,
+      entries: PortfolioMediaOutboxEntry[],
+      boundary: AccountSessionBoundary,
+      generation: number,
+      flight: symbol,
+    ) => {
+      assertAccountSessionBoundary(boundary);
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
+      beginUpload(projectId, boundary);
+      const {
+        discardedFiles,
+        interrupted,
+        paused: pausedResult,
+      } = await uploadPortfolioMediaFiles({
+        boundary,
+        entries,
+        onProgress: progress => {
+          assertAccountSessionBoundary(boundary);
+          if (
+            mountedRef.current &&
+            mutationFlightRef.current === flight &&
+            detailGenerationRef.current === generation &&
+            selectedRef.current?.id === projectId
+          )
+            setMediaUploadProgress(progress);
+        },
+        onUploaded: (uploadedProjectId, uploaded) =>
+          applyUploadedMedia(uploadedProjectId, uploaded, generation),
+      });
+      const paused = (await endUpload()) || pausedResult === true;
+      if (interrupted && !paused && mountedRef.current)
+        Alert.alert(
+          'لم يكتمل الرفع',
+          'احتفظنا بالملفات وسنكملها عند فتح المشروع',
+        );
+      else if (discardedFiles && mountedRef.current)
+        Alert.alert(
+          'لم تُرفع بعض الملفات',
+          'اختر صورة أو فيديو آخر ثم حاول مرة أخرى',
+        );
+      if (!interrupted && !paused) {
+        try {
+          const publication = await finalizeAfterUpload(projectId, boundary, {
+            ownsMutation: true,
+          });
+          if (publication === 'processing' && mountedRef.current)
+            Alert.alert(
+              'يُجهز الفيديو',
+              'ستتم مراجعة أعمالك بعد اكتمال التجهيز',
+            );
+        } catch (error) {
+          if (isPortfolioAccountChangedError(error)) throw error;
+          await reconcileProject(projectId, boundary, generation).catch(
+            () => undefined,
+          );
+          assertAccountSessionBoundary(boundary);
+          if (mountedRef.current)
+            Alert.alert(
+              'اكتمل رفع الملفات',
+              'تعذّر تجهيز المشروع للمشاركة\nاضغط إتمام المشروع',
+            );
+        }
+      }
+    },
+    [
+      beginUpload,
+      endUpload,
+      applyUploadedMedia,
+      detailGenerationRef,
+      finalizeAfterUpload,
+      mountedRef,
+      ownsSelectedUpload,
+      reconcileProject,
+      selectedRef,
+    ],
+  );
+
+  const resumeSelectedUploads = useCallback(async () => {
     const current = selectedRef.current;
     if (!current || saving || mutationFlightRef.current) return;
-    const flight = beginMutation(false);
+    const flight = beginUploadMutation();
     if (!flight) return;
     const projectId = current.id;
     const generation = detailGenerationRef.current;
     try {
       const boundary = await captureBoundary();
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
       await assertPortfolioUploadAccess(boundary);
-      if (
-        !mountedRef.current ||
-        detailGenerationRef.current !== generation ||
-        selectedRef.current?.id !== projectId
-      )
+      assertAccountSessionBoundary(boundary);
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
+      await setPortfolioMediaUploadsPaused(projectId, false, boundary);
+      const entries = await listPortfolioMediaUploads(projectId, boundary);
+      assertAccountSessionBoundary(boundary);
+      await uploadSelectedEntries(
+        projectId,
+        entries,
+        boundary,
+        generation,
+        flight,
+      );
+    } catch (error) {
+      if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
+        if (showPortfolioUploadGate(error, onSubscriptions, closeSelection))
+          return;
+        Alert.alert(
+          'تعذّر استكمال الرفع',
+          learnerErrorMessage(error, 'حاول مرة أخرى'),
+        );
+      }
+    } finally {
+      await endUpload();
+      finishMutation(flight);
+    }
+  }, [
+    beginUploadMutation,
+    captureBoundary,
+    closeSelection,
+    detailGenerationRef,
+    finishMutation,
+    mountedRef,
+    onSubscriptions,
+    ownsSelectedUpload,
+    saving,
+    selectedRef,
+    uploadSelectedEntries,
+    endUpload,
+  ]);
+
+  const addSelectedMedia = useCallback(async () => {
+    const current = selectedRef.current;
+    if (!current || saving || mutationFlightRef.current) return;
+    const flight = beginUploadMutation(false);
+    if (!flight) return;
+    const projectId = current.id;
+    const generation = detailGenerationRef.current;
+    try {
+      const boundary = await captureBoundary();
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
+      await assertPortfolioUploadAccess(boundary);
+      assertAccountSessionBoundary(boundary);
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
+      if ((await listPortfolioMediaUploads(projectId, boundary)).length) {
+        if (mountedRef.current)
+          Alert.alert('الرفع غير مكتمل', 'أكمل رفع الملفات أولاً');
         return;
+      }
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
       const result = await launchImageLibrary({
         mediaType: 'mixed' as MediaType,
         selectionLimit: Math.max(1, portfolioMediaSlots(current)),
         quality: 0.8,
       });
       assertAccountSessionBoundary(boundary);
-      if (
-        !mountedRef.current ||
-        detailGenerationRef.current !== generation ||
-        selectedRef.current?.id !== projectId
-      ) {
-        return;
-      }
+      if (!ownsSelectedUpload(projectId, generation, flight)) return;
       if (result.errorCode) {
         showMediaPickerFailure(result.errorCode);
         return;
@@ -327,46 +581,13 @@ export const usePortfolioProjectDetails = ({
           size: asset.fileSize,
         })),
       });
-      const {discardedFiles, interrupted} = await uploadPortfolioMediaFiles({
+      await uploadSelectedEntries(
+        projectId,
+        staged,
         boundary,
-        entries: staged,
-        onUploaded: (uploadedProjectId, uploaded) =>
-          applyUploadedMedia(uploadedProjectId, uploaded, generation),
-      });
-      if (interrupted && mountedRef.current) {
-        Alert.alert(
-          'لم يكتمل الرفع',
-          'احتفظنا بالملفات وسنكملها عند فتح المشروع',
-        );
-      } else if (discardedFiles && mountedRef.current) {
-        Alert.alert(
-          'لم تُرفع بعض الملفات',
-          'اختر صورة أو فيديو آخر ثم حاول مرة أخرى',
-        );
-      }
-      if (!interrupted) {
-        try {
-          const publication = await finalizeAfterUpload(projectId, boundary, {
-            ownsMutation: true,
-          });
-          if (publication === 'processing' && mountedRef.current) {
-            Alert.alert(
-              'يُجهز الفيديو',
-              'ستتم مراجعة أعمالك بعد اكتمال التجهيز',
-            );
-          }
-        } catch {
-          await reconcileProject(projectId, boundary, generation).catch(
-            () => undefined,
-          );
-          if (mountedRef.current) {
-            Alert.alert(
-              'اكتمل رفع الملفات',
-              'تعذّر تجهيز المشروع للمشاركة\nاضغط إتمام المشروع',
-            );
-          }
-        }
-      }
+        generation,
+        flight,
+      );
     } catch (error: unknown) {
       if (!isPortfolioAccountChangedError(error) && mountedRef.current) {
         if (showPortfolioUploadGate(error, onSubscriptions, closeSelection))
@@ -377,21 +598,22 @@ export const usePortfolioProjectDetails = ({
         );
       }
     } finally {
+      await endUpload();
       finishMutation(flight);
     }
   }, [
-    applyUploadedMedia,
-    beginMutation,
+    beginUploadMutation,
     captureBoundary,
     closeSelection,
     detailGenerationRef,
-    finalizeAfterUpload,
     finishMutation,
     mountedRef,
     onSubscriptions,
-    reconcileProject,
+    ownsSelectedUpload,
     saving,
     selectedRef,
+    uploadSelectedEntries,
+    endUpload,
   ]);
 
   const confirmDeleteSelectedProject = useCallback(() => {
@@ -540,6 +762,20 @@ export const usePortfolioProjectDetails = ({
     removeSelectedMedia,
     saveProjectEdits,
     saving,
+    mediaUploadProgress,
+    canPauseSelectedUpload: uploadSession.canPause,
+    pausingSelectedUpload: uploadSession.pausing,
+    pauseSelectedUpload: uploadSession.pause,
+    preparingSelectedUpload:
+      uploadPreparing && !uploadSession.canPause && !uploadSession.pausing,
+    pendingUploadsReady,
+    pendingUploadsError:
+      selected?.id === pendingUploads?.projectId &&
+      pendingUploads?.status === 'error',
+    hasPendingUploads,
+    selectedUploadPaused: hasPendingUploads && pendingUploads?.paused === true,
+    retryPendingUploads,
+    resumeSelectedUploads,
     selectPreviewMedia,
     selected,
     selectedMediaSlots: selected ? portfolioMediaSlots(selected) : 0,

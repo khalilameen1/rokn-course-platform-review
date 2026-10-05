@@ -97,3 +97,24 @@ the local version 60 AAB's embedded JavaScript found the previous label
 `معك كود` or `معاك كود`. The owner-device discrepancy remains unverified.
 Future device verification should identify the actual installed artifact, not
 infer its version from the emulator.
+
+## Final gate — current quote fixture contract, 5 October 2026
+
+The fresh `courseCodeRedemption` suite passed 10 cases and failed four copy
+assertions. Its untyped quote omitted the required API `channel`, so it was
+not a real direct-payment quote and rendered the alternative reward label.
+The fixture now uses the existing `CourseCheckout` and `CoinPackage` types,
+includes the required quote fields and defaults to `direct/exact_shortfall`,
+matching the current Android course transport. All prior numeric allocations,
+grant, recovery, rights, payment-lock and actual confirmation assertions remain.
+Three additional cases explicitly verify direct, Google and Apple reward copy,
+absence of the opposite label and the quoted cash amount. Store fixtures use
+`package`; no production channel fallback or pricing behavior was changed.
+
+The complete suite passes 17/17. Independent read-only review accepted the
+contract-complete fixture and unchanged product coverage without rerunning it.
+Evidence in `mobile/.cache/final-gate-20261005/`:
+`mobile-course-code-quote-reproduction.log` and `mobile-course-code-quote-final.log`.
+This proves controlled sheet presentation, not real provider/native payment,
+backend settlement, deployed compatibility or release readiness. Earlier
+verification counts above describe earlier snapshots, not this final gate.

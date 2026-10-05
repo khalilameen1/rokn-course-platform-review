@@ -10,6 +10,7 @@ import {learnerDraftStorage} from '../learnerDraftStorage';
 import {
   learnerDraftFileIsReadable,
   removeLearnerDraftFile,
+  retainLearnerDraftFiles,
 } from '../learnerDraftFiles';
 import {
   isUuid,
@@ -155,6 +156,7 @@ const replaceFeedbackDraft = async (
 export const loadProductFeedbackReplyDraft = async (
   publicId: string,
   ownerBoundary?: AccountSessionBoundary,
+  referenceOwner?: string,
 ) => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   const key = await replyDraftKey(publicId, boundary);
@@ -180,6 +182,16 @@ export const loadProductFeedbackReplyDraft = async (
         clientRequestId = '';
       }
       assertAccountSessionBoundary(boundary);
+      // Protect a restored editor's file before releasing the same draft lock
+      // that an older accepted reply uses to retire its durable slot.
+      if (referenceOwner && attachment) {
+        await retainLearnerDraftFiles(
+          referenceOwner,
+          [attachment],
+          boundary.scope,
+        );
+        assertAccountSessionBoundary(boundary);
+      }
       return {
         attachment,
         clientRequestId,
@@ -195,12 +207,23 @@ export const loadProductFeedbackReplyDraft = async (
 export const saveProductFeedbackReplyDraft = async (
   publicId: string,
   draft: ProductFeedbackReplyDraft | null,
-  ownerBoundary?: AccountSessionBoundary,
+  ownerBoundary?: AccountSessionBoundary | Promise<AccountSessionBoundary>,
   discardedAttachments: FeedbackAttachment[] = [],
 ) => {
-  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  const key = await replyDraftKey(publicId, boundary);
+  const boundarySource = ownerBoundary || captureAccountSessionBoundary();
+  // Queue ownership starts before asynchronous capture. A departure save is
+  // ordered before the next controller's same-case restoration, even if capture
+  // has not settled yet. Attach a rejection handler now while other writes run.
+  const resolvedBoundary = Promise.resolve(boundarySource).then(
+    boundary => ({boundary}),
+    error => ({error}),
+  );
   await withDraftLock(async () => {
+    const resolved = await resolvedBoundary;
+    if ('error' in resolved) throw resolved.error;
+    const boundary = resolved.boundary;
+    assertAccountSessionBoundary(boundary);
+    const key = await replyDraftKey(publicId, boundary);
     assertAccountSessionBoundary(boundary);
     const normalized = draft?.message.slice(0, 2000) || '';
     if (
@@ -222,6 +245,32 @@ export const saveProductFeedbackReplyDraft = async (
     }
     await replaceFeedbackDraft(key, null, boundary, discardedAttachments);
     assertAccountSessionBoundary(boundary);
+  });
+};
+
+/** An old accepted send must never remove a newer same-case draft or its file. */
+export const clearAcceptedProductFeedbackReplyDraft = async (
+  publicId: string,
+  clientRequestId: string,
+  boundary: AccountSessionBoundary,
+  discardedAttachments: FeedbackAttachment[] = [],
+): Promise<boolean> => {
+  if (!isUuid(clientRequestId)) throw new Error('INVALID_FEEDBACK_ATTEMPT');
+  return withDraftLock(async () => {
+    assertAccountSessionBoundary(boundary);
+    const key = await replyDraftKey(publicId, boundary);
+    const raw = await AsyncStorage.getItem(key);
+    assertAccountSessionBoundary(boundary);
+    if (raw !== null) {
+      let requestId: unknown;
+      try {
+        requestId = JSON.parse(raw)?.clientRequestId;
+      } catch {}
+      if (requestId !== clientRequestId) return false;
+    }
+    await replaceFeedbackDraft(key, null, boundary, discardedAttachments);
+    assertAccountSessionBoundary(boundary);
+    return true;
   });
 };
 

@@ -6,6 +6,10 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 
 require('react-native-gesture-handler/jestSetup');
 
+jest.mock('@react-native-community/netinfo', () =>
+  require('@react-native-community/netinfo/jest/netinfo-mock'),
+);
+
 // react-native-fs ships Flow syntax in its CommonJS entrypoint. Native I/O is
 // covered by focused suites; facade/import tests need a deterministic bridge.
 jest.mock('react-native-fs', () => ({
@@ -13,7 +17,10 @@ jest.mock('react-native-fs', () => ({
   DocumentDirectoryPath: '/tmp/rokn-documents',
   MainBundlePath: '/tmp/rokn-bundle',
   copyFile: jest.fn(async () => undefined),
-  downloadFile: jest.fn(() => ({jobId: 1, promise: Promise.resolve({statusCode: 200})})),
+  downloadFile: jest.fn(() => ({
+    jobId: 1,
+    promise: Promise.resolve({statusCode: 200}),
+  })),
   exists: jest.fn(async () => false),
   getFSInfo: jest.fn(async () => ({freeSpace: 1024 * 1024 * 1024})),
   hash: jest.fn(async () => 'a'.repeat(64)),
@@ -58,6 +65,9 @@ jest.mock('expo-notifications', () => ({
   addPushTokenListener: jest.fn(() => ({remove: jest.fn()})),
   getDevicePushTokenAsync: jest.fn(),
   getLastNotificationResponseAsync: jest.fn(async () => null),
+  clearLastNotificationResponseAsync: jest.fn(async () => undefined),
+  dismissAllNotificationsAsync: jest.fn(async () => undefined),
+  setBadgeCountAsync: jest.fn(async () => true),
   getPermissionsAsync: jest.fn(async () => ({granted: false})),
   requestPermissionsAsync: jest.fn(async () => ({granted: false})),
   setNotificationChannelAsync: jest.fn(),

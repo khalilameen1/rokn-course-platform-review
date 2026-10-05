@@ -6,6 +6,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {serverNowMs} from '../utils/serverClock';
 import {safeRoknRouteId} from './deepLinks';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 import {
   getCurrentAccountStorageScope,
   getCurrentGuestJourneyScope,
@@ -13,6 +14,8 @@ import {
 
 const PENDING_LOGIN_RETURN_KEY = '@rokn/pending-login-return/v1';
 const PENDING_LOGIN_RETURN_TTL_MS = 15 * 60 * 1000;
+const mutateLoginReturn = createKeyedAsyncQueue();
+let loginReturnWriteGeneration = 0;
 
 type RouteSnapshot = {
   name?: unknown;
@@ -67,6 +70,10 @@ export const safeLoginReturnTo = (
 ): LoginReturnTo | undefined => {
   const candidate = asRecord(value);
   const name = typeof candidate?.name === 'string' ? candidate.name : '';
+  if (name === 'CourseCertificate') {
+    const courseId = cleanId(asRecord(candidate?.params)?.courseId);
+    return courseId ? {name, params: {courseId}} : undefined;
+  }
   if (name === 'Profile') {
     const params = asRecord(candidate?.params);
     if (candidate?.params === undefined) return {name};
@@ -131,6 +138,9 @@ export const safeLoginReturnTo = (
 export const safeLoginReturnToFromRoute = (
   route?: RouteSnapshot,
 ): LoginReturnTo | undefined => {
+  if (route?.name === 'CourseCertificate') {
+    return safeLoginReturnTo(route);
+  }
   if (route?.name === 'Profile') {
     const params = asRecord(route.params);
     const tab = params?.tab;
@@ -220,6 +230,7 @@ export const resolveLoginReturnDestination = (
     returnTo.name === 'Wallet' ||
     returnTo.name === 'MyCorner' ||
     returnTo.name === 'Profile' ||
+    returnTo.name === 'CourseCertificate' ||
     returnTo.name === 'EditAccount' ||
     returnTo.name === 'DeviceSessions' ||
     returnTo.name === 'Notifications'
@@ -267,32 +278,51 @@ export const loginReturnResetState = (
 export const savePendingLoginReturnTo = async (
   value: unknown,
   reason: 'login' | 'reauthentication' = 'login',
+  canPersist: () => boolean = () => true,
 ) => {
+  const generation = ++loginReturnWriteGeneration;
+  const ownsWrite = () =>
+    generation === loginReturnWriteGeneration && canPersist();
+  const createdAt = serverNowMs();
   const returnTo = safeLoginReturnTo(value);
   if (!returnTo) {
-    await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+    await mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, async () => {
+      if (ownsWrite()) await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+    });
     return;
   }
   const [sourceScope, guestJourneyScope] = await Promise.all([
     getCurrentAccountStorageScope(),
     getCurrentGuestJourneyScope(),
   ]);
-  await AsyncStorage.setItem(
-    PENDING_LOGIN_RETURN_KEY,
-    JSON.stringify({
-      version: 2,
-      returnTo,
-      createdAt: serverNowMs(),
-      reason,
-      sourceKind: sourceScope.startsWith('guest-') ? 'guest' : 'account',
-      sourceScope,
-      guestJourneyScope,
-    }),
-  );
+  const receipt = JSON.stringify({
+    version: 2,
+    returnTo,
+    createdAt,
+    reason,
+    sourceKind: sourceScope.startsWith('guest-') ? 'guest' : 'account',
+    sourceScope,
+    guestJourneyScope,
+  });
+  return mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, async () => {
+    if (!ownsWrite()) return undefined;
+    await AsyncStorage.setItem(PENDING_LOGIN_RETURN_KEY, receipt);
+    // Keep the physical write owned until it settles. A cancelled writer must
+    // not re-create its route, nor remove a newer writer's envelope.
+    if (!ownsWrite()) {
+      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      return undefined;
+    }
+    return receipt;
+  });
 };
 
-export const clearPendingLoginReturnTo = () =>
-  AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+export const clearPendingLoginReturnTo = () => {
+  loginReturnWriteGeneration += 1;
+  return mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, () =>
+    AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY),
+  );
+};
 
 export type PendingLoginReturnClaim = {
   returnTo: LoginReturnTo;
@@ -309,7 +339,11 @@ export type PendingLoginReturnClaim = {
 export const claimPendingLoginReturnTo = async (): Promise<
   PendingLoginReturnClaim | undefined
 > => {
-  const raw = await AsyncStorage.getItem(PENDING_LOGIN_RETURN_KEY);
+  // Snapshot only after earlier physical writers and their retirement cleanup.
+  // Validation and conditional acknowledgement stay outside this queue slot.
+  const raw = await mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, () =>
+    AsyncStorage.getItem(PENDING_LOGIN_RETURN_KEY),
+  );
   if (!raw) return undefined;
   try {
     const envelope = asRecord(JSON.parse(raw));
@@ -320,12 +354,12 @@ export const claimPendingLoginReturnTo = async (): Promise<
       age < -60_000 ||
       age > PENDING_LOGIN_RETURN_TTL_MS
     ) {
-      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      await acknowledgePendingLoginReturnTo(raw);
       return undefined;
     }
     const returnTo = safeLoginReturnTo(envelope?.returnTo);
     if (!returnTo) {
-      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      await acknowledgePendingLoginReturnTo(raw);
       return undefined;
     }
     const sourceKind = envelope?.sourceKind;
@@ -340,7 +374,7 @@ export const claimPendingLoginReturnTo = async (): Promise<
       (sourceKind !== 'guest' && sourceKind !== 'account') ||
       !sourceScope
     ) {
-      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      await acknowledgePendingLoginReturnTo(raw);
       return undefined;
     }
     const currentOwner =
@@ -350,21 +384,22 @@ export const claimPendingLoginReturnTo = async (): Promise<
     const expectedOwner =
       sourceKind === 'guest' ? guestJourneyScope : sourceScope;
     if (!expectedOwner || currentOwner !== expectedOwner) {
-      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      await acknowledgePendingLoginReturnTo(raw);
       return undefined;
     }
     return {returnTo, createdAt, receipt: raw};
   } catch {
-    await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+    await acknowledgePendingLoginReturnTo(raw);
     return undefined;
   }
 };
 
-export const acknowledgePendingLoginReturnTo = async (receipt: string) => {
-  const current = await AsyncStorage.getItem(PENDING_LOGIN_RETURN_KEY);
-  if (current === receipt) {
-    await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
-    return true;
-  }
-  return false;
-};
+export const acknowledgePendingLoginReturnTo = (receipt: string) =>
+  mutateLoginReturn(PENDING_LOGIN_RETURN_KEY, async () => {
+    const current = await AsyncStorage.getItem(PENDING_LOGIN_RETURN_KEY);
+    if (current === receipt) {
+      await AsyncStorage.removeItem(PENDING_LOGIN_RETURN_KEY);
+      return true;
+    }
+    return false;
+  });

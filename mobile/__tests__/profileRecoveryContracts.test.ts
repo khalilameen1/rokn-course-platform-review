@@ -30,7 +30,9 @@ describe('profile recovery contracts', () => {
     expect(certificateView).toContain('!readyCourses.length &&');
     expect(certificateView).toContain('!grantCourses.length ?');
     expect(certificates).toContain('recoverPendingCertificates');
-    expect(certificates).toContain('recoverCertificate(courseId, boundary)');
+    expect(certificates).toMatch(
+      /pendingCourseIds\.map\(pendingCourseId =>\s*recoverCertificate\(pendingCourseId, boundary\)/,
+    );
     expect(certificates).toContain(
       'await recoverCertificate(certificate.courseId, boundary)',
     );
@@ -63,8 +65,8 @@ describe('profile recovery contracts', () => {
     expect(source('src/services/portfolioMediaReplay.ts')).toContain(
       'deliverPortfolioMedia(entry, boundary)',
     );
-    expect(source('src/services/portfolioMediaUpload.ts')).toContain(
-      'deliverPortfolioMedia(entry, boundary)',
+    expect(source('src/services/portfolioMediaUpload.ts')).toMatch(
+      /deliverPortfolioMedia\(entry, boundary,\s*value =>\s*progress\.transfer\(index, value\),\s*\)/,
     );
   });
 
@@ -95,7 +97,15 @@ describe('profile recovery contracts', () => {
     expect(details).toContain('mutationFlightRef.current = flight');
     expect(details).not.toContain('mediaFlightRef');
     expect(details).not.toContain('deleteFlightRef');
-    expect(details.match(/beginMutation\((?:false)?\)/g)).toHaveLength(5);
+    // Four ordinary admissions plus the shared add/resume admission still
+    // use one synchronous mutation owner, not separate upload locks.
+    expect(
+      details.match(/beginMutation\((?:false|showSaving)?\)/g),
+    ).toHaveLength(5);
+    expect(details.match(/beginUploadMutation\((?:false)?\)/g)).toHaveLength(2);
+    expect(details).toMatch(
+      /const beginUploadMutation = useCallback\(\s*\(showSaving = true\) => \{\s*const flight = beginMutation\(showSaving\);/,
+    );
     expect(details).toContain('{cancelable: true, onDismiss: release}');
     expect(details).toContain('if (!deleteStarted) finishMutation(flight)');
     expect(details).toContain(

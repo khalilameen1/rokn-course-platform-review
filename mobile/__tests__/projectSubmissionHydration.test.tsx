@@ -90,7 +90,9 @@ describe('project submission draft hydration', () => {
       await act(async () => { renderer = TestRenderer.create(<Harness />); });
       act(() => current.changeNote('مسودة لا ترسل دون موافقة'));
       await act(async () => { await current.submit(); });
-      expect(mockConsent).toHaveBeenCalledWith({scope: 'user-a', epoch: 1});
+      expect(mockConsent).toHaveBeenCalledWith(
+        {scope: 'user-a', epoch: 1}, expect.any(Function),
+      );
       expect(mockSaveDraft).toHaveBeenCalled();
       expect(onSubmit).not.toHaveBeenCalled();
       expect(mockClearDraft).not.toHaveBeenCalled();

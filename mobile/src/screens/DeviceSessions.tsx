@@ -85,6 +85,8 @@ const SessionDeviceIcon = ({deviceClass}: {deviceClass: RoknDeviceClass}) => {
   );
 };
 
+type RevocationOwner = {identity: string; visit: number};
+
 export default function DeviceSessions() {
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
@@ -97,7 +99,7 @@ export default function DeviceSessions() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [error, setError] = useState('');
   const loadGenerationRef = useRef(0);
-  const mutationFlightRef = useRef<{identity: string} | null>(null);
+  const mutationFlightRef = useRef<RevocationOwner | null>(null);
   const pendingRefreshRef = useRef<string | null>(null);
   const screenActiveRef = useRef(false);
   const screenVisitRef = useRef(0);
@@ -178,7 +180,7 @@ export default function DeviceSessions() {
   const beginRevocation = (id: string) => {
     const identity = accountIdentityRef.current;
     if (mutationFlightRef.current?.identity === identity) return null;
-    const owner = {identity};
+    const owner = {identity, visit: screenVisitRef.current};
     mutationFlightRef.current = owner;
     // An interrupted pull-to-refresh still deserves one fresh result, but no
     // read may restore a session using a snapshot from inside revocation.
@@ -190,7 +192,12 @@ export default function DeviceSessions() {
     return owner;
   };
 
-  const finishRevocation = (owner: {identity: string}) => {
+  const ownsRevocationPresentation = (owner: RevocationOwner) =>
+    screenActiveRef.current &&
+    owner.visit === screenVisitRef.current &&
+    owner.identity === accountIdentityRef.current;
+
+  const finishRevocation = (owner: RevocationOwner) => {
     if (mutationFlightRef.current !== owner) return;
     mutationFlightRef.current = null;
     const refreshRequested = pendingRefreshRef.current === owner.identity;
@@ -201,6 +208,8 @@ export default function DeviceSessions() {
     ) {
       setRemoving(null);
       setRefreshing(false);
+      // A new visit can reconcile the account's completed request, but must
+      // never inherit an old visit's alert or optimistic list mutation.
       if (refreshRequested) void load(true, owner.identity);
     }
   };
@@ -231,31 +240,19 @@ export default function DeviceSessions() {
               return;
             const owner = beginRevocation(session.id);
             if (!owner) return;
-            const requestedIdentity = owner.identity;
             try {
               const boundary = await captureAccountSessionBoundary();
               assertAccountSessionBoundary(boundary);
-              if (
-                !screenActiveRef.current ||
-                dialogVisit !== screenVisitRef.current ||
-                dialogIdentity !== accountIdentityRef.current
-              )
-                return;
+              if (!ownsRevocationPresentation(owner)) return;
               await revokeDeviceSession(session.id);
               assertAccountSessionBoundary(boundary);
-              if (
-                screenActiveRef.current &&
-                requestedIdentity === accountIdentityRef.current
-              ) {
+              if (ownsRevocationPresentation(owner)) {
                 setSessions(current =>
                   current.filter(item => item.id !== session.id),
                 );
               }
             } catch (requestError) {
-              if (
-                screenActiveRef.current &&
-                requestedIdentity === accountIdentityRef.current
-              ) {
+              if (ownsRevocationPresentation(owner)) {
                 if (
                   requestError instanceof Error &&
                   requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'
@@ -300,31 +297,19 @@ export default function DeviceSessions() {
               return;
             const owner = beginRevocation('all');
             if (!owner) return;
-            const requestedIdentity = owner.identity;
             try {
               const boundary = await captureAccountSessionBoundary();
               assertAccountSessionBoundary(boundary);
-              if (
-                !screenActiveRef.current ||
-                dialogVisit !== screenVisitRef.current ||
-                dialogIdentity !== accountIdentityRef.current
-              )
-                return;
+              if (!ownsRevocationPresentation(owner)) return;
               await revokeOtherDeviceSessions();
               assertAccountSessionBoundary(boundary);
-              if (
-                screenActiveRef.current &&
-                requestedIdentity === accountIdentityRef.current
-              ) {
+              if (ownsRevocationPresentation(owner)) {
                 setSessions(current =>
                   current.filter(session => session.current),
                 );
               }
             } catch (requestError) {
-              if (
-                screenActiveRef.current &&
-                requestedIdentity === accountIdentityRef.current
-              ) {
+              if (ownsRevocationPresentation(owner)) {
                 if (
                   requestError instanceof Error &&
                   requestError.message === 'ACCOUNT_CHANGED_DURING_REQUEST'

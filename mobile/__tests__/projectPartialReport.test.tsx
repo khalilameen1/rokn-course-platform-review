@@ -10,6 +10,7 @@ import {
 import type {CourseProject} from '../src/components/VideoPlayer/types';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 import FullTrackUpgradeSheet from '../src/components/FullTrackUpgradeSheet';
+import {getFullTrackUpgradeQuote} from '../src/services/roknApi';
 jest.mock(
   '../src/components/FullTrackUpgradeSheet',
   () => 'FullTrackUpgradeSheet',
@@ -29,6 +30,12 @@ jest.mock('../src/navigation/RootNavigationHelper', () => ({
 jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
   openProjectInputAttachment: jest.fn(),
 }));
+jest.mock('../src/services/roknApi', () => ({
+  getFullTrackUpgradeQuote: jest.fn(),
+}));
+jest.mock('../src/hooks/useAppActiveState', () => ({
+  useAppForegroundState: () => true,
+}));
 jest.mock(
   '../src/components/VideoPlayer/projectTransition/useProjectTransitionController',
   () => ({
@@ -42,6 +49,7 @@ jest.mock(
 
 import ProjectTransition from '../src/components/VideoPlayer/ProjectTransition';
 import ProjectFeedbackPanel from '../src/components/VideoPlayer/projectTransition/ProjectFeedbackPanel';
+import {ProjectFeedbackReadRecovery} from '../src/components/VideoPlayer/projectTransition/ProjectFeedbackReadRecovery';
 import ProjectSubmissionEditor from '../src/components/VideoPlayer/projectTransition/ProjectSubmissionEditor';
 
 const project: CourseProject = {
@@ -159,6 +167,10 @@ const controllerFor = (overrides: Record<string, unknown> = {}) => ({
   feedbackSending: false,
   canReplyToFeedback: false,
   feedbackError: '',
+  feedbackReadError: '',
+  feedbackReadRetrying: false,
+  retryFeedbackRead: jest.fn(),
+  refreshFeedbackRead: jest.fn(),
   canContinue: false,
   syncNote: '',
   reportRetrying: false,
@@ -188,37 +200,175 @@ const controllerFor = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const renderTransition = (
+const renderTransitionFixture = (
   controller: Record<string, unknown>,
   props: {onContinue?: () => void} = {},
 ) => {
   mockController.mockReturnValue(controller);
+  const element: React.ReactElement<
+    React.ComponentProps<typeof ProjectTransition>
+  > = (
+    <ProjectTransition
+      active
+      project={project}
+      moduleTitle="أساسيات Blender 4"
+      width={390}
+      height={844}
+      onSubmit={jest.fn()}
+      onContinue={props.onContinue}
+    />
+  );
   let renderer!: TestRenderer.ReactTestRenderer;
   act(() => {
-    renderer = TestRenderer.create(
-      <ProjectTransition
-        active
-        project={project}
-        moduleTitle="أساسيات Blender 4"
-        width={390}
-        height={844}
-        onSubmit={jest.fn()}
-        onContinue={props.onContinue}
-      />,
-    );
+    renderer = TestRenderer.create(element);
   });
-  return renderer;
+  return {renderer, element};
 };
 
+const renderTransition = (
+  controller: Record<string, unknown>,
+  props: {onContinue?: () => void} = {},
+) => renderTransitionFixture(controller, props).renderer;
+
 describe('project lifecycle presentation', () => {
+  it('recovers an empty report with GET instead of the report-generation action and leaves continuation available', () => {
+    const retryRead = jest.fn();
+    const retryReport = jest.fn();
+    const onContinue = jest.fn();
+    const controller = controllerFor({
+      journeyState: 'passed',
+      reportViewState: 'failed_retryable',
+      canContinue: true,
+      feedbackReadError: 'تعذّر تحميل التقرير',
+      retryFeedbackRead: retryRead,
+      retryReport,
+    });
+    const {renderer, element} = renderTransitionFixture(controller, {
+      onContinue,
+    });
+    try {
+      const text = () =>
+        renderer.root
+          .findAllByType(Text)
+          .map(node => cleanUnicodeText(node.props.children));
+      expect(text()).toContain('تعذّر تحميل التقرير');
+      expect(text().some(value => value.includes('تعذّر تجهيز التقرير'))).toBe(
+        false,
+      );
+      expect(renderer.root.findAllByType(ActivityIndicator)).toHaveLength(0);
+      act(() =>
+        renderer.root
+          .findByProps({
+            accessibilityLabel: 'إعادة تحميل تقرير المشروع والمناقشة',
+          })
+          .props.onPress(),
+      );
+      expect(retryRead).toHaveBeenCalledTimes(1);
+      expect(retryReport).not.toHaveBeenCalled();
+      act(() =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'أكمل الكورس'})
+          .props.onPress(),
+      );
+      expect(onContinue).toHaveBeenCalledTimes(1);
+      mockController.mockReturnValue({
+        ...controller,
+        feedbackReadRetrying: true,
+      });
+      act(() => renderer.update(React.cloneElement(element)));
+      expect(
+        renderer.root.findByProps({
+          accessibilityLabel: 'إعادة تحميل تقرير المشروع والمناقشة',
+        }).props.accessibilityState,
+      ).toEqual({busy: true, disabled: true});
+      expect(text()).toContain('جارٍ التحديث');
+      expect(renderer.root.findAllByType(ActivityIndicator)).toHaveLength(0);
+      mockController.mockReturnValue({...controller, feedbackReadError: ''});
+      act(() => renderer.update(React.cloneElement(element)));
+      expect(text()).toContain('تعذّر تجهيز التقرير  حاول مرة أخرى');
+    } finally {
+      act(() => renderer.unmount());
+    }
+  });
+
+  it('keeps the report, open discussion and composer while showing a transcript-read recovery', () => {
+    const retryRead = jest.fn();
+    const controller = controllerFor({
+      journeyState: 'passed',
+      reportViewState: 'ready',
+      feedbackLevel: 'enhanced',
+      canReplyToFeedback: true,
+      feedbackDraft: 'سؤالي محفوظ',
+      normalizedFeedbackDraft: 'سؤالي محفوظ',
+      feedbackReadError: 'تعذّر تحديث الرد',
+      retryFeedbackRead: retryRead,
+      feedbackThread: {
+        id: 'thread-7',
+        feedbackLevel: 'enhanced',
+        canReply: true,
+        status: 'ready',
+        remainingMessages: 5,
+        messages: [
+          {
+            id: 'report-7',
+            role: 'assistant',
+            status: 'completed',
+            text: partial,
+          },
+        ],
+      },
+    });
+    const {renderer, element} = renderTransitionFixture(controller);
+    try {
+      act(() =>
+        renderer.root
+          .findByProps({accessibilityLabel: 'هل لديك سؤال؟'})
+          .props.onPress(),
+      );
+      const readAction = () =>
+        renderer.root.findByProps({
+          accessibilityLabel: 'إعادة تحميل تقرير المشروع والمناقشة',
+        });
+      expect(
+        renderer.root.findAllByType(ProjectFeedbackReadRecovery),
+      ).toHaveLength(1);
+      act(() => readAction().props.onPress());
+      expect(retryRead).toHaveBeenCalledTimes(1);
+      mockController.mockReturnValue({
+        ...controller,
+        feedbackReadRetrying: true,
+      });
+      act(() => renderer.update(React.cloneElement(element)));
+      expect(
+        renderer.root.findByProps({
+          accessibilityLabel: 'استفسارك عن تقرير المشروع',
+        }).props.value,
+      ).toBe('سؤالي محفوظ');
+      expect(
+        renderer.root.findByProps({accessibilityLabel: 'إغلاق المناقشة'}),
+      ).toBeDefined();
+      expect(
+        renderer.root
+          .findAllByType(Text)
+          .map(node => cleanUnicodeText(node.props.children)),
+      ).toContain(partial);
+      expect(controller.sendFeedback).not.toHaveBeenCalled();
+      expect(controller.retryReport).not.toHaveBeenCalled();
+    } finally {
+      act(() => renderer.unmount());
+    }
+  });
+
   it('keeps a long report and continuation independent from the optional upgrade sheet', () => {
     const refresh = jest.fn();
+    const refreshFeedbackRead = jest.fn();
     const onContinue = jest.fn();
     const longReport = 'ملاحظات المشروع كاملة دون اختصار\n'.repeat(80);
     mockController.mockReturnValue(
       controllerFor({
         journeyState: 'passed',
         canContinue: true,
+        refreshFeedbackRead,
         reportViewState: 'ready',
         feedbackLevel: 'report',
         feedbackThread: {
@@ -274,7 +424,12 @@ describe('project lifecycle presentation', () => {
       const upgrade = renderer.root.findByType(FullTrackUpgradeSheet);
       expect(upgrade.props.requiredFeature).toBe('project_discussion');
       expect(upgrade.props.courseId).toBe('7');
-      expect(upgrade.props.onUpgraded).toBe(refresh);
+      expect(upgrade.props.quotaExhausted).toBe(false);
+      act(() => {
+        void upgrade.props.onUpgraded();
+      });
+      expect(refreshFeedbackRead).toHaveBeenCalledTimes(1);
+      expect(refresh).toHaveBeenCalledTimes(1);
       act(() => upgrade.props.onClose());
       act(() =>
         renderer.root
@@ -289,6 +444,107 @@ describe('project lifecycle presentation', () => {
       if (renderer) act(() => renderer.unmount());
     }
   });
+
+  it('binds an exhausted discussion CTA to the existing project upgrade sheet and receipt refresh', async () => {
+    jest.mocked(getFullTrackUpgradeQuote).mockClear();
+    jest.mocked(getFullTrackUpgradeQuote).mockResolvedValue({
+      upgradeAvailable: true,
+      availablePlanCodes: ['mentor'],
+      alreadyUpgraded: false,
+    } as Awaited<ReturnType<typeof getFullTrackUpgradeQuote>>);
+    const refreshFeedbackRead = jest.fn();
+    const refresh = jest.fn();
+    const onContinue = jest.fn();
+    mockController.mockReturnValue(
+      controllerFor({
+        journeyState: 'passed',
+        canContinue: true,
+        reportViewState: 'ready',
+        feedbackLevel: 'enhanced',
+        refreshFeedbackRead,
+        feedbackHydrating: true,
+        feedbackThread: {
+          id: 'thread-7',
+          feedbackLevel: 'enhanced',
+          canReply: true,
+          status: 'ready',
+          transcriptIncluded: true,
+          remainingMessages: 2,
+          replyLimitReached: true,
+          messages: [
+            {
+              id: 'report',
+              role: 'assistant',
+              status: 'completed',
+              text: partial,
+            },
+          ],
+        },
+      }),
+    );
+    const element = (
+      <ProjectTransition
+        active
+        project={project}
+        courseId="7"
+        courseTitle="تصميم"
+        moduleTitle="تطبيق"
+        width={390}
+        height={844}
+        onSubmit={jest.fn()}
+        onContinue={onContinue}
+        onEntitlementChanged={refresh}
+      />
+    );
+    let renderer!: TestRenderer.ReactTestRenderer;
+    try {
+      await act(async () => {
+        renderer = TestRenderer.create(element);
+      });
+      await act(async () => {
+        renderer.root
+          .findByProps({accessibilityLabel: 'هل لديك سؤال؟'})
+          .props.onPress();
+      });
+      expect(getFullTrackUpgradeQuote).not.toHaveBeenCalled();
+      mockController.mockReturnValue({
+        ...mockController.mock.results.at(-1)!.value,
+        feedbackHydrating: false,
+      });
+      await act(async () => {
+        renderer.update(React.cloneElement(element));
+      });
+      expect(getFullTrackUpgradeQuote).toHaveBeenCalledTimes(1);
+      expect(renderer.root.findAllByType(FullTrackUpgradeSheet)).toHaveLength(
+        0,
+      );
+      await act(async () => {
+        renderer.root
+          .findByProps({accessibilityLabel: 'قم بترقية الاشتراك'})
+          .props.onPress();
+      });
+      const sheet = renderer.root.findByType(FullTrackUpgradeSheet);
+      expect(sheet.props.requiredFeature).toBe('project_discussion');
+      expect(sheet.props.quotaExhausted).toBe(true);
+      expect(sheet.props.courseId).toBe('7');
+      await act(async () => {
+        await sheet.props.onUpgraded();
+      });
+      expect(refreshFeedbackRead).toHaveBeenCalledTimes(1);
+      expect(refresh).toHaveBeenCalledTimes(1);
+      await act(async () => {
+        sheet.props.onClose();
+      });
+      await act(async () => {
+        renderer.root
+          .findByProps({accessibilityLabel: 'أكمل الكورس'})
+          .props.onPress();
+      });
+      expect(onContinue).toHaveBeenCalledTimes(1);
+    } finally {
+      if (renderer) await act(async () => renderer.unmount());
+    }
+  });
   // Structural guard only: the renderer does not measure native IME geometry.
   // Field/CTA visibility must also be verified on the native keyboard surface.
   it.each(['android', 'ios'] as const)(
@@ -299,7 +555,8 @@ describe('project lifecycle presentation', () => {
       const submit = jest.fn();
       try {
         Platform.OS = platform;
-        renderer = renderTransition(controllerFor({submit}));
+        const fixture = renderTransitionFixture(controllerFor({submit}));
+        renderer = fixture.renderer;
         const avoidance = () => renderer!.root.findByType(KeyboardAvoidingView);
         expect(avoidance().props.enabled ?? true).toBe(true);
         expect(avoidance().props.behavior).toBe('padding');
@@ -308,11 +565,9 @@ describe('project lifecycle presentation', () => {
           expect.objectContaining({width: 390, height: 844}),
         );
 
-        const props = renderer.root.findByType(ProjectTransition)
-          .props as React.ComponentProps<typeof ProjectTransition>;
         act(() => {
           renderer!.update(
-            <ProjectTransition {...props} height={320} topInset={24} />,
+            React.cloneElement(fixture.element, {height: 320, topInset: 24}),
           );
         });
         expect(StyleSheet.flatten(avoidance().props.style).height).toBe(320);

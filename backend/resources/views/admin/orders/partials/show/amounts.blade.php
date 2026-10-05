@@ -17,6 +17,13 @@
             <div class="text-warning mt-2"><small>ربط العملية بدفتر العملات غير مكتمل</small></div>
         @endif
     @else
+        @if($order->payment_method === 'kashier' && ($order->courseFundingCheckout?->terms['funding_mode'] ?? null) === 'exact_shortfall')
+            <div class="amount-row">
+                <span class="amount-label">الرصيد اللازم للاشتراك</span>
+                <span class="amount-value">{{ number_format($order->packageCoinAmount()) }} عملة ركن</span>
+            </div>
+            <div class="text-muted mb-2"><small>دفع الجزء الناقص للاشتراك وليس شراء الحزمة كاملة</small></div>
+        @endif
         <div class="amount-row">
             <span class="amount-label">المبلغ الأساسي:</span>
             <span class="amount-value">{{ number_format($order->amount, 2) }} {{ $order->gateway_currency ?: 'EGP' }}</span>

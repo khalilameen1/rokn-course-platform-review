@@ -36,7 +36,8 @@ export const replayPendingPortfolioMediaUploads = async () => {
 
     for (const entry of pending) {
       assertAccountSessionBoundary(boundary);
-      if (failedProjects.has(entry.projectId)) continue;
+      if (entry.paused === true || failedProjects.has(entry.projectId))
+        continue;
       attempted += 1;
       const result = await deliverPortfolioMedia(entry, boundary);
       assertAccountSessionBoundary(boundary);

@@ -29,6 +29,7 @@ final class AdminNotificationTemplateAuthoringService
     public function create(array $validated, string $requestId, ?UploadedFile $image, Closure $complete): AdminNotification
     {
         $payload = $this->payload($validated);
+        $payload = array_replace($payload, AdminNotification::presentationOverrides($payload['system_key'] ?? null));
         $path = $this->stageImage($image, 'admin-message-template|'.strtolower($requestId));
         try {
             return DB::transaction(function () use ($payload, $requestId, $image, $path, $complete): AdminNotification {
@@ -68,6 +69,9 @@ final class AdminNotificationTemplateAuthoringService
                 if ($notification->isSystemTemplate()) {
                     $payload['system_key'] = $notification->system_key;
                 }
+                // The locked template identity, not a submitted key, owns its
+                // fixed journey policy. Other template options stay authored.
+                $payload = array_replace($payload, AdminNotification::presentationOverrides($payload['system_key'] ?? null));
                 $notification->update($payload);
                 if ($path !== null) {
                     $oldPhotos = $notification->allPhotos()->where('type', 'featured')->lockForUpdate()->get();
@@ -122,6 +126,7 @@ final class AdminNotificationTemplateAuthoringService
     private function payload(array $validated): array
     {
         $payload = Arr::except($validated, ['image', 'remove_image', 'authoring_request_id', 'editor_version']);
+        $payload['description_ar'] ??= '';
         $payload['title_en'] = trim((string) ($payload['title_en'] ?? '')) ?: $payload['title_ar'];
         $payload['description_en'] = trim((string) ($payload['description_en'] ?? '')) ?: $payload['description_ar'];
         foreach (['starts_at', 'ends_at'] as $field) {

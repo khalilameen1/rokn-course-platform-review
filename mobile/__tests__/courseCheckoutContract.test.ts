@@ -9,6 +9,15 @@ jest.mock('../src/constants/helpers', () => ({
 jest.mock('../src/constants/distribution', () => ({
   DISTRIBUTION_CHANNEL: 'play',
 }));
+jest.mock('../src/services/checkoutRouting', () => ({
+  courseCheckoutTransport: {kind: 'native', apiChannel: 'google', channel: 'play'},
+  checkoutPackageChannel: (channel: string) => {
+    if (channel === 'direct') return 'direct';
+    if (channel === 'google') return 'play';
+    if (channel === 'apple') return 'appstore';
+    throw new Error('API_CONTRACT_INVALID_COURSE_CHECKOUT');
+  },
+}));
 import {
   mapCourseCheckout,
   selectCheckoutPackage,
@@ -16,6 +25,7 @@ import {
 } from '../src/services/api/courseCheckout';
 
 const data = {
+  channel: 'google',
   id: 'checkout-1',
   status: 'quoted',
   course_id: 3,
@@ -35,6 +45,58 @@ const data = {
   selected_package: null,
 };
 describe('authoritative course checkout contract', () => {
+  beforeEach(() => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport.apiChannel = 'google';
+    mockPost.mockReset();
+  });
+  it('negotiates exact funding and refuses a legacy whole-package response', async () => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport.apiChannel = 'direct';
+    mockPost.mockResolvedValue({data: {success: true, status: 200, data: {...data, channel: 'direct'}}});
+    await expect(quoteCourseCheckout({courseId: '3', planCode: 'guided', mode: 'purchase'}))
+      .rejects.toThrow('API_UNSUPPORTED_EXACT_COURSE_FUNDING');
+    expect(mockPost).toHaveBeenCalledWith('course-checkouts',
+      expect.objectContaining({channel: 'direct', funding_mode: 'exact_shortfall'}));
+  });
+  it('maps exact direct funding from the issued quote instead of the full denomination', () => {
+    const funding = {
+      id: 5, coins: 300, price: 3.70, direct_price: 3.33,
+      name_ar: 'الرصيد', funding_mode: 'exact_shortfall',
+      pricing_basis: {coins: 900, price: 11.11, direct_price: 10},
+      channels: {direct: true, google: false, apple: false}, store_products: {},
+    };
+    expect(mapCourseCheckout({...data, channel: 'direct', funding_mode: 'exact_shortfall',
+      recommended_packages: [funding], selected_package: funding,
+    })).toMatchObject({
+      fundingMode: 'exact_shortfall', deficit: 300, rewardCoins: 80,
+      selectedPackage: {id: '5', coins: 300, price: 3.33},
+    });
+    expect(() => mapCourseCheckout({...data, channel: 'direct', funding_mode: 'exact_shortfall',
+      recommended_packages: [funding], selected_package: {...funding, coins: 900},
+    })).toThrow('API_CONTRACT_INVALID_SELECTED_PACKAGE');
+    expect(() => mapCourseCheckout({...data, funding_mode: 'exact_shortfall'}))
+      .toThrow('API_CONTRACT_INVALID_COURSE_CHECKOUT');
+  });
+  it('maps a direct course package at its direct price without requiring a store product', () => {
+    const quote = mapCourseCheckout({
+      ...data,
+      channel: 'direct',
+      recommended_packages: [
+        {
+          id: 5,
+          coins: 400,
+          price: 100,
+          direct_price: 90,
+          name_ar: 'الرصيد',
+          channels: {direct: true, google: false, apple: false},
+          store_products: {},
+        },
+      ],
+    });
+    expect(quote.channel).toBe('direct');
+    expect(quote.packages).toEqual([
+      expect.objectContaining({id: '5', price: 90}),
+    ]);
+  });
   it('sends the required capability on both quotes including the store package binding', async () => {
     mockPost.mockResolvedValue({data: {success: true, status: 200, data}});
     await quoteCourseCheckout({
@@ -69,6 +131,8 @@ describe('authoritative course checkout contract', () => {
       remainingRewardCoins: 120,
     }));
   it.each([
+    {...data, channel: undefined},
+    {...data, channel: 'unknown'},
     {...data, final_price: 499},
     {...data, allocation: {paid_coins: 401, reward_coins: 80}},
     {...data, purchased_balance: null},

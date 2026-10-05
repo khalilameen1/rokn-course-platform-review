@@ -320,6 +320,7 @@ export const styles = StyleSheet.create({
   },
   previewCloseText: {...Type.bodyStrong, color: '#FFFFFF'},
   previewImage: {width: '100%', height: '82%'},
+  previewLoading: {position: 'absolute', alignSelf: 'center'},
   previewRetry: {
     minHeight: Accessibility.minTouchTarget,
     justifyContent: 'center',

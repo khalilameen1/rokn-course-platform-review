@@ -116,6 +116,7 @@ export const CourseChatConversation = ({
   bottomInset,
   hasSendableInput,
   input,
+  composerLocked = false,
   inputMaxHeight = 110,
   messages,
   onInputChange,
@@ -137,6 +138,7 @@ export const CourseChatConversation = ({
   bottomInset: number;
   hasSendableInput: boolean;
   input: string;
+  composerLocked?: boolean;
   inputMaxHeight?: number;
   messages: ChatMessage[];
   onInputChange: (text: string) => void;
@@ -284,6 +286,8 @@ export const CourseChatConversation = ({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`حذف ${file.name}`}
+                  accessibilityState={{disabled: sending}}
+                  disabled={sending}
                   style={styles.attachmentRemoveButton}
                   onPress={() => onRemoveAttachment(file)}>
                   <AttachmentActionIcon remove />
@@ -309,6 +313,7 @@ export const CourseChatConversation = ({
         <TextInput
           accessibilityLabel="اكتب سؤالك عن الكورس"
           value={input}
+          editable={!composerLocked}
           onChangeText={onInputChange}
           placeholder="اكتب سؤالك"
           placeholderTextColor="rgba(255,255,255,.42)"

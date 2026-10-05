@@ -24,6 +24,7 @@ export const mapProjectFeedbackThread = (
     canReply: valueAsBoolean(thread.can_reply),
     status: valueAsString(thread.status, 'ready'),
     remainingMessages: Math.max(0, Number(thread.remaining_messages) || 0),
+    replyLimitReached: explicitBoolean(thread.reply_limit_reached),
     attachmentsEnabled: valueAsBoolean(thread.attachments_enabled),
     attachmentMaxFiles: Math.min(
       5,

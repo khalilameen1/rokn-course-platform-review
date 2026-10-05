@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\DB;
 
 final class ProductAnalyticsService
 {
+    public function __construct(private readonly PurchaseFunnelReportService $purchaseFunnel,
+        private readonly LessonCompletionReportService $lessonCompletion) {}
+
     /** @return array<string, mixed> */
     public function overview(?int $courseId = null, ?ReportPeriod $period = null): array
     {
@@ -25,12 +28,12 @@ final class ProductAnalyticsService
         $previousAi = $previousPeriod
             ? app(AiUsageReportService::class)->summary($previousPeriod, $courseId)
             : null;
-        $previousFunnel = $previousPeriod
-            ? collect($this->funnel($courseId, $previousPeriod)['steps'])->keyBy('event')
+        $previousActivity = $previousPeriod
+            ? collect($this->activity($courseId, $previousPeriod))->keyBy('event')
             : collect();
-        $funnel = collect($this->funnel($courseId, $period)['steps'])->map(
+        $activity = collect($this->activity($courseId, $period))->map(
             fn (array $step): array => $step + [
-                'change' => ReportPeriod::compare($step['total'], $previousFunnel->get($step['event'])['total'] ?? null),
+                'change' => ReportPeriod::compare($step['total'], $previousActivity->get($step['event'])['total'] ?? null),
             ]
         )->all();
 
@@ -52,8 +55,9 @@ final class ProductAnalyticsService
         return [
             'period' => $period,
             'course_id' => $courseId,
-            'funnel' => $funnel,
-            'lesson_drop_off' => $this->lessonDropOff($courseId, $period),
+            'activity' => $activity,
+            'purchase_funnel' => $this->purchaseFunnel->report($courseId, $period),
+            'lesson_completion' => $this->lessonCompletion->report($courseId, $period),
             'cohorts' => $this->acquisitionCohorts($period, $courseId),
             'attribution' => $attribution,
             'quality' => $quality,
@@ -70,12 +74,12 @@ final class ProductAnalyticsService
         ];
     }
 
-    public function funnel(?int $courseId = null, ?ReportPeriod $period = null): array
+    /** Independent counts are activity, never sequential conversion. */
+    private function activity(?int $courseId, ReportPeriod $period): array
     {
-        $period ??= ReportPeriod::fromKey('30d');
         $events = [
             'course_opened', 'sample_started', 'sample_completed',
-            'paywall_viewed', 'earn_tasks_opened', 'purchase_started', 'purchase_completed',
+            'paywall_viewed', 'earn_tasks_opened', 'checkout_quoted', 'purchase_started', 'purchase_completed',
             'project_submitted', 'project_passed', 'certificate_issued',
         ];
 
@@ -92,39 +96,13 @@ final class ProductAnalyticsService
             ->groupBy('event_name')
             ->pluck('total', 'event_name');
 
-        return [
-            'period' => $period,
-            'course_id' => $courseId,
-            'steps' => collect($events)->map(function (string $event) use ($counts, $uniqueActors) {
-                return [
-                    'event' => $event,
-                    'total' => (int) ($counts[$event] ?? 0),
-                    'unique_actors' => (int) ($uniqueActors[$event] ?? 0),
-                ];
-            })->values()->all(),
-        ];
-    }
-
-    public function lessonDropOff(?int $courseId = null, ?ReportPeriod $period = null): Collection
-    {
-        return $this->eventScope($courseId, $period ?? ReportPeriod::fromKey('30d'))
-            ->whereIn('event_name', ['lesson_started', 'lesson_completed'])
-            ->whereNotNull('lesson_id')
-            ->selectRaw("lesson_id, SUM(CASE WHEN event_name = 'lesson_started' THEN 1 ELSE 0 END) starts, SUM(CASE WHEN event_name = 'lesson_completed' THEN 1 ELSE 0 END) completions")
-            ->groupBy('lesson_id')
-            ->orderByDesc('starts')
-            ->limit(100)
-            ->get()
-            ->map(function ($row) {
-                $starts = (int) $row->starts;
-                $completions = (int) $row->completions;
-                return [
-                    'lesson_id' => (int) $row->lesson_id,
-                    'starts' => $starts,
-                    'completions' => $completions,
-                    'completion_rate' => $starts > 0 ? round(($completions / $starts) * 100, 1) : 0.0,
-                ];
-            });
+        return collect($events)->map(function (string $event) use ($counts, $uniqueActors) {
+            return [
+                'event' => $event,
+                'total' => (int) ($counts[$event] ?? 0),
+                'unique_actors' => (int) ($uniqueActors[$event] ?? 0),
+            ];
+        })->values()->all();
     }
 
     /** @return Collection<int, array{date:string,actors:int}> */

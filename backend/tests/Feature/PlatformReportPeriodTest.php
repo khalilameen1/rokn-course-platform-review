@@ -9,6 +9,7 @@ use App\Models\AiUsageEvent;
 use App\Models\Course;
 use App\Models\CourseAuthoringRevision;
 use App\Models\CourseEnrollment;
+use App\Models\Lesson;
 use App\Models\OperatingCostPool;
 use App\Models\Order;
 use App\Models\Package;
@@ -53,7 +54,10 @@ final class PlatformReportPeriodTest extends TestCase
             ->assertSee('لم تسجل فواتير لهذه الفترة بعد وهذا لا يعني أن التشغيل بلا تكلفة');
         $analytics = $this->get(route('admin.product-analytics.index', ['period' => $key]))
             ->assertOk()->assertViewHas('period', fn (ReportPeriod $period): bool => $period->key === $key)
-            ->assertSee('value="'.$key.'" selected', false);
+            ->assertSee('value="'.$key.'" selected', false)
+            ->assertSee('مسار شراء الكورس المرصود')->assertSee('نشاط الاستخدام')
+            ->assertSee('إكمال الدروس المرصود')->assertSee('لا توجد بدايات متابعة مرصودة في هذه الفترة')
+            ->assertDontSee('مسار الاستخدام');
 
         if ($key === 'all') {
             self::assertNull($home->viewData('revenueStats')['revenue_change']['percentage']);
@@ -77,12 +81,54 @@ final class PlatformReportPeriodTest extends TestCase
         self::assertSame(2, $overview['quality']['actors']);
         self::assertSame(100.0, $overview['changes']['events']['percentage']);
         self::assertSame(1.0, $overview['changes']['events']['previous']);
-        $opened = collect($overview['funnel'])->firstWhere('event', 'course_opened');
+        $opened = collect($overview['activity'])->firstWhere('event', 'course_opened');
         self::assertSame(2, $opened['total']);
         self::assertSame(100.0, $opened['change']['percentage']);
         self::assertSame(1, $overview['cohorts']->sum('actors'), 'Returning actors are not new acquisitions');
         self::assertSame(2, $overview['attribution']->sum('total'));
         self::assertSame(3, app(ProductAnalyticsService::class)->overview(null, $period)['quality']['events']);
+    }
+
+    public function test_dashboard_renders_verified_lesson_names_and_counts_for_the_selected_canonical_course(): void
+    {
+        $canonical = $this->course();
+        $canonical->update(['name_ar' => 'كورس <em>التقرير</em>']);
+        $archive = $this->course();
+        $other = $this->course();
+        CourseAuthoringRevision::create([
+            'canonical_course_id' => $canonical->id, 'revision_course_id' => $archive->id,
+            'base_authoring_version' => 1, 'status' => CourseAuthoringRevision::ARCHIVED,
+            'clone_key' => Str::uuid(),
+        ]);
+        $lesson = Lesson::forceCreate(['list_id' => $archive->id,
+            'title' => 'Previous lesson', 'title_ar' => 'درس <script>قديم</script>',
+            'video_link' => 'https://example.test/video.mp4']);
+        $at = CarbonImmutable::now('UTC')->subHour();
+        foreach ([
+            ['lesson_started', 'a', $canonical, $at],
+            ['lesson_completed', 'a', $canonical, $at->addMinute()],
+            ['lesson_started', 'b', $canonical, $at],
+            ['lesson_started', 'other', $other, $at],
+        ] as [$name, $actor, $course, $occurredAt]) {
+            ProductEvent::create([
+                'event_id' => Str::uuid(), 'actor_key' => hash('sha256', $actor),
+                'event_name' => $name, 'course_id' => $course->id, 'lesson_id' => $lesson->id,
+                'source' => 'server', 'occurred_at' => $occurredAt, 'received_at' => now(),
+            ]);
+        }
+        $response = $this->actingAs($this->user('admin'), 'web')->get(route('admin.product-analytics.index', [
+            'course_id' => $archive->id, 'period' => '7d',
+        ]))->assertOk()->assertSee('كورس <em>التقرير</em>')->assertSee('درس <script>قديم</script>')
+            ->assertDontSee('<script>قديم</script>', false)->assertSee('50.0%')
+            ->assertSee('نسخة سابقة أو درس لم يعد متاحًا')
+            ->assertSee('ولا يعني أنهم تركوا الكورس نهائيًا')
+            ->assertDontSee('لا توجد بدايات متابعة مرصودة في هذه الفترة');
+        self::assertSame($canonical->id, $response->viewData('filters')['course_id']);
+        $row = $response->viewData('analytics')['lesson_completion']['rows']->sole();
+        self::assertSame($lesson->id, $row['lesson_id']);
+        self::assertSame(2, $row['starts']);
+        self::assertSame(1, $row['completions']);
+        self::assertSame(1, $row['pending']);
     }
 
     public function test_today_starts_at_cairo_midnight_and_zero_baseline_is_new_not_one_hundred_percent(): void

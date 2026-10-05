@@ -2,6 +2,8 @@ package com.rokn.checkout
 
 import android.app.Activity
 import android.content.Intent
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.BaseActivityEventListener
 import com.facebook.react.bridge.Promise
@@ -39,6 +41,32 @@ class RoknCheckoutModule(
   }
 
   override fun getName(): String = "RoknCheckout"
+
+  @ReactMethod
+  fun openBrowser(url: String, promise: Promise) {
+    val uri = Uri.parse(url)
+    if (uri.scheme != "https" || uri.host.isNullOrBlank() || uri.userInfo != null) {
+      promise.reject("PAYMENT_URL_INVALID", "Invalid payment URL")
+      return
+    }
+    val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+      addCategory(Intent.CATEGORY_BROWSABLE)
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      setPackage("com.android.chrome")
+    }
+    try {
+      try {
+        reactContext.startActivity(intent)
+      } catch (_: ActivityNotFoundException) {
+        // Devices without Chrome may use their installed browser, never WebView.
+        intent.setPackage(null)
+        reactContext.startActivity(intent)
+      }
+      promise.resolve(null)
+    } catch (exception: Exception) {
+      promise.reject("CHECKOUT_BROWSER_UNAVAILABLE", "Cannot open browser", exception)
+    }
+  }
 
   @ReactMethod
   fun open(url: String, promise: Promise) {

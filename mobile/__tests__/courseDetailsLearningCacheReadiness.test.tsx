@@ -46,6 +46,7 @@ jest.mock('../src/components/VideoPlayer/courseLearningApi', () => ({
 
 import {mapCourseDetailsPayload} from '../src/services/api/courseDetailsContract';
 import {useCourseDetailsData} from '../src/screens/CourseDetails/details/useCourseDetailsData';
+import {learningNavigationHandoff} from '../src/components/VideoPlayer/courseLearning/navigationHandoff';
 
 const snapshot = (id = '3', owned = true, title = 'الكورس المختار') => {
   const data = {
@@ -128,6 +129,7 @@ describe('course details optional local learning read', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockOwner = {scope: 'learner-7', epoch: 1};
+    learningNavigationHandoff.clear();
     mockSnapshot.mockReset().mockResolvedValue(snapshot());
     getItem.mockReset().mockResolvedValue(null);
   });
@@ -135,6 +137,7 @@ describe('course details optional local learning read', () => {
   afterEach(async () => {
     if (renderer) await act(async () => renderer?.unmount());
     renderer = undefined;
+    learningNavigationHandoff.clear();
     jest.clearAllTimers();
     jest.useRealTimers();
   });
@@ -142,17 +145,19 @@ describe('course details optional local learning read', () => {
   it('shows the owned server course even if native player storage never settles', async () => {
     getItem.mockReturnValueOnce(new Promise(() => undefined));
     await mount();
-    expect(getItem).toHaveBeenCalledWith(
-      '@rokn/course-player/v3:learner-7',
-    );
+    expect(getItem).toHaveBeenCalledWith('@rokn/course-player/v3:learner-7');
     expect(mockSnapshot).toHaveBeenCalledTimes(1);
     await passLocalReadBudget();
 
     expect(data.course.loading).toBe(false);
     expect(data.course.value).toMatchObject({id: '3', owned: true});
     expect(data.course.error).toBe('');
-    expect(data.course.learningValue?.modules[0].reels[0].isCompleted).toBe(true);
-    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(false);
+    expect(data.course.learningValue?.modules[0].reels[0].isCompleted).toBe(
+      true,
+    );
+    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(
+      false,
+    );
     expect(data.course.learningValue?.modules[1]).toMatchObject({
       isLocked: true,
       lockReason: 'project_required',
@@ -185,7 +190,9 @@ describe('course details optional local learning read', () => {
     await mount();
 
     expect(data.course.loading).toBe(false);
-    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(true);
+    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(
+      true,
+    );
     expect(data.course.learningValue?.modules[1]).toMatchObject({
       isLocked: true,
       lockReason: 'project_required',
@@ -199,7 +206,9 @@ describe('course details optional local learning read', () => {
 
     expect(data.course.loading).toBe(false);
     expect(data.course.value?.owned).toBe(true);
-    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(false);
+    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(
+      false,
+    );
   });
 
   it('neither mutates the fallback in place nor revives access after a newer revoked read', async () => {
@@ -240,7 +249,9 @@ describe('course details optional local learning read', () => {
       if (change === 'account') {
         mockOwner = {scope: 'learner-8', epoch: 2};
       }
-      mockSnapshot.mockResolvedValueOnce(snapshot(nextId, true, 'التفاصيل الحالية'));
+      mockSnapshot.mockResolvedValueOnce(
+        snapshot(nextId, true, 'التفاصيل الحالية'),
+      );
       await act(async () => {
         renderer?.update(<Harness courseId={nextId} />);
       });
@@ -253,7 +264,9 @@ describe('course details optional local learning read', () => {
 
       await act(async () => oldRead.resolve(localCompleted));
       expect(data.course.learningValue).toBe(current);
-      expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(false);
+      expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(
+        false,
+      );
       expect(JSON.stringify(fallback)).toBe(fallbackCopy);
     },
   );
@@ -282,5 +295,53 @@ describe('course details optional local learning read', () => {
     expect(data.course.learningValue).toBeNull();
     expect(data.course.error).not.toBe('');
     expect(getItem).not.toHaveBeenCalled();
+  });
+
+  it('offers the fresh server graph, not the locally overlaid entitlement, to the player', async () => {
+    getItem.mockResolvedValueOnce(localCompleted);
+    await mount();
+    expect(data.course.learningValue?.modules[0].reels[1].isCompleted).toBe(
+      true,
+    );
+    const key = data.course.prepareLearningNavigation();
+    const transferred = learningNavigationHandoff.take(key, '3', mockOwner);
+    expect(transferred?.modules[0].reels[1].isCompleted).toBe(false);
+    expect(transferred?.modules[1].isLocked).toBe(true);
+    expect(learningNavigationHandoff.take(key, '3', mockOwner)).toBeNull();
+  });
+
+  it('offers fresh guest preview metadata without reading owned player state', async () => {
+    mockOwner = {scope: 'guest-journey', epoch: 1};
+    mockSnapshot.mockResolvedValueOnce(snapshot('3', false));
+    await mount();
+    const key = data.course.prepareLearningNavigation();
+    const transferred = learningNavigationHandoff.take(key, '3', mockOwner);
+    expect(transferred?.accessType).toBe('none');
+    expect(transferred?.modules[0].reels[0].isPreview).toBe(true);
+    expect(data.course.learningValue).toBeNull();
+    expect(getItem).not.toHaveBeenCalled();
+  });
+
+  it('does not offer a learning transition from cached display-only course details', async () => {
+    mockOwner = {scope: 'guest-journey', epoch: 1};
+    const cached = snapshot('3', false).course;
+    mockSnapshot.mockResolvedValueOnce({
+      course: {...cached, fromCache: true},
+      responsePayload: null,
+    });
+    await mount();
+    expect(data.course.value?.id).toBe('3');
+    expect(data.course.prepareLearningNavigation()).toBeUndefined();
+  });
+
+  it('invalidates a prepared read synchronously when ownership or a reload changes', async () => {
+    await mount();
+    expect(data.course.prepareLearningNavigation()).toBeDefined();
+    mockSnapshot.mockReturnValueOnce(new Promise(() => undefined));
+    await act(async () => {
+      data.course.setOwned(false);
+      expect(data.course.prepareLearningNavigation()).toBeUndefined();
+    });
+    expect(data.course.prepareLearningNavigation()).toBeUndefined();
   });
 });

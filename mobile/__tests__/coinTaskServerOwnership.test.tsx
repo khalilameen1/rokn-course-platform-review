@@ -3,6 +3,11 @@ import {Alert} from 'react-native';
 import mockAsyncStorage from '@react-native-async-storage/async-storage';
 import TestRenderer, {act} from 'react-test-renderer';
 
+jest.mock('@react-navigation/native', () => ({useIsFocused: () => true}));
+jest.mock('../src/hooks/useAppActiveState', () => ({
+  useAppForegroundState: () => true,
+}));
+
 const mockGet = jest.fn();
 const mockPost = jest.fn();
 const mockOpenExternalUrlOnce = jest.fn(async () => undefined);

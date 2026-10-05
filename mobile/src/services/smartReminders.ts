@@ -1,5 +1,6 @@
 import {NativeModules, Platform} from 'react-native';
 import * as Notifications from 'expo-notifications';
+import {createKeyedAsyncQueue} from '../utils/keyedAsyncQueue';
 import {
   AsyncKeys,
   accountScopedStorageKey,
@@ -107,7 +108,7 @@ type ReminderModule = {
     imageUrl?: string,
     actionLabel?: string,
   ) => Promise<boolean>;
-  cancel: (id: number) => void;
+  cancel: (id: number) => Promise<void> | void;
 };
 
 const nativeReminders = NativeModules?.RoknReminders as
@@ -115,6 +116,10 @@ const nativeReminders = NativeModules?.RoknReminders as
   | undefined;
 
 const expoReminderId = (id: number) => `rokn-local-${id}`;
+const localReminderIds = [8101, 8102, 8103];
+const reminderMutations = createKeyedAsyncQueue();
+const reminderMutationKey = 'device-local-reminders';
+let reminderGeneration = 0;
 
 const scheduleExpoReminder = async ({
   actionLabel,
@@ -138,14 +143,7 @@ const scheduleExpoReminder = async ({
   triggerAt?: number;
 }) => {
   const identifier = expoReminderId(id);
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter(item => item.content.data?.rokn_reminder_id === identifier)
-      .map(item =>
-        Notifications.cancelScheduledNotificationAsync(item.identifier),
-      ),
-  );
+  await cancelReminderIds([id]);
   await Notifications.scheduleNotificationAsync({
     content: {
       title,
@@ -169,43 +167,57 @@ const scheduleExpoReminder = async ({
   return true;
 };
 
-const cancelReminderId = async (id: number) => {
-  if (nativeReminders) {
-    nativeReminders.cancel(id);
-    return;
+const cancelReminderIds = async (ids: number[]) => {
+  const scheduled = nativeReminders
+    ? []
+    : await Notifications.getAllScheduledNotificationsAsync();
+  const identifiers = new Set(ids.map(expoReminderId));
+  const cancellations = nativeReminders
+    ? ids.map(async id => nativeReminders.cancel(id))
+    : scheduled
+        .filter(item =>
+          identifiers.has(String(item.content.data?.rokn_reminder_id)),
+        )
+        .map(item =>
+          Notifications.cancelScheduledNotificationAsync(item.identifier),
+        );
+  // A rejection must not release the device queue while another cancellation
+  // from this batch can still erase the next account's replacement timer.
+  const results = await Promise.allSettled(cancellations);
+  for (const result of results) {
+    if (result.status === 'rejected') throw result.reason;
   }
-  const identifier = expoReminderId(id);
-  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-  await Promise.all(
-    scheduled
-      .filter(item => item.content.data?.rokn_reminder_id === identifier)
-      .map(item =>
-        Notifications.cancelScheduledNotificationAsync(item.identifier),
-      ),
-  );
 };
 
 /**
- * Local notification scheduling is an external side effect. If logout or an
- * account replacement wins while the OS call is in flight, remove the timer
- * which just landed instead of letting the previous learner's course or coin
- * text appear in the next learner's device session.
+ * These IDs belong to the device, not to an account. Serialize OS mutations
+ * across accounts and retire preparation synchronously on cancellation. Any
+ * postflight cleanup stays in the same slot so it cannot erase a newer timer.
  */
 const scheduleForAccount = async (
   id: number,
   boundary: AccountSessionBoundary,
+  generation: number,
   operation: () => Promise<boolean>,
-) => {
-  assertAccountSessionBoundary(boundary);
-  const scheduled = await operation();
-  try {
+) =>
+  reminderMutations(reminderMutationKey, async () => {
     assertAccountSessionBoundary(boundary);
+    if (generation !== reminderGeneration) return false;
+    if (!(await getSmartRemindersEnabledFor(boundary))) return false;
+    if (generation !== reminderGeneration) return false;
+    const scheduled = await operation();
+    try {
+      assertAccountSessionBoundary(boundary);
+    } catch (error) {
+      await cancelReminderIds([id]);
+      throw error;
+    }
+    if (generation !== reminderGeneration) {
+      await cancelReminderIds([id]);
+      return false;
+    }
     return scheduled;
-  } catch (error) {
-    await cancelReminderId(id).catch(() => undefined);
-    throw error;
-  }
-};
+  });
 
 /**
  * A read-only capability check for permission primers. It never asks for an
@@ -229,8 +241,14 @@ const nextPreferredTime = (hour = 20) => {
   return next.getTime();
 };
 
-export const enableSmartReminders = async () => {
+export const enableSmartReminders = async (
+  ownerBoundary?: AccountSessionBoundary,
+  assertPreparation?: () => void,
+) => {
   if (!areSmartRemindersSupported()) return false;
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
+  assertPreparation?.();
   type PermissionSnapshot = {
     granted?: boolean;
     status?: string;
@@ -238,10 +256,16 @@ export const enableSmartReminders = async () => {
   };
   const current =
     (await Notifications.getPermissionsAsync()) as PermissionSnapshot;
+  assertAccountSessionBoundary(boundary);
+  // Permission reads are still preparation. Closing/replacing the prompt's
+  // caller while that read waits must not launch a late OS dialog. Once the
+  // native request starts, only its captured account owns settlement.
+  assertPreparation?.();
   if (current.granted || current.status === 'granted') return true;
   if (!current.canAskAgain) return false;
   const requested =
     (await Notifications.requestPermissionsAsync()) as PermissionSnapshot;
+  assertAccountSessionBoundary(boundary);
   return requested.granted || requested.status === 'granted';
 };
 
@@ -309,6 +333,7 @@ export const scheduleNextLearningReminder = async (
   },
   ownerBoundary?: AccountSessionBoundary,
 ) => {
+  const generation = reminderGeneration;
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   if (!(await getSmartRemindersEnabledFor(boundary))) return false;
   // Authenticated learners are scheduled centrally by the backend, which owns
@@ -340,7 +365,7 @@ export const scheduleNextLearningReminder = async (
   );
   const triggerAt = nextPreferredTime(reminderHour);
   const link = `rokn://course/${encodeURIComponent(destinationCourseId)}/watch`;
-  return scheduleForAccount(8101, boundary, () =>
+  return scheduleForAccount(8101, boundary, generation, () =>
     nativeReminders
       ? nativeReminders.schedule(
           8101,
@@ -370,6 +395,7 @@ export const scheduleProjectReviewResult = async (
   projectTitle: string,
   courseId?: string,
 ) => {
+  const generation = reminderGeneration;
   const boundary = await captureAccountSessionBoundary();
   if (!(await getSmartRemindersEnabledFor(boundary))) return false;
   const destinationCourseId = String(courseId || '').trim();
@@ -378,7 +404,7 @@ export const scheduleProjectReviewResult = async (
   const body = `اعتمدنا ${projectTitle}\nالوحدة التالية مفتوحة`;
   const triggerAt = Date.now() + 12_000;
   const link = `rokn://course/${encodeURIComponent(destinationCourseId)}`;
-  return scheduleForAccount(8102, boundary, () =>
+  return scheduleForAccount(8102, boundary, generation, () =>
     nativeReminders
       ? nativeReminders.schedule(
           8102,
@@ -413,6 +439,7 @@ export const scheduleCoinRewardNotification = async ({
   reason?: string;
   delayMs?: number;
 }) => {
+  const generation = reminderGeneration;
   const boundary = await captureAccountSessionBoundary();
   if (!(await getSmartRemindersEnabledFor(boundary))) return false;
   const safeAmount = Math.max(0, Math.floor(Number(amount) || 0));
@@ -422,7 +449,7 @@ export const scheduleCoinRewardNotification = async ({
     reason ? `${formatArabicDisplayText(reason)}\n` : ''
   }${formatRoknCoins(safeAmount)} في محفظتك`;
   const triggerAt = Date.now() + Math.max(1_000, delayMs);
-  return scheduleForAccount(8103, boundary, () =>
+  return scheduleForAccount(8103, boundary, generation, () =>
     nativeReminders
       ? nativeReminders.schedule(
           8103,
@@ -487,25 +514,12 @@ export const previewCourseNotification = async ({
 };
 
 export const cancelLearningReminders = () => {
-  if (nativeReminders) {
-    nativeReminders.cancel(8101);
-    nativeReminders.cancel(8102);
-    nativeReminders.cancel(8103);
-    return;
-  }
-  void Notifications.getAllScheduledNotificationsAsync()
-    .then(items =>
-      Promise.all(
-        items
-          .filter(item =>
-            ['8101', '8102', '8103'].some(id =>
-              String(item.content.data?.rokn_reminder_id || '').endsWith(id),
-            ),
-          )
-          .map(item =>
-            Notifications.cancelScheduledNotificationAsync(item.identifier),
-          ),
-      ),
-    )
-    .catch(() => undefined);
+  reminderGeneration += 1;
+  const cancellation = reminderMutations(reminderMutationKey, async () => {
+    await cancelReminderIds(localReminderIds);
+  });
+  // Existing logout callers can retire work without waiting; callers which
+  // need an OS completion barrier can await the original rejecting promise.
+  void cancellation.catch(() => undefined);
+  return cancellation;
 };

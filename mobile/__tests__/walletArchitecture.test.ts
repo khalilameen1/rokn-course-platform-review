@@ -50,12 +50,14 @@ describe('wallet architecture', () => {
     expect(data).toContain('ownerRef.current = identityKey');
     expect(data).toContain('void refresh();');
     expect(tasks).toContain(
-      'const operationKey = `${boundary.scope}:${task.id}`',
+      'const operationKey = `${boundary.scope}:${boundary.epoch}:${task.id}`',
     );
     expect(tasks).not.toContain(
-      '`${boundary.scope}:${boundary.epoch}:${task.id}`',
+      'const operationKey = `${boundary.scope}:${task.id}`',
     );
     expect(tasks).toContain('ownerRef.current === operationOwner');
+    expect(tasks).toContain('presentationRef.current === visit');
+    expect(tasks).toContain('if (!ownsPresentation(visit)) return;');
   });
 
   it('keeps reads, task mutations and checkout return as separate owners', () => {

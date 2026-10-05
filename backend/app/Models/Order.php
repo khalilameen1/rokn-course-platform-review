@@ -210,6 +210,11 @@ class Order extends Model
         return $this->belongsTo(Package::class);
     }
 
+    public function courseFundingCheckout()
+    {
+        return $this->hasOne(CourseCheckout::class, 'funding_order_id');
+    }
+
     public function storePurchase()
     {
         return $this->hasOne(StorePurchase::class);

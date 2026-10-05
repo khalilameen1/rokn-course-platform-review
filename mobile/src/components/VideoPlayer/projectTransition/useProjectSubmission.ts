@@ -32,6 +32,7 @@ import {
 } from './projectDraftRevision';
 
 const EMPTY_MIME_TYPES: string[] = [];
+type SubmissionFlight = {phase: 'preparing' | 'dispatched' | 'revision'};
 
 const allowedFileTypesLabel = (mimeTypes: string[]) => {
   const labels: string[] = [];
@@ -79,6 +80,14 @@ export const useProjectSubmission = ({
   if (revisionVisitRef.current.active !== active) {
     revisionVisitRef.current = {active};
   }
+  // The feed already receives React Navigation's focus state. Like its focus
+  // cleanup, a departed visit cannot resume preparation on a later visit.
+  // Keep this separate from the picker owner: a native picker backgrounds us.
+  const interactive = active && appIsActive;
+  const submissionVisitRef = useRef({interactive});
+  if (submissionVisitRef.current.interactive !== interactive) {
+    submissionVisitRef.current = {interactive};
+  }
   const identityRef = useRef({id: project.id, generation: 0});
   if (identityRef.current.id !== project.id) {
     identityRef.current = {
@@ -87,7 +96,7 @@ export const useProjectSubmission = ({
     };
   }
   const pickerFlightRef = useRef(false);
-  const submissionFlightRef = useRef(false);
+  const submissionFlightRef = useRef<SubmissionFlight | null>(null);
   const {
     session: draftSession,
     files: selectedFiles,
@@ -164,6 +173,7 @@ export const useProjectSubmission = ({
     Boolean(revision) ||
     selectedFiles.length >= maximumFiles;
   const submitDisabled =
+    !interactive ||
     !submissionAllowed ||
     !draftReady ||
     sending ||
@@ -189,13 +199,21 @@ export const useProjectSubmission = ({
   useEffect(() => {
     setEditingRetry(false);
     setSyncNote('');
-    submissionFlightRef.current = false;
+    submissionFlightRef.current = null;
     pickerFlightRef.current = false;
     setSending(false);
     setRevision(null);
     setRevisionError('');
     setRevisionUpdating(false);
   }, [project.id]);
+
+  useEffect(() => {
+    if (!interactive && submissionFlightRef.current?.phase === 'preparing') {
+      submissionFlightRef.current = null;
+      setSending(false);
+    }
+    // Dispatched work belongs to the durable submission service, not this visit.
+  }, [interactive]);
 
   useEffect(
     () => () => {
@@ -209,8 +227,26 @@ export const useProjectSubmission = ({
   }, [status]);
 
   const submitSelectedFiles = useCallback(
-    async (files: SelectedProjectFile[]) => {
+    async (files: SelectedProjectFile[], flight: SubmissionFlight) => {
       const {id, generation} = identityRef.current;
+      const visit = submissionVisitRef.current;
+      const boundary = draftSession.boundary;
+      if (!boundary) return;
+      const ownsPreparation = () => {
+        if (
+          !visit.interactive ||
+          submissionVisitRef.current !== visit ||
+          submissionFlightRef.current !== flight ||
+          !ownsProject(id, generation)
+        ) return false;
+        try {
+          assertAccountSessionBoundary(boundary);
+          return true;
+        } catch {
+          return false;
+        }
+      };
+      if (!ownsPreparation()) return;
       try {
         const validated = await Promise.all(
           files.map(async file => {
@@ -223,10 +259,10 @@ export const useProjectSubmission = ({
             };
           }),
         );
-        if (!ownsProject(id, generation)) return;
+        if (!ownsPreparation()) return;
         setSelectedFiles(validated);
       } catch (error: unknown) {
-        if (!ownsProject(id, generation)) return;
+        if (!ownsPreparation()) return;
         const code = error instanceof Error ? error.message : '';
         Alert.alert(
           code === 'LEARNER_DRAFT_STORAGE_FULL'
@@ -258,6 +294,7 @@ export const useProjectSubmission = ({
             const inspection = await NativeModules.RoknMediaInspector.inspect(
               file.uri,
             );
+            if (!ownsPreparation()) return;
             if (inspection?.isBlank) {
               Alert.alert('الصورة غير واضحة', 'اختر صورة واضحة لعملك');
               return;
@@ -268,29 +305,30 @@ export const useProjectSubmission = ({
         }
       }
 
-      if (!ownsProject(id, generation)) return;
-      const boundary = draftSession.boundary;
-      if (!boundary) return;
-      assertAccountSessionBoundary(boundary);
+      if (!ownsPreparation()) return;
       setSyncNote('');
       try {
         // Commit the editor snapshot before resolving an older uncertain
         // attempt: its result may refresh the project and close this screen.
         await draftSession.persist({files, note});
-        assertAccountSessionBoundary(boundary);
-        if (!(await requestAiConsent(boundary))) return;
-        assertAccountSessionBoundary(boundary);
-        if (!ownsProject(id, generation)) return;
+        if (!ownsPreparation()) return;
+        if (!(await requestAiConsent(boundary, ownsPreparation))) return;
+        if (!ownsPreparation()) return;
+        // This handoff gives the durable service delivery ownership. A later blur must
+        // neither cancel it nor let a second tap replace its uncertain attempt.
+        flight.phase = 'dispatched';
         const outcome = await onSubmit(
           fileSubmissionEnabled ? files : [],
           textSubmissionEnabled ? normalizedNote : undefined,
         );
         if (!ownsProject(id, generation)) return;
+        assertAccountSessionBoundary(boundary);
         onOutcome(outcome);
         if (outcome.accepted && !outcome.preserveDraft) {
           setEditingRetry(false);
           draftSession.consume(outcome.submissionStatus, files);
         }
+        if (!ownsPreparation()) return;
         if (!outcome.accepted && outcome.submissionStatus === 'draft') {
           Alert.alert(
             'لم يكتمل الإرسال',
@@ -305,7 +343,7 @@ export const useProjectSubmission = ({
           );
         }
       } catch (error: unknown) {
-        if (!ownsProject(id, generation)) return;
+        if (!ownsPreparation()) return;
         try {
           assertAccountSessionBoundary(boundary);
         } catch {
@@ -393,6 +431,7 @@ export const useProjectSubmission = ({
 
   const submit = useCallback(async () => {
     if (
+      !submissionVisitRef.current.interactive ||
       !submissionAllowed ||
       revision ||
       incompatibleDraft ||
@@ -416,13 +455,14 @@ export const useProjectSubmission = ({
       return;
     }
     const {id, generation} = identityRef.current;
-    submissionFlightRef.current = true;
+    const flight: SubmissionFlight = {phase: 'preparing'};
+    submissionFlightRef.current = flight;
     setSending(true);
     try {
-      await submitSelectedFiles(selectedFiles);
+      await submitSelectedFiles(selectedFiles, flight);
     } finally {
-      if (ownsProject(id, generation)) {
-        submissionFlightRef.current = false;
+      if (ownsProject(id, generation) && submissionFlightRef.current === flight) {
+        submissionFlightRef.current = null;
         setSending(false);
       }
     }
@@ -560,7 +600,8 @@ export const useProjectSubmission = ({
         revisionVisitRef.current === visit && ownsProject(id, generation);
       const boundary = draftSession.boundary;
       if (!boundary) return;
-      submissionFlightRef.current = true;
+      const flight: SubmissionFlight = {phase: 'revision'};
+      submissionFlightRef.current = flight;
       setRevisionUpdating(true);
       setRevisionError('');
       try {
@@ -613,8 +654,8 @@ export const useProjectSubmission = ({
           'تعذّر تجهيز المسودة\nاترك الصفحة مفتوحة وحاول مرة أخرى',
         );
       } finally {
-        if (ownsProject(id, generation)) {
-          submissionFlightRef.current = false;
+        if (ownsProject(id, generation) && submissionFlightRef.current === flight) {
+          submissionFlightRef.current = null;
           setRevisionUpdating(false);
         }
       }

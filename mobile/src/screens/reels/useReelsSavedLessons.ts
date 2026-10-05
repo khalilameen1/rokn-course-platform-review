@@ -32,10 +32,12 @@ export const useReelsSavedLessons = ({
   const [savedLessons, setSavedLessonsState] = useState<Set<string>>(new Set());
   const [savingLessons, setSavingLessons] = useState<Set<string>>(new Set());
   const savedLessonsRef = useRef(savedLessons);
+  const savedLessonsVersion = useRef(0);
   const pendingRef = useRef(new Set<string>());
 
   const setSavedLessons = useCallback<Dispatch<SetStateAction<Set<string>>>>(
     update => {
+      savedLessonsVersion.current += 1;
       setSavedLessonsState(current => {
         const next = typeof update === 'function' ? update(current) : update;
         savedLessonsRef.current = next;
@@ -48,6 +50,7 @@ export const useReelsSavedLessons = ({
   useEffect(() => {
     const empty = new Set<string>();
     savedLessonsRef.current = empty;
+    savedLessonsVersion.current += 1;
     pendingRef.current.clear();
     setSavedLessonsState(empty);
     setSavingLessons(new Set());
@@ -140,5 +143,11 @@ export const useReelsSavedLessons = ({
     ],
   );
 
-  return {savedLessons, savingLessons, setSavedLessons, toggleSaved};
+  return {
+    savedLessons,
+    savedLessonsVersion,
+    savingLessons,
+    setSavedLessons,
+    toggleSaved,
+  };
 };

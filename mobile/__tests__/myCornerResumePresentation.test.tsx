@@ -3,7 +3,11 @@ import {ScrollView, StyleSheet, Text} from 'react-native';
 import TestRenderer, {act} from 'react-test-renderer';
 import {CourseShelf} from '../src/screens/myCorner/CourseShelf';
 import {styles} from '../src/screens/myCorner/styles';
-import {buildMyCornerModel} from '../src/screens/myCorner/model';
+import {
+  buildMyCornerModel,
+  learningResumeTarget,
+} from '../src/screens/myCorner/model';
+import {mapLearningCoursesPayload} from '../src/services/api/learningCourseContract';
 import type {LearningCourse, LearningDashboard} from '../src/services/roknApi';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
 import {Spacing} from '../src/constants/designSystem';
@@ -262,5 +266,117 @@ describe('MyCorner continuation presentation', () => {
       '5',
       '6',
     ]);
+  });
+
+  it('puts a recently passed project ahead of a later video watch without changing either resume target', () => {
+    const course = (
+      id: number,
+      watchedAt: string,
+      activityAt: string | null,
+      nextType: 'lesson' | 'project',
+    ) => ({
+      course_id: id,
+      title: `كورس ${id}`,
+      progress_percentage: 40,
+      completed_sections: 2,
+      total_sections: 5,
+      learning_started: true,
+      access_type: 'paid',
+      chat_available: true,
+      certificate_available: false,
+      resume: {
+        available: true,
+        lesson_id: 71,
+        lesson_title: 'المقطع الأول',
+        position_seconds: 34,
+        duration_seconds: 120,
+        watched_at: watchedAt,
+      },
+      next_section: {id: 71, title: 'الخطوة التالية', type: nextType},
+      last_activity_at: activityAt,
+    });
+    const courses = mapLearningCoursesPayload({
+      items: [
+        course(52, '2026-10-01T12:00:00Z', '2026-10-05T12:00:00Z', 'project'),
+        course(53, '2026-10-04T12:00:00Z', '2026-10-04T12:00:00Z', 'lesson'),
+      ],
+    });
+    expect(courses[0]).toMatchObject({
+      lastActivityAt: '2026-10-05T12:00:00Z',
+      lastWatchedAt: '2026-10-01T12:00:00Z',
+      resumePositionSeconds: 34,
+    });
+    const model = buildMyCornerModel({
+      dashboard: {
+        courses,
+        paths: [],
+        badges: [],
+        activityDays: [],
+        currentStreakDays: 0,
+      },
+      selectedPathId: null,
+      signedIn: true,
+    });
+    expect(model.orderedCourses.map(item => item.id)).toEqual(['52', '53']);
+    renderShelf({orderedCourses: model.orderedCourses});
+    const buttons = resumeButtons();
+    act(() => buttons[0].props.onPress());
+    act(() => buttons[1].props.onPress());
+    expect(onResume.mock.calls).toEqual([
+      [{courseId: '52', projectId: '71'}],
+      [{courseId: '53', lessonId: '71', initialPositionSeconds: 34}],
+    ]);
+    expect(onOpenCourse).not.toHaveBeenCalled();
+  });
+
+  it('keeps canonical activity ordering through serialized snapshots and falls back only for older or invalid activity dates', () => {
+    const courses: LearningCourse[] = [
+      {
+        ...lessonCourse,
+        id: '1',
+        lastActivityAt: '2026-10-05T12:00:00Z',
+        lastWatchedAt: '2026-10-01T12:00:00Z',
+      },
+      {...lessonCourse, id: '2', lastWatchedAt: '2026-10-04T12:00:00Z'},
+      {
+        ...lessonCourse,
+        id: '3',
+        lastActivityAt: 'invalid-date',
+        lastWatchedAt: '2026-10-03T12:00:00Z',
+      },
+      {
+        ...lessonCourse,
+        id: '4',
+        lastActivityAt: '2026-10-05T12:00:00Z',
+      },
+      {...lessonCourse, id: '5'},
+      {...lessonCourse, id: '6', lastWatchedAt: 'invalid-date'},
+    ];
+    const restored = JSON.parse(JSON.stringify(courses)) as LearningCourse[];
+    const model = buildMyCornerModel({
+      dashboard: {
+        courses: restored,
+        paths: [],
+        badges: [],
+        activityDays: [],
+        currentStreakDays: 0,
+      },
+      selectedPathId: null,
+      signedIn: true,
+    });
+    expect(model.orderedCourses.map(item => item.id)).toEqual([
+      '1',
+      '4',
+      '2',
+      '3',
+      '5',
+      '6',
+    ]);
+    expect(restored.map(item => item.id)).toEqual(['1', '2', '3', '4', '5', '6']);
+    expect(learningResumeTarget(model.orderedCourses[0], true)).toEqual({
+      courseId: '1',
+      lessonId: '71',
+      initialPositionSeconds: 34,
+    });
   });
 });

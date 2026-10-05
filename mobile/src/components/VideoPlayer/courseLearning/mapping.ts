@@ -134,6 +134,8 @@ export const mapCoursePayload = (
     accessType:
       valueAsString(rawCourse.access_type).trim().toLowerCase() || undefined,
     chatAvailable: explicitBoolean(rawCourse.chat_available),
+    chatEntitlementRevision:
+      valueAsString(rawCourse.chat_entitlement_revision).trim() || undefined,
     chatAttachmentsEnabled: explicitBoolean(rawCourse.chat_attachments_enabled),
     chatAttachmentMaxFiles: Math.min(
       5,

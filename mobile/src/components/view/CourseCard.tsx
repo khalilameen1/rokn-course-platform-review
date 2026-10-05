@@ -25,7 +25,12 @@ interface CourseCardProps {
 
 const CourseCard = memo<CourseCardProps>(
   ({item, onPress, width, sectionTitle}) => {
-    const {largeText, railCardWidth} = useResponsiveLayout();
+    const {fontScale, largeText, railCardWidth} = useResponsiveLayout();
+    const titleLines = largeText ? 4 : 2;
+    // Reserve the same scaled text slots across the rail, not a height derived
+    // from each course's name. Native text remains free to grow if necessary.
+    const titleMinHeight =
+      Math.ceil(Type.bodyStrong.lineHeight * fontScale) * titleLines;
     const isAvailable = item.published !== false;
     const label = courseCatalogueLabel(item, sectionTitle);
     const accessibilitySummary = [formatAuthoredDisplayText(item.title), label]
@@ -64,14 +69,12 @@ const CourseCard = memo<CourseCardProps>(
             />
           )}
         </View>
-        <Text numberOfLines={largeText ? 4 : 2} style={styles.courseTitle}>
+        <Text
+          numberOfLines={titleLines}
+          ellipsizeMode="tail"
+          style={[styles.courseTitle, {minHeight: titleMinHeight}]}>
           {formatAuthoredDisplayText(item.title)}
         </Text>
-        {!!item.instructor && (
-          <Text numberOfLines={largeText ? 2 : 1} style={styles.instructor}>
-            {formatAuthoredDisplayText(item.instructor)}
-          </Text>
-        )}
       </Pressable>
     );
   },
@@ -104,18 +107,13 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'stretch',
     marginTop: Spacing.xs,
+    includeFontPadding: false,
+    textAlignVertical: 'top',
   },
   labelContainer: {
     position: 'absolute',
     top: Spacing.xs,
     right: Spacing.xs,
-  },
-  instructor: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-    width: '100%',
-    alignSelf: 'stretch',
   },
   pressed: {opacity: 0.84},
 });

@@ -297,6 +297,31 @@ test('manual iOS-only input is an explicit optional boolean defaulting to false'
   assert.equal(input.required, false);
 });
 
+test('JavaScript CI runs the existing complete release gate once without duplicate script tests', () => {
+  const workflow = mobileWorkflow();
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const commands = workflow.jobs.javascript.steps
+    .flatMap(step => (step.run || '').split(/\r?\n/))
+    .map(command => command.trim());
+  assert.equal(commands.filter(command => command === 'npm run verify:release').length, 1);
+  assert.equal(commands.filter(command => command === 'npm run test:release-scripts').length, 0);
+  // The child gate stays in the shared owner used by local builds, CI and EAS.
+  // Removing its separate CI invocation must not remove or reorder checks.
+  assert.deepEqual(manifest.scripts['verify:release'].split(' && '), [
+    'npm run verify:config',
+    'npm run verify:secrets',
+    'npm run verify:expo-dependencies',
+    'npm run test:release-scripts',
+    'npm run licenses:check',
+    'npm run licenses:native:portable-check',
+    'npm run typecheck',
+    'npm run lint:release',
+    'npm run test:release',
+    'npm run audit:a11y',
+    'npm run audit:release',
+  ]);
+});
+
 test('actual job conditions isolate iOS only on explicit manual selection', () => {
   const workflow = mobileWorkflow();
   const baseline = ['javascript', 'android-native', 'ios-native'];
@@ -741,8 +766,15 @@ test('native lock refresh captures the production Android metadata closure', () 
     assert.equal([...workflow.matchAll(new RegExp(lockfile, 'g'))].length, 2);
   }
   assert.equal([...workflow.matchAll(/NODE_ENV: production/g)].length, 2);
-  assert.equal([...workflow.matchAll(/git rebase origin\/main/g)].length, 3);
-  assert.equal([...workflow.matchAll(/git push origin HEAD:main/g)].length, 3);
+  assert.equal(
+    [...workflow.matchAll(/git rebase "origin\/\$ROKN_LOCK_REFRESH_BRANCH"/g)].length,
+    3,
+  );
+  assert.equal(
+    [...workflow.matchAll(/git push origin "HEAD:refs\/heads\/\$ROKN_LOCK_REFRESH_BRANCH"/g)].length,
+    3,
+  );
+  assert.doesNotMatch(workflow, /ref: main|git (?:fetch origin main|rebase origin\/main|push origin HEAD:main)/);
   assert.match(workflow, /skip_linux_android:/);
   assert.match(
     workflow,

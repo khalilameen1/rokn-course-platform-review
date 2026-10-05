@@ -137,9 +137,8 @@ class Kernel extends ConsoleKernel
             ->dailyAt('01:00')
             ->onOneServer();
         $schedule->command('learning:send-nudges')
-            ->dailyAt('20:00')
-            ->timezone('Africa/Cairo')
-            ->withoutOverlapping(60)
+            ->everyMinute()
+            ->withoutOverlapping(10)
             ->onOneServer();
         $schedule->command('notifications:retry-stalled --limit=500')
             ->everyFiveMinutes()

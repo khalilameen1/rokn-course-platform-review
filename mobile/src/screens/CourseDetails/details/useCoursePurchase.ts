@@ -16,6 +16,7 @@ type Params = {
   courseId: string;
   data: CourseDetailsData;
   identityKey: string;
+  presentationActive?: boolean;
   navigation: RootNavigation;
   routeParams: CourseDetailsRouteParams;
   setNotice: Dispatch<SetStateAction<string>>;
@@ -25,6 +26,7 @@ export const useCoursePurchase = ({
   courseId,
   data,
   identityKey,
+  presentationActive,
   navigation,
   routeParams,
   setNotice,
@@ -116,26 +118,32 @@ export const useCoursePurchase = ({
     showSuccess();
   }, [dialogStep, owned, setNotice, showSuccess]);
 
-  const {closeDialog, openLogin, retention, runPrimaryAction} =
-    usePurchaseEntry({
-      accessPlans,
-      courseId,
-      dialogStep,
-      identityKey,
-      navigation,
-      owned,
-      pageReady,
-      primaryAction,
-      purchasePrice,
-      remoteSession: course.session,
-      routeParams,
-      selectedPlanCode: selectedPlan?.code,
-      closePurchase,
-      openForTerms,
-      showPlans,
-      setNotice,
-      spendableBalance,
-    });
+  const {
+    closeDialog,
+    openLogin,
+    paymentAttempted,
+    retention,
+    runPrimaryAction,
+  } = usePurchaseEntry({
+    accessPlans,
+    courseId,
+    dialogStep,
+    identityKey,
+    navigation,
+    owned,
+    pageReady,
+    presentationActive,
+    primaryAction,
+    purchasePrice,
+    remoteSession: course.session,
+    routeParams,
+    selectedPlanCode: selectedPlan?.code,
+    closePurchase,
+    openForTerms,
+    showPlans,
+    setNotice,
+    spendableBalance,
+  });
 
   const accessCode = useCourseAccessCode({
     // CourseSubscriptionSheet locks this entry while authorizing payment.
@@ -180,6 +188,7 @@ export const useCoursePurchase = ({
       courseCodeEnabled: CAN_REDEEM_COURSE_ACCESS_CODE && canChooseAccess,
       dialogStep,
       onClose: closeDialog,
+      onPaymentAttempt: paymentAttempted,
       onCourseCodeChange: accessCode.setCode,
       onRedeemCourseCode: accessCode.redeem,
       onSelectPlan: selectPlan,

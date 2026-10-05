@@ -59,3 +59,54 @@ cancelled attempt is still unwinding must not undo cancellation.
   the entire inventory.
 
 These local checks do not exercise live Bunny credentials or publish any course.
+
+## Final gate — completed upload handoff contract, 5 October 2026
+
+One of nine source-contract cases used the older currentFile upload signature
+and expected claim acceptance immediately after assertActive. The real form
+captures file/section/revision and revalidates them after transfer before commit.
+The corrected assertion requires that flow plus lesson/section/revision checks
+and cancellation semantics. No form, TUS transport, claim or server source was
+changed; existing shared ownership and Uppy adaptation/license stay intact.
+
+The full contract suite passes nine tests/160 assertions in
+`mobile/.cache/final-gate-20261005/backend-studio-state-contract-final.log`.
+The failed reproduction remains `backend-studio-state-contract-reproduction.log`.
+Independent read-only review accepted this test alignment. Browser execution,
+live provider credentials, native assets and release acceptance remain separate.
+
+### Real-browser local regression evidence — 5 October 2026
+
+The existing `bunny-direct-upload-recovery.browser.mjs` now passed on pinned
+Node 22.23.2 and a fresh headless Chrome context. It executes the three actual
+production upload modules and the Blade bootstrap against a local form and
+intercepted application/provider responses. The result is recorded in
+`mobile/.cache/final-gate-20261005/dashboard-upload-recovery-browser.log`.
+Independent read-only review accepted the ordinary cancellation, reload/resume,
+file replacement, lock/unlock, form-type handoff, completed claim reuse, record
+cleanup and duplicated-tab assertions without identifying a blocking gap in
+this bounded suite. No source correction was needed for this run.
+
+The other existing local browser suites passed compact lists, dashboard shell
+with both available and denied storage, rewards layout, course semantic theme,
+attachment authoring, module/section creation receipts, content ordering,
+unsaved draft transitions and course/readiness summaries. Each has its own
+`dashboard-<suite>-browser.log` in the same final-gate directory. Those fixtures
+do not constitute authenticated end-to-end dashboard or live-provider proof.
+In particular the upload form's submit receiver is a fixture, not the real
+server claim-admission controller. No course was published, and no deployment,
+native build or store change was performed.
+
+### Generated frontend attribution gate
+
+The public asset verifier and all 15 policy/records/transfer tests passed.
+The generated frontend notice was stale: its only missing content was the
+already-reviewed Uppy adapted-control provenance and full MIT license block.
+Running the existing `generate-frontend-notices.mjs` added those 34 lines without
+removing any retained notice; the actual `--check` then passed. The generator's
+esbuild metafile still requires the exact bootstrap/jquery/popper bundle
+inventory. Independent read-only review accepted the narrow generated update.
+Evidence is `dashboard-public-assets-final.log`,
+`dashboard-release-modules-final.log` and `dashboard-frontend-notices-final.log`
+in the same final-gate directory. This does not claim legal certification,
+live-provider acceptance or a newly built/released application.

@@ -344,6 +344,7 @@ final class WatchHistoryController extends Controller
             $validated,
             $position,
             $duration,
+            $courseId,
             $hasLearningAccess,
             $rewards
         ): array {
@@ -364,7 +365,8 @@ final class WatchHistoryController extends Controller
                         $lesson,
                         $position,
                         $duration,
-                        $sessionResult['previous_sample'] ?? null
+                        $sessionResult['previous_sample'] ?? null,
+                        $courseId
                     )
                     : [
                         'evidence_id' => null,

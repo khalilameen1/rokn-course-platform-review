@@ -10,6 +10,8 @@ import {
 import {publicRequest} from '../constants/api';
 import type {LearnerDraftFile} from './learnerDraftFiles';
 import {readJsonOrQuarantine} from './recoverableJsonStorage';
+import type {PortfolioTransferObserver} from './portfolioUploadProgress';
+import {assertPortfolioTransferActive} from './portfolioTransferControl';
 
 type Authorization = {
   upload_endpoint?: string;
@@ -147,10 +149,13 @@ const createUpload = async (
   record: UploadRecord,
   key: string,
   boundary: AccountSessionBoundary,
+  signal?: AbortSignal,
 ) => {
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
   const response = await fetch(record.upload_endpoint, {
     method: 'POST',
+    signal,
     headers: {
       ...record.headers,
       'Tus-Resumable': '1.0.0',
@@ -172,12 +177,15 @@ const renew = async (
   record: UploadRecord,
   key: string,
   boundary: AccountSessionBoundary,
+  signal?: AbortSignal,
 ): Promise<boolean> => {
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
   const auth = responseData<Authorization>(
     await publicRequest.post(
       `portfolio/${record.projectId}/media/video-uploads/renew`,
       {claim: record.claim},
+      {signal},
     ),
   );
   assertAccountSessionBoundary(boundary);
@@ -195,12 +203,15 @@ const remoteOffset = async (
   record: UploadRecord,
   key: string,
   boundary: AccountSessionBoundary,
+  signal?: AbortSignal,
 ): Promise<number> => {
   if (!record.uploadUrl) return 0;
-  if (await renew(record, key, boundary)) return record.size;
+  if (await renew(record, key, boundary, signal)) return record.size;
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
   const response = await fetch(record.uploadUrl, {
     method: 'HEAD',
+    signal,
     headers: {...record.headers, 'Tus-Resumable': '1.0.0'},
   });
   assertAccountSessionBoundary(boundary);
@@ -223,8 +234,11 @@ const patchChunk = (
   record: UploadRecord,
   body: ArrayBuffer,
   offset: number,
+  onTransferred: (loaded: number) => void,
+  signal?: AbortSignal,
 ): Promise<number> =>
   new Promise((resolve, reject) => {
+    assertPortfolioTransferActive(signal);
     const request = new XMLHttpRequest();
     request.open('PATCH', String(record.uploadUrl), true);
     request.timeout = 120000;
@@ -234,7 +248,22 @@ const patchChunk = (
     request.setRequestHeader('Tus-Resumable', '1.0.0');
     request.setRequestHeader('Upload-Offset', String(offset));
     request.setRequestHeader('Content-Type', 'application/offset+octet-stream');
+    let active = true;
+    const abort = () => request.abort();
+    const finish = () => {
+      active = false;
+      if (request.upload) request.upload.onprogress = null;
+      signal?.removeEventListener('abort', abort);
+    };
+    if (request.upload) {
+      request.upload.onprogress = event => {
+        if (active && Number.isFinite(event.loaded) && event.loaded >= 0) {
+          onTransferred(offset + Math.min(body.byteLength, event.loaded));
+        }
+      };
+    }
     request.onload = () => {
+      finish();
       if (request.status >= 200 && request.status < 300) {
         try {
           resolve(
@@ -255,9 +284,24 @@ const patchChunk = (
         );
       }
     };
-    request.onerror = () => reject(new Error('PORTFOLIO_VIDEO_UPLOAD_FAILED'));
-    request.ontimeout = () =>
+    request.onerror = () => {
+      finish();
+      reject(new Error('PORTFOLIO_VIDEO_UPLOAD_FAILED'));
+    };
+    request.onabort = () => {
+      finish();
+      reject(new Error('PORTFOLIO_UPLOAD_PAUSED'));
+    };
+    request.ontimeout = () => {
+      finish();
       reject(new Error('PORTFOLIO_VIDEO_UPLOAD_TIMEOUT'));
+    };
+    signal?.addEventListener('abort', abort);
+    if (signal?.aborted) {
+      finish();
+      reject(new Error('PORTFOLIO_UPLOAD_PAUSED'));
+      return;
+    }
     request.send(body);
   });
 
@@ -266,14 +310,29 @@ export const uploadPortfolioVideo = async (
   file: LearnerDraftFile,
   clientRequestId: string,
   ownerBoundary?: AccountSessionBoundary,
+  onProgress?: PortfolioTransferObserver,
+  signal?: AbortSignal,
 ): Promise<unknown> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
   const key = await accountScopedStorageKey(STORAGE_KEY, boundary);
   assertAccountSessionBoundary(boundary);
   const path = localPath(file.uri);
   const stat = await RNFS.stat(path);
   const size = Number(file.size || stat.size || 0);
+  const report = (
+    loaded: number,
+    phase: 'preparing' | 'uploading' | 'saving',
+  ) => {
+    try {
+      assertAccountSessionBoundary(boundary);
+      if (!signal?.aborted) onProgress?.({loaded, total: size, phase});
+    } catch {
+      /* Progress is presentation, not a mutation result. */
+    }
+  };
+  report(0, 'preparing');
   const mime = String(file.type || 'video/mp4').toLowerCase();
   const extension =
     mime === 'video/quicktime' ? 'mov' : mime === 'video/webm' ? 'webm' : 'mp4';
@@ -281,6 +340,7 @@ export const uploadPortfolioVideo = async (
     file.fileName || `portfolio-${clientRequestId}.${extension}`;
   const sha256 = await RNFS.hash(path, 'sha256');
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
   const records = await readRecords(key, boundary);
   let record = records[clientRequestId];
   if (
@@ -301,16 +361,18 @@ export const uploadPortfolioVideo = async (
           original_name: originalName,
           sha256,
         },
-        {headers: {'Idempotency-Key': clientRequestId}},
+        {headers: {'Idempotency-Key': clientRequestId}, signal},
       ),
     );
     assertAccountSessionBoundary(boundary);
     if (issued.attached === true && issued.claim) {
+      assertPortfolioTransferActive(signal);
+      report(size, 'saving');
       const media = responseData<unknown>(
         await publicRequest.post(
           `portfolio/${projectId}/media/video-uploads/claim`,
           {claim: issued.claim},
-          {headers: {'Idempotency-Key': clientRequestId}},
+          {headers: {'Idempotency-Key': clientRequestId}, signal},
         ),
       );
       assertAccountSessionBoundary(boundary);
@@ -334,11 +396,11 @@ export const uploadPortfolioVideo = async (
     };
     await saveRecord(key, boundary, record);
   }
-  if (!record.uploadUrl) await createUpload(record, key, boundary);
-  let offset = await remoteOffset(record, key, boundary);
+  if (!record.uploadUrl) await createUpload(record, key, boundary, signal);
+  let offset = await remoteOffset(record, key, boundary, signal);
   if (offset < 0) {
     record.uploadUrl = undefined;
-    await createUpload(record, key, boundary);
+    await createUpload(record, key, boundary, signal);
     offset = 0;
   }
   if (!Number.isFinite(offset) || offset < 0 || offset > size) {
@@ -347,15 +409,25 @@ export const uploadPortfolioVideo = async (
   let authorizationRefreshes = 0;
   while (offset < size) {
     assertAccountSessionBoundary(boundary);
+    assertPortfolioTransferActive(signal);
+    report(offset, 'uploading');
     const length = Math.min(CHUNK_BYTES, size - offset);
     const chunk = await readChunk(path, offset, length);
     assertAccountSessionBoundary(boundary);
+    assertPortfolioTransferActive(signal);
     try {
-      const nextOffset = await patchChunk(record, chunk, offset);
+      const nextOffset = await patchChunk(
+        record,
+        chunk,
+        offset,
+        loaded => report(loaded, loaded >= size ? 'saving' : 'uploading'),
+        signal,
+      );
       assertAccountSessionBoundary(boundary);
       if (nextOffset <= offset)
         throw new Error('PORTFOLIO_VIDEO_UPLOAD_STALLED');
       offset = nextOffset;
+      report(offset, offset >= size ? 'saving' : 'uploading');
       authorizationRefreshes = 0;
     } catch (error: unknown) {
       const status = Number((error as {status?: unknown})?.status || 0);
@@ -366,7 +438,7 @@ export const uploadPortfolioVideo = async (
         // for a later replay instead of spinning forever on the same chunk.
         if (authorizationRefreshes >= 1) throw error;
         authorizationRefreshes += 1;
-        if (await renew(record, key, boundary)) {
+        if (await renew(record, key, boundary, signal)) {
           offset = size;
         }
         continue;
@@ -375,11 +447,13 @@ export const uploadPortfolioVideo = async (
     }
   }
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
+  report(size, 'saving');
   const media = responseData<unknown>(
     await publicRequest.post(
       `portfolio/${projectId}/media/video-uploads/claim`,
       {claim: record.claim},
-      {headers: {'Idempotency-Key': clientRequestId}},
+      {headers: {'Idempotency-Key': clientRequestId}, signal},
     ),
   );
   assertAccountSessionBoundary(boundary);

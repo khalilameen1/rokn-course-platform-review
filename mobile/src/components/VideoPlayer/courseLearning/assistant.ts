@@ -7,6 +7,7 @@ import {
 import {
   assertAccountSessionBoundary,
   captureAccountSessionBoundary,
+  type AccountSessionBoundary,
 } from '../../../constants/helpers';
 import {openExternalUrlOnce} from '../../../services/systemActions';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
@@ -363,14 +364,22 @@ export const pollCourseAssistantTurn = async (
 
 export const cancelCourseAssistantTurn = async (
   clientRequestId: string,
+  ownerBoundary?: AccountSessionBoundary,
 ): Promise<boolean> => {
+  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   try {
-    await publicRequest.delete(
+    const response = await publicRequest.delete(
       `course-chat/turns/${encodeURIComponent(clientRequestId)}`,
       {timeout: 12000},
     );
-    return true;
+    assertAccountSessionBoundary(boundary);
+    const receipt = asRecord(response?.data);
+    return receipt.success === true && receipt.code === 'chat_turn_cancelled';
   } catch {
+    // A retired session is not a failed cancellation in the current account.
+    // Preserve that boundary error instead of converting it to recovery work.
+    assertAccountSessionBoundary(boundary);
     return false;
   }
 };

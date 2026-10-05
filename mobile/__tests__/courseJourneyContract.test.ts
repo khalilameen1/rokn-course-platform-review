@@ -386,7 +386,13 @@ describe('course journey contract', () => {
     expect(overlay).toContain('!courseAccessRequired');
     expect(overlay).toContain('!courseChatUnavailable');
     expect(chat).toContain('remoteEnabled: assistantEntitled');
-    expect(conversation).toContain('if (!remoteEnabled) return;');
+    // The canonical read now has a compound visit/entitlement/hydration guard.
+    // Keep all four requirements rather than requiring its old one-line spelling.
+    expect(conversation).toMatch(
+      /if\s*\(\s*!active\s*\|\|\s*!remoteEnabled\s*\|\|\s*!hydrated\s*\|\|\s*hydratedConversationRef\.current !== conversationScope\s*\)\s*\{\s*return;\s*\}/,
+    );
+    // Actual entitlement-off/no-GET and restored access are also exercised by
+    // courseChatHistoryVisit.test.tsx against the real conversation owner.
     // Open/reopen behavior is exercised by courseChatKeyboard.test.tsx;
     // do not bind the journey contract to the spelling of an effect condition.
     expect(overlay).not.toContain('upgradeAutoLoadCourseRef');

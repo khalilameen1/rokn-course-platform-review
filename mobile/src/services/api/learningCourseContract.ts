@@ -116,8 +116,8 @@ const mapLearningCourse = (item: CourseDto): CourseProgress => {
       item.next_section !== null && nextSection.type
         ? String(nextSection.type).toLowerCase()
         : undefined,
-    lastWatchedAt:
-      String(resume.watched_at || item.last_activity_at || '') || undefined,
+    lastActivityAt: String(item.last_activity_at || '') || undefined,
+    lastWatchedAt: String(resume.watched_at || '') || undefined,
   };
 };
 

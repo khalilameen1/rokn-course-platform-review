@@ -43,6 +43,19 @@ class AdminNotification extends Model
         return in_array((string) $this->system_key, self::SYSTEM_KEYS, true);
     }
 
+    /** Approved installation-once welcome flow, not a recurring campaign. */
+    public static function presentationOverrides(?string $systemKey): array
+    {
+        return $systemKey === 'guest_registration_prompt' ? [
+            'surface' => 'guest_prompt',
+            'is_dismissible' => true,
+            'cooldown_hours' => 0,
+            'priority' => 10,
+            // Login is a journey action owned by the app, not a content URL.
+            'link' => null,
+        ] : [];
+    }
+
     public function getPublicImageUrlAttribute(): ?string
     {
         $image = trim((string) $this->image);

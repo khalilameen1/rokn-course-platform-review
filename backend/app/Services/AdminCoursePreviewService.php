@@ -14,7 +14,8 @@ final readonly class AdminCoursePreviewService
         private CourseReadService $courseReads,
         private CourseAccessPlanService $plans,
         private CertificateTextTemplateService $certificateTemplates,
-        private CourseRevisionResolver $revisionResolver
+        private CourseRevisionResolver $revisionResolver,
+        private CoursePlanUpgradeEligibilityService $upgrades
     ) {
     }
 
@@ -62,6 +63,7 @@ final readonly class AdminCoursePreviewService
             'previewCourse' => $previewCourse,
             'planOptions' => $planOptions,
             'selectedPlan' => $selectedPlan,
+            'chatUpgradePlanCodes' => $this->upgrades->previewPlanCodes($previewCourse, (string) $selectedPlan['code'], 'chat'),
             'certificateTextTemplate' => $certificateTextTemplate,
             // The selected course deliberately represents the working draft. The
             // device deep link must keep pointing at the immutable learner

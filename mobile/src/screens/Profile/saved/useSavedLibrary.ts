@@ -98,7 +98,7 @@ export function useSavedLibrary() {
     selectFolder,
     serverSession,
     restoreFolderSelection,
-    reportReadError,
+    reportFolderReadError,
   } = useSavedLibraryRead(identityKey, snapshot, restoreMutationActivity);
 
   const createFolder = useCallback(async () => {
@@ -200,7 +200,9 @@ export function useSavedLibrary() {
           } catch {
             if (stillOwned() && snapshot.isCurrentCountRead(countRead)) {
               // The server delete succeeded; only the total remains unknown.
-              reportReadError('تمت إزالة المقطع\nتعذّر تحديث عدد المقاطع');
+              reportFolderReadError(
+                'تمت إزالة المقطع\nتعذّر تحديث عدد المقاطع',
+              );
             }
           }
         }
@@ -227,7 +229,7 @@ export function useSavedLibrary() {
       captureOperation,
       identityKey,
       removingSaved,
-      reportReadError,
+      reportFolderReadError,
       retry,
       snapshot,
     ],

@@ -99,8 +99,10 @@ const FeedSideBar = ({
     error: folderError,
     folders,
     loading: foldersLoading,
+    loadError: folderLoadError,
     name: newFolderName,
     open: openSaveSheet,
+    retryFolders,
     saveInFolder,
     saveInWatchLater,
     setName: setNewFolderName,
@@ -362,7 +364,7 @@ const FeedSideBar = ({
           <Text accessibilityRole="header" style={styles.saveSheetTitle}>
             أين تريد حفظ المقطع
           </Text>
-          {foldersLoading ? (
+          {foldersLoading && !folderLoadError ? (
             <ActivityIndicator color="#76A9FF" style={styles.folderLoader} />
           ) : (
             <View style={styles.folderList}>
@@ -395,6 +397,30 @@ const FeedSideBar = ({
                   </Text>
                 </Pressable>
               ))}
+            </View>
+          )}
+          {!!folderLoadError && (
+            <View style={styles.folderReadNotice}>
+              <Text accessibilityRole="alert" style={styles.folderError}>
+                {folderLoadError}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="إعادة تحميل قوائم الحفظ"
+                accessibilityState={{
+                  busy: foldersLoading,
+                  disabled: foldersLoading || folderBusy,
+                }}
+                disabled={foldersLoading || folderBusy}
+                onPress={retryFolders}
+                style={({pressed}) => [
+                  styles.folderRetryButton,
+                  pressed && styles.pressed,
+                ]}>
+                <Text style={styles.folderRetryText}>
+                  {foldersLoading ? 'جارٍ التحديث' : 'إعادة المحاولة'}
+                </Text>
+              </Pressable>
             </View>
           )}
           {!!folderError && (

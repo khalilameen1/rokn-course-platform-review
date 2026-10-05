@@ -335,8 +335,9 @@
     },
     {
       "path": "public/admin/assets/js/course-studio-bunny-upload-form.js",
-      "sha256": "13b67d1a06dda8ec99df85f30eff870a42ced0399beb3f818e0892e51363537f",
-      "classification": "first_party"
+      "sha256": "d853d874f7d8f01bf6f5a262616d3759f001c37456fe511d1d2dd99dd71c0303",
+      "classification": "third_party",
+      "family": "uppy-control-lock"
     },
     {
       "path": "public/admin/assets/js/course-studio-bunny-upload-records.js",

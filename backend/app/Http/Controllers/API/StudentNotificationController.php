@@ -11,12 +11,16 @@ use App\Models\Lesson;
 use App\Models\StudentNotification;
 use App\Models\User;
 use App\Services\ApiResponseService;
+use App\Services\StudentHomeNotificationReadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 final class StudentNotificationController extends Controller
 {
-    public function __construct(private readonly ApiResponseService $responses)
+    public function __construct(
+        private readonly ApiResponseService $responses,
+        private readonly StudentHomeNotificationReadService $homeNotifications,
+    )
     {
     }
 
@@ -25,8 +29,9 @@ final class StudentNotificationController extends Controller
         $validated = $request->validate([
             'per_page' => 'nullable|integer|min:1|max:50',
             'filter' => 'nullable|in:read,unread',
-            'pagination_mode' => 'nullable|in:cursor',
+            'pagination_mode' => 'required_if:surface,home|nullable|in:cursor',
             'cursor' => 'nullable|string|max:2048',
+            'surface' => 'nullable|in:home',
         ]);
 
         try {
@@ -47,6 +52,9 @@ final class StudentNotificationController extends Controller
                 $query->unread();
             }
 
+            $home = ($validated['surface'] ?? null) === 'home';
+            if ($home) $this->homeNotifications->constrainCandidates($query);
+
             $useCursor = ($validated['pagination_mode'] ?? null) === 'cursor';
             $notifications = $useCursor
                 ? $query->cursorPaginate(
@@ -56,6 +64,8 @@ final class StudentNotificationController extends Controller
                 )
                 : $query->paginate((int) ($validated['per_page'] ?? 10));
             $this->preparePresentationRelations($notifications->getCollection());
+            // Capture pagination while rows are still models. Constructing a
+            // ResourceCollection can replace a paginator's internal collection.
             $pagination = $useCursor
                 ? [
                     'per_page' => $notifications->perPage(),
@@ -69,12 +79,25 @@ final class StudentNotificationController extends Controller
                     'total' => $notifications->total(),
                     'has_more_pages' => $notifications->hasMorePages(),
                 ];
-
+            if ($home) {
+                $cards = $this->homeNotifications->courseCards($notifications->getCollection(), (int) $user->id);
+                $resources = StudentNotificationResource::collection(
+                    $notifications->getCollection()
+                        ->filter(fn (StudentNotification $row): bool => isset($cards[$row->id]))
+                        ->map(fn (StudentNotification $row): StudentNotificationResource =>
+                            (new StudentNotificationResource($row))->withHomeCourse($cards[$row->id]))
+                        ->values()
+                );
+            } else {
+                // ResourceCollection replaces a paginator's model collection.
+                // All Home eligibility reads must finish before that happens.
+                $resources = StudentNotificationResource::collection($notifications);
+            }
             return $this->responses->success(
-                StudentNotificationResource::collection($notifications),
+                $resources,
                 'تم تحميل الإشعارات',
                 200,
-                ['pagination' => $pagination]
+                ['pagination' => $pagination, ...($home ? ['surface' => 'home'] : [])]
             );
         } catch (\Exception $exception) {
             $this->rethrowExpectedRequestException($exception);

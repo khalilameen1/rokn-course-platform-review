@@ -137,12 +137,12 @@ test('retains every package legal file and every reviewed absence record', () =>
       ALLOWED_LICENSES.has(item.license),
     ),
   );
-  assert.equal(artifacts.snapshot.packages.length, 734);
+  assert.equal(artifacts.snapshot.packages.length, 735);
   assert.equal(
     artifacts.snapshot.packages.filter(
       item => item.legalSource === 'package-root',
     ).length,
-    609,
+    610,
   );
   const fallbacks = artifacts.snapshot.packages.filter(
     item => item.legalSource === 'reviewed-metadata-fallback',
@@ -163,6 +163,23 @@ test('retains every package legal file and every reviewed absence record', () =>
   const byCoordinate = new Map(
     artifacts.snapshot.packages.map(item => [item.coordinate, item]),
   );
+  const netInfo = byCoordinate.get('@react-native-community/netinfo@11.5.2');
+  assert.equal(netInfo.selectedLicense, 'MIT');
+  assert.equal(netInfo.legalSource, 'package-root');
+  const netInfoLicense = netInfo.files.find(file => file.path === 'LICENSE');
+  assert.ok(netInfoLicense);
+  for (const licensePath of [
+    'node_modules/@react-native-community/netinfo/LICENSE',
+    'scripts/licenses/upstream/react-native-netinfo-11.5.2-LICENSE',
+  ]) {
+    assert.equal(
+      netInfoLicense.text.trim(),
+      fs
+        .readFileSync(path.join(root, licensePath), 'utf8')
+        .replace(/\r\n/g, '\n')
+        .trim(),
+    );
+  }
   const base64 = byCoordinate.get('base-64@0.1.0');
   assert.equal(base64.selectedLicense, 'MIT');
   assert.ok(base64.files.some(file => file.path === 'LICENSE-MIT.txt'));
@@ -192,7 +209,7 @@ test('retains every package legal file and every reviewed absence record', () =>
 
   const appData = JSON.parse(artifacts.appData);
   assert.equal(appData.schemaVersion, 2);
-  assert.equal(appData.packages.length, 734);
+  assert.equal(appData.packages.length, 735);
   assert.equal(appData.licenseTexts, undefined);
   assert.ok(Buffer.byteLength(artifacts.appData) < 250000);
 

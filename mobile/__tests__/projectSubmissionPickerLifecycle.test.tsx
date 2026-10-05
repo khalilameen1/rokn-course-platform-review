@@ -64,13 +64,15 @@ describe('project submission native picker visit ownership', () => {
   function Harness({
     id = '41',
     active = true,
+    appIsActive = true,
   }: {
     id?: string;
     active?: boolean;
+    appIsActive?: boolean;
   }) {
     current = useProjectSubmission({
       active,
-      appIsActive: true,
+      appIsActive,
       project: project(id),
       status: 'draft',
       submissionAllowed: true,
@@ -184,6 +186,29 @@ describe('project submission native picker visit ownership', () => {
     });
     expect(cacheProjectDraftFile).not.toHaveBeenCalled();
     expect(current.selectedFiles).toEqual([]);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('keeps native picker ownership through its ordinary background and foreground cycle', async () => {
+    const selected = {
+      uri: 'file:///work.pdf', name: 'work.pdf', type: 'application/pdf', size: 100,
+    };
+    const selection = deferred<DocumentPicker.DocumentPickerResult>();
+    jest.mocked(DocumentPicker.getDocumentAsync).mockReturnValueOnce(selection.promise);
+    await act(async () => {renderer = TestRenderer.create(<Harness />);});
+    let picking!: Promise<void>;
+    await act(async () => {picking = current.chooseProjectFile();});
+    await act(async () => {renderer!.update(<Harness appIsActive={false} />);});
+    await act(async () => {renderer!.update(<Harness />);});
+    await act(async () => {
+      selection.resolve({
+        canceled: false,
+        assets: [{...selected, mimeType: selected.type, lastModified: 1}],
+      });
+      await picking;
+    });
+    expect(cacheProjectDraftFile).toHaveBeenCalledWith(selected, {...mockBoundary});
+    expect(current.selectedFiles).toEqual([selected]);
     expect(onSubmit).not.toHaveBeenCalled();
   });
 

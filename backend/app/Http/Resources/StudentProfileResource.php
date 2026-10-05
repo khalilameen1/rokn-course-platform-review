@@ -74,6 +74,8 @@ class StudentProfileResource extends JsonResource
             'role' => (string)$this->role,
             'device_os' => $this->device_os,
             'notifications_status' => $this->notifications_status,
+            'learning_reminder_hour' => \App\Support\LearningReminderSchedule::hour($this->learning_reminder_hour),
+            'learning_reminder_timezone' => \App\Support\LearningReminderSchedule::timezone($this->learning_reminder_timezone),
             'preferred_locale' => $this->preferred_locale ?: 'ar',
             'leaderboard_opt_in' => (bool) $this->leaderboard_opt_in,
             'watch_history_enabled' => (bool) $this->watch_history_enabled,

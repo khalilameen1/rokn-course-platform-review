@@ -33,6 +33,14 @@ import {
   markFeedbackReceiptsClaimed,
 } from './productFeedback/receipts';
 import {migrateGuestFeedbackDrafts} from './productFeedback/drafts';
+import {
+  mergeProductFeedbackHistory,
+  ProductFeedbackHistoryIncompleteError,
+} from './productFeedback/history';
+export {
+  mergeProductFeedbackHistory,
+  ProductFeedbackHistoryIncompleteError,
+} from './productFeedback/history';
 export type {
   ProductFeedbackCategory,
   FeedbackAttachment,
@@ -50,6 +58,7 @@ export {
   restoreProductFeedbackDraftConflict,
   loadProductFeedbackReplyDraft,
   saveProductFeedbackReplyDraft,
+  clearAcceptedProductFeedbackReplyDraft,
   loadProductFeedbackDraft,
   saveProductFeedbackDraft,
   clearProductFeedbackDraft,
@@ -171,6 +180,7 @@ export const loadProductFeedbackCase = async (
   publicId: string,
   accessToken?: string,
   accountBoundary?: AccountSessionBoundary,
+  signal?: AbortSignal,
 ): Promise<ProductFeedbackCase> => {
   if (!isFeedbackPublicId(publicId)) {
     throw new Error('INVALID_SUPPORT_CASE');
@@ -181,6 +191,7 @@ export const loadProductFeedbackCase = async (
     `feedback/${encodeURIComponent(publicId)}`,
     {
       headers: accessHeaders(accessToken),
+      ...(signal ? {signal} : {}),
     },
   );
   assertAccountSessionBoundary(boundary);
@@ -273,12 +284,14 @@ export const loadProductFeedbackCases = async (
   // cases created on another device disappear even though they still exist.
   // Reject the partial snapshot so the screen keeps its last complete list.
   if (accountOwned && accountIndexError) throw accountIndexError;
-  if (!cases.size && loadError) throw loadError;
-  return [...cases.values()].sort(
-    (a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt) ||
-      b.publicId.localeCompare(a.publicId),
-  );
+  const loaded = mergeProductFeedbackHistory([], [...cases.values()]);
+  if (settled.some(result => result.status === 'rejected')) {
+    // A guest/remembered case is an independent read. Network failure is not
+    // proof that the case disappeared. Expose usable results as incomplete so
+    // the consumer may merge them, never silently replace the whole history.
+    throw new ProductFeedbackHistoryIncompleteError(loaded, loadError);
+  }
+  return loaded;
 };
 
 export const replyToProductFeedback = async (

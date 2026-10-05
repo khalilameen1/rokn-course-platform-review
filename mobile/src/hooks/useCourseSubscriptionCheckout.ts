@@ -4,10 +4,6 @@ import {
   captureAccountSessionBoundary,
   assertAccountSessionBoundary,
 } from '../constants/helpers';
-import {
-  CAN_START_COIN_CHECKOUT,
-  IS_STORE_DISTRIBUTION,
-} from '../constants/distribution';
 import {getCoinPackages} from '../services/roknApi';
 import {
   openCoinCheckout,
@@ -32,6 +28,8 @@ import {
   type CourseCheckoutFeature,
 } from '../services/api/courseCheckout';
 import type {CoinPackage} from '../services/api/coinPackageMapper';
+import {courseCheckoutTransport} from '../services/checkoutRouting';
+import {trackProductEvent} from '../services/productAnalytics';
 
 type Params = {
   courseId: string;
@@ -41,6 +39,7 @@ type Params = {
   requiredFeature?: CourseCheckoutFeature;
   visible: boolean;
   onCompleted: () => void | Promise<void>;
+  onPaymentRecovery?: () => void;
 };
 
 /** One explicit authorization owns both the top-up and enrollment on the server.
@@ -53,6 +52,7 @@ export function useCourseSubscriptionCheckout({
   requiredFeature,
   visible,
   onCompleted,
+  onPaymentRecovery,
 }: Params) {
   const [quote, setQuote] = useState<CourseCheckout | null>(null);
   const [coinPackage, setCoinPackage] = useState<CoinPackage>();
@@ -69,10 +69,13 @@ export function useCourseSubscriptionCheckout({
   const current = useRef({courseId, planCode, visible});
   const quoteRef = useRef(quote);
   const completedRef = useRef(new Set<string>());
+  const viewedRef = useRef<string | null>(null);
   const callback = useRef(onCompleted);
+  const recoveryCallback = useRef(onPaymentRecovery);
   current.current = {courseId, planCode, visible};
   quoteRef.current = quote;
   callback.current = onCompleted;
+  recoveryCallback.current = onPaymentRecovery;
   const owns = useCallback(
     (token: number) =>
       generation.current === token &&
@@ -85,6 +88,8 @@ export function useCourseSubscriptionCheckout({
     setQuote(next);
     if (next.status === 'completed' && !completedRef.current.has(next.id)) {
       completedRef.current.add(next.id);
+      // The server records the receipt transition even when this sheet is
+      // closed or the process is gone. This callback only updates learner UI.
       await callback.current();
     }
   }, []);
@@ -98,6 +103,7 @@ export function useCourseSubscriptionCheckout({
     setBusy(false);
     flight.current = false;
     if (!visible || !planCode) {
+      if (!visible) viewedRef.current = null;
       setLoading(false);
       return;
     }
@@ -105,10 +111,24 @@ export function useCourseSubscriptionCheckout({
     void (async () => {
       try {
         const boundary = await captureAccountSessionBoundary();
+        assertAccountSessionBoundary(boundary);
+        if (!owns(token)) return;
+        const viewKey = `${boundary.scope}:${courseId}`;
+        if (mode === 'purchase' && viewedRef.current !== viewKey) {
+          viewedRef.current = viewKey;
+          void trackProductEvent({
+            event_name: 'paywall_viewed',
+            screen_key: 'course_details',
+            course_id: courseId,
+          });
+        }
         let latest = await getLatestCourseCheckout(courseId);
         assertAccountSessionBoundary(boundary);
         if (!owns(token)) return;
         if (latest?.status === 'pending_payment') {
+          // Own this evidence before resume can cancel/requote or throw; the
+          // final UI state need not ever contain the original pending quote.
+          recoveryCallback.current?.();
           latest = await resumeCourseCheckout(latest.id);
           assertAccountSessionBoundary(boundary);
           if (!owns(token)) return;
@@ -118,7 +138,18 @@ export function useCourseSubscriptionCheckout({
           }
           if (latest.status === 'pending_payment') {
             setQuote(latest);
-            setNotice('الدفع قيد التأكيد\nلا تحتاج إلى الشحن مرة أخرى');
+            if (
+              courseCheckoutTransport.kind === 'external' &&
+              latest.channel === 'direct'
+            ) {
+              setCoinPackage(
+                latest.selectedPackage ||
+                  latest.packages.find(
+                    item => item.id === latest?.selectedPackageId,
+                  ),
+              );
+            }
+            setNotice('الدفع قيد التأكيد\nلا تدفع مرة أخرى');
             return;
           }
         }
@@ -134,14 +165,18 @@ export function useCourseSubscriptionCheckout({
         )
           throw new Error('COURSE_CHECKOUT_TERMS_CHANGED');
         if (next.deficit > 0) {
-          const available = await getCoinPackages();
+          const available =
+            courseCheckoutTransport.kind === 'native'
+              ? await getCoinPackages()
+              : next.packages;
           assertAccountSessionBoundary(boundary);
           if (!owns(token)) return;
           const eligibleIds = new Set(next.packages.map(item => item.id));
           const eligiblePackages = available.filter(
             item =>
               eligibleIds.has(item.id) &&
-              (!IS_STORE_DISTRIBUTION || Boolean(item.displayPrice)),
+              (courseCheckoutTransport.kind === 'external' ||
+                Boolean(item.displayPrice)),
           );
           const chosen = selectCheckoutPackage(eligiblePackages, next.deficit);
           if (chosen) {
@@ -155,10 +190,20 @@ export function useCourseSubscriptionCheckout({
               throw new Error('COURSE_CHECKOUT_TERMS_CHANGED');
             if (
               next.selectedPackageId !== chosen.id ||
-              chosen.coins < next.deficit
+              chosen.coins < next.deficit ||
+              (courseCheckoutTransport.kind === 'external' &&
+                (!next.selectedPackage ||
+                  next.selectedPackage.coins !== chosen.coins ||
+                  next.selectedPackage.price !== chosen.price))
             )
               throw new Error('COURSE_CHECKOUT_PACKAGE_CHANGED');
-            setCoinPackage(chosen);
+            // Direct amounts belong to the bound server contract; native
+            // display prices belong to the localized store product.
+            setCoinPackage(
+              courseCheckoutTransport.kind === 'external'
+                ? next.selectedPackage
+                : chosen,
+            );
           } else {
             setNotice('الدفع غير متاح لهذا الاشتراك الآن');
           }
@@ -256,7 +301,7 @@ export function useCourseSubscriptionCheckout({
           'تغيّرت تفاصيل الاشتراك\nرصيد الشحن محفوظ ويمكنك مراجعة الاختيار',
         );
       else if (next.status === 'pending_payment')
-        setNotice('الدفع قيد التأكيد\nلا تحتاج إلى الشحن مرة أخرى');
+        setNotice('الدفع قيد التأكيد\nلا تدفع مرة أخرى');
     } catch {
       if (owns(token))
         setNotice('تعذّر تأكيد النتيجة\nلا تشحن مرة أخرى قبل التحقق');
@@ -283,21 +328,31 @@ export function useCourseSubscriptionCheckout({
   }, [refreshPending, visible]);
 
   const confirm = useCallback(async () => {
-    if (!quote || loading || flight.current || !CAN_START_COIN_CHECKOUT) return;
+    if (!quote || loading || flight.current) return;
     if (blockingCheckout) {
       await resolveBlockingCheckout('resume');
       return;
     }
-    if (quote.status === 'pending_payment') {
+    if (
+      quote.status === 'pending_payment' &&
+      !(
+        courseCheckoutTransport.kind === 'external' &&
+        quote.canResumePayment &&
+        coinPackage
+      )
+    ) {
       await refreshPending();
       return;
     }
-    if (quote.status !== 'quoted') {
+    if (quote.status !== 'quoted' && quote.status !== 'pending_payment') {
       setReloadKey(value => value + 1);
       return;
     }
     if (quote.deficit > 0 && !coinPackage) return;
-    if (Date.parse(quote.expiresAt) <= Date.now()) {
+    if (
+      quote.status === 'quoted' &&
+      Date.parse(quote.expiresAt) <= Date.now()
+    ) {
       setReloadKey(value => value + 1);
       return;
     }
@@ -308,6 +363,8 @@ export function useCourseSubscriptionCheckout({
     let authorized = false;
     try {
       const boundary = await captureAccountSessionBoundary();
+      assertAccountSessionBoundary(boundary);
+      if (!owns(token)) return;
       let next = await authorizeCourseCheckout(quote.id);
       assertAccountSessionBoundary(boundary);
       if (!owns(token)) return;
@@ -322,6 +379,7 @@ export function useCourseSubscriptionCheckout({
         return;
       }
       const payment = await openCoinCheckout(coinPackage, {
+        transport: courseCheckoutTransport,
         courseCheckoutId: next.id,
         returnTo: {
           name: 'CourseDetails',
@@ -454,5 +512,12 @@ export function useCourseSubscriptionCheckout({
     retry,
     blockedByPreviousCheckout: Boolean(blockingCheckout),
     pending: quote?.status === 'pending_payment',
+    canResumePayment: Boolean(
+      courseCheckoutTransport.kind === 'external' &&
+        quote?.channel === 'direct' &&
+        quote.status === 'pending_payment' &&
+        quote.canResumePayment &&
+        coinPackage,
+    ),
   };
 }

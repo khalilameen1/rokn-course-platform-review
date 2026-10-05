@@ -2,6 +2,10 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
+// Reuse the same Media3 release pinned by react-native-video 6.18.0. The app's
+// plugin references its preloader API, not another player dependency/version.
+def roknMedia3Version = "1.4.1"
+
 // Test builds deliberately remain usable without Firebase credentials. A
 // production build is stopped earlier by the release script unless the real
 // project file exists, and then this plugin generates the FCM resources that
@@ -256,6 +260,11 @@ android {
 }
 
 dependencies {
+    implementation("androidx.media3:media3-exoplayer:${roknMedia3Version}")
+    // These are already RNV runtime modules. Declare the same locked version
+    // for compiling its HLS/DASH factory reuse, not a second player stack.
+    implementation("androidx.media3:media3-exoplayer-hls:${roknMedia3Version}")
+    implementation("androidx.media3:media3-exoplayer-dash:${roknMedia3Version}")
     testImplementation("junit:junit:4.13.2")
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")

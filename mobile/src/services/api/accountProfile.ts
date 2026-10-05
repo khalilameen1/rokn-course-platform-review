@@ -27,6 +27,8 @@ export type Profile = {
   marketingNotificationsEnabled: boolean;
   videoQualityPreference: string;
   playbackSpeed: number;
+  learningReminderHour: number;
+  learningReminderTimezone: string;
   profileRevision: number;
 };
 
@@ -75,6 +77,10 @@ const profileFromPayload = (
     playbackSpeed: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].includes(speed)
       ? speed
       : 1,
+    learningReminderHour: [10, 15, 20].includes(Number(value.learning_reminder_hour))
+      ? Number(value.learning_reminder_hour) : 20,
+    learningReminderTimezone: typeof value.learning_reminder_timezone === 'string'
+      ? value.learning_reminder_timezone : 'Africa/Cairo',
     profileRevision: Math.max(
       fallback.profileRevision || 0,
       Number(value.profile_revision) || 0,
@@ -176,21 +182,37 @@ export const updatePrivacyPreferences = async (
   input: {
     watchHistoryEnabled?: boolean;
     marketingNotificationsEnabled?: boolean;
+    learningReminderHour?: number;
+    learningReminderTimezone?: string;
   },
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<void> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  const body: Record<string, boolean> = {};
+  const body: Record<string, boolean | number | string> = {};
   if (typeof input.watchHistoryEnabled === 'boolean') {
     body.watch_history_enabled = input.watchHistoryEnabled;
   }
   if (typeof input.marketingNotificationsEnabled === 'boolean') {
     body.marketing_notifications_enabled = input.marketingNotificationsEnabled;
   }
+  if (input.learningReminderHour !== undefined) {
+    if (![10, 15, 20].includes(input.learningReminderHour)
+      || !input.learningReminderTimezone) throw new Error('REMINDER_PREFERENCE_INVALID');
+    body.learning_reminder_hour = input.learningReminderHour;
+    body.learning_reminder_timezone = input.learningReminderTimezone;
+  }
   if (!Object.keys(body).length) return;
   assertAccountSessionBoundary(boundary);
-  await publicRequest.put('user/profile', body);
+  const data = payload<unknown>(await publicRequest.put('user/profile', body));
   assertAccountSessionBoundary(boundary);
+  // HTTP success alone does not acknowledge a preference. In particular an
+  // older backend can ignore a new field and otherwise return a valid profile.
+  if (!isApiRecord(data) || Object.entries(body).some(([field, expected]) =>
+    typeof expected === 'boolean'
+      ? firstBoolean(data[field]) !== expected
+      : data[field] !== expected)) {
+    throw new Error('PROFILE_PREFERENCE_NOT_ACKNOWLEDGED');
+  }
 };
 
 export const updatePlaybackPreferences = async (

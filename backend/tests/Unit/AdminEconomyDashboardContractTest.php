@@ -98,6 +98,7 @@ final class AdminEconomyDashboardContractTest extends TestCase
         $model = $this->source('app/Models/CoinEarningMethod.php');
         $api = $this->source('app/Http/Controllers/API/CoinEarningMethodController.php');
         $engagement = $this->source('app/Http/Controllers/API/EngagementController.php');
+        $engagementTasks = $this->source('app/Services/EngagementTaskReadService.php');
         $admin = $this->source('app/Http/Controllers/Admin/CoinEarningMethodController.php');
         $read = $this->source('app/Services/AdminEconomyReadService.php');
 
@@ -105,8 +106,10 @@ final class AdminEconomyDashboardContractTest extends TestCase
         self::assertStringContainsString('$available->learnerTask()', $api);
         self::assertStringContainsString('completed_by_learner', $api);
         self::assertStringContainsString('$lockedMethod->isLearnerTask()', $api);
-        self::assertStringContainsString('->learnerTask()', $engagement);
-        self::assertStringContainsString("->orderBy('sort_order')", $engagement);
+        self::assertStringContainsString('EngagementTaskReadService $tasks', $engagement);
+        self::assertStringContainsString('$tasks->next($user, $wallet->rewardCreditRoom((int) $balances[\'reward\']))', $engagement);
+        self::assertStringContainsString('CoinEarningMethod::query()->learnerTask()', $engagementTasks);
+        self::assertStringContainsString("->orderBy('sort_order')->orderBy('id')", $engagementTasks);
         self::assertStringContainsString("'coins_amount' => ['required', 'integer', 'min:1']", $admin);
         self::assertStringContainsString('Rule::notIn(CoinEarningMethod::AUTOMATIC_ACTION_KEYS)', $admin);
         self::assertStringContainsString('orWhereNotIn(\'action_key\', CoinEarningMethod::AUTOMATIC_ACTION_KEYS)', $read);

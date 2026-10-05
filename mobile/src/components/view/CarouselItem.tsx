@@ -1,5 +1,6 @@
 import React, {memo} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import type {Course} from '../../types/Course';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
 import {
@@ -8,13 +9,10 @@ import {
   Radius,
   Spacing,
   Type,
-  rtlRowStyle,
   textDirection,
   useResponsiveLayout,
 } from '../../constants/designSystem';
-import {ArrowRight} from '../../assets/SVG';
 import {CourseArtwork} from '../ui/CourseArtwork';
-import {courseCatalogueLabel} from './courseCatalogueLabel';
 
 const CarouselItem = ({
   course,
@@ -23,132 +21,131 @@ const CarouselItem = ({
   course: Course;
   onButtonPress: () => void;
 }) => {
-  const {gutter, featuredHorizontal, featuredImageWidth, featuredImageHeight} =
-    useResponsiveLayout();
-  const label = courseCatalogueLabel(course);
+  const {
+    contentWidth,
+    gutter,
+    largeText,
+    featuredCardWidth,
+    featuredCardMinHeight,
+  } = useResponsiveLayout();
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={[
-        formatAuthoredDisplayText(course.title),
-        course.instructor,
-        label,
-      ]
-        .filter(Boolean)
-        .join(' — ')}
-      accessibilityHint="يفتح تفاصيل الكورس"
-      onPress={onButtonPress}
-      style={({pressed}) => [
+    <View
+      style={[
         styles.feature,
-        featuredHorizontal && styles.featureWide,
-        {paddingHorizontal: gutter},
-        pressed && styles.pressed,
+        {maxWidth: contentWidth, paddingHorizontal: gutter},
       ]}>
-      <View style={[styles.artworkFrame, {width: featuredImageWidth}]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={formatAuthoredDisplayText(course.title)}
+        accessibilityHint="يفتح تفاصيل الكورس"
+        onPress={onButtonPress}
+        style={({pressed}) => [
+          styles.card,
+          {width: featuredCardWidth, minHeight: featuredCardMinHeight},
+          pressed && styles.pressed,
+        ]}>
         <CourseArtwork
           source={course.image}
           fallback={require('../../assets/images/courseSlider.jpg')}
-          style={[
-            styles.artwork,
-            {
-              height: featuredImageHeight,
-            },
-          ]}
+          style={styles.artwork}
         />
-      </View>
-      <View style={[styles.copy, featuredHorizontal && styles.copyWide]}>
-        {!!label && (
-          <Text numberOfLines={1} style={styles.eyebrow}>
-            {label}
-          </Text>
-        )}
-        <Text
-          accessibilityRole="header"
-          accessibilityLabel={formatAuthoredDisplayText(course.title)}
-          numberOfLines={2}
-          ellipsizeMode="tail"
-          style={[styles.title, featuredHorizontal && styles.titleWide]}>
-          {formatAuthoredDisplayText(course.title)}
-        </Text>
-        {!!course.instructor && (
+        <LinearGradient
+          pointerEvents="none"
+          // Large titles grow upward into the artwork. Keep every possible
+          // text position readable instead of relying on the bottom fade.
+          colors={
+            largeText
+              ? [
+                  'rgba(7,10,16,0.65)',
+                  'rgba(7,10,16,0.82)',
+                  'rgba(7,10,16,0.92)',
+                  Palette.canvas,
+                ]
+              : [
+                  'rgba(7,10,16,0)',
+                  'rgba(7,10,16,0.12)',
+                  'rgba(7,10,16,0.86)',
+                  Palette.canvas,
+                ]
+          }
+          locations={[0.25, 0.42, 0.68, 0.96]}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={styles.copy}>
           <Text
-            numberOfLines={1}
+            accessibilityRole="header"
+            accessibilityLabel={formatAuthoredDisplayText(course.title)}
+            numberOfLines={largeText ? 4 : 2}
             ellipsizeMode="tail"
-            style={styles.instructor}>
-            {formatAuthoredDisplayText(course.instructor)}
+            style={[
+              styles.title,
+              featuredCardWidth <= 324 && styles.titleCompact,
+            ]}>
+            {formatAuthoredDisplayText(course.title)}
           </Text>
-        )}
-        <View style={styles.footer}>
           <View style={styles.details}>
             <Text style={styles.detailsText}>عرض الكورس</Text>
-            <View style={styles.detailsArrow}>
-              <ArrowRight width={18} height={18} />
-            </View>
           </View>
         </View>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  feature: {width: '100%', marginBottom: Spacing.md},
-  featureWide: {...rtlRowStyle, alignItems: 'center', gap: Spacing.xl},
-  artworkFrame: {
+  feature: {width: '100%', alignSelf: 'center', marginBottom: Spacing.md},
+  card: {
+    justifyContent: 'flex-end',
     borderRadius: Radius.lg,
     overflow: 'hidden',
     backgroundColor: Palette.surface,
   },
-  artwork: {width: '100%', resizeMode: 'cover'},
-  copy: {paddingTop: Spacing.sm, direction: 'rtl', alignItems: 'stretch'},
-  copyWide: {flex: 1, minWidth: 0, paddingTop: 0},
-  eyebrow: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-    marginBottom: Spacing.xxs,
+  artwork: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  // Content remains in normal flow so large Arabic text can grow the card.
+  copy: {
+    paddingTop: 142,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    direction: 'rtl',
+    alignItems: 'stretch',
   },
   title: {
-    ...Type.section,
+    ...Type.display,
+    fontSize: Type.display.fontSize * 0.9,
+    lineHeight: Type.display.lineHeight * 0.96,
     ...textDirection,
+    textAlign: 'center',
     color: Palette.text,
-    maxWidth: 660,
   },
-  titleWide: {...Type.title},
-  instructor: {
-    ...Type.caption,
-    ...textDirection,
-    color: Palette.textMuted,
-    marginTop: Spacing.xxs,
-  },
-  footer: {
-    ...rtlRowStyle,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: Spacing.xs,
+  titleCompact: {
+    fontSize: Type.display.fontSize * 0.8,
+    lineHeight: Type.display.lineHeight * 0.86,
   },
   details: {
-    ...rtlRowStyle,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xs,
+    marginTop: Spacing.md,
+    width: '100%',
     backgroundColor: Palette.action,
     borderRadius: Radius.sm,
     minHeight: Accessibility.minTouchTarget,
-    minWidth: Accessibility.minTouchTarget * 3,
     maxWidth: '100%',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
-    flexShrink: 1,
   },
   detailsText: {
-    ...Type.bodyStrong,
+    ...Type.button,
     ...textDirection,
+    textAlign: 'center',
     color: Palette.text,
     flexShrink: 1,
   },
-  detailsArrow: {transform: [{rotate: '180deg'}]},
   pressed: {opacity: 0.86},
 });
 

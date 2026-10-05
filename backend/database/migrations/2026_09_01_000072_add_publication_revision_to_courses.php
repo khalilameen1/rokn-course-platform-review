@@ -38,6 +38,9 @@ return new class extends Migration
 
         if (Schema::hasColumn('courses', 'last_published_authoring_version')) {
             Schema::table('courses', function (Blueprint $table): void {
+                if (Schema::hasIndex('courses', 'courses_last_published_authoring_version_index')) {
+                    $table->dropIndex('courses_last_published_authoring_version_index');
+                }
                 $table->dropColumn('last_published_authoring_version');
             });
         }

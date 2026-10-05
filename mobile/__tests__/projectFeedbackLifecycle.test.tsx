@@ -193,6 +193,228 @@ describe('project feedback interrupted hydration', () => {
   );
 });
 
+describe('project feedback read recovery', () => {
+  let current!: ReturnType<typeof useProjectFeedback>;
+  let renderer: TestRenderer.ReactTestRenderer | undefined;
+  const Harness = ({
+    seedThread = emptyThread,
+    projectId = '7',
+    active = true,
+    appIsActive = true,
+    reportStatus = 'ready',
+  }: {
+    seedThread?: ProjectFeedbackThread;
+    projectId?: string;
+    active?: boolean;
+    appIsActive?: boolean;
+    reportStatus?: 'ready' | 'failed';
+  }) => {
+    current = useProjectFeedback({
+      active,
+      appIsActive,
+      projectId,
+      seedThread,
+      reportStatus,
+      feedbackLevel: 'enhanced',
+      replyEnabled: true,
+    });
+    return null;
+  };
+  const failInitialRead = async () => {
+    mockLoadThread.mockRejectedValue(new Error('offline'));
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness />);
+    });
+    for (const delay of [1200, 2400]) {
+      await act(async () => {
+        jest.advanceTimersByTime(delay);
+      });
+    }
+    expect(mockLoadThread).toHaveBeenCalledTimes(3);
+    expect(current.readError).toBe('تعذّر تحميل التقرير');
+    expect(current.hydrating).toBe(false);
+  };
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+    mockLoadThread.mockReset();
+    mockEpoch = 1;
+  });
+  afterEach(async () => {
+    if (renderer) await act(async () => renderer!.unmount());
+    renderer = undefined;
+    jest.useRealTimers();
+  });
+
+  it('retries one GET in place and keeps the draft without a paid send', async () => {
+    await failInitialRead();
+    act(() => current.changeDraft('سؤالي محفوظ'));
+    const next = deferred<ProjectFeedbackThread>();
+    mockLoadThread.mockReturnValue(next.promise);
+    const retry = current.retryRead;
+    await act(async () => {
+      retry();
+      retry();
+    });
+    expect(mockLoadThread).toHaveBeenCalledTimes(4);
+    expect(current.readRetrying).toBe(true);
+    await act(async () => {
+      next.resolve(loadedThread);
+    });
+    expect(current.readError).toBe('');
+    expect(current.readRetrying).toBe(false);
+    expect(current.thread).toEqual(loadedThread);
+    expect(current.draft).toBe('سؤالي محفوظ');
+    act(() => retry());
+    expect(mockLoadThread).toHaveBeenCalledTimes(4);
+    expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+    expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges a failed explicit read immediately and retires the old failure action', async () => {
+    await failInitialRead();
+    const oldRetry = current.retryRead;
+    await act(async () => {
+      oldRetry();
+    });
+    expect(mockLoadThread).toHaveBeenCalledTimes(4);
+    expect(current.readError).toBe('تعذّر تحميل التقرير');
+    expect(current.readRetrying).toBe(false);
+    await act(async () => {
+      jest.advanceTimersByTime(10000);
+      oldRetry();
+    });
+    expect(mockLoadThread).toHaveBeenCalledTimes(4);
+    mockLoadThread.mockResolvedValue(loadedThread);
+    await act(async () => {
+      current.retryRead();
+    });
+    expect(mockLoadThread).toHaveBeenCalledTimes(5);
+    expect(current.readError).toBe('');
+  });
+
+  it.each(['close', 'background'] as const)(
+    'retires the failed visit callback on %s even when reopening the same thread',
+    async interruption => {
+      await failInitialRead();
+      const oldRetry = current.retryRead;
+      await act(async () => {
+        renderer!.update(
+          <Harness
+            active={interruption !== 'close'}
+            appIsActive={interruption !== 'background'}
+          />,
+        );
+      });
+      const next = deferred<ProjectFeedbackThread>();
+      mockLoadThread.mockReturnValue(next.promise);
+      await act(async () => {
+        renderer!.update(<Harness />);
+      });
+      expect(mockLoadThread).toHaveBeenCalledTimes(4);
+      await act(async () => {
+        oldRetry();
+      });
+      expect(mockLoadThread).toHaveBeenCalledTimes(4);
+      await act(async () => {
+        next.resolve(loadedThread);
+      });
+      act(() => oldRetry());
+      expect(mockLoadThread).toHaveBeenCalledTimes(4);
+      expect(current.readError).toBe('');
+    },
+  );
+
+  it('keeps a received report when polling exhausts and reloads the pending reply without resending', async () => {
+    const pendingThread: ProjectFeedbackThread = {
+      ...loadedThread,
+      messages: [
+        ...loadedThread.messages,
+        {id: 'reply-7', role: 'assistant', status: 'queued', text: ''},
+      ],
+    };
+    mockLoadThread.mockResolvedValue(pendingThread);
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness seedThread={pendingThread} />);
+    });
+    act(() => current.changeDraft('سؤال آخر محفوظ'));
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      await act(async () => {
+        jest.runOnlyPendingTimers();
+      });
+    }
+    expect(mockLoadThread).toHaveBeenCalledTimes(30);
+    expect(current.readError).toBe('تعذّر تحديث الرد');
+    expect(current.thread?.messages[0]).toEqual(loadedThread.messages[0]);
+    expect(current.draft).toBe('سؤال آخر محفوظ');
+    mockLoadThread.mockResolvedValue({
+      ...pendingThread,
+      messages: [
+        ...loadedThread.messages,
+        {
+          id: 'reply-7',
+          role: 'assistant',
+          status: 'completed',
+          text: 'ردك جاهز',
+        },
+      ],
+    });
+    await act(async () => {
+      current.retryRead();
+    });
+    expect(mockLoadThread).toHaveBeenCalledTimes(31);
+    expect(current.pending).toBe(false);
+    expect(current.readError).toBe('');
+    expect(current.draft).toBe('سؤال آخر محفوظ');
+    expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+    expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
+  });
+
+  it('does not apply a manual retry result to another project', async () => {
+    await failInitialRead();
+    const next = deferred<ProjectFeedbackThread>();
+    mockLoadThread.mockReturnValue(next.promise);
+    await act(async () => {
+      current.retryRead();
+    });
+    const other = {...loadedThread, id: 'thread-8'};
+    await act(async () => {
+      renderer!.update(<Harness projectId="8" seedThread={other} />);
+    });
+    await act(async () => {
+      next.resolve(loadedThread);
+    });
+    expect(current.thread?.id).toBe('thread-8');
+    expect(current.readError).toBe('');
+    expect(current.readRetrying).toBe(false);
+  });
+
+  it('accepts the server failure message without mislabelling it as a failed GET', async () => {
+    const failedReport: ProjectFeedbackThread = {
+      ...loadedThread,
+      status: 'failed',
+      messages: [
+        {
+          id: 'report-7',
+          role: 'assistant',
+          status: 'failed',
+          text: '',
+          canRetry: true,
+        },
+      ],
+    };
+    mockLoadThread.mockResolvedValue(failedReport);
+    await act(async () => {
+      renderer = TestRenderer.create(<Harness reportStatus="failed" />);
+    });
+    expect(mockLoadThread).toHaveBeenCalledTimes(1);
+    expect(current.thread).toEqual(failedReport);
+    expect(current.readError).toBe('');
+    expect(current.hydrating).toBe(false);
+    expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+  });
+});
+
 describe('project inquiry lost acknowledgement', () => {
   let current!: ReturnType<typeof useProjectFeedback>;
   let renderer: TestRenderer.ReactTestRenderer | undefined;
@@ -251,28 +473,47 @@ describe('project inquiry lost acknowledgement', () => {
     jest.useRealTimers();
   });
 
-  it('keeps a loaded report and queued reply across a same-thread course summary and foreground return', async () => {
-    await mount();
-    jest.mocked(sendProjectFeedbackMessage).mockResolvedValueOnce(accepted());
-    await act(async () => current.send());
-    const summary: ProjectFeedbackThread = {
-      ...emptyThread,
-      transcriptIncluded: false,
-      remainingMessages: 0,
-    };
-    await act(async () => renderer!.update(<Harness away />));
-    await act(async () => renderer!.update(<Harness seedThread={summary} />));
-    expect(current.thread?.messages).toEqual(accepted().messages);
-    expect(current.thread?.remainingMessages).toBe(4);
-    expect(current.pending).toBe(true);
-    expect(current.hydrating).toBe(false);
-    const complete = accepted('completed');
-    mockLoadThread.mockResolvedValueOnce(complete);
-    await act(async () => jest.advanceTimersByTime(2100));
-    expect(current.thread).toEqual(complete);
-    expect(current.pending).toBe(false);
-    expect(sendProjectFeedbackMessage).toHaveBeenCalledTimes(1);
-  });
+  it.each([0, 0.5, 0.999])(
+    'keeps a loaded report and queued reply across a same-thread course summary and foreground return with jitter sample %s',
+    async jitterSample => {
+      const randomness = jest.spyOn(Math, 'random').mockReturnValue(jitterSample);
+      try {
+        await mount();
+        jest.mocked(sendProjectFeedbackMessage).mockResolvedValueOnce(accepted());
+        await act(async () => current.send());
+        const summary: ProjectFeedbackThread = {
+          ...emptyThread,
+          transcriptIncluded: false,
+          remainingMessages: 0,
+        };
+        await act(async () => renderer!.update(<Harness away />));
+        const resumed = deferred<ProjectFeedbackThread>();
+        mockLoadThread.mockReturnValueOnce(resumed.promise);
+        await act(async () => renderer!.update(<Harness seedThread={summary} />));
+        expect(current.thread?.messages).toEqual(accepted().messages);
+        expect(current.thread?.remainingMessages).toBe(4);
+        expect(current.pending).toBe(true);
+        expect(current.hydrating).toBe(true);
+        expect(mockLoadThread).toHaveBeenCalledTimes(1);
+        await act(async () => {resumed.resolve(accepted());});
+        expect(current.hydrating).toBe(false);
+        const complete = accepted('completed');
+        mockLoadThread.mockResolvedValueOnce(complete);
+        // The first post-hydration poll uses 1800 * 1.35 * [0.82, 1.12),
+        // not a fixed 2100ms. This covers that bounded window at every sample.
+        await act(async () => jest.advanceTimersByTimeAsync(3000));
+        expect(current.thread).toEqual(complete);
+        expect(current.pending).toBe(false);
+        expect(mockLoadThread).toHaveBeenCalledTimes(2);
+        expect(mockLoadThread).toHaveBeenNthCalledWith(2, '7', 'thread-7');
+        await act(async () => jest.advanceTimersByTimeAsync(20000));
+        expect(mockLoadThread).toHaveBeenCalledTimes(2);
+        expect(sendProjectFeedbackMessage).toHaveBeenCalledTimes(1);
+      } finally {
+        randomness.mockRestore();
+      }
+    },
+  );
 
   it('applies a revoked reply permission without deleting the same-thread report or inventing an exhausted quota', async () => {
     await mount();
@@ -458,6 +699,37 @@ describe('project inquiry lost acknowledgement', () => {
       expect(current.pending).toBe(false);
     },
   );
+
+  it('refreshes a definitive quota race without consuming the rejected durable draft', async () => {
+    await mount();
+    jest.mocked(sendProjectFeedbackMessage).mockRejectedValueOnce({
+      status: 422, data: {code: 'project_discussion_limit_reached'},
+    });
+    mockLoadThread.mockResolvedValueOnce({
+      ...loadedThread, remainingMessages: 0, replyLimitReached: true,
+    });
+    await act(async () => {await current.send();});
+    expect(mockLoadThread).toHaveBeenCalledTimes(1);
+    expect(current.draft).toBe('هل التنفيذ مناسب');
+    expect(current.canReply).toBe(false);
+    expect(current.thread?.replyLimitReached).toBe(true);
+    expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
+    expect(sendProjectFeedbackMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send when token/cost capacity is exhausted despite a positive message count', async () => {
+    await mount();
+    await act(async () => {
+      renderer!.update(<Harness seedThread={{
+        ...loadedThread, remainingMessages: 3, replyLimitReached: true,
+      }} />);
+    });
+    expect(current.canReply).toBe(false);
+    await act(async () => {await current.send();});
+    expect(current.draft).toBe('هل التنفيذ مناسب');
+    expect(sendProjectFeedbackMessage).not.toHaveBeenCalled();
+    expect(clearProjectFeedbackDraft).not.toHaveBeenCalled();
+  });
 
   it.each(['account', 'project', 'unmount'])(
     'does not publish recovery after %s changes',

@@ -23,6 +23,7 @@ final class CourseCheckoutController extends Controller
             'mode' => ['sometimes', Rule::in(['purchase', 'upgrade'])],
             'required_feature' => ['sometimes', Rule::in(['chat', 'project_discussion'])],
             'channel' => ['required', Rule::in(['google', 'apple', 'direct'])],
+            'funding_mode' => ['sometimes', Rule::in(['package', 'exact_shortfall'])],
             'coupon_code' => ['nullable', 'string', 'min:3', 'max:50'],
             'package_id' => ['nullable', 'integer', 'min:1'],
         ]);
@@ -62,7 +63,7 @@ final class CourseCheckoutController extends Controller
         } catch (\DomainException $exception) {
             if ($exception->getMessage() === 'checkout_already_pending') {
                 $pending = \App\Models\CourseCheckout::query()->where('user_id', auth('api')->id())
-                    ->where('status', 'pending_payment')->where('expires_at', '>', now())->latest('id')->first();
+                    ->awaitingSettlement()->latest('id')->first();
                 return response()->json(['status' => 409, 'success' => false, 'code' => 'checkout_already_pending',
                     'message' => "عندك محاولة دفع لم تُحسم\nارجع إليها أو ألغها قبل بدء محاولة جديدة",
                     'data' => ['active_checkout' => $pending ? ['id' => $pending->public_id, 'course_id' => (int) $pending->course_id] : null]], 409);

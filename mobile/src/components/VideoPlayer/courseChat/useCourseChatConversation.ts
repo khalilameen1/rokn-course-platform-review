@@ -4,6 +4,7 @@ import type {MutableRefObject} from 'react';
 import {loadCourseAssistantHistory} from '../courseLearningApi';
 import type {ChatAttachmentDraft, ChatMessage} from '../types';
 import {
+  assertAccountSessionBoundary,
   captureAccountSessionBoundary,
   getCurrentAccountStorageScope,
 } from '../../../constants/helpers';
@@ -25,6 +26,8 @@ type Params = {
   lessonId?: string;
   conversationScope: string;
   inFlightAttachmentIds: MutableRefObject<Set<string>>;
+  inFlightRequestId: MutableRefObject<() => string | undefined>;
+  active: boolean;
   remoteEnabled: boolean;
 };
 
@@ -45,6 +48,8 @@ export const useCourseChatConversation = ({
   lessonId,
   conversationScope,
   inFlightAttachmentIds,
+  inFlightRequestId,
+  active,
   remoteEnabled,
 }: Params) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
@@ -62,6 +67,15 @@ export const useCourseChatConversation = ({
   const activeConversationRef = useRef(conversationScope);
   const hydratedConversationRef = useRef<string | null>(null);
   const activeAccountScopeRef = useRef<string | null>(null);
+  const historyVisitRef = useRef({conversationScope, active, remoteEnabled});
+  if (
+    historyVisitRef.current.conversationScope !== conversationScope ||
+    historyVisitRef.current.active !== active ||
+    historyVisitRef.current.remoteEnabled !== remoteEnabled
+  ) {
+    historyVisitRef.current = {conversationScope, active, remoteEnabled};
+  }
+  const historyVisit = historyVisitRef.current;
 
   activeConversationRef.current = conversationScope;
   messagesRef.current = messages;
@@ -136,31 +150,6 @@ export const useCourseChatConversation = ({
       if (hasRecoverableTurn(initialMessages)) {
         setRecoveryRevision(value => value + 1);
       }
-      if (!remoteEnabled) return;
-
-      try {
-        const remoteHistory = await loadCourseAssistantHistory(
-          courseId,
-          lessonId,
-        );
-        if (!(await ownsConversation(accountScope))) return;
-        const currentLocalHistory = messagesRef.current.filter(
-          message => !message.id.startsWith('welcome-'),
-        );
-        const reconciled = [
-          welcomeMessage(courseId),
-          ...trimConversation(
-            mergeCourseChatHistories(remoteHistory, currentLocalHistory),
-          ),
-        ];
-        commitMessages(reconciled);
-        if (hasRecoverableTurn(reconciled)) {
-          setRecoveryRevision(value => value + 1);
-        }
-      } catch {
-        // Local history is already usable. Reopening the chat retries server
-        // reconciliation without discarding the account-scoped outbox.
-      }
     })().catch(() => {
       if (
         generation === conversationGenerationRef.current &&
@@ -182,8 +171,79 @@ export const useCourseChatConversation = ({
     courseId,
     inFlightAttachmentIds,
     lessonId,
-    remoteEnabled,
     hydrationAttempt,
+  ]);
+
+  // The transcript/composer belongs to the conversation, not its open visit.
+  // Each open/foreground visit refreshes canonical history independently of
+  // local hydration. Retiring a read must never reset the draft or paid outbox.
+  useEffect(() => {
+    if (
+      !active ||
+      !remoteEnabled ||
+      !hydrated ||
+      hydratedConversationRef.current !== conversationScope
+    ) {
+      return;
+    }
+    const generation = conversationGenerationRef.current;
+    let ownsRead = true;
+    const isCurrentRead = () =>
+      ownsRead &&
+      historyVisitRef.current === historyVisit &&
+      conversationGenerationRef.current === generation &&
+      activeConversationRef.current === conversationScope &&
+      hydratedConversationRef.current === conversationScope;
+
+    void (async () => {
+      const boundary = await captureAccountSessionBoundary();
+      if (
+        !isCurrentRead() ||
+        activeAccountScopeRef.current !== boundary.scope
+      ) return;
+      assertAccountSessionBoundary(boundary);
+      const remoteHistory = await loadCourseAssistantHistory(courseId, lessonId);
+      assertAccountSessionBoundary(boundary);
+      if (!isCurrentRead()) return;
+      // Only the live turn owner may checkpoint its own bubbles. The GET can
+      // still restore other turns without swapping the live owner's ids or
+      // regressing its state with a snapshot from before Retry/Stop.
+      const ownedRequestId = inFlightRequestId.current();
+      const reconciled = [
+        welcomeMessage(courseId),
+        ...trimConversation(
+          mergeCourseChatHistories(
+            remoteHistory.filter(
+              message =>
+                !ownedRequestId || message.clientRequestId !== ownedRequestId,
+            ),
+            messagesRef.current.filter(
+              message => !message.id.startsWith('welcome-'),
+            ),
+          ),
+        ),
+      ];
+      commitMessages(reconciled);
+      if (hasRecoverableTurn(reconciled)) {
+        setRecoveryRevision(value => value + 1);
+      }
+    })().catch(() => {
+      // Local history stays usable during an outage. A new open/foreground
+      // visit retries this read, not hydration and not question delivery.
+    });
+    return () => {
+      ownsRead = false;
+    };
+  }, [
+    active,
+    commitMessages,
+    conversationScope,
+    courseId,
+    historyVisit,
+    hydrated,
+    inFlightRequestId,
+    lessonId,
+    remoteEnabled,
   ]);
 
   useEffect(() => {

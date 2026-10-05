@@ -72,6 +72,7 @@ for (const screen of [
   'Home',
   'Login',
   'CourseDetails',
+  'CourseCertificate',
   'MyCorner',
   'Wallet',
   'Profile',

@@ -1,5 +1,13 @@
 import React, {useEffect, useState} from 'react';
-import {ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../../ui/RasterImage';
 import Svg, {Path} from 'react-native-svg';
 import {
@@ -24,6 +32,8 @@ import {formatAuthoredDisplayText} from '../../../constants/arabicFormatting';
 import {cleanUnicodeText} from '../../../utils/unicodeText';
 import {CopyButton} from '../../ui/CopyButton';
 import {AiResponseReportButton} from '../../ui/AiResponseReportButton';
+import {ProjectFeedbackReadRecovery} from './ProjectFeedbackReadRecovery';
+import {ProjectDiscussionUpgradeGate} from './ProjectDiscussionUpgradeGate';
 
 // Decorative marks stay inside labelled 48dp targets; all content still uses
 // the OS font scale and the composer keeps its full-width, wrapping layout.
@@ -44,10 +54,16 @@ const AttachmentActionIcon = ({remove = false}: {remove?: boolean}) => (
 );
 
 type Props = {
+  active?: boolean;
+  courseId?: string;
   attachments: ChatAttachmentDraft[];
   canReply: boolean;
   draft: string;
   error: string;
+  readError?: string;
+  readRetrying?: boolean;
+  readHydrating?: boolean;
+  onRetryRead?: () => void;
   draftRestoreError?: boolean;
   onRetryDraftRestore?: () => void;
   draftSaveError?: boolean;
@@ -63,7 +79,7 @@ type Props = {
   onRemoveAttachment: (file: ChatAttachmentDraft) => void;
   onRetryMessage: (message: ProjectFeedbackMessage) => void;
   onSend: () => void;
-  onRequestDiscussionUpgrade?: () => void;
+  onRequestDiscussionUpgrade?: (quotaExhausted?: boolean) => void;
 };
 
 const MessageAttachments = ({
@@ -199,10 +215,16 @@ const FeedbackMessage = ({
 };
 
 const ProjectFeedbackPanel = ({
+  active = true,
+  courseId,
   attachments,
   canReply,
   draft,
   error,
+  readError,
+  readRetrying = false,
+  readHydrating = false,
+  onRetryRead,
   draftRestoreError,
   onRetryDraftRestore,
   draftSaveError,
@@ -232,6 +254,12 @@ const ProjectFeedbackPanel = ({
       message.role === 'assistant' &&
       ['queued', 'sent', 'streaming'].includes(message.status),
   );
+  const quotaExhausted =
+    feedbackLevel === 'enhanced' &&
+    thread.status === 'ready' &&
+    thread.canReply &&
+    thread.transcriptIncluded !== false &&
+    (thread.replyLimitReached === true || thread.remainingMessages <= 0);
   return (
     <View style={styles.thread}>
       <View style={styles.report}>
@@ -249,6 +277,14 @@ const ProjectFeedbackPanel = ({
           />
         )}
       </View>
+
+      {!!readError && onRetryRead && (
+        <ProjectFeedbackReadRecovery
+          error={readError}
+          retrying={readRetrying}
+          onRetry={onRetryRead}
+        />
+      )}
 
       <Pressable
         accessibilityRole="button"
@@ -326,7 +362,10 @@ const ProjectFeedbackPanel = ({
             </View>
           )}
 
-          {canReply && thread.remainingMessages > 0 && !pending && (
+          {canReply &&
+            !quotaExhausted &&
+            thread.remainingMessages > 0 &&
+            !pending && (
             <View style={styles.composer}>
               <TextInput
                 accessibilityLabel="استفسارك عن تقرير المشروع"
@@ -381,7 +420,7 @@ const ProjectFeedbackPanel = ({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="ترقية الاشتراك للمناقشة"
-                onPress={onRequestDiscussionUpgrade}
+                onPress={() => onRequestDiscussionUpgrade?.(false)}
                 style={styles.gateAction}>
                 <Text style={styles.gateActionText}>
                   ترقية الاشتراك للمناقشة
@@ -390,16 +429,38 @@ const ProjectFeedbackPanel = ({
             </View>
           )}
 
-          {feedbackLevel === 'enhanced' &&
-            thread.remainingMessages <= 0 &&
-            !pending && (
-              <Text style={styles.state}>استخدمت كل رسائل مناقشة المشاريع</Text>
+          {quotaExhausted &&
+            !pending &&
+            !sending &&
+            !readRetrying &&
+            !readHydrating &&
+            !draftRestoreError &&
+            !readError && (
+              <ProjectDiscussionUpgradeGate
+                active={active}
+                courseId={onRequestDiscussionUpgrade ? courseId : undefined}
+                ownerKey={JSON.stringify([
+                  projectId,
+                  thread.id,
+                  thread.remainingMessages,
+                  thread.replyLimitReached,
+                ])}
+                onUpgrade={() => onRequestDiscussionUpgrade?.(true)}
+              />
             )}
+          {(readRetrying || readHydrating) && !readError && (
+            <View accessibilityLiveRegion="polite" style={styles.pendingState}>
+              <ActivityIndicator color={Palette.textMuted} size="small" />
+              <Text style={styles.state}>جارٍ تحديث المناقشة</Text>
+            </View>
+          )}
           {feedbackLevel === 'enhanced' &&
             !canReply &&
             !draftRestoreError &&
             !pending &&
-            thread.remainingMessages > 0 && (
+            !readHydrating &&
+            !readError &&
+            !quotaExhausted && (
               <Text style={styles.state}>المناقشة غير متاحة الآن</Text>
             )}
           {draftRestoreError && (

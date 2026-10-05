@@ -9,6 +9,7 @@ import type {
 } from '../../../navigation/types';
 import type {CourseAccessPlan} from '../../../services/roknApi';
 import {trackProductEvent} from '../../../services/productAnalytics';
+import {getCoursePurchaseExitOffer} from '../../../services/api/engagement';
 import type {DialogStep, PurchaseFlowTerms} from './useCoursePurchaseFlow';
 import {type CoursePrimaryAction} from './selectors';
 
@@ -20,6 +21,7 @@ type Params = {
   navigation: RootNavigation;
   owned: boolean;
   pageReady: boolean;
+  presentationActive?: boolean;
   primaryAction: CoursePrimaryAction;
   purchasePrice: number;
   remoteSession: boolean | null;
@@ -37,6 +39,8 @@ type PrimaryActionHandlers = {
   onStart: () => void;
 };
 
+// Once an offer was shown OR buying was attempted, do not pursue this learner
+// with the same course's exit offer again during this app process.
 const retentionShownCourses = new Set<string>();
 
 const rememberRetentionOffer = (key: string) => {
@@ -57,6 +61,7 @@ export function usePurchaseEntry({
   navigation,
   owned,
   pageReady,
+  presentationActive = true,
   primaryAction,
   purchasePrice,
   remoteSession,
@@ -69,13 +74,19 @@ export function usePurchaseEntry({
   spendableBalance,
 }: Params) {
   const autoHandledRef = useRef(false);
-  const [retentionQueued, setRetentionQueued] = useState(false);
-  const [retentionVisible, setRetentionVisible] = useState(false);
+  const [retentionQueued, setRetentionQueued] = useState<{
+    key: string;
+    planCode: string;
+  } | null>(null);
+  const [retentionVisible, setRetentionVisible] = useState<{
+    key: string;
+    planCode: string;
+  } | null>(null);
 
   useEffect(() => {
     autoHandledRef.current = false;
-    setRetentionQueued(false);
-    setRetentionVisible(false);
+    setRetentionQueued(null);
+    setRetentionVisible(null);
   }, [courseId, identityKey]);
 
   const consumeRouteIntent = useCallback(() => {
@@ -147,16 +158,6 @@ export function usePurchaseEntry({
         case 'purchase':
           break;
       }
-      if (
-        primaryAction.kind === 'purchase' ||
-        primaryAction.kind === 'choose_plan'
-      ) {
-        void trackProductEvent({
-          event_name: 'paywall_viewed',
-          screen_key: 'course_details',
-          course_id: courseId,
-        });
-      }
       openForTerms({
         forcePlanSelection: primaryAction.kind === 'choose_plan',
         purchasePrice,
@@ -164,7 +165,6 @@ export function usePurchaseEntry({
       });
     },
     [
-      courseId,
       openLogin,
       primaryAction.kind,
       purchasePrice,
@@ -255,13 +255,65 @@ export function usePurchaseEntry({
   ]);
 
   useEffect(() => {
-    if (!retentionQueued || dialogStep !== null) return;
+    if (!presentationActive || owned || remoteSession !== true) {
+      setRetentionQueued(null);
+      setRetentionVisible(null);
+    }
+  }, [owned, presentationActive, remoteSession]);
+
+  useEffect(() => {
+    if (
+      !retentionQueued ||
+      dialogStep !== null ||
+      owned ||
+      !presentationActive ||
+      !pageReady ||
+      remoteSession !== true ||
+      retentionQueued.key !== `${identityKey}:${courseId}` ||
+      retentionQueued.planCode !== selectedPlanCode
+    )
+      return;
+    let current = true;
+    // Wait for the subscription sheet to close, then use a fresh server read.
+    // Backgrounding, reopening, changing account/plan or attempting payment
+    // invalidates this result. A failed read simply omits the optional offer.
     const timer = setTimeout(() => {
-      setRetentionQueued(false);
-      if (!owned) setRetentionVisible(true);
+      void getCoursePurchaseExitOffer(courseId, retentionQueued.planCode)
+        .then(offer => {
+          if (
+            !current ||
+            !offer ||
+            retentionShownCourses.has(retentionQueued.key)
+          )
+            return;
+          rememberRetentionOffer(retentionQueued.key);
+          setRetentionVisible(retentionQueued);
+        })
+        .catch(() => undefined);
     }, 180);
-    return () => clearTimeout(timer);
-  }, [dialogStep, owned, retentionQueued]);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [
+    courseId,
+    dialogStep,
+    identityKey,
+    owned,
+    pageReady,
+    presentationActive,
+    remoteSession,
+    retentionQueued,
+    selectedPlanCode,
+  ]);
+
+  const paymentAttempted = useCallback(() => {
+    // Explicit press, before authorization/network/provider launch. Even a
+    // declined or cancelled attempt is not the price-exit audience.
+    rememberRetentionOffer(`${identityKey}:${courseId}`);
+    setRetentionQueued(null);
+    setRetentionVisible(null);
+  }, [courseId, identityKey]);
 
   const closeDialog = useCallback(() => {
     const retentionKey = `${identityKey}:${courseId}`;
@@ -269,11 +321,17 @@ export function usePurchaseEntry({
       dialogStep !== null &&
       dialogStep !== 'success' &&
       !owned &&
+      pageReady &&
+      presentationActive &&
+      remoteSession === true &&
+      Boolean(selectedPlanCode) &&
       !retentionShownCourses.has(retentionKey);
-    if (shouldOfferTasks) {
-      rememberRetentionOffer(retentionKey);
-      setRetentionQueued(true);
-    }
+    setRetentionVisible(null);
+    setRetentionQueued(
+      shouldOfferTasks && selectedPlanCode
+        ? {key: retentionKey, planCode: selectedPlanCode}
+        : null,
+    );
     if (dialogStep !== null && dialogStep !== 'success') {
       void trackProductEvent({
         event_name: 'paywall_dismissed',
@@ -282,16 +340,36 @@ export function usePurchaseEntry({
       });
     }
     closePurchase();
-  }, [closePurchase, courseId, dialogStep, identityKey, owned]);
+  }, [
+    closePurchase,
+    courseId,
+    dialogStep,
+    identityKey,
+    owned,
+    pageReady,
+    presentationActive,
+    remoteSession,
+    selectedPlanCode,
+  ]);
 
-  const closeRetention = useCallback(() => setRetentionVisible(false), []);
+  const closeRetention = useCallback(() => {
+    setRetentionQueued(null);
+    setRetentionVisible(null);
+  }, []);
 
   return {
     closeDialog,
     openLogin,
+    paymentAttempted,
     retention: {
       close: closeRetention,
-      visible: retentionVisible,
+      visible:
+        retentionVisible?.key === `${identityKey}:${courseId}` &&
+        retentionVisible?.planCode === selectedPlanCode &&
+        dialogStep === null &&
+        !owned &&
+        presentationActive &&
+        remoteSession === true,
     },
     runPrimaryAction,
   };

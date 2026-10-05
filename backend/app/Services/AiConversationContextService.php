@@ -27,6 +27,7 @@ final class AiConversationContextService
         int $characterBudget,
         string $focus
     ): string {
+        if ($characterBudget <= 0) return '';
         return $this->rebuildAndSelect(
             (int) $thread->user_id,
             (int) $thread->course_id,
@@ -134,8 +135,8 @@ final class AiConversationContextService
     /** @param list<array{id:int,kind:string,text:string}> $entries */
     private function select(array $entries, int $characterBudget, string $focus): string
     {
-        if ($entries === []) return '';
-        $budget = max(800, min(12000, $characterBudget));
+        $budget = max(0, min(12000, $characterBudget));
+        if ($entries === [] || $budget === 0) return '';
         $tokens = collect(preg_split(
             '/[^\p{L}\p{N}]+/u',
             mb_strtolower(UnicodeText::clean($focus))
@@ -163,7 +164,7 @@ final class AiConversationContextService
         $used = 0;
         foreach ($entries as $entry) {
             $length = mb_strlen($entry['text']) + 1;
-            if ($selected !== [] && $used + $length > $budget) continue;
+            if ($used + $length > $budget) continue;
             $selected[] = $entry;
             $used += $length;
         }

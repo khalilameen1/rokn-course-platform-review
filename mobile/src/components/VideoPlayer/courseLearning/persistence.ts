@@ -32,6 +32,15 @@ const EMPTY_STATE: PersistedPlayerState = {
   activityDays: [],
 };
 
+export const emptyLocalLearningState = (): PersistedPlayerState => ({
+  positions: {},
+  lastWatchedAt: {},
+  completedSections: [],
+  savedLessons: [],
+  savedFolderLessons: {},
+  activityDays: [],
+});
+
 const isAccountBoundaryError = (error: unknown) =>
   error instanceof Error && error.message === 'ACCOUNT_CHANGED_DURING_REQUEST';
 
@@ -359,30 +368,34 @@ export const clearLocalWatchHistory = async (
 
 export const applyLocalLearningState = async (
   course: CourseLearningData,
-): Promise<CourseLearningData> => {
-  const state = await readPlayerState();
-  return {
-    ...course,
-    modules: course.modules.map(module => {
-      // Local state remembers presentation and retryable writes. It is never
-      // an entitlement for production content: only the API may expose a
-      // module and its signed media source.
-      const moduleUnlocked = !module.isLocked;
-      const reels = module.reels.map(reel => {
-        const isCompleted =
-          reel.isCompleted || state.completedSections.includes(reel.sectionId);
-        return {
-          ...reel,
-          isLocked: !moduleUnlocked || reel.isLocked,
-          isCompleted,
-        };
-      });
-      const nextModule: CourseLearningModule = {
-        ...module,
-        isLocked: !moduleUnlocked,
-        reels,
+  localState?: PersistedPlayerState,
+): Promise<CourseLearningData> =>
+  overlayLocalLearningState(course, localState ?? (await readPlayerState()));
+
+export const overlayLocalLearningState = (
+  course: CourseLearningData,
+  state: PersistedPlayerState,
+): CourseLearningData => ({
+  ...course,
+  modules: course.modules.map(module => {
+    // Local state remembers presentation and retryable writes. It is never
+    // an entitlement for production content: only the API may expose a
+    // module and its signed media source.
+    const moduleUnlocked = !module.isLocked;
+    const reels = module.reels.map(reel => {
+      const isCompleted =
+        reel.isCompleted || state.completedSections.includes(reel.sectionId);
+      return {
+        ...reel,
+        isLocked: !moduleUnlocked || reel.isLocked,
+        isCompleted,
       };
-      return nextModule;
-    }),
-  };
-};
+    });
+    const nextModule: CourseLearningModule = {
+      ...module,
+      isLocked: !moduleUnlocked,
+      reels,
+    };
+    return nextModule;
+  }),
+});

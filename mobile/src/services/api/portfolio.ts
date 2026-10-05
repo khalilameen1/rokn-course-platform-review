@@ -9,6 +9,8 @@ import {
   type AccountSessionBoundary,
 } from '../../constants/helpers';
 import {uploadPortfolioVideo} from '../portfolioVideoUpload';
+import type {PortfolioTransferObserver} from '../portfolioUploadProgress';
+import {assertPortfolioTransferActive} from '../portfolioTransferControl';
 import {settleWithin} from '../../utils/settleWithin';
 import {
   isApiRecord,
@@ -51,10 +53,14 @@ const portfolioCacheStates = new Map<string, PortfolioCacheState>();
 /** A fresh server decision, never an offline entitlement or a tier-name guess. */
 export const assertPortfolioUploadAccess = async (
   boundary: AccountSessionBoundary,
+  signal?: AbortSignal,
 ): Promise<void> => {
   assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
   const data = payload<unknown>(
-    await publicRequest.get('portfolio/upload-access'),
+    await (signal
+      ? publicRequest.get('portfolio/upload-access', {signal})
+      : publicRequest.get('portfolio/upload-access')),
   );
   assertAccountSessionBoundary(boundary);
   if (!isApiRecord(data) || typeof data.can_upload !== 'boolean') {
@@ -286,10 +292,13 @@ export const appendPortfolioMedia = async (
   file: PortfolioUpload,
   clientRequestId: string,
   ownerBoundary?: AccountSessionBoundary,
+  onProgress?: PortfolioTransferObserver,
+  signal?: AbortSignal,
 ): Promise<PortfolioMedia> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
   // Also covers durable queue replay before sending image bytes or resuming video.
-  await assertPortfolioUploadAccess(boundary);
+  await assertPortfolioUploadAccess(boundary, signal);
+  assertPortfolioTransferActive(signal);
   const type = String(file.type || '')
     .toLowerCase()
     .startsWith('video/')
@@ -301,6 +310,8 @@ export const appendPortfolioMedia = async (
       file,
       clientRequestId,
       boundary,
+      onProgress,
+      signal,
     );
     assertAccountSessionBoundary(boundary);
     invalidatePortfolioCache(boundary);
@@ -316,12 +327,51 @@ export const appendPortfolioMedia = async (
     type: file.type || 'image/jpeg',
     name: file.fileName || `portfolio-${Date.now()}.jpg`,
   } as unknown as Blob);
-  const data = payload(
-    await publicRequest.post(`portfolio/${id}/media`, form, {
+  let active = true;
+  assertAccountSessionBoundary(boundary);
+  assertPortfolioTransferActive(signal);
+  try {
+    onProgress?.({loaded: 0, total: null, phase: 'uploading'});
+  } catch {
+    // Presentation cannot fail delivery.
+  }
+  let response;
+  try {
+    response = await publicRequest.post(`portfolio/${id}/media`, form, {
       timeout: 60_000,
+      signal,
       headers: {'Idempotency-Key': clientRequestId},
-    }),
-  );
+      onUploadProgress: event => {
+        if (
+          signal?.aborted ||
+          !active ||
+          !onProgress ||
+          !Number.isFinite(event.loaded) ||
+          event.loaded < 0
+        )
+          return;
+        const total =
+          typeof event.total === 'number' &&
+          Number.isFinite(event.total) &&
+          event.total > 0
+            ? event.total
+            : null;
+        try {
+          assertAccountSessionBoundary(boundary);
+          onProgress({
+            loaded: event.loaded,
+            total,
+            phase: total && event.loaded >= total ? 'saving' : 'uploading',
+          });
+        } catch {
+          /* Progress is presentation, not a mutation result. */
+        }
+      },
+    });
+  } finally {
+    active = false;
+  }
+  const data = payload(response);
   assertAccountSessionBoundary(boundary);
   invalidatePortfolioCache(boundary);
   const item = mapPortfolioMedia([data])[0];

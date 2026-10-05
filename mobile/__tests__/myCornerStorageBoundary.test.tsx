@@ -39,7 +39,10 @@ jest.mock('../src/services/roknApi', () => ({
   hasSession: async () => true,
 }));
 import {useMyCornerData} from '../src/screens/myCorner/useMyCornerData';
-import {learningResumeTarget} from '../src/screens/myCorner/model';
+import {
+  buildMyCornerModel,
+  learningResumeTarget,
+} from '../src/screens/myCorner/model';
 import {
   getCachedLearningDashboard,
   getLearningDashboard,
@@ -262,5 +265,71 @@ describe('MyCorner authoritative courses with unavailable native cache', () => {
     await expect(getCachedLearningDashboard()).resolves.toMatchObject({
       courses: [{title: mockCourseTitle}],
     });
+  });
+
+  it('retains separate project activity and video resume timestamps through the real dashboard cache and still reads older snapshots', async () => {
+    const normalGet = mockGet.getMockImplementation()!;
+    mockGet.mockImplementation(async (route: string) => {
+      const response = await normalGet(route);
+      if (route === 'learning/courses') {
+        const original = response.data.data.items[0];
+        const resume = {
+          available: true,
+          lesson_id: 31,
+          lesson_title: 'المقطع السابق',
+          position_seconds: 34,
+          duration_seconds: 120,
+          watched_at: '2026-10-01T12:00:00Z',
+        };
+        response.data.data.items = [
+          {
+            ...original,
+            last_activity_at: '2026-10-05T12:00:00Z',
+            resume,
+            next_section: {id: 30, title: 'المشروع التالي', type: 'project'},
+          },
+          {
+            ...original,
+            course_id: 4,
+            last_activity_at: '2026-10-04T12:00:00Z',
+            resume: {...resume, watched_at: '2026-10-04T12:00:00Z'},
+          },
+        ];
+      }
+      return response;
+    });
+    await getLearningDashboard();
+    const cached = await getCachedLearningDashboard();
+    expect(cached?.courses[0]).toMatchObject({
+      lastActivityAt: '2026-10-05T12:00:00Z',
+      lastWatchedAt: '2026-10-01T12:00:00Z',
+      resumePositionSeconds: 34,
+    });
+    const model = buildMyCornerModel({
+      dashboard: cached,
+      selectedPathId: null,
+      signedIn: true,
+    });
+    expect(model.orderedCourses.map(course => course.id)).toEqual(['3', '4']);
+    expect(learningResumeTarget(model.orderedCourses[0], true)).toEqual({
+      courseId: '3',
+      projectId: '30',
+    });
+
+    const key = `@rokn/learning-dashboard/v3:${mockBoundary.scope}`;
+    const oldSnapshot = JSON.parse((await rawGet(key))!);
+    oldSnapshot.dashboard.courses.forEach(
+      (course: {lastActivityAt?: string}) => delete course.lastActivityAt,
+    );
+    await rawSet(key, JSON.stringify(oldSnapshot));
+    const legacyModel = buildMyCornerModel({
+      dashboard: await getCachedLearningDashboard(),
+      selectedPathId: null,
+      signedIn: true,
+    });
+    expect(legacyModel.orderedCourses.map(course => course.id)).toEqual([
+      '4',
+      '3',
+    ]);
   });
 });

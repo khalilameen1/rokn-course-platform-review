@@ -7,7 +7,7 @@ import {
 } from '../../constants/arabicFormatting';
 import {Palette} from '../../constants/designSystem';
 import TaskBrandIcon from '../../components/ui/TaskBrandIcon';
-import {CoinAmount} from '../../components/ui/RoknCoin';
+import RoknCoin from '../../components/ui/RoknCoin';
 import type {WalletController} from './useWalletController';
 import {rewardTaskTitle} from './rewardsPresentation';
 import {walletStyles as styles} from './walletStyles';
@@ -53,8 +53,10 @@ export const RewardsTaskList = ({
                     {formatArabicDisplayText(rewardTaskTitle(task))}
                   </Text>
                   <View style={styles.taskReward}>
-                    <Text style={styles.rewardPlus}>+</Text>
-                    <CoinAmount size={18} value={task.reward} />
+                    <Text style={styles.rewardAmount}>
+                      {`\u2066+ ${formatArabicNumber(task.reward)}\u2069`}
+                    </Text>
+                    <RoknCoin size={18} />
                   </View>
                 </View>
               </View>
@@ -111,10 +113,12 @@ export const RewardsTaskList = ({
             accessibilityState={{expanded}}
             onPress={() => setExpanded(value => !value)}
             style={styles.disclosure}>
-            <Text style={styles.rulesLinkLabel}>المهام المكتملة</Text>
-            <Text style={styles.rulesLinkLabel}>
-              {formatArabicNumber(completed.length)}
-            </Text>
+            <View style={styles.disclosureCopy}>
+              <Text style={styles.rulesLinkLabel}>المهام المكتملة</Text>
+              <Text style={styles.rulesLinkLabel}>
+                {formatArabicNumber(completed.length)}
+              </Text>
+            </View>
             {expanded ? (
               <AccordionArrowUp width={14} height={14} />
             ) : (

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "androidDependencyCount": 241,
-  "androidProjectComponentCount": 23,
+  "androidProjectComponentCount": 24,
   "podDependencyCount": 127,
   "android": [
     {
@@ -1991,6 +1991,14 @@
       "firstPartyGenerated": false
     },
     {
+      "coordinate": "gradle-project:::react-native-community_netinfo",
+      "licenses": [
+        "MIT"
+      ],
+      "legalDocumentCount": 2,
+      "firstPartyGenerated": false
+    },
+    {
       "coordinate": "gradle-project:::react-native-firebase_app",
       "licenses": [
         "Apache-2.0"
@@ -3187,5 +3195,5 @@
       ]
     }
   ],
-  "inventoryHash": "89037565c5b17dac36bfb2679ebf1339e034c85dfa0d02893fff4300da7a0f5a"
+  "inventoryHash": "e0cb03df60bf7bef54fdbfb8b49beea531611cf85376e05b29935e9adf83e03f"
 }

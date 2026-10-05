@@ -1,13 +1,7 @@
-import {CommonActions} from '@react-navigation/native';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {RootNavigation} from '../../navigation/types';
 import type {Course} from '../../types/Course';
-import {
-  claimDailyReward,
-  getNotifications,
-  markNotificationRead,
-  type Notification as NotificationDto,
-} from '../../services/roknApi';
+import {claimDailyReward, markNotificationRead} from '../../services/roknApi';
 import {
   accountScopedStorageKey,
   assertAccountSessionBoundary,
@@ -16,12 +10,11 @@ import {
   saveItem,
   type AccountSessionBoundary,
 } from '../../constants/helpers';
-import {parseRoknDestination} from '../../navigation/deepLinks';
+import {getNotificationsPage} from '../../services/api/notifications';
 import {trackProductEvent} from '../../services/productAnalytics';
 import {
   type EngagementMessage,
   getEngagementMessage,
-  getNextEngagementMessage,
 } from '../../services/api/engagement';
 import {
   clearPendingWelcomeBonus,
@@ -30,58 +23,21 @@ import {
 import {serverNowMs} from '../../utils/serverClock';
 import {roknCalendarDay} from '../../constants/roknCalendar';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
+import {useStartupExperience} from '../appInitializer/StartupExperience';
+import {
+  createHomePresentationSession,
+  WELCOME_PRESENTED_KEY,
+} from '../appInitializer/homePresentationSession';
 import type {HomeCampaign} from './HomeOverlays';
 
-const receiptKey = (path: string, boundary?: AccountSessionBoundary) =>
+const receiptKey = (path: string, boundary: AccountSessionBoundary) =>
   accountScopedStorageKey(`@rokn/home-receipt/${path}`, boundary);
-
-const saveReceipt = async (
-  path: string,
-  value: unknown,
-  ownerBoundary?: AccountSessionBoundary,
-) => {
-  const boundary = ownerBoundary || (await captureAccountSessionBoundary());
-  await saveItem(await receiptKey(path, boundary), value);
-  assertAccountSessionBoundary(boundary);
-};
-
-const withinCooldown = (receipt: unknown, hours: number) => {
-  if (receipt === true) return true;
-  const shownAt = Number(receipt || 0);
-  if (!Number.isFinite(shownAt) || shownAt <= 0) return false;
-  const elapsed = serverNowMs() - shownAt;
-  return elapsed >= 0 && elapsed < Math.max(1, hours) * 60 * 60 * 1000;
-};
-
-const welcomeMessage = (
-  notification: NotificationDto,
-  coins: number,
-): EngagementMessage | null =>
-  parseRoknDestination(notification.link)
-    ? {
-        id: notification.id,
-        key: 'welcome_bonus_received',
-        title: notification.title,
-        description: notification.description,
-        actionLabel: notification.actionLabel,
-        secondaryActionLabel: '',
-        imageUrl: notification.imageUrl,
-        link: notification.link,
-        coins,
-        dismissible: true,
-        cooldownHours: 0,
-        version: notification.campaignId || notification.id,
-        campaignKey: notification.campaignId,
-      }
-    : null;
-
 type HomeEngagementInput = {
   active: boolean;
   identityKey: string;
   loading: boolean;
   navigation: RootNavigation;
   openCourse: (course: Pick<Course, 'id'>) => boolean;
-  remoteCourses: Course[] | null;
   serverSession: boolean | null;
 };
 
@@ -91,28 +47,27 @@ export const useHomeEngagement = ({
   loading,
   navigation,
   openCourse,
-  remoteCourses,
   serverSession,
 }: HomeEngagementInput) => {
-  const [bonus, setBonus] = useState<number | null>(null);
-  const [bonusChecked, setBonusChecked] = useState(false);
+  const startup = useStartupExperience();
+  const fallbackSession = useRef(createHomePresentationSession()).current;
+  const presentationSession = startup?.presentationSession || fallbackSession;
+  const readyForPrompts = startup?.readyForPrompts ?? true;
   const [campaign, setCampaign] = useState<HomeCampaign | null>(null);
   const [campaignImageFailed, setCampaignImageFailed] = useState(false);
   const [guestPrompt, setGuestPrompt] = useState<EngagementMessage | null>(
     null,
   );
-  const [welcome, setWelcome] = useState<EngagementMessage | null>(null);
-  const [rewardPrompt, setRewardPrompt] = useState<EngagementMessage | null>(
-    null,
-  );
+  const [bonusChecked, setBonusChecked] = useState(false);
+  const presentedBoundaryRef = useRef<AccountSessionBoundary | null>(null);
+  const presentedIdentityRef = useRef<string | null>(null);
   const rewardFlightRef = useRef<{
     identityKey: string;
     promise: Promise<boolean>;
   } | null>(null);
   const rewardAttemptRef = useRef('');
-  const presentedIdentityRef = useRef<string | null>(null);
-  const presentedBoundaryRef = useRef<AccountSessionBoundary | null>(null);
 
+  // Daily credit stays automatic and idempotent. Presentation never grants coins.
   useEffect(() => {
     if (!active || serverSession !== true) return;
     const attempt = `${identityKey}:${roknCalendarDay(
@@ -121,48 +76,43 @@ export const useHomeEngagement = ({
     if (
       rewardFlightRef.current?.identityKey === identityKey ||
       rewardAttemptRef.current === attempt
-    ) {
+    )
       return;
-    }
     rewardAttemptRef.current = attempt;
     const promise = captureAccountSessionBoundary()
       .then(boundary => claimDailyReward(boundary))
       .then(
         () => true,
         () => {
-          // A transport failure may mean either that the idempotent award was
-          // accepted or that it never reached the server. Allow the next
-          // foreground activation to reconcile by calling the same endpoint.
-          if (rewardAttemptRef.current === attempt) {
+          if (rewardAttemptRef.current === attempt)
             rewardAttemptRef.current = '';
-          }
           return false;
         },
       );
     rewardFlightRef.current = {identityKey, promise};
     void promise.finally(() => {
-      if (rewardFlightRef.current?.promise === promise) {
+      if (rewardFlightRef.current?.promise === promise)
         rewardFlightRef.current = null;
-      }
     });
   }, [active, identityKey, serverSession]);
 
   useEffect(() => {
     let current = true;
     setBonusChecked(false);
-    setBonus(null);
-    setWelcome(null);
     setGuestPrompt(null);
-    setRewardPrompt(null);
     setCampaign(null);
     setCampaignImageFailed(false);
     presentedBoundaryRef.current = null;
+    // Retire the old post-login dialog receipt silently, not the wallet credit.
     void captureAccountSessionBoundary()
-      .then(boundary => getPendingWelcomeBonus(boundary))
-      .then(value => {
+      .then(async boundary => {
+        const pending = await getPendingWelcomeBonus(boundary);
+        assertAccountSessionBoundary(boundary);
         if (!current) return;
-        const amount = Number(value || 0);
-        setBonus(amount > 0 ? amount : null);
+        if (pending !== null) {
+          presentationSession.suppress();
+          void clearPendingWelcomeBonus(boundary).catch(() => undefined);
+        }
         setBonusChecked(true);
       })
       .catch(() => {
@@ -172,253 +122,158 @@ export const useHomeEngagement = ({
       current = false;
       presentedBoundaryRef.current = null;
     };
-  }, [identityKey]);
+  }, [identityKey, presentationSession]);
 
   useEffect(() => {
-    if (!active || !bonusChecked || loading || serverSession === null) return;
-    if (presentedIdentityRef.current === identityKey) return;
+    if (
+      !active ||
+      !readyForPrompts ||
+      loading ||
+      !bonusChecked ||
+      serverSession === null
+    )
+      return;
+    presentationSession.observeIdentity(identityKey);
+    if (!presentationSession.available()) return;
     let current = true;
-
+    const controller = new AbortController();
     const load = async () => {
       const boundary = await captureAccountSessionBoundary();
-      if (bonus !== null) {
-        const notification = (await getNotifications(boundary)).find(
-          item =>
-            /^registration-bonus:\d+$/.test(item.campaignId || '') &&
-            item.kind === 'coin_reward',
+      if (!serverSession) {
+        // Installation-owned: logout or a template edit cannot repeat the gift.
+        if (await getItem(WELCOME_PRESENTED_KEY)) return;
+        assertAccountSessionBoundary(boundary);
+        const message = await getEngagementMessage(
+          'guest_registration_prompt',
+          boundary,
         );
         assertAccountSessionBoundary(boundary);
-        const message = notification
-          ? welcomeMessage(notification, bonus)
-          : null;
         if (
-          current &&
-          message &&
-          presentedIdentityRef.current !== identityKey
-        ) {
-          presentedIdentityRef.current = identityKey;
-          presentedBoundaryRef.current = boundary;
-          setWelcome(message);
-        }
+          !current ||
+          !message ||
+          message.coins <= 0 ||
+          !presentationSession.reserve()
+        )
+          return;
+        presentedBoundaryRef.current = boundary;
+        presentedIdentityRef.current = identityKey;
+        setGuestPrompt(message);
+        void saveItem(WELCOME_PRESENTED_KEY, true).catch(() => undefined);
         return;
       }
-
-      if (serverSession) {
-        setGuestPrompt(null);
-        const message = await getNextEngagementMessage(boundary);
+      // Existing backend campaign targeting selects recipients. Only course
+      // announcements open a Home card, never reports, certificates or tasks.
+      let cursor: string | null = null;
+      const visited = new Set<string>();
+      while (current && presentationSession.available()) {
+        const page = await getNotificationsPage({
+          surface: 'home',
+          cursor,
+          signal: controller.signal,
+          ownerBoundary: boundary,
+        });
         assertAccountSessionBoundary(boundary);
-        if (message && current && parseRoknDestination(message.link)) {
-          const identity = message.campaignKey!;
-          const seen = await receiptKey(`engagement/${identity}`, boundary);
-          if (
-            !withinCooldown(await getItem(seen), message.cooldownHours || 72)
-          ) {
-            assertAccountSessionBoundary(boundary);
-            if (current && presentedIdentityRef.current !== identityKey) {
-              presentedIdentityRef.current = identityKey;
-              presentedBoundaryRef.current = boundary;
-              setRewardPrompt(message);
-            }
-            return;
-          }
-        }
-
-        const notification = (await getNotifications(boundary)).find(
-          item =>
-            (item.kind === 'course_recommendation' ||
-              item.kind === 'new_course') &&
-            !item.read,
-        );
-        assertAccountSessionBoundary(boundary);
-        if (!notification || !current) return;
-        const seen = await receiptKey(`campaign/${notification.id}`, boundary);
-        if (await getItem(seen)) return;
-        assertAccountSessionBoundary(boundary);
-        const destination = parseRoknDestination(notification.link);
-        const courseId =
-          notification.courseId ||
-          (destination?.name === 'CourseDetails' ||
-          destination?.name === 'Reels'
-            ? destination.params.courseId
-            : undefined);
-        if (!courseId) return;
-        const course = (remoteCourses ?? []).find(item => item.id === courseId);
-        if (
-          !course ||
-          course.published === false ||
-          course.owned === true ||
-          presentedIdentityRef.current === identityKey
-        ) {
+        if (!current || !presentationSession.available()) return;
+        for (const notification of page.notifications) {
+          const course = notification.homeCourse;
+          if (!course) continue;
+          const seen = await getItem(
+            await receiptKey(`campaign/${notification.id}`, boundary),
+          );
+          assertAccountSessionBoundary(boundary);
+          if (!current || !presentationSession.available()) return;
+          if (seen) continue;
+          if (!presentationSession.reserve()) return;
+          presentedBoundaryRef.current = boundary;
+          presentedIdentityRef.current = identityKey;
+          setCampaignImageFailed(false);
+          setCampaign({
+            id: notification.id,
+            title: course.title,
+            description: '',
+            courseId: course.id,
+            image: {uri: course.imageUrl},
+            actionLabel: 'ابدأ الكورس',
+            badge: 'جديد',
+          });
           return;
         }
-        presentedIdentityRef.current = identityKey;
-        presentedBoundaryRef.current = boundary;
-        setCampaignImageFailed(false);
-        setCampaign({
-          id: notification.id,
-          title: notification.title,
-          description: notification.description,
-          courseId,
-          image: notification.imageUrl
-            ? {uri: notification.imageUrl}
-            : undefined,
-          actionLabel: notification.actionLabel,
-        });
-        return;
-      }
-
-      const message = await getEngagementMessage(
-        'guest_registration_prompt',
-        boundary,
-      );
-      assertAccountSessionBoundary(boundary);
-      if (!message || !current) return;
-      const seen = await receiptKey(
-        `engagement/${message.key}/${message.version}`,
-        boundary,
-      );
-      if (await getItem(seen)) return;
-      assertAccountSessionBoundary(boundary);
-      if (presentedIdentityRef.current !== identityKey) {
-        presentedIdentityRef.current = identityKey;
-        presentedBoundaryRef.current = boundary;
-        setGuestPrompt(message);
+        if (!page.hasMore) return;
+        if (!page.nextCursor || visited.has(page.nextCursor))
+          throw new Error('HOME_NOTIFICATIONS_CURSOR_INVALID');
+        visited.add(page.nextCursor);
+        cursor = page.nextCursor;
       }
     };
-
     void load().catch(() => undefined);
     return () => {
       current = false;
+      controller.abort();
     };
   }, [
     active,
-    bonus,
     bonusChecked,
     identityKey,
     loading,
-    remoteCourses,
+    presentationSession,
+    readyForPrompts,
     serverSession,
   ]);
 
-  const openDestination = useCallback(
-    (message: EngagementMessage | null) => {
-      const destination = parseRoknDestination(message?.link);
-      if (!destination) return;
-      navigation.dispatch(
-        CommonActions.navigate(
-          destination.name,
-          'params' in destination ? destination.params : undefined,
-        ),
-      );
-    },
-    [navigation],
-  );
-
-  const dismissWelcome = useCallback(() => {
-    const message = welcome;
-    const boundary = presentedBoundaryRef.current;
-    setBonus(null);
-    setWelcome(null);
-    presentedBoundaryRef.current = null;
-    if (!boundary) return;
-    void (async () => {
-      assertAccountSessionBoundary(boundary);
-      await clearPendingWelcomeBonus(boundary);
-      if (message && /^\d+$/.test(message.id)) {
-        await markNotificationRead(message.id, boundary);
-      }
-    })().catch(() => undefined);
-  }, [welcome]);
-
-  const openWelcome = useCallback(() => {
-    const message = welcome;
-    dismissWelcome();
-    openDestination(message);
-  }, [dismissWelcome, openDestination, welcome]);
-
   const dismissGuest = useCallback(() => {
-    const message = guestPrompt;
-    const boundary = presentedBoundaryRef.current;
     setGuestPrompt(null);
     presentedBoundaryRef.current = null;
-    if (message && boundary) {
-      void saveReceipt(
-        `engagement/${message.key}/${message.version}`,
-        true,
-        boundary,
-      ).catch(() => undefined);
-    }
-  }, [guestPrompt]);
-
+  }, []);
   const openGuest = useCallback(() => {
+    const boundary = presentedBoundaryRef.current;
+    if (!boundary || presentedIdentityRef.current !== identityKey) return;
+    assertAccountSessionBoundary(boundary);
     dismissGuest();
     openGuestLogin(navigation);
-  }, [dismissGuest, navigation]);
-
-  const dismissReward = useCallback(() => {
-    const message = rewardPrompt;
-    const boundary = presentedBoundaryRef.current;
-    setRewardPrompt(null);
-    presentedBoundaryRef.current = null;
-    if (message && boundary) {
-      const identity =
-        message.campaignKey || `${message.key}/${message.taskId || message.id}`;
-      void saveReceipt(`engagement/${identity}`, serverNowMs(), boundary).catch(
-        () => undefined,
-      );
-    }
-  }, [rewardPrompt]);
-
-  const openReward = useCallback(() => {
-    const message = rewardPrompt;
-    dismissReward();
-    openDestination(message);
-  }, [dismissReward, openDestination, rewardPrompt]);
-
+  }, [dismissGuest, identityKey, navigation]);
   const dismissCampaign = useCallback(
     async (open = false) => {
-      const current = campaign;
+      const selected = campaign;
       const boundary = presentedBoundaryRef.current;
       if (
-        !current ||
+        !selected ||
         !boundary ||
         presentedIdentityRef.current !== identityKey
-      ) return;
+      )
+        return;
       assertAccountSessionBoundary(boundary);
       setCampaign(null);
       setCampaignImageFailed(false);
       presentedBoundaryRef.current = null;
-      // Opening the selected course does not depend on a read receipt. Keep
-      // its server/local sequence intact, but never let it own navigation.
+      // Closing this Home card is a local presentation decision, not a network
+      // ACK. Keep its receipt independent of the inbox read and navigation.
       void (async () => {
-        const seen = await receiptKey(`campaign/${current.id}`, boundary);
+        const seen = await receiptKey(`campaign/${selected.id}`, boundary);
         assertAccountSessionBoundary(boundary);
-        if (serverSession === true) {
-          await markNotificationRead(current.id, boundary);
-          assertAccountSessionBoundary(boundary);
-        }
         await saveItem(seen, true);
         assertAccountSessionBoundary(boundary);
       })().catch(() => undefined);
-      if (!open || !current.courseId || !openCourse({id: current.courseId})) {
+      // A failed/stalled disk write must not stop the existing server read,
+      // either. A failed ACK may leave the inbox unread, not the Home card unseen.
+      void markNotificationRead(selected.id, boundary).catch(() => undefined);
+      if (!open || !selected.courseId || !openCourse({id: selected.courseId}))
         return;
-      }
       void trackProductEvent({
         event_name: 'notification_opened',
         source: 'notification',
         screen_key: 'home',
-        campaign_key: current.id,
-        course_id: current.courseId,
+        campaign_key: selected.id,
+        course_id: selected.courseId,
       });
       void trackProductEvent({
         event_name: 'course_opened',
         source: 'notification',
         screen_key: 'course_details',
-        campaign_key: current.id,
-        course_id: current.courseId,
+        campaign_key: selected.id,
+        course_id: selected.courseId,
       });
     },
-    [campaign, identityKey, openCourse, serverSession],
+    [campaign, identityKey, openCourse],
   );
 
   return {
@@ -426,14 +281,8 @@ export const useHomeEngagement = ({
     campaignImageFailed,
     dismissCampaign,
     dismissGuest,
-    dismissReward,
-    dismissWelcome,
     guestPrompt,
     markCampaignImageFailed: () => setCampaignImageFailed(true),
     openGuest,
-    openReward,
-    openWelcome,
-    rewardPrompt,
-    welcome,
   };
 };

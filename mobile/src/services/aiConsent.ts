@@ -11,7 +11,11 @@ import {privacyPolicyUrl} from './publicLinks';
 
 export const AI_CONSENT_VERSION = 'third-party-ai-v1';
 const STORAGE_KEY = '@rokn/ai-consent/v1';
-const requests = new Map<string, Promise<boolean>>();
+type ConsentRequest = {
+  owners: Set<() => boolean>;
+  result: Promise<boolean>;
+};
+const requests = new Map<string, ConsentRequest>();
 
 const record = (value: unknown): Record<string, unknown> =>
   value !== null && typeof value === 'object'
@@ -57,7 +61,7 @@ export const hasAiConsent = async (boundary: AccountSessionBoundary) => {
   return data.accepted === true;
 };
 
-const askPermission = (boundary: AccountSessionBoundary) =>
+const askPermission = (boundary: AccountSessionBoundary, canPresent: () => boolean) =>
   new Promise<boolean>(resolve => {
     Alert.alert(
       'الاستفسارات ومراجعة المشاريع',
@@ -66,10 +70,11 @@ const askPermission = (boundary: AccountSessionBoundary) =>
         {text: 'ليس الآن', style: 'cancel', onPress: () => resolve(false)},
         {text: 'سياسة الخصوصية', onPress: () => {
           resolve(false);
+          if (!canPresent()) return;
           void Linking.openURL(privacyPolicyUrl).catch(() => undefined);
         }},
         {text: 'أوافق وأتابع', onPress: () => {
-          try { assertAccountSessionBoundary(boundary); resolve(true); }
+          try { assertAccountSessionBoundary(boundary); resolve(canPresent()); }
           catch { resolve(false); }
         }},
       ],
@@ -78,36 +83,53 @@ const askPermission = (boundary: AccountSessionBoundary) =>
   });
 
 /** One shared affirmative gate, only on a learner-initiated AI action. */
-export const requestAiConsent = async (owner?: AccountSessionBoundary): Promise<boolean> => {
+export const requestAiConsent = async (
+  owner?: AccountSessionBoundary,
+  isCurrent: () => boolean = () => true,
+): Promise<boolean> => {
   const boundary = owner || (await captureAccountSessionBoundary());
   assertAccountSessionBoundary(boundary);
-  if (!boundary.scope.startsWith('user-')) return false;
+  if (!boundary.scope.startsWith('user-') || !isCurrent()) return false;
   const identity = `${boundary.scope}:${boundary.epoch}`;
-  const existing = requests.get(identity);
-  if (existing) return existing;
-  const flight = (async () => {
-    try {
-      if (await hasAiConsent(boundary)) return true;
-      if (!(await askPermission(boundary))) return false;
-      assertAccountSessionBoundary(boundary);
-      const response = await publicRequest.put('ai-consent', {
-        version: AI_CONSENT_VERSION, accepted: true,
-      }, {timeout: 12000});
-      assertAccountSessionBoundary(boundary);
-      const data = readConsent(response);
-      await persist(data, boundary);
-      return data.accepted === true;
-    } catch {
-      try { assertAccountSessionBoundary(boundary); }
-      catch { return false; }
-      Alert.alert('لم يكتمل التأكيد', 'تأكد من الاتصال وحاول مرة أخرى');
-      return false;
-    }
-  })().finally(() => {
-    if (requests.get(identity) === flight) requests.delete(identity);
-  });
-  requests.set(identity, flight);
-  return flight;
+  let request = requests.get(identity);
+  if (!request) {
+    const owners = new Set<() => boolean>();
+    const canPresent = () => Array.from(owners).some(owns => owns());
+    const flight = (async () => {
+      try {
+        if (await hasAiConsent(boundary)) return true;
+        if (!canPresent() || !(await askPermission(boundary, canPresent))) return false;
+        assertAccountSessionBoundary(boundary);
+        const response = await publicRequest.put('ai-consent', {
+          version: AI_CONSENT_VERSION, accepted: true,
+        }, {timeout: 12000});
+        assertAccountSessionBoundary(boundary);
+        const data = readConsent(response);
+        await persist(data, boundary);
+        return data.accepted === true;
+      } catch {
+        try { assertAccountSessionBoundary(boundary); }
+        catch { return false; }
+        if (canPresent()) Alert.alert('لم يكتمل التأكيد', 'تأكد من الاتصال وحاول مرة أخرى');
+        return false;
+      }
+    })().finally(() => {
+      if (requests.get(identity)?.result === flight) requests.delete(identity);
+    });
+    request = {owners, result: flight};
+    requests.set(identity, request);
+  }
+  // Same-account actions still share one affirmative prompt. Each caller owns
+  // its own continuation; retiring one must not retire another visible action.
+  const ownsPresentation = () => isCurrent();
+  request.owners.add(ownsPresentation);
+  try {
+    if (!(await request.result) || !isCurrent()) return false;
+    try { assertAccountSessionBoundary(boundary); return true; }
+    catch { return false; }
+  } finally {
+    request.owners.delete(ownsPresentation);
+  }
 };
 
 /** Background retries cannot open a consent dialog or infer acceptance. */

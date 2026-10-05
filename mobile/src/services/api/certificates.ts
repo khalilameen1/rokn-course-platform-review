@@ -108,7 +108,9 @@ export const getCachedCertificates = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<Certificate[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const key = await accountScopedStorageKey(CERTIFICATES_CACHE_KEY, boundary);
+  assertAccountSessionBoundary(boundary);
   const cached = await getItem<Partial<CertificatesCache>>(key);
   assertAccountSessionBoundary(boundary);
   if (cached?.version !== 2 || !Array.isArray(cached.certificates)) {
@@ -262,6 +264,7 @@ export const getCertificates = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<Certificate[]> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const data = payload<CertificateDto[] | {data?: CertificateDto[]}>(
     await publicRequest.get('certificates'),
   );
@@ -276,6 +279,7 @@ export const getCertificates = async (
     CERTIFICATES_CACHE_KEY,
     boundary,
   );
+  assertAccountSessionBoundary(boundary);
   void saveItem(cacheKey, {
     version: 2,
     certificates,
@@ -290,6 +294,7 @@ const submitCertificateRequest = async (
   ownerBoundary?: AccountSessionBoundary,
 ): Promise<Certificate | null> => {
   const boundary = ownerBoundary || (await captureAccountSessionBoundary());
+  assertAccountSessionBoundary(boundary);
   const normalizedCourseId = String(courseId).trim();
   if (!/^\d+$/.test(normalizedCourseId)) {
     throw new Error('INVALID_CERTIFICATE_COURSE_ID');

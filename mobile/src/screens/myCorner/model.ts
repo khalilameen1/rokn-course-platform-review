@@ -77,10 +77,18 @@ const currentStreakFromDays = (activeDays: string[]) => {
   return count;
 };
 
+const recentActivityTime = (course: LearningCourse): number => {
+  const activity = Date.parse(course.lastActivityAt || '');
+  if (Number.isFinite(activity)) return activity;
+  // Older on-device snapshots contain only the previous stored timestamp.
+  // Keep them usable offline; a fresh response supplies canonical activity.
+  return Date.parse(course.lastWatchedAt || '') || 0;
+};
+
 const orderedByRecentActivity = (courses: LearningCourse[]) =>
   [...courses].sort((first, second) => {
-    const firstSeen = Date.parse(first.lastWatchedAt || '') || 0;
-    const secondSeen = Date.parse(second.lastWatchedAt || '') || 0;
+    const firstSeen = recentActivityTime(first);
+    const secondSeen = recentActivityTime(second);
     // No enrollment timestamp is supplied. Keep server order for equal or
     // missing activity dates rather than treating progress as recency.
     return secondSeen - firstSeen;

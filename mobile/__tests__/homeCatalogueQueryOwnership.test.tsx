@@ -13,9 +13,7 @@ import {searchHomeCatalogue} from '../src/screens/home/homeCatalogue';
 
 type Catalogue = ReturnType<typeof usePublishedCourseCatalogue>;
 type Page = Awaited<
-  ReturnType<
-    typeof import('../src/services/roknApi').getPublishedCoursesPage
-  >
+  ReturnType<typeof import('../src/services/roknApi').getPublishedCoursesPage>
 >;
 
 const page = (id: string, currentPage = 1): Page => ({
@@ -41,11 +39,23 @@ const deferred = () => {
 describe('home catalogue query ownership', () => {
   let current: Catalogue;
   let renderer: TestRenderer.ReactTestRenderer | undefined;
+  let frames: {
+    query: string;
+    loading: boolean;
+    error: string;
+    ready: boolean;
+  }[];
   const Harness = ({query}: {query: string}) => {
     current = usePublishedCourseCatalogue({
       active: true,
       appIsActive: true,
       searchQuery: query,
+    });
+    frames.push({
+      query,
+      loading: current.loading,
+      error: current.error,
+      ready: current.searchResultsReady,
     });
     return null;
   };
@@ -70,6 +80,7 @@ describe('home catalogue query ownership', () => {
 
   beforeEach(() => {
     jest.useFakeTimers();
+    frames = [];
     mockPage.mockReset().mockResolvedValue(page('home'));
   });
   afterEach(async () => {
@@ -130,12 +141,16 @@ describe('home catalogue query ownership', () => {
     mockPage.mockResolvedValueOnce(page('home-fresh'));
     await change('');
     expect(mockPage).toHaveBeenCalledTimes(3);
-    expect(current.browseCourses.map(course => course.id)).toEqual(['home-fresh']);
+    expect(current.browseCourses.map(course => course.id)).toEqual([
+      'home-fresh',
+    ]);
     await act(async () => {
       initial.resolve(page('old-home'));
       abandoned.resolve(page('design'));
     });
-    expect(current.browseCourses.map(course => course.id)).toEqual(['home-fresh']);
+    expect(current.browseCourses.map(course => course.id)).toEqual([
+      'home-fresh',
+    ]);
   });
 
   it('does not append the previous search while the next search is debouncing', async () => {
@@ -182,6 +197,78 @@ describe('home catalogue query ownership', () => {
     expect(mockPage).toHaveBeenLastCalledWith(
       expect.objectContaining({search: 'تصميم', page: 3, revision: 12}),
     );
-    expect(resultIds('تصميم')).toEqual(['design', 'design-second', 'design-third']);
+    expect(resultIds('تصميم')).toEqual([
+      'design',
+      'design-second',
+      'design-third',
+    ]);
+  });
+
+  it('projects a new search as pending on its first render before the debounce effect', async () => {
+    await mount();
+    const replies = deferred();
+    mockPage.mockReturnValueOnce(replies.promise);
+    await change('تصميم', false);
+    expect(frames.filter(frame => frame.query === 'تصميم')).not.toHaveLength(0);
+    expect(frames.filter(frame => frame.query === 'تصميم')).toEqual(
+      expect.arrayContaining([
+        {query: 'تصميم', loading: true, error: '', ready: false},
+      ]),
+    );
+    expect(
+      frames
+        .filter(frame => frame.query === 'تصميم')
+        .every(frame => frame.loading && !frame.error && !frame.ready),
+    ).toBe(true);
+    expect(mockPage).toHaveBeenCalledTimes(1);
+    await act(async () => jest.advanceTimersByTime(350));
+    expect(current.loading).toBe(true);
+    await act(async () => replies.resolve(page('design')));
+    expect(current.loading).toBe(false);
+    expect(current.searchResultsReady).toBe(true);
+  });
+
+  it('does not expose a preceding query failure as the next query result', async () => {
+    await mount();
+    mockPage.mockRejectedValueOnce(new Error('offline'));
+    await change('تصميم');
+    expect(current.loading).toBe(false);
+    expect(current.error).not.toBe('');
+    expect(current.searchResultsReady).toBe(false);
+    await change('برمجة', false);
+    expect(
+      frames
+        .filter(frame => frame.query === 'برمجة')
+        .every(frame => frame.loading && !frame.error && !frame.ready),
+    ).toBe(true);
+    mockPage.mockResolvedValueOnce({
+      ...page('unused'),
+      courses: [],
+      total: 0,
+      hasMore: false,
+    });
+    await act(async () => jest.advanceTimersByTime(350));
+    expect(current.searchResultsReady).toBe(true);
+    expect(current.error).toBe('');
+    expect(resultIds('برمجة')).toEqual([]);
+  });
+
+  it('restores completed results immediately while abandoning the other query', async () => {
+    await mount();
+    mockPage.mockResolvedValueOnce(page('design'));
+    await change('تصميم');
+    const abandoned = deferred();
+    mockPage.mockReturnValueOnce(abandoned.promise);
+    await change('برمجة');
+    const begin = frames.length;
+    await change('تصميم', false);
+    expect(
+      frames
+        .slice(begin)
+        .every(frame => !frame.loading && !frame.error && frame.ready),
+    ).toBe(true);
+    expect(resultIds('تصميم')).toEqual(['design']);
+    await act(async () => abandoned.resolve(page('old-programming')));
+    expect(resultIds('تصميم')).toEqual(['design']);
   });
 });

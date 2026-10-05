@@ -53,141 +53,287 @@ const requestId = 'b1644f1f-21ff-4a52-bfc3-cf98fd87a388';
 describe('course chat turn owner', () => {
   it('keeps the original send identity when an explicit retry follows a lost ACK and missing status', async () => {
     jest.clearAllMocks();
-    jest.mocked(secureRandomUuid).mockReturnValueOnce(requestId).mockReturnValueOnce('replacement-id');
+    jest
+      .mocked(secureRandomUuid)
+      .mockReturnValueOnce(requestId)
+      .mockReturnValueOnce('replacement-id');
     const missing = {
-      text: 'لم يصل سؤالك', offline: false, turnStatus: 'failed' as const,
-      code: 'chat_turn_not_found', canRetry: true, clientRequestId: requestId,
+      text: 'لم يصل سؤالك',
+      offline: false,
+      turnStatus: 'failed' as const,
+      code: 'chat_turn_not_found',
+      canRetry: true,
+      clientRequestId: requestId,
     };
-    jest.mocked(askCourseAssistant)
-      .mockResolvedValueOnce({text: '', offline: true, turnStatus: 'queued', code: 'chat_answer_in_progress', clientRequestId: requestId})
-      .mockResolvedValueOnce({text: 'الإجابة', offline: false, turnStatus: 'completed', clientRequestId: requestId});
-    jest.mocked(pollAcceptedCourseChatTurn).mockResolvedValueOnce({foregroundWaitExpired: false, response: missing});
+    jest
+      .mocked(askCourseAssistant)
+      .mockResolvedValueOnce({
+        text: '',
+        offline: true,
+        turnStatus: 'queued',
+        code: 'chat_answer_in_progress',
+        clientRequestId: requestId,
+      })
+      .mockResolvedValueOnce({
+        text: 'الإجابة',
+        offline: false,
+        turnStatus: 'completed',
+        clientRequestId: requestId,
+      });
+    jest
+      .mocked(pollAcceptedCourseChatTurn)
+      .mockResolvedValueOnce({foregroundWaitExpired: false, response: missing});
     jest.mocked(pollCourseAssistantTurn).mockResolvedValueOnce(missing);
     const scope = 'user-a:1:course';
     const messagesRef: {current: ChatMessage[]} = {current: []};
     let turn!: ReturnType<typeof useCourseChatTurn>;
     const Harness = () => {
       turn = useCourseChatTurn({
-        activeAccountScope: {current: 'user-a'}, activeConversation: {current: scope},
-        assistantIncluded: true, attachmentsRef: {current: []}, commitAttachments: jest.fn(),
-        commitMessages: update => { messagesRef.current = typeof update === 'function' ? update(messagesRef.current) : update; },
-        conversationGeneration: {current: 1}, conversationScope: scope,
-        course: {id: '1', accessType: 'paid', chatAvailable: true} as CourseLearningData,
-        hydratedConversation: {current: scope}, hydrationRecoveryRevision: 0,
-        inFlightAttachmentIds: {current: new Set<string>()}, input: 'اشرح الفكرة',
-        interactive: true, messagesRef, recordServerBlock: jest.fn(),
-        scheduleScrollToEnd: jest.fn(), setInput: jest.fn(), upgraded: false,
+        activeAccountScope: {current: 'user-a'},
+        activeConversation: {current: scope},
+        assistantIncluded: true,
+        attachmentsRef: {current: []},
+        commitAttachments: jest.fn(),
+        commitMessages: update => {
+          messagesRef.current =
+            typeof update === 'function' ? update(messagesRef.current) : update;
+        },
+        conversationGeneration: {current: 1},
+        conversationScope: scope,
+        course: {
+          id: '1',
+          accessType: 'paid',
+          chatAvailable: true,
+        } as CourseLearningData,
+        hydratedConversation: {current: scope},
+        hydrationRecoveryRevision: 0,
+        inFlightAttachmentIds: {current: new Set<string>()},
+        input: 'اشرح الفكرة',
+        interactive: true,
+        messagesRef,
+        recordServerBlock: jest.fn(),
+        scheduleScrollToEnd: jest.fn(),
+        setInput: jest.fn(),
       });
       return null;
     };
     let renderer!: ReactTestRenderer.ReactTestRenderer;
-    await ReactTestRenderer.act(async () => { renderer = ReactTestRenderer.create(<Harness />); });
+    await ReactTestRenderer.act(async () => {
+      renderer = ReactTestRenderer.create(<Harness />);
+    });
     try {
       await ReactTestRenderer.act(async () => turn.send());
       expect(askCourseAssistant).toHaveBeenCalledTimes(1);
-      expect(messagesRef.current).toContainEqual(expect.objectContaining({role: 'assistant', errorCode: 'chat_turn_not_found'}));
+      expect(messagesRef.current).toContainEqual(
+        expect.objectContaining({
+          role: 'assistant',
+          errorCode: 'chat_turn_not_found',
+        }),
+      );
       await ReactTestRenderer.act(async () => turn.retry(requestId));
       expect(askCourseAssistant).toHaveBeenCalledTimes(2);
-      expect(jest.mocked(askCourseAssistant).mock.calls[1][0]).toMatchObject({clientRequestId: requestId, message: 'اشرح الفكرة'});
+      expect(jest.mocked(askCourseAssistant).mock.calls[1][0]).toMatchObject({
+        clientRequestId: requestId,
+        message: 'اشرح الفكرة',
+      });
       expect(secureRandomUuid).toHaveBeenCalledTimes(1);
     } finally {
       await ReactTestRenderer.act(async () => renderer.unmount());
-      jest.mocked(secureRandomUuid).mockReset().mockReturnValue('fresh-request-id');
+      jest
+        .mocked(secureRandomUuid)
+        .mockReset()
+        .mockReturnValue('fresh-request-id');
     }
   });
-  it.each([true, false])('releases a stale send only when server cancellation is confirmed (%s)', async cancelledAtServer => {
-    jest.clearAllMocks();
-    let finishSend!: (value: Awaited<ReturnType<typeof askCourseAssistant>>) => void;
-    jest.mocked(askCourseAssistant).mockReturnValueOnce(new Promise(resolve => {finishSend = resolve;}));
-    jest.mocked(cancelCourseAssistantTurn).mockResolvedValueOnce(cancelledAtServer);
-    const scope = 'user-a:course-1:course';
-    const messagesRef: {current: ChatMessage[]} = {current: []};
-    let turn!: ReturnType<typeof useCourseChatTurn>;
-    const params = {
-      activeAccountScope: {current: 'user-a'}, activeConversation: {current: scope},
-      assistantIncluded: true, attachmentsRef: {current: []}, commitAttachments: jest.fn(),
-      commitMessages: (update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[])) => {
-        messagesRef.current = typeof update === 'function' ? update(messagesRef.current) : update;
-      },
-      conversationGeneration: {current: 1}, conversationScope: scope,
-      course: {id: 'course-1', accessType: 'paid', chatAvailable: true} as CourseLearningData,
-      hydratedConversation: {current: scope}, hydrationRecoveryRevision: 0,
-      inFlightAttachmentIds: {current: new Set<string>()}, input: 'اشرح الفكرة',
-      interactive: true, messagesRef, recordServerBlock: jest.fn(),
-      scheduleScrollToEnd: jest.fn(), setInput: jest.fn(), upgraded: false,
-    };
-    const Harness = () => {turn = useCourseChatTurn(params); return null;};
-    let renderer!: ReactTestRenderer.ReactTestRenderer;
-    await ReactTestRenderer.act(async () => {renderer = ReactTestRenderer.create(<Harness />);});
-    await ReactTestRenderer.act(async () => {turn.send();});
-    expect(turn.isSendInFlight()).toBe(true);
-    await ReactTestRenderer.act(async () => {await turn.stop();});
-    expect(turn.isSendInFlight()).toBe(!cancelledAtServer);
-    expect(messagesRef.current).toContainEqual(expect.objectContaining({
-      role: 'assistant', deliveryStatus: cancelledAtServer ? 'cancelled' : 'interrupted',
-    }));
-    if (!cancelledAtServer) {
-      params.conversationGeneration.current += 1;
-      await ReactTestRenderer.act(async () => renderer.unmount());
-      finishSend({text: 'رد متأخر', offline: false, turnStatus: 'completed'});
+  it.each([true, false])(
+    'releases a stale send only when server cancellation is confirmed (%s)',
+    async cancelledAtServer => {
       jest.clearAllMocks();
-      return;
-    }
-    const cancelledMessages = messagesRef.current;
-    await ReactTestRenderer.act(async () => {
-      finishSend({text: 'رد متأخر', offline: false, turnStatus: 'completed'});
-    });
-    expect(messagesRef.current).toEqual(cancelledMessages);
-    await ReactTestRenderer.act(async () => renderer.unmount());
-    jest.clearAllMocks();
-  });
+      let finishSend!: (
+        value: Awaited<ReturnType<typeof askCourseAssistant>>,
+      ) => void;
+      jest.mocked(askCourseAssistant).mockReturnValueOnce(
+        new Promise(resolve => {
+          finishSend = resolve;
+        }),
+      );
+      jest
+        .mocked(cancelCourseAssistantTurn)
+        .mockResolvedValueOnce(cancelledAtServer);
+      const scope = 'user-a:course-1:course';
+      const messagesRef: {current: ChatMessage[]} = {current: []};
+      let turn!: ReturnType<typeof useCourseChatTurn>;
+      const params = {
+        activeAccountScope: {current: 'user-a'},
+        activeConversation: {current: scope},
+        assistantIncluded: true,
+        attachmentsRef: {current: []},
+        commitAttachments: jest.fn(),
+        commitMessages: (
+          update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[]),
+        ) => {
+          messagesRef.current =
+            typeof update === 'function' ? update(messagesRef.current) : update;
+        },
+        conversationGeneration: {current: 1},
+        conversationScope: scope,
+        course: {
+          id: 'course-1',
+          accessType: 'paid',
+          chatAvailable: true,
+        } as CourseLearningData,
+        hydratedConversation: {current: scope},
+        hydrationRecoveryRevision: 0,
+        inFlightAttachmentIds: {current: new Set<string>()},
+        input: 'اشرح الفكرة',
+        interactive: true,
+        messagesRef,
+        recordServerBlock: jest.fn(),
+        scheduleScrollToEnd: jest.fn(),
+        setInput: jest.fn(),
+      };
+      const Harness = () => {
+        turn = useCourseChatTurn(params);
+        return null;
+      };
+      let renderer!: ReactTestRenderer.ReactTestRenderer;
+      await ReactTestRenderer.act(async () => {
+        renderer = ReactTestRenderer.create(<Harness />);
+      });
+      await ReactTestRenderer.act(async () => {
+        turn.send();
+      });
+      expect(turn.isSendInFlight()).toBe(true);
+      await ReactTestRenderer.act(async () => {
+        await turn.stop();
+      });
+      expect(turn.isSendInFlight()).toBe(!cancelledAtServer);
+      expect(messagesRef.current).toContainEqual(
+        expect.objectContaining({
+          role: 'assistant',
+          deliveryStatus: cancelledAtServer ? 'cancelled' : 'interrupted',
+        }),
+      );
+      if (!cancelledAtServer) {
+        params.conversationGeneration.current += 1;
+        await ReactTestRenderer.act(async () => renderer.unmount());
+        finishSend({text: 'رد متأخر', offline: false, turnStatus: 'completed'});
+        jest.clearAllMocks();
+        return;
+      }
+      const cancelledMessages = messagesRef.current;
+      await ReactTestRenderer.act(async () => {
+        finishSend({text: 'رد متأخر', offline: false, turnStatus: 'completed'});
+      });
+      expect(messagesRef.current).toEqual(cancelledMessages);
+      await ReactTestRenderer.act(async () => renderer.unmount());
+      jest.clearAllMocks();
+    },
+  );
 
-  it.each(['hydration', 'foreground', 'manual', 'manual-offline', 'manual-rejected'] as const)(
+  it.each([
+    'hydration',
+    'foreground',
+    'manual',
+    'manual-offline',
+    'manual-rejected',
+  ] as const)(
     'keeps a retryable server failure read-only during %s recovery unless Retry was pressed',
     async mode => {
       jest.clearAllMocks();
       const serverResponse = {
-        clientRequestId: requestId, text: 'تعذّر الرد', offline: false,
-        turnStatus: 'failed' as const, code: 'provider_unavailable', canRetry: true,
+        clientRequestId: requestId,
+        text: 'تعذّر الرد',
+        offline: false,
+        turnStatus: 'failed' as const,
+        code: 'provider_unavailable',
+        canRetry: true,
       };
       if (mode === 'manual-offline') {
-        jest.mocked(pollAcceptedCourseChatTurn).mockImplementationOnce(async ({initialResponse}) => ({
-          foregroundWaitExpired: true, response: initialResponse,
-        }));
+        jest
+          .mocked(pollAcceptedCourseChatTurn)
+          .mockImplementationOnce(async ({initialResponse}) => ({
+            foregroundWaitExpired: true,
+            response: initialResponse,
+          }));
       }
-      jest.mocked(pollCourseAssistantTurn).mockResolvedValue(
-        mode === 'manual-offline'
-          ? {...serverResponse, offline: true, turnStatus: 'queued', code: 'chat_answer_in_progress'}
-          : {...serverResponse, canRetry: mode !== 'manual-rejected'},
-      );
+      jest
+        .mocked(pollCourseAssistantTurn)
+        .mockResolvedValue(
+          mode === 'manual-offline'
+            ? {
+                ...serverResponse,
+                offline: true,
+                turnStatus: 'queued',
+                code: 'chat_answer_in_progress',
+              }
+            : {...serverResponse, canRetry: mode !== 'manual-rejected'},
+        );
       jest.mocked(askCourseAssistant).mockResolvedValue({
-        clientRequestId: 'fresh-request-id', text: 'إجابة المحاولة الجديدة',
-        offline: false, turnStatus: 'completed',
+        clientRequestId: 'fresh-request-id',
+        text: 'إجابة المحاولة الجديدة',
+        offline: false,
+        turnStatus: 'completed',
       });
-      jest.mocked(uploadCourseAssistantAttachment).mockResolvedValue('uploaded-1');
+      jest
+        .mocked(uploadCourseAssistantAttachment)
+        .mockResolvedValue('uploaded-1');
       const scope = 'user-a:course-1:course';
-      const messagesRef: {current: ChatMessage[]} = {current: [
-        {id: 'user-old', role: 'user', text: 'اشرح الفكرة', createdAt: 1,
-          clientRequestId: requestId, deliveryStatus: 'sent', attachments: [
-            {uploadId: 'draft-1', uri: 'file:///draft.png', type: 'image/png', name: 'المشروع.png'},
-          ]},
-        {id: 'assistant-old', role: 'assistant', text: '', createdAt: 2,
-          clientRequestId: requestId, deliveryStatus: 'interrupted'},
-      ]};
+      const messagesRef: {current: ChatMessage[]} = {
+        current: [
+          {
+            id: 'user-old',
+            role: 'user',
+            text: 'اشرح الفكرة',
+            createdAt: 1,
+            clientRequestId: requestId,
+            deliveryStatus: 'sent',
+            attachments: [
+              {
+                uploadId: 'draft-1',
+                uri: 'file:///draft.png',
+                type: 'image/png',
+                name: 'المشروع.png',
+              },
+            ],
+          },
+          {
+            id: 'assistant-old',
+            role: 'assistant',
+            text: '',
+            createdAt: 2,
+            clientRequestId: requestId,
+            deliveryStatus: 'interrupted',
+          },
+        ],
+      };
       const params = {
-        activeAccountScope: {current: 'user-a'}, activeConversation: {current: scope},
-        assistantIncluded: true, attachmentsRef: {current: []},
+        activeAccountScope: {current: 'user-a'},
+        activeConversation: {current: scope},
+        assistantIncluded: true,
+        attachmentsRef: {current: []},
         commitAttachments: jest.fn(),
-        commitMessages: (update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[])) => {
-          messagesRef.current = typeof update === 'function' ? update(messagesRef.current) : update;
+        commitMessages: (
+          update: ChatMessage[] | ((current: ChatMessage[]) => ChatMessage[]),
+        ) => {
+          messagesRef.current =
+            typeof update === 'function' ? update(messagesRef.current) : update;
         },
-        conversationGeneration: {current: 1}, conversationScope: scope,
-        course: {id: 'course-1', accessType: 'paid', chatAvailable: true} as CourseLearningData,
+        conversationGeneration: {current: 1},
+        conversationScope: scope,
+        course: {
+          id: 'course-1',
+          accessType: 'paid',
+          chatAvailable: true,
+        } as CourseLearningData,
         hydratedConversation: {current: scope},
         hydrationRecoveryRevision: mode === 'hydration' ? 1 : 0,
-        inFlightAttachmentIds: {current: new Set<string>()}, input: '', messagesRef,
-        recordServerBlock: jest.fn(), scheduleScrollToEnd: jest.fn(),
-        setInput: jest.fn(), upgraded: false,
+        inFlightAttachmentIds: {current: new Set<string>()},
+        input: '',
+        messagesRef,
+        recordServerBlock: jest.fn(),
+        scheduleScrollToEnd: jest.fn(),
+        setInput: jest.fn(),
       };
       let turn!: ReturnType<typeof useCourseChatTurn>;
       const Harness = ({interactive}: {interactive: boolean}) => {
@@ -196,7 +342,9 @@ describe('course chat turn owner', () => {
       };
       let renderer!: ReactTestRenderer.ReactTestRenderer;
       await ReactTestRenderer.act(async () => {
-        renderer = ReactTestRenderer.create(<Harness interactive={mode !== 'foreground'} />);
+        renderer = ReactTestRenderer.create(
+          <Harness interactive={mode !== 'foreground'} />,
+        );
       });
       await ReactTestRenderer.act(async () => {
         if (mode === 'foreground') renderer.update(<Harness interactive />);
@@ -205,20 +353,30 @@ describe('course chat turn owner', () => {
       expect(pollCourseAssistantTurn).toHaveBeenCalledWith(requestId);
       if (mode === 'manual') {
         expect(askCourseAssistant).toHaveBeenCalledTimes(1);
-        expect(askCourseAssistant).toHaveBeenCalledWith(expect.objectContaining({
-          clientRequestId: 'fresh-request-id', message: 'اشرح الفكرة',
-        }));
-        expect(messagesRef.current).toContainEqual(expect.objectContaining({
-          role: 'assistant', deliveryStatus: 'completed', clientRequestId: 'fresh-request-id',
-        }));
+        expect(askCourseAssistant).toHaveBeenCalledWith(
+          expect.objectContaining({
+            clientRequestId: 'fresh-request-id',
+            message: 'اشرح الفكرة',
+          }),
+        );
+        expect(messagesRef.current).toContainEqual(
+          expect.objectContaining({
+            role: 'assistant',
+            deliveryStatus: 'completed',
+            clientRequestId: 'fresh-request-id',
+          }),
+        );
       } else {
         expect(askCourseAssistant).not.toHaveBeenCalled();
         expect(uploadCourseAssistantAttachment).not.toHaveBeenCalled();
-        expect(messagesRef.current).toContainEqual(expect.objectContaining({
-          role: 'assistant',
-          deliveryStatus: mode === 'manual-offline' ? 'interrupted' : 'failed',
-          clientRequestId: requestId,
-        }));
+        expect(messagesRef.current).toContainEqual(
+          expect.objectContaining({
+            role: 'assistant',
+            deliveryStatus:
+              mode === 'manual-offline' ? 'interrupted' : 'failed',
+            clientRequestId: requestId,
+          }),
+        );
       }
       await ReactTestRenderer.act(async () => renderer.unmount());
       jest.clearAllMocks();
@@ -289,7 +447,6 @@ describe('course chat turn owner', () => {
         recordServerBlock: jest.fn(),
         scheduleScrollToEnd: jest.fn(),
         setInput: jest.fn(),
-        upgraded: false,
       });
       return null;
     };
@@ -371,7 +528,6 @@ describe('course chat turn owner', () => {
         recordServerBlock: jest.fn(),
         scheduleScrollToEnd: jest.fn(),
         setInput: jest.fn(),
-        upgraded: false,
       });
       return null;
     };
@@ -385,7 +541,7 @@ describe('course chat turn owner', () => {
       for (let index = 0; index < 12; index += 1) await Promise.resolve();
     });
 
-    expect(cancelCourseAssistantTurn).toHaveBeenCalledWith(requestId);
+    expect(cancelCourseAssistantTurn).toHaveBeenCalledWith(requestId, {epoch: 1, scope: 'user-a'});
     expect(pollCourseAssistantTurn).toHaveBeenCalledWith(requestId);
     expect(messagesRef.current).toEqual([
       expect.objectContaining({

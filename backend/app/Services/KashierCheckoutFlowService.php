@@ -71,6 +71,7 @@ final readonly class KashierCheckoutFlowService
                 'expected_amount' => 'nullable|numeric|min:0.01|max:100000000',
                 'expected_coins' => 'nullable|integer|min:1|max:1000000000',
                 'course_checkout_id' => 'nullable|uuid',
+                'checkout_surface' => 'nullable|in:browser',
                 'idempotency_key' => [
                     'nullable',
                     'string',
@@ -79,6 +80,9 @@ final readonly class KashierCheckoutFlowService
                     'regex:/\A[A-Za-z0-9][A-Za-z0-9._:-]{15,139}\z/D',
                 ],
             ]);
+            if (($validated['checkout_surface'] ?? null) === 'browser' && empty($validated['course_checkout_id'])) {
+                throw ValidationException::withMessages(['course_checkout_id' => 'اختر الاشتراك قبل الدفع']);
+            }
         } catch (ValidationException $exception) {
             return $this->responses->make(
                 false,
@@ -93,6 +97,8 @@ final readonly class KashierCheckoutFlowService
         /** @var User $user */
         $user ??= auth('api')->user();
         $callbackUrl ??= route('payment.callback');
+        $browserCheckoutId = ($validated['checkout_surface'] ?? null) === 'browser'
+            ? (string) $validated['course_checkout_id'] : null;
         $package = Package::findOrFail($request->package_id);
 
         try {
@@ -126,7 +132,8 @@ final readonly class KashierCheckoutFlowService
                     $package,
                     $clientRequestKey,
                     isset($validated['expected_amount']) ? (float) $validated['expected_amount'] : null,
-                    isset($validated['expected_coins']) ? (int) $validated['expected_coins'] : null
+                    isset($validated['expected_coins']) ? (int) $validated['expected_coins'] : null,
+                    $validated['course_checkout_id'] ?? null
                 );
                 if (!empty($validated['course_checkout_id'])) {
                     // Bind before returning any payment URL. A rejected binding
@@ -149,7 +156,7 @@ final readonly class KashierCheckoutFlowService
                 if ($checkout['closed'] === 'expired' && $order->status === Order::STATUS_PENDING) {
                     $order = $this->reconcileProviderOrder($order);
                     if ($order->status === Order::STATUS_PENDING) {
-                        return $this->pendingCheckoutResponse($order, $callbackUrl);
+                        return $this->pendingCheckoutResponse($order, $callbackUrl, $browserCheckoutId);
                     }
                 }
                 if ($order->isFinanciallyEffective()) {
@@ -177,7 +184,7 @@ final readonly class KashierCheckoutFlowService
                 'order_id' => $order->id,
                 'user_id' => $user->id,
                 'package_id' => $package->id,
-                'amount' => $package->price,
+                'amount' => $order->final_amount,
                 'is_premium_user' => $order->is_premium_user,
                 'idempotent_replay' => $checkout['reused'],
             ]);
@@ -238,7 +245,7 @@ final readonly class KashierCheckoutFlowService
                     return $this->initiate($request, false, $user, $callbackUrl);
                 }
                 if ($pendingOrder->status === Order::STATUS_PENDING) {
-                    return $this->pendingCheckoutResponse($pendingOrder, $callbackUrl);
+                    return $this->pendingCheckoutResponse($pendingOrder, $callbackUrl, $browserCheckoutId);
                 }
             }
             return $this->responses->make(
@@ -312,7 +319,9 @@ final readonly class KashierCheckoutFlowService
         return $this->responses->make(true, 'تم تجهيز صفحة الدفع', [
             'checkout_state' => 'created',
             'course_checkout_id' => $validated['course_checkout_id'] ?? null,
-            'payment_url' => $hppUrl,
+            'payment_url' => $browserCheckoutId !== null
+                ? app(CourseBrowserPaymentService::class)->urlFor($order, $browserCheckoutId)
+                : $hppUrl,
             'order_ref' => $orderRef,
             'idempotency_key' => $order->checkout_request_key,
             'checkout_expires_at' => $order->checkout_expires_at?->toIso8601String(),
@@ -563,12 +572,14 @@ final readonly class KashierCheckoutFlowService
         );
     }
 
-    private function pendingCheckoutResponse(Order $order, string $callbackUrl): JsonResponse
+    private function pendingCheckoutResponse(Order $order, string $callbackUrl, ?string $browserCheckoutId = null): JsonResponse
     {
         $paymentUrl = null;
         if ($order->financial_status !== Order::FINANCIAL_REVIEW_REQUIRED) {
             try {
-                $paymentUrl = $this->kashier->getHppUrl(
+                $paymentUrl = $browserCheckoutId !== null
+                    ? app(CourseBrowserPaymentService::class)->urlFor($order, $browserCheckoutId)
+                    : $this->kashier->getHppUrl(
                     (string) $order->order_ref,
                     number_format((float) $order->final_amount, 2, '.', ''),
                     'EGP',

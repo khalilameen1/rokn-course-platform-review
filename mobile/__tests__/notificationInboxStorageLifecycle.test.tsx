@@ -130,6 +130,9 @@ describe('notification inbox optional storage lifecycle', () => {
     mockGetItem.mockReturnValueOnce(storage.promise);
     await mount();
     expect(mockPage).toHaveBeenCalledTimes(1);
+    // No optional-storage timeout needs to elapse to publish the HTTP page.
+    expect(inbox.loading).toBe(false);
+    expect(inbox.source.map(item => item.id)).toEqual(['2']);
     await waitForOptionalCache();
     expect(inbox.loading).toBe(false);
     expect(inbox.source.map(item => item.id)).toEqual(['2']);
@@ -147,11 +150,126 @@ describe('notification inbox optional storage lifecycle', () => {
     mockCourses.mockReturnValueOnce(courses.promise);
     await mount();
     expect(mockPage).toHaveBeenCalledTimes(1);
+    expect(inbox.loading).toBe(false);
+    expect(inbox.source.map(item => item.id)).toEqual(['2']);
     await waitForOptionalCache();
     expect(inbox.loading).toBe(false);
     expect(inbox.source.map(item => item.id)).toEqual(['2']);
     expect(inbox.notificationError).toBe('');
     await act(async () => courses.resolve([]));
+  });
+
+  it('does not replace a delivered page with cache that arrives before its timeout', async () => {
+    const storage = deferred<ReturnType<typeof cache>>();
+    mockGetItem.mockReturnValueOnce(storage.promise);
+    await mount();
+    expect(inbox.source.map(item => item.id)).toEqual(['2']);
+    await act(async () => storage.resolve(cache('1')));
+    expect(inbox.source.map(item => item.id)).toEqual(['2']);
+    expect(inbox.notificationError).toBe('');
+  });
+
+  it('keeps an authoritative empty page instead of resurrecting older cached notifications', async () => {
+    const storage = deferred<ReturnType<typeof cache>>();
+    mockGetItem.mockReturnValueOnce(storage.promise);
+    mockPage.mockResolvedValueOnce({...page('2'), notifications: []});
+    await mount();
+    expect(inbox.loading).toBe(false);
+    expect(inbox.source).toEqual([]);
+    await act(async () => storage.resolve(cache('1')));
+    expect(inbox.source).toEqual([]);
+    expect(mockSaveItem.mock.calls.at(-1)?.[1].items).toEqual([]);
+  });
+
+  it('shows cache while HTTP is pending then replaces it with the current page', async () => {
+    const request = deferred<ReturnType<typeof page>>();
+    mockGetItem.mockResolvedValueOnce(cache('1'));
+    mockPage.mockReturnValueOnce(request.promise);
+    await mount();
+    expect(inbox.source.map(item => item.id)).toEqual(['1']);
+    expect(inbox.loading).toBe(false);
+    await act(async () => request.resolve(page('2')));
+    expect(inbox.source.map(item => item.id)).toEqual(['2']);
+    expect(inbox.notificationError).toBe('');
+  });
+
+  it('shows a network error without waiting for cache and preserves it when fallback arrives', async () => {
+    const storage = deferred<ReturnType<typeof cache>>();
+    mockGetItem.mockReturnValueOnce(storage.promise);
+    mockPage.mockRejectedValueOnce(new Error('network failed'));
+    await mount();
+    expect(inbox.loading).toBe(false);
+    expect(inbox.notificationError).not.toBe('');
+    expect(inbox.source).toEqual([]);
+    await act(async () => storage.resolve(cache('1')));
+    expect(inbox.source.map(item => item.id)).toEqual(['1']);
+    expect(inbox.notificationError).not.toBe('');
+    expect(mockSaveItem).not.toHaveBeenCalled();
+  });
+
+  it('does not erase accepted older rows or their cursor with cache after a failed refresh', async () => {
+    mockPage.mockResolvedValueOnce({
+      ...page('2'),
+      hasMore: true,
+      nextCursor: 'after-2',
+    });
+    await mount();
+    const storage = deferred<ReturnType<typeof cache>>();
+    mockGetItem.mockReturnValueOnce(storage.promise);
+    mockPage.mockRejectedValueOnce(new Error('refresh failed'));
+    await act(async () => inbox.refreshNotifications());
+    expect(inbox.loading).toBe(false);
+    expect(inbox.notificationError).not.toBe('');
+    mockPage.mockResolvedValueOnce({
+      ...page('3'),
+      hasMore: true,
+      nextCursor: 'after-3',
+    });
+    await act(async () => inbox.loadMoreNotifications());
+    expect(mockPage.mock.calls.at(-1)?.[0].cursor).toBe('after-2');
+    expect(inbox.source.map(item => item.id)).toEqual(['2', '3']);
+    await act(async () => storage.resolve(cache('1')));
+    expect(inbox.source.map(item => item.id)).toEqual(['2', '3']);
+    expect(inbox.hasMoreNotifications).toBe(true);
+    mockPage.mockResolvedValueOnce(page('4'));
+    await act(async () => inbox.loadMoreNotifications());
+    expect(mockPage.mock.calls.at(-1)?.[0].cursor).toBe('after-3');
+    expect(inbox.source.map(item => item.id)).toEqual(['2', '3', '4']);
+    expect(inbox.hasMoreNotifications).toBe(false);
+  });
+
+  it('adds optional course artwork after the page without delaying or replacing notifications', async () => {
+    const courses = deferred<Array<{id: string; image: {uri: string}}>>();
+    const cover = {uri: 'https://rokn.app/cover.jpg'};
+    mockCourses.mockReturnValueOnce(courses.promise);
+    mockPage.mockResolvedValueOnce({
+      ...page('2'),
+      notifications: [{...notification('2'), courseId: '5'}],
+    });
+    await mount();
+    expect(inbox.source[0]).toMatchObject({id: '2', image: undefined});
+    expect(inbox.loading).toBe(false);
+    await act(async () => courses.resolve([{id: '5', image: cover}]));
+    expect(inbox.source[0]).toMatchObject({id: '2', image: cover});
+    expect(mockPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('ignores optional artwork from an overtaken refresh', async () => {
+    const courses = deferred<Array<{id: string; image: {uri: string}}>>();
+    const currentCover = {uri: 'https://rokn.app/current.jpg'};
+    mockCourses.mockReturnValueOnce(courses.promise);
+    mockPage.mockResolvedValue({
+      ...page('2'),
+      notifications: [{...notification('2'), courseId: '5'}],
+    });
+    await mount();
+    mockCourses.mockResolvedValueOnce([{id: '5', image: currentCover}]);
+    await act(async () => inbox.refreshNotifications());
+    expect(inbox.source[0].image).toEqual(currentCover);
+    await act(async () =>
+      courses.resolve([{id: '5', image: {uri: 'https://rokn.app/old.jpg'}}]),
+    );
+    expect(inbox.source[0].image).toEqual(currentCover);
   });
 
   it('does not treat a cache read failure as failure of the server request', async () => {

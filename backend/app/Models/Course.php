@@ -219,6 +219,12 @@ class Course extends Model
             : $this->sections()->exists();
     }
 
+    /** Discovery/new enrollment is separate from an existing student's rights. */
+    public function isAvailableForNewPurchase(): bool
+    {
+        return (bool) $this->is_catalog_visible && $this->isPublishedForLearning();
+    }
+
     public function enrollments()
     {
         return $this->hasMany(CourseEnrollment::class);

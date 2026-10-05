@@ -6,8 +6,15 @@ let mockServerNowMs = Date.UTC(2026, 8, 4, 20, 30);
 
 jest.mock('../src/services/roknApi', () => ({
   claimDailyReward: (...args: unknown[]) => mockClaimDailyReward(...args),
-  getNotifications: jest.fn(async () => []),
   markNotificationRead: jest.fn(async () => undefined),
+}));
+jest.mock('../src/services/api/notifications', () => ({
+  getNotificationsPage: jest.fn(async () => ({
+    notifications: [],
+    page: 1,
+    hasMore: false,
+    nextCursor: null,
+  })),
 }));
 
 jest.mock('../src/constants/helpers', () => ({
@@ -68,7 +75,6 @@ describe('home daily reward recovery', () => {
       loading: true,
       navigation: {} as never,
       openCourse: () => false,
-      remoteCourses: [],
       serverSession: true,
     });
     return null;

@@ -7,7 +7,7 @@
 This file is bound to the resolved Gradle releaseRuntimeClasspath and retains package-specific LICENSE and NOTICE documents from the distributed artifacts.
 
 - Dependencies: 241
-- npm source-project components: 23
+- npm source-project components: 24
 - Retained unique legal texts: 24
 
 ### androidx.activity:activity-ktx:1.9.3
@@ -1778,6 +1778,13 @@ This file is bound to the resolved Gradle releaseRuntimeClasspath and retains pa
 - Classified npm production source: `@react-native-clipboard/clipboard@1.16.3`
 - Retained legal document(s): `212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
 
+### gradle-project:::react-native-community_netinfo
+
+- Platform: Android project
+- Selected license(s): MIT
+- Classified npm production source: `@react-native-community/netinfo@11.5.2`
+- Retained legal document(s): `212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c`, `8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2`
+
 ### gradle-project:::react-native-firebase_app
 
 - Platform: Android project
@@ -1906,7 +1913,7 @@ The Apache Software Foundation (http://www.apache.org/).
 
 ### 212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c
 
-Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
+Source(s): `npm:@react-native-async-storage/async-storage@2.2.0/LICENSE`, `npm:@react-native-clipboard/clipboard@1.16.3/LICENSE`, `npm:@react-native-community/netinfo@11.5.2/LICENSE`, `npm:react-native-image-picker@8.2.1/LICENSE.md`
 
 ```text
 MIT License

@@ -1,4 +1,5 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useIsFocused} from '@react-navigation/native';
 import {Alert} from 'react-native';
 import {
   captureAccountSessionBoundary,
@@ -12,6 +13,7 @@ import {
 import {openExternalUrlOnce} from '../../services/systemActions';
 import {trustedExternalTaskUrl} from '../../services/externalTaskUrlPolicy';
 import {errorCode, learnerErrorMessage} from '../../utils/errorPayload';
+import {useAppForegroundState} from '../../hooks/useAppActiveState';
 import type {WalletData} from './useWalletData';
 
 const isCoinGuideTask = (task: CoinTask) =>
@@ -51,20 +53,60 @@ type WalletTaskData = Pick<
   'identityKey' | 'ownsBoundary' | 'refreshAfterCurrent' | 'updateTask'
 >;
 
+type TaskPresentationVisit = {
+  identityKey: string;
+  focused: boolean;
+  foreground: boolean;
+};
+
 export const useWalletTasks = (
   data: WalletTaskData,
   showCoinRules: () => void,
 ) => {
   const {identityKey, ownsBoundary, refreshAfterCurrent, updateTask} = data;
-  const [loadingIds, setLoadingIds] = useState<string[]>([]);
+  const focused = useIsFocused();
+  const foreground = useAppForegroundState();
+  const presentationVisit = useMemo<TaskPresentationVisit>(
+    () => ({identityKey, focused, foreground}),
+    [identityKey, focused, foreground],
+  );
+  const presentationRef = useRef(presentationVisit);
+  presentationRef.current = presentationVisit;
+  const mountedRef = useRef(false);
+  const [loadingOperations, setLoadingOperations] = useState<
+    Record<string, string>
+  >({});
   const [openRetryIds, setOpenRetryIds] = useState<string[]>([]);
   const flightsRef = useRef(new Set<string>());
   const ownerRef = useRef(identityKey);
+  ownerRef.current = identityKey;
 
   useEffect(() => {
-    ownerRef.current = identityKey;
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // A server receipt belongs to the account. A link/modal/error belongs only
+  // to the visit that requested it, even after leaving and returning here.
+  const ownsTaskBoundary = useCallback(
+    (boundary: AccountSessionBoundary) =>
+      mountedRef.current && ownsBoundary(boundary),
+    [ownsBoundary],
+  );
+  const ownsPresentation = useCallback(
+    (visit: TaskPresentationVisit) =>
+      mountedRef.current &&
+      presentationRef.current === visit &&
+      visit.focused &&
+      visit.foreground,
+    [],
+  );
+
+  useEffect(() => {
     flightsRef.current.clear();
-    setLoadingIds([]);
+    setLoadingOperations({});
     setOpenRetryIds([]);
   }, [identityKey]);
 
@@ -82,7 +124,19 @@ export const useWalletTasks = (
   );
 
   const openTaskDestination = useCallback(
-    async (task: CoinTask, boundary: AccountSessionBoundary, url?: string) => {
+    async (
+      task: CoinTask,
+      boundary: AccountSessionBoundary,
+      visit: TaskPresentationVisit,
+      url?: string,
+    ) => {
+      if (!ownsTaskBoundary(boundary)) return false;
+      if (!ownsPresentation(visit)) {
+        // The server started the attempt, but no OS hand-off happened. Let
+        // the next explicit tap reopen it instead of implying a completed visit.
+        setOpeningNeedsRetry(task.id, true);
+        return false;
+      }
       const trustedUrl = trustedExternalTaskUrl(url);
       if (!trustedUrl) {
         setOpeningNeedsRetry(task.id, true);
@@ -94,12 +148,15 @@ export const useWalletTasks = (
       }
       try {
         await openExternalUrlOnce(trustedUrl);
-        if (!ownsBoundary(boundary)) return false;
+        if (!ownsTaskBoundary(boundary)) return false;
+        // A successful hand-off normally backgrounds Rokn. That must not
+        // turn a legitimate opening into a failed/retry state.
         setOpeningNeedsRetry(task.id, false);
         return true;
       } catch (error: unknown) {
-        if (!ownsBoundary(boundary)) return false;
+        if (!ownsTaskBoundary(boundary)) return false;
         setOpeningNeedsRetry(task.id, true);
+        if (!ownsPresentation(visit)) return false;
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر فتح المهمة',
           learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
@@ -107,13 +164,14 @@ export const useWalletTasks = (
         return false;
       }
     },
-    [ownsBoundary, setOpeningNeedsRetry],
+    [ownsPresentation, ownsTaskBoundary, setOpeningNeedsRetry],
   );
 
   const applyTaskStart = useCallback(
     async (
       task: CoinTask,
       boundary: AccountSessionBoundary,
+      visit: TaskPresentationVisit,
       started: Awaited<ReturnType<typeof startCoinTask>>,
     ) => {
       if (started.status === 'claimed') {
@@ -127,90 +185,121 @@ export const useWalletTasks = (
         url: started.url,
       });
       if (isCoinGuideTask(task)) {
-        showCoinRules();
+        if (ownsPresentation(visit)) showCoinRules();
         return;
       }
       if (started.status === 'ready_to_claim' && isWhatsAppTask(task)) {
         return;
       }
       if (task.requiresExternalVisit || isWhatsAppTask(task)) {
-        await openTaskDestination(task, boundary, started.url);
+        await openTaskDestination(task, boundary, visit, started.url);
       }
     },
-    [openTaskDestination, refreshAfterCurrent, showCoinRules, updateTask],
+    [
+      openTaskDestination,
+      ownsPresentation,
+      refreshAfterCurrent,
+      showCoinRules,
+      updateTask,
+    ],
   );
 
   const startAndOpenTask = useCallback(
-    async (task: CoinTask, boundary: AccountSessionBoundary) => {
+    async (
+      task: CoinTask,
+      boundary: AccountSessionBoundary,
+      visit: TaskPresentationVisit,
+    ) => {
       try {
         const started = await startCoinTask(task, boundary);
-        if (!ownsBoundary(boundary)) return;
-        await applyTaskStart(task, boundary, started);
+        if (!ownsTaskBoundary(boundary)) return;
+        await applyTaskStart(task, boundary, visit, started);
       } catch (error: unknown) {
-        if (!ownsBoundary(boundary)) return;
+        if (!ownsTaskBoundary(boundary)) return;
         if (errorCode(error) === 'task_unavailable') {
           // The campaign can end while its card remains on screen. Reconcile
           // that terminal answer behind any older read already in progress.
           void refreshAfterCurrent();
         }
+        if (!ownsPresentation(visit)) return;
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر بدء المهمة',
           learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
         );
       }
     },
-    [applyTaskStart, ownsBoundary, refreshAfterCurrent],
+    [applyTaskStart, ownsPresentation, ownsTaskBoundary, refreshAfterCurrent],
   );
 
   const resumeExternalTask = useCallback(
-    async (task: CoinTask, boundary: AccountSessionBoundary) => {
+    async (
+      task: CoinTask,
+      boundary: AccountSessionBoundary,
+      visit: TaskPresentationVisit,
+    ) => {
       try {
         // The stored URL is only display recovery. Re-enter the server-owned
         // attempt before opening it so a removed or completed task cannot
         // reopen an obsolete destination.
         const resumed = await startCoinTask(task, boundary);
-        if (!ownsBoundary(boundary)) return;
-        await applyTaskStart(task, boundary, resumed);
+        if (!ownsTaskBoundary(boundary)) return;
+        await applyTaskStart(task, boundary, visit, resumed);
       } catch (error: unknown) {
-        if (!ownsBoundary(boundary)) return;
+        if (!ownsTaskBoundary(boundary)) return;
         if (errorCode(error) === 'task_unavailable') {
           void refreshAfterCurrent();
         }
         setOpeningNeedsRetry(task.id, true);
+        if (!ownsPresentation(visit)) return;
         Alert.alert(
           isWhatsAppTask(task) ? 'تعذّر فتح واتساب' : 'تعذّر فتح المهمة',
           learnerErrorMessage(error, 'تحقق من الاتصال\nثم حاول مرة أخرى'),
         );
       }
     },
-    [applyTaskStart, ownsBoundary, refreshAfterCurrent, setOpeningNeedsRetry],
+    [
+      applyTaskStart,
+      ownsPresentation,
+      ownsTaskBoundary,
+      refreshAfterCurrent,
+      setOpeningNeedsRetry,
+    ],
   );
 
   const claimTask = useCallback(
-    async (task: CoinTask, boundary: AccountSessionBoundary) => {
+    async (
+      task: CoinTask,
+      boundary: AccountSessionBoundary,
+      visit: TaskPresentationVisit,
+    ) => {
       try {
         await claimCoinTask(task, boundary);
-        if (!ownsBoundary(boundary)) return;
+        if (!ownsTaskBoundary(boundary)) return;
         updateTask(task.id, {status: 'claimed'});
         // The mutation response is not the full financial breakdown. Reload
         // the server snapshot instead of adding a local delta that can be
         // applied twice after a foreground refresh.
         await refreshAfterCurrent();
       } catch (error: unknown) {
-        if (!ownsBoundary(boundary)) return;
+        if (!ownsTaskBoundary(boundary)) return;
         void refreshAfterCurrent();
+        if (!ownsPresentation(visit)) return;
         Alert.alert(
           'تعذّر تأكيد المكافأة',
           learnerErrorMessage(error, 'حدّث رصيدك قبل المحاولة مرة أخرى'),
         );
       }
     },
-    [ownsBoundary, refreshAfterCurrent, updateTask],
+    [ownsPresentation, ownsTaskBoundary, refreshAfterCurrent, updateTask],
   );
 
   const runTask = useCallback(
-    async (task: CoinTask, boundary: AccountSessionBoundary) => {
-      if (!ownsBoundary(boundary)) return;
+    async (
+      task: CoinTask,
+      boundary: AccountSessionBoundary,
+      visit: TaskPresentationVisit,
+    ) => {
+      if (!ownsTaskBoundary(boundary)) return;
       const openingNeedsRetry = openRetryIds.includes(task.id);
       if (
         (task.status === 'started' && isWhatsAppTask(task)) ||
@@ -218,17 +307,17 @@ export const useWalletTasks = (
           Boolean(task.url) &&
           !(task.status === 'ready_to_claim' && isWhatsAppTask(task)))
       ) {
-        await resumeExternalTask(task, boundary);
+        await resumeExternalTask(task, boundary, visit);
       } else if (task.status === 'available') {
-        await startAndOpenTask(task, boundary);
+        await startAndOpenTask(task, boundary, visit);
       } else {
-        await claimTask(task, boundary);
+        await claimTask(task, boundary, visit);
       }
     },
     [
       claimTask,
       openRetryIds,
-      ownsBoundary,
+      ownsTaskBoundary,
       resumeExternalTask,
       startAndOpenTask,
     ],
@@ -237,31 +326,45 @@ export const useWalletTasks = (
   const handleTask = useCallback(
     async (task: CoinTask) => {
       const operationOwner = identityKey;
+      const visit = presentationVisit;
+      if (!ownsPresentation(visit)) return;
       let boundary: AccountSessionBoundary;
       try {
         boundary = await captureAccountSessionBoundary();
       } catch {
         return;
       }
-      const operationKey = `${boundary.scope}:${task.id}`;
+      if (!ownsTaskBoundary(boundary) || !ownsPresentation(visit)) return;
+      const operationKey = `${boundary.scope}:${boundary.epoch}:${task.id}`;
       if (task.status === 'claimed' || flightsRef.current.has(operationKey)) {
         return;
       }
 
       flightsRef.current.add(operationKey);
-      setLoadingIds(current =>
-        current.includes(task.id) ? current : [...current, task.id],
-      );
+      setLoadingOperations(current => ({...current, [task.id]: operationKey}));
       try {
-        await runTask(task, boundary);
+        await runTask(task, boundary, visit);
       } finally {
-        if (ownerRef.current === operationOwner) {
-          setLoadingIds(current => current.filter(id => id !== task.id));
+        if (mountedRef.current && ownerRef.current === operationOwner) {
+          // Ending this request releases its own spinner even when its secure
+          // session expired. It cannot release a newer request for this task.
+          setLoadingOperations(current => {
+            if (current[task.id] !== operationKey) return current;
+            const next = {...current};
+            delete next[task.id];
+            return next;
+          });
         }
         flightsRef.current.delete(operationKey);
       }
     },
-    [identityKey, runTask],
+    [
+      identityKey,
+      ownsPresentation,
+      ownsTaskBoundary,
+      presentationVisit,
+      runTask,
+    ],
   );
 
   const taskActionLabel = useCallback(
@@ -270,5 +373,9 @@ export const useWalletTasks = (
     [openRetryIds],
   );
 
-  return {handleTask, loadingIds, taskActionLabel};
+  return {
+    handleTask,
+    loadingIds: Object.keys(loadingOperations),
+    taskActionLabel,
+  };
 };

@@ -76,8 +76,11 @@ describe('reels native playback lifecycle', () => {
       );
     });
     expect(
-      renderer.root.findAllByProps({children: 'جارٍ تجهيز الفيديو'}).length,
+      renderer.root.findAllByProps({testID: 'video-buffering'}).length,
     ).toBeGreaterThan(0);
+    expect(
+      renderer.root.findAllByProps({children: 'جارٍ تجهيز الفيديو'}),
+    ).toHaveLength(0);
     expect(
       renderer.root.findAllByProps({children: 'جارٍ استعادة المقطع'}),
     ).toHaveLength(0);
@@ -89,7 +92,7 @@ describe('reels native playback lifecycle', () => {
     );
     await ReactTestRenderer.act(() => player.props.onLoad({duration: 60}));
     expect(
-      renderer.root.findAllByProps({children: 'جارٍ تجهيز الفيديو'}),
+      renderer.root.findAllByProps({testID: 'video-buffering'}),
     ).toHaveLength(0);
     await ReactTestRenderer.act(() => renderer.unmount());
   });
@@ -103,6 +106,12 @@ describe('reels native playback lifecycle', () => {
       renderer = ReactTestRenderer.create(renderVideo());
     });
     const player = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    expect(player.props.bufferConfig).toMatchObject({
+      bufferForPlaybackMs: 600,
+      bufferForPlaybackAfterRebufferMs: 2500,
+      maxBufferMs: 10000,
+      maxHeapAllocationPercent: 0.12,
+    });
     await ReactTestRenderer.act(() => player.props.onLoad({duration: 60}));
     mockWindowFocused = false;
     await ReactTestRenderer.act(() => renderer.update(renderVideo()));
@@ -115,6 +124,61 @@ describe('reels native playback lifecycle', () => {
     expect(renderer.root.findAllByProps({testID: 'native-video'})[0]).toBe(
       player,
     );
+    await ReactTestRenderer.act(() => renderer.unmount());
+  });
+
+  it('promotes the preloaded reel without replacing its native source or buffer policy', async () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    const renderVideo = (visible: boolean, blocked = false) => (
+      <VideoComponent
+        data={reel}
+        width={390}
+        height={844}
+        isVisible={visible}
+        playbackBlocked={blocked}
+      />
+    );
+    await ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(renderVideo(false));
+    });
+    const player = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    const bufferConfig = player.props.bufferConfig;
+    const source = player.props.source;
+    await ReactTestRenderer.act(() => player.props.onLoad({duration: 60}));
+    await ReactTestRenderer.act(() => renderer.update(renderVideo(true)));
+    const active = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    expect(active).toBe(player);
+    expect(active.props.bufferConfig).toBe(bufferConfig);
+    expect(active.props.source).toBe(source);
+    expect(active.props.paused).toBe(false);
+    await ReactTestRenderer.act(() => renderer.update(renderVideo(true, true)));
+    expect(player.props.bufferConfig).toBe(bufferConfig);
+    expect(player.props.paused).toBe(true);
+    await ReactTestRenderer.act(() => renderer.unmount());
+  });
+
+  it('preloads the requested quality instead of switching tracks when it becomes visible', async () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    const renderVideo = (visible: boolean) => (
+      <VideoComponent
+        data={reel}
+        width={390}
+        height={844}
+        isVisible={visible}
+        selectedQuality="720p"
+      />
+    );
+    await ReactTestRenderer.act(() => {
+      renderer = ReactTestRenderer.create(renderVideo(false));
+    });
+    const player = renderer.root.findAllByProps({testID: 'native-video'})[0];
+    const track = player.props.selectedVideoTrack;
+    await ReactTestRenderer.act(() => renderer.update(renderVideo(true)));
+    expect(player.props.selectedVideoTrack).toBe(track);
+    expect(player.props.selectedVideoTrack).toEqual({
+      type: 'resolution',
+      value: 720,
+    });
     await ReactTestRenderer.act(() => renderer.unmount());
   });
 
@@ -304,13 +368,22 @@ describe('reels native playback lifecycle', () => {
       'utf8',
     );
 
+    expect(manifestOwner).toMatch(
+      /for \(const nextItem of \[\s*feedItems\[currentIndex \+ 1\],\s*feedItems\[currentIndex - 1\],\s*\]\)/,
+    );
     expect(manifestOwner).toContain(
-      'const nextItem = feedItems[currentIndex + 1]',
+      'if (!canPreloadAdjacentSource || serverSession !== true) return;',
     );
-    expect(manifestOwner).toContain('void requestPlaybackManifest(');
+    expect(manifestOwner).toContain(
+      "if (nextItem?.type !== 'reel' || nextItem.reel.isLocked) continue;",
+    );
+    expect(manifestOwner).toContain(
+      'void requestPlaybackManifest(nextItem.reel, sessionId, !sessionClosed);',
+    );
     expect(renderer).toMatch(
-      /shouldMountVideo=\{\s*screenFocused\s*&&\s*Boolean\(reel\?\.videoUrl\.trim\(\)\)/,
+      /shouldMountVideo=\{\s*screenFocused\s*&&\s*!nativePreloadPending\s*&&\s*Boolean\(reel\?\.videoUrl\.trim\(\)\)\s*&&\s*!signedSourceExpired\s*&&/,
     );
+    expect(renderer).toContain('preloadNext && !nativePreloadMode');
   });
 
   it('does not hold the first manifest behind remote profile reconciliation', () => {

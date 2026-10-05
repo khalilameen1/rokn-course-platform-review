@@ -11,7 +11,8 @@ use Illuminate\Support\Facades\DB;
 
 final readonly class LearningEvidenceService
 {
-    public function __construct(private CourseRevisionLearnerReadService $revisionReads) {}
+    public function __construct(private CourseRevisionLearnerReadService $revisionReads,
+        private ProductEventService $productEvents) {}
 
     /** Verified progress is bounded by elapsed server time and playback rate. */
     public function recordHeartbeat(
@@ -19,7 +20,8 @@ final readonly class LearningEvidenceService
         Lesson $lesson,
         int $positionSeconds,
         ?int $clientDurationSeconds,
-        ?array $previousPlaybackSample = null
+        ?array $previousPlaybackSample = null,
+        ?int $reportCourseId = null
     ): array {
         $sectionId = $lesson->courseSection?->id;
         if (!$sectionId) {
@@ -32,7 +34,8 @@ final readonly class LearningEvidenceService
             $sectionId,
             $positionSeconds,
             $clientDurationSeconds,
-            $previousPlaybackSample
+            $previousPlaybackSample,
+            $reportCourseId
         ): array {
             $evidence = LessonWatchEvidence::query()
                 ->where('user_id', $user->id)
@@ -60,6 +63,8 @@ final readonly class LearningEvidenceService
                     ->firstOrFail();
             }
 
+            $hadCredit = (int) $evidence->verified_seconds > 0;
+            $wasCompleted = $evidence->completed_at !== null;
             $trustedDuration = $this->trustedDurationSeconds($lesson);
             $observedDuration = max(
                 0,
@@ -118,6 +123,21 @@ final readonly class LearningEvidenceService
                 $evidence->completed_at = $now;
             }
             $evidence->save();
+
+            // Record learning transitions in the same transaction as accepted
+            // evidence. Allocation and a zero-credit heartbeat are not starts.
+            // A reported end position is not itself a completion signal: the
+            // existing server-qualified credit/threshold rules remain the owner.
+            // Eligibility copied across a revision is not a new watch.
+            if (!$wasCompleted && !$hadCredit && $credited > 0) {
+                $this->productEvents->recordLessonWatchTransition($user, $lesson,
+                    $evidence, 'lesson_started', $now, $reportCourseId ?? (int) $lesson->list_id);
+            }
+            if (!$wasCompleted && $evidence->completed_at !== null) {
+                $this->productEvents->recordLessonWatchTransition($user, $lesson,
+                    $evidence, 'lesson_completed', $evidence->completed_at,
+                    $reportCourseId ?? (int) $lesson->list_id);
+            }
 
             return [
                 'evidence_id' => $evidence->id,

@@ -47,6 +47,7 @@ final class AppArtworkManagementTest extends TestCase
             self::assertFileExists(public_path('assets/app-artwork/v1/'.$asset['file']));
             $editor->assertSee($key.'_image_file')->assertSee($snapshot['artwork'][$key]);
             self::assertStringEndsWith('/assets/app-artwork/v1/'.$asset['file'], $snapshot['artwork'][$key]);
+            self::assertSame($snapshot['artwork'][$key], $snapshot['artwork_defaults'][$key]);
         }
         self::assertSame(0, DesignSetting::count());
     }
@@ -65,6 +66,7 @@ final class AppArtworkManagementTest extends TestCase
         foreach (array_keys(AppArtworkService::ASSETS) as $key) {
             $url = $settings->getAttribute($key.'_image_url');
             self::assertSame($url, $after['artwork'][$key]);
+            self::assertArrayNotHasKey($key, $after['artwork_defaults']);
             $path = PublicDiskUrl::pathFrom($url);
             Storage::disk('public')->assertExists($path);
             self::assertTrue(app(StoredFileReferenceService::class)->isReferenced('public', $path));
@@ -74,6 +76,22 @@ final class AppArtworkManagementTest extends TestCase
             self::assertSame($after['artwork'][$key], $level->badge_image_url);
         }
         Http::assertNothingSent();
+    }
+
+    public function test_only_unconfigured_shipped_sources_receive_default_framing_identity(): void
+    {
+        $settings = DesignSetting::create(['name_ar' => 'رُكن', 'name_en' => 'Rokn',
+            'coin_stack_image_url' => 'https://localhost/storage/upload.png']);
+        $service = app(AppArtworkService::class);
+        self::assertArrayNotHasKey('coin_stack', $service->defaultUrls($settings));
+        self::assertArrayHasKey('coin', $service->defaultUrls($settings));
+        $custom = app(PublicAppSettingsService::class)->snapshot();
+        self::assertArrayNotHasKey('coin_stack', $custom['artwork_defaults']);
+
+        $settings->update(['coin_stack_image_url' => null]);
+        $restored = app(PublicAppSettingsService::class)->snapshot();
+        self::assertSame($restored['artwork']['coin_stack'], $restored['artwork_defaults']['coin_stack']);
+        self::assertNotSame($custom['revision'], $restored['revision']);
     }
 
     public function test_custom_level_upload_wins_and_default_reads_do_not_query_per_level(): void

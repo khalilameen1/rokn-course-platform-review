@@ -39,6 +39,8 @@ import {
   type PortfolioDraftAsset,
 } from './usePortfolioDraftEditor';
 import type {PortfolioPublicationResult} from './usePortfolioPublication';
+import type {PortfolioUploadProgress} from '../../../services/portfolioUploadProgress';
+import {usePortfolioUploadSession} from './usePortfolioUploadSession';
 
 type Options = {
   onSubscriptions?: PortfolioSubscriptionAction;
@@ -102,10 +104,14 @@ export const usePortfolioCreateFlow = ({
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pickingMedia, setPickingMedia] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState<{
-    completed: number;
-    total: number;
-  } | null>(null);
+  const uploadSession = usePortfolioUploadSession(mountedRef);
+  const {
+    begin: beginUpload,
+    end: endUpload,
+    pause: pauseUpload,
+  } = uploadSession;
+  const [uploadProgress, setUploadProgress] =
+    useState<PortfolioUploadProgress | null>(null);
   const [eligibleProjects, setEligibleProjects] = useState<EligibleProject[]>(
     [],
   );
@@ -206,12 +212,15 @@ export const usePortfolioCreateFlow = ({
   ]);
 
   const closeAddProject = useCallback(() => {
-    if (busyRef.current) return;
+    if (busyRef.current) {
+      void pauseUpload();
+      return;
+    }
     eligibleGenerationRef.current += 1;
     pickerGenerationRef.current += 1;
     setEligibleLoading(false);
     setAdding(false);
-  }, [busyRef]);
+  }, [busyRef, pauseUpload]);
 
   const pickDraftMedia = useCallback(async () => {
     if (
@@ -480,19 +489,23 @@ export const usePortfolioCreateFlow = ({
           portfolioMediaRequestId(input.clientRequestId, index),
         sources: input.media,
       });
-      if (mountedRef.current && staged.length) {
-        setUploadProgress({completed: 0, total: staged.length});
-      }
-      const {discardedFiles, interrupted} = await uploadPortfolioMediaFiles({
+      beginUpload(item.id, boundary);
+      const {
+        discardedFiles,
+        interrupted,
+        paused: pausedResult,
+      } = await uploadPortfolioMediaFiles({
         boundary,
         entries: staged,
-        onProgress: (completed, total) => {
-          if (mountedRef.current) setUploadProgress({completed, total});
+        onProgress: progress => {
+          assertAccountSessionBoundary(boundary);
+          if (mountedRef.current) setUploadProgress(progress);
         },
         onUploaded: (projectId, uploaded) =>
           onMediaUploaded(projectId, uploaded, -1),
       });
-      if (interrupted && mountedRef.current) {
+      const paused = (await endUpload()) || pausedResult === true;
+      if (interrupted && !paused && mountedRef.current) {
         Alert.alert(
           'لم يكتمل الرفع',
           'أُضيف المشروع واحتفظنا بالملفات\nسنكملها عند فتحه',
@@ -503,7 +516,7 @@ export const usePortfolioCreateFlow = ({
           'اختر صورة أو فيديو آخر ثم أضفه إلى المشروع',
         );
       }
-      if (!interrupted) {
+      if (!interrupted && !paused) {
         try {
           const publication = await finalizeAfterUpload(item.id, boundary);
           if (publication === 'processing' && mountedRef.current) {
@@ -546,6 +559,7 @@ export const usePortfolioCreateFlow = ({
         );
       }
     } finally {
+      await endUpload();
       busyRef.current = false;
       if (mountedRef.current) {
         setSaving(false);
@@ -563,6 +577,8 @@ export const usePortfolioCreateFlow = ({
     draftSummary,
     draftTitle,
     finalizeAfterUpload,
+    beginUpload,
+    endUpload,
     isDetailBusy,
     mountedRef,
     onMediaUploaded,
@@ -598,5 +614,7 @@ export const usePortfolioCreateFlow = ({
     updateDraftSummary,
     updateDraftTitle,
     uploadProgress,
+    canPauseCreateUpload: uploadSession.canPause,
+    pausingCreateUpload: uploadSession.pausing,
   };
 };

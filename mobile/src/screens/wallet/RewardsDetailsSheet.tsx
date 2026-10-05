@@ -9,25 +9,21 @@ import {
   toArabicDigits,
 } from '../../constants/arabicFormatting';
 import {formatRoknRelativeDate} from '../../utils/dateTime';
-import {WalletBalanceDetails} from './WalletBalanceDetails';
+import {CloseChat} from '../../assets/SVG';
+import RoknCoin from '../../components/ui/RoknCoin';
 import type {WalletController} from './useWalletController';
 import {walletStyles as styles} from './walletStyles';
 
 export const RewardsDetailsSheet = ({
   controller,
-  stacked,
 }: {
   controller: WalletController;
-  stacked: boolean;
 }) => {
   const {
     walletModal,
     setWalletModal,
     displayedTransactions,
     displayedCoinRules,
-    displayedBalance,
-    displayedPaidBalance,
-    displayedRewardBalance,
     walletStatus,
     refreshWallet,
   } = controller;
@@ -59,14 +55,25 @@ export const RewardsDetailsSheet = ({
             },
           ]}>
           <View style={styles.breakdownHandle} />
+          <View style={styles.sheetHeader}>
+            <Text accessibilityRole="header" style={styles.rulesTitle}>
+              {walletModal === 'transactions'
+                ? 'آخر حركات الرصيد'
+                : 'كيف يعمل الرصيد'}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="إغلاق التفاصيل"
+              onPress={() => setWalletModal(null)}
+              style={styles.sheetClose}>
+              <CloseChat width={18} height={18} />
+            </Pressable>
+          </View>
           <ScrollView
             style={styles.breakdownScroll}
             contentContainerStyle={styles.breakdownContent}>
             {walletModal === 'transactions' ? (
               <>
-                <Text accessibilityRole="header" style={styles.rulesTitle}>
-                  سجل المكافآت
-                </Text>
                 {displayedTransactions.map(item => (
                   <View key={item.id} style={styles.transactionRow}>
                     <View style={styles.transactionCopy}>
@@ -81,14 +88,18 @@ export const RewardsDetailsSheet = ({
                             )}
                       </Text>
                     </View>
-                    <Text
-                      style={[
-                        styles.transactionValue,
-                        item.amount > 0 && styles.positive,
-                      ]}>
-                      {item.amount > 0 ? '+' : '−'}
-                      {formatArabicNumber(Math.abs(item.amount))}
-                    </Text>
+                    <View style={styles.transactionAmount}>
+                      <Text
+                        style={[
+                          styles.transactionValue,
+                          item.amount > 0 && styles.positive,
+                        ]}>
+                        {`\u2066${
+                          item.amount > 0 ? '+' : '−'
+                        } ${formatArabicNumber(Math.abs(item.amount))}\u2069`}
+                      </Text>
+                      <RoknCoin size={18} />
+                    </View>
                   </View>
                 ))}
                 {!displayedTransactions.length && (
@@ -97,7 +108,7 @@ export const RewardsDetailsSheet = ({
                       ? 'جارٍ تحميل السجل'
                       : walletStatus === 'error'
                       ? 'تعذّر تحميل السجل'
-                      : 'لا توجد مكافآت بعد'}
+                      : 'لا توجد حركات رصيد بعد'}
                   </Text>
                 )}
                 {walletStatus === 'error' && (
@@ -109,41 +120,15 @@ export const RewardsDetailsSheet = ({
                   </Pressable>
                 )}
               </>
-            ) : walletModal === 'rules' ? (
+            ) : (
               <>
-                <Text accessibilityRole="header" style={styles.rulesTitle}>
-                  كيف يعمل الرصيد
-                </Text>
                 {displayedCoinRules.map((rule, index) => (
                   <Text key={`${index}-${rule}`} style={styles.rulesIntro}>
                     {formatArabicDisplayText(rule)}
                   </Text>
                 ))}
-                {displayedPaidBalance > 0 && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => setWalletModal('breakdown')}
-                    style={styles.disclosure}>
-                    <Text style={styles.rulesLinkLabel}>
-                      رصيد مدفوع متاح عند الشراء
-                    </Text>
-                  </Pressable>
-                )}
               </>
-            ) : (
-              <WalletBalanceDetails
-                balance={displayedBalance}
-                paidBalance={displayedPaidBalance}
-                rewardBalance={displayedRewardBalance}
-                stacked={stacked}
-              />
             )}
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => setWalletModal(null)}
-              style={styles.breakdownClose}>
-              <Text style={styles.breakdownCloseLabel}>تم</Text>
-            </Pressable>
           </ScrollView>
         </Pressable>
       </Pressable>

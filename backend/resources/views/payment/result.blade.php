@@ -301,19 +301,21 @@
             // Try postMessage first, then deep link
             var sent = notifyApp();
             if (!sent) {
-                window.location.href = deepLinkUrl;
+                window.top.location.href = deepLinkUrl;
             }
         }
 
         function retryDeepLink() {
-            window.location.href = deepLinkUrl;
+            window.top.location.href = deepLinkUrl;
         }
 
         // Auto-notify on page load (after a brief delay for WebView to be ready)
         window.addEventListener('load', function () {
             setTimeout(function () {
                 if (!notifyApp()) {
-                    window.location.replace(deepLinkUrl);
+                    // Chrome may block automatic app links inside a hosted
+                    // payment iframe. The explicit return button targets top.
+                    if (window.top === window) window.location.replace(deepLinkUrl);
                 }
             }, 300);
         });

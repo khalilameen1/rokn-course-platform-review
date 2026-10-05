@@ -123,6 +123,14 @@ class CourseResource extends BaseCourseResource
 
         // Check if user is enrolled in this course
         $enrollment = $this->resolvedEnrollment;
+        // Only an authoritative captured entitlement change retires a local
+        // exhausted-chat gate. Catalogue edits must not renew purchased rights.
+        $baseData['chat_entitlement_revision'] = $learnerStateUser && $enrollment
+            ? hash('sha256', json_encode([
+                $enrollment->id,
+                $enrollment->access_plan_order_id,
+                app(CourseAccessPlanService::class)->termsForEnrollment($enrollment),
+            ], JSON_THROW_ON_ERROR)) : null;
         if ($user) {
             $this->projectFeedbackLevel = (string) (
                 $this->resolvedEntitlement['project_feedback_level']

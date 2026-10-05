@@ -10,6 +10,20 @@ use Illuminate\Validation\Validator;
 
 class AdminNotificationRequest extends FormRequest
 {
+    private function isWelcomeOffer(): bool
+    {
+        $notification = $this->route('admin_notification');
+        return ($notification?->system_key ?? $this->input('system_key')) === 'guest_registration_prompt';
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->isWelcomeOffer()) {
+            // Accept older editor payloads without making ignored recurring
+            // campaign controls authoritative for this one-time login journey.
+            $this->merge(AdminNotification::presentationOverrides('guest_registration_prompt'));
+        }
+    }
     /**
      * Determine if the user is authorized to make this request.
      *
@@ -46,11 +60,14 @@ class AdminNotificationRequest extends FormRequest
             'surface' => ['required', Rule::in(array_keys(AdminNotification::SURFACES))],
             'title_ar' => ['required', 'string', 'min:3', 'max:80', $this->knownPlaceholders()],
             'title_en' => ['nullable', 'string', 'min:3', 'max:80', $this->knownPlaceholders()],
-            'description_ar' => ['required', 'string', 'min:3', 'max:240', $this->knownPlaceholders()],
+            'description_ar' => [
+                ($notification?->system_key ?? $this->input('system_key')) === 'guest_registration_prompt' ? 'nullable' : 'required',
+                'string', 'min:3', 'max:240', $this->knownPlaceholders(),
+            ],
             'description_en' => ['nullable', 'string', 'min:3', 'max:240', $this->knownPlaceholders()],
-            'action_label_ar' => 'nullable|string|max:80',
+            'action_label_ar' => [Rule::requiredIf($this->isWelcomeOffer() && $this->boolean('is_active')), 'nullable', 'string', 'max:80'],
             'action_label_en' => 'nullable|string|max:80',
-            'secondary_action_label_ar' => 'nullable|string|max:80',
+            'secondary_action_label_ar' => [Rule::requiredIf($this->isWelcomeOffer() && $this->boolean('is_active')), 'nullable', 'string', 'max:80'],
             'secondary_action_label_en' => 'nullable|string|max:80',
             'link' => [
                 'nullable',
@@ -97,7 +114,7 @@ class AdminNotificationRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            $systemKey = trim((string) $this->input('system_key'));
+            $systemKey = trim((string) ($this->route('admin_notification')?->system_key ?? $this->input('system_key')));
             $surface = trim((string) $this->input('surface'));
             if ($systemKey === '' && $surface !== 'announcement') {
                 $validator->errors()->add(
@@ -109,6 +126,10 @@ class AdminNotificationRequest extends FormRequest
             if (!$this->boolean('is_active')) {
                 return;
             }
+
+            // The app owns the login action; it must not need a deep link or
+            // pass through the generic content destination pairing validator.
+            if ($this->isWelcomeOffer()) return;
 
             $hasLink = RoknAppLink::normalize($this->input('link')) !== null;
             $hasArabicAction = trim((string) $this->input('action_label_ar')) !== '';

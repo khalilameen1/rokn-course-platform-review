@@ -243,6 +243,7 @@
                                                 <div class="file-input-icon"><i class="fa fa-cloud-upload"></i></div>
                                                 <div class="file-input-text">اختيار صورة بديلة</div>
                                                 <div class="file-input-hint">PNG أو WebP بخلفية شفافة حتى 4 ميجابايت و4096 بكسل</div>
+                                                @if($key === 'coin_stack')<div class="file-input-hint">تظهر كاملة في نافذة الترحيب وبجوار رصيد مكافآتي دون قص</div>@endif
                                             </div>
                                             @error($field)<span class="text-danger design-error-message">{{ $message }}</span>@enderror
                                         </div>

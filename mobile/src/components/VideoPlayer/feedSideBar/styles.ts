@@ -152,6 +152,18 @@ export const feedSideBarStyles = StyleSheet.create({
   },
   folderLoader: {marginVertical: 24},
   folderList: {gap: 7},
+  folderReadNotice: {alignItems: 'stretch'},
+  folderRetryButton: {
+    minHeight: 48,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  folderRetryText: {
+    ...Type.bodyStrong,
+    ...textDirection,
+    color: Palette.primary,
+  },
   folderError: {
     ...textDirection,
     color: '#FF9A9A',

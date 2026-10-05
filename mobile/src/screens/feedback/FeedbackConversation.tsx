@@ -1,5 +1,12 @@
 import React from 'react';
-import {Modal, Pressable, Text, TextInput, View} from 'react-native';
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from '../../components/ui/RasterImage';
 
 import {StatusView} from '../../components/ui/PremiumUI';
@@ -37,7 +44,10 @@ type Props = {
   onSendReply: () => void;
   previewArtifact?: ProductFeedbackArtifact;
   previewLoadFailed: boolean;
+  previewBusy?: boolean;
+  previewRequestKey?: number;
   replyAttachment?: FeedbackAttachment;
+  replyAttachmentBusy?: boolean;
   replyBusy: boolean;
   replyError: string;
   replyReady?: boolean;
@@ -63,7 +73,10 @@ export const FeedbackConversation = ({
   onSendReply,
   previewArtifact,
   previewLoadFailed,
+  previewBusy = false,
+  previewRequestKey,
   replyAttachment,
+  replyAttachmentBusy = false,
   replyBusy,
   replyError,
   replyReady = true,
@@ -215,26 +228,46 @@ export const FeedbackConversation = ({
                     source={{uri: replyAttachment.uri}}
                     style={styles.attachmentImage}
                   />
-                  <Pressable
-                    accessibilityLabel="حذف صورة الرد"
-                    accessibilityRole="button"
-                    disabled={casesBusy || replyBusy}
-                    onPress={onRemoveReplyAttachment}
-                    style={styles.removeAttachmentButton}>
-                    <Text style={styles.removeAttachment}>حذف الصورة</Text>
-                  </Pressable>
+                  <View style={styles.attachmentCopy}>
+                    {replyAttachmentBusy && (
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        style={styles.attachmentTitle}>
+                        جارٍ تجهيز الصورة
+                      </Text>
+                    )}
+                    <Pressable
+                      accessibilityLabel="حذف صورة الرد"
+                      accessibilityRole="button"
+                      accessibilityState={{
+                        disabled: casesBusy || replyBusy || replyAttachmentBusy,
+                      }}
+                      disabled={casesBusy || replyBusy || replyAttachmentBusy}
+                      onPress={onRemoveReplyAttachment}
+                      style={styles.removeAttachmentButton}>
+                      <Text style={styles.removeAttachment}>حذف الصورة</Text>
+                    </Pressable>
+                  </View>
                 </View>
               ) : (
                 <Pressable
                   accessibilityLabel="إضافة صورة إلى الرد"
                   accessibilityRole="button"
-                  disabled={casesBusy || replyBusy}
+                  accessibilityState={{
+                    busy: replyAttachmentBusy,
+                    disabled: casesBusy || replyBusy || replyAttachmentBusy,
+                  }}
+                  disabled={casesBusy || replyBusy || replyAttachmentBusy}
                   onPress={onChooseReplyAttachment}
                   style={({pressed}) => [
                     styles.replyAttachmentButton,
                     pressed && styles.pressed,
                   ]}>
-                  <Text style={styles.attachmentButtonText}>أضف صورة</Text>
+                  <Text
+                    style={styles.attachmentButtonText}
+                    accessibilityLiveRegion="polite">
+                    {replyAttachmentBusy ? 'جارٍ تجهيز الصورة' : 'أضف صورة'}
+                  </Text>
                 </Pressable>
               )}
               {!!replyError && (
@@ -245,17 +278,26 @@ export const FeedbackConversation = ({
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{
-                  busy: replyBusy,
+                  busy: replyBusy || replyAttachmentBusy,
                   disabled:
-                    casesBusy || replyBusy || replyMessage.trim().length < 2,
+                    casesBusy ||
+                    replyBusy ||
+                    replyAttachmentBusy ||
+                    replyMessage.trim().length < 2,
                 }}
                 disabled={
-                  casesBusy || replyBusy || replyMessage.trim().length < 2
+                  casesBusy ||
+                  replyBusy ||
+                  replyAttachmentBusy ||
+                  replyMessage.trim().length < 2
                 }
                 onPress={onSendReply}
                 style={({pressed}) => [
                   styles.replyButton,
-                  (casesBusy || replyBusy || replyMessage.trim().length < 2) &&
+                  (casesBusy ||
+                    replyBusy ||
+                    replyAttachmentBusy ||
+                    replyMessage.trim().length < 2) &&
                     styles.submitDisabled,
                   pressed && styles.pressed,
                 ]}>
@@ -287,6 +329,7 @@ export const FeedbackConversation = ({
         </Pressable>
         {previewArtifact && (
           <Image
+            key={previewRequestKey}
             accessibilityLabel={previewArtifact.name}
             accessibilityIgnoresInvertColors
             onError={() => onArtifactLoadError(previewArtifact.id)}
@@ -295,9 +338,20 @@ export const FeedbackConversation = ({
             style={styles.previewImage}
           />
         )}
+        {previewArtifact && previewBusy && (
+          <ActivityIndicator
+            accessibilityLabel="جارٍ تحميل الصورة"
+            accessibilityLiveRegion="polite"
+            color="#FFFFFF"
+            style={styles.previewLoading}
+          />
+        )}
         {previewArtifact && previewLoadFailed && (
           <Pressable
+            accessibilityLabel="إعادة تحميل الصورة"
             accessibilityRole="button"
+            accessibilityState={{busy: previewBusy, disabled: previewBusy}}
+            disabled={previewBusy}
             onPress={() => onOpenArtifact(previewArtifact, true)}
             style={styles.previewRetry}>
             <Text style={styles.previewRetryText}>حاول مرة أخرى</Text>

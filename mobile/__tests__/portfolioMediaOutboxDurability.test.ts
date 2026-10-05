@@ -26,6 +26,9 @@ import {
   completePortfolioMediaUpload,
   listPortfolioMediaUploads,
   stagePortfolioMediaUpload,
+  setPortfolioMediaUploadsPaused,
+  portfolioMediaUploadIsPaused,
+  decodePortfolioMediaOutboxEntries,
 } from '../src/services/portfolioMediaOutbox';
 
 const owner = {epoch: 1, scope: 'user-a'};
@@ -84,5 +87,31 @@ describe('portfolio media outbox durability', () => {
     await expect(listPortfolioMediaUploads(undefined, owner)).resolves.toEqual([
       expect.objectContaining({file: entry.file}),
     ]);
+  });
+
+  it('retains paused files across reads and sibling staging until explicit resume', async () => {
+    const staged = await stagePortfolioMediaUpload(entry, owner);
+    const sibling = {...entry, clientRequestId: '22222222-2222-4222-8222-222222222222', file: {uri: 'file:///portfolio/two.jpg'}};
+    await setPortfolioMediaUploadsPaused('42', true, owner);
+    await stagePortfolioMediaUpload(sibling, owner);
+    await expect(portfolioMediaUploadIsPaused(staged, owner)).resolves.toBe(true);
+    const reloaded = await listPortfolioMediaUploads('42', owner);
+    expect(reloaded).toHaveLength(2);
+    expect(reloaded.every(item => item.paused === true)).toBe(true);
+    expect(mockRemoveFile).not.toHaveBeenCalled();
+    await setPortfolioMediaUploadsPaused('42', false, owner);
+    await expect(portfolioMediaUploadIsPaused(staged, owner)).resolves.toBe(false);
+    expect((await listPortfolioMediaUploads('42', owner)).every(item => item.paused === false)).toBe(true);
+  });
+
+  it('keeps old records active, rejects corrupt pause values and never pauses another account', async () => {
+    expect(decodePortfolioMediaOutboxEntries([entry])).toEqual([entry]);
+    expect(decodePortfolioMediaOutboxEntries([{...entry, paused: 'true'}])).toBeNull();
+    const other = {epoch: 2, scope: 'user-b'};
+    const first = await stagePortfolioMediaUpload(entry, owner);
+    const second = await stagePortfolioMediaUpload(entry, other);
+    await setPortfolioMediaUploadsPaused('42', true, owner);
+    await expect(portfolioMediaUploadIsPaused(first, owner)).resolves.toBe(true);
+    await expect(portfolioMediaUploadIsPaused(second, other)).resolves.toBe(false);
   });
 });

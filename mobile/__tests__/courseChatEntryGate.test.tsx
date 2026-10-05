@@ -11,6 +11,8 @@ const baseProps = {
   onUpgrade: jest.fn(),
   onOpenCourseAccess: jest.fn(),
   planLimitReached: false,
+  upgradeStatus: 'available' as const,
+  onRetryUpgrade: jest.fn(),
 };
 
 describe('course enquiries entry gate', () => {
@@ -78,6 +80,49 @@ describe('course enquiries entry gate', () => {
         accessibilityLabel: 'ترقية الاشتراك',
       }),
     ).toHaveLength(0);
+    expect(baseProps.onUpgrade).not.toHaveBeenCalled();
+    await act(async () => renderer.unmount());
+  });
+
+  it.each(['idle', 'loading', 'unavailable'] as const)(
+    'does not offer a purchase before an actionable quote when status is %s',
+    async upgradeStatus => {
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(
+          <CourseChatGate
+            {...baseProps}
+            planLimitReached
+            upgradeStatus={upgradeStatus}
+          />,
+        );
+      });
+      expect(
+        renderer.root.findAllByProps({accessibilityRole: 'button'}),
+      ).toHaveLength(0);
+      if (upgradeStatus === 'unavailable') {
+        expect(
+          renderer.root.findAllByType(Text).map(node => node.props.children),
+        ).toContain('لا يوجد اشتراك أعلى يتيح رسائل إضافية لهذا الكورس');
+      }
+      expect(baseProps.onUpgrade).not.toHaveBeenCalled();
+      await act(async () => renderer.unmount());
+    },
+  );
+
+  it('retries a failed offer read without dispatching a purchase', async () => {
+    let renderer!: TestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <CourseChatGate {...baseProps} upgradeStatus="error" />,
+      );
+    });
+    await act(async () =>
+      renderer.root
+        .findByProps({accessibilityLabel: 'إعادة المحاولة'})
+        .props.onPress(),
+    );
+    expect(baseProps.onRetryUpgrade).toHaveBeenCalledTimes(1);
     expect(baseProps.onUpgrade).not.toHaveBeenCalled();
     await act(async () => renderer.unmount());
   });

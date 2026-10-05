@@ -9,7 +9,7 @@ import {
 import {removeLearnerDraftFile} from '../../../services/learnerDraftFiles';
 import {showMediaPickerFailure} from '../../../services/mediaPickerErrors';
 import {cacheProjectFeedbackFile} from '../../../services/projectFeedbackDraft';
-import {errorStatus, learnerErrorMessage} from '../../../utils/errorPayload';
+import {errorCode, errorStatus, learnerErrorMessage} from '../../../utils/errorPayload';
 import {secureRandomUuid} from '../../../utils/secureRandom';
 import {cleanUnicodeText, truncateGraphemes} from '../../../utils/unicodeText';
 import {
@@ -64,8 +64,10 @@ export const useProjectFeedback = ({
   const {
     thread,
     setThread,
-    error,
-    setError,
+    readError,
+    readRetrying,
+    retryRead,
+    refreshRead,
     hydrating: threadHydrating,
     pending,
   } = useProjectFeedbackThread({
@@ -95,6 +97,7 @@ export const useProjectFeedback = ({
     appIsActive,
   });
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
 
   activeThreadIdRef.current = thread?.id || null;
 
@@ -105,12 +108,15 @@ export const useProjectFeedback = ({
     reportStatus === 'ready' &&
     feedbackLevel === 'enhanced' &&
     replyEnabled &&
-    thread?.canReply === true;
+    thread?.canReply === true &&
+    thread.replyLimitReached !== true &&
+    thread.remainingMessages > 0;
   useEffect(() => {
     generationRef.current += 1;
     sendFlightRef.current = null;
     pickerFlightRef.current = null;
     setSending(false);
+    setError('');
     return () => {
       generationRef.current += 1;
       pickerFlightRef.current = null;
@@ -220,7 +226,14 @@ export const useProjectFeedback = ({
           assertAccountSessionBoundary(boundary);
           if (!ownsContext()) return;
           const status = errorStatus(sendError);
-          if (status >= 400 && status < 500 && status !== 408) throw sendError;
+          if (status >= 400 && status < 500 && status !== 408) {
+            if (errorCode(sendError) === 'project_discussion_limit_reached') {
+              // Definitive rejection is not acceptance. Refresh only the GET
+              // allowance owner; retain the same durable draft/request identity.
+              refreshRead();
+            }
+            throw sendError;
+          }
 
           // A lost acknowledgement is not proof that the message was rejected.
           // Read the existing thread once; never start a second paid request.
@@ -256,6 +269,7 @@ export const useProjectFeedback = ({
         ) {
           return;
         }
+        if (errorCode(caught) === 'project_discussion_limit_reached') return;
         setError(
           learnerErrorMessage(caught, 'لم تُرسل الرسالة\nحاول مرة أخرى'),
         );
@@ -278,6 +292,7 @@ export const useProjectFeedback = ({
       draft,
       draftSession,
       projectId,
+      refreshRead,
       sending,
       setError,
       setThread,
@@ -436,6 +451,10 @@ export const useProjectFeedback = ({
     draftSaveError,
     retryDraftSave,
     error,
+    readError,
+    readRetrying,
+    retryRead,
+    refreshRead,
     hydrating: threadHydrating,
     normalizedDraft,
     pending,

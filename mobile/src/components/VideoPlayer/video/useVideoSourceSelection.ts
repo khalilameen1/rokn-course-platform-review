@@ -6,13 +6,11 @@ import {selectVideoSource} from './policy';
 
 type VideoSourceSelectionOptions = {
   data: CourseReel;
-  isVisible: boolean;
   preferredQuality: VideoQuality;
 };
 
 export const useVideoSourceSelection = ({
   data,
-  isVisible,
   preferredQuality,
 }: VideoSourceSelectionOptions) => {
   const [retryKey, setRetryKey] = useState(0);
@@ -40,13 +38,13 @@ export const useVideoSourceSelection = ({
 
   const selectedVideoTrack = useMemo(
     () =>
-      !isVisible || effectiveQuality === 'auto'
+      effectiveQuality === 'auto'
         ? {type: SelectedVideoTrackType.AUTO}
         : {
             type: SelectedVideoTrackType.RESOLUTION,
             value: Number(effectiveQuality.replace('p', '')),
           },
-    [effectiveQuality, isVisible],
+    [effectiveQuality],
   );
 
   const resetSource = useCallback((quality: VideoQuality) => {

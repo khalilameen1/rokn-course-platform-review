@@ -7,8 +7,9 @@
     $eventLabels = [
         'course_impression' => 'ظهر الكورس', 'course_opened' => 'فتح التفاصيل',
         'sample_started' => 'بدأ العينة', 'sample_completed' => 'أكمل العينة',
-        'paywall_viewed' => 'رأى الشراء', 'earn_tasks_opened' => 'فتح مهام العملات',
+        'paywall_viewed' => 'فتح نافذة الاشتراك', 'earn_tasks_opened' => 'فتح مهام العملات',
         'purchase_started' => 'بدأ الشراء', 'purchase_completed' => 'اكتمل الشراء',
+        'checkout_quoted' => 'طلب تفاصيل الاشتراك',
         'project_submitted' => 'سلّم مشروعًا', 'project_passed' => 'اجتاز مشروعًا',
         'certificate_issued' => 'صدرت شهادة',
     ];
@@ -66,14 +67,80 @@
         <p class="text-muted">تحصيل باقات العملات على مستوى المنصة لا يُنسب إلى كورس بعينه</p>
     @endif
 
+    <div class="card modern-card mb-4">
+        <div class="card-header-modern"><h4 class="mb-0">مسار شراء الكورس المرصود</h4></div>
+        <div class="card-body pb-0">
+            <p class="text-muted">طلبوا تفاصيل الاشتراك خلال الفترة المختارة ثم أكدوا الشراء وأكملوا الاشتراك لنفس الكورس خلال {{ $analytics['purchase_funnel']['window_days'] }} يومًا</p>
+            <p class="text-muted">المراحل الثلاث تعتمد على الطلب المسجّل في السيرفر ولا تشمل ترقية الاشتراك أو أحداث الشراء القديمة المرسلة من التطبيق</p>
+            <p class="text-muted">طلب التفاصيل يعني تجهيز عرض اشتراك صالح وليس إثبات مشاهدة النافذة أو قراءة تفاصيلها</p>
+        </div>
+        <div class="table-responsive"><table class="table table-modern mb-0">
+            <thead><tr><th>الخطوة</th><th>هويات مميزة</th><th>من الخطوة السابقة</th><th>من بداية المسار</th><th>لم يصلوا بعد</th></tr></thead>
+            <tbody>
+            @foreach($analytics['purchase_funnel']['steps'] as $step)
+                <tr>
+                    <td>{{ $eventLabels[$step['event']] ?? $step['event'] }}</td>
+                    <td>{{ number_format($step['actors']) }}</td>
+                    <td>{{ $step['conversion_from_previous'] === null ? '—' : number_format($step['conversion_from_previous'], 1).'%' }}</td>
+                    <td>{{ $step['conversion_from_entry'] === null ? '—' : number_format($step['conversion_from_entry'], 1).'%' }}</td>
+                    <td>{{ $step['not_reached_yet'] === null ? '—' : number_format($step['not_reached_yet']) }}</td>
+                </tr>
+            @endforeach
+            </tbody>
+        </table></div>
+        <div class="card-body">
+            @if($analytics['purchase_funnel']['pending_actors'] > 0)
+                <p class="text-muted mb-2">{{ number_format($analytics['purchase_funnel']['pending_actors']) }} لم يكملوا المسار وما زال وقت التحويل متاحًا لهم</p>
+            @endif
+            <small class="text-muted d-block">كل حساب هوية واحدة وكل جلسة زائر هوية مستقلة ولا نربط جلسة الزائر بحساب دون دليل</small>
+            <small class="text-muted d-block">الأحداث المتزامنة في نفس الثانية لا تحدد ترتيبًا أدق والتحصيل المؤكد يُقرأ من تقرير المدفوعات لا من هذه الأحداث</small>
+        </div>
+    </div>
+
+    <div class="card modern-card mb-4">
+        <div class="card-header-modern"><h4 class="mb-0">إكمال الدروس المرصود</h4></div>
+        <div class="card-body pb-0">
+            <p class="text-muted">طلاب بدأوا متابعة الدرس خلال الفترة المختارة وبلغوا حد الإكمال خلال {{ $analytics['lesson_completion']['window_days'] }} يومًا</p>
+            <p class="text-muted">كل طالب يُحسب مرة واحدة لكل درس من وقت مشاهدة يقبله الباك وليس مجرد فتح المشغّل أو الوصول إلى آخر الفيديو</p>
+        </div>
+        <div class="table-responsive"><table class="table table-modern mb-0">
+            <thead><tr><th>الكورس والدرس</th><th>بدأوا المتابعة</th><th>أكملوا</th><th>نسبة الإكمال</th><th>لم يكملوا بعد</th><th>ما زال الوقت متاحًا</th></tr></thead>
+            <tbody>
+            @forelse($analytics['lesson_completion']['rows'] as $lesson)
+                <tr>
+                    <td>
+                        <small class="text-muted d-block">{{ $lesson['course_title'] ?: 'كورس '.$lesson['course_id'] }} @if($lesson['course_archived']) · مؤرشف @endif</small>
+                        {{ $lesson['lesson_title'] ?: 'درس '.$lesson['lesson_id'] }}
+                        @if($lesson['lesson_archived'])<small class="text-muted d-block">نسخة سابقة أو درس لم يعد متاحًا</small>@endif
+                    </td>
+                    <td>{{ number_format($lesson['starts']) }}</td>
+                    <td>{{ number_format($lesson['completions']) }}</td>
+                    <td>{{ $lesson['completion_rate'] === null ? '—' : number_format($lesson['completion_rate'], 1).'%' }}</td>
+                    <td>{{ number_format($lesson['not_completed']) }}</td>
+                    <td>{{ number_format($lesson['pending']) }}</td>
+                </tr>
+            @empty
+                <tr><td colspan="6" class="text-muted text-center">لا توجد بدايات متابعة مرصودة في هذه الفترة</td></tr>
+            @endforelse
+            </tbody>
+        </table></div>
+        <div class="card-body">
+            <small class="text-muted d-block">مرتب حسب أكبر عدد لم يكمل بعد ولا يعني أنهم تركوا الكورس نهائيًا</small>
+            <small class="text-muted d-block">يشمل البدايات المسجلة بعد تفعيل هذا القياس ولا يستنتج بدايات قديمة من سجل التقدم ولا يضم مشاهدة العينة دون اشتراك</small>
+            @if($analytics['lesson_completion']['total_lessons'] > $analytics['lesson_completion']['row_limit'])
+                <small class="text-muted d-block">عرض أكثر {{ $analytics['lesson_completion']['row_limit'] }} درسًا من أصل {{ number_format($analytics['lesson_completion']['total_lessons']) }} درس مرصود</small>
+            @endif
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-xl-7 mb-4">
             <div class="card modern-card h-100">
-                <div class="card-header-modern"><h4 class="mb-0">مسار الاستخدام</h4></div>
+                <div class="card-header-modern"><h4 class="mb-0">نشاط الاستخدام</h4></div>
                 <div class="table-responsive"><table class="table table-modern mb-0">
                     <thead><tr><th>الخطوة</th><th>أحداث</th><th>أشخاص</th><th>تغير الأحداث</th></tr></thead>
                     <tbody>
-                    @foreach($analytics['funnel'] as $step)
+                    @foreach($analytics['activity'] as $step)
                         <tr><td>{{ $eventLabels[$step['event']] ?? $step['event'] }}</td><td>{{ number_format($step['total']) }}</td><td>{{ number_format($step['unique_actors']) }}</td><td>@include('admin.reports.growth', ['change' => $step['change']])</td></tr>
                     @endforeach
                     </tbody>

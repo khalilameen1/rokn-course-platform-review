@@ -6,9 +6,9 @@
 
 This file retains the legal documents published with every production package, including NOTICE files. An exact name/version/integrity-bound review record is used only when an npm package publishes no standalone legal file.
 
-- Unique packages: 734
-- Resolved production package paths: 817
-- Exact package-root legal documents: 609
+- Unique packages: 735
+- Resolved production package paths: 818
+- Exact package-root legal documents: 610
 - Reviewed legal-file absence records: 125
 
 ## Explicit license choices
@@ -30,7 +30,7 @@ This file retains the legal documents published with every production package, i
 | CC0-1.0 | 1 |
 | FSL-1.1-MIT | 9 |
 | ISC | 38 |
-| MIT | 560 |
+| MIT | 561 |
 | MPL-2.0 | 12 |
 | Python-2.0 | 1 |
 | Unlicense | 2 |
@@ -16805,6 +16805,42 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+### @react-native-community/netinfo@11.5.2
+
+- Selected license: `MIT`
+- Declared license: `MIT`
+- Legal source: `package-root`
+- Exact source: [npm](https://www.npmjs.com/package/%40react-native-community%2Fnetinfo/v/11.5.2)
+- Integrity: `sha512-/g0m65BtX9HU+bPiCH2517bOHpEIUsGrWFXDzi1a5nNKn5KujQgm04WhL7/OSXWKHyrT8VVtUoJA0XKRxueBpQ==`
+
+#### LICENSE
+
+SHA-256: `212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c`
+
+```text
+MIT License
+
+Copyright (c) 2015-present, Facebook, Inc.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
 ### @react-native-firebase/app@26.3.2
 
 - Selected license: `Apache-2.0`
@@ -21545,13 +21581,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### axios@1.19.0
+### axios@1.20.0
 
 - Selected license: `MIT`
 - Declared license: `MIT`
 - Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/axios/v/1.19.0)
-- Integrity: `sha512-ht/iuYZXEjFxLH/Hkezgd7m6JKlHHXEUSneaDz8uZe1Gj5QZtCnpyDsckvAiEnT89OEbCLmnte4R4sn7P0EKFw==`
+- Exact source: [npm](https://www.npmjs.com/package/axios/v/1.20.0)
+- Integrity: `sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==`
 
 #### LICENSE
 
@@ -22702,13 +22738,13 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ```
 
-### brace-expansion@1.1.18
+### brace-expansion@1.1.21
 
 - Selected license: `MIT`
 - Declared license: `MIT`
 - Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/brace-expansion/v/1.1.18)
-- Integrity: `sha512-Edep/X9fGqVNmzKBVsDYIOtD+z1tuezV70LBjdCst9Tqu76lsnvRiZ6oTic1n+/BIwX6QDGAO94PN4N2SADvtw==`
+- Exact source: [npm](https://www.npmjs.com/package/brace-expansion/v/1.1.21)
+- Integrity: `sha512-9zeA+KLZNNzglF2TPKRQEDyx6Yby7daAkuy8MiPzpXPsYDWi/DRM8jmwUDxokQjYqBpv5DgPiwD4h4ZZSy1Ujw==`
 
 #### LICENSE
 
@@ -22738,13 +22774,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-### brace-expansion@5.0.9
+### brace-expansion@5.0.12
 
 - Selected license: `MIT`
 - Declared license: `MIT`
 - Legal source: `package-root`
-- Exact source: [npm](https://www.npmjs.com/package/brace-expansion/v/5.0.9)
-- Integrity: `sha512-ScQ4IuvIEF1TMlP7Zt+vjJ//9zlPb2SDcxWxM3bk8s6t6GGdJ7KO1dCcTidOPJKePW30LE/2cT7wCyPho9/Wxg==`
+- Exact source: [npm](https://www.npmjs.com/package/brace-expansion/v/5.0.12)
+- Integrity: `sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==`
 
 #### LICENSE
 

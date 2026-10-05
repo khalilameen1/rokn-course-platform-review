@@ -27,7 +27,7 @@
     "splash": {
       "image": "./src/assets/images/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#080B12"
+      "backgroundColor": "#0B1628"
     },
     "android": {
       "package": "com.rokn",
@@ -73,7 +73,7 @@
       "splash": {
         "image": "./src/assets/images/logo.png",
         "resizeMode": "contain",
-        "backgroundColor": "#080B12"
+        "backgroundColor": "#0B1628"
       }
     },
     "ios": {

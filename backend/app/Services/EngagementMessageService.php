@@ -72,11 +72,14 @@ final class EngagementMessageService
     {
         $coins = $variables['coins'] ?? $this->welcomeOffer->amountForProvider();
         $variables['coins'] = max(0, (int) $coins);
+        // Effective welcome policy also covers old stored templates without
+        // rewriting authored copy, schedules, images or reward ledger entries.
+        $presentation = array_replace($message->getAttributes(), AdminNotification::presentationOverrides($message->system_key));
 
         return [
             'id' => (string) $message->id,
             'key' => (string) $message->system_key,
-            'surface' => (string) $message->surface,
+            'surface' => (string) $presentation['surface'],
             'title_ar' => $this->render((string) $message->title_ar, $variables, true),
             'title_en' => $this->render((string) $message->title_en, $variables, false),
             'description_ar' => $this->render((string) $message->description_ar, $variables, true),
@@ -85,11 +88,11 @@ final class EngagementMessageService
             'action_label_en' => $this->render((string) $message->action_label_en, $variables, false),
             'secondary_action_label_ar' => $this->render((string) $message->secondary_action_label_ar, $variables, true),
             'secondary_action_label_en' => $this->render((string) $message->secondary_action_label_en, $variables, false),
-            'link' => $this->safeTemplateLink($message->link),
+            'link' => $this->safeTemplateLink($presentation['link'] ?? null),
             'image_url' => $message->public_image_url,
             'coins' => (int) $variables['coins'],
-            'dismissible' => (bool) $message->is_dismissible,
-            'cooldown_hours' => (int) $message->cooldown_hours,
+            'dismissible' => (bool) $presentation['is_dismissible'],
+            'cooldown_hours' => (int) $presentation['cooldown_hours'],
             'version' => optional($message->updated_at)->toIso8601String(),
         ];
     }

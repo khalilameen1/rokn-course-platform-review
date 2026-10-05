@@ -71,6 +71,16 @@ describe('portfolio media replay', () => {
     ]);
   });
 
+  it('never restarts a paused project on startup or project-open replay', async () => {
+    const paused = {...entry('42', '11111111-1111-4111-8111-111111111111'), paused: true};
+    const active = entry('51', '22222222-2222-4222-8222-222222222222');
+    (listPortfolioMediaUploads as jest.Mock).mockResolvedValue([paused, active]);
+    (deliverPortfolioMedia as jest.Mock).mockResolvedValue({state: 'uploaded', media: {id: '9'}});
+    await expect(replayPendingPortfolioMediaUploads()).resolves.toMatchObject({attempted: 1, completedProjectIds: ['51']});
+    expect(deliverPortfolioMedia).toHaveBeenCalledTimes(1);
+    expect(deliverPortfolioMedia).toHaveBeenCalledWith(active, expect.anything());
+  });
+
   it('does not let one failed project block another or retry its siblings', async () => {
     const first = entry('42', '11111111-1111-4111-8111-111111111111');
     const sameProject = entry('42', '22222222-2222-4222-8222-222222222222');

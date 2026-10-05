@@ -6783,7 +6783,7 @@
       "reviewedAbsence": null
     }
   ],
-  "projectComponentCount": 23,
+  "projectComponentCount": 24,
   "projectComponents": [
     {
       "coordinate": "gradle-project:::expo",
@@ -6885,6 +6885,22 @@
       "classification": "npm-production-source-project",
       "npmCoordinate": "@react-native-clipboard/clipboard@1.16.3",
       "npmIntegrity": "sha512-cMIcvoZKIrShzJHEaHbTAp458R9WOv0fB6UyC7Ek4Qk561Ow/DrzmmJmH/rAZg21Z6ixJ4YSdFDC14crqIBmCQ==",
+      "selectedLicenses": [
+        "MIT"
+      ],
+      "legalDocumentSha256s": [
+        "212dbf14b113759356207347826f21ac3c81151943fdb89ce25da5dc6214831c",
+        "8f08c824b2bb54eda2b6ee6053d2eeed46877b3b7b2ef3f60fc2b9fa580f54b2"
+      ]
+    },
+    {
+      "coordinate": "gradle-project:::react-native-community_netinfo",
+      "buildPath": ":",
+      "displayName": "project :react-native-community_netinfo",
+      "projectPath": ":react-native-community_netinfo",
+      "classification": "npm-production-source-project",
+      "npmCoordinate": "@react-native-community/netinfo@11.5.2",
+      "npmIntegrity": "sha512-/g0m65BtX9HU+bPiCH2517bOHpEIUsGrWFXDzi1a5nNKn5KujQgm04WhL7/OSXWKHyrT8VVtUoJA0XKRxueBpQ==",
       "selectedLicenses": [
         "MIT"
       ],
@@ -7154,9 +7170,9 @@
   "unresolvedDependencyCount": 0,
   "unclassifiedLocalFileCount": 0,
   "unclassifiedResolvedArtifactCount": 0,
-  "resolvedArtifactCount": 230,
+  "resolvedArtifactCount": 231,
   "moduleArtifactCount": 207,
-  "projectArtifactCount": 23,
+  "projectArtifactCount": 24,
   "documents": [
     {
       "sha256": "04caed11bcb1929847055fe6868c38489bd0b6d95957704d2a3aef4b56c0df7c",
@@ -7178,6 +7194,10 @@
         },
         {
           "source": "npm:@react-native-clipboard/clipboard@1.16.3",
+          "path": "LICENSE"
+        },
+        {
+          "source": "npm:@react-native-community/netinfo@11.5.2",
           "path": "LICENSE"
         },
         {

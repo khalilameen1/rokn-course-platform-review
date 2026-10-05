@@ -5,16 +5,70 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Exceptions\ProductEventConflictException;
+use App\Models\CourseCheckout;
+use App\Models\Lesson;
+use App\Models\LessonWatchEvidence;
 use App\Models\ProductEvent;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use App\Support\BusinessClock;
+use Ramsey\Uuid\Uuid;
+use DateTimeInterface;
 
 final class ProductEventService
 {
     public function __construct(private OutboxService $outbox)
     {
+    }
+
+    /** Committed receipt evidence; never a synthetic device session. */
+    public function recordCourseCheckoutTransition(User $user, CourseCheckout $checkout, string $event): void
+    {
+        if ($checkout->terms['mode'] !== 'purchase') return;
+        $occurredAt = match ($event) {
+            'checkout_quoted' => $checkout->created_at,
+            'purchase_started' => $checkout->authorized_at,
+            'purchase_completed' => $checkout->completed_at,
+            default => throw new \LogicException('Unsupported checkout product event.'),
+        };
+        $this->record([
+            // Reuse Laravel's installed Ramsey UUID implementation. The keyed
+            // name keeps this internal ID unguessable from the public receipt.
+            'event_id' => $this->transitionId('course-checkout:'.$checkout->public_id, $event),
+            'session_key' => null,
+            'event_name' => $event,
+            'source' => 'server',
+            'screen_key' => 'course_checkout',
+            'course_id' => (int) $checkout->course_id,
+            'occurred_at' => $occurredAt->toIso8601String(),
+        ], $user);
+    }
+
+    /** Only positive credited playback and the frozen completion transition. */
+    public function recordLessonWatchTransition(User $user, Lesson $lesson,
+        LessonWatchEvidence $evidence, string $event, DateTimeInterface $occurredAt, int $courseId): void
+    {
+        if (!in_array($event, ['lesson_started', 'lesson_completed'], true)) {
+            throw new \LogicException('Unsupported lesson product event.');
+        }
+        $this->record([
+            'event_id' => $this->transitionId('lesson-evidence:'.$evidence->id, $event),
+            'session_key' => null,
+            'event_name' => $event,
+            'source' => 'server',
+            'screen_key' => 'player',
+            'course_id' => $courseId,
+            // Actual media identity, not a current lesson projected on read.
+            'lesson_id' => (int) $lesson->id,
+            'occurred_at' => $occurredAt->format(DATE_ATOM),
+        ], $user);
+    }
+
+    private function transitionId(string $aggregate, string $event): string
+    {
+        return (string) Uuid::uuid5(Uuid::NAMESPACE_URL,
+            $this->keyedIdentity($aggregate.':'.$event));
     }
 
     public function record(array $data, ?User $user = null): ProductEvent
@@ -24,12 +78,13 @@ final class ProductEventService
             $clientOccurredAt = CarbonImmutable::parse((string) $data['occurred_at'])
                 ->utc()
                 ->setMicrosecond(0);
-            $occurredAt = $clientOccurredAt->between(
+            $serverEvent = ($data['source'] ?? null) === 'server';
+            $occurredAt = $serverEvent || $clientOccurredAt->between(
                 $receivedAt->subDays(7),
                 $receivedAt->addMinutes(5),
                 true
             ) ? $clientOccurredAt : $receivedAt;
-            $sessionKey = $this->keyedIdentity('session:'.(string) $data['session_key']);
+            $sessionKey = $serverEvent ? null : $this->keyedIdentity('session:'.(string) $data['session_key']);
             $attributes = [
                 'user_id' => $user?->id,
                 'actor_key' => $this->keyedIdentity(

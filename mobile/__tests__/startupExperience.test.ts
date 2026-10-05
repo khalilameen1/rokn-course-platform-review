@@ -34,16 +34,16 @@ describe('first-launch experience', () => {
       };
     };
 
-    expect(androidSplash).toContain('@mipmap/ic_launcher_foreground');
-    expect(iosSplash).toContain('text="ROKN"');
-    expect(iosSplash).toContain('text="دقيقة بدقيقة"');
+    expect(androidSplash).toContain('@drawable/rokn_wordmark');
+    expect(iosSplash).toContain('image="RoknWordmark"');
+    expect(iosSplash).toContain('text="كورسات هتكملها"');
     expect(`${androidSplash}\n${iosSplash}`).not.toMatch(
       /تعلّم بمقاطع|مشروعات|Rokn AI|ابدأ الآن/,
     );
     expect(appConfig.expo.splash).toEqual({
       image: './src/assets/images/logo.png',
       resizeMode: 'contain',
-      backgroundColor: '#080B12',
+      backgroundColor: '#0B1628',
     });
     expect(appConfig.expo.android.splash).toEqual(appConfig.expo.splash);
   });
@@ -206,19 +206,23 @@ describe('first-launch experience', () => {
     const settings = readSource(
       'src/screens/settings/useSettingsPreferences.ts',
     );
+    const accountWrites = readSource('src/services/accountPreferenceWrites.ts');
 
+    expect(settings).toContain('toggleUpdates = createKeyedAsyncQueue()');
+    expect(settings).toContain('toggleUpdates(`${boundary.scope}:${key}`');
     expect(settings).toContain(
-      'serializeSettingsWrites = createKeyedAsyncQueue()',
+      'withAccountPreferenceWrite as withSettingsScopeWrite',
     );
-    expect(settings).toContain(
-      'serializeSettingsWrites(boundary.scope, write)',
+    expect(accountWrites).toContain('const writes = createKeyedAsyncQueue()');
+    expect(accountWrites).toMatch(
+      /writes\(boundary\.scope, async \(\) => \{\s*assertAccountSessionBoundary\(boundary\);\s*const result = await operation\(\);\s*assertAccountSessionBoundary\(boundary\);/,
     );
     expect(settings).toContain('withSettingsScopeWrite');
     expect(settings).toContain('preferenceRevisionRef');
     expect(settings).toContain("isUnchanged('VIDEO_QUALITY')");
     expect(settings).toContain('enqueuePreferenceWrite');
-    expect(settings).toContain(
-      'const boundaryFlight = captureAccountSessionBoundary()',
+    expect(settings).toMatch(
+      /const boundaryFlight = ownerBoundary\s*\? Promise\.resolve\(ownerBoundary\)\s*: captureAccountSessionBoundary\(\)/,
     );
   });
 });

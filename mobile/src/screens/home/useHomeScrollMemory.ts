@@ -16,6 +16,8 @@ type GuestHandoff = {
   createdAt: number;
 };
 
+type RestorePosition = {identityKey: string; offset: number};
+
 let guestHandoff: GuestHandoff | null = null;
 
 const scrollKey = (boundary: AccountSessionBoundary) =>
@@ -38,14 +40,20 @@ export const useHomeScrollMemory = ({
 }: HomeScrollMemoryInput) => {
   const scrollRef = useRef<ScrollView | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const restoreTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const boundaryRef = useRef<AccountSessionBoundary | null>(null);
-  const boundaryFlightRef = useRef<Promise<AccountSessionBoundary> | null>(null);
+  const boundaryFlightRef = useRef<Promise<AccountSessionBoundary> | null>(
+    null,
+  );
   const boundaryGenerationRef = useRef(0);
   const latestOffsetRef = useRef<number | null>(null);
   const userMovedRef = useRef(false);
   const writeTailRef = useRef<Promise<void>>(Promise.resolve());
   const searchQueryRef = useRef(searchQuery);
-  const [restoreOffset, setRestoreOffset] = useState<number | null>(null);
+  const [restorePosition, setRestorePosition] =
+    useState<RestorePosition | null>(null);
+  const presentationRef = useRef({active, identityKey, loading, searchQuery});
+  presentationRef.current = {active, identityKey, loading, searchQuery};
   searchQueryRef.current = searchQuery;
 
   useEffect(() => {
@@ -53,6 +61,10 @@ export const useHomeScrollMemory = ({
     boundaryRef.current = null;
     boundaryFlightRef.current = null;
     userMovedRef.current = false;
+    latestOffsetRef.current = null;
+    setRestorePosition(null);
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = null;
   }, [identityKey]);
 
   const boundary = useCallback(() => {
@@ -125,6 +137,7 @@ export const useHomeScrollMemory = ({
       .then(async owner => {
         let offset = await getItem<number>(await scrollKey(owner));
         assertAccountSessionBoundary(owner);
+        if (!current) return;
         const handoff = guestHandoff;
         const canAdopt = Boolean(
           owner.scope.startsWith('user-') &&
@@ -132,19 +145,29 @@ export const useHomeScrollMemory = ({
             handoff.scope !== owner.scope &&
             Date.now() - handoff.createdAt < 5 * 60 * 1000,
         );
-        if (canAdopt && Number.isFinite(Number(handoff?.offset))) {
-          offset = Number(handoff?.offset);
+        if (
+          canAdopt &&
+          typeof handoff?.offset === 'number' &&
+          Number.isFinite(handoff.offset)
+        ) {
+          offset = handoff.offset;
           await saveItem(await scrollKey(owner), offset);
           assertAccountSessionBoundary(owner);
         }
+        if (!current) return;
         if (canAdopt && handoff?.query) setSearchQuery(handoff.query);
         if (owner.scope.startsWith('user-')) guestHandoff = null;
-        if (!current || userMovedRef.current || !Number.isFinite(Number(offset))) {
+        if (
+          !current ||
+          userMovedRef.current ||
+          typeof offset !== 'number' ||
+          !Number.isFinite(offset)
+        ) {
           return;
         }
-        const normalized = Math.max(0, Number(offset));
+        const normalized = Math.max(0, offset);
         latestOffsetRef.current = normalized;
-        setRestoreOffset(normalized);
+        setRestorePosition({identityKey, offset: normalized});
       })
       .catch(() => undefined);
     return () => {
@@ -162,15 +185,42 @@ export const useHomeScrollMemory = ({
   }, [active, persist]);
 
   useEffect(() => {
-    if (loading || searchQuery.trim() || !restoreOffset || !scrollRef.current) {
+    if (
+      !active ||
+      loading ||
+      searchQuery.trim() ||
+      userMovedRef.current ||
+      !restorePosition ||
+      restorePosition.identityKey !== identityKey ||
+      !scrollRef.current
+    ) {
       return undefined;
     }
+    const scrollView = scrollRef.current;
     const timer = setTimeout(() => {
-      scrollRef.current?.scrollTo({y: restoreOffset, animated: false});
-      setRestoreOffset(null);
+      if (restoreTimerRef.current !== timer) return;
+      restoreTimerRef.current = null;
+      const presentation = presentationRef.current;
+      // A delayed restore is optional. Current interaction, search, screen or
+      // account takes precedence even before effect cleanup has run.
+      if (
+        !presentation.active ||
+        presentation.loading ||
+        presentation.identityKey !== restorePosition.identityKey ||
+        presentation.searchQuery.trim() ||
+        userMovedRef.current ||
+        scrollRef.current !== scrollView
+      )
+        return;
+      scrollView.scrollTo({y: restorePosition.offset, animated: false});
+      setRestorePosition(null);
     }, 80);
-    return () => clearTimeout(timer);
-  }, [loading, restoreOffset, searchQuery]);
+    restoreTimerRef.current = timer;
+    return () => {
+      clearTimeout(timer);
+      if (restoreTimerRef.current === timer) restoreTimerRef.current = null;
+    };
+  }, [active, identityKey, loading, restorePosition, searchQuery]);
 
   const bind = useCallback((scrollView: ScrollView | null) => {
     scrollRef.current = scrollView;
@@ -191,6 +241,9 @@ export const useHomeScrollMemory = ({
 
   const markUserMoved = useCallback(() => {
     userMovedRef.current = true;
+    if (restoreTimerRef.current) clearTimeout(restoreTimerRef.current);
+    restoreTimerRef.current = null;
+    setRestorePosition(null);
   }, []);
 
   return {bind, markUserMoved, record};

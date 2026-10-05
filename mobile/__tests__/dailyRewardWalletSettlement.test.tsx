@@ -55,6 +55,14 @@ jest.mock('../src/services/api/engagement', () => ({
   getEngagementMessage: jest.fn(async () => null),
   getNextEngagementMessage: jest.fn(async () => null),
 }));
+jest.mock('../src/services/api/notifications', () => ({
+  getNotificationsPage: jest.fn(async () => ({
+    notifications: [],
+    page: 1,
+    hasMore: false,
+    nextCursor: null,
+  })),
+}));
 jest.mock('../src/services/pendingWelcomeBonus', () => ({
   getPendingWelcomeBonus: async () => null,
   clearPendingWelcomeBonus: async () => true,
@@ -132,7 +140,6 @@ describe('daily reward settlement reaches the visible wallet', () => {
       loading: true,
       navigation: {} as never,
       openCourse: () => false,
-      remoteCourses: [],
       serverSession: true,
     });
     return null;

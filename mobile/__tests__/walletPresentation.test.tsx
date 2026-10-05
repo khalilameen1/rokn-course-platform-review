@@ -4,6 +4,7 @@ import TestRenderer, {act} from 'react-test-renderer';
 import {WalletView} from '../src/screens/wallet/WalletView';
 import {WalletPackageRail} from '../src/screens/wallet/WalletPackageRail';
 import {RoknCoinStack, CoinAmount} from '../src/components/ui/RoknCoin';
+import {AppArtwork} from '../src/components/ui/AppArtwork';
 import TaskBrandIcon from '../src/components/ui/TaskBrandIcon';
 import {walletStyles} from '../src/screens/wallet/walletStyles';
 import {learnerRewardTasks} from '../src/screens/wallet/rewardsPresentation';
@@ -39,7 +40,6 @@ const makeController = (
   overrides: Partial<WalletController> = {},
 ): WalletController => ({
   displayedBalance: 1250,
-  displayedPaidBalance: 1000,
   displayedRewardBalance: 250,
   displayedCoinRules: ['قيمة الخصم تظهر قبل الدفع'],
   displayedTasks: [
@@ -106,6 +106,9 @@ describe('rewards presentation', () => {
       expect(texts()).toContain(formatArabicNumber(250));
       expect(texts()).not.toContain(formatArabicNumber(1250));
       expect(texts()).not.toContain('شحن الرصيد');
+      expect(texts()).not.toContain('رصيدك');
+      expect(texts()).toContain('السجل');
+      expect(root.findByType(RoknCoinStack).props.size).toBe(102);
       const balance = root
         .findAllByType(Text)
         .find(node => node.props.accessibilityLabel === 'رصيد المكافآت')!;
@@ -122,7 +125,16 @@ describe('rewards presentation', () => {
       value: 'follow_youtube',
       plain: true,
     });
-    expect(root.findByType(CoinAmount).props.value).toBe(50);
+    const coins = root
+      .findAllByType(AppArtwork)
+      .filter(node => node.props.asset === 'coin');
+    expect(coins).toHaveLength(1);
+    expect(StyleSheet.flatten(coins[0].props.style)).toMatchObject({
+      width: 18,
+      height: 18,
+    });
+    expect(coins[0].props.resizeMode).toBe('contain');
+    expect(texts()).toContain(`\u2066+ ${formatArabicNumber(50)}\u2069`);
     expect(
       StyleSheet.flatten(taskButton().props.style({pressed: false})).minHeight,
     ).toBeGreaterThanOrEqual(Accessibility.minTouchTarget);
@@ -173,7 +185,11 @@ describe('rewards presentation', () => {
       )!;
     expect(
       StyleSheet.flatten(button.props.style({pressed: false})),
-    ).toMatchObject(walletStyles.disclosure);
+    ).toMatchObject({
+      ...walletStyles.disclosure,
+      ...walletStyles.helpDisclosure,
+    });
+    expect(walletStyles.taskAction.backgroundColor).not.toBe('transparent');
   });
   it('does not invent a zero balance while loading or after a failure', async () => {
     await render(

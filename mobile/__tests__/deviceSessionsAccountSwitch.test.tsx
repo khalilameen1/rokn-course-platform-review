@@ -90,6 +90,7 @@ import {
   getDeviceSessions,
   revokeDeviceSession,
   revokeOtherDeviceSessions,
+  type DeviceSession,
 } from '../src/services/deviceSessions';
 
 const deferred = <T,>() => {
@@ -396,6 +397,143 @@ describe('device sessions account ownership', () => {
           renderer.root.findByType(ScrollView).props.refreshControl.props
             .refreshing,
         ).toBe(false);
+      } finally {
+        alert.mockRestore();
+        await act(async () => renderer.unmount());
+      }
+    },
+  );
+
+  it.each(
+    ['selected', 'other devices'].flatMap(target =>
+      ['success', 'failure'].map(outcome => [target, outcome]),
+    ),
+  )(
+    'reconciles %s revocation %s after a new visit without presenting the old result',
+    async (target, outcome) => {
+      const current = session('11111111-1111-4111-8111-111111111111');
+      const other = session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false);
+      const freshOther = {
+        ...session('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', false),
+        device_class: 'tablet' as const,
+      };
+      const mutation = deferred<void>();
+      const freshRead = deferred<DeviceSession[]>();
+      jest
+        .mocked(getDeviceSessions)
+        .mockReset()
+        .mockResolvedValueOnce([current, other])
+        .mockReturnValueOnce(freshRead.promise);
+      jest.mocked(revokeDeviceSession).mockReturnValueOnce(mutation.promise);
+      jest
+        .mocked(revokeOtherDeviceSessions)
+        .mockImplementationOnce(async () => {
+          await mutation.promise;
+          return 1;
+        });
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation((_title, _message, buttons) => {
+          void buttons
+            ?.find(button => button.style === 'destructive')
+            ?.onPress?.();
+        });
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<DeviceSessions />);
+      });
+      try {
+        const label =
+          target === 'selected'
+            ? 'تسجيل الخروج من الجهاز'
+            : 'تسجيل الخروج من الأجهزة الأخرى';
+        await act(async () => buttonForText(renderer, label).props.onPress());
+        expect(
+          target === 'selected'
+            ? revokeDeviceSession
+            : revokeOtherDeviceSessions,
+        ).toHaveBeenCalledTimes(1);
+        await act(async () => {
+          mockFocused = false;
+          renderer.update(<DeviceSessions />);
+        });
+        await act(async () => {
+          mockFocused = true;
+          renderer.update(<DeviceSessions />);
+        });
+        // The returned visit waits for settlement, not a stale in-flight read.
+        expect(getDeviceSessions).toHaveBeenCalledTimes(1);
+        await act(async () => {
+          if (outcome === 'success') mutation.resolve();
+          else mutation.reject(new Error('offline'));
+        });
+        expect(getDeviceSessions).toHaveBeenCalledTimes(2);
+        expect(alert).toHaveBeenCalledTimes(1); // Confirmation, no old failure.
+        // Only the new server snapshot may change the returned visit's list.
+        expect(renderedText(renderer)).toContain(
+          'تسجيل الخروج من الأجهزة الأخرى',
+        );
+        expect(renderedText(renderer)).not.toContain('جهاز لوحي Android');
+        await act(async () => freshRead.resolve([current, freshOther]));
+        expect(renderedText(renderer)).toContain('جهاز لوحي Android');
+        expect(
+          renderer.root.findByType(ScrollView).props.refreshControl.props
+            .refreshing,
+        ).toBe(false);
+        expect(getDeviceSessions).toHaveBeenCalledTimes(2);
+        expect(
+          target === 'selected'
+            ? revokeDeviceSession
+            : revokeOtherDeviceSessions,
+        ).toHaveBeenCalledTimes(1);
+      } finally {
+        alert.mockRestore();
+        await act(async () => renderer.unmount());
+      }
+    },
+  );
+
+  it.each(['selected', 'other devices'])(
+    'still presents a %s failure while its original visit remains active',
+    async target => {
+      jest
+        .mocked(getDeviceSessions)
+        .mockReset()
+        .mockResolvedValue([
+          session('11111111-1111-4111-8111-111111111111'),
+          session('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', false),
+        ]);
+      jest
+        .mocked(revokeDeviceSession)
+        .mockRejectedValueOnce(new Error('offline'));
+      jest
+        .mocked(revokeOtherDeviceSessions)
+        .mockRejectedValueOnce(new Error('offline'));
+      const alert = jest
+        .spyOn(Alert, 'alert')
+        .mockImplementation((_title, _message, buttons) => {
+          void buttons
+            ?.find(button => button.style === 'destructive')
+            ?.onPress?.();
+        });
+      let renderer!: TestRenderer.ReactTestRenderer;
+      await act(async () => {
+        renderer = TestRenderer.create(<DeviceSessions />);
+      });
+      try {
+        const label =
+          target === 'selected'
+            ? 'تسجيل الخروج من الجهاز'
+            : 'تسجيل الخروج من الأجهزة الأخرى';
+        await act(async () => buttonForText(renderer, label).props.onPress());
+        expect(alert).toHaveBeenCalledTimes(2);
+        expect(alert).toHaveBeenLastCalledWith(
+          'لم يتم تسجيل الخروج',
+          'حاول مرة أخرى بعد قليل',
+        );
+        expect(renderedText(renderer)).toContain(
+          'تسجيل الخروج من الأجهزة الأخرى',
+        );
       } finally {
         alert.mockRestore();
         await act(async () => renderer.unmount());

@@ -156,4 +156,89 @@ describe('mobile notification contracts', () => {
       campaignKey: 'coin-offer:17',
     });
   });
+  const homeRow = {
+    ...notification,
+    course_id: 12,
+    home_course: {
+      id: 12,
+      title: 'عنوان الكورس الحالي',
+      image_url: 'https://cdn.example/live-cover.jpg',
+    },
+  };
+  const homeResponse = (rows: unknown[], nextCursor: string | null = null) => ({
+    data: {
+      data: rows,
+      surface: 'home',
+      pagination: {
+        has_more_pages: nextCursor !== null,
+        next_cursor: nextCursor,
+      },
+    },
+  });
+  it('requests a dedicated Home slice and retains canonical current course art separate from inbox copy', async () => {
+    mockGet.mockResolvedValueOnce(homeResponse([homeRow]));
+    const result = await getNotificationsPage({
+      surface: 'home',
+      cursor: 'older',
+    });
+    expect(result.notifications[0]).toMatchObject({
+      title: notification.title_ar,
+      homeCourse: {
+        id: '12',
+        title: homeRow.home_course.title,
+        imageUrl: homeRow.home_course.image_url,
+      },
+    });
+    expect(mockGet).toHaveBeenCalledWith(
+      'notifications',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          surface: 'home',
+          filter: 'unread',
+          cursor: 'older',
+          pagination_mode: 'cursor',
+        }),
+      }),
+    );
+  });
+  it('keeps the next cursor when ownership filtering leaves an empty Home page', async () => {
+    mockGet.mockResolvedValueOnce(homeResponse([], 'older'));
+    await expect(
+      getNotificationsPage({surface: 'home'}),
+    ).resolves.toMatchObject({
+      notifications: [],
+      hasMore: true,
+      nextCursor: 'older',
+    });
+  });
+  it('rejects an old server ignoring the Home surface even when its page is empty', async () => {
+    mockGet.mockResolvedValueOnce({
+      data: {data: [], pagination: {has_more_pages: false}},
+    });
+    await expect(getNotificationsPage({surface: 'home'})).rejects.toThrow(
+      'HOME_NOTIFICATIONS_CONTRACT_INVALID',
+    );
+  });
+  it.each([
+    {...homeRow, home_course: null},
+    {...homeRow, home_course: {...homeRow.home_course, id: 99}},
+    {...homeRow, home_course: {...homeRow.home_course, title: ''}},
+    {
+      ...homeRow,
+      home_course: {
+        ...homeRow.home_course,
+        image_url: 'http://cdn.example/insecure.jpg',
+      },
+    },
+    {...homeRow, notification_type: 'certificate_ready'},
+    {...homeRow, is_read: true},
+  ])(
+    'rejects a contradictory Home candidate without silently consuming its cursor',
+    async row => {
+      mockGet.mockResolvedValueOnce(homeResponse([row], 'older'));
+      await expect(getNotificationsPage({surface: 'home'})).rejects.toThrow(
+        'HOME_NOTIFICATIONS_CONTRACT_INVALID',
+      );
+    },
+  );
 });

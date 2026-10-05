@@ -35,3 +35,24 @@ owners, check rollback and dispatch boundaries, reject unavailable recipients,
 check schedules and replay, and retain existing image/broadcast/certificate
 coverage. The tests fake queue/network transport and are not live-device delivery
 verification.
+
+## Final local browser gate — 5 October 2026
+
+The existing notification-recipient regression renders the actual create Blade
+and its included production draft script with Laravel, then serves the rendered
+pages in fresh headless Chrome contexts. All five cases passed: student-to-
+student isolation, individual-to-broadcast isolation, broadcast-to-individual
+isolation, per-student restoration, and same-recipient reload/course-search
+preservation. Evidence is
+`mobile/.cache/final-gate-20261005/dashboard-notification-authoring-recipient-browser-runtime-final.log`.
+The initial browser log failed during PHP rendering because the default PHP
+configuration lacked mbstring; configuring the existing pinned PHP 8.4.24 with
+its normal extensions resolved that environment failure without source edits.
+
+Independent read-only review accepted this bounded recipient/draft evidence.
+It noted two limits: search does not separately reassert `message_ar`, and the
+broadcast-to-student case does not separately reassert `course_id`. Actual
+recipient-owned draft source supports those fields; the result is not proof of
+unasserted outcomes. Fixture students and a local page server replace the
+authenticated HTTP route, the outer dashboard layout is omitted, and no push
+or notification dispatch occurs. No build, deployment or store change was made.

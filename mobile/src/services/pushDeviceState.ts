@@ -55,6 +55,7 @@ export const invalidateLocalPushDeviceRegistration = async (
   if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
   // Resolve account-scoped keys before a concurrent logout removes the session.
   const tokenKey = await pushStorageKey(PUSH_TOKEN_KEY, ownerBoundary);
+  if (ownerBoundary) assertAccountSessionBoundary(ownerBoundary);
 
   const nativeTokenDeleted = await deleteBackendPushToken();
   if (nativeTokenDeleted) {

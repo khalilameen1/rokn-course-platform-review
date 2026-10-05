@@ -110,6 +110,7 @@ export interface ProjectFeedbackThread {
   canReply: boolean;
   status: string;
   remainingMessages: number;
+  replyLimitReached?: boolean;
   messages: ProjectFeedbackMessage[];
   attachmentsEnabled?: boolean;
   attachmentMaxFiles?: number;
@@ -179,6 +180,8 @@ export interface CourseLearningData {
   accessType?: string;
   /** Course-chat availability from the entitlement API. */
   chatAvailable?: boolean;
+  /** Changes only when the server's captured chat entitlement changes. */
+  chatEntitlementRevision?: string;
   chatAttachmentsEnabled?: boolean;
   chatAttachmentMaxFiles?: number;
   /** Explicit false keeps certificate generation server- and client-locked. */

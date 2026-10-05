@@ -16,7 +16,9 @@ jest.mock('../src/constants/helpers', () => {
   const actual = jest.requireActual('../src/constants/helpers');
   return {
     ...actual,
-    captureAccountSessionBoundary: jest.fn(actual.captureAccountSessionBoundary),
+    captureAccountSessionBoundary: jest.fn(
+      actual.captureAccountSessionBoundary,
+    ),
   };
 });
 jest.mock('@react-navigation/native', () => ({
@@ -41,10 +43,16 @@ jest.mock('../src/services/installationIdentity', () => ({
 }));
 jest.mock('../src/services/socialAuth', () => ({
   getSocialAuthMethods: async () => ({providers: ['google']}),
-  signInWithSocialProvider: () =>
-    jest
+  signInWithSocialProvider: (
+    _provider: unknown,
+    _methods: unknown,
+    options: {onProviderStarted?: () => void},
+  ) => {
+    options.onProviderStarted?.();
+    return jest
       .requireActual('../src/services/socialAuthCompletion')
-      .resumePendingSocialAuth(mockCallback),
+      .resumePendingSocialAuth(mockCallback);
+  },
 }));
 jest.mock('../src/services/guestAccountMigration', () => ({
   stageGuestAccountMigration: async () => undefined,
@@ -103,6 +111,7 @@ describe('committed social authentication reaches its real UI consumer', () => {
     'journal_read',
     'journal_delete',
     'credential',
+    'credential_unmount',
     'journal_commit',
     'welcome_account_change',
     'capture_account_change',
@@ -132,22 +141,22 @@ describe('committed social authentication reaches its real UI consumer', () => {
         AccountStorage.captureAccountSessionBoundary as jest.Mock
       ).getMockImplementation()!;
       let captureDelayed = false;
-      (AccountStorage.captureAccountSessionBoundary as jest.Mock).mockImplementation(
-        async () => {
-          const boundary = await captureBoundary();
-          if (
-            stage === 'capture_account_change' &&
-            !captureDelayed &&
-            extractApiToken(peekSecureSession().session) === 'completed-bearer'
-          ) {
-            captureDelayed = true;
-            receiptStarted();
-            await receipt;
-          }
-          AccountStorage.assertAccountSessionBoundary(boundary);
-          return boundary;
-        },
-      );
+      (
+        AccountStorage.captureAccountSessionBoundary as jest.Mock
+      ).mockImplementation(async () => {
+        const boundary = await captureBoundary();
+        if (
+          stage === 'capture_account_change' &&
+          !captureDelayed &&
+          extractApiToken(peekSecureSession().session) === 'completed-bearer'
+        ) {
+          captureDelayed = true;
+          receiptStarted();
+          await receipt;
+        }
+        AccountStorage.assertAccountSessionBoundary(boundary);
+        return boundary;
+      });
       (SecureStore.getItemAsync as jest.Mock).mockImplementation(async key => {
         if (
           stage === 'journal_read' &&
@@ -162,7 +171,8 @@ describe('committed social authentication reaches its real UI consumer', () => {
       (SecureStore.setItemAsync as jest.Mock).mockImplementation(
         async (key, value) => {
           if (
-            (stage === 'credential' && key === 'rokn.auth.api-token.v2') ||
+            (stage.startsWith('credential') &&
+              key === 'rokn.auth.api-token.v2') ||
             (stage === 'journal_commit' &&
               key === PENDING_SOCIAL_AUTH_KEY &&
               value.includes('completedSession'))
@@ -218,6 +228,7 @@ describe('committed social authentication reaches its real UI consumer', () => {
         await act(async () => {
           renderer.root.findByType(SocialAuthView).props.onContinue('google');
           await receiptReady;
+          if (stage === 'credential_unmount') renderer.unmount();
           if (stage.endsWith('account_change')) {
             await saveSecureSession({
               api_token: 'replacement-bearer',
@@ -234,14 +245,16 @@ describe('committed social authentication reaches its real UI consumer', () => {
           }
           await jest.advanceTimersByTimeAsync(800);
         });
-        if (stage === 'credential' || stage === 'journal_commit') {
+        if (stage.startsWith('credential') || stage === 'journal_commit') {
           expect(extractApiToken(peekSecureSession().session)).not.toBe(
             session.api_token,
           );
           expect(mockDispatch).not.toHaveBeenCalled();
-          expect(renderer.root.findByType(SocialAuthView).props.loading).toBe(
-            'google',
-          );
+          if (stage !== 'credential_unmount') {
+            expect(renderer.root.findByType(SocialAuthView).props.loading).toBe(
+              'google',
+            );
+          }
         } else if (stage.endsWith('account_change')) {
           expect(extractApiToken(peekSecureSession().session)).toBe(
             'replacement-bearer',
@@ -294,7 +307,9 @@ describe('committed social authentication reaches its real UI consumer', () => {
           renderer?.unmount();
         });
         jest.useRealTimers();
-        (AccountStorage.captureAccountSessionBoundary as jest.Mock).mockImplementation(captureBoundary);
+        (
+          AccountStorage.captureAccountSessionBoundary as jest.Mock
+        ).mockImplementation(captureBoundary);
       }
       if (stage.endsWith('account_change')) {
         expect(mockDispatch).not.toHaveBeenCalled();

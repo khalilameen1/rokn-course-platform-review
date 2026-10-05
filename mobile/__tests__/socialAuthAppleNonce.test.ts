@@ -50,7 +50,10 @@ jest.mock('../src/services/secureSession', () => ({
 }));
 
 import {signInWithSocialProvider} from '../src/services/socialAuth';
-import {deletePendingSocialAuthAttempt} from '../src/services/secureSession';
+import {
+  deletePendingSocialAuthAttempt,
+  savePendingSocialAuthAttempt,
+} from '../src/services/secureSession';
 
 describe('Apple sign-in nonce binding', () => {
   beforeEach(() => {
@@ -80,6 +83,69 @@ describe('Apple sign-in nonce binding', () => {
       },
     });
   });
+
+  it.each(['availability', 'nonce', 'journal'])(
+    'does not open native Apple sign-in after retiring during %s preparation',
+    async stage => {
+      let release!: () => void;
+      let entered!: () => void;
+      const ready = new Promise<void>(resolve => {
+        entered = resolve;
+      });
+      const blocked = new Promise<void>(resolve => {
+        release = resolve;
+      });
+      const wait = async () => {
+        entered();
+        await blocked;
+      };
+      if (stage === 'availability')
+        mockAppleAvailability.mockImplementationOnce(async () => {
+          await wait();
+          return true;
+        });
+      if (stage === 'nonce')
+        mockGetRandomBytes.mockImplementationOnce(async () => {
+          await wait();
+          return Uint8Array.from({length: 32}, (_, index) => index);
+        });
+      if (stage === 'journal')
+        (savePendingSocialAuthAttempt as jest.Mock).mockImplementationOnce(
+          wait,
+        );
+      let current = true;
+      const started = jest.fn();
+      const pending = signInWithSocialProvider(
+        'apple',
+        {
+          providers: ['apple'],
+          authorizationUrls: {},
+          authorizationApiUrl: 'https://rokn.app/api/v1',
+          welcomeBonus: null,
+          recommendedProvider: 'apple',
+          recommendationText: null,
+        },
+        {canStart: () => current, onProviderStarted: started},
+      );
+      const rejection = (async () => {
+        await expect(pending).rejects.toThrow('LOGIN_CANCELLED');
+      })();
+      await ready;
+      current = false;
+      release();
+      await rejection;
+      expect(mockAppleSignIn).not.toHaveBeenCalled();
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(started).not.toHaveBeenCalled();
+      if (stage === 'journal') {
+        expect(deletePendingSocialAuthAttempt).toHaveBeenCalledWith(
+          (savePendingSocialAuthAttempt as jest.Mock).mock.calls[0][0],
+        );
+      } else {
+        expect(savePendingSocialAuthAttempt).not.toHaveBeenCalled();
+      }
+    },
+  );
 
   it('sends the SHA-256 nonce to Apple and only its random preimage to the API', async () => {
     const rawNonce = Array.from({length: 32}, (_, index) =>

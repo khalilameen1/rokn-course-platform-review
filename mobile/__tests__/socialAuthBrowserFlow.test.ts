@@ -75,6 +75,52 @@ import {
 } from '../src/services/secureSession';
 
 describe('browser social auth launch', () => {
+  it('does not open Android auth when its raw PKCE journal finishes after departure', async () => {
+    let release!: () => void;
+    let entered!: () => void;
+    const saved = new Promise<void>(resolve => {
+      entered = resolve;
+    });
+    const journal = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    (savePendingSocialAuthAttempt as jest.Mock).mockImplementationOnce(
+      async () => {
+        entered();
+        await journal;
+      },
+    );
+    let current = true;
+    const started = jest.fn();
+    const opensBefore = mockNativeAuthBrowser.mock.calls.length;
+    const pending = signInWithSocialProvider(
+      'google',
+      {
+        providers: ['google'],
+        authorizationUrls: {
+          google: 'https://rokn.app/api/v1/social-auth/google/start',
+        },
+        authorizationApiUrl: 'https://rokn.app/api/v1',
+        welcomeBonus: null,
+        recommendedProvider: 'google',
+        recommendationText: null,
+      },
+      {canStart: () => current, onProviderStarted: started},
+    );
+    const rejection = (async () => {
+      await expect(pending).rejects.toThrow('LOGIN_CANCELLED');
+    })();
+    await saved;
+    current = false;
+    release();
+    await rejection;
+    expect(mockNativeAuthBrowser).toHaveBeenCalledTimes(opensBefore);
+    expect(started).not.toHaveBeenCalled();
+    const writes = (savePendingSocialAuthAttempt as jest.Mock).mock.calls;
+    const attempt = writes[writes.length - 1]?.[0];
+    expect(deletePendingSocialAuthAttempt).toHaveBeenLastCalledWith(attempt);
+  });
+
   it('opens a deterministic encoded PKCE request on Android', async () => {
     mockNativeAuthBrowser.mockImplementation(async (url: string) => {
       const attempt = new URL(url).searchParams.get('code_challenge');

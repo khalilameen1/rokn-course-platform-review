@@ -6,26 +6,51 @@ import {
 } from '../src/constants/distribution';
 import {CoursePurchaseDialog} from '../src/screens/CourseDetails/details/PurchaseDialogs';
 import type {CourseAccessPlan} from '../src/services/roknApi';
+import type {CourseCheckout} from '../src/services/api/courseCheckout';
+import type {CoinPackage} from '../src/services/api/coinPackageMapper';
 
 const mockConfirm = jest.fn();
 let mockBusy = false;
 let mockPending = false;
+let mockQuoteChannel: CourseCheckout['channel'] = 'direct';
+const mockCoinPackage: CoinPackage = {
+  id: '1',
+  coins: 400,
+  price: 20,
+  label: 'اشتراك الكورس',
+  displayPrice: '٢٠ ج م',
+  currency: 'EGP',
+};
+const mockQuote: CourseCheckout = {
+  id: 'checkout-3',
+  channel: 'direct',
+  fundingMode: 'exact_shortfall',
+  status: 'quoted',
+  courseId: '3',
+  courseRevision: 1,
+  planCode: 'basic',
+  originalPrice: 500,
+  discountAmount: 0,
+  finalPrice: 500,
+  paidCoins: 400,
+  rewardCoins: 100,
+  paidBalance: 0,
+  rewardBalance: 100,
+  deficit: 400,
+  remainingPaidCoins: 0,
+  remainingRewardCoins: 0,
+  expiresAt: '2026-10-06T12:00:00.000Z',
+  packages: [mockCoinPackage],
+};
 jest.mock('../src/hooks/useCourseSubscriptionCheckout', () => ({
   useCourseSubscriptionCheckout: () => ({
     quote: {
-      status: 'quoted',
-      planCode: 'basic',
-      originalPrice: 500,
-      discountAmount: 0,
-      finalPrice: 500,
-      paidCoins: 400,
-      rewardCoins: 100,
-      paidBalance: 0,
-      rewardBalance: 100,
-      deficit: 400,
-      remainingPaidCoins: 0,
+      ...mockQuote,
+      channel: mockQuoteChannel,
+      fundingMode:
+        mockQuoteChannel === 'direct' ? 'exact_shortfall' : 'package',
     },
-    coinPackage: {id: '1', coins: 400, price: 20, displayPrice: '٢٠ ج م'},
+    coinPackage: mockCoinPackage,
     loading: false,
     busy: mockBusy,
     pending: mockPending,
@@ -112,6 +137,7 @@ describe('compact course subscription sheet', () => {
     jest.clearAllMocks();
     mockBusy = false;
     mockPending = false;
+    mockQuoteChannel = 'direct';
   });
   async function mount(selectedPlan = plans[1], grantActivated = false) {
     const onSelectPlan = jest.fn();
@@ -201,6 +227,27 @@ describe('compact course subscription sheet', () => {
     );
     await act(() => view.renderer.unmount());
   });
+
+  it.each<CourseCheckout['channel']>(['direct', 'google', 'apple'])(
+    'uses the quoted payment channel for reward copy on %s',
+    async channel => {
+      mockQuoteChannel = channel;
+      const view = await mount();
+      try {
+        const tree = JSON.stringify(view.renderer.toJSON());
+        expect(tree).toContain(
+          channel === 'direct' ? 'حصلت على خصم' : 'من مكافآتك',
+        );
+        expect(tree).not.toContain(
+          channel === 'direct' ? 'من مكافآتك' : 'حصلت على خصم',
+        );
+        expect(tree).toContain('المطلوب دفعه');
+        expect(tree).toContain('٢٠ ج م');
+      } finally {
+        await act(() => view.renderer.unmount());
+      }
+    },
+  );
 
   it('shows the selected plan limits directly without a details step', async () => {
     const view = await mount();

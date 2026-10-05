@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "generatedFrom": "package-lock.json production dependency closure",
-  "packageCount": 734,
-  "packagePathCount": 817,
-  "inventoryHash": "b5e3f3200a352c57eea7b66b50d9d903bf708c08725ad0eac51d212fe66b2d07",
+  "packageCount": 735,
+  "packagePathCount": 818,
+  "inventoryHash": "5f47e379a80983759233c5aa73b2c3f9cd6536a1eb6cab48c28fec143e866c09",
   "packages": [
     {
       "name": "@babel/code-frame",
@@ -2026,6 +2026,16 @@
       "apacheNotice": null
     },
     {
+      "name": "@react-native-community/netinfo",
+      "version": "11.5.2",
+      "license": "MIT",
+      "declaredLicense": "MIT",
+      "sourceUrl": "https://www.npmjs.com/package/%40react-native-community%2Fnetinfo/v/11.5.2",
+      "legalSource": "package-root",
+      "legalFileCount": 1,
+      "apacheNotice": null
+    },
+    {
       "name": "@react-native-firebase/app",
       "version": "26.3.2",
       "license": "Apache-2.0",
@@ -2847,10 +2857,10 @@
     },
     {
       "name": "axios",
-      "version": "1.19.0",
+      "version": "1.20.0",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/axios/v/1.19.0",
+      "sourceUrl": "https://www.npmjs.com/package/axios/v/1.20.0",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
@@ -3097,20 +3107,20 @@
     },
     {
       "name": "brace-expansion",
-      "version": "1.1.18",
+      "version": "1.1.21",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/brace-expansion/v/1.1.18",
+      "sourceUrl": "https://www.npmjs.com/package/brace-expansion/v/1.1.21",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null
     },
     {
       "name": "brace-expansion",
-      "version": "5.0.9",
+      "version": "5.0.12",
       "license": "MIT",
       "declaredLicense": "MIT",
-      "sourceUrl": "https://www.npmjs.com/package/brace-expansion/v/5.0.9",
+      "sourceUrl": "https://www.npmjs.com/package/brace-expansion/v/5.0.12",
       "legalSource": "package-root",
       "legalFileCount": 1,
       "apacheNotice": null

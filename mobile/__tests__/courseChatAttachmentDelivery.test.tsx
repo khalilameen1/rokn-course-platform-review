@@ -199,7 +199,6 @@ describe('uploaded course chat attachment delivery', () => {
       recordServerBlock: jest.fn(),
       scheduleScrollToEnd: jest.fn(),
       setInput: jest.fn(),
-      upgraded: false,
     };
     const Harness = () => {
       turn = useCourseChatTurn(params);

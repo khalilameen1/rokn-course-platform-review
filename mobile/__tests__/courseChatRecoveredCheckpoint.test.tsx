@@ -99,7 +99,6 @@ describe('recovered course chat checkpoint arrival', () => {
         recordServerBlock: jest.fn(),
         scheduleScrollToEnd: jest.fn(),
         setInput: jest.fn(),
-        upgraded: false,
       };
       const Harness = ({interactive}: {interactive: boolean}) => {
         const [messages, setMessages] = useState(messagesRef.current);

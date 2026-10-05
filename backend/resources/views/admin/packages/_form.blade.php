@@ -4,6 +4,11 @@
 @endphp
 @error('package')<div class="alert alert-danger">{{ $message }}</div>@enderror
 @error('channels')<div class="alert alert-danger">{{ $message }}</div>@enderror
+<div class="alert alert-info">
+    شراء اشتراك الكورس عبر كاشير يحسب الجزء الناقص فقط بنفس نسبة السعر إلى العملات هنا وبعد خصم الدفع المحلي
+    لا يشتري الطالب الحزمة كاملة ولا يحصل على رصيد زائد
+    منتجات Google Play وApp Store وشراء الحزمة منفردة تحتفظ بالسعر والرصيد الكاملين
+</div>
 <div class="row form-group">
     <div class="col col-md-3"><label for="name_ar" class="form-control-label">الاسم بالعربية</label></div>
     <div class="col-12 col-md-9"><input type="text" id="name_ar" name="name_ar" maxlength="255" class="form-control" value="{{ old('name_ar', $current?->name_ar) }}" required></div>

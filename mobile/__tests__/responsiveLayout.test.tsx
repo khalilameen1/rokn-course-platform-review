@@ -1,6 +1,6 @@
 import React from 'react';
 import TestRenderer, {act} from 'react-test-renderer';
-import {Spacing, useResponsiveLayout} from '../src/constants/designSystem';
+import {useResponsiveLayout} from '../src/constants/designSystem';
 
 let mockDimensions = {width: 360, height: 720, scale: 2, fontScale: 1};
 jest.mock('react-native/Libraries/Utilities/useWindowDimensions', () => ({
@@ -41,8 +41,6 @@ const viewports = [
     gridGap: 12,
     gridCardWidth: 156,
     railCardWidth: 187.2,
-    featuredHorizontal: false,
-    largeTextImageHeight: 182.25,
   },
   {
     name: '800dp tablet',
@@ -56,8 +54,6 @@ const viewports = [
     gridGap: 18,
     gridCardWidth: 236,
     railCardWidth: 240,
-    featuredHorizontal: true,
-    largeTextImageHeight: 340,
   },
   {
     name: '1280dp landscape tablet',
@@ -71,8 +67,6 @@ const viewports = [
     gridGap: 18,
     gridCardWidth: 276,
     railCardWidth: 276,
-    featuredHorizontal: true,
-    largeTextImageHeight: 340,
   },
 ];
 
@@ -156,7 +150,6 @@ describe('responsive layout from native dimensions', () => {
         gridColumns: viewport.gridColumns,
         gridGap: viewport.gridGap,
         largeText: false,
-        featuredHorizontal: viewport.featuredHorizontal,
       }),
     );
     expect(layout.gridCardWidth).toBeCloseTo(viewport.gridCardWidth);
@@ -166,43 +159,48 @@ describe('responsive layout from native dimensions', () => {
       layout.gridCardWidth * layout.gridColumns +
         layout.gridGap * (layout.gridColumns - 1),
     ).toBeCloseTo(availableWidth);
-    const expectedImageWidth = viewport.featuredHorizontal
-      ? (availableWidth - Spacing.xl) * 0.58
-      : availableWidth;
-    expect(layout.featuredImageWidth).toBeCloseTo(expectedImageWidth);
-    expect(layout.featuredImageHeight).toBeCloseTo(
-      Math.min(viewport.isTablet ? 340 : 196, expectedImageWidth * (9 / 16)),
+    expect(layout.featuredCardWidth).toBeCloseTo(availableWidth);
+    expect(layout.featuredCardMinHeight).toBeCloseTo(
+      Math.min(
+        viewport.isTablet ? 520 : 480,
+        Math.max(408, availableWidth * 1.24),
+      ),
     );
   });
 
-  it.each(viewports)('stacks the hero at font scale 1.5 on $name', viewport => {
-    const layout = readLayout({
-      width: viewport.width,
-      height: viewport.height,
-      scale: 1.5,
-      fontScale: 1.5,
-    });
-    expect(layout.largeText).toBe(true);
-    expect(layout.featuredHorizontal).toBe(false);
-    expect(layout.featuredImageWidth).toBe(
-      viewport.contentWidth - viewport.gutter * 2,
-    );
-    expect(layout.featuredImageHeight).toBeCloseTo(
-      viewport.largeTextImageHeight,
-    );
-  });
-
-  it.each([320, 360, 390, 430])(
-    'leaves room for the catalogue below the feature on a %idp phone',
-    width => {
-      const layout = readLayout({width, height: 720, scale: 2, fontScale: 1});
-      expect(layout.featuredHorizontal).toBe(false);
-      expect(layout.featuredImageHeight).toBeLessThanOrEqual(196);
-      expect(layout.featuredImageHeight).toBeGreaterThanOrEqual(160);
+  it.each(viewports)(
+    'retains the single hero frame at font scale 1.5 on $name',
+    viewport => {
+      const layout = readLayout({
+        width: viewport.width,
+        height: viewport.height,
+        scale: 1.5,
+        fontScale: 1.5,
+      });
+      expect(layout.largeText).toBe(true);
+      expect(layout.featuredCardWidth).toBe(
+        viewport.contentWidth - viewport.gutter * 2,
+      );
+      expect(layout.featuredCardMinHeight).toBeCloseTo(
+        Math.min(
+          viewport.isTablet ? 520 : 480,
+          Math.max(408, layout.featuredCardWidth * 1.24),
+        ),
+      );
     },
   );
 
-  it('also normalizes floating-point noise at the horizontal-hero cutoff', () => {
+  it.each([320, 360, 390, 430])(
+    'uses the approved tall composition on a %idp phone',
+    width => {
+      const layout = readLayout({width, height: 720, scale: 2, fontScale: 1});
+      expect(layout.featuredCardWidth).toBe(width - layout.gutter * 2);
+      expect(layout.featuredCardMinHeight).toBeLessThanOrEqual(480);
+      expect(layout.featuredCardMinHeight).toBeGreaterThanOrEqual(408);
+    },
+  );
+
+  it('keeps the hero frame stable across Android font-scale noise', () => {
     const layout = readLayout({
       width: 800,
       height: 1280,
@@ -210,7 +208,7 @@ describe('responsive layout from native dimensions', () => {
       fontScale: 1.4999999523162842,
     });
     expect(layout.fontScale).toBe(1.5);
-    expect(layout.featuredHorizontal).toBe(false);
-    expect(layout.featuredImageWidth).toBe(744);
+    expect(layout.featuredCardWidth).toBe(744);
+    expect(layout.featuredCardMinHeight).toBe(520);
   });
 });

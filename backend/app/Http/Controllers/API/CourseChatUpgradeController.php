@@ -17,6 +17,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Services\CourseEntitlementService;
 use App\Services\CourseAccessPlanService;
+use App\Services\CoursePlanUpgradeEligibilityService;
 use App\Services\FinancialAnomalyService;
 use App\Services\FinancialProvenanceService;
 use App\Services\PackageChannelPricingService;
@@ -32,7 +33,8 @@ use Illuminate\Support\Str;
  */
 final class CourseChatUpgradeController extends Controller
 {
-    public function __construct(private readonly PackageChannelPricingService $packagePricing)
+    public function __construct(private readonly PackageChannelPricingService $packagePricing,
+        private readonly CoursePlanUpgradeEligibilityService $upgrades)
     {
     }
 
@@ -47,7 +49,9 @@ final class CourseChatUpgradeController extends Controller
         $user = auth('api')->user();
         $validated = $request->validate([
             'target_plan_code' => 'nullable|string|in:guided,mentor',
+            'required_feature' => 'nullable|string|in:chat,project_discussion',
         ]);
+        $requiredFeature = $validated['required_feature'] ?? null;
         $requestedCode = isset($validated['target_plan_code'])
             ? (string) $validated['target_plan_code']
             : null;
@@ -70,6 +74,7 @@ final class CourseChatUpgradeController extends Controller
                 $enrollment,
                 $plans,
                 $requestedCode,
+                $requiredFeature,
                 $entitlement,
                 $user,
                 $wallet
@@ -78,11 +83,24 @@ final class CourseChatUpgradeController extends Controller
                     ->sharedLock()
                     ->findOrFail($enrollment->course_id);
                 $enrollment->setRelation('course', $paidCourse);
+                $offers = $this->upgrades->availablePlans($paidCourse, $enrollment, $requiredFeature);
+                $offerCodes = $offers->pluck('code')->values()->all();
+                if (!$requestedCode && $offers->isEmpty()) {
+                    if ($requiredFeature === null && $entitlement['chat_available']) {
+                        return ['already_upgraded' => true, 'course' => $paidCourse,
+                            'terms' => $plans->termsForEnrollment($enrollment), 'available_plan_codes' => []];
+                    }
+                    return ['already_upgraded' => false, 'payload' => [
+                        ...$this->quotePayload($user->fresh(), $paidCourse, 0, $wallet),
+                        'upgrade_available' => false, 'available_plan_codes' => [],
+                    ]];
+                }
                 $targetPlan = $this->targetPlan(
                     $paidCourse,
                     $enrollment,
                     $plans,
-                    $requestedCode
+                    $requestedCode,
+                    $requiredFeature
                 );
 
                 if ($entitlement['chat_available'] && !$targetPlan) {
@@ -92,6 +110,7 @@ final class CourseChatUpgradeController extends Controller
                         'already_upgraded' => true,
                         'course' => $paidCourse,
                         'terms' => $terms,
+                        'available_plan_codes' => $offerCodes,
                     ];
                 }
 
@@ -102,13 +121,13 @@ final class CourseChatUpgradeController extends Controller
 
                 return [
                     'already_upgraded' => false,
-                    'payload' => $this->quotePayload(
+                    'payload' => [...$this->quotePayload(
                         $user->fresh(),
                         $paidCourse,
                         $price,
                         $wallet,
                         $targetPlan
-                    ),
+                    ), 'upgrade_available' => true, 'available_plan_codes' => $offerCodes],
                 ];
             }, 3);
         } catch (\DomainException $exception) {
@@ -138,6 +157,8 @@ final class CourseChatUpgradeController extends Controller
                 'message' => 'الفئة المختارة مفعّلة بالفعل',
                 'data' => [
                     'already_upgraded' => true,
+                    'upgrade_available' => false,
+                    'available_plan_codes' => $quote['available_plan_codes'],
                     'chat_available' => (bool) $entitlement['chat_available'],
                     'certificate_available' => (bool) ($quote['terms']['certificate_enabled'] ?? true),
                     'course_revision' => $this->publishedRevision($quote['course']),
@@ -281,52 +302,14 @@ final class CourseChatUpgradeController extends Controller
         Course $course,
         CourseEnrollment $enrollment,
         CourseAccessPlanService $plans,
-        ?string $requestedCode = null
+        ?string $requestedCode = null,
+        ?string $requiredFeature = null
     ): ?CourseAccessPlan
     {
-        // Purchases retain these exact terms in their order snapshot. A
-        // concurrent catalogue edit affects the next quote, never this debit.
-        $available = $plans->publicPlans($course)->filter(
-            fn (CourseAccessPlan $plan): bool => in_array($plan->code, [CourseAccessPlan::GUIDED, CourseAccessPlan::MENTOR], true)
-        )->values();
-        if ($available->isEmpty()) {
-            return null;
+        if (!$requestedCode) {
+            return $this->upgrades->availablePlans($course, $enrollment, $requiredFeature)->first();
         }
-        $currentTerms = $plans->termsForEnrollment($enrollment);
-        $currentCode = (string) ($currentTerms['code'] ?? '');
-        $currentRank = $this->planRank(
-            $currentCode,
-            (int) ($currentTerms['sort_order'] ?? 0)
-        );
-        if (
-            !$currentTerms
-            && $enrollment->order
-            && $enrollment->order->payment_method !== Order::PAYMENT_METHOD_COURSE_CODE
-        ) {
-            // Legacy paid enrollments retain their original chat entitlement.
-            return null;
-        }
-        if ($requestedCode) {
-            $requested = $available->firstWhere('code', $requestedCode);
-            if (!$requested) {
-                throw new \DomainException('full_track_upgrade_not_available');
-            }
-            if (
-                $currentTerms
-                && $this->planRank((string) $requested->code, (int) $requested->sort_order) <= $currentRank
-            ) {
-                throw new \DomainException('full_track_upgrade_not_available');
-            }
-            return $requested;
-        }
-
-        // Legacy clients without an explicit target still advance from their
-        // current tier. Looking only at the first chat tier incorrectly made a
-        // guided learner appear fully upgraded while a mentor tier existed.
-        return $available->first(
-            fn (CourseAccessPlan $plan): bool => !$currentTerms
-                || $this->planRank((string) $plan->code, (int) $plan->sort_order) > $currentRank
-        );
+        return $this->upgrades->targetPlan($course, $enrollment, $requestedCode, $requiredFeature);
     }
 
     private function upgradePrice(
@@ -340,7 +323,7 @@ final class CourseChatUpgradeController extends Controller
             return null;
         }
 
-        return app(\App\Services\CoursePlanUpgradeAction::class)->upgradePrice($course, $enrollment, $targetPlan, $plans);
+        return $this->upgrades->upgradePrice($course, $enrollment, $targetPlan);
     }
 
     /** @return array<string,mixed> */
@@ -434,16 +417,6 @@ final class CourseChatUpgradeController extends Controller
 
         return $targetPlanCode === null
             || (string) data_get($order->access_plan_snapshot, 'code') === $targetPlanCode;
-    }
-
-    private function planRank(string $code, int $storedSortOrder): int
-    {
-        return match ($code) {
-            'basic' => 10,
-            'guided' => 20,
-            'mentor' => 30,
-            default => max(0, $storedSortOrder),
-        };
     }
 
     private function publishedRevision(Course $course): int

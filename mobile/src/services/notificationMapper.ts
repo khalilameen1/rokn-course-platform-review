@@ -20,6 +20,7 @@ export type Notification = {
   link?: string;
   courseId?: string;
   imageUrl?: string;
+  homeCourse?: {id: string; title: string; imageUrl: string};
   actionLabel: string;
   kind: NotificationKind;
   tone: 'learning' | 'project' | 'coins';

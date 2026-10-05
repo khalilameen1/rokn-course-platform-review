@@ -36,6 +36,7 @@ export function useSavedFolderPicker({
   const [name, setName] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const generationRef = useRef(0);
   const loadingRef = useRef(false);
   const creatingRef = useRef(false);
@@ -62,6 +63,7 @@ export function useSavedFolderPicker({
     setName('');
     setCreating(false);
     setError('');
+    setLoadError('');
   }, [close, ownerKey]);
 
   useEffect(() => {
@@ -81,39 +83,60 @@ export function useSavedFolderPicker({
     [ownerKey],
   );
 
+  const loadFolders = useCallback(
+    (generation: number, requireFresh = false) => {
+      if (!stillOwned(generation) || loadingRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
+      void (async () => {
+        try {
+          const boundary = await captureAccountSessionBoundary();
+          if (!stillOwned(generation)) return;
+          assertAccountSessionBoundary(boundary);
+          const nextFolders = await (requireFresh
+            ? getSavedFolderOptions({requireFresh: true})
+            : getSavedFolderOptions());
+          assertAccountSessionBoundary(boundary);
+          if (stillOwned(generation)) {
+            setFolders(nextFolders);
+            setLoadError('');
+          }
+        } catch {
+          if (stillOwned(generation)) {
+            setLoadError('تعذّر تحميل قوائمك');
+          }
+        } finally {
+          if (generation === generationRef.current) loadingRef.current = false;
+          if (stillOwned(generation)) setLoading(false);
+        }
+      })();
+    },
+    [stillOwned],
+  );
+
   const open = useCallback(() => {
     if (!mountedRef.current || ownerRef.current !== ownerKey) return;
     if (!onBeforeOpen()) return;
     present();
     if (loadingRef.current) return;
     visitOpenRef.current = true;
-    loadingRef.current = true;
     const generation = ++generationRef.current;
-    setLoading(true);
     setError('');
-    void (async () => {
-      try {
-        const boundary = await captureAccountSessionBoundary();
-        if (!stillOwned(generation)) return;
-        assertAccountSessionBoundary(boundary);
-        const nextFolders = await getSavedFolderOptions();
-        assertAccountSessionBoundary(boundary);
-        if (stillOwned(generation)) setFolders(nextFolders);
-      } catch {
-        if (stillOwned(generation)) {
-          setError('تعذّر تحميل قوائمك الآن\nحاول مرة أخرى');
-        }
-      } finally {
-        if (generation === generationRef.current) loadingRef.current = false;
-        if (stillOwned(generation)) setLoading(false);
-      }
-    })();
-  }, [onBeforeOpen, ownerKey, present, stillOwned]);
+    setLoadError('');
+    loadFolders(generation);
+  }, [loadFolders, onBeforeOpen, ownerKey, present]);
 
   const visitGeneration = generationRef.current;
   const onDismiss = useCallback(() => {
     if (stillOwned(visitGeneration)) close();
   }, [close, stillOwned, visitGeneration]);
+  const retryFolders = useCallback(() => {
+    // Retry the read in this visit; do not re-present the modal, retire a
+    // pending creation, or use a stale callback from a closed lesson.
+    if (!loadError || creatingRef.current || !stillOwned(visitGeneration))
+      return;
+    loadFolders(visitGeneration, true);
+  }, [loadError, loadFolders, stillOwned, visitGeneration]);
   const saveInFolder = useCallback(
     (folder?: SavedFolderOption | null) => {
       if (!stillOwned(visitGeneration)) return;
@@ -184,8 +207,10 @@ export function useSavedFolderPicker({
     error,
     folders: visibleFolders,
     loading,
+    loadError,
     name,
     open,
+    retryFolders,
     saveInFolder,
     saveInWatchLater,
     setName,

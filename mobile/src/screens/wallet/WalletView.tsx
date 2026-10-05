@@ -14,7 +14,11 @@ import TabBar from '../../components/TabBar';
 import {Container, Content} from '../../components/containers/Containers';
 import {ResponsiveFrame, StatusView} from '../../components/ui/PremiumUI';
 import HeaderWithBack from '../../components/view/HeaderWithBack';
-import {AccordionArrowDown, SettingsHistoryIcon} from '../../assets/SVG';
+import {
+  MoreInfoIcon,
+  MoreSectionArrowLeft,
+  SettingsHistoryIcon,
+} from '../../assets/SVG';
 import {
   Palette,
   Spacing,
@@ -31,7 +35,7 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
   const navigation = useNavigation<RootNavigation>();
   const insets = useSafeAreaInsets();
   const {width, fontScale} = useResponsiveLayout();
-  const stacked = width < 360 || fontScale >= 1.3;
+  const stacked = fontScale >= 1.3 && width / fontScale < 360;
   const {
     ownerReady,
     serverSession,
@@ -116,12 +120,12 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                 height={23}
                 stroke={Palette.textMuted}
               />
+              <Text style={styles.historyLabel}>السجل</Text>
             </Pressable>
           </View>
           <View
             style={[styles.rewardsHero, stacked && styles.rewardsHeroStacked]}>
             <View style={styles.rewardsBalanceCopy}>
-              <Text style={styles.balanceCaption}>رصيدك</Text>
               <Text
                 accessibilityLabel="رصيد المكافآت"
                 accessibilityLiveRegion="polite"
@@ -130,21 +134,8 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
                   ? '—'
                   : formatArabicNumber(displayedRewardBalance)}
               </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setWalletModal('rules')}
-                style={({pressed}) => [
-                  styles.disclosure,
-                  pressed && styles.pressed,
-                ]}>
-                <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد</Text>
-                <AccordionArrowDown width={14} height={14} />
-              </Pressable>
             </View>
-            <RoknCoinStack
-              size={stacked ? 132 : 162}
-              style={styles.rewardsArt}
-            />
+            <RoknCoinStack size={102} style={styles.rewardsArt} />
           </View>
           {displayedBalance === null && walletStatus === 'loading' && (
             <Text style={styles.balanceHint}>جارٍ تحديث الرصيد</Text>
@@ -159,10 +150,25 @@ export const WalletView = ({controller}: {controller: WalletController}) => {
             </Pressable>
           )}
           <RewardsTaskList controller={controller} stacked={stacked} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="كيف يعمل الرصيد"
+            onPress={() => setWalletModal('rules')}
+            style={({pressed}) => [
+              styles.disclosure,
+              styles.helpDisclosure,
+              pressed && styles.pressed,
+            ]}>
+            <View style={styles.disclosureCopy}>
+              <MoreInfoIcon width={18} height={18} />
+              <Text style={styles.rulesLinkLabel}>كيف يعمل الرصيد</Text>
+            </View>
+            <MoreSectionArrowLeft width={14} height={14} />
+          </Pressable>
         </ResponsiveFrame>
       </Content>
       <TabBar />
-      <RewardsDetailsSheet controller={controller} stacked={stacked} />
+      <RewardsDetailsSheet controller={controller} />
     </Container>
   );
 };

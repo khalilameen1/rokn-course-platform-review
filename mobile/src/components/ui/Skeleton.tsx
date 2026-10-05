@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 
 import {
-  Accessibility,
   Palette,
   Radius,
   Spacing,
@@ -82,11 +81,11 @@ export const SkeletonBlock = ({
 
 export const CatalogueSkeleton = () => {
   const {
+    contentWidth,
     gutter,
     railCardWidth,
-    featuredHorizontal,
-    featuredImageWidth,
-    featuredImageHeight,
+    featuredCardWidth,
+    featuredCardMinHeight,
   } = useResponsiveLayout();
   return (
     <View
@@ -94,25 +93,18 @@ export const CatalogueSkeleton = () => {
       accessibilityLabel="جارٍ تجهيز الكورسات"
       accessibilityLiveRegion="polite"
       accessibilityRole="progressbar"
-      style={{paddingTop: Spacing.md}}>
-      <View
-        style={[
-          {paddingHorizontal: gutter},
-          featuredHorizontal && styles.featureWide,
-        ]}>
+      style={{
+        width: '100%',
+        maxWidth: contentWidth,
+        alignSelf: 'center',
+        paddingTop: Spacing.md,
+      }}>
+      <View style={{paddingHorizontal: gutter}}>
         <SkeletonBlock
-          height={featuredImageHeight}
-          width={featuredImageWidth}
+          height={featuredCardMinHeight}
+          width={featuredCardWidth}
           radius={Radius.lg}
         />
-        <View style={featuredHorizontal && styles.featureCopyWide}>
-          <SkeletonBlock height={16} width="28%" style={styles.cardTitle} />
-          <SkeletonBlock height={28} width="88%" style={styles.cardMeta} />
-          <SkeletonBlock height={20} width="44%" style={styles.cardMeta} />
-          <View style={styles.featureActions}>
-            <SkeletonBlock height={Accessibility.minTouchTarget} width={152} />
-          </View>
-        </View>
       </View>
       {[0, 1].map(section => (
         <View key={section} style={styles.section}>
@@ -130,11 +122,6 @@ export const CatalogueSkeleton = () => {
                   height={22}
                   style={styles.cardTitle}
                   width="88%"
-                />
-                <SkeletonBlock
-                  height={16}
-                  style={styles.cardMeta}
-                  width="55%"
                 />
               </View>
             ))}
@@ -225,13 +212,6 @@ export const SavedLibrarySkeleton = () => (
 const styles = StyleSheet.create({
   block: {backgroundColor: Palette.surfaceRaised},
   section: {marginTop: Spacing.xl},
-  featureWide: {...rtlRowStyle, alignItems: 'center', gap: Spacing.xl},
-  featureCopyWide: {flex: 1, minWidth: 0},
-  featureActions: {
-    ...rtlRowStyle,
-    justifyContent: 'flex-start',
-    marginTop: Spacing.sm,
-  },
   rail: {
     flexDirection: 'row',
     gap: Spacing.sm,

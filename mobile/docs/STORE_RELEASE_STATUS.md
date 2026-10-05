@@ -1,5 +1,543 @@
 # Store release status — 2026-09-14
 
+## Current local final-gate checkpoint — 2026-10-05
+
+This checkpoint concerns the dirty
+`rokn-course-platform-review-publish` checkout, not a newly built or uploaded
+binary. The September store/deployment entries below are historical evidence;
+they are not a fresh Console or production observation. No commit, push,
+deployment, native build or store change was performed in this gate turn.
+
+- A fresh full mobile JavaScript run after the dependency corrections passed
+  354 suites/3222 cases in
+  `mobile/.cache/final-gate-20261005/mobile-current-tree-full-tests-after-dependency-corrections.log`.
+  The older `mobile-current-tree-full-tests-accepted.log` predates those
+  corrections. Fresh TypeScript and release lint commands also passed in
+  session 22883 after these corrections, with zero diagnostics and the
+  unchanged `--max-warnings=0` lint policy. These separate results do not
+  imply native/device acceptance.
+- All 11 existing local headless-Chrome dashboard regression scripts passed.
+  They cover layout/shell, uploads/attachments, authoring receipts/order/drafts,
+  summaries and notification recipient ownership. Their local HTTP/provider
+  fixtures do not prove authenticated dashboard or live provider acceptance.
+  Notification rendering initially failed on the default PHP configuration;
+  the existing pinned PHP with normal required extensions passed all five
+  recipient cases without a source edit. Independent read-only reviews accepted
+  the bounded upload and notification evidence.
+- Fifteen dashboard public-asset/upload-module cases and the actual public
+  inventory verifier passed. The existing frontend notices generator restored
+  the missing 34-line Uppy adapted-control attribution/MIT block; its real
+  `--check` passed and independent review accepted that exact derived update.
+- The npm notices now cover the actual 735-coordinate/818-path closure,
+  including approved NetInfo 11.5.2. The unchanged fail-closed generator retains
+  610 package-root and 125 reviewed-absence records. Five full notice cases and
+  the actual inventory check passed. Android's real Gradle release resolver and
+  legal check now cover 241 Maven coordinates and 24 npm-source projects,
+  adding NetInfo alone; all 12 native-notice regression cases passed. Separate
+  independent reviews accepted both attribution units, not native binaries.
+- Release configuration, Expo dependency compatibility and the static
+  accessibility audit (465 files) passed. Both repository secret scanners ran
+  with `--history` and exited successfully, covering 1182 mobile and 2117
+  backend current files as well as their configured history checks. No secret
+  values were emitted.
+- PHP 8.4.24 loads GD and pdo_mysql normally; no security setting was disabled.
+  The fresh complete backend run after corrections finished in session 67921
+  with 2531 cases, 23193 assertions, zero errors/failures and six MySQL-only
+  skips. Each skipped class/method has a unique passed case in the separate
+  actual MySQL JUnit. The earlier 2529-case run in session 67649 failed the
+  avatar fixture; its original log/XML remain retained historical evidence,
+  not the current result. The production upload guard was not bypassed.
+
+### Single JavaScript CI release owner — 2026-10-05
+
+The existing JavaScript job invoked `test:release-scripts` separately and then
+again through `verify:release`. The separate invocation was removed from
+`.github/workflows/mobile-ci.yml`; the complete shared release owner is still
+invoked once. All eleven existing shared commands, their order, the child
+script-test suite, pre-install secret check and native jobs remain unchanged.
+This reuses the current release owner through the documented
+[npm scripts mechanism](https://docs.npmjs.com/cli/v10/using-npm/scripts/), not
+copied competitor code or a replacement verification system.
+
+The focused regression reads the actual workflow YAML and package manifest,
+checks the invocation counts and asserts the full unchanged command chain.
+It passed one case with no skips in
+`mobile-ci-release-gate-single-owner.log`, using pinned Node 24.19.0.
+Independent read-only review accepted the bounded removal of duplicate work.
+The complete script suite and remote CI were not rerun in this unit; this is
+not a full-gate, native-build or deployment acceptance.
+
+### Fresh complete backend gate after corrections — completed 2026-10-05
+
+One new full `vendor/bin/phpunit` invocation completed in session 67921.
+Before launch, the real bootstrapped Laravel runtime was verified as testing,
+SQLite `:memory:` with no database URL and the required PHP 8.4.24 extensions.
+The configured Unit and Feature suites discover 2531 cases, including the
+corrected avatar fixture and both actual migration rollback regressions.
+No production guard was removed. The actual invocation exited zero in
+22:15.790 with 2531 cases, 23193 assertions, zero errors/failures and six skips.
+JUnit separately confirms avatar parity at four cases/99 assertions and
+migration rollback at two cases/23 assertions, neither with skips or failures.
+
+Each of the six skipped SQLite class/method pairs was matched to exactly one
+passed, non-skipped case in `backend-mysql-local-contract-junit.xml`, with
+positive assertion counts. That real MySQL run remains 17 cases/126 assertions;
+it is not silently substituted for the SQLite configuration. Independent
+read-only review accepted both the complete current backend result and this
+exact skipped-case reconciliation, not Redis, Linux CI, live providers,
+devices, production or visual experience acceptance.
+
+Full output is retained without overwriting the earlier failed run in
+`backend-current-tree-full-tests-after-corrections.log` and
+`backend-current-tree-after-corrections-junit.xml`. Session 67921 is terminal;
+there is no live PHP test process to resume or restart.
+
+### Fresh full mobile JavaScript result — 2026-10-05
+
+The existing `npm run test:release` command was run once after the official
+Axios, Joi and brace-expansion dependency corrections, using pinned Node
+24.19.0/npm 10.9.3 and the CI-style production environment. Its existing
+`run-release-tests.js` owner switches Jest's React renderer to the intended
+test environment and invokes all configured suites with `--runInBand --ci
+--detectOpenHandles`. No test exclusion or relaxed runner was introduced.
+Session 78150 completed with exit zero: 354 suites, 3222 cases, no skipped or
+failed cases and no snapshots, in 87.234 seconds. Actual complete output is
+retained in `mobile-current-tree-full-tests-after-dependency-corrections.log`.
+
+Independent read-only review accepted the current JavaScript result only.
+The log includes intentional playback-error fixture messages and a React
+`act(...)` warning in `playbackRecovery.test.tsx`; it is not a warning-free
+run. No open-handle warning was observed. This run does not include the
+separate release-script tests, native binaries, authenticated/provider/device
+integration or remote CI. The unresolved dependency audit and iOS NetInfo
+Pod lock remain separate release gaps, not passed by this Jest result.
+
+### Complete current release-script regression result — 2026-10-05
+
+The separate existing `npm run test:release-scripts` gate was run once with
+pinned Node 24.19.0/npm 10.9.3 and the CI-style production environment.
+Session 16470 completed with exit zero: 102 tests, 102 passes, zero failures,
+skips, cancellations or TODOs, in 24088.0762 milliseconds. Full evidence is
+retained in `mobile-current-tree-release-script-tests.log`.
+
+The command includes all fifteen current `scripts/tests/*.test.js` files,
+including the native-lock branch-owner and single JavaScript CI-owner
+regressions. Independent read-only review accepted that exact tooling scope,
+with no filtering or disabled cases observed. This is distinct from the
+354-suite Jest result and does not prove Kotlin/native probes, compilation,
+remote CI, devices, providers or overall release acceptance.
+
+A read-only GitHub check also confirmed the authorized public repository
+`khalilameen1/rokn-course-platform-review` is available with push permission.
+Local remote `cloud` points there; `origin` points to the different owner
+`khalilameen`. No remote, branch, commit or permission was changed. The latest
+successful `refresh-ios-lock.yml` run is historical, not current-tree proof:
+[run 33970159396](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/33970159396)
+ran on September 5 at commit `0fb72675715b21018026f4092135180d13a1695f`.
+No workflow dispatch, push or deployment was performed. The current iOS lock
+gap remains open, and a future deployment still requires revalidating the
+actual server-bound source rather than assuming the `origin` remote is right.
+
+### Current TypeScript and application ESLint result — 2026-10-05
+
+After dependency corrections, the existing `npm run typecheck` and
+`npm run lint:release` commands completed in session 22883, each with exit zero,
+using pinned Node 24.19.0/npm 10.9.3 and the CI-style environment. Their actual
+commands remain `tsc --noEmit --pretty false` and ESLint for `App.tsx`,
+`index.js`, all source JS/JSX/TS/TSX and application tests with
+`--max-warnings=0`. No configuration or exclusions were relaxed. Npm command
+headers and no diagnostics are retained in
+`mobile-current-tree-typecheck-after-dependency-corrections.log` and
+`mobile-current-tree-lint-release-after-dependency-corrections.log`; the actual
+terminal result, not silence alone, confirms success.
+
+Independent read-only review accepted those exact scopes. Build/plugin and
+tooling JavaScript files are outside this ESLint command and are not claimed
+as linted here. The user's expanded goal includes a real candidate build,
+emulator verification and store upload after remaining issues are resolved;
+none of those has occurred in this final-gate checkpoint.
+
+### Official Axios dependency correction and remaining release gaps
+
+The current registry audit found new unresolved root advisories; its list of
+affected dependents is not a count of distinct product defects. Axios was
+handled as one unit, using the
+[maintainer's 1.20.0 release](https://github.com/axios/axios/releases/tag/v1.20.0)
+and [patched-version advisory](https://github.com/axios/axios/security/advisories/GHSA-x97p-jq2g-jp4f).
+The existing dependency was pinned from 1.19.0 to 1.20.0 and installed through
+the pinned Node/npm toolchain without lifecycle scripts or audit-force.
+No API, account, interceptor, upload or payment application source was changed.
+The exact registry tarball integrity is retained in the lock; other existing
+package versions did not change. Four Linux LightningCSS libc metadata fields
+observed missing during review were restored from their authoritative committed
+entries; every Linux LightningCSS entry now matches that baseline, with no
+version/OS/CPU/integrity change. This is not Linux installation acceptance.
+
+Four complete API/session suites passed 41 cases with the real Axios instance
+and controlled transport in `mobile-axios-api-owner-final.log`. The subsequent
+TypeScript command exited zero in session 24075; its empty output did not
+create a separate Tee log. Npm notices were regenerated for the actual package,
+then all five notice cases and the real check passed in
+`mobile-axios-notices-regression-final.log` and
+`mobile-axios-notices-check-final.log`. Independent read-only review accepted
+the Axios-only unit. Earlier full-suite evidence predates this update.
+
+### Joi maintenance correction — 2026-10-05
+
+The actual RN CLI consumers (`cli-config` and `cli-types` 20.2.0) already use
+Joi with range `^17.2.1`. The existing transitive library was updated from
+17.13.4 to the official 17.13.8 maintenance release, above the fixed 17.13.7
+threshold in the
+[maintainer advisory](https://github.com/hapijs/joi/security/advisories/GHSA-6h2x-m376-mqjq).
+No validation implementation, native integration or product flow was replaced.
+The initial installation succeeded but its postcheck expected exactly 17.13.7
+and exited one; subsequent actual installed/locked version, consumer semver,
+positive/negative RN schema and ISO-date assertions passed in
+`mobile-joi-consumer-final.log`. All Linux LightningCSS entries match their
+committed metadata after restoring npm's incidental libc-field removals.
+The actual CLI config command exited zero and retained its output in
+`mobile-joi-cli-config-current.json`, including both native platforms and NetInfo.
+
+The existing legal generator was rerun, then all five notice tests and its real
+check passed in `mobile-joi-notices-regression-final.log` and
+`mobile-joi-notices-check-final.log`. Counts remain 735/610/125: Joi is outside
+the generated production-notice closure, not a new notice entry. Its actual
+package root still retains BSD-3-Clause `LICENSE.md`. Independent read-only
+review accepted this bounded upstream-library correction. The current audit
+in `mobile-dependency-audit-after-joi.json` no longer lists Joi; it still fails
+on other advisories. Earlier full mobile results predate this update as well.
+
+### Brace-expansion maintenance correction — 2026-10-05
+
+All eleven existing locked paths were updated within their existing consumer
+major ranges to official maintenance fixes: 1.1.21, 2.1.7 and 5.0.12. The
+[maintainer advisory](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr)
+names those patched versions; no custom brace parser or framework migration
+was introduced. Existing Expo/glob/minimatch consumers actually reuse this
+library. All unrelated locked versions and Linux LightningCSS metadata match
+their prior baseline (apart from the separately approved NetInfo/Axios/Joi units).
+
+The first checker incorrectly treated a nested CommonJS manifest as the package
+root and failed; `mobile-brace-consumers-final.log` retains that intermediate
+evidence. Correct package-name root discovery passed all eleven installed
+libraries' ordinary/nested/numeric expansion checks and eleven real minimatch
+consumers' semver and positive/negative matches in
+`mobile-brace-consumers-accepted.log`. Actual Expo public config loaded both
+`com.rokn` platform identities in `mobile-brace-expo-config-final.log`.
+The existing legal generator, five notice cases and real check passed in the
+three `mobile-brace-notices-*` logs. MIT text and production coordinates/SRI
+were independently reviewed; the dev-only 2.1.7 path is correctly outside that
+closure. Counts remain 735/610/125. Independent read-only review accepted this
+bounded upstream correction. The fresh audit in
+`mobile-dependency-audit-after-brace.json` excludes brace-expansion, Joi and
+Axios, but other advisories still prevent acceptance. No native build is implied.
+
+### Backend avatar fixture and concrete rollback corrections — 2026-10-05
+
+The single failure in the completed 2529-case full run was addressed without
+changing the production upload guard. The avatar fixture now follows existing
+tracked image-upload tests: actual Laravel `migrate:fresh` in isolated testing
+SQLite, no outer test transaction. Its original API and both dashboard routes
+passed four cases/99 assertions in `backend-avatar-parity-fixture-final.log`
+and matching JUnit. Independent read-only review accepted that fixture unit.
+
+An intermediate DatabaseMigrations trial passed the avatar assertions but failed
+during historical migration teardown. Those failed logs remain evidence, not
+passes. Two concrete rollback defects found there were separately corrected:
+notification scheduling migration 79 and publication revision migration 72 now
+drop their own column indexes before the columns through existing Laravel Schema.
+Their forward migrations and product owners are unchanged. The actual owners'
+up/down/up/down regression passed two cases/23 assertions in
+`backend-publication-notification-migration-roundtrip.log`; each received bounded
+independent acceptance. No whole-historical-rollback or MySQL acceptance follows.
+The historical full backend run predates these corrections and remains
+recorded as failed. The subsequent complete current-source backend gate above
+now includes and passes these fixtures without bypassing production behavior.
+
+### Remaining dependency and integration evidence — 2026-10-05
+
+The post-brace registry audit still reports roots `@grpc/grpc-js`, `braces`,
+`node-forge` and the already separately reviewed moderate decode-uri-component
+advisory. Dependent entries in that report are not distinct product defects.
+The installed RN Firebase app 26.3.2 requires Firebase exactly 12.17.1, whose
+Firestore 4.17.0 requires gRPC `~1.9.0`. Registry inspection also found current
+Firestore 4.17.2 still requires `~1.9.0`, and latest RN Firebase app 26.4.0 still
+pins Firebase 12.17.1. Simply updating those parents would not resolve this root.
+The maintainer's patched gRPC versions (1.13.6/1.14.5) exceed that parent range;
+no forced override or native SDK upgrade was applied. The two gRPC advisories
+describe server-side behavior, not proof of reachability in this native client.
+That distinction does not make the current audit gate pass.
+
+### Actual native Metro dependency reachability — 2026-10-05
+
+The gRPC root was traced through the installed Firebase consumer rather than
+forcibly replacing its `~1.9.0` dependency. A fresh registry read still lists
+gRPC 1.9.16 as the last published 1.9 maintenance version; latest gRPC is
+1.14.5. Latest RN Firebase app 26.4.0 and Firestore 4.17.2 still retain the
+Firebase/grpc requirements above. No compatible upstream fix was installed.
+The maintainer's
+[authentication advisory](https://github.com/grpc/grpc-node/security/advisories/GHSA-m9gg-hp2v-232j)
+requires server-credential/getAuthContext behavior, and its
+[error-message advisory](https://github.com/grpc/grpc-node/security/advisories/GHSA-f596-whhp-79r4)
+also describes server behavior. These are not claims about native FCM acceptance.
+
+The actual existing Metro 0.83.8 `get-dependencies` command was run from the
+mobile workspace with the real `index.js`, production `--dev false` and each
+native platform. No replacement resolver or mocked import graph was used.
+The first invocation rejected an unsupported `--config` argument before
+building a graph; its failure remains in
+`mobile-metro-android-dependency-graph.log`. The corrected native commands
+used Metro's normal current-workspace config discovery and both exited zero
+in session 9100. Those corrected commands emitted no stdout/stderr, so
+Tee-Object did not create the proposed `*-dependency-graph-actual.log` files;
+their absence is not separate saved-log evidence. The actual path outputs are
+the corresponding `mobile-metro-*-dependencies.txt` files in the gate folder,
+and the subsequent non-empty/anchor checks are retained in the reachability log.
+
+The resulting Android/iOS graphs contain 2540/2536 paths respectively.
+The retained `mobile-metro-grpc-native-reachability.log` verifies non-empty
+graphs and real `index.js`, `App.tsx`, `nativePushTokens.ts` anchors. Both include
+23 RN Firebase app files and five messaging files. Android selects
+`nativeModule.android.js`, iOS selects `nativeModule.ios.js`, and both include
+the actual `nativeModuleAndroidIos.js` implementation, not `nativeModuleWeb.js`.
+Neither graph includes a module path from `@firebase/firestore` or
+`@grpc/grpc-js`. Output SHA-256 values are
+`83e2f3ab2d74a587d0fe6c836323b74fc800c0d71a7538ac0d0e40b4a691668b`
+and `4997f42f7e97af60d0ba47bee70e5b1e2bbfcd6cc2f4924e4d263f6448ca870b`.
+
+This bounds the gRPC finding: it is present in the npm-installed Node SDK
+closure, but is not shown reachable in these actual native JavaScript graphs.
+It is not a patched-package claim or proof about all build-tool paths, native
+APK/IPA contents, code execution on a real device, FCM registration/delivery or
+future graphs after source/config changes. node-forge/braces also had zero
+module paths in these graphs, but their build-tool consumers remain a separate
+unresolved unit. No package manifest, lock entry, Firebase integration source,
+production audit rule or high-severity exception was changed. The strict
+dependency audit remains failed; the graph result does not override it.
+Independent read-only review accepted the bounded graph classification after
+checking the actual Metro command owner, platform/entry anchors and both output
+hashes. The reviewer also confirmed the two proposed silent Tee logs do not
+exist; no missing log was represented as evidence. No graph or test was rerun
+by the reviewer, and no binary/tooling/audit-wide acceptance was inferred.
+
+### node-forge Expo tooling scope — 2026-10-05
+
+The installed/locked node-forge 1.4.0 has two direct consumers in the actual
+lock: Expo CLI 55.0.36 and `@expo/code-signing-certificates` 0.0.6, both with
+`^1.3.3`. The fresh registry read retained in
+`mobile-node-forge-registry-state.log` still names 1.4.0 as latest. The
+[reviewed advisory](https://github.com/advisories/GHSA-86w9-cpqp-85rv)
+lists affected versions through 1.4.0 and no patched version. The proposed
+[upstream fix PR 1152](https://github.com/digitalbazaar/forge/pull/1152)
+is open/unmerged, not a released maintainer remedy. No fork, cryptography
+replacement, unmerged patch, version relabeling or audit waiver was introduced.
+
+The retained `mobile-node-forge-expo-tooling-scope.log` comes from pinned Node
+24.19.0 and the real Expo public config loader, not a substituted config. It
+verifies both `com.rokn` identities, no configured update-signing certificate
+or metadata and no locked expo-updates package. Actual installed Expo
+`getCodeSigningInfoAsync` calls returned null for an absent signature header
+and a custom project key without a configured certificate. Its original guards
+rejected a private-key path without a certificate before reading that path and
+rejected the reserved expo-go signing key. No node-forge implementation module
+was loaded by those calls. The log retains hashes of the config/lock, relevant
+installed sources and both native build entry owners; no private key, token or
+certificate was read or generated by this probe.
+
+Source inspection distinguishes these paths rather than calling the library
+unused. Expo Go manifest middleware requests code-signing info and, when
+present, signs the generated manifest. The library actually verifies a supplied
+self-signed certificate, and its sign-and-verify helper verifies a signature
+just created with the supplied private key. Its exported CSR-issuance helper
+also verifies a CSR; this is a sensitive library API, not a Rokn payment or
+student-chat consumer. The inspected macOS signing-identity helper parses
+certificates returned by the local `security` tool; no signature verification
+was observed in that helper. These source inspections are not execution of
+the optional Expo-root network/cache signing branch or macOS keychain flow.
+
+Both native build entries select Expo `export:embed`. Its inspected installed
+owner starts Metro in exporting mode and calls `nativeExportBundleAsync`; this
+turn did not execute that command or establish every dynamically loaded tool
+path. The earlier actual native Metro graphs excluded node-forge, but that
+native JavaScript result does not prove absence from build tools or APK/IPA.
+The bounded probe narrows exposure; it neither repairs node-forge nor resolves
+the strict audit. A suitable maintained fix and release-wide dependency
+acceptance remain open. No product, backend/dashboard, lock or audit-policy
+source was changed by this diagnosis.
+
+Independent read-only review accepted this bounded diagnosis after matching all
+nine retained source hashes against the current files and inspecting the actual
+Expo call owners. The reviewer confirmed the distinction between executed
+configuration calls and unexecuted optional signing/build paths, and the open
+upstream advisory/PR status. No checks were rerun or files changed by the
+reviewer. This is diagnosis acceptance only: node-forge and the strict audit
+remain unresolved, with no APK/IPA or release acceptance.
+
+### braces installed-tooling scope — 2026-10-05
+
+Fresh registry reads retained in `mobile-braces-registry-state.log` and
+`mobile-micromatch-registry-state.log` still identify braces 3.0.3 and micromatch
+4.0.8 as latest; micromatch still requires braces `^3.0.3`. The
+[reviewed advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm)
+lists no patched release for recursive AST stack exhaustion. The proposed
+[upstream depth-guard PR 72](https://github.com/micromatch/braces/pull/72)
+is open/unmerged. No library substitution, private depth-guard backport,
+invented version, framework downgrade or high-severity exception was applied.
+This braces root is distinct from the separately corrected brace-expansion
+package; their names do not describe the same implementation or advisory.
+
+`mobile-braces-tooling-scope.log` records the actual installed lock relationships:
+micromatch is the sole direct braces consumer, with seven direct micromatch
+consumers in Metro, Jest and fast-glob. Four React Native CLI packages depend
+on fast-glob. Source inspection found Metro's watcher uses micromatch `some`;
+micromatch's ordinary match/isMatch operations delegate to picomatch, whereas
+its explicit parse/braces/braceExpand APIs call braces. Importing the shared
+micromatch module alone does not prove which parser a consumer executes.
+fast-glob's task preprocessing actually invokes `micromatch.braces` with
+expansion enabled. Its inspected React Native CLI owners include Podfile and
+podspec discovery, Android descriptor discovery and directory-clean tooling.
+No clean/delete command was invoked, and no assertion is made that every
+possible plugin or configured CLI pattern is trusted or harmless.
+
+Pinned Node 24.19.0 executed the original micromatch expansion, public fast-glob
+`generateTasks` and actual Metro watcher helper with ordinary nested
+directory/extension patterns. Expansion produced the four expected patterns,
+and Metro included the TSX path while excluding a PNG. These calls confirm the
+real owners and normal behavior; they do not fix or disprove the deeply nested
+input advisory. No attack-depth reproduction or full CLI/suite/build was run.
+The log retains fifteen relevant current-source hashes and reads back the
+previous actual Android/iOS Metro graphs, whose counts/hashes remain unchanged:
+no braces, micromatch or fast-glob module paths appear there. That is native
+JavaScript graph evidence only, not proof of all build-tool paths, student
+network-input isolation or APK/IPA contents. The strict audit remains unresolved,
+and no product, backend/dashboard, lock or audit-policy source changed here.
+
+Independent read-only review accepted the bounded braces diagnosis, matching
+all fifteen hashes, dependency relationships, actual matcher/expansion call
+owners and both retained native graphs. The reviewer confirmed that no patched
+release or merged upstream PR was available. No checks were rerun or source
+changed by the reviewer. The vulnerability and strict audit remain unresolved;
+this review does not accept a release or native binary.
+
+### MySQL integration gap identified by the full run
+
+The full backend JUnit's six skips are real MySQL-specific cases: project
+evaluation snapshot readback, four access-plan snapshot constraint/purchase
+cases and artwork storage schema parity. Local command inventory found no
+MySQL server/client, Redis server or Docker command; GitHub CLI exists. The
+existing backend CI defines actual MySQL 8.0.43/Redis 7.4.5 services, but no
+remote workflow was dispatched against stale remote source in this turn.
+Those integration cases are not accepted by the SQLite result.
+
+### Actual isolated MySQL contract run — 2026-10-05
+
+The earlier lack of a local MySQL server was resolved for the database-contract
+unit, without deploying or connecting to production. Oracle's official
+[Windows ZIP distribution](https://dev.mysql.com/downloads/mysql/8.0.html)
+was used through its documented
+[no-install archive flow](https://dev.mysql.com/doc/refman/8.0/en/windows-install-archive.html).
+The downloaded 8.0.46 archive matched Oracle's displayed MD5
+`003f527d5df61b663ff191038cd676bd`; its measured SHA-256 is
+`28e9eda019d88eff4478d811ea2110b83f02a3966be157fe91cc55def3ab0d4d`.
+Windows verified the actual mysqld executable's Oracle America signature as
+Valid. No Windows service, global PATH change or replacement database engine
+was installed.
+
+The temporary server bound only to `127.0.0.1:33367`, with a newly initialized
+task-specific data directory under the user's Temp directory. A dedicated
+`rokn_contract` user has privileges only on the newly created
+`rokn_final_gate_test` database. Before destructive schema replay, the actual
+bootstrapped Laravel connection was checked for testing environment, MySQL
+driver, exact database name, port and temporary data-directory identity.
+The first client identity check failed because MySQL's tabular output escaped
+backslashes; no database provisioning or replay occurred in that attempt.
+The corrected `--raw` identity check passed before provisioning. Both are
+tooling observations, not application behavior changes.
+
+The complete current-source forward schema replay passed all 389 migrations
+in `backend-mysql-local-schema-replay.log`. The existing schema-only preflight
+passed in `backend-mysql-local-schema-preflight.log`. The unchanged existing
+`backend/phpunit.mysql.xml` suite then ran with
+`ROKN_REQUIRE_MYSQL_CONTRACT_TEST=true` on PHP 8.4.24/pdo_mysql:
+17 tests/126 assertions, zero errors/failures/skips. Evidence is retained in
+`backend-mysql-local-contract.log` and `backend-mysql-local-contract-junit.xml`
+under the same final-gate directory. This executes all six MySQL-specific cases
+skipped by the earlier SQLite run, plus the existing publication-identity and
+snapshot regressions. No production guard, assertion or test gate was weakened.
+Independent read-only review accepted this bounded unit after inspecting the
+actual source, replay/preflight logs and JUnit. The reviewer did not rerun it
+and explicitly retained the Windows/version and release-scope limitations.
+
+This is actual Windows MySQL 8.0.46 database-contract evidence, not an execution
+of the Linux CI service pinned to 8.0.43. It does not establish Redis integration,
+historical database upgrades/complete rollback, full backend rerun, native
+binaries, live payment acceptance or production readiness. The earlier full
+backend failure remains historical failed evidence, not retrospectively green.
+After the contract run, the dedicated server was shut down through its own
+MySQL administrative command, following another exact data-directory identity
+check. Its log records clean shutdown and port 33367 no longer has a listener.
+The temporary binaries and isolated test database are retained for reproducible
+follow-up, not deleted or installed as a background Windows service.
+
+### Native lock refresh branch ownership correction — 2026-10-05
+
+The existing manual native-lock workflow previously forced both checkouts and
+all three fetch/rebase/push owners onto main, regardless of the selected
+workflow-dispatch ref. That made it unsuitable for validating the current
+candidate on an isolated branch. It now uses the event's branch consistently
+through `ROKN_LOCK_REFRESH_BRANCH`, rejects tags/invalid refs before checkout,
+and reads/writes only that branch. Values reach shell commands through quoted
+environment variables rather than interpolated command source. Explicit
+head/tracking refspecs replace the forced-main commands; no force push was added.
+
+This reuses the same pinned official actions/checkout and real Git flow already
+present in the repository, following its
+[selected-ref and push behavior](https://github.com/actions/checkout) and
+[GitHub event contexts](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts).
+It is a routing correction, not a new build system. Existing Node/npm, Java,
+Ruby/Bundler/CocoaPods, Android metadata/R8 tasks, native legal generation,
+reuse options, committed file lists and permissions were not replaced.
+
+The new focused `native-lock-refresh-branch.test.js` is registered in the
+existing release-script gate. It parses the actual workflow and executes its
+original branch guards and all three commit-step shell bodies using actual
+Git/Bash against disposable local bare origins. It verifies main behavior,
+an isolated codex branch and a legal shell-punctuation branch; each generated
+commit updates only its target, feature-branch runs leave main unchanged,
+no-change repeats create no commit, and native-lock stash/pop retains pending
+untracked legal work without uploading it. Tags, empty refs and invalid refs
+are rejected before checkout. No GitHub origin, production checkout, service
+account or credentials are used by those fixtures.
+
+The first fixture run failed because Windows Git could not read Node's null
+device path as global config; its failed log remains in
+`mobile-native-lock-branch-ownership.log`. The fixture now isolates Git with a
+nonexistent per-fixture global-config path, without changing workflow guards.
+The accepted focused run in `mobile-native-lock-branch-ownership-accepted.log`
+passed all six cases with no skips, including the existing native-metadata
+contract. This is actual local Git branch-routing evidence, not a dispatched
+GitHub run, native compilation or refreshed Podfile.lock. No remote branch,
+commit/push, CI dispatch, deployment or store upload was performed. The iOS
+NetInfo lock/provenance gap still requires the actual macOS flow on current
+source; the dependency audit and full release acceptance remain open.
+
+Independent read-only review accepted this branch-ownership correction after
+inspecting both checkout/guard owners, the three quoted fetch/rebase/push
+paths, the actual-shell fixture implementation, release-gate registration and
+the six-case accepted log. No tests were rerun by the reviewer and no source
+was changed. The acceptance remains local routing only, not a real GitHub
+dispatch, refreshed iOS lock, native binary or whole-CI pass.
+
+Other dependency audit roots remain unresolved; do not run automatic force-fix
+or downgrade Expo/React Native merely to satisfy its suggested remediation.
+The iOS autolinking verifier also still reports missing `react-native-netinfo`
+in Podfile.lock. Generate that lock and matching native provenance through the
+actual macOS/Bundler/CocoaPods flow, never fabricate pod checksums or suppress
+the verifier. Android-only inventory regeneration retained the existing Pods
+data without claiming it current. Backend final results, real native/device
+journeys, the Linux MySQL/Redis CI run and final binary provenance remain open.
+There is no newly uploadable candidate established by this checkpoint.
+
 Source: the production monorepo, not the older Desktop checkout.
 Target metadata: 1.0.57, Android 58, iOS 49.
 Status: **Google Play setup is complete and production release 58 is staged for

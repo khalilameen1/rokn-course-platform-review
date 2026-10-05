@@ -1,5 +1,15 @@
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {ActivityIndicator, AppState, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {
+  ActivityIndicator,
+  AppState,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import {RasterImage as Image} from './RasterImage';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import Svg, {Circle, Path} from 'react-native-svg';
@@ -18,11 +28,17 @@ import {MoreBellIcon} from '../../assets/SVG';
 import {RoknCoinStack} from './RoknCoin';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
 
-type PrimerPhase = 'idle' | 'requesting' | 'denied' | 'failed';
+type PrimerPhase =
+  | 'idle'
+  | 'requesting'
+  | 'denied'
+  | 'failed'
+  | 'settings_failed';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
+  // False means OS permission was denied. Activation/storage failures reject.
   onEnable: () => Promise<boolean>;
 };
 
@@ -88,44 +104,83 @@ export default function NotificationPermissionPrimer({
   const reducedMotion = useReducedMotion();
   const {width, fontScale} = useResponsiveLayout();
   const [phase, setPhase] = useState<PrimerPhase>('idle');
-  const requestFlightRef = useRef(false);
-  const awaitingSettingsRef = useRef(false);
-  const settingsBackgroundedRef = useRef(false);
+  const visit = useMemo(() => ({visible}), [visible]);
+  const visitRef = useRef(visit);
+  visitRef.current = visit;
+  const mountedRef = useRef(false);
+  const requestFlightRef = useRef<{visit: typeof visit} | null>(null);
+  const settingsReturnRef = useRef<{
+    visit: typeof visit;
+    backgrounded: boolean;
+  } | null>(null);
   const supported = areSmartRemindersSupported();
   const stackBenefits = width < 400 || fontScale > 1.15;
 
   useEffect(() => {
-    if (!visible) {
-      requestFlightRef.current = false;
-      awaitingSettingsRef.current = false;
-      settingsBackgroundedRef.current = false;
-      setPhase('idle');
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    settingsReturnRef.current = null;
+    // Hiding the view cannot cancel an OS request or an account write. Retain
+    // that physical flight until it settles, but retire its presentation.
+    setPhase(visible && requestFlightRef.current ? 'requesting' : 'idle');
+  }, [visit, visible]);
+
+  const runEnable = useCallback(async () => {
+    if (
+      !mountedRef.current ||
+      !visit.visible ||
+      visitRef.current !== visit ||
+      requestFlightRef.current
+    )
+      return;
+    const flight = {visit};
+    requestFlightRef.current = flight;
+    const isCurrent = () => mountedRef.current && visitRef.current === visit;
+    setPhase('requesting');
+    try {
+      const granted = await onEnable();
+      if (!isCurrent()) return;
+      if (granted) onClose();
+      else setPhase('denied');
+    } catch {
+      if (isCurrent()) setPhase('failed');
+    } finally {
+      if (requestFlightRef.current === flight) {
+        requestFlightRef.current = null;
+        // An old result must not close or relabel a newly opened primer. Only
+        // release its busy state so the new visit can explicitly try again.
+        if (
+          mountedRef.current &&
+          visitRef.current !== visit &&
+          visitRef.current.visible
+        )
+          setPhase('idle');
+      }
     }
-  }, [visible]);
+  }, [onClose, onEnable, visit]);
 
   useEffect(() => {
     if (!visible) return;
     const subscription = AppState.addEventListener('change', state => {
-      if (!awaitingSettingsRef.current) return;
+      const returning = settingsReturnRef.current;
+      if (!returning || returning.visit !== visitRef.current) return;
       if (state === 'inactive' || state === 'background') {
-        settingsBackgroundedRef.current = true;
+        returning.backgrounded = true;
         return;
       }
-      if (state !== 'active' || !settingsBackgroundedRef.current) return;
-      awaitingSettingsRef.current = false;
-      settingsBackgroundedRef.current = false;
-      requestFlightRef.current = true;
-      void onEnable()
-        .then(granted => {
-          if (granted) onClose();
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          requestFlightRef.current = false;
-        });
+      if (state !== 'active' || !returning.backgrounded) return;
+      settingsReturnRef.current = null;
+      // Launch completion is not a return signal. The actual foreground
+      // transition uses the same denial/failure/success owner as a manual tap.
+      void runEnable();
     });
     return () => subscription.remove();
-  }, [onClose, onEnable, visible]);
+  }, [runEnable, visible]);
 
   const copy = useMemo(() => {
     if (!supported) {
@@ -155,6 +210,15 @@ export default function NotificationPermissionPrimer({
         action: 'حاول مرة أخرى',
       };
     }
+    if (phase === 'settings_failed') {
+      return {
+        eyebrow: '',
+        title: 'تعذّر فتح إعدادات الهاتف',
+        body: 'حاول مرة أخرى',
+        footnote: '',
+        action: 'فتح إعدادات الهاتف',
+      };
+    }
     return {
       eyebrow: '',
       title: 'فعّل الإشعارات',
@@ -165,46 +229,30 @@ export default function NotificationPermissionPrimer({
   }, [phase, supported]);
 
   const close = () => {
-    if (phase !== 'requesting') onClose();
+    if (!requestFlightRef.current) onClose();
   };
 
   const handlePrimary = async () => {
-    if (phase === 'requesting' || requestFlightRef.current) return;
-    requestFlightRef.current = true;
+    if (!visible || requestFlightRef.current || settingsReturnRef.current)
+      return;
     if (!supported) {
       onClose();
-      requestFlightRef.current = false;
       return;
     }
-    if (phase === 'denied') {
+    if (phase === 'denied' || phase === 'settings_failed') {
+      const returning = {visit, backgrounded: false};
+      settingsReturnRef.current = returning;
       try {
-        awaitingSettingsRef.current = true;
-        settingsBackgroundedRef.current = false;
         await Linking.openSettings();
       } catch {
-        awaitingSettingsRef.current = false;
-        // Keep the explanation visible if the OS settings page is unavailable.
-      } finally {
-        requestFlightRef.current = false;
+        if (settingsReturnRef.current !== returning) return;
+        settingsReturnRef.current = null;
+        if (mountedRef.current && visitRef.current === visit)
+          setPhase('settings_failed');
       }
       return;
     }
-
-    setPhase('requesting');
-    try {
-      if (await onEnable()) {
-        onClose();
-      } else {
-        setPhase('denied');
-      }
-    } catch {
-      // OS denial and a failed account/token write are different recovery
-      // paths. Sending an already-authorized learner to system settings hides
-      // the real retry and leaves local/server preference state diverged.
-      setPhase('failed');
-    } finally {
-      requestFlightRef.current = false;
-    }
+    await runEnable();
   };
 
   return (

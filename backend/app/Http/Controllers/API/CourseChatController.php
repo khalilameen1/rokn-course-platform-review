@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use App\Support\RoknLocale;
 use App\Support\UnicodeText;
+use App\Support\AiRequestTokenEstimate;
 
 final class CourseChatController extends Controller
 {
@@ -615,14 +616,12 @@ final class CourseChatController extends Controller
         ];
         $messages[] = ['role' => 'user', 'content' => $question];
 
-        $maxTokens = max(80, min(
-            (int) (($planTerms['max_output_tokens'] ?? null) ?: config('openrouter.max_tokens', 800)),
-            (int) config('openrouter.max_tokens', 800)
-        ));
-        $estimatedTokens = $maxTokens + (int) ceil(array_sum(array_map(
-            static fn (array $message): int => strlen((string) ($message['content'] ?? '')),
-            $messages
-        )) / 4) + $this->attachments->estimatedInputTokens($claimedAttachments);
+        $maxTokens = AiRequestTokenEstimate::courseChatOutputLimit($planTerms ?? []);
+        $estimatedTokens = AiRequestTokenEstimate::forContents(
+            array_map(static fn (array $message): string => (string) ($message['content'] ?? ''), $messages),
+            $maxTokens,
+            $this->attachments->estimatedInputTokens($claimedAttachments)
+        );
         $event = null;
         try {
             $event = $this->entitlementBudget->reserve(

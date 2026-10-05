@@ -29,6 +29,7 @@ import type {ProjectSubmissionOutcome} from './courseLearningApi';
 import type {ProjectResolution} from './courseLearning/projectRemote';
 import type {CourseProject, SelectedProjectFile} from './types';
 import ProjectFeedbackPanel from './projectTransition/ProjectFeedbackPanel';
+import {ProjectFeedbackReadRecovery} from './projectTransition/ProjectFeedbackReadRecovery';
 import ProjectSubmissionEditor from './projectTransition/ProjectSubmissionEditor';
 import FullTrackUpgradeSheet from '../FullTrackUpgradeSheet';
 import {useProjectTransitionController} from './projectTransition/useProjectTransitionController';
@@ -177,7 +178,9 @@ const ProjectTransition = ({
 }: ProjectTransitionProps) => {
   const navigation = useNavigation<RootNavigation>();
   const [briefExpanded, setBriefExpanded] = useState(false);
-  const [discussionUpgradeOpen, setDiscussionUpgradeOpen] = useState(false);
+  const [discussionUpgrade, setDiscussionUpgrade] = useState<{
+    quotaExhausted: boolean;
+  } | null>(null);
   const controller = useProjectTransitionController({
     active,
     project,
@@ -189,8 +192,8 @@ const ProjectTransition = ({
     setBriefExpanded(false);
   }, [project.id]);
   useEffect(() => {
-    setDiscussionUpgradeOpen(false);
-  }, [active, courseId, project.id]);
+    setDiscussionUpgrade(null);
+  }, [active, courseId, project.id, controller.feedbackThread?.id]);
 
   const hasInterruptedReport =
     ['failed', 'failed_retryable'].includes(controller.reportViewState) &&
@@ -202,10 +205,16 @@ const ProjectTransition = ({
     controller.feedbackThread ? (
       <ProjectFeedbackPanel
         key={`${project.id}:${controller.feedbackThread.id}`}
+        active={active}
+        courseId={courseId}
         attachments={controller.feedbackAttachments}
         canReply={controller.canReplyToFeedback}
         draft={controller.feedbackDraft}
         error={controller.feedbackError}
+        readError={controller.feedbackReadError}
+        readRetrying={controller.feedbackReadRetrying}
+        readHydrating={controller.feedbackHydrating}
+        onRetryRead={controller.retryFeedbackRead}
         draftRestoreError={controller.feedbackDraftRestoreError}
         onRetryDraftRestore={controller.retryFeedbackDraftRestore}
         draftSaveError={controller.feedbackDraftSaveError}
@@ -223,7 +232,9 @@ const ProjectTransition = ({
           void controller.retryFeedbackMessage(message)
         }
         onSend={() => void controller.sendFeedback()}
-        onRequestDiscussionUpgrade={() => setDiscussionUpgradeOpen(true)}
+        onRequestDiscussionUpgrade={(quotaExhausted = false) =>
+          setDiscussionUpgrade({quotaExhausted})
+        }
       />
     ) : null;
   const canContinue = controller.canContinue && Boolean(onContinue);
@@ -326,34 +337,44 @@ const ProjectTransition = ({
                   </View>
                 )}
 
-                {(controller.reportViewState === 'preparing' ||
-                  controller.reportViewState === 'loading') && (
-                  <View style={styles.reportLoading}>
-                    <ActivityIndicator color={Palette.primary} size="small" />
-                    <Text style={styles.reportState}>
-                      {controller.reportViewState === 'preparing'
-                        ? 'نجهّز تقرير مشروعك'
-                        : 'نحمّل تقرير مشروعك'}
-                    </Text>
-                  </View>
+                {!controller.feedbackReadError &&
+                  (controller.reportViewState === 'preparing' ||
+                    controller.reportViewState === 'loading') && (
+                    <View style={styles.reportLoading}>
+                      <ActivityIndicator color={Palette.primary} size="small" />
+                      <Text style={styles.reportState}>
+                        {controller.reportViewState === 'preparing'
+                          ? 'نجهّز تقرير مشروعك'
+                          : 'نحمّل تقرير مشروعك'}
+                      </Text>
+                    </View>
+                  )}
+                {!!controller.feedbackReadError && !feedbackPanel && (
+                  <ProjectFeedbackReadRecovery
+                    error={controller.feedbackReadError}
+                    retrying={controller.feedbackReadRetrying}
+                    onRetry={controller.retryFeedbackRead}
+                  />
                 )}
-                {controller.reportViewState === 'failed_retryable' && (
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{disabled: controller.reportRetrying}}
-                    disabled={controller.reportRetrying}
-                    onPress={() => void controller.retryReport()}
-                    style={styles.reportRetry}>
-                    <Text style={styles.reportRetryText}>
-                      {controller.reportRetrying
-                        ? 'نحاول الآن'
-                        : 'تعذّر تجهيز التقرير  حاول مرة أخرى'}
-                    </Text>
-                  </Pressable>
-                )}
-                {controller.reportViewState === 'failed' && (
-                  <Text style={styles.reportError}>تعذّر تجهيز التقرير</Text>
-                )}
+                {!controller.feedbackReadError &&
+                  controller.reportViewState === 'failed_retryable' && (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{disabled: controller.reportRetrying}}
+                      disabled={controller.reportRetrying}
+                      onPress={() => void controller.retryReport()}
+                      style={styles.reportRetry}>
+                      <Text style={styles.reportRetryText}>
+                        {controller.reportRetrying
+                          ? 'نحاول الآن'
+                          : 'تعذّر تجهيز التقرير  حاول مرة أخرى'}
+                      </Text>
+                    </Pressable>
+                  )}
+                {!controller.feedbackReadError &&
+                  controller.reportViewState === 'failed' && (
+                    <Text style={styles.reportError}>تعذّر تجهيز التقرير</Text>
+                  )}
                 {feedbackPanel && (
                   <View style={styles.reportSection}>{feedbackPanel}</View>
                 )}
@@ -543,14 +564,20 @@ const ProjectTransition = ({
           </View>
         )}
       </KeyboardAvoidingView>
-      {active && discussionUpgradeOpen && courseId && (
+      {active && discussionUpgrade && courseId && (
         <FullTrackUpgradeSheet
           visible
           courseId={courseId}
           courseTitle={courseTitle}
           requiredFeature="project_discussion"
-          onClose={() => setDiscussionUpgradeOpen(false)}
-          onUpgraded={onEntitlementChanged}
+          quotaExhausted={discussionUpgrade.quotaExhausted}
+          onClose={() => setDiscussionUpgrade(null)}
+          onUpgraded={async () => {
+            // Refresh allowance even when both old/new plans are enhanced.
+            // Course metadata alone omits quota and cannot confirm this receipt.
+            controller.refreshFeedbackRead();
+            await onEntitlementChanged?.();
+          }}
         />
       )}
     </>

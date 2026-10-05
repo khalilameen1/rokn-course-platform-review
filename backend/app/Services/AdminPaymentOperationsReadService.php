@@ -104,7 +104,7 @@ final readonly class AdminPaymentOperationsReadService
     {
         $order->load([
             'user', 'course', 'package', 'coupon', 'courseCode', 'approvedBy',
-            'storePurchase', 'latestPaymentReconciliationFinding',
+            'storePurchase', 'latestPaymentReconciliationFinding', 'courseFundingCheckout',
         ]);
         $this->decorate(collect([$order]));
 

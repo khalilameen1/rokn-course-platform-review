@@ -68,6 +68,8 @@ describe('upgrade sheet accessibility ownership', () => {
     mockUpgradeQuote.mockResolvedValue({
       alreadyUpgraded: false,
       targetPlanCode: 'guided',
+      upgradeAvailable: true,
+      availablePlanCodes: ['guided'],
     });
   });
   afterEach(async () => {
@@ -76,6 +78,12 @@ describe('upgrade sheet accessibility ownership', () => {
   });
 
   it('selects only a plan with project discussion and reuses the existing upgrade checkout', async () => {
+    mockUpgradeQuote.mockResolvedValue({
+      alreadyUpgraded: false,
+      targetPlanCode: 'mentor',
+      upgradeAvailable: true,
+      availablePlanCodes: ['mentor'],
+    });
     const mentor = {
       ...plan,
       code: 'mentor',
@@ -113,8 +121,14 @@ describe('upgrade sheet accessibility ownership', () => {
   });
 
   it.each([false, true])(
-    'filters chat upgrades by the actual chat capability when chatEnabled=%s',
+    'uses the server offer list rather than inferring eligibility from catalogue chatEnabled=%s',
     async enabled => {
+      mockUpgradeQuote.mockResolvedValue({
+        alreadyUpgraded: false,
+        targetPlanCode: 'mentor',
+        upgradeAvailable: true,
+        availablePlanCodes: ['mentor'],
+      });
       const guided = {...plan, chatEnabled: enabled, chatMessageLimit: 0};
       const mentor = {...plan, code: 'mentor', name: 'Pro'};
       mockCourseDetails.mockResolvedValue({
@@ -145,6 +159,8 @@ describe('upgrade sheet accessibility ownership', () => {
       mockUpgradeQuote.mockResolvedValue({
         alreadyUpgraded,
         targetPlanCode: alreadyUpgraded ? null : 'guided',
+        upgradeAvailable: false,
+        availablePlanCodes: [],
       });
       mockCourseDetails.mockResolvedValue({
         ...course,

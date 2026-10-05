@@ -196,7 +196,7 @@ final readonly class WalletService
             }
 
             [, $rewardBalance] = $this->ledgerBalances($user);
-            $rewardCap = max(0, (int) (Setting::query()->value('reward_balance_cap') ?? 1200));
+            $rewardCap = $this->rewardBalanceCap();
             $rewardRoom = max(0, $rewardCap - $rewardBalance);
             // A one-time offer is indivisible. Silently granting only the
             // remaining room would consume the task while paying less than
@@ -220,6 +220,17 @@ final readonly class WalletService
                 WalletTransaction::BUCKET_REWARD
             );
         }, 3);
+    }
+
+    /** Read projection only; claiming still rechecks the ceiling under the user lock. */
+    public function rewardCreditRoom(int $rewardBalance): int
+    {
+        return max(0, $this->rewardBalanceCap() - max(0, $rewardBalance));
+    }
+
+    private function rewardBalanceCap(): int
+    {
+        return max(0, (int) (Setting::query()->value('reward_balance_cap') ?? 1200));
     }
 
     /** Refunds preserve the original paid and reward attribution. */
@@ -443,7 +454,7 @@ final readonly class WalletService
                     && $forcedPaidAmount === null
                     && $forcedRewardAmount === null
                 ) {
-                    $rewardCap = max(0, (int) (Setting::query()->value('reward_balance_cap') ?? 1200));
+                    $rewardCap = $this->rewardBalanceCap();
                     if ($rewardBalance + $rewardAmount > $rewardCap) {
                         throw new \DomainException('reward_balance_cap_exceeded');
                     }

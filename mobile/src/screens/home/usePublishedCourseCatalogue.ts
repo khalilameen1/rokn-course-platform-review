@@ -35,8 +35,13 @@ export const usePublishedCourseCatalogue = ({
   appIsActive,
   searchQuery,
 }: Params) => {
+  const currentQuery = normalizeText(searchQuery);
   const [courses, setCourses] = useState<Course[] | null>(null);
-  const [error, setError] = useState('');
+  const [failure, setFailure] = useState<{
+    query: string;
+    message: string;
+  } | null>(null);
+  const error = failure?.query === currentQuery ? failure.message : '';
   const [staleNotice, setStaleNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -52,12 +57,12 @@ export const usePublishedCourseCatalogue = ({
   const catalogueRevisionRef = useRef<number | undefined>(undefined);
   const loadedQueryRef = useRef<string | null>(null);
   const requestedQueryRef = useRef('');
-  const activeQueryRef = useRef(normalizeText(searchQuery));
+  const activeQueryRef = useRef(currentQuery);
   const lastAttemptAtRef = useRef(0);
   const lastSuccessAtRef = useRef(0);
   const wasActiveRef = useRef(active);
   const wasAppActiveRef = useRef(appIsActive);
-  activeQueryRef.current = normalizeText(searchQuery);
+  activeQueryRef.current = currentQuery;
 
   const load = useCallback(
     async ({
@@ -85,7 +90,7 @@ export const usePublishedCourseCatalogue = ({
         setLoading(
           normalizedQuery !== '' || browseCoursesRef.current.length === 0,
         );
-        setError('');
+        setFailure(null);
       }
 
       try {
@@ -119,7 +124,7 @@ export const usePublishedCourseCatalogue = ({
         loadedQueryRef.current = normalizedQuery;
         setPage(result.page);
         setHasMore(result.hasMore);
-        setError('');
+        setFailure(null);
         setLoadMoreError('');
         if (result.fromCache) {
           setStaleNotice(CACHE_NOTICE);
@@ -144,13 +149,16 @@ export const usePublishedCourseCatalogue = ({
         const hasBrowseSnapshot = browseCoursesRef.current.length > 0;
         const isSearch = normalizedQuery !== '';
         if (hasBrowseSnapshot && !isSearch) setStaleNotice(OFFLINE_NOTICE);
-        setError(
+        setFailure(
           hasBrowseSnapshot && !isSearch
-            ? ''
-            : friendlyNetworkMessage(
-                requestError,
-                isSearch ? 'نتائج البحث' : 'الكورسات',
-              ),
+            ? null
+            : {
+                query: normalizedQuery,
+                message: friendlyNetworkMessage(
+                  requestError,
+                  isSearch ? 'نتائج البحث' : 'الكورسات',
+                ),
+              },
         );
       } finally {
         if (requestId === requestIdRef.current) {
@@ -181,7 +189,7 @@ export const usePublishedCourseCatalogue = ({
       }
       browseCoursesRef.current = cached;
       setCourses(cached);
-      setError('');
+      setFailure(null);
       setStaleNotice(CACHE_NOTICE);
       setLoading(false);
     });
@@ -261,7 +269,7 @@ export const usePublishedCourseCatalogue = ({
     setLoadMoreError('');
     if (query === loadedQueryRef.current) {
       setLoading(false);
-      setError('');
+      setFailure(null);
       return;
     }
     setLoading(Boolean(query) || browseCoursesRef.current.length === 0);
@@ -317,9 +325,22 @@ export const usePublishedCourseCatalogue = ({
   const retryLoadMore = useCallback(() => loadMore(true), [loadMore]);
 
   const browseCourses =
-    !normalizeText(searchQuery) && loadedQueryRef.current
+    !currentQuery && loadedQueryRef.current
       ? browseCoursesRef.current
       : courses ?? [];
+
+  const hasCurrentResult = loadedQueryRef.current === currentQuery;
+  // Input changes render before the debounce effect starts its request. Derive
+  // the visible phase from the result owner, not the preceding query's flags.
+  // A current failed request is a failure, never an empty successful search.
+  const awaitingResult =
+    !hasCurrentResult &&
+    !error &&
+    (Boolean(currentQuery) || browseCoursesRef.current.length === 0);
+  const visibleLoading =
+    awaitingResult || (loading && requestedQueryRef.current === currentQuery);
+  const searchResultsReady =
+    Boolean(currentQuery) && hasCurrentResult && !visibleLoading && !error;
 
   return {
     browseCourses,
@@ -328,11 +349,12 @@ export const usePublishedCourseCatalogue = ({
     handleScroll,
     hasMore: hasMore && loadedQueryRef.current === activeQueryRef.current,
     loadMore: retryLoadMore,
-    loading,
-    loadingMore,
-    loadMoreError,
+    loading: visibleLoading,
+    loadingMore: loadingMore && requestedQueryRef.current === currentQuery,
+    loadMoreError: hasCurrentResult ? loadMoreError : '',
     loadedSearchQuery: loadedQueryRef.current ?? '',
     refresh,
-    staleNotice,
+    searchResultsReady,
+    staleNotice: currentQuery ? '' : staleNotice,
   };
 };

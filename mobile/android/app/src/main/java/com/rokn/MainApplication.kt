@@ -20,6 +20,7 @@ import com.rokn.media.RoknMediaInspectorPackage
 import com.rokn.reminders.RoknReminderPackage
 import com.rokn.notifications.RoknPushTokenPackage
 import com.rokn.session.RoknSecureSessionPackage
+import com.rokn.playback.RoknReelPreloadPackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -37,6 +38,7 @@ class MainApplication : Application(), ReactApplication {
           add(RoknReminderPackage())
           add(RoknPushTokenPackage())
           add(RoknSecureSessionPackage())
+          add(RoknReelPreloadPackage())
         },
     )
   }

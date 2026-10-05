@@ -11,6 +11,17 @@ const mockResume = jest.fn();
 const mockCancel = jest.fn();
 const mockPayment = jest.fn();
 const mockPackages = jest.fn();
+const mockTrack = jest.fn();
+jest.mock('../src/services/productAnalytics', () => ({
+  trackProductEvent: (...args: unknown[]) => mockTrack(...args),
+}));
+jest.mock('../src/services/checkoutRouting', () => ({
+  courseCheckoutTransport: {
+    kind: 'native',
+    channel: 'play',
+    apiChannel: 'google',
+  },
+}));
 jest.mock('../src/constants/helpers', () => ({
   captureAccountSessionBoundary: async () => ({scope: 'user-1', epoch: 1}),
   assertAccountSessionBoundary: jest.fn(),
@@ -50,6 +61,7 @@ const coinPackage = {
   displayPrice: '٢٠ ج م',
 };
 const base: CourseCheckout = {
+  channel: 'google',
   id: 'checkout-1',
   status: 'quoted',
   courseId: '3',
@@ -79,6 +91,11 @@ const deferred = <T,>() => {
 
 describe('same-sheet course checkout authorization', () => {
   beforeEach(() => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport = {
+      kind: 'native',
+      channel: 'play',
+      apiChannel: 'google',
+    };
     jest.clearAllMocks();
     [
       mockLatest,
@@ -105,7 +122,10 @@ describe('same-sheet course checkout authorization', () => {
     });
   });
 
-  async function mount() {
+  async function mount(
+    onPaymentRecovery?: () => void,
+    mode: 'purchase' | 'upgrade' = 'purchase',
+  ) {
     let current!: ReturnType<typeof useCourseSubscriptionCheckout>;
     const complete = jest.fn();
     function Probe({
@@ -117,9 +137,11 @@ describe('same-sheet course checkout authorization', () => {
     }) {
       current = useCourseSubscriptionCheckout({
         courseId: '3',
+        mode,
         planCode: plan,
         visible,
         onCompleted: complete,
+        onPaymentRecovery,
       });
       return null;
     }
@@ -129,6 +151,128 @@ describe('same-sheet course checkout authorization', () => {
     });
     return {current: () => current, complete, renderer, Probe};
   }
+
+  it('tracks only sheet visibility and leaves committed purchase events to the server', async () => {
+    const view = await mount();
+    expect(mockTrack.mock.calls.map(([event]) => event.event_name)).toEqual([
+      'paywall_viewed',
+    ]);
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(mockTrack.mock.calls.map(([event]) => event.event_name)).toEqual([
+      'paywall_viewed',
+    ]);
+    expect(
+      mockTrack.mock.calls.every(([event]) => event.course_id === '3'),
+    ).toBe(true);
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('does not report a top-up pending confirmation as a completed course purchase', async () => {
+    mockResume.mockResolvedValue({...base, status: 'pending_payment'});
+    const view = await mount();
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(mockTrack.mock.calls.map(([event]) => event.event_name)).toEqual([
+      'paywall_viewed',
+    ]);
+    mockResume.mockResolvedValue({...base, status: 'completed'});
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(
+      mockTrack.mock.calls.filter(
+        ([event]) => event.event_name === 'purchase_completed',
+      ),
+    ).toHaveLength(0);
+    await act(async () => view.renderer.unmount());
+  });
+
+  it('keeps upgrades out of the first course purchase funnel', async () => {
+    const view = await mount(undefined, 'upgrade');
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(view.complete).toHaveBeenCalledTimes(1);
+    expect(mockTrack).not.toHaveBeenCalled();
+    await act(async () => view.renderer.unmount());
+  });
+
+  it.each(['cancelled', 'reconfirm_required'] as const)(
+    'reports restored payment before resume yields %s and no pending UI is published',
+    async status => {
+      const recovery = jest.fn();
+      mockLatest.mockResolvedValue({...base, status: 'pending_payment'});
+      mockResume.mockImplementation(async () => {
+        expect(recovery).toHaveBeenCalledTimes(1);
+        return {...base, status};
+      });
+      const view = await mount(recovery);
+      expect(recovery).toHaveBeenCalledTimes(1);
+      expect(view.current().pending).toBe(false);
+      expect(view.current().quote?.status).toBe('quoted');
+      expect(mockAuthorize).not.toHaveBeenCalled();
+      expect(mockPayment).not.toHaveBeenCalled();
+      await act(async () => view.renderer.unmount());
+    },
+  );
+
+  it('uses the direct quote on Android and resumes the same intent after returning without payment', async () => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport = {
+      kind: 'external',
+      channel: 'direct',
+      apiChannel: 'direct',
+      surface: 'browser',
+    };
+    const directPackage = {...coinPackage, price: 18, displayPrice: undefined};
+    const direct: CourseCheckout = {
+      ...base,
+      channel: 'direct',
+      canResumePayment: true,
+      packages: [directPackage],
+      fundingMode: 'exact_shortfall',
+      selectedPackage: directPackage,
+    };
+    mockQuote.mockResolvedValue(direct);
+    mockAuthorize.mockResolvedValue({...direct, status: 'pending_payment'});
+    mockResume.mockResolvedValue({...direct, status: 'pending_payment'});
+    mockPayment.mockResolvedValue({
+      success: false,
+      pending: true,
+      cancelled: false,
+      coinsAdded: 0,
+    });
+    const view = await mount();
+    expect(mockPackages).not.toHaveBeenCalled();
+    expect(view.current().coinPackage?.price).toBe(18);
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(view.complete).not.toHaveBeenCalled();
+    expect(mockCancel).not.toHaveBeenCalled();
+    expect(view.current().canResumePayment).toBe(true);
+    mockResume.mockResolvedValue({...direct, status: 'completed'});
+    mockPayment.mockResolvedValue({
+      success: true,
+      pending: false,
+      cancelled: false,
+      coinsAdded: 400,
+    });
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(mockPayment).toHaveBeenCalledTimes(2);
+    for (const call of mockPayment.mock.calls) {
+      expect(call[1].courseCheckoutId).toBe(base.id);
+    }
+    expect(mockQuote).toHaveBeenCalledTimes(2); // initial quote + package binding, no new intent on return
+    expect(view.complete).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      view.renderer.unmount();
+    });
+  });
 
   it('authorizes once then pays and fulfills under that same consent without a second purchase tap', async () => {
     const view = await mount();
@@ -164,6 +308,65 @@ describe('same-sheet course checkout authorization', () => {
     });
     expect(mockResume).toHaveBeenCalledWith('checkout-1');
     expect(view.complete).toHaveBeenCalledTimes(1);
+    await act(() => view.renderer.unmount());
+  });
+
+  it('resumes an issued direct payment after quote expiry without creating a new quote', async () => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport = {
+      kind: 'external',
+      channel: 'direct',
+      apiChannel: 'direct',
+      surface: 'browser',
+    };
+    const pending: CourseCheckout = {
+      ...base,
+      channel: 'direct',
+      status: 'pending_payment',
+      expiresAt: '2000-01-01T00:00:00Z',
+      canResumePayment: true,
+    };
+    mockLatest.mockResolvedValue(pending);
+    mockResume.mockResolvedValue(pending);
+    mockAuthorize.mockResolvedValue(pending);
+    const view = await mount();
+    expect(view.current().canResumePayment).toBe(true);
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(mockQuote).not.toHaveBeenCalled();
+    expect(mockPayment).toHaveBeenCalledTimes(1);
+    expect(mockPayment.mock.calls[0][1]).toMatchObject({
+      courseCheckoutId: base.id,
+      transport: {kind: 'external', surface: 'browser'},
+    });
+    await act(() => view.renderer.unmount());
+  });
+
+  it('checks rather than reopens a payment when the server says its payment window is closed', async () => {
+    require('../src/services/checkoutRouting').courseCheckoutTransport = {
+      kind: 'external',
+      channel: 'direct',
+      apiChannel: 'direct',
+      surface: 'browser',
+    };
+    const pending: CourseCheckout = {
+      ...base,
+      channel: 'direct',
+      status: 'pending_payment',
+      expiresAt: '2000-01-01T00:00:00Z',
+      canResumePayment: false,
+    };
+    mockLatest.mockResolvedValue(pending);
+    mockResume.mockResolvedValue(pending);
+    const view = await mount();
+    expect(view.current().canResumePayment).toBe(false);
+    await act(async () => {
+      await view.current().confirm();
+    });
+    expect(mockResume).toHaveBeenCalledWith(base.id);
+    expect(mockPayment).not.toHaveBeenCalled();
+    expect(mockAuthorize).not.toHaveBeenCalled();
+    expect(mockQuote).not.toHaveBeenCalled();
     await act(() => view.renderer.unmount());
   });
 

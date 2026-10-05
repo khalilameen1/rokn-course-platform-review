@@ -42,6 +42,17 @@ const makeController = (
   finalizeSelectedProject: jest.fn(),
   onSharePortfolio: jest.fn(),
   saving: false,
+  mediaUploadProgress: null,
+  canPauseSelectedUpload: false,
+  pausingSelectedUpload: false,
+  pauseSelectedUpload: jest.fn(),
+  preparingSelectedUpload: false,
+  pendingUploadsReady: true,
+  pendingUploadsError: false,
+  hasPendingUploads: false,
+  selectedUploadPaused: false,
+  retryPendingUploads: jest.fn(),
+  resumeSelectedUploads: jest.fn(),
   selectedAction: 'complete',
   selectedMediaSlots: 4,
   ...overrides,
@@ -164,6 +175,61 @@ describe('portfolio detail action presentation', () => {
     for (const label of ['إتمام المشروع', 'تعديل المشروع', 'حذف المشروع']) {
       expect(view.action(label).props.disabled).toBe(false);
     }
+  });
+
+  it('makes a paused upload resumable without offering premature publication or another batch', () => {
+    const view = mount(
+      makeController({hasPendingUploads: true, selectedUploadPaused: true}),
+    );
+    expect(view.action('إتمام المشروع')).toBeUndefined();
+    expect(view.action('مشاركة البورتفوليو')).toBeUndefined();
+    expect(view.action('إضافة صور أو فيديو').props.disabled).toBe(true);
+    act(() => view.action('استكمال الرفع').props.onPress());
+    expect(view.controller.resumeSelectedUploads).toHaveBeenCalledTimes(1);
+    expect(view.controller.finalizeSelectedProject).not.toHaveBeenCalled();
+  });
+
+  it('checks pending work again rather than publishing when local state is unreadable', () => {
+    const view = mount(
+      makeController({pendingUploadsReady: false, pendingUploadsError: true}),
+    );
+    expect(view.action('إتمام المشروع')).toBeUndefined();
+    expect(view.action('إضافة صور أو فيديو').props.disabled).toBe(true);
+    act(() => view.action('إعادة المحاولة').props.onPress());
+    expect(view.controller.retryPendingUploads).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps close disabled during preparation and presents the one real stop action during transport', () => {
+    const view = mount(
+      makeController({saving: false, preparingSelectedUpload: true}),
+    );
+    expect(view.action('إغلاق تفاصيل المشروع').props.disabled).toBe(true);
+    for (const label of [
+      'إتمام المشروع',
+      'إضافة صور أو فيديو',
+      'تعديل المشروع',
+      'حذف المشروع',
+    ]) {
+      expect(view.action(label).props.disabled).toBe(true);
+    }
+    const active = makeController({saving: true, canPauseSelectedUpload: true});
+    act(() =>
+      renderer!.update(
+        <PortfolioDetailActions controller={active} fontScale={1} />,
+      ),
+    );
+    expect(view.action('إغلاق تفاصيل المشروع')).toBeUndefined();
+    act(() => view.action('إيقاف الرفع').props.onPress());
+    expect(active.pauseSelectedUpload).toHaveBeenCalledTimes(1);
+    const pausing = makeController({saving: true, pausingSelectedUpload: true});
+    act(() =>
+      renderer!.update(
+        <PortfolioDetailActions controller={pausing} fontScale={1} />,
+      ),
+    );
+    expect(view.action('جار الإيقاف').props.disabled).toBe(true);
+    expect(view.action('جار الإيقاف').props.accessibilityState.busy).toBe(true);
+    expect(view.action('إغلاق تفاصيل المشروع')).toBeUndefined();
   });
 
   it.each([1, 1.3, 2])(

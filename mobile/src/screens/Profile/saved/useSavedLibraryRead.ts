@@ -34,6 +34,7 @@ export function useSavedLibraryRead(
   const [loadMoreError, setLoadMoreError] = useState('');
 
   const [folderLoadError, setFolderLoadError] = useState('');
+  const retryFolderReadRef = useRef(false);
   const loadGenerationRef = useRef(0);
   const loadingMoreRef = useRef(false);
   const screenActiveRef = useRef(false);
@@ -49,6 +50,7 @@ export function useSavedLibraryRead(
     setError('');
     setLoadMoreError('');
     setFolderLoadError('');
+    retryFolderReadRef.current = false;
     setLoading(true);
     setLoadingMore(false);
     dataOwnerRef.current = identityKey;
@@ -94,6 +96,10 @@ export function useSavedLibraryRead(
       setNextPage(null);
       setLoadMoreError('');
       if (reload > 0) setError('');
+      // Explicit recovery must reach the server, not clear a warning with an
+      // offline index. Ordinary focus reads still keep their cache fallback.
+      const requireFreshFolders = retryFolderReadRef.current;
+      retryFolderReadRef.current = false;
 
       void (async () => {
         try {
@@ -132,7 +138,9 @@ export function useSavedLibraryRead(
               value => ({ok: true as const, value}),
               reason => ({ok: false as const, reason}),
             ),
-            getSavedFolderOptions().then(
+            getSavedFolderOptions(
+              requireFreshFolders ? {requireFresh: true} : undefined,
+            ).then(
               value => ({ok: true as const, value}),
               () => ({ok: false as const}),
             ),
@@ -208,7 +216,10 @@ export function useSavedLibraryRead(
     ]),
   );
 
-  const retry = useCallback(() => setReload(value => value + 1), []);
+  const retry = useCallback(() => {
+    retryFolderReadRef.current = true;
+    setReload(value => value + 1);
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (
@@ -288,6 +299,6 @@ export function useSavedLibraryRead(
     selectFolder,
     serverSession,
     restoreFolderSelection: setActiveFolderId,
-    reportReadError: setError,
+    reportFolderReadError: setFolderLoadError,
   };
 }

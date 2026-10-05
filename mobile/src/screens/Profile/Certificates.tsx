@@ -2,32 +2,23 @@ import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../../navigation/types';
 import {openGuestLogin} from '../../navigation/journeyNavigation';
 import React from 'react';
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import {Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {SettingsTermsIcon} from '../../assets/SVG';
-import Button from '../../components/touchables/Button';
 import FullTrackUpgradeSheet from '../../components/FullTrackUpgradeSheet';
-import QRCode from '../../components/ui/QRCode';
 import {
   MetaPill,
   SectionHeading,
   StatusView,
 } from '../../components/ui/PremiumUI';
-import {
-  Palette,
-  Spacing,
-  useResponsiveLayout,
-} from '../../constants/designSystem';
+import {Spacing, useResponsiveLayout} from '../../constants/designSystem';
 import {isolateBidirectionalText} from '../../constants/arabicFormatting';
 import {useReducedMotion} from '../../hooks/useReducedMotion';
 import {CertificateArtifactPreview} from './certificates/CertificateArtifactPreview';
+import {
+  CertificateDetailContent,
+  CertificateNameForm,
+} from './certificates/CertificateContent';
 import {certificateStyles as styles} from './certificates/styles';
 import {useCertificatesController} from './certificates/useCertificatesController';
 
@@ -40,38 +31,30 @@ export default function Certificates({
   const insets = useSafeAreaInsets();
   const reducedMotion = useReducedMotion();
   const {contentWidth, largeText} = useResponsiveLayout();
+  const controller = useCertificatesController(resolvedDisplayName);
   const {
-    activeCertificateQrDestination,
-    activeCourseTitle,
-    activeCredential,
     certificatePending,
     certificates,
     closeIssueCertificate,
     closeSelectedCertificate,
-    confirmIssueCertificate,
     grantCourses,
     identityOwned,
     issueCourse,
-    issueName,
-    issuing,
+    issueReady,
     loadCertificates,
     loadError,
     loading,
-    openCertificate,
+    mutationReady,
     openIssueCertificate,
     readyCourses,
     recoverPendingCertificates,
     retryPendingCertificate,
-    saveCertificate,
-    cancelCertificateDownload,
     selectCertificate,
     selectedCertificate,
     selectedGrantCourse,
     selectGrantCourse,
-    setIssueName,
-    shareCertificate,
     serverSession,
-  } = useCertificatesController(resolvedDisplayName);
+  } = controller;
 
   return (
     <View style={styles.container}>
@@ -100,7 +83,7 @@ export default function Certificates({
         <StatusView
           actionLabel="إعادة المحاولة"
           description="سنحدّث حالتها تلقائيًا"
-          onAction={recoverPendingCertificates}
+          onAction={mutationReady ? recoverPendingCertificates : undefined}
           state="loading"
           title="شهادتك قيد التجهيز"
         />
@@ -142,7 +125,9 @@ export default function Certificates({
           )}
           {certificatePending && (
             <Pressable
+              accessibilityState={{disabled: !mutationReady}}
               accessibilityRole="button"
+              disabled={!mutationReady}
               onPress={() => void recoverPendingCertificates()}
               style={styles.pendingNotice}>
               <Text accessibilityRole="alert" style={styles.partialNotice}>
@@ -154,6 +139,10 @@ export default function Certificates({
           <View style={styles.grid}>
             {certificates.map(certificate => (
               <Pressable
+                accessibilityState={{
+                  disabled: certificate.status === 'pending' && !mutationReady,
+                }}
+                disabled={certificate.status === 'pending' && !mutationReady}
                 accessibilityLabel={
                   certificate.status === 'pending'
                     ? `تحديث حالة شهادة ${certificate.courseName}`
@@ -218,8 +207,10 @@ export default function Certificates({
               <Text style={styles.lockedHeading}>جاهزة للإصدار</Text>
               {readyCourses.map(course => (
                 <Pressable
+                  accessibilityState={{disabled: !issueReady}}
                   accessibilityLabel={`إصدار شهادة ${course.title}`}
                   accessibilityRole="button"
+                  disabled={!issueReady}
                   key={`ready-${course.id}`}
                   onPress={() => openIssueCertificate(course)}
                   style={({pressed}) => [
@@ -319,33 +310,9 @@ export default function Certificates({
                   paddingRight: Math.max(Spacing.xl, insets.right + Spacing.md),
                 },
               ]}>
-              <Text style={styles.detailTitle}>الاسم على الشهادة</Text>
-              <Text style={styles.issueHint}>
-                راجعه قبل الإصدار
-                {'\n'}لن يتغير بعد ذلك
-              </Text>
-              <TextInput
-                accessibilityLabel="الاسم على الشهادة"
-                autoCapitalize="words"
-                editable={!issuing}
-                maxLength={120}
-                onChangeText={setIssueName}
-                placeholder="اسمك الكامل"
-                placeholderTextColor={Palette.textFaint}
-                style={styles.issueInput}
-                value={issueName}
-              />
-              <Button
-                disable={Array.from(issueName.trim()).length < 2 || issuing}
-                loader={issuing}
-                onPress={() => void confirmIssueCertificate()}
-                title="إصدار الشهادة"
-              />
-              <Button
-                disable={issuing}
-                onPress={closeIssueCertificate}
-                title="إلغاء"
-                useGradient={false}
+              <CertificateNameForm
+                controller={controller}
+                onCancel={closeIssueCertificate}
               />
             </ScrollView>
           </View>
@@ -393,104 +360,7 @@ export default function Certificates({
                 },
               ]}
               showsVerticalScrollIndicator={false}>
-              <CertificateArtifactPreview
-                certificateUrl={selectedCertificate?.certificateUrl}
-                courseTitle={activeCourseTitle}
-              />
-              <View
-                style={[
-                  styles.detailCopy,
-                  {
-                    paddingLeft: Math.max(Spacing.xl, insets.left + Spacing.md),
-                    paddingRight: Math.max(
-                      Spacing.xl,
-                      insets.right + Spacing.md,
-                    ),
-                  },
-                ]}>
-                <Text accessibilityRole="header" style={styles.detailTitle}>
-                  {activeCourseTitle}
-                </Text>
-                <Text style={styles.detailMeta}>
-                  رقم الشهادة {'\n'}
-                  {isolateBidirectionalText(activeCredential)}
-                </Text>
-                {activeCertificateQrDestination && (
-                  <View
-                    style={[
-                      styles.qrDestination,
-                      largeText && styles.qrDestinationLargeText,
-                    ]}>
-                    <QRCode
-                      accessibilityLabel={
-                        activeCertificateQrDestination.type === 'portfolio'
-                          ? 'رمز QR لعرض الأعمال'
-                          : 'رمز QR للتحقق من الشهادة'
-                      }
-                      value={activeCertificateQrDestination.url}
-                      size={148}
-                    />
-                    <View style={styles.qrCopy}>
-                      <Text style={styles.qrTitle}>
-                        {activeCertificateQrDestination.title}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                <View style={styles.detailActions}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="مشاركة الشهادة"
-                    onPress={() => void shareCertificate()}
-                    style={({pressed}) => [
-                      styles.shareAction,
-                      pressed && styles.shareActionPressed,
-                    ]}>
-                    <Text style={styles.shareActionText}>مشاركة الشهادة</Text>
-                  </Pressable>
-                  <View
-                    style={[
-                      styles.secondaryActions,
-                      largeText && styles.secondaryActionsLargeText,
-                    ]}>
-                    {(selectedCertificate?.certificatePdfUrl ||
-                      selectedCertificate?.certificateUrl) && (
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={
-                          cancelCertificateDownload
-                            ? `إلغاء تنزيل شهادة ${activeCourseTitle}`
-                            : 'حفظ الشهادة'
-                        }
-                        onPress={cancelCertificateDownload || saveCertificate}
-                        style={({pressed}) => [
-                          styles.secondaryAction,
-                          largeText && styles.secondaryActionLargeText,
-                          pressed && styles.detailActionPressed,
-                        ]}>
-                        <Text style={styles.secondaryActionText}>
-                          {cancelCertificateDownload
-                            ? 'إلغاء التنزيل'
-                            : 'حفظ الشهادة'}
-                        </Text>
-                      </Pressable>
-                    )}
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="التحقق من الشهادة"
-                      onPress={() => void openCertificate()}
-                      style={({pressed}) => [
-                        styles.secondaryAction,
-                        largeText && styles.secondaryActionLargeText,
-                        pressed && styles.detailActionPressed,
-                      ]}>
-                      <Text style={styles.secondaryActionText}>
-                        التحقق من الشهادة
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
+              <CertificateDetailContent controller={controller} />
             </ScrollView>
           </View>
         </View>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Exceptions\AiPlanLimitReachedException;
 use App\Jobs\GenerateProjectFeedbackReply;
 use App\Models\AiInputAttachment;
 use App\Models\AiEntitlementUsage;
@@ -14,6 +15,7 @@ use App\Models\ProjectFeedbackThread;
 use App\Models\ProjectSubmission;
 use App\Models\User;
 use App\Support\DurableJobDispatch;
+use App\Support\AiRequestTokenEstimate;
 use App\Support\ProjectSubmissionLifecycle;
 use App\Support\UnicodeText;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -28,7 +30,9 @@ final class ProjectFeedbackThreadService
     public function __construct(
         private CourseAccessPlanService $accessPlans,
         private AiInputAttachmentService $attachments,
-        private CourseEntitlementService $courseAccess
+        private CourseEntitlementService $courseAccess,
+        private AiEntitlementBudgetService $budget,
+        private AiPromptPolicy $promptPolicy
     ) {
     }
 
@@ -255,16 +259,6 @@ final class ProjectFeedbackThreadService
                 ->where('feature', AiEntitlementUsage::FEATURE_PROJECT_FOLLOWUP)
                 ->lockForUpdate()
                 ->first();
-            $queuedMessages = ProjectFeedbackMessage::query()
-                ->where('role', 'user')
-                ->where('status', ProjectFeedbackMessage::QUEUED)
-                ->whereHas('thread', fn ($query) => $query->where('enrollment_id', $enrollment->id))
-                ->count();
-            $sentMessages = ProjectFeedbackMessage::query()
-                ->where('role', 'user')
-                ->where('status', ProjectFeedbackMessage::SENT)
-                ->whereHas('thread', fn ($query) => $query->where('enrollment_id', $enrollment->id))
-                ->count();
             $threadInFlight = ProjectFeedbackMessage::query()
                 ->where('thread_id', $locked->id)
                 ->where('role', 'user')
@@ -275,14 +269,12 @@ final class ProjectFeedbackThreadService
                     'message' => ['انتظر رد ركن على الرسالة الحالية'],
                 ]);
             }
-            $usedRequests = (int) ($usage?->used_requests ?? 0);
-            $reservedRequests = max((int) ($usage?->reserved_requests ?? 0), $sentMessages);
             $messageLimit = (int) $contract['project_message_limit'];
             if (
                 $messageLimit <= 0
-                || $usedRequests + $reservedRequests + $queuedMessages >= $messageLimit
+                || $this->budget->projectFollowupCommittedRequests($enrollment, $usage) >= $messageLimit
             ) {
-                throw ValidationException::withMessages(['message' => ['اكتملت رسائل متابعة المشاريع في هذه الفئة']]);
+                throw new AiPlanLimitReachedException('Project discussion request allowance is exhausted.');
             }
 
             $message = ProjectFeedbackMessage::query()->create([
@@ -396,6 +388,16 @@ final class ProjectFeedbackThreadService
             'feedback_level' => $contract['project_feedback_level'],
             'report_enabled' => (bool) $contract['project_report_enabled'],
             'can_reply' => $canReply,
+            // Keep can_reply's entitlement meaning for older clients. Capacity
+            // uses the same minimum request and budget owner as upgrade offers;
+            // the worker still reserves the actual draft/context/attachments.
+            'reply_limit_reached' => $canReply && !$this->budget->hasProjectFollowupCapacity(
+                $terms ?? [],
+                AiRequestTokenEstimate::minimumProjectFollowup(
+                    $terms ?? [], $this->promptPolicy->projectFollowup('', '')
+                ),
+                $thread->enrollment
+            ),
             'reply_enabled' => $replyIncluded,
             'attachments_enabled' => $canReply && (bool) ($contract['project_attachments_enabled'] ?? false),
             'attachment_max_files' => $canReply

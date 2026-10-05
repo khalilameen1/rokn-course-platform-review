@@ -3,14 +3,17 @@ import {
   captureAccountSessionBoundary,
   assertAccountSessionBoundary,
 } from '../../constants/helpers';
-import {DISTRIBUTION_CHANNEL} from '../../constants/distribution';
+import {
+  courseCheckoutTransport,
+  checkoutPackageChannel,
+} from '../checkoutRouting';
 import {
   canonicalAccessPlanCode,
   numericCourseId,
-  mapFinancialPackages,
 } from './courseAccessValidation';
 import {isApiRecord, payload} from './common';
 import type {CoinPackage} from './coinPackageMapper';
+import {mapCoinPackages} from './coinPackageMapper';
 
 export type CourseCheckoutMode = 'purchase' | 'upgrade';
 export type CourseCheckoutFeature = 'chat' | 'project_discussion';
@@ -23,6 +26,8 @@ export type CourseCheckoutStatus =
   | 'reconfirm_required';
 export type CourseCheckout = {
   id: string;
+  channel: 'direct' | 'google' | 'apple';
+  fundingMode?: 'package' | 'exact_shortfall';
   status: CourseCheckoutStatus;
   courseId: string;
   planCode: string;
@@ -40,6 +45,9 @@ export type CourseCheckout = {
   expiresAt: string;
   packages: CoinPackage[];
   selectedPackageId?: string;
+  selectedPackage?: CoinPackage;
+  canResumePayment?: boolean;
+  paymentExpiresAt?: string;
 };
 
 const integer = (value: unknown) => {
@@ -69,6 +77,7 @@ export function mapCourseCheckout(value: unknown): CourseCheckout {
   const paidBalance = integer(value.purchased_balance);
   const rewardBalance = integer(value.reward_balance);
   const deficit = integer(value.deficit);
+  const fundingMode = value.funding_mode ?? 'package';
   if (
     !/^[a-zA-Z0-9-]{1,100}$/.test(id) ||
     ![
@@ -84,17 +93,40 @@ export function mapCourseCheckout(value: unknown): CourseCheckout {
     paidCoins + rewardCoins !== finalPrice ||
     rewardCoins > rewardBalance ||
     integer(value.course_revision) < 1 ||
-    deficit !== Math.max(0, paidCoins - paidBalance)
+    deficit !== Math.max(0, paidCoins - paidBalance) ||
+    !['package', 'exact_shortfall'].includes(String(fundingMode)) ||
+    (fundingMode === 'exact_shortfall' && value.channel !== 'direct')
   ) {
     throw new Error('API_CONTRACT_INVALID_COURSE_CHECKOUT');
   }
-  const packages = mapFinancialPackages(value.recommended_packages);
+  const packages = mapCoinPackages(
+    value.recommended_packages,
+    'API_CONTRACT_INVALID_RECOMMENDED_PACKAGES',
+    checkoutPackageChannel(value.channel),
+  );
   const selectedPackageId = isApiRecord(value.selected_package)
     ? String(value.selected_package.id)
     : undefined;
+  const selectedPackage = selectedPackageId
+    ? mapCoinPackages(
+        [value.selected_package],
+        'API_CONTRACT_INVALID_SELECTED_PACKAGE',
+        checkoutPackageChannel(value.channel),
+      )[0]
+    : undefined;
+  if (
+    selectedPackageId &&
+    (!selectedPackage ||
+      selectedPackage.coins < deficit ||
+      (fundingMode === 'exact_shortfall' && selectedPackage.coins !== deficit))
+  ) {
+    throw new Error('API_CONTRACT_INVALID_SELECTED_PACKAGE');
+  }
   return {
     id,
+    channel: value.channel as CourseCheckout['channel'],
     status,
+    fundingMode: fundingMode as CourseCheckout['fundingMode'],
     expiresAt,
     originalPrice,
     discountAmount,
@@ -111,6 +143,13 @@ export function mapCourseCheckout(value: unknown): CourseCheckout {
     remainingRewardCoins: integer(value.remaining_reward_balance),
     packages,
     selectedPackageId,
+    selectedPackage,
+    canResumePayment:
+      isApiRecord(value.payment) && value.payment.can_resume === true,
+    paymentExpiresAt:
+      isApiRecord(value.payment) && typeof value.payment.expires_at === 'string'
+        ? value.payment.expires_at
+        : undefined,
   };
 }
 
@@ -137,16 +176,24 @@ export const quoteCourseCheckout = (input: {
       ...(input.requiredFeature
         ? {required_feature: input.requiredFeature}
         : {}),
-      channel:
-        DISTRIBUTION_CHANNEL === 'play'
-          ? 'google'
-          : DISTRIBUTION_CHANNEL === 'appstore'
-          ? 'apple'
-          : 'direct',
+      channel: courseCheckoutTransport.apiChannel,
+      ...(courseCheckoutTransport.apiChannel === 'direct'
+        ? {funding_mode: 'exact_shortfall'}
+        : {}),
       ...(input.couponCode ? {coupon_code: input.couponCode.trim()} : {}),
       ...(input.packageId ? {package_id: Number(input.packageId)} : {}),
     }),
-  );
+  ).then(quote => {
+    // A server that does not support this contract must not silently charge a
+    // full package while the latest app promises the exact missing amount.
+    if (
+      courseCheckoutTransport.apiChannel === 'direct' &&
+      quote.fundingMode !== 'exact_shortfall'
+    ) {
+      throw new Error('API_UNSUPPORTED_EXACT_COURSE_FUNDING');
+    }
+    return quote;
+  });
 
 export const getCourseCheckout = (id: string) =>
   scoped(() => publicRequest.get(`course-checkouts/${encodeURIComponent(id)}`));

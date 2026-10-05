@@ -45,6 +45,11 @@ type EngagementMessageDto = {
   version?: unknown;
   campaign_key?: unknown;
   task_id?: unknown;
+  purchase_exit?: {
+    course_id?: unknown;
+    access_plan_code?: unknown;
+    additional_discount_coins?: unknown;
+  };
 };
 
 const rawText = (value: unknown): string =>
@@ -75,7 +80,7 @@ const mapEngagementMessage = (
     rawText(item.key) !== expectedKey ||
     !id ||
     !title ||
-    !description ||
+    (!description && expectedKey !== 'guest_registration_prompt') ||
     !actionLabel ||
     (dismissible && !secondaryActionLabel)
   ) {
@@ -127,4 +132,34 @@ export const getNextEngagementMessage = async (
   const eligible = message?.taskId && message.campaignKey ? message : null;
   assertAccountSessionBoundary(boundary);
   return eligible;
+};
+
+/** A read-only, course-bound task opportunity, not a checkout or a local estimate. */
+export const getCoursePurchaseExitOffer = async (
+  courseId: string,
+  planCode: string,
+): Promise<{taskId: string; additionalDiscountCoins: number} | null> => {
+  const boundary = await captureAccountSessionBoundary();
+  assertAccountSessionBoundary(boundary);
+  const response = await publicRequest.get('engagement/next', {
+    params: {course_id: courseId, access_plan_code: planCode},
+  });
+  assertAccountSessionBoundary(boundary);
+  const item = payload<EngagementMessageDto | null>(response);
+  const message = mapEngagementMessage(item, 'coin_offer');
+  const context = item?.purchase_exit;
+  const benefit = context?.additional_discount_coins;
+  // Old backend/generic replies, mismatched plans and malformed benefits
+  // cannot authorize the course-specific popup.
+  if (
+    !message?.taskId ||
+    !message.campaignKey ||
+    rawText(context?.course_id) !== courseId ||
+    rawText(context?.access_plan_code) !== planCode ||
+    typeof benefit !== 'number' ||
+    !Number.isSafeInteger(benefit) ||
+    benefit <= 0
+  )
+    return null;
+  return {taskId: message.taskId, additionalDiscountCoins: benefit};
 };

@@ -61,7 +61,7 @@ final class CoursePurchaseController extends Controller
                 // Plan capabilities therefore cannot change between checking
                 // the published revision and reading the selected plan.
                 $course = Course::query()->sharedLock()->findOrFail($request->course_id);
-                if (!$this->isAvailableForNewPurchase($course)) {
+                if (!$course->isAvailableForNewPurchase()) {
                     throw new \DomainException('course_not_available');
                 }
                 if ($expectedCourseRevision !== null
@@ -395,12 +395,6 @@ final class CoursePurchaseController extends Controller
     private function rewardContribution(WalletService $wallet, int $userId, int $courseId, int $targetPrice): array
     {
         return app(\App\Services\CoursePromotionPolicy::class)->allowance($userId, $courseId, $targetPrice);
-    }
-
-    private function isAvailableForNewPurchase(Course $course): bool
-    {
-        return (bool) $course->is_catalog_visible
-            && $course->isPublishedForLearning();
     }
 
     private function publishedRevision(Course $course): int
