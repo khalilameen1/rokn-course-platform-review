@@ -319,6 +319,36 @@ satisfy the application's signed recovery/restore-evidence gate. The HTTP
 503 recovery-only launch-readiness finding above remains unresolved and is
 not replaced by CI runbook tests or this backup-list observation.
 
+### Fresh signed recovery diagnosis — 2026-10-05
+
+Cloud command 230 finished after invoking only the already-deployed
+`RecoveryEvidenceService::readiness()`. The output was restricted to status,
+checks, operational dates/RPO/RTO and marker reason; no credentials, customer
+records, balances, keys, probe contents or signed payloads were printed.
+The observation timestamp is 2026-10-05 14:27:40 UTC.
+
+The exact failed predicate is **`backup_recent=false`**. Both evidence signatures,
+marker decryption, generation/key matching, restore-drill age, RPO/RTO, schema,
+financial/media/orphan checks are true. Signed backup time is
+2026-09-25 14:26:01 UTC; the successful restore-drill time is
+2026-09-25 15:12:11 UTC, with recorded RPO 54 seconds and RTO 23 seconds.
+These dates diagnose the current old deployment, not acceptance of a fresh
+candidate restore or a new backup.
+
+Provider-managed daily backups and the application's signed logical-artifact
+record are separate. The newer provider backup observed above did not update
+this signed record. Source inspection shows the existing scheduled
+`ops:checkpoint-recovery` updates the backup-visible marker but does not
+export an artifact or run `ops:verify-backup`. Do not change a date, extend the
+age threshold, copy another artifact's evidence, or fabricate a passing record.
+A genuine fresh backup artifact must be verified through the existing owner
+and retained securely; candidate production-upgrade acceptance additionally
+requires its actual isolated restore and independent review. No backup,
+restore, scheduler change, migration, worker restart or financial mutation was
+performed by command 230. Independent read-only review accepted the bounded
+diagnosis against the deployed source and matched documents, without accepting
+a new backup, restore, production-data audit or deployment.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
