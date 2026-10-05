@@ -226,6 +226,99 @@ did not change its committed lock or introduce a dependency update.
 These focused cases are not full Linux/MySQL/Redis acceptance;
 the new complete CI gate and native build/device/store acceptance remain pending.
 
+Independent read-only review accepted this bounded Laravel correction and the
+matching installed source/vendor evidence, without accepting the full runtime.
+Both official PHP corrections were then published together on the existing
+candidate branch, ending at `ba56a6baab5ee76efa7cdd314fbdc117556735fe`.
+Remote `main` still resolves to `1c7055136a959c8eb39454d1ab966c0786309474`.
+Fresh [Backend CI run 37320740849](https://github.com/khalilameen1/rokn-course-platform-review/actions/runs/37320740849)
+was verified in progress against that exact candidate head. At that checkpoint,
+the run had not yet been accepted as passed; its terminal acceptance is recorded
+below. No production deployment, native build or store change was made.
+
+### Fresh existing-production readiness observation — 2026-10-05
+
+Read-only HTTPS checks of the configured production API returned HTTP 200
+and `ready` from `/api/health/ready`; database, critical schema, OAuth storage,
+identity contract and cache checks were all true. `/api/health/launch-ready`
+returned HTTP 503 with the recovery check alone false. Its remaining required
+checks, including payment, playback, AI, mail, push and product schema, were
+true. This is not evidence of an application-wide outage, nor acceptance of
+the new candidate (which has not been deployed). The public response does not
+identify which signed backup/restore-evidence requirement failed; private
+operational evidence must be inspected before any irreversible migration.
+No recovery marker was fabricated, readiness requirement relaxed or server
+configuration changed by these observations.
+
+### Completed upgraded Linux backend gate — 2026-10-05
+
+Backend CI run 37320740849 is now terminal success on exactly
+`ba56a6baab5ee76efa7cdd314fbdc117556735fe`. Its verify, landing-preview and
+certificate-artwork jobs all passed. The actual Linux PHP runtime was
+**8.4.26**, not the local 8.4.24 runtime used in the earlier Windows evidence.
+The build used Node 22.23.2, pinned npm 10.9.3 and Composer 2.10.3; it installed
+the committed Laravel 12.69.0 and CommonMark 2.10.2 releases normally.
+
+- The strict locked Composer audit found no vulnerability advisories, without
+  ignores or filtering. The existing secret/history scan and production
+  frontend/public-asset/upload/legal guards also passed.
+- Wallet/shared-payment contracts: 107 tests/546 assertions.
+- Actual MySQL 8.0.43 clean replay, schema preflight and snapshot contracts:
+  17 tests/126 assertions. These include every method in the six MySQL-only
+  cases skipped by the separate SQLite run.
+- The complete default suite used SQLite `:memory:`: **2531 passed, 6 skipped,
+  23209 assertions**, in 583.16 seconds. It was not a full MySQL suite and
+  must not be reported as 2531 total cases or zero skips.
+- Landing: 5 tests/157 assertions. Certificate pixels: 17 tests/119 assertions.
+  Certificate issuance/recovery/authoring: 95 tests/1777 assertions.
+- Redis 7.4.5 connection plus write/read succeeded. This does not prove live
+  production queue workers. Configuration, routes, schedules and views
+  compiled. Recovery-runbook/frozen-baseline contract checks passed, not an
+  actual production-backup restore.
+
+The unchanged complete log is retained as
+`mobile/.cache/final-gate-20261005/backend-linux-ci-37320740849-complete.log`,
+SHA-256 `c032602f51d5d60c097caa9332167274ea2232852671498cd9bf14877ad420ad`.
+Independent read-only review accepted this bounded upgraded Linux gate and
+reconciled the six skipped methods with the real MySQL group. The CI
+Node-action deprecation warnings remain in the log; this is not a
+warning-free claim. No full tests were repeated to record this result.
+
+This closes the upgraded backend CI gate only. It does not establish live
+providers, production migration/restore, native binaries, emulator acceptance
+or a store upload. The mobile dependency-audit decision remains unresolved;
+no exception or bypass has been applied.
+
+### Existing Cloud deployment and pending command — read-only 2026-10-05
+
+The authenticated Laravel Cloud UI confirms the production environment uses
+`khalilameen1/rokn-course-platform-review:main`, with deployment 209 still at
+`1c7055136a959c8eb39454d1ab966c0786309474`. Neither the candidate branch nor
+the newly accepted PHP releases have been deployed. PHP 8.4/Node 22 are the
+environment's selected runtime families.
+
+A pre-existing **one pending change** is labelled **Deploy command updated**.
+Its current visible deploy-command editor contains:
+
+```sh
+set -eu
+php artisan rokn:preflight --configuration-only --connectivity
+php artisan rokn:release-migrate
+php artisan rokn:preflight --allow-mixed-release --connectivity
+```
+
+It was read without editing, saving, deploying, discarding or replacing that
+pending configuration. Its previous value and author were not exposed by the
+review modal; no origin is inferred.
+
+The existing provider backup page showed daily backups with one-day
+retention and an automatic 146 MB backup at 2026-10-04 21:30:51 UTC, plus the
+previous retained manual backups. No new resource, backup charge, network
+exposure or credential was created. Provider backup presence alone does not
+satisfy the application's signed recovery/restore-evidence gate. The HTTP
+503 recovery-only launch-readiness finding above remains unresolved and is
+not replaced by CI runbook tests or this backup-list observation.
+
 ### Single JavaScript CI release owner — 2026-10-05
 
 The existing JavaScript job invoked `test:release-scripts` separately and then
