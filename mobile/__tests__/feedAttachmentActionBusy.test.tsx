@@ -7,6 +7,13 @@ let mockFolderReadError = '';
 let mockFolderLoading = false;
 let mockFolderCreating = false;
 
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    const ReactModule = require('react') as typeof React;
+    ReactModule.useEffect(effect, [effect]);
+  },
+}));
+
 jest.mock('@gorhom/bottom-sheet', () => {
   const ReactModule = require('react');
   const {View} = require('react-native');

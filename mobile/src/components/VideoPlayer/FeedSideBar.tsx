@@ -27,6 +27,7 @@ import {feedSideBarStyles as styles} from './feedSideBar/styles';
 import {useAttachmentPrompt} from './feedSideBar/useAttachmentPrompt';
 import {useSavedFolderPicker} from './feedSideBar/useSavedFolderPicker';
 import {CopyIcon} from '../ui/CopyIcon';
+import {useFocusedOverlayBack} from './useFocusedOverlayBack';
 
 interface FeedSideBarProps {
   course: CourseLearningData;
@@ -126,6 +127,24 @@ const FeedSideBar = ({
     [onOverlayVisibilityChange],
   );
 
+  useFocusedOverlayBack(
+    useCallback(() => {
+      const sheet = Array.from(openSheetsRef.current).at(-1);
+      if (!sheet) return false;
+      const modal =
+        sheet === 'index'
+          ? indexSheetRef.current
+          : sheet === 'save'
+          ? saveSheetRef.current
+          : attachmentSheetRef.current;
+      if (!modal) return false;
+      // Gorhom owns the closing animation and onDismiss cleanup. Do not drop
+      // ownership here: another Back during dismissal still belongs to it.
+      modal.dismiss();
+      return true;
+    }, []),
+  );
+
   useEffect(() => {
     const openSheets = openSheetsRef.current;
     return () => {
@@ -200,6 +219,9 @@ const FeedSideBar = ({
         enablePanDownToClose
         topInset={insets.top}
         backdropComponent={renderBackdrop}
+        onAnimate={(_fromIndex, toIndex) => {
+          if (toIndex >= 0) reportSheetState('index', true);
+        }}
         onChange={index => reportSheetState('index', index >= 0)}
         onDismiss={() => reportSheetState('index', false)}
         backgroundStyle={styles.sheetBackground}
@@ -256,6 +278,9 @@ const FeedSideBar = ({
         enablePanDownToClose
         topInset={insets.top}
         backdropComponent={renderBackdrop}
+        onAnimate={(_fromIndex, toIndex) => {
+          if (toIndex >= 0) reportSheetState('attachment', true);
+        }}
         onChange={index => {
           const visible = index >= 0;
           reportSheetState('attachment', visible);
@@ -348,6 +373,9 @@ const FeedSideBar = ({
         keyboardBlurBehavior="restore"
         topInset={insets.top}
         backdropComponent={renderBackdrop}
+        onAnimate={(_fromIndex, toIndex) => {
+          if (toIndex >= 0) reportSheetState('save', true);
+        }}
         onChange={index => reportSheetState('save', index >= 0)}
         onDismiss={() => {
           closeSavedFolderPicker();

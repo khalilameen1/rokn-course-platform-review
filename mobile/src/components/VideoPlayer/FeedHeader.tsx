@@ -1,8 +1,7 @@
 import {useNavigation} from '@react-navigation/native';
 import type {RootNavigation} from '../../navigation/types';
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
-  BackHandler,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +22,7 @@ import {
 import {Fonts} from '../../constants/styleConstants';
 import {VideoQuality} from './types';
 import {goBackOrHome} from '../../navigation/RootNavigationHelper';
+import {useFocusedOverlayBack} from './useFocusedOverlayBack';
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -99,17 +99,13 @@ const FeedHeader = ({
     }
   }, [onQualityChange, qualityOptions, selectedQuality]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const subscription = BackHandler.addEventListener(
-      'hardwareBackPress',
-      () => {
-        setOpen(false);
-        return true;
-      },
-    );
-    return () => subscription.remove();
-  }, [open]);
+  useFocusedOverlayBack(
+    useCallback(() => {
+      if (!open) return false;
+      setOpen(false);
+      return true;
+    }, [open]),
+  );
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
