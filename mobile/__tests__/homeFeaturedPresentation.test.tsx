@@ -9,21 +9,22 @@ import {CatalogueSkeleton, SkeletonBlock} from '../src/components/ui/Skeleton';
 import {
   Accessibility,
   Palette,
-  Type,
   useResponsiveLayout,
 } from '../src/constants/designSystem';
 import type {Course} from '../src/types/Course';
 import {cleanUnicodeText} from '../src/utils/unicodeText';
+import {Fonts} from '../src/constants/styleConstants';
 
 jest.mock('../src/constants/designSystem', () => ({
   ...jest.requireActual('../src/constants/designSystem'),
   useResponsiveLayout: jest.fn(() => ({
     gutter: 18,
+    featuredGutter: 16,
     contentWidth: 390,
     railCardWidth: 202.8,
     largeText: false,
-    featuredCardWidth: 354,
-    featuredCardMinHeight: 438.96,
+    featuredCardWidth: 358,
+    featuredCardMinHeight: 438,
   })),
 }));
 jest.mock('react-native-linear-gradient', () => 'LinearGradient');
@@ -61,8 +62,8 @@ describe('approved artwork-overlay home featured course', () => {
     mockResponsiveLayout.mockReturnValue({
       ...mockResponsiveLayout(),
       largeText: false,
-      featuredCardWidth: 354,
-      featuredCardMinHeight: 438.96,
+      featuredCardWidth: 358,
+      featuredCardMinHeight: 438,
     });
   });
   afterEach(async () => {
@@ -76,12 +77,14 @@ describe('approved artwork-overlay home featured course', () => {
     )!;
 
     expect(StyleSheet.flatten(title.props.style)).toMatchObject({
-      fontFamily: Type.display.fontFamily,
-      fontSize: Type.display.fontSize * 0.9,
+      fontFamily: Fonts.extraBold,
+      fontSize: 27,
+      lineHeight: 40.5,
       textAlign: 'center',
     });
     expect(title.props.numberOfLines).toBe(2);
     expect(title.props.ellipsizeMode).toBe('tail');
+    expect(title.props.textBreakStrategy).toBe('balanced');
     expect(cleanUnicodeText(title.props.accessibilityLabel)).toBe(
       featured.title,
     );
@@ -109,6 +112,20 @@ describe('approved artwork-overlay home featured course', () => {
     expect(
       StyleSheet.flatten(cta.props.style).minHeight,
     ).toBeGreaterThanOrEqual(Math.max(48, Accessibility.minTouchTarget));
+    expect(StyleSheet.flatten(cta.props.style)).toMatchObject({
+      borderRadius: 8,
+      marginTop: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    });
+    const actionText = textNodes().find(
+      node => node.props.children === 'عرض الكورس',
+    )!;
+    expect(StyleSheet.flatten(actionText.props.style)).toMatchObject({
+      fontFamily: Fonts.bold,
+      fontSize: 15,
+      lineHeight: 22.5,
+    });
     expect(visibleText()).toContain('عرض الكورس');
     expect(buttons[0].props.accessibilityHint).toBe('يفتح تفاصيل الكورس');
     expect(cleanUnicodeText(buttons[0].props.accessibilityLabel)).toContain(
@@ -218,6 +235,13 @@ describe('approved artwork-overlay home featured course', () => {
       expect(StyleSheet.flatten(copy.props.style)).toMatchObject({
         alignItems: 'stretch',
         paddingTop: 142,
+        paddingHorizontal: width <= 328 ? 16 : 20,
+        paddingBottom: 22,
+      });
+      expect(StyleSheet.flatten(title.props.style)).toMatchObject({
+        fontFamily: Fonts.extraBold,
+        fontSize: width <= 328 ? 24 : 27,
+        lineHeight: width <= 328 ? 36 : 40.5,
       });
       expect(title.props.numberOfLines).toBe(2);
     },
@@ -287,7 +311,7 @@ describe('approved artwork-overlay home featured course', () => {
         renderer = TestRenderer.create(<CatalogueSkeleton />);
       });
       const blocks = renderer.root.findAllByType(SkeletonBlock);
-      expect(blocks[0].props).toMatchObject({width: 354, height: 438.96});
+      expect(blocks[0].props).toMatchObject({width: 358, height: 438, radius: 16});
       expect(blocks).toHaveLength(15);
       const root = renderer.root
         .findByType(CatalogueSkeleton)

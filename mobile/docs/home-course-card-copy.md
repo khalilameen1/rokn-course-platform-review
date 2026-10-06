@@ -29,7 +29,7 @@ in normal flow and allows up to four lines at large font settings. Large-text
 rendering strengthens the artwork overlay at every position so the
 first title line remains legible when the card grows upward. The ordinary fade
 is unchanged. Ordinary phone title type follows the approved 27px/24px hierarchy
-using Rokn font tokens.
+using the bundled Cairo family.
 The backend/dashboard continue to own featured selection, title and artwork;
 no new fields, endpoints or copied preview assets are required.
 
@@ -37,6 +37,25 @@ Regression cases were adjusted in `homeFeaturedPresentation.test.tsx`,
 `courseCardTitleLayout.test.tsx`, `courseCardLabels.test.tsx`,
 `catalogueCardMetadataPlacement.test.ts` and `responsiveLayout.test.tsx`. Execution,
 native visual verification and build remain deferred to the final combined gate.
+
+## Native fidelity correction — 6 October 2026
+
+The signed version 63 Home capture confirmed that its composition was present,
+but the source had substituted scaled shared typography, spacing and radii for
+the approved preview values. This was not proof of visual parity. The local
+correction restores the approved 27/40.5 and compact 24/36 Cairo ExtraBold title,
+15px Cairo Bold action, 8px action radius, 18px gap, 22px bottom padding, 16px
+phone gutters and 438/408px minimum frame. The existing responsive owner also
+supplies the loading frame, and tablet/large-text growth remains supported.
+The narrow-phone copy uses the approved 16px inset instead of 20px. Existing
+native accessible touch targets remain at least 48dp rather than reproducing
+the browser preview's smaller 44px icon targets.
+Home's header restores the approved 104×35 wordmark and header spacing. Small
+card badges use logical start instead of a physical right value mirrored by
+native RTL. Course names, covers, featured selection and navigation remain
+dashboard/API-owned; the preview's illustrative course is not installed as
+fictional catalogue content. Image focal cropping and actual corrected-device
+appearance still require acceptance. No new build or test run is claimed here.
 
 Independent source review on 2026-10-04 accepted this unit after the large-text
 contrast correction. It found no remaining everyday source blocker in this

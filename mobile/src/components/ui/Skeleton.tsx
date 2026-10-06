@@ -84,6 +84,7 @@ export const CatalogueSkeleton = () => {
     contentWidth,
     gutter,
     railCardWidth,
+    featuredGutter,
     featuredCardWidth,
     featuredCardMinHeight,
   } = useResponsiveLayout();
@@ -97,13 +98,12 @@ export const CatalogueSkeleton = () => {
         width: '100%',
         maxWidth: contentWidth,
         alignSelf: 'center',
-        paddingTop: Spacing.md,
       }}>
-      <View style={{paddingHorizontal: gutter}}>
+      <View style={{paddingHorizontal: featuredGutter}}>
         <SkeletonBlock
           height={featuredCardMinHeight}
           width={featuredCardWidth}
-          radius={Radius.lg}
+          radius={16}
         />
       </View>
       {[0, 1].map(section => (

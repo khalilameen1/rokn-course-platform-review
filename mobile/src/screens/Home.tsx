@@ -201,7 +201,7 @@ const Home = () => {
         onScroll={handleHomeScroll}
         onScrollBeginDrag={homeScroll.markUserMoved}
         scrollEventThrottle={250}>
-        <ResponsiveFrame>
+        <ResponsiveFrame style={styles.headerFrame}>
           <View style={styles.topView}>
             <View style={styles.brandCopy}>
               <Image
@@ -319,12 +319,14 @@ const Home = () => {
 };
 
 const styles = StyleSheet.create({
+  headerFrame: {paddingHorizontal: 20},
   topView: {
     minHeight: 56,
     ...rtlRowStyle,
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.xxs,
+    paddingTop: 16,
+    paddingBottom: 22,
   },
   brandCopy: {
     ...flexibleTextColumn,
@@ -332,7 +334,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'center',
   },
-  logo: {width: 82, height: 32, resizeMode: 'contain'},
+  logo: {width: 104, height: 35, resizeMode: 'contain'},
   headerActions: {...rtlRowStyle, alignItems: 'center', gap: Spacing.xxs},
   iconButton: {
     ...fixedIconSlot,

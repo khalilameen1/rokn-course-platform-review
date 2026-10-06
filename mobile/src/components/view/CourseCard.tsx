@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
   labelContainer: {
     position: 'absolute',
     top: Spacing.xs,
-    right: Spacing.xs,
+    start: Spacing.xs,
   },
   pressed: {opacity: 0.84},
 });

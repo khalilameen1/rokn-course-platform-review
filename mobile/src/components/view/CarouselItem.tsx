@@ -3,12 +3,11 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import type {Course} from '../../types/Course';
 import {formatAuthoredDisplayText} from '../../constants/arabicFormatting';
+import {Fonts} from '../../constants/styleConstants';
 import {
   Accessibility,
   Palette,
-  Radius,
   Spacing,
-  Type,
   textDirection,
   useResponsiveLayout,
 } from '../../constants/designSystem';
@@ -23,7 +22,7 @@ const CarouselItem = ({
 }) => {
   const {
     contentWidth,
-    gutter,
+    featuredGutter,
     largeText,
     featuredCardWidth,
     featuredCardMinHeight,
@@ -33,7 +32,7 @@ const CarouselItem = ({
     <View
       style={[
         styles.feature,
-        {maxWidth: contentWidth, paddingHorizontal: gutter},
+        {maxWidth: contentWidth, paddingHorizontal: featuredGutter},
       ]}>
       <Pressable
         accessibilityRole="button"
@@ -72,15 +71,20 @@ const CarouselItem = ({
           locations={[0.25, 0.42, 0.68, 0.96]}
           style={StyleSheet.absoluteFill}
         />
-        <View style={styles.copy}>
+        <View
+          style={[
+            styles.copy,
+            featuredCardWidth <= 328 && styles.copyCompact,
+          ]}>
           <Text
             accessibilityRole="header"
             accessibilityLabel={formatAuthoredDisplayText(course.title)}
             numberOfLines={largeText ? 4 : 2}
             ellipsizeMode="tail"
+            textBreakStrategy="balanced"
             style={[
               styles.title,
-              featuredCardWidth <= 324 && styles.titleCompact,
+              featuredCardWidth <= 328 && styles.titleCompact,
             ]}>
             {formatAuthoredDisplayText(course.title)}
           </Text>
@@ -97,7 +101,7 @@ const styles = StyleSheet.create({
   feature: {width: '100%', alignSelf: 'center', marginBottom: Spacing.md},
   card: {
     justifyContent: 'flex-end',
-    borderRadius: Radius.lg,
+    borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: Palette.surface,
   },
@@ -110,37 +114,40 @@ const styles = StyleSheet.create({
   // Content remains in normal flow so large Arabic text can grow the card.
   copy: {
     paddingTop: 142,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.xl,
+    paddingHorizontal: 20,
+    paddingBottom: 22,
     direction: 'rtl',
     alignItems: 'stretch',
   },
+  copyCompact: {paddingHorizontal: 16},
   title: {
-    ...Type.display,
-    fontSize: Type.display.fontSize * 0.9,
-    lineHeight: Type.display.lineHeight * 0.96,
+    fontFamily: Fonts.extraBold,
+    fontSize: 27,
+    lineHeight: 40.5,
     ...textDirection,
     textAlign: 'center',
     color: Palette.text,
   },
   titleCompact: {
-    fontSize: Type.display.fontSize * 0.8,
-    lineHeight: Type.display.lineHeight * 0.86,
+    fontSize: 24,
+    lineHeight: 36,
   },
   details: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: Spacing.md,
+    marginTop: 18,
     width: '100%',
     backgroundColor: Palette.action,
-    borderRadius: Radius.sm,
+    borderRadius: 8,
     minHeight: Accessibility.minTouchTarget,
     maxWidth: '100%',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   detailsText: {
-    ...Type.button,
+    fontFamily: Fonts.bold,
+    fontSize: 15,
+    lineHeight: 22.5,
     ...textDirection,
     textAlign: 'center',
     color: Palette.text,

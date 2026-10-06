@@ -159,12 +159,12 @@ describe('responsive layout from native dimensions', () => {
       layout.gridCardWidth * layout.gridColumns +
         layout.gridGap * (layout.gridColumns - 1),
     ).toBeCloseTo(availableWidth);
-    expect(layout.featuredCardWidth).toBeCloseTo(availableWidth);
-    expect(layout.featuredCardMinHeight).toBeCloseTo(
-      Math.min(
-        viewport.isTablet ? 520 : 480,
-        Math.max(408, availableWidth * 1.24),
-      ),
+    expect(layout.featuredGutter).toBe(viewport.isTablet ? viewport.gutter : 16);
+    expect(layout.featuredCardWidth).toBeCloseTo(
+      viewport.contentWidth - layout.featuredGutter * 2,
+    );
+    expect(layout.featuredCardMinHeight).toBe(
+      viewport.isTablet ? 520 : viewport.width <= 360 ? 408 : 438,
     );
   });
 
@@ -179,13 +179,10 @@ describe('responsive layout from native dimensions', () => {
       });
       expect(layout.largeText).toBe(true);
       expect(layout.featuredCardWidth).toBe(
-        viewport.contentWidth - viewport.gutter * 2,
+        viewport.contentWidth - layout.featuredGutter * 2,
       );
-      expect(layout.featuredCardMinHeight).toBeCloseTo(
-        Math.min(
-          viewport.isTablet ? 520 : 480,
-          Math.max(408, layout.featuredCardWidth * 1.24),
-        ),
+      expect(layout.featuredCardMinHeight).toBe(
+        viewport.isTablet ? 520 : viewport.width <= 360 ? 408 : 438,
       );
     },
   );
@@ -194,9 +191,8 @@ describe('responsive layout from native dimensions', () => {
     'uses the approved tall composition on a %idp phone',
     width => {
       const layout = readLayout({width, height: 720, scale: 2, fontScale: 1});
-      expect(layout.featuredCardWidth).toBe(width - layout.gutter * 2);
-      expect(layout.featuredCardMinHeight).toBeLessThanOrEqual(480);
-      expect(layout.featuredCardMinHeight).toBeGreaterThanOrEqual(408);
+      expect(layout.featuredCardWidth).toBe(width - 32);
+      expect(layout.featuredCardMinHeight).toBe(width <= 360 ? 408 : 438);
     },
   );
 

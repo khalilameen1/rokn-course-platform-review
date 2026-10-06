@@ -149,11 +149,9 @@ export const useResponsiveLayout = () => {
 
   // One artwork/title/action composition at every width. The native card may
   // grow beyond this minimum when accessibility text needs more room.
-  const featuredCardWidth = availableGridWidth;
-  const featuredCardMinHeight = Math.min(
-    isTablet ? 520 : 480,
-    Math.max(408, featuredCardWidth * 1.24),
-  );
+  const featuredGutter = isTablet ? gutter : 16;
+  const featuredCardWidth = contentWidth - featuredGutter * 2;
+  const featuredCardMinHeight = isTablet ? 520 : width <= 360 ? 408 : 438;
 
   return {
     width,
@@ -169,6 +167,7 @@ export const useResponsiveLayout = () => {
     gridGap,
     gridCardWidth,
     railCardWidth,
+    featuredGutter,
     featuredCardWidth,
     featuredCardMinHeight,
   };

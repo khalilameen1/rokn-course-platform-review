@@ -24,6 +24,7 @@ jest.mock('../src/constants/designSystem', () => ({
     largeText: false,
     railCardWidth: 180,
     gutter: 16,
+    featuredGutter: 16,
     contentWidth: 390,
     isTablet: false,
     featuredCardWidth: 358,
