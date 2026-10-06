@@ -332,6 +332,22 @@ const POD_UPSTREAM_LEGAL_DOCUMENTS = new Map([
 
 const POD_EXACT_LICENSE_SELECTIONS = new Map([
   [
+    'libavif@1.0.0',
+    {
+      license: 'BSD-2-Clause',
+      reason:
+        "The exact libavif 1.0.0 podspec says 'BSD'; its tagged LICENSE begins with Joe Drago's BSD 2-Clause terms and retains the additional source-specific notices.",
+    },
+  ],
+  [
+    'libwebp@1.6.0',
+    {
+      license: 'BSD-3-Clause',
+      reason:
+        "The exact libwebp 1.6.0 podspec says 'BSD'; its declared COPYING file contains Google's BSD 3-Clause terms, including the non-endorsement clause.",
+    },
+  ],
+  [
     'GoogleSignIn@9.2.0',
     {
       license: 'Apache-2.0',

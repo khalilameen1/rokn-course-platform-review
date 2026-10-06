@@ -144,6 +144,45 @@ test('normalizes reviewed Maven and Pod license metadata', () => {
   );
 });
 
+test('applies image codec BSD selections only to the reviewed exact Pod versions', async () => {
+  const bytes = Buffer.from(JSON.stringify({license: {type: 'BSD'}}));
+  const originalFetch = global.fetch;
+  global.fetch = async () => new Response(bytes, {status: 200});
+  try {
+    for (const [name, version, license] of [
+      ['libavif', '1.0.0', 'BSD-2-Clause'],
+      ['libwebp', '1.6.0', 'BSD-3-Clause'],
+    ]) {
+      const pod = {
+        name,
+        version,
+        coordinate: `${name}@${version}`,
+        specChecksum: crypto.createHash('sha1').update(bytes).digest('hex'),
+      };
+      const record = await buildRemotePodRecord(pod, new Map());
+      assert.deepEqual(record.selectedLicenses, [license]);
+      assert.deepEqual(
+        record.exactLicenseSelection,
+        POD_EXACT_LICENSE_SELECTIONS.get(pod.coordinate),
+      );
+      await assert.rejects(
+        () =>
+          buildRemotePodRecord(
+            {
+              ...pod,
+              coordinate: `${name}@99.0.0`,
+              version: '99.0.0',
+            },
+            new Map(),
+          ),
+        /has no reviewed license classification for raw term "BSD"/,
+      );
+    }
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test('applies reviewed Apache selections only to exact pod coordinates', async () => {
   const sessionFetcherSpec = Buffer.from(
     JSON.stringify({
