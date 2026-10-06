@@ -17,3 +17,12 @@
 # Preserve useful source/line metadata in release crash reports. The matching
 # R8 map and Hermes source map are copied next to every production artifact.
 -keepattributes SourceFile,LineNumberTable
+
+# Expo creates Field annotations reflectively when decoding native Records.
+# R8 full mode otherwise treats the annotation instances as absent and replaces
+# Field.key() with a null throw. Preserve this runtime contract, not all Expo.
+# https://developer.android.com/topic/performance/app-optimization/keep-rule-examples
+-keepattributes RuntimeVisibleAnnotations,AnnotationDefault
+-keep @interface expo.modules.kotlin.records.Field {
+    *;
+}

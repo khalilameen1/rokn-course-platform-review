@@ -27,6 +27,25 @@ const TRANSITIVE_TOOLCHAIN = [
   '@react-native/metro-babel-transformer',
 ];
 
+test('release preserves Expo Field annotation instances and their key method', () => {
+  const rules = fs.readFileSync(
+    path.join(ROOT, 'android/app/proguard-rules.pro'),
+    'utf8',
+  );
+  // Native minified APK selection remains the acceptance gate. This only
+  // prevents removal/weakening of the reflection contract that caused it.
+  assert.match(
+    rules,
+    /-keep\s+@interface\s+expo\.modules\.kotlin\.records\.Field\s*\{\s*\*;\s*\}/,
+  );
+  assert.match(
+    rules,
+    /-keepattributes\s+RuntimeVisibleAnnotations,AnnotationDefault/,
+  );
+  assert.doesNotMatch(rules, /-dont(?:optimize|shrink|obfuscate)\b/);
+  assert.doesNotMatch(rules, /-keep\s+class\s+expo\.modules\.\*\*/);
+});
+
 test('React Native JS toolchain uses the exact React Native patch version', () => {
   const reactNativeVersion = manifest.dependencies?.['react-native'];
   assert.match(reactNativeVersion || '', /^\d+\.\d+\.\d+$/);
